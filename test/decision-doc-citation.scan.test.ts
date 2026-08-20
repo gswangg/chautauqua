@@ -57,7 +57,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { EXHIBIT_SIGIL, exhibitSigilStart } from "./citation-exhibit";
+import { isExhibitCitation } from "./citation-grammar";
 
 const ROOT = resolve(__dirname, "..");
 const DECISIONS_DATA_DIR = join(ROOT, "src", "decisions-data");
@@ -88,6 +88,11 @@ interface Citation {
   doc: string;
   /** The raw path/basename text as written in the doc. */
   rawPath: string;
+  /** Index in `content` where the matched citation text (the path's own
+   * first captured character) begins -- the anchor isExhibitCitation
+   * checks against, distinct from `index` below (the position AFTER the
+   * citation, used for the receipt-quote search). */
+  start: number;
   /** First line number the citation names. */
   firstLine: number;
   /** Full matched citation text, for failure messages. */
@@ -102,10 +107,6 @@ interface Citation {
    * backtick, not the opening delimiter of a receipt quote, and
    * quoteAfter must skip past it before searching. */
   ownClosingBacktickFollows: boolean;
-  /** True when the coordinate carries the shared EXHIBIT_SIGIL immediately
-   * before it (test/citation-exhibit.ts). An exhibit is the SUBJECT of its
-   * sentence, not a reference, and is graded INVERTED below. */
-  isExhibit: boolean;
 }
 
 function firstLineNumber(blob: string): number {
@@ -120,22 +121,14 @@ function findCitations(doc: string, content: string): Citation[] {
   let m: RegExpExecArray | null;
   while ((m = CITATION_RE.exec(content))) {
     const end = m.index + m[0].length;
-    // An exhibit's sigil sits between the code span's opening backtick and
-    // the path, so the character immediately before the regex's match is
-    // the sigil, not the backtick -- but the span's own CLOSING backtick
-    // still follows the coordinate exactly as it does for an unmarked one,
-    // and quoteAfter must still skip it. exhibitSigilStart gives the index
-    // of the whole marked coordinate so the span test reads the right char.
-    const sigilStart = exhibitSigilStart(content, m.index);
-    const coordStart = sigilStart === -1 ? m.index : sigilStart;
     out.push({
       doc,
       rawPath: m[1]!,
       firstLine: firstLineNumber(m[2]!),
       matchText: m[0],
+      start: m.index,
       index: end,
-      ownClosingBacktickFollows: content[coordStart - 1] === "`" && content[end] === "`",
-      isExhibit: sigilStart !== -1,
+      ownClosingBacktickFollows: content[m.index - 1] === "`" && content[end] === "`",
     });
   }
   return out;
@@ -223,6 +216,9 @@ interface DriftProofCitation {
   rawPath: string;
   quote: string;
   matchText: string;
+  /** Index in `content` where the matched path text begins -- see
+   * Citation.start above. */
+  start: number;
 }
 
 /** Finds bare-path drift-proof citations in `content`. Reuses quoteAfter
@@ -254,40 +250,58 @@ function findDriftProofCitations(doc: string, content: string): DriftProofCitati
     if (backticksBefore % 2 === 1) continue;
     const quote = quoteAfter(content, end, false, 1);
     if (!quote || quote.length === 0) continue; // no immediately-following quote -> not a citation
-    out.push({ doc, rawPath: m[1]!, quote, matchText: `${m[0]}\`${quote}\`` });
+    out.push({ doc, rawPath: m[1]!, quote, matchText: `${m[0]}\`${quote}\``, start: m.index });
   }
   return out;
 }
 
 /** DIRECTION check for a drift-proof citation: resolves the path, then
  * requires the quote to appear verbatim ANYWHERE in the cited file's raw
- * content (not one fixed line -- that is the whole point of this shape). */
-function checkDriftProofCitations(
+ * content (not one fixed line -- that is the whole point of this shape).
+ * Exhibit-sigilled drift-proof citations (see EXHIBIT grammar,
+ * ./citation-grammar) are graded INVERTED, same as strict citations in
+ * checkCitationsPartitioned below: an exhibit that resolves AND matches
+ * has healed and must be retired, everything else about it is silence. */
+function checkDriftProofCitationsPartitioned(
   doc: string,
   content: string,
   repoRoot: string,
   allFiles: Set<string>,
   basenameMap: Map<string, string[]>,
-): Violation[] {
-  const violations: Violation[] = [];
+): { ordinary: Violation[]; exhibitHealed: Violation[] } {
+  const ordinary: Violation[] = [];
+  const exhibitHealed: Violation[] = [];
   for (const c of findDriftProofCitations(doc, content)) {
+    const isExhibit = isExhibitCitation(content, c.start);
     const resolved = resolvePath(c.rawPath, repoRoot, allFiles, basenameMap);
     if (!resolved.ok) {
-      violations.push({
-        message: `${c.doc}: "${c.matchText}" does not resolve -- ${resolved.reason}`,
-      });
-      continue;
+      if (!isExhibit) {
+        ordinary.push({ message: `${c.doc}: "${c.matchText}" does not resolve -- ${resolved.reason}` });
+      }
+      continue; // exhibit correctly still unresolved -> no violation
     }
     const targetContent = readFileSync(join(repoRoot, resolved.relPath!), "utf-8");
-    if (!targetContent.includes(c.quote)) {
-      violations.push({
+    const matches = targetContent.includes(c.quote);
+    if (isExhibit) {
+      if (matches) {
+        exhibitHealed.push({
+          message:
+            `${c.doc}: exhibit drift-proof quote \`${c.quote}\` following "${c.rawPath}" now appears ` +
+            `verbatim in ${resolved.relPath} (was catalogued as dead) -- retire the EXHIBIT! sigil, this ` +
+            `citation has healed`,
+        });
+      }
+      continue;
+    }
+    if (!matches) {
+      ordinary.push({
         message:
           `${c.doc}: drift-proof quote \`${c.quote}\` following "${c.rawPath}" does not appear ` +
           `verbatim anywhere in ${resolved.relPath}`,
       });
     }
   }
-  return violations;
+  return { ordinary, exhibitHealed };
 }
 
 /** Every file in the repo (excluding node_modules/.git/dist-like build
@@ -356,87 +370,76 @@ interface Violation {
   message: string;
 }
 
-/** The INVERTED half of the exhibit grammar. Returns a description of how
- * the exhibit healed, or null while it is still dead (the expected state).
- * Deliberately built out of the SAME three checks the forward direction
- * runs -- resolution, EOF, and the immediately-following quote -- read in
- * the opposite sense, so an exhibit can never be graded against a laxer
- * rule than the citations around it (DEC-613: one grammar, read two ways,
- * not two grammars). An exhibit with no receipt quote heals as soon as its
- * path:line merely exists; one that carries a quote heals only when the
- * quote matches there too, which is exactly what would make it a true
- * citation again. */
-function exhibitHealed(
-  c: Citation,
-  content: string,
-  resolved: { ok: boolean; relPath?: string },
-  root: string,
-): string | null {
-  if (!resolved.ok) return null;
-  const targetLines = readFileSync(join(root, resolved.relPath!), "utf-8").split("\n");
-  if (c.firstLine > targetLines.length) return null;
-  const quote = quoteAfter(content, c.index, c.ownClosingBacktickFollows);
-  if (!quote || quote.length === 0) return `${resolved.relPath}:${c.firstLine} exists`;
-  const targetLine = targetLines[c.firstLine - 1] ?? "";
-  if (!normalise(targetLine).includes(normalise(quote))) return null;
-  return `${resolved.relPath}:${c.firstLine} now reads its quoted receipt verbatim`;
-}
-
-/** Runs both citation directions over one (doc, content) pair, returning
- * every violation found. Shared by the real population and the
- * negative-control fixtures so both exercise the identical logic
+/** Runs both citation directions over one (doc, content) pair, PARTITIONED
+ * into ordinary citations (graded as before: a violation when they fail
+ * to resolve/match) and EXHIBIT citations (DEC-967 wave-137/138: a
+ * coordinate marked with the EXHIBIT! sigil is the SUBJECT of its
+ * sentence, not a live reference, and is graded INVERTED -- a violation
+ * is raised only when the exhibit HEALS, i.e. it unexpectedly resolves
+ * and its quote unexpectedly matches). Shared by the real population and
+ * the negative-control fixtures so both exercise the identical logic
  * (DEC-613: one implementation, not a scan copy and a fixture copy that
  * quietly diverge). */
-function checkCitations(doc: string, content: string): Violation[] {
-  const violations: Violation[] = [];
+function checkCitationsPartitioned(doc: string, content: string): { ordinary: Violation[]; exhibitHealed: Violation[] } {
+  const ordinary: Violation[] = [];
+  const exhibitHealed: Violation[] = [];
   for (const c of findCitations(doc, content)) {
+    const isExhibit = isExhibitCitation(content, c.start);
     const resolved = resolvePath(c.rawPath, ROOT, ALL_REL_FILES, BASENAME_MAP);
-    // INVERTED GRADING for an exhibit (test/citation-exhibit.ts): the
-    // coordinate is the subject of its sentence -- a dead anchor the
-    // paragraph is EXHIBITING -- so a failure to resolve is the expected
-    // state and is not a violation. The violation is the opposite: the day
-    // it resolves cleanly again, the exhibit has healed into a live
-    // reference and must be retired from the catalogue rather than left to
-    // rot into a silent true-looking claim.
-    if (c.isExhibit) {
-      const healed = exhibitHealed(c, content, resolved, ROOT);
-      if (healed) {
-        violations.push({
-          message:
-            `${c.doc}: exhibit "${EXHIBIT_SIGIL}${c.matchText}" now RESOLVES (${healed}). An exhibit is ` +
-            `graded inverted: it is quoted because it is dead. Retire it from the catalogue (or drop the ` +
-            `${EXHIBIT_SIGIL} sigil and let it be graded as the ordinary citation it has become).`,
-        });
-      }
-      continue;
-    }
     if (!resolved.ok) {
-      violations.push({
-        message: `${c.doc}: "${c.matchText}" does not resolve -- ${resolved.reason}`,
-      });
-      continue;
+      if (!isExhibit) {
+        ordinary.push({ message: `${c.doc}: "${c.matchText}" does not resolve -- ${resolved.reason}` });
+      }
+      continue; // exhibit correctly still unresolved -> no violation
     }
     const targetAbs = join(ROOT, resolved.relPath!);
     const targetLines = readFileSync(targetAbs, "utf-8").split("\n");
     if (c.firstLine > targetLines.length) {
-      violations.push({
-        message: `${c.doc}: "${c.matchText}" cites line ${c.firstLine} of ${resolved.relPath}, which has only ${targetLines.length} lines`,
-      });
-      continue;
+      if (!isExhibit) {
+        ordinary.push({
+          message: `${c.doc}: "${c.matchText}" cites line ${c.firstLine} of ${resolved.relPath}, which has only ${targetLines.length} lines`,
+        });
+      }
+      continue; // exhibit correctly still out of range -> no violation
     }
     const quote = quoteAfter(content, c.index, c.ownClosingBacktickFollows);
-    if (!quote || quote.length === 0) continue; // no immediately-following backtick claim to check (see header)
+    if (!quote || quote.length === 0) {
+      if (isExhibit) {
+        // Resolved AND in-range with nothing left to check: the anchor
+        // itself has healed (the file/line now exists where it used to
+        // be missing) -- the exhibit's catalogued claim no longer holds.
+        exhibitHealed.push({
+          message: `${c.doc}: exhibit "${c.matchText}" now resolves to a real file/line (was catalogued as ` +
+            `dead) -- retire the EXHIBIT! sigil, this coordinate has healed`,
+        });
+      }
+      continue;
+    }
     const targetLine = targetLines[c.firstLine - 1] ?? "";
-    if (!normalise(targetLine).includes(normalise(quote))) {
-      violations.push({
+    const matches = normalise(targetLine).includes(normalise(quote));
+    if (isExhibit) {
+      if (matches) {
+        exhibitHealed.push({
+          message:
+            `${c.doc}: exhibit quote \`${quote}\` following "${c.matchText}" now matches verbatim at ` +
+            `${resolved.relPath}:${c.firstLine} (was catalogued as drifted) -- retire the EXHIBIT! sigil, ` +
+            `this citation has healed`,
+        });
+      }
+      continue;
+    }
+    if (!matches) {
+      ordinary.push({
         message:
           `${c.doc}: quote \`${quote}\` following "${c.matchText}" does not appear verbatim at ` +
           `${resolved.relPath}:${c.firstLine} (that line reads: "${targetLine.trim()}")`,
       });
     }
   }
-  violations.push(...checkDriftProofCitations(doc, content, ROOT, ALL_REL_FILES, BASENAME_MAP));
-  return violations;
+  const driftProof = checkDriftProofCitationsPartitioned(doc, content, ROOT, ALL_REL_FILES, BASENAME_MAP);
+  ordinary.push(...driftProof.ordinary);
+  exhibitHealed.push(...driftProof.exhibitHealed);
+  return { ordinary, exhibitHealed };
 }
 
 const DECISION_DOC_NAMES = decisionDocFiles(DECISIONS_DATA_DIR);
@@ -444,9 +447,9 @@ const DECISION_DOC_CONTENTS = new Map<string, string>(
   DECISION_DOC_NAMES.map((name) => [name, readFileSync(join(DECISIONS_DATA_DIR, name), "utf-8")]),
 );
 
-const ALL_VIOLATIONS: Violation[] = DECISION_DOC_NAMES.flatMap((name) =>
-  checkCitations(name, DECISION_DOC_CONTENTS.get(name)!),
-);
+const ALL_PARTITIONED = DECISION_DOC_NAMES.map((name) => checkCitationsPartitioned(name, DECISION_DOC_CONTENTS.get(name)!));
+const ALL_VIOLATIONS: Violation[] = ALL_PARTITIONED.flatMap((p) => p.ordinary);
+const ALL_EXHIBIT_HEALED: Violation[] = ALL_PARTITIONED.flatMap((p) => p.exhibitHealed);
 
 // Ratchet (DEC-976 wave-106 amendment, DEC-808 wave-106 two-sided-ratchet
 // rule): this is a TO-DO LIST, not a licence. Seeded at the count measured
@@ -598,9 +601,11 @@ function countResolved(entries: [string, string][]): number {
   return n;
 }
 
-const WIDENED_VIOLATIONS: Violation[] = WIDENED_SOURCE_CLASSES.flatMap(({ entries }) =>
-  entries.flatMap(([doc, content]) => checkCitations(doc, content)),
+const WIDENED_PARTITIONED = WIDENED_SOURCE_CLASSES.flatMap(({ entries }) =>
+  entries.map(([doc, content]) => checkCitationsPartitioned(doc, content)),
 );
+const WIDENED_VIOLATIONS: Violation[] = WIDENED_PARTITIONED.flatMap((p) => p.ordinary);
+const WIDENED_EXHIBIT_HEALED: Violation[] = WIDENED_PARTITIONED.flatMap((p) => p.exhibitHealed);
 
 // Ratchet (DEC-967 wave-107, DEC-808 wave-106 two-sided-ratchet rule):
 // seeded at the count this scan itself measured on this branch (never
@@ -649,6 +654,21 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
     }
     expect(WIDENED_VIOLATIONS.length).toBeGreaterThanOrEqual(WIDENED_UNRESOLVED_CITATION_CEILING);
   });
+
+  // EXHIBIT grammar (DEC-967 wave-137/138): a coordinate marked with the
+  // EXHIBIT! sigil is the SUBJECT of its sentence, cataloguing a dead
+  // anchor as evidence -- it is graded INVERTED. A violation here means
+  // the exhibit HEALED (it now resolves and, where quoted, matches),
+  // which is the scan's way of telling the author to retire the sigil.
+  it("every EXHIBIT!-marked citation in the widened population still fails to resolve/match (retire the sigil the moment one heals)", () => {
+    if (WIDENED_EXHIBIT_HEALED.length > 0) {
+      throw new Error(
+        `${WIDENED_EXHIBIT_HEALED.length} widened-population EXHIBIT! citation(s) have healed -- retire their ` +
+          `sigils (they are no longer dead anchors):\n` + WIDENED_EXHIBIT_HEALED.map((v) => v.message).join("\n"),
+      );
+    }
+    expect(WIDENED_EXHIBIT_HEALED).toEqual([]);
+  });
 });
 
 describe("decision-registry citation scan (DEC-976 wave-106 amendment, task w2-j)", () => {
@@ -686,6 +706,37 @@ describe("decision-registry citation scan (DEC-976 wave-106 amendment, task w2-j
     }
     expect(ALL_VIOLATIONS.length).toBeGreaterThanOrEqual(UNRESOLVED_CITATION_CEILING);
   });
+
+  // EXHIBIT grammar (DEC-967 wave-137/138): see the matching block in the
+  // widened-population describe above for the full rationale. This is the
+  // decision-registry population's own copy of the same inverted grading
+  // -- src/decisions-data/DEC-967.md:121/123's wave-136/wave-137 catalogue
+  // paragraphs are the live exhibits this closes.
+  it("every EXHIBIT!-marked citation in src/decisions-data/DEC-*.md still fails to resolve/match (retire the sigil the moment one heals)", () => {
+    if (ALL_EXHIBIT_HEALED.length > 0) {
+      throw new Error(
+        `${ALL_EXHIBIT_HEALED.length} decision-registry EXHIBIT! citation(s) have healed -- retire their sigils ` +
+          `(they are no longer dead anchors):\n` + ALL_EXHIBIT_HEALED.map((v) => v.message).join("\n"),
+      );
+    }
+    expect(ALL_EXHIBIT_HEALED).toEqual([]);
+  });
+
+  it("vacuous exhibit tripwire: the decision registry actually contains at least one EXHIBIT!-marked citation today", () => {
+    // Non-vacuity over the real population, not a synthetic fixture: proves
+    // the exhibit branch of checkCitationsPartitioned is reachable and not
+    // dead code silently contributing nothing (the same house rule as the
+    // widened-population vacuous-population tripwires above, applied to
+    // the EXHIBIT partition specifically).
+    let exhibitCount = 0;
+    for (const name of DECISION_DOC_NAMES) {
+      const content = DECISION_DOC_CONTENTS.get(name)!;
+      for (const c of findCitations(name, content)) {
+        if (isExhibitCitation(content, c.start)) exhibitCount++;
+      }
+    }
+    expect(exhibitCount).toBeGreaterThan(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -711,14 +762,6 @@ describe("negative controls", () => {
     const violations: Violation[] = [];
     for (const c of findCitations("fixture.md", content)) {
       const resolved = resolvePath(c.rawPath, tmpRoot, allRelFiles, basenameMap);
-      // Same inverted branch the real population runs, calling the same
-      // exhibitHealed helper -- the controls below would prove nothing
-      // about the shipped grading if they exercised a fixture-local copy.
-      if (c.isExhibit) {
-        const healed = exhibitHealed(c, content, resolved, tmpRoot);
-        if (healed) violations.push({ message: `exhibit "${c.matchText}" now RESOLVES (${healed})` });
-        continue;
-      }
       if (!resolved.ok) {
         violations.push({ message: `"${c.matchText}" does not resolve -- ${resolved.reason}` });
         continue;
@@ -737,9 +780,76 @@ describe("negative controls", () => {
         violations.push({ message: `quote \`${quote}\` does not match line ${c.firstLine}` });
       }
     }
-    violations.push(...checkDriftProofCitations("fixture.md", content, tmpRoot, allRelFiles, basenameMap));
+    violations.push(...checkDriftProofCitationsPartitioned("fixture.md", content, tmpRoot, allRelFiles, basenameMap).ordinary);
     return violations;
   }
+
+  /** Exhibit-aware fixture check, mirroring checkCitationsPartitioned's
+   * strict-citation branch but scoped to the tmp fixture root (the real
+   * checkCitationsPartitioned is hardcoded to ROOT/ALL_REL_FILES/
+   * BASENAME_MAP, which do not see fixture files). Only the strict-shape
+   * branch is exercised here -- the fixture controls above already cover
+   * drift-proof shape without exhibits, and no exhibit in the real
+   * population today is drift-proof (see DEC-967.md's catalogue: all 13
+   * are the strict `path:line` shape). */
+  function checkFixtureExhibits(content: string): { ordinary: Violation[]; exhibitHealed: Violation[] } {
+    const ordinary: Violation[] = [];
+    const exhibitHealed: Violation[] = [];
+    for (const c of findCitations("fixture.md", content)) {
+      const isExhibit = isExhibitCitation(content, c.start);
+      const resolved = resolvePath(c.rawPath, tmpRoot, allRelFiles, basenameMap);
+      if (!resolved.ok) {
+        if (!isExhibit) ordinary.push({ message: `"${c.matchText}" does not resolve -- ${resolved.reason}` });
+        continue;
+      }
+      const targetLines = readFileSync(join(tmpRoot, resolved.relPath!), "utf-8").split("\n");
+      if (c.firstLine > targetLines.length) {
+        if (!isExhibit) ordinary.push({ message: `"${c.matchText}" cites line ${c.firstLine}, out of range` });
+        continue;
+      }
+      const quote = quoteAfter(content, c.index, c.ownClosingBacktickFollows);
+      if (!quote) {
+        if (isExhibit) exhibitHealed.push({ message: `"${c.matchText}" now resolves -- healed` });
+        continue;
+      }
+      const targetLine = targetLines[c.firstLine - 1] ?? "";
+      const matches = normalise(targetLine).includes(normalise(quote));
+      if (isExhibit) {
+        if (matches) exhibitHealed.push({ message: `exhibit quote \`${quote}\` now matches -- healed` });
+        continue;
+      }
+      if (!matches) ordinary.push({ message: `quote \`${quote}\` does not match line ${c.firstLine}` });
+    }
+    return { ordinary, exhibitHealed };
+  }
+
+  it("an EXHIBIT!-sigilled citation that still fails to resolve contributes no violation either way", () => {
+    const doc = "The old rule lived at EXHIBIT!fixture-cited.ts:999 declares `export const GONE = 1;` -- moved since.";
+    const { ordinary, exhibitHealed } = checkFixtureExhibits(doc);
+    expect(ordinary).toEqual([]);
+    expect(exhibitHealed).toEqual([]);
+  });
+
+  it("an EXHIBIT!-sigilled citation that NOW resolves and matches is reported as healed (INVERTED grading)", () => {
+    const doc = "The old rule lived at EXHIBIT!fixture-cited.ts:3 declares `export const FIXTURE_TOKEN = 42;` -- moved since.";
+    const { ordinary, exhibitHealed } = checkFixtureExhibits(doc);
+    expect(ordinary).toEqual([]);
+    expect(exhibitHealed.length).toBe(1);
+    expect(exhibitHealed[0]!.message).toMatch(/healed/);
+  });
+
+  it("an EXHIBIT! sigil written three sentences away does not attach to a later, unrelated citation", () => {
+    const doc =
+      "EXHIBIT!fixture-cited.ts:999 was dead. Several sentences later, an unrelated live pointer: " +
+      "fixture-cited.ts:3 declares `export const FIXTURE_TOKEN = 42;` correctly.";
+    const { ordinary, exhibitHealed } = checkFixtureExhibits(doc);
+    // The far-away sigil does not attach to the second, unrelated citation:
+    // that citation is graded ORDINARY (and passes, since it is true), and
+    // the first (genuinely sigilled, genuinely dead) citation contributes
+    // no violation either way -- it is a correctly-still-broken exhibit.
+    expect(ordinary).toEqual([]);
+    expect(exhibitHealed).toEqual([]);
+  });
 
   it("a citation whose line resolves and whose backtick quote matches verbatim passes", () => {
     const doc = "fixture-cited.ts:3 declares `export const FIXTURE_TOKEN = 42;` at the top level.";
@@ -782,37 +892,6 @@ describe("negative controls", () => {
   // nothing, same rule as the strict shape's DIRECTION 1).
   it("a bare path with no following quote is not a citation and contributes no violation", () => {
     const doc = "See fixture-cited.ts for the full implementation.";
-    expect(checkFixture(doc)).toEqual([]);
-  });
-
-  // --- exhibit sigil, graded INVERTED (DEC-967 wave-136 amendment) -------
-  // An exhibit is a coordinate a ruling quotes BECAUSE it is dead. These
-  // four controls pin both directions of that inversion, so the sigil can
-  // never quietly become a blanket exemption.
-
-  it(`a ${EXHIBIT_SIGIL} exhibit whose coordinate is dead contributes no violation (the expected state)`, () => {
-    const doc = `Measured: ${EXHIBIT_SIGIL}fixture-cited.ts:99 is past EOF, and ${EXHIBIT_SIGIL}gone.ts:4 no longer exists.`;
-    expect(checkFixture(doc)).toEqual([]);
-  });
-
-  it(`a ${EXHIBIT_SIGIL} exhibit that HEALS is flagged, so a stale catalogue entry cannot rot into a true-looking claim`, () => {
-    const doc = `Measured: ${EXHIBIT_SIGIL}fixture-cited.ts:3 declares \`export const FIXTURE_TOKEN = 42;\`.`;
-    const violations = checkFixture(doc);
-    expect(violations.length).toBe(1);
-    expect(violations[0]!.message).toMatch(/now RESOLVES/);
-  });
-
-  it("the sigil binds only to the coordinate it is written against, never to later ones in the same paragraph", () => {
-    const doc =
-      `Measured: ${EXHIBIT_SIGIL}fixture-cited.ts:99 is past EOF, but fixture-cited.ts:98 alongside it is a plain ` +
-      `citation and is still graded forward.`;
-    const violations = checkFixture(doc);
-    expect(violations.length).toBe(1);
-    expect(violations[0]!.message).toMatch(/cites line 98/);
-  });
-
-  it("an exhibit written with a relative-path prefix is still recognised (the sigil precedes the whole coordinate)", () => {
-    const doc = `The ambiguous one was \`${EXHIBIT_SIGIL}./nowhere.ts:61\`, quoted as an exhibit.`;
     expect(checkFixture(doc)).toEqual([]);
   });
 

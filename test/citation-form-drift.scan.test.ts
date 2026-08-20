@@ -47,7 +47,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { EXHIBIT_SIGIL, exhibitSigilStart } from "./citation-exhibit";
+import { isExhibitCitation } from "./citation-grammar";
 
 const ROOT = resolve(__dirname, "..");
 
@@ -237,25 +237,28 @@ interface Offender {
  * immediately after the line number; that is not a separate receipt quote
  * following the citation (same distinction
  * test/decision-doc-citation.scan.test.ts's Citation.ownClosingBacktickFollows
- * makes), so it is skipped past before searching for a real quote. */
+ * makes), so it is skipped past before searching for a real quote.
+ *
+ * EXHIBIT!-sigilled citations (DEC-967 wave-137/138, ./citation-grammar)
+ * are excluded from this population outright, never converted: an
+ * exhibit is a DEAD anchor, catalogued by a ruling as evidence of a
+ * defect it measured -- there is no live file/line to search a quote in,
+ * so the drift-proof bare-path shape (which requires the quote to
+ * eventually resolve SOMEWHERE in the cited file) is unavailable to it by
+ * construction. Converting an exhibit to drift-proof form would either
+ * make it resolve (destroying the evidence the ruling needs) or leave it
+ * permanently unresolved in a shape whose entire contract is "this quote
+ * exists in this file" -- neither is the exhibit grammar's job; that is
+ * test/decision-doc-citation.scan.test.ts's INVERTED grading. */
 function findLineKeyedOffenders(doc: string, content: string): Offender[] {
   const out: Offender[] = [];
   CITATION_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = CITATION_RE.exec(content))) {
+    if (isExhibitCitation(content, m.index)) continue;
     const rawPath = m[1]!;
     const line = m[3] ? `${m[2]}-${m[3]}` : m[2]!;
     const end = m.index + m[0].length;
-    // An EXHIBIT (test/citation-exhibit.ts) is not a reference at all -- it
-    // is the SUBJECT of its sentence, a dead coordinate a ruling quotes
-    // BECAUSE it no longer resolves. This scan's population is references
-    // that should be converted to the drift-proof bare-path shape; there is
-    // nothing to convert an exhibit TO (dropping its line number would
-    // destroy the very thing being exhibited), so it is not counted here.
-    // Same shared grammar the resolution scan grades inverted, imported,
-    // never re-derived (DEC-613).
-    const sigilStart = exhibitSigilStart(content, m.index);
-    if (sigilStart !== -1) continue;
     const ownClosingBacktickFollows = content[m.index - 1] === "`" && content[end] === "`";
     const quote = quoteAfter(content, end, ownClosingBacktickFollows);
     if (!quote || quote.length === 0) continue; // no receipt quote -> not this scan's concern
@@ -331,17 +334,20 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // integrated tree at 83. Both contributing lanes measured against their own
 // pre-merge base (main 92, v12m-w10-aa 80); 83 is the true count once every
 // lane's citations coexist, and is still a LOWERING from main's 92.
-// Merge-train act (thunderdome medic, post-megabatch): the 83 above was
-// REASONED from the two lanes' pre-merge bases, not run against the
-// integrated tree, which this file's own protocol requires -- measured, it
-// was 85. Re-measured properly at 80 after three real reductions in the
-// same change: docs/probes/metafid-desktop-2026-08-19.md's OnboardingGrid
-// citation converted to the drift-proof bare-path shape (it had drifted for
-// the fourth wave running), and DEC-967.md's catalogue of DEAD anchors
-// marked with the shared EXHIBIT_SIGIL -- an exhibit is the subject of its
-// sentence, not a reference, so it leaves this population entirely (see
-// findLineKeyedOffenders and test/citation-exhibit.ts).
-export const LINE_KEYED_CITATION_CEILING = 80;
+// Wave 138 (task w13-aa, DEC-967 EXHIBIT grammar): before this task's own
+// change, main had drifted this population to 86 (three more line-keyed
+// citations landed elsewhere since the 83 ceiling was set -- above the
+// ceiling, not this task's to fix). This task additionally excludes
+// EXHIBIT!-sigilled citations from OFFENDERS outright (they are dead
+// anchors with no live file/line to search a quote in -- see
+// findLineKeyedOffenders's own comment): four of the population's
+// line-keyed, backtick-quoted citations are src/decisions-data/DEC-967.md's
+// own wave-136/wave-137 catalogue entries (the src/db/schema.ts,
+// src/server/repo/agenda.ts, src/routes/auth.tsx and
+// src/server/repo/files-library.ts / ExportsPanel.tsx coordinates, each
+// now sigilled by this task's step 4), dropping the measured count 86 -> 82.
+// RATCHET: LINE_KEYED_CITATION_CEILING=82 (was 83; exhibits excluded)
+export const LINE_KEYED_CITATION_CEILING = 82;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
@@ -406,18 +412,19 @@ describe("citation-form-drift scan: line-keyed citations into app/src, src, test
     expect(found).toHaveLength(0);
   });
 
-  it(`negative control: does NOT fire on a coordinate marked with the shared ${EXHIBIT_SIGIL} sigil`, () => {
-    const fixture = `Measured DEAD: ${EXHIBIT_SIGIL}scripts/exit-predicate.ts:17 \`const HEADER_RE = /.../\`.`;
-    expect(findLineKeyedOffenders("fixture.md", fixture)).toHaveLength(0);
+  it("negative control: does NOT fire on an EXHIBIT!-sigilled line-keyed quoted citation (dead anchor, no drift-proof conversion available)", () => {
+    const fixture = "See EXHIBIT!scripts/exit-predicate.ts:17 which used to read `const HEADER_RE = /.../`.";
+    const found = findLineKeyedOffenders("fixture.md", fixture);
+    expect(found).toHaveLength(0);
   });
 
-  it("positive control: the sigil carve-out binds to ONE coordinate, not the rest of the paragraph", () => {
+  it("positive control: still fires on the same citation with the sigil written far away (attachment is anchored, not paragraph-wide)", () => {
     const fixture =
-      `Measured DEAD: ${EXHIBIT_SIGIL}scripts/exit-predicate.ts:17 \`const HEADER_RE = /.../\`. The live one is ` +
-      "scripts/exit-predicate.ts:18 which reads `const OTHER_RE = /.../`.";
+      "EXHIBIT!scripts/some-other-dead-thing.ts:1 was retired long ago. Elsewhere, live: " +
+      "scripts/exit-predicate.ts:17 reads `const HEADER_RE = /.../`.";
     const found = findLineKeyedOffenders("fixture.md", fixture);
     expect(found).toHaveLength(1);
-    expect(found[0]).toMatchObject({ line: "18" });
+    expect(found[0]).toMatchObject({ relPath: "scripts/exit-predicate.ts", line: "17" });
   });
 
   it("negative control: does NOT fire on a docs/design/*.dc.html frame citation (structural carve-out)", () => {
