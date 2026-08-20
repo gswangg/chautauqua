@@ -532,4 +532,63 @@ describe("formatCampaignReport", () => {
     expect(formatted).toMatch(/tier-2:\s+DECLARED ONLY -- NOT MEASURED/);
     expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
   });
+
+  // wave-137 (task w12-hh, DEC-069 amendment): the desktop/phone rows used
+  // to compute their DONE/NOT DONE verdict straight off the DECLARED
+  // constants regardless of suite verification -- only the tier-2 line
+  // degraded honestly. These two cases pin the repair: neither row may
+  // print the substring DONE (as part of the word DONE, not merely as a
+  // substring of NOT DONE) without a verified suite, and both must print
+  // their real verdicts once the suite is verified against an ancestor.
+  // Driven entirely from an all-green synthetic fixture -- never a live
+  // product count (field guide waves 124-127: a non-vacuity check over a
+  // product number is itself a sentinel).
+  it("with suiteVerifiedAtSha null, neither desktop nor phone row contains DONE -- both read DECLARED ONLY", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => true,
+    });
+    const formatted = formatCampaignReport(report);
+    const desktopLine = formatted.split("\n").find((line) => line.startsWith("desktop:"));
+    const phoneLine = formatted.split("\n").find((line) => line.startsWith("phone:"));
+    expect(desktopLine).toBeDefined();
+    expect(phoneLine).toBeDefined();
+    expect(desktopLine).toContain("DECLARED ONLY -- NOT MEASURED");
+    expect(phoneLine).toContain("DECLARED ONLY -- NOT MEASURED");
+    expect(desktopLine).not.toMatch(/\bDONE\b/);
+    expect(phoneLine).not.toMatch(/\bDONE\b/);
+  });
+
+  it("with suiteVerifiedAtSha an ancestor of productSha, desktop and phone rows print their real verdicts", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "suite-sha",
+      isAncestor: () => true,
+    });
+    const formatted = formatCampaignReport(report);
+    const desktopLine = formatted.split("\n").find((line) => line.startsWith("desktop:"));
+    const phoneLine = formatted.split("\n").find((line) => line.startsWith("phone:"));
+    expect(desktopLine).toBeDefined();
+    expect(phoneLine).toBeDefined();
+    expect(desktopLine).not.toContain("DECLARED ONLY");
+    expect(phoneLine).not.toContain("DECLARED ONLY");
+    expect(desktopLine).toMatch(/\bDONE\b/);
+    expect(phoneLine).toMatch(/\bDONE\b/);
+    expect(formatted).toMatch(/CAMPAIGN: DONE/);
+  });
+
+  it("with suiteVerifiedAtSha NOT an ancestor of productSha (stale), rows degrade the same as unverified", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "stale-suite-sha",
+      isAncestor: () => false,
+    });
+    const formatted = formatCampaignReport(report);
+    const desktopLine = formatted.split("\n").find((line) => line.startsWith("desktop:"));
+    const phoneLine = formatted.split("\n").find((line) => line.startsWith("phone:"));
+    expect(desktopLine).toContain("DECLARED ONLY -- NOT MEASURED");
+    expect(phoneLine).toContain("DECLARED ONLY -- NOT MEASURED");
+    expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
+  });
 });
