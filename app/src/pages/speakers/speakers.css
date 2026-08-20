@@ -1158,6 +1158,13 @@ button.chq-speakers-status-overdue:hover {
    card, which shares the class but is its own frame at :151, 17px, and
    is not this ruling's subject) -- .chq-row-title itself stays untouched
    for every other consumer. */
+/* tap-floor-exempt: composition, not a second floor -- .chq-row-title's
+   phone tap floor is the shared base rule in app/src/styles.css (v12m-w9-a,
+   DEC-393 wave-120 shape 3); this page-local compound selector only
+   overrides font-size and never restates height/flex/padding, so a
+   duplicate floor here would hide the composition per the wave-120
+   ruling. The link itself: OnboardingGrid.tsx:1151/1262,
+   RosterPanel.tsx:484 `<Link className="chq-row-title chq-speakers-name-link">`. */
 .chq-speakers-grid .chq-speakers-name-link.chq-row-title {
   font-size: 16px;
 }
@@ -1726,6 +1733,12 @@ button.chq-speakers-status-overdue:hover {
 
   /* docs/design/Chautauqua Speakers.dc.html:141
      `display:flex; gap:8px` -- Remind outstanding / Filter. */
+  /* tap-floor-exempt: composition -- both children are floored chq-btn
+     controls (OnboardingGrid.tsx:973-988: two
+     `<button className="chq-btn ...">`, no anchor), outside population (a)
+     by construction and already floored by the base .chq-btn rule
+     (DEC-393 wave-120 shape 3: a container every one of whose children is
+     a floored chq-btn control). */
   .chq-speakers-phone-head-actions {
     display: flex;
     gap: 8px;
@@ -1756,6 +1769,13 @@ button.chq-speakers-status-overdue:hover {
   /* docs/design/Chautauqua Speakers.dc.html:165
      `display:flex; gap:8px; padding-top:2px` -- the card's Remind / Open
      profile action pair. */
+  /* tap-floor-exempt: composition -- its only two children
+     (OnboardingGrid.tsx:1330-1342) are a
+     `<button className="chq-btn chq-btn-secondary chq-speakers-remind-one">`
+     and a `<Link className="chq-btn chq-btn-secondary">`, both carrying
+     chq-btn and therefore outside population (a) by construction and
+     already floored by the base .chq-btn rule -- not a missing rule
+     (DEC-393 wave-120 shape 3, wave-94/-112 (no CSS rule) precedent). */
   .chq-speakers-card-actions {
     display: flex;
     gap: 8px;

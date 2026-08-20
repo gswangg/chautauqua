@@ -2275,4 +2275,23 @@
   .chq-settings-field-timezone {
     width: 100%;
   }
+
+  /* tap-floor-exempt: .chq-settings-tokens-col-actions is a <th>-only
+     column-width class (ApiTokensPanel.tsx:228
+     `<th className="chq-settings-tokens-col-actions">Revoke</th>`), not a
+     control -- the desktop markup never repeats it on the matching
+     <td>/<button>. The real Revoke anchor is already floored positionally
+     via `.chq-settings-tokens-table tbody td:last-child .chq-link-button`
+     (:2119 above, in this same terminal block); a second floor on this
+     th-only token would be a duplicate, not a fix (DEC-393 wave-120 shape
+     3). Appended at true EOF, not beside the top-level rule at :446, so no
+     earlier line-numbered citation in this heavily-cited sheet drifts
+     (DEC-385 append-only / DEC-976). Restates the top-level rule's own
+     width:88px (:447) verbatim -- pixel-neutral, no new value; NOT
+     white-space:nowrap, which the ellipsis-escape rule above (:2119)
+     already owns for this selector with its overflow escape -- a bare
+     second nowrap here would be a fresh DEC-989 overflow offender. */
+  .chq-settings-tokens-table .chq-settings-tokens-col-actions {
+    width: 88px;
+  }
 }

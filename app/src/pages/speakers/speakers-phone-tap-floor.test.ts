@@ -133,3 +133,26 @@ describe("task-view.css phone tap floor (DEC-393 wave-7 amendment)", () => {
     expect(baseRule![1]).not.toMatch(/min-height/);
   });
 });
+
+// DEC-393 wave-120 three-receipt ruling (v12m-w9-j): .chq-taskview-open is
+// the real row-action anchor (TaskView.tsx's file-download <a>, no chq-btn)
+// in the shared .chq-taskview-tab/-open/-clear comma-list rule; the min-
+// height-only rule the wave-7 sweep left behind now also carries centred
+// flex and horizontal padding.
+describe("v12m-w9-j: DEC-393 wave-120 tap-floor receipt (task-view.css)", () => {
+  it(".chq-taskview-open (the real bare anchor) carries min-height + centred flex + horizontal padding in the terminal phone block", () => {
+    const body = ruleBodyFor(TASK_VIEW_PHONE_BLOCK, ".chq-taskview-open");
+    expect(body).toMatch(/min-height:\s*44px/);
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+    expect(body).toMatch(/padding-inline:\s*[1-9]/);
+  });
+
+  it("the shared rule's other two selectors (.chq-taskview-tab, .chq-taskview-clear) are real <button>s, never <a>/<Link>, in TaskView.tsx", () => {
+    const src = readFileSync(join(__dirname, "TaskView.tsx"), "utf8");
+    expect(src).toMatch(/<button[\s\S]{0,80}chq-taskview-tab/);
+    expect(src).toMatch(/<button[\s\S]{0,80}chq-taskview-clear/);
+    expect(src).not.toMatch(/<(a|Link)\b[^>]*chq-taskview-tab\b/);
+    expect(src).not.toMatch(/<(a|Link)\b[^>]*chq-taskview-clear\b/);
+  });
+});
