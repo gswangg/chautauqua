@@ -664,6 +664,13 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
   },
   {
     fileName: 'Chautauqua Contacts.dc.html',
+    line: 159,
+    text: 'Same email domain, one has no company',
+    reason:
+      "app/src/pages/contacts/duplicatePairReason.ts:50 composes `${base}, one has no company` (base is the per-rule clause, e.g. 'Same email domain') from the pair's own live company fields -- `const oneMissingCompany = hasCompany(a!) !== hasCompany(b!);` at :49. DuplicateRow.tsx:35/:53 mounts `duplicatePairReason(group.reason, group.contacts)`. duplicatePairReason.test.ts pins the exact sentence by name (\"appends the company clause when exactly one side has no company (the frame's own words, DC.html:159)\").",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
     line: 568,
     text: 'Acceptance, Decline and Schedule live need a submission, so they are not available here — send those from Comms',
     reason:
@@ -1136,6 +1143,28 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // model, per DEC-380 ("a frame's drawing does not create a data model").
 // 17 - 5 closed (1 build + 2 fixture + 2 composed) = 12, forced -1 and
 // read directly off this branch's own offender list, never guessed.
+// v12m-w15-ee (task w15-ee, DEC-976/DEC-380 wave-140): re-derived on a base
+// that already carries the wave-11 merge train's Contacts.dc.html:568/:570
+// COMPOSED exclusions (commit 2be29050) and this file's own pre-existing
+// :834 (DEC-597) and :758 COMPOSED rows -- forcing the ceiling to -1
+// measured 17 unmatched, of which exactly two are this lane's own
+// (Chautauqua Contacts.dc.html/Chautauqua Comms.dc.html). Contacts.dc.html:159
+// ("Same email domain, one has no company") is ALREADY BUILT and COMPOSED --
+// app/src/pages/contacts/duplicatePairReason.ts, mounted by DuplicateRow.tsx
+// -- entered above as a new COMPOSED row (DEC-380 wave-135's clause (a)
+// forbids excluding a ruled-buildable caption as absent; this is the
+// already-built-composed disposition, not an evasion). Chautauqua
+// Comms.dc.html:769 ("Your body uses {session_time} ... three of these
+// speakers have no slot yet") was grepped against
+// app/src/pages/comms/ComposeWizard.tsx and src/mail/render.ts's
+// MERGE_FIELDS whitelist: no `session_time` merge field and no matching
+// warning sentence exist anywhere in app/src or src today (confirmed by
+// `grep -rn session_time app/src src`, zero hits outside the .dc.html pack
+// itself) -- this is a genuine gap needing a new merge-field/session-data
+// wire-up, out of a caption-residue task's scope and out of the files this
+// lane owns, so it stays UNMATCHED per this file's own note above (the
+// "could not be verified" list, wave-135). 17 - 1 (the :159 build) = 16,
+// re-measured below.
 export const FRAME_CAPTION_UNMATCHED_CEILING = 0;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
