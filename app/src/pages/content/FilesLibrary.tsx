@@ -74,12 +74,16 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadPending, setDownloadPending] = useState(false);
-  // w13-g (DEC-576, metafid-round2 WAVE A): the phone dock's "Search"
-  // control (docs/design/Chautauqua Content.dc.html: Files · 390 footer)
-  // is not a second search mechanism -- it focuses the ONE search input
-  // this toolbar already owns, the same way a label's `for` would if this
-  // were a native form control pair.
+  // v12m-w14-g (DEC-576 wave-125 amendment, superseding w13-g's WAVE A
+  // focus-only idiom): the frame's Files · 390 pinned dock draws a bordered
+  // "Search" secondary whose referent is the search field already rendered
+  // below -- at 390 that field starts collapsed and this toggle discloses
+  // it, mirroring Speakers' phoneFiltersOpen /
+  // .chq-speakers-toolbar.is-phone-open (OnboardingGrid.tsx). It is still
+  // never a SECOND search mechanism: the ref below points at the ONE search
+  // input this toolbar owns, so disclosing also lands the caret in it.
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [phoneSearchOpen, setPhoneSearchOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -151,7 +155,16 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
   }
 
   return (
-    <div className="chq-files-library chq-content-files-library" data-testid="files-library">
+    <div
+      className="chq-files-library chq-content-files-library"
+      data-testid="files-library"
+      // DEC-576 wave-98/125: a page-local docked band declares itself to
+      // the shell so `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`
+      // stands the tab bar down while the dock (below) is mounted -- only
+      // while it actually is (the dock, like the header's Download-all,
+      // is conditional-and-quiet on a non-empty visible set, DEC-160).
+      {...(items.length > 0 ? { 'data-chq-phone-dock': true } : {})}
+    >
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -208,7 +221,11 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         <input
           ref={searchInputRef}
           type="search"
-          className="chq-input"
+          className={
+            phoneSearchOpen
+              ? 'chq-input chq-content-files-search-input is-phone-open'
+              : 'chq-input chq-content-files-search-input'
+          }
           aria-label="Search files"
           placeholder="Search filename, session, or speaker"
           value={q}
@@ -381,39 +398,26 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         </button>
       </div>
 
-      {/* w13-g (DEC-576, metafid-round2 WAVE A): the frame's own footer
-          dock (docs/design/Chautauqua Content.dc.html, "Files · 390":
+      {/* docs/design/Chautauqua Content.dc.html:334-369 "Files · 390":
           `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
-          padding:12px 16px 16px; display:flex; gap:8px` -> filled
-          "Download all" + bordered "Search") -- the SHELL CONTRACT
-          (`.chq-phone-dock`, styles.css) verbatim, never a fifth copy of
-          the dock vocabulary. Both controls are ones this surface already
-          owns: the primary reuses handleDownloadAll (same disabled/label
-          logic as the header's own scoped Download-all button above --
-          two controls, one action, DEC-160's caps still gate it, and same
-          B7-rule-3 gate too: absent, not fake-disabled, over an empty
-          visible set), the secondary focuses the toolbar's existing
-          search input rather than inventing a second search mechanism
-          (DEC-576: never a control that is only a shape). The primary's
-          aria-label disambiguates it from the header's own identically-
-          labelled button (both stay in the a11y tree at once in a jsdom
-          test that loads no CSS; the visible text stays frame-verbatim).
-          Mounted unconditionally (like RosterPanel.tsx's dock) -- hidden
-          above 700px by `.chq-phone-dock`'s own base rule, no isPhone
-          gate needed since it changes nothing on the frozen desktop
-          layout. */}
-      <div className="chq-phone-dock" data-chq-phone-dock>
-        {items.length > 0 && (
+          padding:12px 16px 16px; display:flex; gap:8px` -- a primary
+          Download all (flex:1, min-height:48px) beside a bordered
+          secondary Search (min-height:48px, padding:0 16px). Both members
+          are controls this surface already owns (DEC-576 wave-125
+          amendment): Download all reuses the SAME handler/disabled logic
+          as the header's scoped control above (a second visible copy,
+          never a second capability -- DEC-576 wave-119's "exactly one
+          visible copy at any width" shape), and Search toggles the
+          existing filter field's disclosure. `.chq-phone-dock` is the
+          SHELL's own class (styles.css:393 desktop display:none,
+          :2528-2560 phone geometry) -- reused verbatim, never redeclared
+          here. Mounted LAST child of the page root, as the shell contract
+          requires. */}
+      {items.length > 0 && (
+        <div className="chq-phone-dock">
           <button
             type="button"
             className="chq-btn chq-btn-primary"
-            aria-label={
-              downloadPending
-                ? 'Downloading… (phone dock)'
-                : items.length === total
-                  ? `Download all ${items.length} (.zip) (phone dock)`
-                  : `Download ${countOf(items.length, 'file')} (.zip) (phone dock)`
-            }
             disabled={overCap || downloadPending}
             onClick={() => void handleDownloadAll()}
           >
@@ -423,15 +427,19 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                 ? `Download all ${items.length} (.zip)`
                 : `Download ${countOf(items.length, 'file')} (.zip)`}
           </button>
-        )}
-        <button
-          type="button"
-          className="chq-btn chq-btn-secondary"
-          onClick={() => searchInputRef.current?.focus()}
-        >
-          Search
-        </button>
-      </div>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            aria-expanded={phoneSearchOpen}
+            onClick={() => {
+              if (!phoneSearchOpen) searchInputRef.current?.focus();
+              setPhoneSearchOpen(!phoneSearchOpen);
+            }}
+          >
+            Search
+          </button>
+        </div>
+      )}
     </div>
   );
 }
