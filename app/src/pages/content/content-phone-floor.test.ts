@@ -3,10 +3,15 @@
 //
 // Closes the Content cluster's docs/design/audit/tap-floor-v12.md rows: the
 // 44px tap floor (DEC-393) for ten listed offenders and the 358px phone
-// overflow escape (DEC-989) for seven listed offenders, both landed as a
-// SECOND `@media (max-width: 700px)` block appended at the true end of
-// content.css (DEC-385 wave-85/wave-90: single-direction protects source
-// order, not a one-block-per-file count).
+// overflow escape (DEC-989) for seven listed offenders. These landed
+// originally (wave 90) as a SECOND `@media (max-width: 700px)` block
+// appended at the true end of content.css; w7-c (DEC-385 wave-111)
+// forward-merged that second block into the file's original phone block,
+// so content.css now carries exactly ONE terminal `@media (max-width:
+// 700px)` block containing both. DEC-385 wave-85/wave-90 rulings: single-
+// direction protects source order, not a one-block-per-file count — this
+// file's assertions below read the (now sole) LAST block, which still
+// contains every rule this task landed.
 //
 // EXCLUDED BY RULING (DEC-393 wave-90 amendment): `.chq-bulkbar-actions` and
 // `.chq-pill` are shell-lane tokens whose base rule lives in
@@ -33,6 +38,16 @@
 // exactly that shape for those five, and the full four/five-property recipe
 // for the three real anchors plus the empty `.chq-content-worklist-col-
 // actions` header spacer.
+//
+// UPDATE (w7-c, DEC-385 wave-111 merge): `.chq-content-comment-actions
+// .chq-btn` carries this batch's blanket `min-height:44px` in the CSS
+// TEXT one property below a more specific, deliberate `min-height:48px`
+// rule for the same selector (composer buttons, frame :422-424) that
+// content.css declares earlier in the now-single phone block -- the merge
+// collapsed the redundant/lower 44px declaration rather than shipping a
+// second, competing value for one (selector, property) pair, so this
+// selector's assertion below (>= 44px) is satisfied by the surviving 48px
+// rule, not by a rule declared in this batch's own section.
 //
 // `.chq-content-detail-actions` (the container wrapping the two
 // `.chq-content-detail-action-link` anchors) is closed by growing its
@@ -135,8 +150,8 @@ const lastBlock = blocks[blocks.length - 1]!;
 const secondBlockText = CSS.slice(lastBlock.bodyStart, lastBlock.bodyEnd);
 
 describe('content.css phone 44px floor + 390 overflow fixes (task w8-e)', () => {
-  it('sanity: content.css declares at least two top-level `@media (max-width: 700px)` blocks', () => {
-    expect(blocks.length).toBeGreaterThanOrEqual(2);
+  it('sanity: content.css declares exactly one top-level `@media (max-width: 700px)` block (w7-c merge, DEC-385 wave-111)', () => {
+    expect(blocks.length).toBe(1);
   });
 
   it('the appended phone-floor block is the LAST top-level construct in content.css', () => {

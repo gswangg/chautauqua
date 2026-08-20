@@ -1256,7 +1256,13 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     const phoneBlockMatch = css.match(/@media \(max-width: 700px\) \{([\s\S]*?)\n\}\n/);
     expect(phoneBlockMatch).not.toBeNull();
     const phoneBlock = phoneBlockMatch![1]!;
-    expect(phoneBlock).not.toMatch(/chq-content-worklist-table/);
+    // Bare-selector guard, not a substring guard -- see the sibling test
+    // above ("never reintroduces the desktop table geometry") for why: the
+    // w8-e overflow-escape fix legitimately uses `.chq-content-worklist-
+    // table` as a descendant-selector ancestor (folded into this one block
+    // by the w7-c, DEC-385 wave-111 merge), never redeclaring the table's
+    // own layout.
+    expect(phoneBlock).not.toMatch(/(?:^|[{};])\s*\.chq-content-worklist-table\s*\{/);
     expect(phoneBlock).not.toMatch(/table-layout/);
   });
 });
@@ -1326,7 +1332,16 @@ describe('Content phone block: DEC-385 single-direction cascade', () => {
 
   it('never reintroduces the desktop table geometry inside the phone card block', () => {
     const { body } = contentPhoneBlock();
-    expect(body).not.toMatch(/chq-content-worklist-table/);
+    // The guard is about the desktop fixed-layout DECLARATION -- a bare
+    // `.chq-content-worklist-table { ... table-layout ... }` redeclaration
+    // -- never about the class name appearing at all. w7-c's DEC-385
+    // wave-111 merge folded the w8-e overflow-escape fix
+    // `.chq-content-worklist-table .chq-content-worklist-col-actions {
+    // overflow:hidden; ... }` into this block: a legitimate DESCENDANT
+    // selector that scopes a different (non-geometry) property to a column
+    // class, not a redeclaration of the table's own layout. So this checks
+    // for the bare selector specifically, not any substring match.
+    expect(body).not.toMatch(/(?:^|[{};])\s*\.chq-content-worklist-table\s*\{/);
     expect(body).not.toMatch(/table-layout/);
   });
 });

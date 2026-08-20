@@ -975,15 +975,34 @@ describe('DeliverableDetail: the 390 frame header, status band and composer', ()
     expect(desktopTitle).toMatch(/\.chq-content-detail-title\s*\{[^}]*font-size:\s*28px/);
   });
 
-  it('gives every header link the 44px floor — min-height plus a real hit box, never padding alone', () => {
+  it('gives the back link the 44px floor — min-height plus a real hit box, never padding alone', () => {
     const phone = detailPhoneBlock();
 
-    for (const selector of ['.chq-content-detail-back', '.chq-content-detail-action-link']) {
-      const rule = phoneRule(phone, selector);
-      expect(rule, selector).toMatch(/min-height:\s*44px/);
-      expect(rule, selector).toMatch(/display:\s*inline-flex/);
-      expect(rule, selector).toMatch(/align-items:\s*center/);
-    }
+    const rule = phoneRule(phone, '.chq-content-detail-back');
+    expect(rule).toMatch(/min-height:\s*44px/);
+    expect(rule).toMatch(/display:\s*inline-flex/);
+    expect(rule).toMatch(/align-items:\s*center/);
+  });
+
+  // `.chq-content-detail-action-link` used to carry its own plain
+  // min-height:44px/inline-flex/align-items:center rule right here, matching
+  // the back link above. Task w8-e (DEC-393 wave-90) later gave it the
+  // fuller TAP-FLOOR flush-row-anchor recipe (display:flex, plus
+  // padding-inline cancelled by margin-inline) in a second phone block; w7-c
+  // (DEC-385 wave-111) forward-merged the two blocks into one and collapsed
+  // this selector's two competing rules into that single fuller one (see
+  // content.css's own "COLLAPSED into the fuller TAP-FLOOR" note beside
+  // where the plain rule used to live) — so the assertion below now reads
+  // the actual surviving recipe, `display:flex` not `display:inline-flex`.
+  it('gives the detail action links the fuller TAP-FLOOR flush-row-anchor recipe', () => {
+    const phone = detailPhoneBlock();
+
+    const rule = phoneRule(phone, '.chq-content-detail-action-link');
+    expect(rule).toMatch(/min-height:\s*44px/);
+    expect(rule).toMatch(/display:\s*flex/);
+    expect(rule).toMatch(/align-items:\s*center/);
+    expect(rule).toMatch(/padding-inline:\s*10px/);
+    expect(rule).toMatch(/margin-inline:\s*-10px/);
   });
 
   it('lets the status band’s copy and its actions each take the full measure', () => {
