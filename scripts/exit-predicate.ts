@@ -568,6 +568,13 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "measures tsconfig project-include coverage (every .ts/.tsx file typechecked by " +
     "some tsconfig project or a named exclusion) -- a build/typecheck-tooling health " +
     "check, not a v12 frame or DEC-069 conformance ratchet.",
+  LINE_KEYED_CITATION_CEILING:
+    "measures citation FORM (line-keyed vs drift-proof), an integrity property of the " +
+    "decision-registry ledger's own durability -- whether a citation is written in a shape " +
+    "that survives an edit to the file it points at. Citation RESOLUTION (whether a " +
+    "citation is currently true) is already an exit gate under UNRESOLVED_CITATION_CEILING " +
+    "and WIDENED_UNRESOLVED_CITATION_CEILING; this constant is a distinct, non-overlapping " +
+    "concern from the same population, not a v12 frame or 390-geometry conformance fact.",
 };
 
 /**
