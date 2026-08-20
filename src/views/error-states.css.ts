@@ -88,18 +88,33 @@ export const ERROR_STATES_CSS = `
      than here — task w14-ee flags this as a design gap outside its owned
      files (cfp.css.ts / auth.css.ts) rather than widening scope to fix it. */
   .chq-error-summary-link { font-size: 13px; font-weight: 700; color: var(--chq-brand); text-decoration: none; }
+`;
 
+// DEC-385 wave-141 amendment (task w16-bb): the @media (max-width: 700px)
+// block that used to live inside ERROR_STATES_CSS above is split into its
+// own export. ERROR_STATES_CSS is composed into THREE host sheets
+// (CFP_CSS, PORTAL_CSS, AUTH_CSS), each of which owns exactly one terminal
+// max-width:700px block per DEC-385's single-terminal-block contract; a
+// @media block living inside ERROR_STATES_CSS itself landed BEFORE each
+// host's own terminal block in composed source order, which is exactly the
+// equal-specificity shadowing DEC-385 forbids (verified: it broke
+// test/cfp-phone-frames.test.ts and test/tier0-falsifiability-w51-batch-a
+// .test.ts, both of whose "first @media" locator captured this block
+// instead of the host's own). ERROR_STATES_PHONE_CSS carries ONLY the rule
+// below, verbatim, unreordered, unreworded -- each host composes it inside
+// or immediately after its OWN terminal phone block instead.
+export const ERROR_STATES_PHONE_CSS = `
   /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): this module had NO
-     @media block of its own before this change (grep confirmed zero --
+     @media block of its own before that change (grep confirmed zero --
      test/error-vocabulary-parity.scan.test.ts's PHONE_ONLY_PROPERTIES
      comment names the same fact) -- DEC-385's single-direction rule (narrow
      overrides wide via max-width media queries ONLY) still requires a
-     phone-only floor to live in a max-width block, so one is added here as
-     this module's own terminal block, matching the SPA twin's phone rule
-     (app/src/components/error-states.css) property-for-property: display,
-     align-items, min-height, padding all match byte-for-byte, which is why
-     test/error-vocabulary-parity.scan.test.ts's PHONE_ONLY_PROPERTIES entry
-     for this selector stays inert (values now agree, not just exempted). */
+     phone-only floor to live in a max-width block, matching the SPA twin's
+     phone rule (app/src/components/error-states.css) property-for-property:
+     display, align-items, min-height, padding all match byte-for-byte,
+     which is why test/error-vocabulary-parity.scan.test.ts's
+     PHONE_ONLY_PROPERTIES entry for this selector stays inert (values now
+     agree, not just exempted). */
   @media (max-width: 700px) {
     .chq-error-summary-link {
       display: inline-flex;

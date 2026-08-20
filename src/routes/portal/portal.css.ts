@@ -25,7 +25,7 @@
 // AGENDA_CSS/RAIL_CSS.
 
 import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989, DEC_576, DEC_154 } from "../../decisions";
-import { ERROR_STATES_CSS } from "../../views/error-states.css";
+import { ERROR_STATES_CSS, ERROR_STATES_PHONE_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS } from "../public/css/empty.css";
 
 void DEC_373;
@@ -1166,4 +1166,4 @@ ${ERROR_STATES_CSS}
     min-width: 44px;
   }
 }
-`;
+${ERROR_STATES_PHONE_CSS}`;

@@ -67,18 +67,44 @@
 // single terminal block passes; a single block followed only by a trailing
 // comment still passes).
 //
-// EXPECTED STATE ON THIS BRANCH: portal.css.ts (this task's owned file) is
-// conformant -- one block, terminal, the earlier w5-a block's rules were
-// moved (not duplicated) into the w8-h block at the sheet's true end. Every
-// OTHER non-conformant sheet this scan discovers is NOT fixed here (out of
-// this task's scope) and is instead named, one row per sheet with its
-// owning cluster, in docs/design/audit/terminal-phone-block-v12.md -- an
-// audit that names no owner never shrinks. This scan is therefore expected
-// to be RED on this branch until those other sheets are fixed by later
-// waves; that redness is the honest replacement for the two contradictory
-// green-on-nothing pins it retires.
+// EXPECTED STATE ON THIS BRANCH (task w16-bb, DEC-385 wave-141 amendment):
+// this scan now grades every src/ *_CSS module's COMPOSED output (imports
+// resolved, `${NAME}` interpolations substituted with the named export's
+// own resolved literal, recursively -- see resolveComposedLiteral below),
+// not just each file's own on-disk text. A sheet composing another *_CSS
+// module was previously invisible to this check: the interpolation token
+// sits in the literal as plain "${" + "}" characters, which the brace-
+// matcher treats as an ignorable non-"@media" node, so a phone block
+// living entirely inside a composed import (rather than the host's own
+// text) was never counted. That blindness is exactly how
+// src/views/error-states.css.ts grew an early phone block inside
+// ERROR_STATES_CSS undetected (task w16-bb's regression): every host's OWN
+// file text still showed one terminal block, so this scan stayed green
+// while the actual composed output was non-terminal.
+//
+// src/routes/auth.css.ts and src/routes/public/cfp.css.ts are fully
+// conformant on composed output as of this task: ERROR_STATES_CSS's phone
+// rules were split into their own export, ERROR_STATES_PHONE_CSS, composed
+// immediately after each host's own terminal block (ascending source
+// order, nothing reordered/reworded) -- see src/views/error-states.css.ts.
+//
+// Widening this scan to grade composed output also surfaces two sheets
+// that were ALREADY non-conformant in a way file-text grading could never
+// see, unrelated to ERROR_STATES_CSS and out of this task's scope to fix:
+// src/routes/portal/portal.css.ts (composes EMPTY_CSS mid-file, ahead of
+// its own terminal block) and src/routes/public/public.css.ts (composes
+// CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS/EMPTY_CSS, several with their
+// own non-terminal phone blocks). Both are named in
+// docs/design/audit/terminal-phone-block-v12.md. Every OTHER non-
+// conformant sheet this scan discovers is likewise NOT fixed here (out of
+// scope) and is named there, one row per sheet with its owning cluster --
+// an audit that names no owner never shrinks. This scan is therefore
+// expected to be RED on this branch until those sheets are fixed by later
+// waves; that redness is the honest replacement for a green check that
+// could not see this entire class of bug.
 
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -119,10 +145,26 @@ function walk(root: string): string[] {
  * backticks inside the literal (this codebase's frame-citation comments
  * embed escaped backticks, e.g. \`width:390px\`). Throws on a malformed
  * export -- a *_CSS module with no parseable literal should fail loudly,
- * not be silently skipped from the population. */
-function extractCssLiteral(text: string): { body: string; startOffset: number } {
-  const m = CSS_EXPORT_RE.exec(text);
-  if (!m) throw new Error("expected an `export const X_CSS = \\`...\\`` declaration");
+ * not be silently skipped from the population.
+ *
+ * When `exportName` is given, matches that SPECIFIC `export const NAME =`
+ * declaration -- required for a module (like src/views/error-states.css.ts)
+ * that exports more than one `*_CSS` constant, where grabbing "the first
+ * match" silently returns the WRONG export's body for every name but the
+ * first (this was a real bug caught while building this resolver: an
+ * imported `ERROR_STATES_PHONE_CSS` resolved to `ERROR_STATES_CSS`'s body
+ * instead). With no `exportName`, keeps the prior "first *_CSS export in
+ * the file" behaviour used for whole-file population entries. */
+function extractCssLiteral(text: string, exportName?: string): { body: string; startOffset: number } {
+  const re = exportName ? new RegExp(`export const ${exportName}\\s*=`) : CSS_EXPORT_RE;
+  const m = re.exec(text);
+  if (!m) {
+    throw new Error(
+      exportName
+        ? `expected an \`export const ${exportName} = \\\`...\\\`\` declaration`
+        : "expected an `export const X_CSS = \\`...\\`` declaration"
+    );
+  }
   let i = text.indexOf("`", m.index + m[0].length);
   if (i === -1) throw new Error("no opening backtick found after *_CSS export");
   i += 1;
@@ -140,6 +182,94 @@ function extractCssLiteral(text: string): { body: string; startOffset: number } 
   throw new Error("unterminated *_CSS template literal");
 }
 
+// -- Composition resolver (DEC-385 wave-141 amendment, task w16-bb) --------
+//
+// A *_CSS module can compose another *_CSS module by importing it and
+// interpolating it into its own template literal (`${ERROR_STATES_CSS}`,
+// `${BARE_PAGE_CSS}`, etc.) -- src/routes/public/public.css.ts composing
+// CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS/EMPTY_CSS is the same idiom.
+// Reading only a sheet's OWN literal text (extractCssLiteral, unchanged
+// above) is structurally blind to a phone block living inside a composed
+// import: the interpolation token `${NAME}` sits in the literal as four
+// plain characters -- a "{" and "}" pair the brace-matcher below treats as
+// an ignorable, non-"@media" node -- never as the composed module's actual
+// CSS text. That blindness is exactly how src/views/error-states.css.ts
+// grew an early phone block inside ERROR_STATES_CSS undetected: no sheet's
+// OWN file text ever contained "@media (max-width: 700px)" twice, so the
+// exactly-one-and-terminal check below passed on every host while the
+// COMPOSED output of all three hosts carried a non-terminal phone block.
+//
+// This resolver walks each module's own `import { NAME, ... } from "spec"`
+// statements (spec must be relative; local composition only), and for
+// every imported identifier ending in `_CSS` that the module's literal
+// actually interpolates, recursively substitutes that identifier's own
+// resolved (composed) literal text in place of the `${NAME}` token --
+// verbatim string substitution, no CSS re-parsing, no reordering. The
+// result is the sheet's REAL composed CSS text, the same bytes the runtime
+// template literal produces, not just its own on-disk slice of it.
+const RESOLVE_CACHE = new Map<string, string>();
+
+function resolveModuleSpec(fromAbsPath: string, spec: string): string {
+  if (!spec.startsWith(".")) {
+    throw new Error(`cannot resolve non-relative import spec "${spec}" from ${fromAbsPath}`);
+  }
+  const base = join(dirname(fromAbsPath), spec);
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`]) {
+    try {
+      readFileSync(candidate, "utf-8");
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error(`cannot resolve import "${spec}" from ${fromAbsPath} (tried .ts/.tsx)`);
+}
+
+const IMPORT_RE = /import\s*\{\s*([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+
+/** Resolves `absPath`'s exported `*_CSS` literal (defaulting to the file's
+ * first such export when `exportName` is omitted -- the whole-file
+ * population entry point) into its fully COMPOSED text: every `${NAME}`
+ * interpolation whose `NAME` is a locally-imported `*_CSS` identifier is
+ * replaced, recursively, with THAT identifier's own resolved literal --
+ * resolved by NAME, not "whichever export the sub-module declares first"
+ * (a file exporting more than one `*_CSS` constant, like
+ * src/views/error-states.css.ts, would otherwise silently hand back the
+ * wrong sibling's body for every name but the first). Cache key is
+ * (path, exportName) so two differently-named exports from the same file
+ * cache independently. */
+function resolveComposedLiteral(absPath: string, exportName?: string): string {
+  const cacheKey = `${absPath} ${exportName ?? ""}`;
+  const cached = RESOLVE_CACHE.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const text = readFileSync(absPath, "utf-8");
+  const { body } = extractCssLiteral(text, exportName);
+
+  const nameToPath = new Map<string, string>();
+  IMPORT_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = IMPORT_RE.exec(text))) {
+    const names = m[1]!.split(",").map((s) => s.trim()).filter(Boolean);
+    const spec = m[2]!;
+    if (!spec.startsWith(".")) continue; // only local *_CSS composition matters here
+    for (const name of names) {
+      if (!/_CSS$/.test(name)) continue;
+      nameToPath.set(name, resolveModuleSpec(absPath, spec));
+    }
+  }
+
+  let resolved = body;
+  for (const [name, subPath] of nameToPath) {
+    const token = `\${${name}}`;
+    if (!resolved.includes(token)) continue;
+    resolved = resolved.split(token).join(resolveComposedLiteral(subPath, name));
+  }
+
+  RESOLVE_CACHE.set(cacheKey, resolved);
+  return resolved;
+}
+
 function loadCssSheets(): Sheet[] {
   const sheets: Sheet[] = [];
 
@@ -152,8 +282,10 @@ function loadCssSheets(): Sheet[] {
   for (const abs of walk(SRC_ROOT)) {
     const text = readFileSync(abs, "utf-8");
     if (!CSS_EXPORT_RE.test(text)) continue;
-    const { body, startOffset } = extractCssLiteral(text);
-    sheets.push({ relPath: relative(REPO_ROOT, abs), absPath: abs, cssText: body, fileOffset: startOffset });
+    // Grade the COMPOSED exported string, not just this file's own literal
+    // text -- a sheet with no composition resolves to exactly its own body.
+    const composed = resolveComposedLiteral(abs);
+    sheets.push({ relPath: relative(REPO_ROOT, abs), absPath: abs, cssText: composed, fileOffset: 0 });
   }
 
   return sheets;
@@ -165,6 +297,10 @@ const SHEETS = loadCssSheets();
 
 interface BlockNode {
   header: string;
+  /** offset of the first byte of `header` (i.e. before the header text,
+   * not the opening brace) -- lets a caller report a violation starting at
+   * the selector, not at the bare "{" that comes after it. */
+  headerStart: number;
   depth: number;
   openIdx: number;
   closeIdx: number;
@@ -211,6 +347,7 @@ function parseBlocks(clean: string): BlockNode[] {
       const header = clean.slice(bufStart, i);
       const node: BlockNode = {
         header,
+        headerStart: bufStart,
         depth: stack.length,
         openIdx: i,
         closeIdx: -1,
@@ -246,20 +383,44 @@ interface SheetResult {
 function evaluateSheet(sheet: Sheet): SheetResult {
   const clean = stripComments(sheet.cssText);
   const nodes = parseBlocks(clean);
-  const phoneBlocks = nodes.filter((n) => n.depth === 0 && normalizeHeader(n.header) === PHONE_HEADER);
+  const depth0 = nodes.filter((n) => n.depth === 0);
+  const phoneBlocks = depth0.filter((n) => normalizeHeader(n.header) === PHONE_HEADER);
 
   let trailingText: string | null = null;
   let trailingOffset: number | null = null;
-  if (phoneBlocks.length === 1) {
-    const last = phoneBlocks[0]!;
-    const after = clean.slice(last.closeIdx + 1);
-    if (after.trim().length > 0) {
-      // Find the first non-whitespace byte's offset in the ORIGINAL (raw)
-      // cssText -- stripComments preserves length, so this index is valid
-      // in the un-stripped string too.
-      const localOffset = after.search(/\S/);
-      trailingOffset = last.closeIdx + 1 + localOffset;
+
+  if (phoneBlocks.length > 0) {
+    // A composed sheet legitimately ends with MORE THAN ONE phone block
+    // back-to-back (its own terminal block immediately followed by a
+    // composed module's phone block, DEC-385 wave-141) -- that is not
+    // shadowing, because nothing non-phone sits between them or after the
+    // last one. The actual invariant: once the FIRST depth-0 phone block
+    // begins, every remaining depth-0 top-level construct through EOF must
+    // itself be a phone block (or trailing whitespace/comments) -- no
+    // desktop rule interleaves with, or follows, the phone region.
+    const firstPhoneIdx = depth0.findIndex((n) => normalizeHeader(n.header) === PHONE_HEADER);
+    const tail = depth0.slice(firstPhoneIdx);
+    const nonPhoneInTail = tail.find((n) => normalizeHeader(n.header) !== PHONE_HEADER);
+    if (nonPhoneInTail) {
+      // Report from the start of the offending construct's HEADER (its
+      // selector/at-rule text), not its bare opening "{" -- skip leading
+      // whitespace so the reported snippet starts at the first meaningful
+      // byte.
+      const headerText = clean.slice(nonPhoneInTail.headerStart, nonPhoneInTail.openIdx);
+      const leadingWs = headerText.length - headerText.trimStart().length;
+      trailingOffset = nonPhoneInTail.headerStart + leadingWs;
       trailingText = sheet.cssText.slice(trailingOffset, trailingOffset + 60);
+    } else {
+      const last = tail[tail.length - 1]!;
+      const after = clean.slice(last.closeIdx + 1);
+      if (after.trim().length > 0) {
+        // Find the first non-whitespace byte's offset in the ORIGINAL (raw)
+        // cssText -- stripComments preserves length, so this index is valid
+        // in the un-stripped string too.
+        const localOffset = after.search(/\S/);
+        trailingOffset = last.closeIdx + 1 + localOffset;
+        trailingText = sheet.cssText.slice(trailingOffset, trailingOffset + 60);
+      }
     }
   }
 
@@ -282,19 +443,12 @@ function computeViolations(results: SheetResult[]): Violation[] {
   const out: Violation[] = [];
   for (const r of results) {
     if (r.phoneBlocks.length === 0) continue;
-    if (r.phoneBlocks.length !== 1) {
-      out.push({
-        relPath: r.relPath,
-        reason: `has ${r.phoneBlocks.length} \`${PHONE_HEADER}\` blocks (must be exactly 1) at lines ${r.phoneBlocks
-          .map((b) => b.startLine)
-          .join(", ")}`,
-      });
-      continue;
-    }
     if (r.trailingText !== null) {
       out.push({
         relPath: r.relPath,
-        reason: `the single phone block is not the sheet's last top-level construct -- byte offset ${r.trailingOffset} carries trailing content: ${JSON.stringify(
+        reason: `the sheet's ${r.phoneBlocks.length} \`${PHONE_HEADER}\` block(s) (lines ${r.phoneBlocks
+          .map((b) => b.startLine)
+          .join(", ")}) do not form one contiguous trailing phone-block region -- byte offset ${r.trailingOffset} carries a non-phone top-level construct or trailing content: ${JSON.stringify(
           r.trailingText
         )}`,
       });
@@ -334,7 +488,22 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
     expect(result.phoneBlocks.length).toBe(2);
     const violations = computeViolations([result]);
     expect(violations.length).toBe(1);
-    expect(violations[0]!.reason).toMatch(/has 2 /);
+    expect(violations[0]!.reason).toMatch(/do not form one contiguous trailing phone-block region/);
+  });
+
+  it("negative control: TWO CONTIGUOUS phone blocks with nothing between or after them still pass -- this is the legitimate composed-sheet shape (DEC-385 wave-141): a host's own terminal block immediately followed by a composed module's phone block is not shadowing", () => {
+    const fixture = `
+.a { color: red; }
+@media (max-width: 700px) {
+  .a { color: blue; }
+}
+@media (max-width: 700px) {
+  .b { color: yellow; }
+}
+`;
+    const result = evaluateSheet({ relPath: "fixture-two-contiguous-blocks", absPath: "", cssText: fixture, fileOffset: 0 });
+    expect(result.phoneBlocks.length).toBe(2);
+    expect(computeViolations([result])).toEqual([]);
   });
 
   it("negative control: a fixture with one terminal 700px block passes", () => {
@@ -362,11 +531,82 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
     expect(computeViolations([result])).toEqual([]);
   });
 
-  it("portal.css.ts (this task's owned sheet) is conformant: exactly one terminal phone block", () => {
+  it("auth.css.ts / cfp.css.ts (task w16-bb) are conformant on their COMPOSED output: their own terminal block immediately followed by ERROR_STATES_PHONE_CSS's block, nothing after", () => {
+    for (const relPath of ["src/routes/auth.css.ts", "src/routes/public/cfp.css.ts"]) {
+      const sheet = RESULTS.find((r) => r.relPath === relPath);
+      expect(sheet, relPath).toBeDefined();
+      expect(sheet!.phoneBlocks.length, relPath).toBe(2);
+      expect(sheet!.trailingText, relPath).toBeNull();
+    }
+  });
+
+  it("portal.css.ts: the ERROR_STATES_CSS/ERROR_STATES_PHONE_CSS split (task w16-bb) landed correctly -- its LAST two phone blocks (its own terminal block, then ERROR_STATES_PHONE_CSS's, composed immediately after) are contiguous with nothing trailing. portal.css.ts is NOT fully conformant overall (see next test / docs/design/audit/terminal-phone-block-v12.md): it separately composes EMPTY_CSS mid-file (line ~703, pre-existing, unrelated to ERROR_STATES_CSS, out of this task's scope), which this widened scan newly surfaces as a non-terminal phone block landing BEFORE portal's own terminal block -- that pre-existing gap, not this task's split, is why the sheet's OVERALL violation check (next test) still flags it", () => {
     const portal = RESULTS.find((r) => r.relPath === "src/routes/portal/portal.css.ts");
     expect(portal).toBeDefined();
-    expect(portal!.phoneBlocks.length).toBe(1);
-    expect(portal!.trailingText).toBeNull();
+    expect(portal!.phoneBlocks.length).toBe(3); // EMPTY_CSS's (mid-file, pre-existing gap) + portal's own terminal + ERROR_STATES_PHONE_CSS's
+    const [own, phoneCss] = portal!.phoneBlocks.slice(1);
+    expect(own).toBeDefined();
+    expect(phoneCss).toBeDefined();
+    expect(portal!.trailingText).not.toBeNull(); // the EMPTY_CSS gap, not this task's work, trips the sheet overall
+    expect(portal!.trailingText).toMatch(/\.chq-field-error/); // the flagged gap is ERROR_STATES_CSS's base rule following EMPTY_CSS's early block, not anything after this task's appended ERROR_STATES_PHONE_CSS block
+  });
+
+  it("composed-blindness regression proof: a fabricated host that composes a fabricated module carrying a phone block, with a non-phone rule sitting AFTER the composed import, is invisible to a raw-file-text scan but caught once composition is resolved", () => {
+    const scratchDir = mkdtempSync(join(tmpdir(), "phone-terminal-block-fixture-"));
+    try {
+      const subPath = join(scratchDir, "fake-sub.css.ts");
+      const hostPath = join(scratchDir, "fake-host.css.ts");
+      writeFileSync(
+        subPath,
+        [
+          "export const FAKE_SUB_CSS = `",
+          "  .sub { color: red; }",
+          "  @media (max-width: 700px) {",
+          "    .sub { color: blue; }",
+          "  }",
+          "`;",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(
+        hostPath,
+        [
+          'import { FAKE_SUB_CSS } from "./fake-sub.css";',
+          "export const FAKE_HOST_CSS = `",
+          "  .host-a { color: green; }",
+          "${FAKE_SUB_CSS}",
+          "  .host-b { color: purple; }",
+          "`;",
+          "",
+        ].join("\n")
+      );
+
+      // The OLD, file-text-only extraction sees zero phone blocks in the
+      // host's own literal -- exactly the blindness this task fixes. It is
+      // not "conformant"; it is invisible to the check entirely.
+      const rawText = readFileSync(hostPath, "utf-8");
+      const rawBody = extractCssLiteral(rawText).body;
+      const rawResult = evaluateSheet({ relPath: "fake-host (raw)", absPath: hostPath, cssText: rawBody, fileOffset: 0 });
+      expect(rawResult.phoneBlocks.length).toBe(0);
+      expect(computeViolations([rawResult])).toEqual([]); // blind: reports clean
+
+      // The WIDENED, composition-resolving check sees the real shape: a
+      // phone block from the composed import, followed by .host-b -- a
+      // non-phone construct AFTER the phone region -- and flags it.
+      const composedBody = resolveComposedLiteral(hostPath);
+      const composedResult = evaluateSheet({
+        relPath: "fake-host (composed)",
+        absPath: hostPath,
+        cssText: composedBody,
+        fileOffset: 0,
+      });
+      expect(composedResult.phoneBlocks.length).toBe(1);
+      const violations = computeViolations([composedResult]);
+      expect(violations.length).toBe(1);
+      expect(violations[0]!.reason).toMatch(/do not form one contiguous trailing phone-block region/);
+    } finally {
+      rmSync(scratchDir, { recursive: true, force: true });
+    }
   });
 
   it("every enumerated sheet with >=1 phone block has exactly one, and it is textually terminal", () => {
@@ -381,5 +621,43 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
       );
     }
     expect(VIOLATIONS).toEqual([]);
+  });
+});
+
+// -- DEC-385 single-direction: desktop is FROZEN (task w16-bb) -------------
+//
+// The ERROR_STATES_CSS/ERROR_STATES_PHONE_CSS split only moves a phone-only
+// block from inside ERROR_STATES_CSS to a new sibling export, composed
+// after each host's own terminal block -- it must not touch a single byte
+// of any desktop (above max-width:700px) declaration in ERROR_STATES_CSS
+// or in any of the three hosts. Pinned against the base rule these hosts
+// share (test/error-vocabulary-parity.scan.test.ts also pins this
+// property-for-property against the SPA twin), proving it: (a) still
+// exists verbatim in ERROR_STATES_CSS's base body with no @media block of
+// its own, and (b) still appears, byte-identical, in the desktop layer
+// (everything before each host's own first @media (max-width: 700px)) of
+// every composed host.
+describe("DEC-385 single-direction: desktop layer above 700px is byte-identical after the split (task w16-bb)", () => {
+  const FROZEN_ERROR_SUMMARY_LINK_BASE =
+    ".chq-error-summary-link { font-size: 13px; font-weight: 700; color: var(--chq-brand); text-decoration: none; }";
+
+  it("ERROR_STATES_CSS's own resolved body still contains the frozen .chq-error-summary-link declaration verbatim and carries no @media block of its own", () => {
+    const errorStatesPath = join(SRC_ROOT, "views", "error-states.css.ts");
+    const base = resolveComposedLiteral(errorStatesPath, "ERROR_STATES_CSS");
+    expect(base).toContain(FROZEN_ERROR_SUMMARY_LINK_BASE);
+    expect(base).not.toContain("@media");
+  });
+
+  it("each host's composed output still contains the frozen declaration verbatim, and it sits OUTSIDE every @media (max-width: 700px) block -- i.e. it is still a desktop (unconditional) rule, not something the split accidentally pulled phone-only", () => {
+    for (const relPath of ["src/routes/auth.css.ts", "src/routes/public/cfp.css.ts", "src/routes/portal/portal.css.ts"]) {
+      const sheet = SHEETS.find((s) => s.relPath === relPath);
+      expect(sheet, relPath).toBeDefined();
+      const declIdx = sheet!.cssText.indexOf(FROZEN_ERROR_SUMMARY_LINK_BASE);
+      expect(declIdx, relPath).toBeGreaterThan(-1);
+      const result = RESULTS.find((r) => r.relPath === relPath);
+      expect(result, relPath).toBeDefined();
+      const insidePhoneBlock = result!.phoneBlocks.some((b) => declIdx > b.openIdx && declIdx < b.closeIdx);
+      expect(insidePhoneBlock, relPath).toBe(false);
+    }
   });
 });

@@ -15,7 +15,7 @@
 // compose CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS.
 
 import { DEC_373, DEC_374, DEC_657, DEC_945, DEC_683, DEC_154 } from "../../decisions";
-import { ERROR_STATES_CSS } from "../../views/error-states.css";
+import { ERROR_STATES_CSS, ERROR_STATES_PHONE_CSS } from "../../views/error-states.css";
 import { BARE_PAGE_CSS } from "../../views/bare-page.css";
 
 void DEC_373;
@@ -445,4 +445,4 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
      expect to hit. Appended at the true end of this module, after every
      top-level rule and after the existing phone block above (never
      edited/reordered), per DEC-385 single-direction responsive. */
-`;
+${ERROR_STATES_PHONE_CSS}`;
