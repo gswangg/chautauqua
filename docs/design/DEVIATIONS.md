@@ -162,6 +162,24 @@ survives contact with state:
   footer's own floor — min-height:48px, padding:0 16px — one control per line,
   and its capability is reached through the dock's own `Edit` control.
 
+- **Portal · Your profile dock has no Cancel (DEC-154 wave-125, DEC-576
+  wave-110/wave-119)** — `docs/design/Chautauqua Public and Portal.dc.html:544-547`
+  draws a bordered `Cancel` (min-height:48px) beside the docked `Save` on
+  this page. The profile form has no "leave without saving" destination
+  distinct from the header/footer sign-out and the existing `‹ Your
+  portal` back-link already on screen (unlike Edit submission's Cancel,
+  which returns to a specific parent submission), so minting one here
+  would be a control invented to fill the band — the exact thing DEC-576's
+  wave-110 amendment forbids ("a second control is never manufactured just
+  to fill the band"). The dock (`src/routes/portal/profile.tsx`'s
+  `profileDock`) carries only the primary `Save profile`, reached through
+  `PortalLayout`'s existing dock slot the same way `edit.tsx` and
+  `index.tsx`'s session-detail dock already do.
+  - Round-2's "portal session" row is discharged, not re-opened, by this
+    task: `src/routes/portal/index.tsx:496-510` already docks the Upload
+    task action + Edit submission through the same `dock` slot as of the
+    wave-110 ruling above — no further work was outstanding there.
+
 ## 4. Voice
 
 - **Docs prose follows the STE-derived house rules, not the design's "house
