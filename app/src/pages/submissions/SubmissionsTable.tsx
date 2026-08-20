@@ -415,6 +415,7 @@ export function SubmissionsTable() {
             tracks={tracks}
             columns={columns}
             visibleFieldIds={visibleFieldIds}
+            allTotal={allTotal}
             onChange={setFilters}
             onToggleColumn={(fieldId) => {
               setPickerInitialized(true);
