@@ -1837,4 +1837,35 @@
   .chq-contacts-merge-footer .chq-btn-primary {
     flex: 1;
   }
+
+  /* 44px floor (task w13-n, round-2 WAVE B row "contacts name links
+     25.6px"): `.chq-contacts-pipeline-card-name` (:135) is a real
+     `<button>` (PipelineBoard.tsx:402-408/628-634, opens the entry's
+     stage-picker panel) with no floored sibling class to compose credit
+     from -- unlike `.chq-contacts-name`/`.chq-contacts-pipeline-card-
+     fit-edit`, which both always ride with the already-floored
+     `.chq-link-button` (styles.css:2714) and need no rule here. Cancelled
+     padding is legal: the button paints no border/background at :135-146
+     (background:none; border:none). */
+  .chq-contacts-pipeline-card-name {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+  }
+
+  /* 44px floor (task w13-n, same round-2 row): `.chq-add-to-event-card`
+     (:1143) is a real `<button>` (AddToEventModal.tsx:150-158, selects the
+     target event) that already reaches 44px visually via its desktop
+     `padding: 14px 16px` (14+14 plus the 15px/600 label's line-height
+     clears the floor), but declared no explicit height/min-height for the
+     undeclared-height lens to read -- restated here as an explicit
+     contract, real horizontal padding already present so no change to the
+     drawn box. */
+  .chq-add-to-event-card {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
 }

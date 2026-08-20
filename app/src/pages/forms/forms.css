@@ -781,4 +781,23 @@
     align-items: center;
     padding: 0 4px;
   }
+
+  /* 44px floor (task w13-n, round-2 WAVE B row, forms.css:100 measured
+     16px): the Opens/Closes captions render on a real `<label
+     htmlFor="chq-forms-open-date">` (FormsPage.tsx:352/369) -- tapping it
+     forwards focus to the associated DateField, so it is a real phone tap
+     target and not just decorative text, unlike its "Received" sibling
+     (a bare `<span>`, same class, no htmlFor -- FormsPage.tsx:386). The
+     tag-qualified selector floors only the `<label>` form; the `<span>`
+     stays untouched rather than being inflated into a fake control
+     (DEC-991). Cancelled padding is legal here -- the class paints no
+     border/background at any width (contacts.css:449's
+     `.chq-contacts-record-value` is the same borderless shape). */
+  label.chq-forms-strip-label {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+  }
 }
