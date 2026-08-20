@@ -525,6 +525,9 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // constant grades the population that blind spot has always hidden.
   "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
   "PAINTED_CANCELLED_PADDING_CEILING",
+  // wave-121 (task w10-l): cancelled-padding companion-gap lens
+  // (DEC-393 amendment, DEVIATIONS.md:346-351 rider instrument).
+  "CANCELLED_PADDING_GAP_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -546,6 +549,8 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   "UNRESOLVED_CITATION_CEILING",
   "WIDENED_UNRESOLVED_CITATION_CEILING",
   "PAINTED_CANCELLED_PADDING_CEILING",
+  // wave-121 (task w10-l): cancelled-padding companion-gap lens.
+  "CANCELLED_PADDING_GAP_CEILING",
 ];
 
 /**

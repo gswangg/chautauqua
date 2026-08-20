@@ -120,6 +120,11 @@ function baseFixture(): CampaignFile[] {
       path: "app/src/cancelled-padding-face.scan.test.ts",
       content: "export const PAINTED_CANCELLED_PADDING_CEILING = 8;",
     },
+    // wave-121 (task w10-l): cancelled-padding companion-gap lens.
+    {
+      path: "app/src/cancelled-padding-gap.scan.test.ts",
+      content: "export const CANCELLED_PADDING_GAP_CEILING = 7;",
+    },
   ];
 }
 
@@ -162,12 +167,13 @@ describe("findConstantDeclarations", () => {
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
-    // Megabatch wave-120/121: two instruments landed together.
-    // UNDECLARED_HEIGHT_OFFENDERS_CEILING (task w9-l, DEC-367 PREDICATE REPAIR)
-    // is GRADED (CAMPAIGN_CONSTANT_NAMES) but is not a Tier-2 row, so it adds
-    // no row. PAINTED_CANCELLED_PADDING_CEILING (DEC-937) is in
-    // TIER2_CEILING_NAMES, so it does: 18 -> 19.
-    expect(report.rows).toHaveLength(19);
+    // Megabatch wave-120/121: three instruments landed together.
+    // UNDECLARED_HEIGHT_OFFENDERS_CEILING (task w9-l, DEC-367 PREDICATE
+    // REPAIR) is GRADED but is not a Tier-2 row, so it adds no row.
+    // PAINTED_CANCELLED_PADDING_CEILING (DEC-937) and
+    // CANCELLED_PADDING_GAP_CEILING (DEC-393 amendment) are both in
+    // TIER2_CEILING_NAMES, so each adds one: 18 -> 20.
+    expect(report.rows).toHaveLength(20);
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
     expect(desktop).toMatchObject({ current: 30, target: 38, remaining: 8 });
@@ -229,6 +235,9 @@ describe("buildCampaignReport", () => {
       }
       if (f.path === "app/src/cancelled-padding-face.scan.test.ts") {
         return { ...f, content: "export const PAINTED_CANCELLED_PADDING_CEILING = 0;" };
+      }
+      if (f.path === "app/src/cancelled-padding-gap.scan.test.ts") {
+        return { ...f, content: "export const CANCELLED_PADDING_GAP_CEILING = 0;" };
       }
       return f;
     });
