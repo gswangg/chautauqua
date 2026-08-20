@@ -24,11 +24,13 @@
 ## Speakers-cluster edge MAJORs
 - Filtered-empty state keeps table footer chrome (legend + disabled pager)
   beneath the empty block (frame Speakers.dc.html:442-483).
+  CLOSED (wave 118): app/src/pages/speakers/OnboardingGrid.tsx:1365 `{!gridRead.loading && grid && visibleRows.length > 0 && (`
 - Speaker-detail rail uses full-page empty block (24px headline in a 320px
   rail; frame :414-424 draws a 14px/13px two-line list).
 - "Review these reminders" modal body lacks the drawn anatomy (frame
   :505-541: per-recipient outstanding task names + overdue/due-soon flags,
   rendered email card, "Logged in Comms history" line).
+  CLOSED (wave 118): app/src/pages/speakers/RemindPreviewModal.tsx:86 `{!isZeroState && <span className="chq-speakers-remind-logged">Logged in Comms history</span>}`
 
 ## Pre-campaign admin MAJORs
 - Plan criteria column heads off by one track ("Type" missing; WEIGHT over
