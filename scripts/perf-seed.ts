@@ -396,15 +396,12 @@ async function main(): Promise<void> {
         // 1), matching the migration's backfill formula (root=1, each
         // successor=predecessor+1). Missing here meant every perf-seeded
         // file had a NULL version_no, tripping showflow.ts's fail-loudly
-        // guard (task-w16-d).
+        // guard (task-w16-d). version_no is never recomputed later from
+        // chain position — spec.versionIndex is already the 0-based
+        // per-chain position (matches the `v${versionIndex + 1}` filename
+        // above), so the stored value is 1-based.
         version_no: spec.versionIndex + 1,
         previous_file_id: previousFileId,
-        // DEC-818: version_no is the row's own stored chain-position
-        // identity, set at INSERT time by every writer (never recomputed
-        // from chain position later) — spec.versionIndex is already the
-        // 0-based per-chain position (matches the `v${versionIndex + 1}`
-        // filename above), so the stored value is 1-based.
-        version_no: spec.versionIndex + 1,
         uploaded_by_contact_id: contactId,
         created_at: nextTs(),
         updated_at: ts,

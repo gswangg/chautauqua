@@ -49,7 +49,7 @@ function readConfiguredPublicBaseUrl(): string | null {
   const wranglerPath = join(REPO_ROOT, "wrangler.jsonc");
   if (existsSync(wranglerPath)) {
     const match = readFileSync(wranglerPath, "utf8").match(/"PUBLIC_BASE_URL"\s*:\s*"([^"]*)"/);
-    return match ? match[1] : null;
+    return match?.[1] ?? null;
   }
   return null;
 }
