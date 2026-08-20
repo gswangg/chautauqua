@@ -14,14 +14,14 @@
 // exactly the interpolation idiom public.css.ts's PUBLIC_CSS already uses to
 // compose CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_657, DEC_945 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_657, DEC_945, DEC_683, DEC_154 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
 import { BARE_PAGE_CSS } from "../../views/bare-page.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_657;
-void DEC_945;
+void DEC_945; void DEC_683; void DEC_154;
 
 export const CFP_CSS = `
   /* DEC-986 (wave 40 amendment): chrome is never constrained -- the header
@@ -231,7 +231,17 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        SSR main rule is shared by every page under the shell and shrinking
        it there would move every other page's measure, not just this
        one's. */
-    .chq-cfp-body { padding-left: 0; padding-right: 0; }
+    /* Thunderdome megabatch (wave 125): SUPERSEDED IN PART. w13-k cancelled
+       the INNER gutter (this rule, `padding-left/right: 0`) to clear the
+       double-gutter; w14-h's DEC-683 wave-125 amendment instead cancels the
+       OUTER one (`main.chq-measure:has(.chq-cfp-body)`, below) and requires
+       the body to KEEP its own 16px so the header (a full-bleed sibling of
+       <main>, DEC-986) and the reading column share one gutter owner. Both
+       fixes in one tree would zero BOTH gutters and full-bleed the column to
+       390px. w14-h is the later ruling and the one that hits the DEC-989
+       budget exactly (390 - 0 - 32 = 358), so the body's 16px is restored
+       here and the cancel lives on <main> alone. */
+    .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     /* :1019 -- the date/venue eyebrow drops from 11px to the frame's 10px;
        weight/letter-spacing/case/colour are unchanged (.chq-cfp-meta,
        above) so only size moves. */
@@ -348,12 +358,51 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        the band when the frame's membership is satisfiable from controls
        the surface already owns" -- so this rule only re-skins the existing
        container, it adds no new control. */
+
+    /* DEC-683 (wave 125 amendment): a phone content column has exactly ONE
+       gutter owner. .chq-cfp-body (above) keeps its own 16px left/right --
+       it is the frame's full-bleed header band that pins the edge, and the
+       header already carries its OWN explicit 16px in this same block,
+       independent of <main>'s padding (DEC-986: the header is a SIBLING of
+       <main class="chq-measure">, submit-views.tsx:78, never a descendant
+       of it). So cancelling <main>'s padding here only ever touches this
+       page's reading column, never the header. Scoped with :has() from
+       this page's own sheet rather than a shell edit (src/views/theme.ts
+       is reserved for the shell lane) -- a bare 'main { padding-inline: 0
+       }' would re-gutter every other SSR surface, so the selector below
+       only ever matches a <main> that contains .chq-cfp-body. Result:
+       390 - 0 (main) - 32 (body's own 16px x2) = 358, the DEC-989 budget. */
+    main.chq-measure:has(.chq-cfp-body) { padding-inline: 0; }
+
+    /* DEC-154 (wave 125 amendment) / frame :1061-1064 (Submit a talk ·
+       390): the step-1 dock is .chq-cfp-actions itself -- no second
+       geometry, no duplicate control. flex-shrink/border-top/background/
+       padding/gap match the frame's SSR band verbatim (the same wave-110
+       band DEC-154's amendment names), pinned to the viewport bottom and
+       full-bleed against the single gutter cancelled above. The primary
+       (.chq-btn-primary -- Submit on step 2, .chq-cfp-step-next "Next:
+       about you" on step 1, DEC-919 makes only one visible per step) takes
+       the frame's flex:1/48px; Draft (.chq-cfp-save-draft, already 48px/
+       bordered above, :287-296) needs no change -- it already matches
+       :1063 byte-for-byte. The note (:1005 has no counterpart in the 390
+       dock) stands down; it is decorative confirmation copy repeated
+       nowhere else needed, not a control losing its only path (DEC-919
+       governs controls, not this text). .chq-cfp-body gains matching
+       bottom padding so the fixed band never covers the form's own last
+       field. */
+    .chq-cfp-body { padding-bottom: 96px; }
     .chq-cfp-actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
       border-top: 1px solid var(--chq-ink);
       background: var(--chq-surface-sunk);
       padding: 12px 16px 16px;
       gap: 8px;
-      flex-wrap: nowrap;
     }
     /* :1063 leading flex:1 on the Next control -- the existing
        comment above .chq-cfp-save-draft already claimed this geometry;
@@ -361,6 +410,8 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        content, matching the frame's bordered secondary beside the filled
        flex:1 primary. */
     .chq-cfp-step-next { flex: 1; }
+    .chq-cfp-actions-note { display: none; }
+    .chq-cfp-actions .chq-btn-primary { flex: 1; min-height: 48px; }
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
