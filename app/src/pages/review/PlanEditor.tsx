@@ -1584,7 +1584,7 @@ export function PlanEditor() {
               this caption now only appears while locked. */}
           {activeRoundIsLocked && (
             <p className="chq-review-section-caption">
-              Wording, type and weights are fixed for the rest of this wave.
+              Wording, weights and the scale are fixed for the rest of this wave.
             </p>
           )}
 
@@ -1780,15 +1780,20 @@ export function PlanEditor() {
                       cannot change. */}
                   <div className="chq-review-criteria-locked-notice" role="status">
                     <div className="chq-review-criteria-locked-text">
-                      {/* w5-e: the section rule's own eyebrow already says
-                          "Locked" -- this headline states the count without
-                          repeating that word. */}
+                      {/* DEC-882 (wave 134): the frame's two registers,
+                          verbatim -- a bold headline naming the
+                          consequence, then a muted body carrying BOTH
+                          sentences (the freeze scope, then the forward
+                          move). Previously these collapsed into one
+                          paragraph with the first sentence dropped
+                          entirely; the eyebrow above already states the
+                          locked count, so this card no longer repeats it. */}
                       <p className="chq-review-criteria-locked-headline">
-                        {countOf(activeRoundLockedCount, 'review')} scored against these criteria
+                        Changing these would rescore work already done
                       </p>
                       <p className="chq-review-criteria-locked-reason">
-                        Changing these would rescore work already done. To score differently, open a new wave — the
-                        reviews already in stay attached to this one.
+                        Wording, weights and the scale are fixed for the rest of this wave. To score differently,
+                        open a new wave — the reviews already in stay attached to this one.
                       </p>
                     </div>
                     {!isNew && planId && (
