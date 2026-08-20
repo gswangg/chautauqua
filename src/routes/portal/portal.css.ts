@@ -326,6 +326,18 @@ export const PORTAL_CSS = `
   /* w2-g: sign-out demoted from the masthead to a quiet tertiary link in a
      page footer (DEC-590) — placement only, .chq-btn-tertiary is the
      existing frozen tertiary token (THEME_CSS), never a new button style. */
+  /* User-filed (Cut-2 review): the wave-110 dock band renders at every
+     width, but its flex/gap lived only in the phone block -- at desktop the
+     two .chq-btn anchors flush-joined and Sign out crammed beneath. The
+     band's layout is width-independent; the phone block keeps only its
+     full-measure overrides. */
+  .chq-portal-dock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
   .chq-portal-footer {
     max-width: var(--chq-portal-measure);
     margin: 24px auto 0;
