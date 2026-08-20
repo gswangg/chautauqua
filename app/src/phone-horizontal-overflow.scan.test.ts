@@ -41,12 +41,33 @@
 // exemption comment that no longer sits above a rule that would actually
 // be flagged fails loudly, naming the file and selector, with an explicit
 // "delete this line" message.
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+//
+// DECOMPOSITION NOTE (contention-hotspot custodian task): this file's
+// mechanics were split into ./phone-overflow-scan/{population,rules,budget,
+// checks,cascade,cross-bundle}.ts -- pure extraction, no behavior change.
+// This file remains the sole owner of: source-population wiring (SOURCES),
+// the derived budget invocation, offender/exemption assembly, and every
+// `it(...)`. `CONTENT_BUDGET_PX`, `checkGridTemplateColumns`, `checkNowrap`,
+// `AUDIT_ROWS` and `OFFENDERS` remain re-exported from here unchanged so no
+// consumer (none exist in-repo today, confirmed by grep) sees a moved path.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_808, DEC_976, DEC_989, DEC_991 } from '../../src/decisions';
+import { deriveContentBudget, PHONE_FRAME_WIDTH_PX } from './phone-overflow-scan/budget';
+import { effectiveRuleFor, isCandidateRule } from './phone-overflow-scan/cascade';
+import { checkGridTemplateColumns, checkNowrap, runChecks } from './phone-overflow-scan/checks';
+import { findCrossBundleReceiptCitations, type CrossBundleOffender } from './phone-overflow-scan/cross-bundle';
+import {
+  allFiles,
+  cssModuleFiles,
+  extractCssTsLiteral,
+  sanitizeCommentBraces,
+  type SourceFile,
+} from './phone-overflow-scan/population';
+import { extractRules, mediaSpans } from './phone-overflow-scan/rules';
 
 void DEC_989; // this scan's whole reason to exist: DEC-989's horizontal-extent-vs-390-viewport probe (wave 119 amendment: candidacy is cascade-aware)
 void DEC_991; // a new overflow-exempt comment may be authored only in the commit that makes its rule flagged -- this task authors none
@@ -57,135 +78,9 @@ const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
 const SRC_ROOT = join(REPO_ROOT, 'src');
 
-/** Every file under `root` whose name ends with `extension`, enumerated rather than named (DEC-808). */
-function allFiles(root: string, extension: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(extension)) continue;
-    out.push(join(entry.parentPath, entry.name));
-  }
-  return out.sort();
-}
-
 const APP_CSS_FILES = allFiles(HERE, '.css');
 
-/**
- * Every `src/**\/*.ts` module (readdirSync recursive, DEC-808 -- never a
- * hand-listed manifest) whose SOURCE TEXT exports a CSS template-literal
- * constant (`export const X_CSS = ...`), excluding test files. Population is
- * derived from what a module's content actually declares, not from a
- * `.css.ts` filename convention -- src/views/theme.ts exports THEME_CSS
- * (loaded by every SSR surface, and the sheet that carries the SSR 44px
- * phone floor) but does not carry the `.css.ts` suffix, and a filename glob
- * silently drops it (DEC-808, wave-96 finding).
- */
-const CSS_EXPORT_RE = /export const [A-Z0-9_]*CSS\s*=\s*/;
-
-function cssModuleFiles(root: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
-    const absPath = join(entry.parentPath, entry.name);
-    if (CSS_EXPORT_RE.test(readFileSync(absPath, 'utf-8'))) out.push(absPath);
-  }
-  return out.sort();
-}
-
 const CSS_TS_FILES = cssModuleFiles(SRC_ROOT);
-
-/**
- * Parses `import { A, B } from "./relative"` statements in a CSS-in-TS
- * module's raw source and, for each imported name, resolves a same-repo
- * `export const NAME = [...]` string-literal array from the imported
- * module -- used to turn a selector-position `.${NAME[N]}` interpolation
- * back into its real class name instead of a bare `.`.
- */
-function resolveImportedArrayConstants(raw: string, fileDir: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  const importRe = /import\s*\{\s*([^}]+?)\s*\}\s*from\s*["'](\.[^"']+)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = importRe.exec(raw)) !== null) {
-    const names = (m[1] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-    const modPath = m[2] ?? '';
-    const abs = join(fileDir, modPath.endsWith('.ts') ? modPath : `${modPath}.ts`);
-    let modSrc: string;
-    try {
-      modSrc = readFileSync(abs, 'utf-8');
-    } catch {
-      continue; // module resolves outside this simple relative-.ts lookup (e.g. a barrel) -- not this scan's concern
-    }
-    for (const name of names) {
-      const arrMatch = modSrc.match(new RegExp(`export const ${name}\\s*=\\s*\\[([^\\]]*)\\]`));
-      if (!arrMatch) continue;
-      const values = [...(arrMatch[1] ?? '').matchAll(/["']([^"']*)["']/g)].map((v) => v[1] ?? '');
-      if (values.length > 0) out.set(name, values);
-    }
-  }
-  return out;
-}
-
-/**
- * Extracts the literal CSS text out of a `export const X_CSS = \`...\`;`
- * module. A selector-position interpolation (`.${NAME[N]}`, e.g. agenda.css.ts's
- * `.${ACCENT_BOUND_CLASSES[0]}`) is RESOLVED to its real class name via
- * `resolveImportedArrayConstants` rather than stripped -- stripping it
- * produces a bare `.` selector that both hides the rule's true identity and
- * (worse) makes an unrelated rule's declarations collide with it under a
- * meaningless selector. Any interpolation that cannot be resolved this way
- * (content fragments like `${ERROR_STATES_CSS}`, which name another
- * module's own exported CSS constant, itself enumerated and scanned
- * separately as that file) is stripped exactly as before -- that stripping
- * is intentional there, never a silent drop of a selector's identity.
- * Unresolved selector-position interpolations (`.${...}` that isn't a
- * `NAME[N]` array-index this resolver can chase down) are recorded in
- * `skipped` so they surface loudly instead of silently becoming `.`.
- */
-function extractCssTsLiteral(raw: string, fileDir: string): { css: string; skipped: string[] } {
-  const arrayConsts = resolveImportedArrayConstants(raw, fileDir);
-  const skipped: string[] = [];
-  const literals = [...raw.matchAll(/`([\s\S]*?)`/g)].map((m) => m[1] ?? '');
-  const joined = literals.join('\n');
-  const withSelectorsResolved = joined.replace(
-    /\.\$\{\s*([A-Za-z0-9_]+)\[(\d+)\]\s*\}/g,
-    (whole: string, name: string, idxStr: string) => {
-      const values = arrayConsts.get(name);
-      const value = values?.[Number(idxStr)];
-      if (value === undefined) {
-        skipped.push(whole);
-        return whole; // left in place so the generic strip below still avoids a false "." ; recorded above for visibility
-      }
-      return `.${value}`;
-    },
-  );
-  // Any remaining `.${...}` (unresolved) is a selector-position interpolation
-  // this resolver could not chase down -- already loudly recorded above, so
-  // it is safe to fold it into the generic content-fragment strip below
-  // rather than let it leak through as a literal `${...}` token.
-  return { css: withSelectorsResolved.replace(/\$\{[^}]*\}/g, ''), skipped };
-}
-
-/**
- * Neutralises `{`/`}` characters that appear INSIDE comments (e.g. this
- * codebase's own convention of quoting a design frame's Handlebars-ish
- * placeholder text in a comment, `/* Frame line 201: \`{{ h.when }}\` *\/`)
- * without changing the string's length or any other character -- every
- * later regex below assumes brace nesting is exactly one level deep
- * (selector/body inside an @media, nothing inside a comment), and a
- * literal brace hiding in a comment breaks that assumption, which is not
- * merely wrong but catastrophically slow (the brace-balancing patterns
- * below backtrack combinatorially over an unbalanced file). Length is
- * preserved so every character offset computed downstream still points at
- * the same place in the original file.
- */
-function sanitizeCommentBraces(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[{}]/g, '·'));
-}
-
-interface SourceFile {
-  absPath: string;
-  label: string;
-  css: string;
-}
 
 // Selector-position CSS-in-TS interpolations that `extractCssTsLiteral`
 // could not resolve to a real class name (empty unless a future module adds
@@ -215,220 +110,9 @@ const SOURCES: SourceFile[] = [
 // padding -- the ONE place the shell declares the gutter every page's
 // content sits inside. Content budget = frame width minus that gutter on
 // both sides.
-const PHONE_FRAME_WIDTH_PX = 390;
-
-function phoneMediaBlocks(css: string): Array<{ condition: string; body: string }> {
-  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
-  const out: Array<{ condition: string; body: string }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    out.push({ condition: (m[1] ?? '').trim(), body: m[2] ?? '' });
-  }
-  return out;
-}
-
-function isPhoneCondition(condition: string): boolean {
-  const m = condition.match(/max-width:\s*(\d+(?:\.\d+)?)px/);
-  return m !== null && Number(m[1]) <= 700;
-}
-
-function ruleBodyIn(fragment: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const m = fragment.match(new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`));
-  const body = m?.[1];
-  if (body === undefined) throw new Error(`no rule found for ${selector} in the given fragment`);
-  return body;
-}
-
 const STYLES_CSS = sanitizeCommentBraces(readFileSync(join(HERE, 'styles.css'), 'utf-8'));
-const mainPhoneBlock = phoneMediaBlocks(STYLES_CSS).find((b) => isPhoneCondition(b.condition));
-if (!mainPhoneBlock) throw new Error('styles.css has no @media (max-width: <=700px) block');
-const mainPhoneBody = ruleBodyIn(mainPhoneBlock.body, '.chq-main');
-const gutterMatch = mainPhoneBody.match(/(?:^|;)\s*padding:\s*(\d+(?:\.\d+)?)px\s*;/);
-if (!gutterMatch) {
-  throw new Error(
-    ".chq-main's phone rule no longer declares a single-value px padding -- update the derivation above rather than hardcoding a budget",
-  );
-}
-const PHONE_GUTTER_PX = Number(gutterMatch[1]);
-export const CONTENT_BUDGET_PX = PHONE_FRAME_WIDTH_PX - 2 * PHONE_GUTTER_PX;
-
-// --- rule extraction ------------------------------------------------------
-
-interface Rule {
-  selector: string;
-  body: string; // declarations, comments stripped -- a comment sitting between two declarations is not a `;` boundary, and every check below anchors on one
-  index: number;
-  isPhoneScoped: boolean;
-  isTopLevel: boolean; // not nested in ANY @media block
-  isExempt: boolean; // an inline overflow-exempt comment sits directly above this rule
-}
-
-const COMMENT_RE = /\/\*[\s\S]*?\*\//g;
-const EXEMPT_COMMENT_RE = /\/\*\s*overflow-exempt:\s*[^*]*\*\//;
-
-/**
- * Every innermost `selector { body }` rule in raw text, in source order,
- * with position info. Because the leading `@media (...) {` text can never
- * itself satisfy `[^{}]+\{[^{}]*\}` (its own body contains a nested `{`),
- * every attempt that starts inside a media header fails outright and the
- * engine's next attempt lands on the inner rule -- so this single flat
- * pattern finds every innermost rule directly in the RAW (unstripped)
- * text, media or no media, with real character offsets. Because there is
- * no such forcing failure between two ordinary rules, the captured
- * "selector" text for a normal rule starts right after the PREVIOUS rule's
- * closing `}` and so includes any comments/whitespace sitting between them
- * -- comments are stripped out to get the real selector, and checked for
- * the overflow-exempt marker before being discarded.
- */
-function extractRules(css: string, spans: Array<{ start: number; end: number; isPhone: boolean }>): Rule[] {
-  const rules: Rule[] = [];
-  const re = /([^{}]+)\{([^{}]*)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    const rawPre = m[1] ?? '';
-    const isExempt = EXEMPT_COMMENT_RE.test(rawPre);
-    const selector = rawPre.replace(COMMENT_RE, ' ').trim().replace(/\s+/g, ' ');
-    if (!selector || selector.startsWith('@')) continue; // @keyframes/@font-face/@supports headers etc.
-    const body = (m[2] ?? '').replace(COMMENT_RE, ' ');
-    const span = spans.find((s) => m!.index >= s.start && m!.index < s.end);
-    rules.push({
-      selector,
-      body,
-      index: m.index,
-      isPhoneScoped: span?.isPhone ?? false,
-      isTopLevel: span === undefined,
-      isExempt,
-    });
-  }
-  return rules;
-}
-
-function mediaSpans(css: string): Array<{ start: number; end: number; isPhone: boolean }> {
-  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
-  const out: Array<{ start: number; end: number; isPhone: boolean }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    out.push({ start: m.index, end: m.index + m[0].length, isPhone: isPhoneCondition((m[1] ?? '').trim()) });
-  }
-  return out;
-}
-
-// --- shape checks -----------------------------------------------------
-
-function checkWidthProps(body: string): string[] {
-  const hits: string[] = [];
-  const re = /(?:^|;)\s*(width|min-width|flex-basis)\s*:\s*(\d+(?:\.\d+)?)px/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    const px = Number(m[2]);
-    if (px > CONTENT_BUDGET_PX) hits.push(`${m[1]}: ${px}px exceeds budget ${CONTENT_BUDGET_PX}px`);
-  }
-  return hits;
-}
-
-export function checkGridTemplateColumns(body: string): string[] {
-  const gtc = body.match(/grid-template-columns\s*:\s*([^;]+);/);
-  if (!gtc) return [];
-  const tracks = gtc[1]?.match(/\d+(?:\.\d+)?px/g) ?? [];
-  if (tracks.length === 0) return [];
-  const trackSum = tracks.reduce((sum, t) => sum + Number(t.replace('px', '')), 0);
-  const gapMatch = body.match(/(?:^|;)\s*(?:column-)?gap\s*:\s*(\d+(?:\.\d+)?)px/);
-  const gapPx = gapMatch ? Number(gapMatch[1]) * Math.max(0, tracks.length - 1) : 0;
-  const total = trackSum + gapPx;
-  if (total > CONTENT_BUDGET_PX) {
-    return [`grid-template-columns fixed tracks ${trackSum}px + gaps ${gapPx}px = ${total}px exceeds budget ${CONTENT_BUDGET_PX}px`];
-  }
-  return [];
-}
-
-export function checkNowrap(body: string): string[] {
-  if (!/white-space\s*:\s*nowrap/.test(body)) return [];
-  const hasEscape = /(?:overflow(?:-x)?\s*:\s*(?:hidden|auto|scroll))|(?:text-overflow\s*:\s*ellipsis)/.test(body);
-  return hasEscape ? [] : ['white-space: nowrap with no overflow/text-overflow escape in the same rule'];
-}
-
-function baseToken(selector: string): string {
-  // First comma part, first compound token (drop pseudo-classes/descendant chains).
-  return (selector.split(',')[0] ?? '').trim().split(/\s+/)[0]?.split(':')[0] ?? '';
-}
-
-function checkTableLayout(rule: Rule, fileRules: Rule[]): string[] {
-  if (!/table-layout\s*:\s*fixed/.test(rule.body)) return [];
-  const base = baseToken(rule.selector);
-  if (!base) return [];
-  const columnSelectors = fileRules.filter(
-    (r) => baseToken(r.selector) === base && /:(?:first-child|last-child|nth-child\(\d+\))/.test(r.selector),
-  );
-  const distinctColumns = new Set(columnSelectors.map((r) => r.selector));
-  if (distinctColumns.size <= 2) return [];
-  const hasPhoneReflow = fileRules.some(
-    (r) =>
-      r.isPhoneScoped &&
-      baseToken(r.selector) === base &&
-      (/display\s*:\s*(?:block|contents)/.test(r.body) || /table-layout\s*:\s*auto/.test(r.body)),
-  );
-  if (hasPhoneReflow) return [];
-  return [
-    `table-layout: fixed on ${base} with ${distinctColumns.size} declared columns, no phone reflow (display:block|contents or table-layout:auto) for the same base`,
-  ];
-}
-
-function runChecks(rule: Rule, fileRules: Rule[]): string[] {
-  return [
-    ...checkWidthProps(rule.body),
-    ...checkGridTemplateColumns(rule.body),
-    ...checkNowrap(rule.body),
-    ...checkTableLayout(rule, fileRules),
-  ];
-}
-
-// --- cascade-aware candidacy (DEC-989 wave-119 amendment) ----------------
-//
-// THE HOLE this repairs: the old candidacy test dropped a top-level rule
-// from the population the instant ANY phone-scoped rule in the file named
-// the same selector token, whether or not that override touched the
-// flagged property (settings.css:1142 `.chq-settings-row-hint`'s top-level
-// `white-space: nowrap` was never checked because a wholly unrelated
-// terminal phone rule at settings.css:1586 happened to declare only
-// `align-self: flex-end` for the same selector). The repair: every
-// top-level rule is ALWAYS a candidate, but it is checked against its
-// EFFECTIVE declaration map -- its own top-level declarations, overridden
-// property-by-property (last-wins, file order) by every phone-scoped rule
-// whose comma-split selector tokens intersect its own -- not its raw body.
-// A phone rule that overrides an unrelated property no longer hides a real
-// offender; a phone rule that actually overrides the flagged property still
-// clears it, exactly as before.
-
-/** Ordered `[property, value]` pairs parsed out of a declaration body. */
-function parseDeclarations(body: string): Array<[string, string]> {
-  const out: Array<[string, string]> = [];
-  const re = /(-{0,2}[a-zA-Z][a-zA-Z-]*)\s*:\s*([^;]+);/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    out.push([(m[1] ?? '').trim(), (m[2] ?? '').trim()]);
-  }
-  return out;
-}
-
-/**
- * The effective declaration body for a TOP-LEVEL rule: its own declarations,
- * then every phone-scoped rule's declarations in the same file whose
- * comma-split selector tokens intersect this rule's own tokens, applied in
- * source order, last value wins per property.
- */
-function effectiveBodyFor(rule: Rule, fileRules: Rule[]): string {
-  const tokens = new Set(rule.selector.split(',').map((s) => s.trim()));
-  const merged = new Map<string, string>();
-  for (const [prop, val] of parseDeclarations(rule.body)) merged.set(prop, val);
-  for (const r of fileRules) {
-    if (!r.isPhoneScoped) continue;
-    const rTokens = r.selector.split(',').map((s) => s.trim());
-    if (!rTokens.some((t) => tokens.has(t))) continue;
-    for (const [prop, val] of parseDeclarations(r.body)) merged.set(prop, val);
-  }
-  return [...merged.entries()].map(([prop, val]) => `${prop}: ${val};`).join(' ');
-}
+const { gutterPx: PHONE_GUTTER_PX, budgetPx: CONTENT_BUDGET_PX_VALUE } = deriveContentBudget(STYLES_CSS);
+export const CONTENT_BUDGET_PX = CONTENT_BUDGET_PX_VALUE;
 
 // --- assemble offenders -------------------------------------------------
 
@@ -460,11 +144,10 @@ for (const source of SOURCES) {
     // Cascade-aware (DEC-989 wave-119 amendment): every top-level rule is a
     // candidate, checked against its EFFECTIVE (cascade-merged) body rather
     // than its raw one; a phone-scoped rule is checked exactly as before.
-    const isCandidate = rule.isPhoneScoped || rule.isTopLevel;
-    const effectiveRule: Rule =
-      rule.isTopLevel && !rule.isPhoneScoped ? { ...rule, body: effectiveBodyFor(rule, rules) } : rule;
+    const isCandidate = isCandidateRule(rule);
+    const effectiveRule = effectiveRuleFor(rule, rules);
 
-    const hits = isCandidate ? runChecks(effectiveRule, rules) : [];
+    const hits = isCandidate ? runChecks(effectiveRule, rules, CONTENT_BUDGET_PX) : [];
 
     if (rule.isExempt) {
       if (hits.length === 0) {
@@ -478,32 +161,9 @@ for (const source of SOURCES) {
 }
 
 // --- cross-bundle receipt tripwire (DEC-976) ---------------------------
-// An `overflow-exempt:`/`tap-floor-exempt:` receipt inside a `src/**` sheet
-// (an SSR surface) may not cite a path beginning `app/src/` (the SPA admin
-// bundle) -- the SSR surface never loads that bundle, so such a citation
-// names a rule the page in front of the user never runs. The SSR carrier
-// every `src/**` container exemption should name instead is
-// src/views/theme.ts:347-366 (the base .chq-btn/input rule) plus :625-627
-// (the phone 44px floor) -- all three legs of DESIGN-RULINGS.md:189.
 // One-sided ratchet, seeded at 0 (verified 0 on main today): the five
 // existing `app/src/` mentions inside `src/` are prose parity notes, none
 // sitting inside an exempt-comment receipt.
-function findCrossBundleReceiptCitations(cssText: string): string[] {
-  const out: string[] = [];
-  const re = /(?:overflow-exempt|tap-floor-exempt):\s*([^*]*?)\*\//g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(cssText)) !== null) {
-    const citation = (m[1] ?? '').trim();
-    if (/app\/src\//.test(citation)) out.push(citation);
-  }
-  return out;
-}
-
-interface CrossBundleOffender {
-  file: string;
-  citation: string;
-}
-
 const CROSS_BUNDLE_OFFENDERS: CrossBundleOffender[] = [];
 for (const source of SOURCES) {
   if (!source.label.startsWith('src/')) continue; // only SSR sheets, never the app/src SPA bundle itself
@@ -678,9 +338,9 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
     expect(checkNowrap('white-space: nowrap;')).not.toEqual([]);
     expect(checkNowrap('white-space: nowrap; overflow: hidden; text-overflow: ellipsis;')).toEqual([]);
     expect(
-      checkGridTemplateColumns('grid-template-columns: 550px 190px; gap: 20px;'),
+      checkGridTemplateColumns('grid-template-columns: 550px 190px; gap: 20px;', CONTENT_BUDGET_PX),
     ).not.toEqual([]);
-    expect(checkGridTemplateColumns('grid-template-columns: 1fr 1fr; gap: 20px;')).toEqual([]);
+    expect(checkGridTemplateColumns('grid-template-columns: 1fr 1fr; gap: 20px;', CONTENT_BUDGET_PX)).toEqual([]);
   });
 
   // v12m wave 8: the previous canary (.chq-speakers-grid min-width in
@@ -706,7 +366,7 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
     expect(rules).toHaveLength(1);
     const rule = rules[0]!;
     expect(rule.isTopLevel).toBe(true);
-    expect(runChecks(rule, rules)).not.toEqual([]);
+    expect(runChecks(rule, rules, CONTENT_BUDGET_PX)).not.toEqual([]);
   });
 
   it('no CSS-in-TS selector-position interpolation is left unresolved (loud, never a silent "." drop)', () => {
@@ -736,10 +396,9 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
         const rules = extractRules(css, spans);
         const offenders: Offender[] = [];
         for (const rule of rules) {
-          const isCandidate = rule.isPhoneScoped || rule.isTopLevel;
-          const effectiveRule: Rule =
-            rule.isTopLevel && !rule.isPhoneScoped ? { ...rule, body: effectiveBodyFor(rule, rules) } : rule;
-          const hits = isCandidate ? runChecks(effectiveRule, rules) : [];
+          const isCandidate = isCandidateRule(rule);
+          const effectiveRule = effectiveRuleFor(rule, rules);
+          const hits = isCandidate ? runChecks(effectiveRule, rules, CONTENT_BUDGET_PX) : [];
           if (!rule.isExempt && hits.length > 0) offenders.push({ file: 'fixture.css', selector: rule.selector, reasons: hits });
         }
         return offenders;
