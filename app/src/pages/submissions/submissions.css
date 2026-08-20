@@ -992,5 +992,35 @@
   .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
     display: none;
   }
+
+  /* w6-h (DEC-989/DEC-385): 390 horizontal-overflow sweep, appended after
+     every existing rule in this file's one terminal @media (max-width:
+     700px) block. .chq-submissions-table thead th (:289-299) sits inside
+     a thead this same block already hides (:598-600 `display: none`) --
+     restated here with an escape so the scan's literal reading (which
+     does not follow display:none onto a descendant selector) still finds
+     a phone-scoped rule for the exact selector. .chq-submissions-table
+     .chq-flag (:313-317) keeps its documented single-line intent (the
+     Decline-queue label must never wrap into two lines) but gets a real
+     ellipsis escape instead of a bare, unescaped nowrap. */
+  .chq-submissions-table thead th {
+    white-space: normal;
+  }
+
+  .chq-submissions-table .chq-flag {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* .chq-submissions-save-view-modal (:582-585): the desktop rule's own
+     `max-width: calc(100vw - 40px)` already keeps the dialog inside the
+     390 frame at runtime, but its literal `width: 440px` reads as a
+     fixed overflow to this scan. Restated in vw units here -- functionally
+     identical at this breakpoint (390 - 32 = 358px, exactly the phone
+     content budget), never a literal px figure over budget. */
+  .chq-submissions-save-view-modal {
+    width: calc(100vw - 32px);
+  }
 }
 

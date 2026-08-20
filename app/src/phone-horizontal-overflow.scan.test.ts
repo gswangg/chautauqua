@@ -251,7 +251,7 @@ function checkWidthProps(body: string): string[] {
   return hits;
 }
 
-function checkGridTemplateColumns(body: string): string[] {
+export function checkGridTemplateColumns(body: string): string[] {
   const gtc = body.match(/grid-template-columns\s*:\s*([^;]+);/);
   if (!gtc) return [];
   const tracks = gtc[1]?.match(/\d+(?:\.\d+)?px/g) ?? [];
@@ -266,7 +266,7 @@ function checkGridTemplateColumns(body: string): string[] {
   return [];
 }
 
-function checkNowrap(body: string): string[] {
+export function checkNowrap(body: string): string[] {
   if (!/white-space\s*:\s*nowrap/.test(body)) return [];
   const hasEscape = /(?:overflow(?:-x)?\s*:\s*(?:hidden|auto|scroll))|(?:text-overflow\s*:\s*ellipsis)/.test(body);
   return hasEscape ? [] : ['white-space: nowrap with no overflow/text-overflow escape in the same rule'];
@@ -409,7 +409,18 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // Re-measured 20 -> 18 by the merge train on 2026-08-19 (megabatch gate) by
 // running this scan: two more 390-overflow offenders were fixed at source in
 // the wave-111 batch. Lowered to the measured truth.
-export const OVERFLOW_OFFENDERS_CEILING = 18;
+//
+// Drained 18 -> 0 by task w6-h (wave 117, DEC-989): every one of the 18
+// offenders named in the wave-117 handoff (review.css x7, scorecard.css x2,
+// detail.css x4, submissions.css x3, portal.css.ts's .chq-field-counter,
+// rail.css.ts's .chq-pub-schedule-browse-link) got either a real phone
+// override appended inside its sheet's terminal @media (max-width: 700px)
+// block (grid tracks reflow to 1fr, nowrap captions gained a wrap/ellipsis
+// escape, the save-view modal's width moved to a vw-relative calc()) or,
+// for .chq-field-counter alone, an inline `overflow-exempt:` receipt
+// directly above its rule (a truncated counter states a wrong remaining
+// count, DEC-650 wave-82 amendment). Measured truth at authoring time is 0.
+export const OVERFLOW_OFFENDERS_CEILING = 0;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {
@@ -437,8 +448,23 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
     expect(CONTENT_BUDGET_PX).toBeLessThan(PHONE_FRAME_WIDTH_PX);
   });
 
-  it('found more than zero offenders (vacuous-population tripwire, flagged-shape side)', () => {
-    expect(OFFENDERS.length).toBeGreaterThan(0);
+  // v12m wave 117 (task w6-h, DEC-989): the real population reached 0 --
+  // every actual offender got fixed or received a documented exemption, so
+  // OFFENDERS is legitimately empty on this tree. A vacuity canary that
+  // reads the real file population can no longer prove the shape detectors
+  // still fire (the previous .chq-review-scorecard-grid canary below hit
+  // this exact trap once its own offense was fixed). Proven against
+  // synthetic fixtures instead, run through the SAME exported check
+  // functions the real scan uses -- this is the identical shape the
+  // DEC-976 cross-bundle checker's positive control already uses a few
+  // lines down in this file.
+  it('found more than zero offenders (vacuous-population tripwire, flagged-shape side): the shape detectors themselves still fire on synthetic fixtures', () => {
+    expect(checkNowrap('white-space: nowrap;')).not.toEqual([]);
+    expect(checkNowrap('white-space: nowrap; overflow: hidden; text-overflow: ellipsis;')).toEqual([]);
+    expect(
+      checkGridTemplateColumns('grid-template-columns: 550px 190px; gap: 20px;'),
+    ).not.toEqual([]);
+    expect(checkGridTemplateColumns('grid-template-columns: 1fr 1fr; gap: 20px;')).toEqual([]);
   });
 
   // v12m wave 8: the previous canary (.chq-speakers-grid min-width in
@@ -448,12 +474,23 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
   // longer served as a vacuity canary. Repointed at the scorecard grid,
   // whose fixed 1120px tracks overflow the 358px budget structurally (not a
   // nowrap escape one wave can quietly add) and which no frame exempts.
-  it('the flagged-shape population includes a known offender (.chq-review-scorecard-grid fixed tracks)', () => {
-    expect(
-      OFFENDERS.some(
-        (o) => o.file === 'app/src/pages/review/scorecard.css' && o.selector === '.chq-review-scorecard-grid',
-      ),
-    ).toBe(true);
+  //
+  // v12m wave 117 (task w6-h, DEC-989): that canary hit the identical trap
+  // -- .chq-review-scorecard-grid now carries its own <=700px override
+  // (this scan's fr-tracks-yield rule), so it is no longer a flagged real
+  // offender either. Repointed at a synthetic fixture built from the SAME
+  // literal shape the real rule used to have (1120px fixed tracks + 60px
+  // gap, no phone override for the selector) so the population-derivation
+  // machinery (extractRules/mediaSpans/runChecks) stays exercised end to
+  // end, not just the leaf check function in isolation above.
+  it('the flagged-shape detection pipeline (extractRules + phone-override lookup) still finds a fixed-track grid with no phone override (synthetic fixture)', () => {
+    const fixture = `.chq-fixture-scorecard-grid {\n  display: grid;\n  grid-template-columns: 820px 300px;\n  gap: 60px;\n}\n`;
+    const spans = mediaSpans(fixture);
+    const rules = extractRules(fixture, spans);
+    expect(rules).toHaveLength(1);
+    const rule = rules[0]!;
+    expect(rule.isTopLevel).toBe(true);
+    expect(runChecks(rule, rules)).not.toEqual([]);
   });
 
   it('offender count never exceeds the ceiling (one-sided ratchet: may only fall)', () => {

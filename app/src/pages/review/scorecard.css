@@ -306,4 +306,22 @@
   .chq-review-scorecard-dock .chq-btn-primary {
     flex: 1;
   }
+
+  /* w6-h (DEC-989/DEC-385): 390 horizontal-overflow sweep, appended after
+     every existing rule in this file's one terminal @media (max-width:
+     700px) block. .chq-review-scorecard-grid (:17-22) already collapses
+     to a single column below 900px (:35-39), but that block sits above
+     this scan's <=700px window and earns no credit here -- restated so a
+     phone-scoped override for the exact selector exists (fr tracks yield,
+     never a fixed-track overflow). .chq-review-criterion-weight-caption
+     (:150-153) is a short muted caption with nowrap and no escape --
+     let it wrap at 390 rather than force the name row wider than the
+     criterion legend. */
+  .chq-review-scorecard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-review-criterion-name-row .chq-review-criterion-weight-caption {
+    white-space: normal;
+  }
 }

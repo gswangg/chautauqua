@@ -518,5 +518,14 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       display: flex;
       align-items: center;
     }
+
+    /* w6-h (DEC-989/DEC-385): 390 horizontal-overflow sweep, appended
+       after every existing rule in this file's one terminal @media
+       (max-width: 700px) block. .chq-pub-schedule-browse-link (:277) is
+       a short "Browse full schedule" link, nowrap with no escape -- let
+       it wrap at 390 rather than push past the rail's content width. */
+    .chq-pub-schedule-browse-link {
+      white-space: normal;
+    }
   }
 `;

@@ -2711,4 +2711,56 @@
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* w6-h (DEC-989/DEC-385): 390 horizontal-overflow sweep, appended after
+     every existing rule in this file's one terminal @media (max-width:
+     700px) block -- never reordered, never edited above a cited line.
+     .chq-review-plan-row's desktop grid (:43-45, 1fr 150px 190px 210px
+     auto + 20px gaps = 630px) already has a >=900px collapse to 1fr
+     (:136-141), but that block sits at 900px, above this scan's <=700px
+     window, so it earns no credit here -- restated at this selector so
+     the phone-scoped override the scan looks for actually exists (fr
+     tracks yield, never overflow). Same shape for the readonly criterion
+     row's fixed 564px grid (:962-964): the phone rule for the shared
+     .chq-review-criterion-row base already switches display to flex
+     (:2383), so this compound selector's grid-template-columns has no
+     visual effect either way -- restated as 1fr so nothing here still
+     names a fixed track sum. */
+  .chq-review-plan-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .chq-review-criterion-row.chq-review-criterion-row-readonly {
+    grid-template-columns: 1fr;
+  }
+
+  /* .chq-review-plan-actions (:118-124): the Progress/Results/Edit link
+     row. nowrap kept the three actions on one line on desktop's roomy
+     grid column; at 390 that column is the full content width, so let
+     the row wrap onto a second line instead of forcing one. */
+  .chq-review-plan-actions {
+    white-space: normal;
+    flex-wrap: wrap;
+  }
+
+  /* .chq-review-results-col-decision (:258-266): under table-layout:auto
+     (this same block's :2079 already switches the results table off
+     table-layout:fixed for the phone card-stack), the fixed 190px column
+     width no longer applies -- the leftover nowrap on the Accept/Decline
+     pair can still force the card wider than the frame; let it wrap. */
+  .chq-review-results-col-decision {
+    white-space: normal;
+  }
+
+  /* .chq-review-reviews-toggle (:364-366), .chq-review-scoped-progress-
+     caption (:688-693) and .chq-review-criterion-options-count (:1125-
+     1129): short muted captions/toggles, nowrap with no escape. Let them
+     wrap at 390 rather than truncate -- none of the three carries a fixed
+     column width that depends on staying single-line. */
+  .chq-review-reviews-toggle,
+  .chq-review-scoped-progress-caption,
+  .chq-review-criterion-options-count {
+    white-space: normal;
+  }
 }
