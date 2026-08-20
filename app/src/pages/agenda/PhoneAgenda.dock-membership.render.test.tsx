@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import type { ComponentProps } from 'react';
 import { PhoneAgenda } from './PhoneAgenda';
 import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
-import { DEC_576 } from '../../../../src/decisions'; // compile-checked: this file pins DEC_576's wave-114 amendment
+import { DEC_576, DEC_380 } from '../../../../src/decisions'; // compile-checked: DEC_576 pins wave-114, DEC_380 pins wave-116 (this file also owns the wave-116 amendment closing the dock-vs-Breaks question)
 
 afterEach(() => {
   cleanup();
@@ -31,6 +31,12 @@ afterEach(() => {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
+
+// Module-scope so both the DEC-576 "Publish schedule stays reachable" block
+// and the DEC-380 "Breaks stays reachable, both floor at 44px" block below
+// can read them without a second, drifting readFileSync pair.
+const agendaSource = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'Agenda.tsx'), 'utf-8');
+const agendaCss = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'agenda', 'agenda.css'), 'utf-8');
 
 const ROOMS: AgendaRoom[] = [{ id: 'r1', name: 'Room A' }];
 const DAY = '2026-08-15';
@@ -160,8 +166,6 @@ describe('DEC-576 wave-114: Publish schedule stays reachable on phone -- "not in
   // display:none-gates it -- directly against the source both live in,
   // the same verification method app/src/frame-citation.scan.test.ts and
   // app/src/tautological-assertion.scan.test.ts already use for this repo.
-  const agendaSource = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'Agenda.tsx'), 'utf-8');
-  const agendaCss = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'agenda', 'agenda.css'), 'utf-8');
 
   it('Agenda.tsx renders "Publish schedule" as chq-btn-primary in the head action row, unconditionally (no isPhone/!isPhone gate)', () => {
     const match = agendaSource.match(
@@ -188,5 +192,46 @@ describe('DEC-576 wave-114: Publish schedule stays reachable on phone -- "not in
     expect(phoneBlock).toMatch(/\.chq-agenda-head-actions \.chq-btn-secondary\s*\{\s*display:\s*none;/);
     expect(phoneBlock).not.toMatch(/\.chq-agenda-head-actions[^{]*\.chq-btn-primary[^{]*\{[^}]*display:\s*none/);
     expect(phoneBlock).not.toMatch(/\.chq-btn-primary[^{]*\{[^}]*display:\s*none/);
+  });
+});
+
+describe('DEC-380 wave-116: agenda 390 open design question is RULED -- dock stays the frame\'s two controls, Breaks and Publish schedule stay in the head row at the 44px floor', () => {
+  it('the DEC_380 constant (src/decisions.ts, compile-checked) states the ruling this file pins', () => {
+    expect(DEC_380).toMatch(/the dock stays exactly Unscheduled \+ Auto-schedule/);
+    expect(DEC_380).toMatch(/Publish schedule and Breaks live in the head's full-width action row/);
+  });
+
+  it('the dock has no control whose accessible name or text matches /breaks/i either -- same population as the /publish/i check above', () => {
+    const unscheduled = [unscheduledSession('u1', 'SES-9', 'Unscheduled Talk One')];
+    const { container } = render(<PhoneAgenda {...baseProps({ unscheduled })} />);
+    const dock = container.querySelector('.chq-phone-footer-actions');
+    expect(dock).not.toBeNull();
+
+    const controls = within(dock as HTMLElement).getAllByRole('button');
+    expect(controls.every((control) => !/breaks/i.test(control.textContent ?? ''))).toBe(true);
+    expect(within(dock as HTMLElement).queryByText(/breaks/i)).not.toBeInTheDocument();
+  });
+
+  it('Agenda.tsx renders "Breaks ›" inside .chq-agenda-head-actions, the same head action row Publish schedule lives in', () => {
+    const match = agendaSource.match(
+      /<div className="chq-agenda-head-actions">[\s\S]*?className="chq-link-button chq-section-action"[\s\S]*?Breaks ›[\s\S]*?<\/button>[\s\S]*?Publish schedule/,
+    );
+    expect(match).not.toBeNull();
+  });
+
+  it('the phone block floors BOTH head-action-row controls at 44px: the shared .chq-btn rule floors Publish schedule, a dedicated .chq-link-button rule floors Breaks', () => {
+    const phoneBlockStart = agendaCss.indexOf('@media (max-width: 700px)');
+    const phoneBlock = agendaCss.slice(phoneBlockStart).replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // app/src/pages/agenda/agenda.css:1508-1516 -- `.chq-agenda-head-actions
+    // .chq-btn,` heads a comma list floored at `min-height: 44px;`. Publish
+    // schedule renders `className="chq-btn chq-btn-primary"`, so it matches.
+    expect(phoneBlock).toMatch(/\.chq-agenda-head-actions \.chq-btn,[\s\S]*?min-height:\s*44px;/);
+
+    // Breaks renders `className="chq-link-button chq-section-action"` --
+    // NOT `.chq-btn` -- so the rule above never reaches it. A dedicated
+    // rule, appended (not folded into the .chq-btn list, DEC-385: append
+    // only, never edit in place above a cited line), floors it separately.
+    expect(phoneBlock).toMatch(/\.chq-agenda-head-actions \.chq-link-button\s*\{[^}]*min-height:\s*44px;/);
   });
 });

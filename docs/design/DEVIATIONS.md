@@ -131,6 +131,27 @@ survives contact with state:
   and the tertiary link (`Forgot your password?`) is centred beneath it at
   the 44px floor. See `docs/design/audit/account-docs-v12.md` for the
   resolved finding.
+- **Agenda 390 phone dock stays exactly the two frame controls; Publish
+  schedule and Breaks live in the head's action row (DEC-380 wave-116
+  amendment)** — `docs/design/Chautauqua Agenda.dc.html`'s 390 column
+  draws its dock as exactly two controls, `Unscheduled <span
+  style="font-size:11px; font-weight:800">6</span></span>` and
+  `Auto-schedule` (:199-200), and nothing else. `docs/mobile-campaign.md`
+  carried this as an open design question for several waves: "Whether
+  [Publish schedule] belongs in the phone dock instead is a frame
+  deviation needing a proper ruling later — the frame's dock draws only
+  Unscheduled + Auto-schedule." RULED, closing the question: the dock is
+  the frame's, unchanged — exactly the two drawn controls, no third. This
+  is DEC-919's "re-line, never remove" read the other way around — a
+  frame is the geometry authority, not a capability manifest, so its
+  silence about Publish schedule and Breaks removes geometry, not
+  capability, and neither control has any other home on the phone
+  surface. Both stay in the head's own full-width action row at the 44px
+  floor: `app/src/pages/agenda/agenda.css:1508-1516` floors every
+  `.chq-btn` there (Publish schedule), and the dedicated
+  `.chq-agenda-head-actions .chq-link-button` rule appended at the end of
+  the same phone block floors Breaks, which the shared `.chq-btn` rule
+  does not reach.
 
 ## 4. Voice
 
