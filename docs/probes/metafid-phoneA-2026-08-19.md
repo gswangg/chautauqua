@@ -82,6 +82,13 @@
   CLOSED (wave 118, "Your data drops masked tokens/Revoke/New token in read
   mode" clause only — the frame-count and title/back-link clauses are
   unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx`{creating ? 'Creating…' : 'New token'}`
+  CLOSED (re-verified wave-140/w15-ff, w14-m/DEC-728 wave-125, same
+  evidence as round-2 N3): the title/back-link clause is now also closed —
+  `app/src/pages/Settings.tsx` renders `<button ... className="chq-btn
+  chq-btn-tertiary chq-settings-back">` BEFORE `<h1 className="chq-page-title
+  chq-settings-drill-title">` in source order (back above H1, per
+  DESIGN-RULINGS:247). The frame-count clause ("five of nine frames never
+  rendering as drawn") was NOT re-measured this wave and stays open.
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;
