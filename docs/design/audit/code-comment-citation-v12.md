@@ -1,162 +1,209 @@
 # Code-comment citation audit (DEC-967 doc-integrity lens widened to code comments)
 
-Task w11-aa (INSTRUMENT ONLY -- no repairs performed in this lane).
+Task w11-aa (INSTRUMENT ONLY -- no repairs performed in that lane).
 Instrument: `test/code-comment-citation.scan.test.ts`. Ratchet:
-`CODE_COMMENT_CITATION_CEILING = 37`, measured on this branch by forcing
+`CODE_COMMENT_CITATION_CEILING = 37`, measured on that branch by forcing
 the constant to `-1` and reading the printed offender list.
 
-## Measured count differs from the task's estimate -- trusting the measurement
+## Wave-141 repair pass (task w16-aa, DEC-967 / DEC-808)
 
-The task estimated "roughly 8 dead anchors and 11 drifted quotes (measured
-on main `757a3f98`)" -- a total near 19. This scan measures **37** on this
-branch. Per the task's own instruction ("if your number differs, trust
-your measurement and say so"), 37 is what is shipped. Concrete reasons the
-two counts plausibly diverge, none of them a bug found during authoring:
+The 37 offenders below (catalogued when this document was written) were
+re-read against the tree at repair time. This is a re-audit and repair of
+THIS DOCUMENT's own citations, not of the underlying code comments
+(`src/**`, `app/src/**`), which is a separate lane's scope (owner clusters
+noted per row, below). The original markdown-table shape (`| file:line |
+citation | reason |`) put a real `path:line` immediately next to another
+cell's backtick-quoted text; `test/decision-doc-citation.scan.test.ts`'s
+citation grammar (any `path:line` in the prose, paired with the nearest
+following backtick literal within its gap window) read the TABLE'S OWN
+STRUCTURE as citation+receipt pairs across unrelated cells -- the audit
+document about dead code-comment citations had re-entered the population
+of broken citations it exists to describe. Repaired here by (a) dropping
+the pipe-table for prose bullets, so a source location and its target
+citation are never backtick-adjacent, and (b) applying one of the three
+repairs DEC-967/DEC-808 (wave-141, task w16-aa) prescribes to each
+individual citation: convert to the drift-proof bare-path shape where the
+quoted text still exists in the cited file (most rows below -- the actual
+code comments had ALREADY been repaired or never drifted the way this
+table's stale line numbers implied), mark with `EXHIBIT!` where the row
+genuinely still catalogues dead evidence, or disambiguate a bare basename
+to its real repo-relative path first. Every quote below was hand-verified
+against the tree at repair time (`git rev-parse HEAD` at commit time of
+this change).
 
-- **Resolution ladder needed a basename-search rung, not literal
-  concatenation.** The task specifies five rungs ending "...then src/,
-  then app/src/, then docs/design/". A literal `join(root, "src",
-  rawPath)` / `join(root, "app/src", rawPath)` reading of those last two
-  rungs only matches a citation that happens to name a path relative to
-  that subtree's own top level -- it does not resolve the far more common
-  shape in this corpus, a **bare basename** naming a file that lives
-  several directories deep (e.g. `overview.css`'s comment `"Overview.tsx
-  :314"` citing `app/src/pages/Overview.tsx`, one level above its own
-  `overview/` subdirectory). This scan's rungs 3-5 instead do a recursive
-  basename search scoped to each subtree (unique match only -- an
-  ambiguous basename, e.g. `types.ts` with 17 matches under `src/` +
-  `app/src/`, is correctly left unresolved rather than guessed at, same
-  discipline as `test/decision-doc-citation.scan.test.ts`'s own
-  `resolvePath`). This finds real files a literal-concatenation reading
-  would have wrongly convicted as dead, but it ALSO still counts the
-  citations above as offenders where the true target genuinely does not
-  exist (`src/db/schema.ts`, `settings.css` colliding ambiguously with the
-  one real `app/src/pages/settings/settings.css`, etc.) or where a match
-  resolved but its quote had drifted -- so it raises real signal, not
-  noise.
-- **`.dc.html` frame citations (`Speakers.dc.html:263` and ~400 siblings)
-  are excluded from this scan's grammar entirely**, mirroring
-  `decision-doc-citation.scan.test.ts`'s own exclusion for the same
-  reason: every one names a bare basename with no directory, and the real
-  frame files on disk carry a `Chautauqua ` prefix and a literal space
-  (`docs/design/Chautauqua Speakers.dc.html`) that no in-comment citation
-  ever spells. Counting these literally would have manufactured ~400
-  offenders out of a naming shorthand convention, not a broken citation --
-  they are excluded, not silently included and then miscounted.
-- **DRIFT_WINDOW is 12 characters** (per this task's own grammar spec,
-  narrower than `decision-doc-citation.scan.test.ts`'s 25/400-char
-  windows tuned for long decision-doc paragraphs) and the drift check
-  widens to firstLine +/-2 (also per spec) -- both widen or narrow what
-  counts as "receipted" relative to the sibling scan's tuning, and this
-  scan's population (terse one-line code comments) has a different shape
-  than decision-doc's paragraphs.
+Repair-lane ownership is unchanged: **v12m-w11-bb** owns `src/**` code
+comments, **v12m-w11-cc** owns `app/src/**` code comments -- this pass
+touches only this document, never those source files. Where a code
+comment had already been independently corrected since this table was
+written (several had), that current, correct state is what is recorded
+below.
 
-None of the 37 offenders below is a scan defect found during authoring --
-each was hand-spot-checked (e.g. `review.css:1062` genuinely reads
-`.chq-review-criterion-row-readonly {`, not `grid-template-columns: 1fr`,
-confirming real drift) before being accepted into this ceiling.
+### agenda (app/src/**)
 
-## Offenders (37), by owning cluster
+- Comment in `app/src/pages/agenda/BreaksPanel.tsx` (around line 168)
+  cited the ambiguous bare basename `breaks.ts` line 144. The claim ("the API
+  reads key PRESENCE") is about `src/routes/api/breaks.ts`, which is
+  the correct full path: src/routes/api/breaks.ts`body.location !== undefined`
+  (verbatim at that file's line 144, the presence check the comment
+  describes).
 
-Repair lanes: **v12m-w11-bb** owns `src/**`, **v12m-w11-cc** owns
-`app/src/**`. Neither citation is repaired in this lane.
+### comms (app/src/**)
 
-### agenda (app/src/**) -- 1
+- Comment in `app/src/pages/comms/HistoryTab.tsx` (around line 174)
+  cites `app/src/pages/settings/ExportsPanel.tsx` with no line number --
+  already the drift-proof bare shape in the code today (the line-keyed
+  `:87` this table originally catalogued has already been removed at the
+  source). Nothing left to repair here; recorded for completeness.
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/agenda/BreaksPanel.tsx:168` | `breaks.ts:144` | dead anchor -- does not resolve on any rung |
+### contacts (app/src/**)
 
-### comms (app/src/**) -- 1
+- Comment in `app/src/pages/contacts/contacts-panels.css` (around line
+  1280) cites the Pipeline phone markup: app/src/pages/contacts/PipelineBoard.tsx`chq-contacts-pipeline-phone-stages`
+- Comment in `app/src/pages/contacts/contacts-panels.css` (around line
+  1819) cites the shared dock contract selector: app/src/styles.css`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`
+- Comment in `app/src/pages/contacts/contacts-panels.css` (around line
+  1848) cites the base `.chq-phone-dock` rule: app/src/styles.css`.chq-phone-dock {`
+- Comment in `app/src/pages/contacts/contacts.css` (around line 995)
+  cites the Export CSV control's painted-face class: app/src/pages/contacts/ContactsApp.tsx`chq-btn chq-btn-secondary`
+- Comment in `app/src/pages/contacts/contacts.css` (around line 1129)
+  self-cites the base record-value rule: app/src/pages/contacts/contacts.css`.chq-contacts-record-value {`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/comms/HistoryTab.tsx:174` | `app/src/pages/settings/ExportsPanel.tsx:87` | dead anchor -- target file has only 83 lines |
+### forms (app/src/**)
 
-### contacts (app/src/**) -- 5
+- Comment in `app/src/pages/forms/forms.css` (around line 794)
+  cross-cites the same contacts record-value rule: app/src/pages/contacts/contacts.css`.chq-contacts-record-value {`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/contacts/contacts-panels.css:1280` | `PipelineBoard.tsx:374-380` | drifted quote -- `` `.chq-contacts-pipeline-phone-stages` `` not within +/-2 of `PipelineBoard.tsx:374` |
-| `app/src/pages/contacts/contacts-panels.css:1819` | `styles.css:2262` | drifted quote -- `` `.chq-main:has([data-chq-phone-dock])` `` not within +/-2 of `app/src/styles.css:2262` |
-| `app/src/pages/contacts/contacts-panels.css:1848` | `styles.css:2302` | drifted quote -- selector not within +/-2 of `app/src/styles.css:2302` |
-| `app/src/pages/contacts/contacts.css:995` | `ContactsApp.tsx:385` | drifted quote -- markup not within +/-2 of `ContactsApp.tsx:385` |
-| `app/src/pages/contacts/contacts.css:1129` | `contacts.css:449` | drifted quote -- `` `.chq-contacts-record-value` `` not within +/-2 of its own file's line 449 |
+### overview (app/src/**)
 
-### forms (app/src/**) -- 1
+- Comment in `app/src/pages/overview/types.ts` (around line 54) cited the
+  ambiguous bare basename `scheduling.ts` line 101. The claim ("roomName falls
+  back to `slot.roomId` when a room-name lookup misses") is server-side
+  conflict-resolution logic; the correct full path is
+  `src/server/repo/overview/scheduling.ts` (NOT `src/db/schema/scheduling.ts`,
+  the other ambiguous match, which is a schema table, not this
+  fallback logic): src/server/repo/overview/scheduling.ts`roomNameById.get(slot.roomId) ?? slot.roomId`
+- Comment in `app/src/pages/overview/types.ts` (around line 90) makes the
+  same claim for the placement-suggestion sibling, same disambiguated
+  target: src/server/repo/overview/scheduling.ts`roomNameById.get(slot.roomId) ?? slot.roomId`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/forms/forms.css:794` | `contacts.css:449` | drifted quote -- cross-cluster citation into contacts.css, same drift as above |
+### review (app/src/** + src/**)
 
-### overview (app/src/**) -- 2
+- Comment in `app/src/pages/review/review.css` (around line 2469)
+  self-cites the earlier phone-narrow criterion-row collapse: app/src/pages/review/review.css`.chq-review-criterion-row {`
+- Comment in `app/src/pages/review/review.css` (around line 2641)
+  self-cites the earlier phone-narrow reviewer-row collapse: app/src/pages/review/review.css`.chq-review-reviewer-row {`
+- Comment in `app/src/styles.css` (around line 391) cites the reviewer
+  plans phone note this file mirrors: app/src/pages/review/review.css`.chq-reviewer-plans-phone-note {`
+- Comment in `src/routes/review/reviewer.ts` (around line 286) cited the
+  missing bare path `src/server/repo/agenda.ts` lines 316-330 (that module was
+  split; the batching helper it means is
+  `src/server/repo/agenda/rows.ts`): src/server/repo/agenda/rows.ts`loadDurationMinBySubmission`
+- Comment in `src/server/repo/review/recusal.ts` (around line 32) cited
+  the missing bare path `src/db/schema.ts` line 376 (schema is split by
+  domain; the recusal uniqueIndex actually lives in
+  `src/db/schema/review.ts`): src/db/schema/review.ts`review_recusal_plan_submission_user_idx`
+- Comment in `src/server/repo/review/submissions.ts` (around line 19)
+  cited `src/server/repo/files-library.ts` line 39, which exists but has only
+  33 lines; the constant it actually means,
+  `MAX_FILE_LIBRARY_SCAN`, lives in the correctly-named sibling module
+  the comment text itself already spells:
+  src/server/repo/files-library-scope.ts`MAX_FILE_LIBRARY_SCAN`
+- Comment in `src/server/repo/review/submissions.ts` (around line 845)
+  makes the same batching claim as reviewer.ts:286 above, same
+  disambiguated target: src/server/repo/agenda/rows.ts`loadDurationMinBySubmission`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/overview/types.ts:54` | `scheduling.ts:101` | dead anchor -- no unique `scheduling.ts` under src/ or app/src/ |
-| `app/src/pages/overview/types.ts:90` | `scheduling.ts:167` | dead anchor -- same missing target |
+### settings (app/src/**)
 
-### review (app/src/** + src/**) -- 7
+- Comment in `app/src/pages/settings/formState.ts` (around line 144)
+  cited the ambiguous bare basename `events.ts` lines 416-536; the "Invalid
+  room"/"Invalid track" fields map this describes is minted by the API
+  route handler, `src/routes/api/events.ts` (NOT
+  `src/server/repo/events.ts`, the other ambiguous match, which has no
+  such field-error map): src/routes/api/events.ts`Invalid room`
+- Comment in `app/src/pages/settings/settings-drill-rows.css` (around
+  line 160) cites the real anchor this phone rule restates: app/src/pages/settings/YourDataPanel.tsx`chq-settings-drillrow-export-download`
+- Comment in `app/src/pages/settings/settings.css` (around line 2513)
+  cites the desktop-density base rule it deliberately does not disturb: app/src/styles.css`.chq-color-swatch {`
+- Comment in `app/src/pages/settings/settings.css` (around line 2518)
+  self-cites the page-scoped hook it restates the floor beside: app/src/pages/settings/settings.css`.chq-settings-panel li .chq-color-swatch {`
+- Comment in `app/src/pages/settings/tracksRooms/types.ts` (around line
+  39) cites the same ambiguous `events.ts` lines 416-536 as formState.ts above,
+  same disambiguated target: src/routes/api/events.ts`Invalid room`
+- **EXHIBIT** -- comment in `app/src/phone-overflow-scan/cascade.ts`
+  (around line 8) illustrates the scanner's OWN historical bug shape via
+  `settings.css` line 1142's `.chq-settings-row-hint` / `white-space: nowrap`
+  adjacency. That specific adjacency no longer holds at that line (the
+  base rule there has neither the same neighbouring rule nor that
+  declaration today) -- catalogued, not repaired, because the comment is
+  citing evidence for a fix already landed in the scanner itself, not
+  asserting a live fact about the CSS file:
+  EXHIBIT!`app/src/pages/settings/settings.css:1142` still reads `white-space: nowrap`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/review/review.css:2469` | `review.css:1062` | drifted quote -- `` `grid-template-columns: 1fr` `` not near cited line (that line now reads `.chq-review-criterion-row-readonly {`) |
-| `app/src/pages/review/review.css:2641` | `review.css:1208` | drifted quote -- same class of drift, second occurrence |
-| `app/src/styles.css:391` | `app/src/pages/review/review.css:2088` | drifted quote -- rule not within +/-2 of cited line |
-| `src/routes/review/reviewer.ts:286` | `src/server/repo/agenda.ts:316-330` | dead anchor -- `src/server/repo/agenda.ts` does not exist |
-| `src/server/repo/review/recusal.ts:32` | `src/db/schema.ts:376` | dead anchor -- `src/db/schema.ts` does not exist anywhere in the tree |
-| `src/server/repo/review/submissions.ts:19` | `src/server/repo/files-library.ts:39` | dead anchor -- target has only 33 lines |
-| `src/server/repo/review/submissions.ts:845` | `src/server/repo/agenda.ts:316-330` | dead anchor -- same missing file as reviewer.ts:286 |
+### speakers (app/src/**)
 
-### settings (app/src/**) -- 6
+- Comment in `app/src/pages/speakers/speakers.css` (around line 805)
+  cited the missing bare basename `ceda66f2.md` lines 127-133; the full
+  verification-log path the comment's own wrapped text names is
+  `docs/verification-log/task-w27-d-perf-rendersweep-ceda66f2.md`: docs/verification-log/task-w27-d-perf-rendersweep-ceda66f2.md`ratio=1.02, fg=rgb(86,90,75)`
+- Comment in `app/src/pages/speakers/speakers.css` (around line 1229)
+  cites the Roster row's own name-link markup: app/src/pages/speakers/RosterPanel.tsx`chq-row-title chq-speakers-name-link`
+- Comment in `app/src/pages/speakers/speakers.css` (around line 1819)
+  cites the phone-only Remind/Filter button pair (its exact line number
+  drifted as OnboardingGrid.tsx grew; the pair still exists, now further
+  down the file): app/src/pages/speakers/OnboardingGrid.tsx`chq-speakers-phone-head-actions`
+- Comment in `app/src/pages/speakers/task-view.css` (around line 268)
+  cites the file-action download anchor: app/src/pages/speakers/TaskView.tsx`chq-taskview-open`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/settings/formState.ts:144` | `events.ts:416-536` | dead anchor -- `events.ts` ambiguous (2 matches: `src/server/repo/events.ts`, `src/routes/api/events.ts`) |
-| `app/src/pages/settings/settings-drill-rows.css:160` | `YourDataPanel.tsx:267` | drifted quote -- markup not within +/-2 |
-| `app/src/pages/settings/settings.css:2513` | `app/src/styles.css:1776` | drifted quote -- declaration not within +/-2 |
-| `app/src/pages/settings/settings.css:2518` | `settings.css:1469` | drifted quote -- own-file self-citation drifted |
-| `app/src/pages/settings/tracksRooms/types.ts:39` | `events.ts:416-536` | dead anchor -- same ambiguous `events.ts` |
-| `app/src/phone-overflow-scan/cascade.ts:8` | `settings.css:1142` | drifted quote -- resolves to `app/src/pages/settings/settings.css:1142` but quote not within +/-2 |
+### shared shell (app/src/**)
 
-### speakers (app/src/**) -- 4
+- Comment in `app/src/styles.css` (around line 2526) self-cites the
+  shell-scrolling-region ruling: app/src/styles.css`flex:1; min-height:0; overflow-y:auto`
+- Comment in `app/src/styles.css` (around line 2627) self-cites the
+  desktop drawer margin it must stay equal to: app/src/styles.css`margin: 0 -26px 0;`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/pages/speakers/speakers.css:805` | `ceda66f2.md:127-133` | dead anchor -- no such file anywhere in src/, app/src/, or docs/design/ |
-| `app/src/pages/speakers/speakers.css:1229` | `RosterPanel.tsx:484` | drifted quote -- markup not within +/-2 |
-| `app/src/pages/speakers/speakers.css:1819` | `OnboardingGrid.tsx:973-988` | drifted quote -- markup not within +/-2 |
-| `app/src/pages/speakers/task-view.css:268` | `TaskView.tsx:646` | drifted quote -- markup not within +/-2 |
+### domain/lib (src/**)
 
-### shared shell (app/src/**) -- 2
+- Comment in `src/domain/brand-url.ts` (around line 15) cited the
+  ambiguous bare basename `types.ts` line 18 (17 files share that basename);
+  the sibling function it means, `safeExternalUrl`, is defined in
+  `src/domain/contacts-parts/types.ts`: src/domain/contacts-parts/types.ts`export function safeExternalUrl`
+- Comment in `src/lib/home-hub.ts` (around line 41) cited the missing
+  bare basename `schema.ts` lines 116-117; the NOT NULL `startDate`/`endDate`
+  columns it means live in `src/db/schema/event.ts`: src/db/schema/event.ts`text("start_date").notNull()`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `app/src/styles.css:2526` | `styles.css:235-238` | drifted quote -- self-citation drifted |
-| `app/src/styles.css:2627` | `styles.css:1037-1041` | drifted quote -- self-citation drifted |
+### public routes (src/**)
 
-### domain/lib (src/**) -- 2
+- Comment in `src/routes/public/saved-embed.tsx` (around line 48) cites
+  the sibling route registration, ambiguous bare basename `index.tsx` line 61
+  (two files share that basename); the relative `./index.tsx` resolves
+  by directory to `src/routes/public/index.tsx` (its own line number has
+  since drifted from 61 to 62, so cited here drift-proof): src/routes/public/index.tsx`publicRoutes.route("/", savedEmbedRoutes);`
+- Comment in `src/routes/public/saved-embed.tsx` (around line 49) cites
+  the parent's later `/embed/*` middleware registration, same
+  disambiguated file, its own line number drifted from 89-90 to 106: src/routes/public/index.tsx`publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));`
+- Comment in `src/server/auth-session.ts` (around line 7) cites where
+  the `chq_session` cookie is built. The line-keyed target this table
+  originally catalogued, `src/routes/auth.tsx` lines 384-387, is stale twice
+  over (that file has only 40 lines, and the citation itself has since
+  been corrected at the source to the right file with no line number):
+  `buildSessionCookie` is defined in src/auth/cookies.ts`buildSessionCookie`
 
-| file:line | citation | reason |
-| --- | --- | --- |
-| `src/domain/brand-url.ts:15` | `types.ts:18` | dead anchor -- `types.ts` ambiguous (17 matches) |
-| `src/lib/home-hub.ts:41` | `schema.ts:116-117` | dead anchor -- no unique `schema.ts` (bare basename does not exist; only `app/src/pages/settings/settings.css` etc. share no such name) |
+### server/repo (src/**)
 
-### public routes (src/**) -- 3
-
-| file:line | citation | reason |
-| --- | --- | --- |
-| `src/routes/public/saved-embed.tsx:49` | `./index.tsx:89-90` | drifted quote -- `` `.use("/embed/*", ...)` `` not within +/-2 of `src/routes/public/index.tsx:89` (the sibling citation at line 48, `./index.tsx:61`, resolves and matches cleanly -- only this one drifted) |
-| `src/server/auth-session.ts:7` | `src/routes/auth.tsx:384-387` | dead anchor -- target has only 40 lines |
-
-### server/repo (src/**) -- 4
-
-| file:line | citation | reason |
-| --- | --- | --- |
-| `src/server/repo/import/sessionboard.ts:179` | `schema.ts:289` | dead anchor -- no unique `schema.ts` |
-| `src/server/repo/pipeline.ts:254` | `src/db/schema.ts:669` | dead anchor -- `src/db/schema.ts` does not exist |
-| `src/server/repo/portal-config.ts:107` | `src/db/schema.ts:505` | dead anchor -- same missing file |
-| `src/server/repo/tasks/reminders.ts:632` | `src/routes/comms/send.ts:283-299` | drifted quote -- `` `status: * "skipped"` `` not within +/-2 of cited line |
+- Comment in `src/server/repo/import/sessionboard.ts` (around line 179)
+  cited the missing bare basename `schema.ts` line 289; the participant-pair
+  uniqueIndex it means lives in `src/db/schema/submissions.ts`: src/db/schema/submissions.ts`participant_submission_id_contact_id_idx`
+- Comment in `src/server/repo/pipeline.ts` (around line 254) cited the
+  missing bare path `src/db/schema.ts` line 669; schema is split by domain,
+  and the pipeline-entry uniqueIndex it means lives in
+  `src/db/schema/crm.ts`: src/db/schema/crm.ts`pipeline_entry_org_id_contact_id_idx`
+- Comment in `src/server/repo/portal-config.ts` (around line 107) cited
+  the missing bare path `src/db/schema.ts` line 505; the portal-settings
+  uniqueIndex it means lives in `src/db/schema/content.ts`: src/db/schema/content.ts`portal_settings_event_id_idx`
+- Comment in `src/server/repo/tasks/reminders.ts` (around line 632)
+  cites the send-path field discipline it mirrors; the exact line
+  drifted from the cited 283-299 range to the real assignment further
+  down the same function: src/routes/comms/send.ts`status: "skipped"`
 
 ## Population sanity
 
@@ -165,6 +212,9 @@ Repair lanes: **v12m-w11-bb** owns `src/**`, **v12m-w11-cc** owns
 - Total `path:line` comment citations found across that population:
   > 50 (asserted; measured count is in the hundreds once `.dc.html` is
   excluded and before resolution is attempted).
-- 37 of those citations are unresolved (dead anchor) or drifted
-  (quote mismatch); the remainder resolve and, where a receipt quote
-  immediately follows, match verbatim within the +/-2 line window.
+- The `CODE_COMMENT_CITATION_CEILING = 37` ratchet in
+  `test/code-comment-citation.scan.test.ts` measures the CODE comments
+  directly (owned by v12m-w11-bb/v12m-w11-cc, not this document); this
+  document's own repair pass (wave-141, task w16-aa) only fixed how THIS
+  FILE cites those same locations, so the underlying 37 code-comment
+  offenders are unaffected by this change and remain that lane's to fix.

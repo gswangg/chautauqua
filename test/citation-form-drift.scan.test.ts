@@ -367,9 +367,22 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // probe and DEC amendments each cite work in flight), and jj's own drain
 // measured 122 -> 113 against a base that already carried most of them.
 // The two-sided ratchet cannot be satisfied by main's 82 while those docs
-// exist, so 107 is the true integrated figure; the NEXT drain lane lowers
-// it from here, and no lane may raise it again without a re-measurement.
-export const LINE_KEYED_CITATION_CEILING = 107;
+// exist, so 107 was the true integrated figure at that point.
+// Wave-141 (task w16-aa, DEC-967/DEC-808): 107 -> 65. Drained
+// docs/design/audit/code-comment-citation-v12.md, the single file that
+// (per this task's own citation) carried 42 of the 107 offenders (its
+// "Wave-141 repair pass" section converts every one to the drift-proof
+// bare-path shape or an EXHIBIT!-sigilled dead anchor). This is a real
+// LOWERING below main's pre-raise 82, not merely below the erroneous 107
+// -- the commit that raised 82 -> 107 without widening the predicate did
+// so on a lower-only ratchet with no predicate change, which this task's
+// own instructions called out as the exact violation five prior merge
+// trains committed and five prior waves un-did. Re-measured by forcing
+// this constant to -1 and reading the printed offender list; the
+// remaining 65 are all outside this task's scope (src/decisions-data/**,
+// owned by task w16-cc; the other docs/design/audit/*.md files and
+// docs/probes/*.md, untouched by this task's citation).
+export const LINE_KEYED_CITATION_CEILING = 65;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
