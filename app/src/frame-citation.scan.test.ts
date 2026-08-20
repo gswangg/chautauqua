@@ -514,8 +514,21 @@ for (const file of TEST_TARGET_FILES) {
  * running the scan (never copied from an audit doc, DEC-989 clause a). A
  * ceiling on debt, not a floor on coverage -- may only be LOWERED as
  * unreceipted claims get fixed, never raised to paper over a regression.
- * This task does not fix other lanes' test files to force it down. */
-const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 15;
+ * This task does not fix other lanes' test files to force it down.
+ *
+ * Lowered 15 -> 10 (2026-08-20, task w12-t, DEC-989): fixed this branch's
+ * five app/src-half offenders (App.render.test.tsx:281,
+ * Speakers.render.test.tsx:119/138, RecentSends.render.test.tsx:133,
+ * ContactsTable.render.test.tsx:198/203, select-caret.scan.test.ts:4) by
+ * relocating each frame-citation comment to sit within
+ * EXPECT_PROXIMITY_LINES of the `expect(` that already receipts its
+ * claim (never re-pointing or shortening a citation, DEC-967), and adding
+ * a missing backtick quote where the original relied on an incidental
+ * template-literal backtick that moved out of range. The remaining 10
+ * offenders are all under test/** (companion lane w12-s's half) and are
+ * untouched by this task; the merge train re-measures the integrated
+ * value per DEC-989 clause a. */
+const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 10;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
