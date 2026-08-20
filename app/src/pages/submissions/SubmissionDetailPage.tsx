@@ -35,11 +35,12 @@ import {
 // wins -- this page no longer keeps a private, disagreeing copy.
 import { INVITE_STATUS_LABELS } from '../../../../src/domain/invite-status';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
+import { DEC_678, DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
 // AddToEventModal.tsx uses -- never a hand-written list.
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
 
+void DEC_678;
 void DEC_733;
 void DEC_761;
 void DEC_784;
@@ -380,25 +381,99 @@ export function SubmissionDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setLoading(true);
     setError(null);
     apiGet<SubmissionDetail>(`/submissions/${id}`)
-      .then(setDetail)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submission'))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setDetail(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load submission');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   // DEC-596: the organiser reads the same evaluation the reviewer wrote.
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setEvaluationsError(null);
     apiList<SubmissionReviewItem>(`/submissions/${id}/evaluations`)
       .then((res) => {
+        if (cancelled) return;
         setEvaluations(res.items);
         if (res.assigned === undefined) throw new Error('evaluations envelope missing assigned');
         setAssignedReviewers(res.assigned);
       })
-      .catch((err) => setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews'));
+      .catch((err) => {
+        if (!cancelled) setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // DEC-678 (wave-118 amendment): a route-param change is a NEW PAGE -- the
+  // in-page Previous/Next links (below, `to={`/submissions/${listPosition
+  // .nextId}...`}`) navigate to a SIBLING submission on this SAME route, so
+  // React Router keeps this component mounted across the change and every
+  // one of these param-scoped state slots would otherwise survive it,
+  // re-attaching submission A's state to submission B:
+  //   - detail: cleared to null so B's header never prints A's ref/title
+  //     beside B's fetched position while the new detail is in flight.
+  //   - editingTracks/trackSelection: pressing Save after this would
+  //     otherwise write A's track ids onto B.
+  //   - pendingRemoveParticipant: a ConfirmDialog left open would still
+  //     name A's participant, and its confirm would fire against B.
+  //   - expandedReviewKeys: A's open review disclosures are meaningless
+  //     against B's (different) review rows.
+  //   - coPresenterQuery/coPresenterResults: A's in-flight contact search
+  //     text/results have no bearing on B.
+  //   - editTitle/editDescription: the edit-form draft is scoped to A;
+  //     the `?edit=1` prefill effect below re-derives it from B once B's
+  //     detail loads.
+  //   - editFieldErrors and the seven `*FieldErrors` write-path maps
+  //     (statusFieldErrors, tracksFieldErrors, formatFieldErrors,
+  //     audienceLevelFieldErrors, removeFieldErrors,
+  //     makeCoPresenterFieldErrors, visibilityFieldErrors,
+  //     addCoPresenterFieldErrors): A's server refusals must never
+  //     re-attach to B's matching controls.
+  // Left alone: short-lived overlay/busy flags (loading, statusPending,
+  // participantsError, visiblePending, historyLoading/historyEntries/
+  // historyError, restoringId, evaluations/assignedReviewers/
+  // evaluationsError, tracks, form, eventTimeZone, listPosition,
+  // formatPending/formatError, audienceLevelPending/audienceLevelError,
+  // removingParticipantId, makingCoPresenterId, coPresenterRole,
+  // coPresenterSearching, addingContactId) -- each of those is either
+  // already refetched by its own `id`-keyed effect above/below, or is a
+  // page-session flag that is already false/null on any render where the
+  // organiser isn't mid-interaction with it, never carrying a value whose
+  // MEANING is scoped to the old submission's identity.
+  useEffect(() => {
+    setDetail(null);
+    setEditingTracks(false);
+    setTrackSelection([]);
+    setPendingRemoveParticipant(null);
+    setExpandedReviewKeys(new Set());
+    setCoPresenterQuery('');
+    setCoPresenterResults([]);
+    setEditTitle('');
+    setEditDescription('');
+    setEditFieldErrors({});
+    setStatusFieldErrors({});
+    setTracksFieldErrors({});
+    setFormatFieldErrors({});
+    setAudienceLevelFieldErrors({});
+    setRemoveFieldErrors({});
+    setMakeCoPresenterFieldErrors({});
+    setVisibilityFieldErrors({});
+    setAddCoPresenterFieldErrors({});
   }, [id]);
 
   useEffect(() => {
