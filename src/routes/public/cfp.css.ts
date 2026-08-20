@@ -14,14 +14,14 @@
 // exactly the interpolation idiom public.css.ts's PUBLIC_CSS already uses to
 // compose CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_657, DEC_945 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_657, DEC_945, DEC_683, DEC_154 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
 import { BARE_PAGE_CSS } from "../../views/bare-page.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_657;
-void DEC_945;
+void DEC_945; void DEC_683; void DEC_154;
 
 export const CFP_CSS = `
   /* DEC-986 (wave 40 amendment): chrome is never constrained -- the header
@@ -316,6 +316,54 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     [data-chq-cfp-step="all"] .chq-cfp-steps,
     [data-chq-cfp-step="all"] .chq-cfp-step-next,
     [data-chq-cfp-step="all"] .chq-cfp-step-back { display: none; }
+
+    /* DEC-683 (wave 125 amendment): a phone content column has exactly ONE
+       gutter owner. .chq-cfp-body (above) keeps its own 16px left/right --
+       it is the frame's full-bleed header band that pins the edge, and the
+       header already carries its OWN explicit 16px in this same block,
+       independent of <main>'s padding (DEC-986: the header is a SIBLING of
+       <main class="chq-measure">, submit-views.tsx:78, never a descendant
+       of it). So cancelling <main>'s padding here only ever touches this
+       page's reading column, never the header. Scoped with :has() from
+       this page's own sheet rather than a shell edit (src/views/theme.ts
+       is reserved for the shell lane) -- a bare 'main { padding-inline: 0
+       }' would re-gutter every other SSR surface, so the selector below
+       only ever matches a <main> that contains .chq-cfp-body. Result:
+       390 - 0 (main) - 32 (body's own 16px x2) = 358, the DEC-989 budget. */
+    main.chq-measure:has(.chq-cfp-body) { padding-inline: 0; }
+
+    /* DEC-154 (wave 125 amendment) / frame :1061-1064 (Submit a talk ·
+       390): the step-1 dock is .chq-cfp-actions itself -- no second
+       geometry, no duplicate control. flex-shrink/border-top/background/
+       padding/gap match the frame's SSR band verbatim (the same wave-110
+       band DEC-154's amendment names), pinned to the viewport bottom and
+       full-bleed against the single gutter cancelled above. The primary
+       (.chq-btn-primary -- Submit on step 2, .chq-cfp-step-next "Next:
+       about you" on step 1, DEC-919 makes only one visible per step) takes
+       the frame's flex:1/48px; Draft (.chq-cfp-save-draft, already 48px/
+       bordered above, :287-296) needs no change -- it already matches
+       :1063 byte-for-byte. The note (:1005 has no counterpart in the 390
+       dock) stands down; it is decorative confirmation copy repeated
+       nowhere else needed, not a control losing its only path (DEC-919
+       governs controls, not this text). .chq-cfp-body gains matching
+       bottom padding so the fixed band never covers the form's own last
+       field. */
+    .chq-cfp-body { padding-bottom: 96px; }
+    .chq-cfp-actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      gap: 8px;
+    }
+    .chq-cfp-actions-note { display: none; }
+    .chq-cfp-actions .chq-btn-primary { flex: 1; min-height: 48px; }
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
