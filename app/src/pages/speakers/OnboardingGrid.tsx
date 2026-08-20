@@ -20,6 +20,7 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { firstNameOf } from '../../lib/identity';
 import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
 import { activeFacet } from './narrowing';
+import { REMIND_SKIP_RULE_SENTENCE } from './remindSkipVocabulary';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
@@ -1028,7 +1029,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             window Overview.tsx:276 names, so this caption uses its
             sentence verbatim (DEC-934: an honest caption beats a novel
             one, but a real match beats inventing a third phrasing). */}
-        <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
+        <span className="chq-speakers-toolbar-caption">{REMIND_SKIP_RULE_SENTENCE}</span>
       </div>
 
       {/* DEC-934 amendment (wave 4): ONE caption naming the active
