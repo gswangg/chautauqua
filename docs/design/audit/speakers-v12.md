@@ -86,13 +86,13 @@ need either a new EmptyState prop/variant or a page-local override, both of
 which reach outside this task's file allowlist. Flagging for the shell/
 EmptyState-owning lane.
 
-## 3. RESOLVED (wave 106, app/src/styles.css:476-481) — Grid speaker-name text is 18px, frame draws 16px
+## 3. RESOLVED (wave 106, app/src/styles.css:482-487) — Grid speaker-name text is 18px, frame draws 16px
 
 Frame :129 (`Speakers` 1600 grid) name link:
 `<a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>`
 
 Re-derived against main: `.chq-row-title` now reads `font-size: 16px;
-font-weight: 600; letter-spacing: -0.015em;` at `app/src/styles.css:476-481`
+font-weight: 600; letter-spacing: -0.015em;` at `app/src/styles.css:482-487`
 — the shell lane this finding was flagged for reconciled the size (and
 letter-spacing) to match the frame verbatim; weight was already correct
 (see fixed finding (a) below). Closed.

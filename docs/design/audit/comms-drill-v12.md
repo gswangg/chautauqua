@@ -27,13 +27,13 @@
 
 ## Held for a later wave — do not build without re-checking ownership first
 
-- **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:196,361)** —
+- **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:196,369)** —
   Templates' dock (frame `:325-328`, the Save/Cancel pair). Re-derived
   against main: `TemplatesTab.tsx:196` sets `data-chq-phone-dock` on the
   page root while `editingId` is set, and the existing footer wrapper
-  (`.chq-comms-editor-actions`, line 361) now also carries
-  `.chq-phone-dock`, per DEC-621's wave-98 amendment comment at line
-  353-361 ("mount, never re-declare"). The dock/tab-bar exclusivity
+  (`.chq-comms-editor-actions`, line 369) now also carries
+  `.chq-phone-dock`, per DEC-621's wave-98 amendment comment nearby
+  ("mount, never re-declare"). The dock/tab-bar exclusivity
   concern is resolved by the same attribute contract `styles.css:2302`
   (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`) uses elsewhere.
   Closed.
