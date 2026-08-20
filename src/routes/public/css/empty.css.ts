@@ -106,5 +106,27 @@ export const EMPTY_PHONE_CSS = `
       align-items: center;
       padding: 0 4px;
     }
+    /* DEC-367 (wave 20-f): the FRESH zero-state headline (G13, above) sizes
+       itself off --chq-type-page-title-size, which is never redefined at any
+       width (that token stays 36px everywhere -- desktop is frozen). At 390
+       that leaves this headline larger than the page's own H1
+       (.chq-pub-surface-title, rail.css.ts's phone block, 26px) -- the
+       phoneB/round-2 probe's "pub-empty-what 36px > page H1" row
+       (docs/probes/metafid-phoneB-ssr-2026-08-19-medium.md). Pinned to that
+       SAME value (never a third hand-typed number, and never by overriding
+       the shared token itself, which would move desktop) so the fresh
+       empty-state headline lands on the page-title register at 390 the way
+       docs/design/Chautauqua Public and Portal.dc.html's "Public sessions ·
+       nothing published" frame draws its own zero-state headline against the
+       surface title above it. The reason line is brought into proportion
+       with it by reusing this same file's own quiet register (13px, the
+       'filtered' variant's .chq-pub-empty-reason above) rather than a new
+       number. */
+    .chq-pub-empty-block-fresh .chq-pub-empty-what {
+      font-size: 26px;
+    }
+    .chq-pub-empty-block-fresh .chq-pub-empty-reason {
+      font-size: 13px;
+    }
   }
 `;
