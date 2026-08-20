@@ -440,6 +440,18 @@ const LEDGER: LedgerEntry[] = [
     reason: "USER RULING 2026-08-19 (v12 review): quiet-action families (e.g. .chq-link-button) cancel inline padding with an equal-and-opposite negative margin-inline, so the focus/hover ring and hit box gain room while no glyph moves.",
     honored: { kind: "present", file: "app/src/styles.css", literal: ".chq-link-button {", testFile: "app/src/focus-treatment.scan.test.ts" },
   },
+  {
+    key: "contacts-pipeline-keeps-its-landed-head-action-no-phone-dock-is-minted-dec-576-wave-120-124",
+    status: "honored",
+    reason:
+      "DEC-576 wave-120/124: Pipeline · 390 draws Add someone + Filter, the app has no Filter referent, and Filter names the same-screen five-stage scroller directly above the list -- so no phone dock is minted and the single action keeps its landed full-width 48px head placement.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts-panels.css",
+      literal: ".chq-contacts-pipeline-head > .chq-btn {",
+      testFile: "app/src/pages/contacts/contacts-phone-frames.test.ts",
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -604,9 +616,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(8);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(9);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(33);
+    expect(derived.length).toBe(34);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

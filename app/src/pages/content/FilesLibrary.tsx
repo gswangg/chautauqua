@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet, apiPostBlob, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
@@ -74,6 +74,12 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadPending, setDownloadPending] = useState(false);
+  // w13-g (DEC-576, metafid-round2 WAVE A): the phone dock's "Search"
+  // control (docs/design/Chautauqua Content.dc.html: Files · 390 footer)
+  // is not a second search mechanism -- it focuses the ONE search input
+  // this toolbar already owns, the same way a label's `for` would if this
+  // were a native form control pair.
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -200,6 +206,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
 
       <div className="chq-files-library-toolbar chq-content-files-toolbar">
         <input
+          ref={searchInputRef}
           type="search"
           className="chq-input"
           aria-label="Search files"
@@ -371,6 +378,58 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           onClick={() => setPage((p) => p + 1)}
         >
           Next
+        </button>
+      </div>
+
+      {/* w13-g (DEC-576, metafid-round2 WAVE A): the frame's own footer
+          dock (docs/design/Chautauqua Content.dc.html, "Files · 390":
+          `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+          padding:12px 16px 16px; display:flex; gap:8px` -> filled
+          "Download all" + bordered "Search") -- the SHELL CONTRACT
+          (`.chq-phone-dock`, styles.css) verbatim, never a fifth copy of
+          the dock vocabulary. Both controls are ones this surface already
+          owns: the primary reuses handleDownloadAll (same disabled/label
+          logic as the header's own scoped Download-all button above --
+          two controls, one action, DEC-160's caps still gate it, and same
+          B7-rule-3 gate too: absent, not fake-disabled, over an empty
+          visible set), the secondary focuses the toolbar's existing
+          search input rather than inventing a second search mechanism
+          (DEC-576: never a control that is only a shape). The primary's
+          aria-label disambiguates it from the header's own identically-
+          labelled button (both stay in the a11y tree at once in a jsdom
+          test that loads no CSS; the visible text stays frame-verbatim).
+          Mounted unconditionally (like RosterPanel.tsx's dock) -- hidden
+          above 700px by `.chq-phone-dock`'s own base rule, no isPhone
+          gate needed since it changes nothing on the frozen desktop
+          layout. */}
+      <div className="chq-phone-dock" data-chq-phone-dock>
+        {items.length > 0 && (
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            aria-label={
+              downloadPending
+                ? 'Downloading… (phone dock)'
+                : items.length === total
+                  ? `Download all ${items.length} (.zip) (phone dock)`
+                  : `Download ${countOf(items.length, 'file')} (.zip) (phone dock)`
+            }
+            disabled={overCap || downloadPending}
+            onClick={() => void handleDownloadAll()}
+          >
+            {downloadPending
+              ? 'Downloading…'
+              : items.length === total
+                ? `Download all ${items.length} (.zip)`
+                : `Download ${countOf(items.length, 'file')} (.zip)`}
+          </button>
+        )}
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          onClick={() => searchInputRef.current?.focus()}
+        >
+          Search
         </button>
       </div>
     </div>
