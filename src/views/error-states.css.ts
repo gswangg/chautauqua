@@ -70,4 +70,24 @@ export const ERROR_STATES_CSS = `
   .chq-error-summary p { margin: 0; font-size: 13px; color: var(--chq-ink-2); line-height: 1.5; }
   .chq-error-summary ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
   .chq-error-summary-link { font-size: 13px; font-weight: 700; color: var(--chq-brand); text-decoration: none; }
+
+  /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): this module had NO
+     @media block of its own before this change (grep confirmed zero --
+     test/error-vocabulary-parity.scan.test.ts's PHONE_ONLY_PROPERTIES
+     comment names the same fact) -- DEC-385's single-direction rule (narrow
+     overrides wide via max-width media queries ONLY) still requires a
+     phone-only floor to live in a max-width block, so one is added here as
+     this module's own terminal block, matching the SPA twin's phone rule
+     (app/src/components/error-states.css) property-for-property: display,
+     align-items, min-height, padding all match byte-for-byte, which is why
+     test/error-vocabulary-parity.scan.test.ts's PHONE_ONLY_PROPERTIES entry
+     for this selector stays inert (values now agree, not just exempted). */
+  @media (max-width: 700px) {
+    .chq-error-summary-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 8px;
+    }
+  }
 `;

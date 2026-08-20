@@ -832,7 +832,13 @@ ${ERROR_STATES_CSS}
        rule exactly. */
     .chq-portal-back { min-height: 44px; }
     .chq-portal-footer-resources { min-height: 44px; }
-    .chq-portal-footer-profile { min-height: 44px; }
+    /* DEC-367 wave-138 amendment: min-height alone left this shrink-wrapped
+       inline-flex link at 39px wide -- no horizontal padding and no
+       min-width, so the ruling's "padding alone does not reach the floor"
+       clause cuts the other way too (a floor with no width component is
+       just as evadable as one with no height). min-width plus real
+       horizontal padding closes it in both dimensions. */
+    .chq-portal-footer-profile { min-height: 44px; min-width: 44px; padding: 0 8px; }
     .chq-portal-actions .chq-btn { min-height: 44px; }
     .chq-portal-signout-btn { min-height: 44px; }
     .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
@@ -1087,5 +1093,40 @@ ${ERROR_STATES_CSS}
     flex: 1;
   }
   .chq-portal-taskform-submit { display: none; }
+
+  /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): remaining bare-anchor
+     44px floor. Appended at the true end of the sheet's one terminal
+     @media (max-width: 700px) block, after every existing rule, per
+     DEC-385 append-only. */
+
+  /* .chq-portal-row is a plain <div> wrapper everywhere except the one
+     submission-row composition below, which is the real tap target; its
+     stacked children (head/meta/actions) already carry it well past 44px
+     of content height in every case, but that height was never DECLARED --
+     the ruling's "undeclared height is the second evasion mode" -- so it
+     is stated explicitly here rather than left implicit. */
+  .chq-portal-row { min-height: 44px; }
+  /* The one place .chq-portal-row composes onto a real <a>
+     (index.tsx:282, "a.chq-portal-row.chq-portal-submission-row") -- the
+     whole submission row is the link. Declared on its own token too, since
+     the scan grades each shared class independently. */
+  .chq-portal-submission-row { min-height: 44px; }
+
+  /* Portal header wordmark -- .chq-portal-brandline (base rule above) is
+     align-items:baseline to reconcile the wordmark's optical nudge with the
+     eventmark beside it (DESIGN-RULINGS's wordmark note); phone-only
+     centring lets the wordmark itself take a real flex floor without
+     fighting a baseline-computed box, mirroring docs-site.css.ts's
+     .chq-docs-brandrow treatment for the same shape. Scoped to
+     .chq-portal-shell so this never touches .chq-wordmark's other
+     compositions (tools.css.ts, dev/mailbox.tsx). */
+  .chq-portal-brandline { align-items: center; }
+  .chq-portal-shell .chq-wordmark {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    margin: 0 -4px;
+  }
 }
 `;
