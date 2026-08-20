@@ -11,8 +11,8 @@
    flush-joined Saved-embeds buttons). Idiom is for borderless quiet controls
    ONLY — bordered boxes need real gaps. Fix at every bordered application.
    RESOLVED (DEC-383 wave-109 amendment): every bordered subject named above
-   dropped the cancelled-padding idiom. comms.css:2168 now reads
-   `.chq-comms-head-actions > .chq-pill {` with a comment above it
+   dropped the cancelled-padding idiom. app/src/pages/comms/comms.css now
+   reads `.chq-comms-head-actions > .chq-pill {` with a comment above it
    ("tap-floor-exempt: DEC-383 wave-109 amendment -- .chq-pill is a
    filled/bordered control... dropped here") and no padding-inline/
    margin-inline pair; the .chq-btn siblings (.chq-comms-history-head-actions,
@@ -21,7 +21,7 @@
    dropped" note at comms.css:2178/:2189/:2198/:2208. settings.css's Saved
    embeds/Public-pages rows carry the equivalent fix (settings.css:2154-2163
    comment block, same amendment).
-   CLOSED (wave 115): app/src/pages/comms/comms.css:2168 `.chq-comms-head-actions > .chq-pill {`
+   CLOSED (wave 115): app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {`
 2. .chq-settings-section-action (settings.css:210) is 15px tall with no
    phone floor — it is the ONLY route into edit mode on all nine Settings
    panels. ROOMY per DESIGN-RULINGS:189.
@@ -41,10 +41,10 @@
   (.chq-participant-email-cell 210px).
 - CFP form stat strip clips values mid-string ("5 Aug 202").
 - Submission detail back link renders a bare ‹ with no label (frame: ‹ Triage).
-  CLOSED (wave 115): app/src/pages/submissions/SubmissionDetailPage.tsx:1050 `'‹ Triage' label; desktop keeps '‹ All submissions' byte-`
+  CLOSED (wave 115): app/src/pages/submissions/SubmissionDetailPage.tsx`'‹ Triage' label; desktop keeps '‹ All submissions' byte-`
 - Header-label leakage into cards: Contacts rows print COMPANY:/LABELS:
   prefixes + stray checkbox; Templates rows print NAME:.
-  CLOSED (wave 118): app/src/pages/contacts/contacts.css:1020 `.chq-contacts-table tbody td[data-label]::before {`
+  CLOSED (wave 118): app/src/pages/contacts/contacts.css`.chq-contacts-table tbody td[data-label]::before {`
   CLOSED (wave 118): app/src/pages/comms/comms.css:1567 `.chq-comms-templates-table td[data-label='Name']::before {`
 - Portal/Tracks rows stranded in half-width columns (left ~62%).
 
