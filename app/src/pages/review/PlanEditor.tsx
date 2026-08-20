@@ -64,6 +64,18 @@ import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 import { MAX_PLAN_CRITERIA, MIN_CRITERION_OPTIONS, MAX_CRITERION_OPTIONS } from '../../lib/batch-caps';
 import { CRITERION_KIND_LABELS } from '../../lib/criterion-kind';
 
+// DEC-380 (w133): the option-list caption's leading clause ("Two to six")
+// mirrors MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS in words -- asserted
+// here (not just interpolated) so a future change to either constant fails
+// loudly at import time instead of silently drifting from the frame's
+// verbatim wording (Chautauqua Review.dc.html:524/771).
+if (MIN_CRITERION_OPTIONS !== 2 || MAX_CRITERION_OPTIONS !== 6) {
+  throw new Error(
+    'CRITERION_OPTIONS_RANGE_WORDS ("Two to six") no longer matches MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS -- update the caption text.',
+  );
+}
+const CRITERION_OPTIONS_RANGE_WORDS = 'Two to six';
+
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
 void DEC_824; // cap-per-reviewer input + shortfall/note rendering in the confirm dialog below
@@ -1576,6 +1588,17 @@ export function PlanEditor() {
             </p>
           )}
 
+          {/* DEC-380 (w133): Chautauqua Review.dc.html:738's new-plan
+              starting-state note -- drawn only over the DEFAULT criteria set
+              a brand-new plan opens with, never on an existing plan whose
+              criteria the organiser has already saved/edited. */}
+          {isNew && (
+            <p className="chq-review-new-criteria-note">
+              Three to start with — two scored 1–5 and one recorded as a spread. Rename them, change the type or the
+              weights, or remove any you don't want.
+            </p>
+          )}
+
           {draft.rounds > 1 && (
             <div className="chq-review-round-tabs">
               <label>
@@ -2006,18 +2029,30 @@ export function PlanEditor() {
                             {(criterion.options ?? []).length} of {MAX_CRITERION_OPTIONS}
                           </span>
                           {(criterion.options ?? []).length < MAX_CRITERION_OPTIONS && (
-                            <a
-                              href="#add-option"
-                              className="chq-review-add-link"
-                              aria-disabled={activeRoundIsLocked}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                if (activeRoundIsLocked) return;
-                                setEditingCriteria((c) => addCriterionOption(c, criterion.id));
-                              }}
-                            >
-                              Add an option
-                            </a>
+                            <>
+                              <a
+                                href="#add-option"
+                                className="chq-review-add-link"
+                                aria-disabled={activeRoundIsLocked}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (activeRoundIsLocked) return;
+                                  setEditingCriteria((c) => addCriterionOption(c, criterion.id));
+                                }}
+                              >
+                                Add an option
+                              </a>
+                              {/* DEC-380 (w133): Chautauqua Review.dc.html:524/771's
+                                  option-list caption, sibling of the criteria
+                                  caption below (:2128) -- "Two to six" mirrors
+                                  CRITERION_OPTIONS_RANGE_WORDS, asserted against
+                                  MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS above
+                                  so a future change to either constant fails loudly
+                                  instead of silently drifting from the frame's words. */}
+                              <span className="chq-review-criterion-options-caption">
+                                {CRITERION_OPTIONS_RANGE_WORDS} · results show how the picks fell, never an average
+                              </span>
+                            </>
                           )}
                         </div>
                         {/* v12m-w5-b/DEC-808: Chautauqua Review.dc.html:594's

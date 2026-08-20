@@ -125,6 +125,30 @@ describe('ProgressPanel render smoke', () => {
     expect(notStartedButton).not.toBeDisabled();
   });
 
+  // DEC-380 (w133): Chautauqua Review.dc.html:103's first clause only --
+  // the trailing sentence there is an implementer note for DEC-760's
+  // hidden-when-zero rule, not copy, and is not rendered.
+  it('renders the reviewer-progress caption beside the reminder links', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([NOT_STARTED_ROW, PARTIAL_ROW]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/progress`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/progress" element={<ProgressPanel />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('button', { name: /^Remind laggards/ });
+    expect(
+      screen.getByText('Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/second link is hidden, not disabled/)).not.toBeInTheDocument();
+  });
+
   it.each([
     { label: 'standalone', embedded: false },
     { label: 'embedded', embedded: true },

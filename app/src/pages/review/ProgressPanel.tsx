@@ -246,6 +246,15 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
             )}
           </div>
         </div>
+        {/* DEC-380 (w133): Chautauqua Review.dc.html:103's reviewer-progress
+            caption -- only its first clause is product copy; the trailing
+            sentence there is an implementer note for DEC-760's
+            hidden-when-zero rule, already honoured above (the "Remind the N
+            not started" link renders only when notStarted.length > 0), so
+            it is not repeated here as copy. */}
+        <p className="chq-review-progress-caption">
+          Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing.
+        </p>
         <div className="chq-review-progress-grid">
           {rows.map((row) => {
             return (

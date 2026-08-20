@@ -521,6 +521,41 @@ describe('PlanEditor render smoke', () => {
     const guidanceInputs = screen.getAllByPlaceholderText('Guidance (optional, one line)') as HTMLInputElement[];
     expect(guidanceInputs.every((el) => el.value.length > 0)).toBe(true);
     expect(guidanceInputs.every((el) => el.maxLength === MAX_CRITERION_GUIDANCE_LENGTH)).toBe(true);
+
+    // DEC-380 (w133): Chautauqua Review.dc.html:738's starting-state note,
+    // drawn only over a brand-new plan's default criteria set.
+    expect(
+      screen.getByText(
+        "Three to start with — two scored 1–5 and one recorded as a spread. Rename them, change the type or the weights, or remove any you don't want.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // DEC-380 (w133): the same note is absent once a plan exists -- an
+  // existing plan's criteria are, by definition, ones the organiser has
+  // already saved/edited, never the pristine new-plan default set.
+  it('does not render the new-plan starting-state note on an existing plan', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Content')).toBeInTheDocument());
+    expect(screen.queryByText(/Three to start with/)).not.toBeInTheDocument();
   });
 
   // DEC-676: weights are relative and plan-wide; the editor renders the
@@ -1881,6 +1916,12 @@ describe('PlanEditor render smoke', () => {
     // Counter reads "N of 6" from the declared constant.
     expect(screen.getByText('2 of 6')).toBeInTheDocument();
 
+    // DEC-380 (w133): the option-list caption sits beside "Add an option",
+    // sibling of the criteria caption's "N of about M" register.
+    expect(
+      screen.getByText('Two to six · results show how the picks fell, never an average'),
+    ).toBeInTheDocument();
+
     // Remove is disabled at the floor (two options).
     const removeOptionButtons = screen.getAllByRole('button', { name: /^Remove option \d+$/ });
     expect(removeOptionButtons).toHaveLength(2);
@@ -1898,6 +1939,11 @@ describe('PlanEditor render smoke', () => {
 
     expect(screen.getByText('6 of 6')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Add an option' })).not.toBeInTheDocument();
+    // The caption is drawn beside the link only -- both vanish together at
+    // the cap.
+    expect(
+      screen.queryByText('Two to six · results show how the picks fell, never an average'),
+    ).not.toBeInTheDocument();
     for (const button of screen.getAllByRole('button', { name: /^Remove option \d+$/ })) {
       expect(button).not.toBeDisabled();
     }
