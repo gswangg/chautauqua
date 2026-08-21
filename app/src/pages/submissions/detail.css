@@ -444,6 +444,14 @@
 
 .chq-detail-decision-secondary-pair .chq-btn {
   flex: 1;
+  /* Desktop drawn-floor ledger repair (DEC-393 wave-157, task rb): the
+     desktop aside's own Decline/Waitlist pair draws the pack's field-box
+     floor, docs/design/Chautauqua Submissions.dc.html:314
+     `min-height:44px` -- .chq-btn-secondary (the house register both
+     children carry) declares none at desktop today. Floored HERE, scoped
+     to this pair only -- .chq-btn/.chq-btn-primary/.chq-btn-secondary
+     themselves stay untouched. */
+  min-height: 44px;
 }
 
 /* Stated decision line ('Accepted · <date>' etc) once one is in force --

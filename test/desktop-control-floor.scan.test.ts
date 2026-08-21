@@ -33,31 +33,49 @@
 //      controls across 12 of the 13 files (docs/design/Chautauqua
 //      Docs.dc.html draws none of this shape).
 //
-//   2. JOIN: for each drawn control, `labelIsMatched`-style boundary-
-//      anchored search (mirroring ./frame-source-corpus's own algorithm,
-//      but returning a POSITION rather than a boolean, which
-//      `labelIsMatched` does not expose) over the normalized non-test
-//      app/src/** + src/** corpus (`enumerateSourceFiles` +
-//      `normalizeSource`, skipping the decision registry via
-//      `isDecisionRegistryFile` -- DEC-967's one-stripper rule, DEC-976
-//      wave-129 amendment (c)). At each match position, the nearest
-//      enclosing tag's `class=`/`className=` attribute is read (quoted
-//      string, `{...}` expression, or template literal -- any syntax, the
-//      reader only pulls `chq-` tokens out of the captured attribute-value
-//      span) and its `chq-` tokens extracted. A match is REJECTED (as if
-//      absent) when the text between the nearest preceding `>` and the
-//      match still contains an unclosed `<` -- that shape means the match
-//      landed inside an as-yet-unclosed tag's OWN attribute value (e.g.
-//      `aria-label="File type"`, `placeholder="File"`, a `label="File"`
-//      prop), not in real rendered text content, and reading "the nearest
-//      class=" from there would misattribute a sibling/ancestor's class to
-//      a string that is not actually the control's own rendered label.
-//      (Measured false positive, closed by this guard: FilesLibrary.tsx's
-//      `<div className="chq-chipstrip" ... aria-label="File type">`
-//      wrongly resolved Settings.dc.html:1461's "File" pill to
-//      `chq-chipstrip` -- a container, never a control -- before the
-//      guard; the guard drops it to UNRESOLVED, which is honest, since no
-//      real rendered-text match for that pill's label was found.)
+//   2. JOIN: for each drawn control, every boundary-anchored occurrence of
+//      its label (`allBoundaryMatches`, mirroring ./frame-source-corpus's
+//      own boundary algorithm but returning EVERY position, not `labelIsMatched`'s
+//      single boolean) over the normalized non-test app/src/** + src/**
+//      corpus (`enumerateSourceFiles` + `normalizeSource`, skipping the
+//      decision registry via `isDecisionRegistryFile` -- DEC-967's
+//      one-stripper rule, DEC-976 wave-129 amendment (c)) is kept ONLY when
+//      `ownTextEquals` confirms the enclosing tag's own text content -- the
+//      run from the nearest preceding `>` to the next `<` -- normalises to
+//      EXACTLY the label, never merely CONTAINS it: "the element whose own
+//      text content IS the label" (DEC-393 wave-157 amendment). At each
+//      surviving position, the enclosing tag's `class=`/`className=`
+//      attribute is read (quoted string, `{...}` expression, or template
+//      literal -- any syntax, the reader only pulls `chq-` tokens out of
+//      the captured attribute-value span) and its `chq-` tokens extracted;
+//      tokens from every surviving position across every blob are UNIONED
+//      (not the first match per blob, as the pre-repair join did). A
+//      position is also REJECTED when the text between the nearest
+//      preceding `>` and the match still contains an unclosed `<` -- that
+//      shape means the match landed inside an as-yet-unclosed tag's OWN
+//      attribute value (e.g. `aria-label="File type"`), not in real
+//      rendered text content.
+//
+//      WAVE 157 REPAIR (DEC-393 amendment, task rb): the pre-repair join's
+//      "first occurrence per blob, substring match" shape MIS-ATTRIBUTED
+//      two rows. `Chautauqua Account.dc.html`:225's "Back to sign in" (a
+//      filled 46px primary) resolved to `chq-auth-tertiary`: the FIRST
+//      "Back to sign in" occurrence in src/routes/auth-views.tsx is
+//      `&lsaquo; Back to sign in` on a DIFFERENT page's tertiary link,
+//      never the LATER plain-text "Back to sign in" on the real
+//      `chq-btn chq-btn-primary` anchor. `Chautauqua Submissions.dc.html`:314's
+//      "Waitlist" resolved to `chq-overview-btn chq-overview-btn-waitlist`:
+//      a real, own-text-exact "Waitlist" button, but Overview's queue move
+//      (already phone-hidden, wave-83 receipt), not
+//      `SubmissionDetailPage.tsx`'s decision-rail `chq-btn chq-btn-secondary`
+//      (whose own rendered text is a JSX expression, never a literal
+//      "Waitlist" this scan's text-only join can resolve). Requiring FULL
+//      own-text equality (this repair) rejects the "Back to sign in"
+//      mis-match and correctly resolves that row to `chq-btn`/
+//      `chq-btn-primary`; it cannot relocate "Waitlist" (no literal-text
+//      element renders it on the real control), so that row stays
+//      attributed to Overview's button -- the ONE genuine survivor this
+//      wave's product fix targets (see `app/src/pages/submissions/detail.css`).
 //
 //   3. GRADE: each `chq-` token found is resolved to its declared
 //      `min-height` from any TOP-LEVEL (non-`@media`) rule mentioning it
@@ -66,34 +84,51 @@
 //      desktop is the base/unqualified declaration, a `max-width` block
 //      only narrows it, so the desktop-grading value is never inside one).
 //      The MAXIMUM declared min-height across every qualifying rule and
-//      every token found is the row's resolved floor. An OFFENDER declares
-//      STRICTLY BELOW the floor its own frame draws; a token with a
-//      qualifying rule that declares NO min-height anywhere is an offender
-//      at 0. A row with no label match, no extractable token, or no rule
-//      mentioning any extracted token is UNRESOLVED -- counted separately
-//      with its own two-sided tripwire (DEC-808: every ratchet in this
-//      campaign is two-sided). MEASURED (wave 151): 23 offenders, 129
-//      unresolved (91 no label match, 38 label matched but no extractable
-//      token; zero rows with a token and no rule at all) -- the JOIN's own
-//      conservatism (a same-tag, text-node-only class read) means over a
-//      third of the population lands UNRESOLVED rather than falsely OK or
-//      falsely offending; a later wave with a real DOM-aware reader can
-//      drain the unresolved bucket without this ledger's offender ratchet
-//      ever having asserted something untrue.
+//      every token found is the row's resolved floor. A row is graded
+//      UNRESOLVED, never OFFENDER, when: no own-text match exists at all;
+//      a match exists but no `chq-` token was extracted; every extracted
+//      token's qualifying rule(s) declare no min-height AND none is
+//      CONTROL-SHAPED -- its own top-level rule declares a border, a
+//      background, a padding-inline, or a min-height, EXCLUDING a bare
+//      `border: none`/`background: none`/`transparent`/`0`/`0px` reset
+//      (DEC-393 wave-157 amendment (iii): a typography/eyebrow class the
+//      pack happens to draw inside a bordered chip -- `.chq-page-title`,
+//      `.chq-section-label`, a table-column-label class -- is not the app
+//      rendering a control, and grading it OFFENDER at 0 would assert a
+//      gap that does not exist). An OFFENDER is a row WITH a control-shaped
+//      resolved token that still declares strictly below the drawn floor
+//      (an unstyled-height rule counts as declaring 0).
 //
-//      WAVE 155 (DEC-393 amendment, task pe): of the 23, 12 are field-name
-//      eyebrow chips the pack draws bordered at 44-46px and the app
-//      correctly renders as plain text (`.chq-portal-field-label`,
-//      `.chq-page-title`, `.chq-section-label`) -- BLESSED as a class in
-//      docs/design/DEVIATIONS.md, no CSS moved. Four scoped desktop rules
-//      (Sign in, API docs, Submit-a-talk, Save draft) DRAINED the nine
-//      remaining real-control offender rows those four controls accounted
-//      for -- see docs/design/audit/desktop-control-floor-v12.md for both
-//      lists.
-//      Two rows ("Back to sign in", "Waitlist") are neither an eyebrow nor
-//      in this wave's drain set -- real, unaddressed offenders, left for a
-//      later wave (flagged in the audit doc, not silently absorbed into
-//      either bucket). MEASURED post-drain: 14 offenders.
+//      MEASURED (wave 151, pre-repair): 23 offenders, 129 unresolved.
+//      WAVE 155 (DEC-393 amendment, task pe) split the 23 into 12
+//      field-name-eyebrow rows (BLESSED as a class in
+//      docs/design/DEVIATIONS.md, unchanged by this repair) and 11
+//      real-control rows, 9 DRAINED by four scoped desktop rules, 2 left
+//      live ("Back to sign in", "Waitlist") -- 14 offenders post-drain.
+//      WAVE 157 REPAIR (this file, task rb): re-running the SAME 14-row
+//      population through the repaired join/grade -- own-text-exact
+//      matching plus the control-shape gate -- resolves "Back to sign in"
+//      to `chq-btn`/`chq-btn-primary` (declared 48px via a compound
+//      `.chq-bare-page .chq-btn-primary` rule the token-boundary JOIN
+//      matches context-blind, already >= the drawn 46px: OK, no CSS
+//      moved, `.chq-btn-primary` itself untouched) and reclassifies 10 of
+//      the 12 blessed eyebrow rows from OFFENDER to UNRESOLVED (reason
+//      `no-control-shape` -- an honest "cannot tell" instead of an
+//      asserted-and-then-waived false divergence; two of the twelve,
+//      `Chautauqua Contacts.dc.html`:602 and `Chautauqua Settings.dc.html`:1302
+//      "Reviewer", instead resolve via the widened own-text-exact search
+//      to a NEW, real, control-shaped token -- `chq-pill`, the role-invite
+//      chip in `PeopleRolesPanel.tsx` -- and surface as GENUINE new
+//      offenders, recorded (never silently drained) in
+//      docs/design/audit/desktop-control-floor-v12.md). "Waitlist" stays
+//      the one row this repair cannot relocate; its product fix is the one
+//      authorised CSS byte in `app/src/pages/submissions/detail.css`.
+//      MEASURED (wave 157, post-repair): 3 offenders (2 newly-surfaced
+//      `chq-pill` rows, recorded not drained, plus "Waitlist" -- the CSS
+//      fix floors the REAL control this frame draws, but the join still
+//      resolves this row's tokens to Overview's button, so the ledger's
+//      own count cannot move; see the audit doc), 166 unresolved (155
+//      no-label-match, 1 no-token, 10 no-control-shape).
 //
 //      WAVE 156 (DEC-393 amendment, clause (a), task qg): the wave-155
 //      amendment's own drain -- "Sign in" -- resolved the offender list to
@@ -374,6 +409,61 @@ export function firstBoundaryMatch(label: string, blob: string): number | null {
   return null;
 }
 
+/** Every boundary-anchored occurrence of `label` in `blob` (companion to
+ * `firstBoundaryMatch`, which stops at the first) -- WAVE 157 REPAIR:
+ * `firstBoundaryMatch`'s "first occurrence per blob" shape is exactly what
+ * mis-attributed `Chautauqua Account.dc.html:225`'s "Back to sign in": the
+ * FIRST occurrence in src/routes/auth-views.tsx is
+ * `<a className="chq-auth-tertiary">&lsaquo; Back to sign in</a>` (a
+ * DIFFERENT page's "Use a different address" sibling), while the real
+ * filled-primary "Back to sign in" (`<a className="chq-btn
+ * chq-btn-primary">`) is a LATER occurrence in the same file, never
+ * reached. Exported for the non-vacuity fixture below. */
+export function allBoundaryMatches(label: string, blob: string): number[] {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return [];
+  const firstIsAlnum = isAlnum(needle[0]);
+  const lastIsAlnum = isAlnum(needle[needle.length - 1]);
+  const positions: number[] = [];
+  let idx = blob.indexOf(needle);
+  while (idx !== -1) {
+    const before = idx > 0 ? blob[idx - 1] : undefined;
+    const afterIdx = idx + needle.length;
+    const after = afterIdx < blob.length ? blob[afterIdx] : undefined;
+    const boundaryBeforeOk = !firstIsAlnum || !isAlnum(before);
+    const boundaryAfterOk = !lastIsAlnum || !isAlnum(after);
+    if (boundaryBeforeOk && boundaryAfterOk) positions.push(idx);
+    idx = blob.indexOf(needle, idx + 1);
+  }
+  return positions;
+}
+
+/** True when the text content of the tag immediately enclosing `idx` in
+ * `blob` -- from the nearest preceding `>` to the next `<` -- normalises
+ * (whitespace-collapsed, trimmed) to EXACTLY `label`. WAVE 157 REPAIR: the
+ * pre-repair join accepted any match whose nearest enclosing tag merely
+ * CONTAINED the label as a substring -- `&lsaquo; Back to sign in`
+ * contains "Back to sign in" and was accepted, misattributing the drawn
+ * control to `chq-auth-tertiary` (that anchor's own rendered text is "‹
+ * Back to sign in", not the frame's drawn label). Requiring the FULL text
+ * node to equal the label -- "the element whose own text content IS the
+ * label" -- rejects that occurrence and leaves only the real one (the
+ * plain-text "Back to sign in" on `chq-btn chq-btn-primary`). Also rejects
+ * the same unclosed-tag-attribute shape `classTokensNear` already guards
+ * (an aria-label/placeholder/label prop is not real text-node content).
+ * Exported for the non-vacuity fixture below. */
+export function ownTextEquals(label: string, blob: string, idx: number): boolean {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  const prevGt = blob.lastIndexOf('>', idx);
+  if (prevGt === -1) return false;
+  const afterPrevGt = blob.slice(prevGt + 1, idx);
+  if (afterPrevGt.includes('<')) return false;
+  const nextLt = blob.indexOf('<', idx);
+  const textEnd = nextLt === -1 ? blob.length : nextLt;
+  const fullText = blob.slice(prevGt + 1, textEnd).replace(/\s+/g, ' ').trim();
+  return fullText === needle;
+}
+
 const CLASS_TOKEN_RE = /\bchq-[A-Za-z0-9-]+/g;
 
 /** `chq-` tokens carried by the nearest enclosing element's class=/
@@ -523,12 +613,43 @@ export function resolveTokenMinHeight(
  * below in one walk over the corpus. */
 const SELECTOR_CLASS_TOKEN_RE = /\.([A-Za-z][A-Za-z0-9-]*)/g;
 
+/** A top-level rule is CONTROL-SHAPED (task grammar, wave-157 repair (iii))
+ * when its own body declares a border, a background, a padding-inline, or
+ * a min-height -- the same face-drawing property set the frame side's own
+ * `drawnControlFloor` looks for (border-radius plus border/background),
+ * widened with padding-inline/min-height since a rule can paint a control
+ * box without a radius. Matched one declaration (`prop: value`) at a time
+ * (split on `;`) rather than a bare property-name regex over the whole
+ * body: `app/src/pages/submissions/detail.css`'s `.chq-detail-section-title
+ * button { background: none; border: none; ... }` -- a button RESET so it
+ * reads as its parent's plain-text title, not a painted face -- is real
+ * top-level code (not a comment) that a bare `/border\s*:/` test wrongly
+ * called control-shaped, corrupting Contacts.dc.html:601's grade (measured
+ * false positive, closed here). `border`/`background` with an explicit
+ * `none`/`transparent`/`0`/`0px` value are excluded for that reason;
+ * `padding-inline`/`min-height` are not (a real `0` there is still a
+ * declared, gradable value, and the task's own OFFENDER grammar already
+ * treats "a qualifying rule with no min-height" as an offender at 0). */
+function isControlShapedBody(body: string): boolean {
+  const NONE_VALUE_RE = /^(none|transparent|0|0px)$/i;
+  for (const raw of body.split(';')) {
+    const m = raw.trim().match(/^(border|background|padding-inline|min-height)\s*:\s*(.+)$/);
+    if (!m) continue;
+    const prop = m[1]!;
+    const value = m[2]!.trim();
+    if ((prop === 'border' || prop === 'background') && NONE_VALUE_RE.test(value)) continue;
+    return true;
+  }
+  return false;
+}
+
 /** One-pass precomputed index: every top-level rule in the whole corpus is
  * visited exactly once, and every `chq-`-token-shaped class its selector
  * list names gets this rule's min-height (if any) folded into the token's
- * running max. Built once at module load; the JOIN below is then a plain
- * map lookup per token instead of a corpus re-scan per token. */
-const TOKEN_INDEX = new Map<string, { hasRule: boolean; maxMinHeight: number | null }>();
+ * running max, plus whether ANY qualifying rule is control-shaped. Built
+ * once at module load; the JOIN below is then a plain map lookup per token
+ * instead of a corpus re-scan per token. */
+const TOKEN_INDEX = new Map<string, { hasRule: boolean; maxMinHeight: number | null; controlShaped: boolean }>();
 for (const blob of TOPLEVEL_BLOBS) {
   RULE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -537,6 +658,7 @@ for (const blob of TOPLEVEL_BLOBS) {
     const body = m[2]!;
     const mh = body.match(/min-height\s*:\s*(\d+)px/);
     const v = mh ? Number(mh[1]) : null;
+    const shaped = isControlShapedBody(body);
     SELECTOR_CLASS_TOKEN_RE.lastIndex = 0;
     let tm: RegExpExecArray | null;
     const seenInRule = new Set<string>();
@@ -546,17 +668,22 @@ for (const blob of TOPLEVEL_BLOBS) {
       seenInRule.add(tok);
       const existing = TOKEN_INDEX.get(tok);
       if (!existing) {
-        TOKEN_INDEX.set(tok, { hasRule: true, maxMinHeight: v });
+        TOKEN_INDEX.set(tok, { hasRule: true, maxMinHeight: v, controlShaped: shaped });
       } else {
         existing.hasRule = true;
         if (v !== null && (existing.maxMinHeight === null || v > existing.maxMinHeight)) existing.maxMinHeight = v;
+        if (shaped) existing.controlShaped = true;
       }
     }
   }
 }
 
-function resolveTokenMinHeightIndexed(token: string): { hasRule: boolean; maxMinHeight: number | null } {
-  return TOKEN_INDEX.get(token) ?? { hasRule: false, maxMinHeight: null };
+function resolveTokenMinHeightIndexed(token: string): {
+  hasRule: boolean;
+  maxMinHeight: number | null;
+  controlShaped: boolean;
+} {
+  return TOKEN_INDEX.get(token) ?? { hasRule: false, maxMinHeight: null, controlShaped: false };
 }
 
 // -- Corroboration: a token set is only OFFENDER-eligible when at least one
@@ -693,18 +820,30 @@ export interface GradedRow {
   declaredMinHeight: number | null;
 }
 
+/** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
+ * class attribute of the element whose OWN text content IS the label --
+ * every boundary-anchored occurrence in every blob (`allBoundaryMatches`),
+ * kept only when `ownTextEquals` confirms the enclosing tag's full text
+ * node is exactly the label, never the nearest-preceding-class read a mere
+ * substring match used to license. A row with a resolved token set but no
+ * CONTROL-SHAPED member (iii) grades UNRESOLVED rather than OFFENDER: a
+ * typography/eyebrow class (`.chq-page-title`, `.chq-section-label`, a
+ * table-column label class, …) the pack happens to draw bordered is not
+ * the app rendering a bare label as a control, it is the JOIN's own
+ * conservatism finding a real element with no control face to grade. */
 function gradeControl(control: DrawnControl): GradedRow {
   let tokens: string[] = [];
-  let labelMatched = false;
+  let ownTextMatched = false;
   for (const blob of NORMALIZED_BLOBS) {
-    const idx = firstBoundaryMatch(control.label, blob);
-    if (idx === null) continue;
-    labelMatched = true;
-    tokens.push(...classTokensNear(blob, idx));
+    for (const idx of allBoundaryMatches(control.label, blob)) {
+      if (!ownTextEquals(control.label, blob, idx)) continue;
+      ownTextMatched = true;
+      tokens.push(...classTokensNear(blob, idx));
+    }
   }
   tokens = [...new Set(tokens)];
 
-  if (!labelMatched) {
+  if (!ownTextMatched) {
     return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null };
   }
   if (tokens.length === 0) {
@@ -713,13 +852,18 @@ function gradeControl(control: DrawnControl): GradedRow {
 
   let best: number | null = null;
   let anyRule = false;
+  let anyControlShaped = false;
   for (const token of tokens) {
-    const { hasRule, maxMinHeight } = resolveTokenMinHeightIndexed(token);
+    const { hasRule, maxMinHeight, controlShaped } = resolveTokenMinHeightIndexed(token);
     if (hasRule) anyRule = true;
+    if (controlShaped) anyControlShaped = true;
     if (maxMinHeight !== null && (best === null || maxMinHeight > best)) best = maxMinHeight;
   }
   if (!anyRule) {
     return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null };
+  }
+  if (!anyControlShaped) {
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null };
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
@@ -744,8 +888,8 @@ const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 // printed row list. Two-sided per DEC-808 (every ratchet in this campaign
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 1;
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 142;
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 3;
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 166;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
