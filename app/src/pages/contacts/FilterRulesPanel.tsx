@@ -15,7 +15,7 @@
 // of what the server accepts. custom.<key> fields are addressed by typing
 // the key: no server-side enumeration of a org's contact custom-field keys
 // exists to populate a dropdown from.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { activeRules } from './segments';
 import type { SegmentRule } from './types';
 import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
@@ -91,6 +91,38 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
   // has no CSS rule keyed to `.is-builder-open`) stays byte-identical.
   const [builderOpen, setBuilderOpen] = useState(false);
 
+  // src/decisions-data/DEC-990.md (amendment, extending its wave-128
+  // amendment carried by src/decisions-data/DEC-919.md: "a nav hidden at
+  // phone needs a disclosure, not an exit"): a disclosure that reveals a
+  // control moves focus INTO the specific control the trigger named, or
+  // the disclosure has hidden the thing it just revealed. `focusRuleIndex`
+  // is the pending target -- the rule position whose FIELD select should
+  // receive focus once `.chq-contacts-filter-rules-row` is open -- and is
+  // cleared the same effect tick it is consumed, so a later unrelated
+  // re-render (e.g. typing into a value input) never re-steals focus. This
+  // is a PHONE-ONLY effect exactly like `builderOpen` itself: at desktop
+  // the rules row is never collapsed and both trigger controls
+  // (`.chq-contacts-filter-add-chip`, `.chq-contacts-filter-rule-chip-edit`)
+  // are `display: none`, so neither onClick below can ever fire there --
+  // desktop markup and behaviour stay byte-identical. Ref shape follows
+  // app/src/pages/comms/ComposeWizard.tsx's per-target ref idiom; the
+  // focus-on-reveal call itself follows
+  // app/src/pages/content/FilesLibrary.tsx:446
+  // (`if (!phoneSearchOpen) searchInputRef.current?.focus();`).
+  const [focusRuleIndex, setFocusRuleIndex] = useState<number | null>(null);
+  const rulesRowRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!builderOpen || focusRuleIndex === null) return;
+    const row = rulesRowRef.current;
+    if (!row) return;
+    const target =
+      row.querySelector<HTMLElement>(`[aria-label="Filter ${focusRuleIndex + 1} field"]`) ??
+      row.querySelector<HTMLElement>('.chq-contacts-filter-builder-done');
+    target?.focus();
+    setFocusRuleIndex(null);
+  }, [builderOpen, focusRuleIndex]);
+
   function updateRule(index: number, next: SegmentRule) {
     onChange(rules.map((r, i) => (i === index ? next : r)));
   }
@@ -105,7 +137,10 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
 
   return (
     <>
-    <div className={`chq-contacts-filter-rules-row${builderOpen ? ' is-builder-open' : ''}`}>
+    <div
+      className={`chq-contacts-filter-rules-row${builderOpen ? ' is-builder-open' : ''}`}
+      ref={rulesRowRef}
+    >
       <span className="chq-contacts-filter-rules-caption">Matching all of</span>
 
       {rules.map((rule, i) => {
@@ -238,7 +273,10 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
               type="button"
               className="chq-contacts-filter-rule-chip-edit"
               aria-label={`Edit ${ruleChipLabel(rule)}`}
-              onClick={() => setBuilderOpen(true)}
+              onClick={() => {
+                setFocusRuleIndex(i);
+                setBuilderOpen(true);
+              }}
             >
               {ruleChipLabel(rule)}
             </button>
@@ -264,7 +302,21 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         type="button"
         className="chq-contacts-filter-add-chip"
         onClick={() => {
-          if (rules.length < MAX_SEGMENT_RULES) addRule();
+          // DEC-990 amendment (extending src/decisions-data/DEC-919.md's
+          // wave-128 amendment): the newly-appended rule's index is
+          // `rules.length` taken BEFORE the append. At the cap nothing is
+          // appended, so focus falls back to the LAST existing rule's
+          // field select instead (`rules.length - 1`); with zero rules at
+          // the cap (impossible today, MAX_SEGMENT_RULES > 0, but kept
+          // total) the effect's own querySelector fallback lands on
+          // `.chq-contacts-filter-builder-done` since no `Filter 0 field`
+          // select exists.
+          if (rules.length < MAX_SEGMENT_RULES) {
+            setFocusRuleIndex(rules.length);
+            addRule();
+          } else {
+            setFocusRuleIndex(rules.length - 1);
+          }
           setBuilderOpen(true);
         }}
         disabled={builderOpen && rules.length >= MAX_SEGMENT_RULES}
