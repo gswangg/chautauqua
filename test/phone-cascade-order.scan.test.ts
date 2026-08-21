@@ -23,11 +23,38 @@
 //   src/decisions-data/DEC-613.md, "Amendment (wave 108)" for the measured
 //   file lists.
 //
-// RULE: for every declaration inside a `@media (max-width: …)` block, flag
-// it when the SAME selector is re-declared at TOP LEVEL for the SAME
-// property AFTER that block closes. In a flat, single-direction stylesheet
-// this is a cascade-order bug: the "wide" declaration, appearing later in
-// source order, wins over the narrow override that was supposed to beat it.
+// RULE (widened, wave-28 DEC-385 amendment): for every declaration inside a
+// `@media (max-width: …)` block, flag it when a TOP-LEVEL declaration for
+// the SAME property, positioned AFTER that block closes, would beat it in
+// the cascade -- either because it is the byte-identical selector (the
+// original rule), OR because it is a SUBJECT-SUBSET shadow: a single
+// compound (no combinator) whose tokens are a subset of the narrow
+// selector's rightmost (subject) compound -- meaning every element the
+// narrow rule matched is also matched by the wide one -- AND whose
+// specificity triple is >= the narrow selector's. A differently-written
+// top-level selector that still matches every element the narrow rule
+// matched, at equal or greater specificity, beats the phone override on
+// source order exactly like an identical string would; the old
+// identical-string-only rule was blind to it. In a flat, single-direction
+// stylesheet this is a cascade-order bug: the "wide" declaration, appearing
+// later in source order, wins over the narrow override that was supposed to
+// beat it.
+//
+// The identical-string case is a strict subset of the widened case: it
+// trivially satisfies "single compound, no combinator" (when the narrow
+// selector's subject IS the whole selector) with identical tokens and
+// identical specificity. Where the narrow selector itself has a combinator
+// (e.g. `.a .b`), an identical top-level re-declaration is still caught by
+// an explicit identical-string branch, so the widened predicate can never
+// catch strictly fewer pairs than the old one -- see the "widening is a
+// strict superset" test below, proved through this file's own
+// `shadowedPairs`, never a parallel copy.
+//
+// MEASURED at df55360702068950b0bb1d9743680cc97682ad9e (main, wave 28):
+// identical-string count = 0, widened count = 0. The widening drains
+// nothing today -- it hardens the predicate so a future regression (a
+// rewritten selector that still shadows) cannot hide behind a
+// string-equality gap.
 //
 // Blocks are brace-matched, never regex-bound (a naive `\{[^}]*\}` stops at
 // the first nested rule's closing brace and silently truncates); comments
@@ -229,9 +256,126 @@ function classify(css: string): { mediaDecls: MediaDecl[]; topDecls: Decl[] } {
   return { mediaDecls, topDecls };
 }
 
-/** Every `<selector> { <property> }` re-declared at top level, in the same
- * sheet, AFTER the max-width block that set it narrowly has closed. */
+// -- subject-subset shadowing: specificity + compound extraction ---------
+
+/** Splits a selector into its top-level compounds, breaking on combinator
+ * characters (whitespace, `>`, `+`, `~`) that sit OUTSIDE any bracket/paren
+ * nesting -- so an attribute selector's internal space (`[data-x="a b"]`)
+ * or a functional pseudo-class's argument (`:not(.a .b)`) can never be
+ * mistaken for a combinator. */
+function splitCompounds(selector: string): string[] {
+  const s = selector.trim();
+  const segments: string[] = [];
+  let depth = 0;
+  let current = '';
+  let i = 0;
+  while (i < s.length) {
+    const ch = s.charAt(i);
+    if (ch === '(' || ch === '[') depth += 1;
+    if (ch === ')' || ch === ']') depth -= 1;
+    if (depth === 0 && /[\s>+~]/.test(ch)) {
+      if (current.trim()) segments.push(current.trim());
+      current = '';
+      while (i < s.length && /[\s>+~]/.test(s.charAt(i))) i += 1;
+      continue;
+    }
+    current += ch;
+    i += 1;
+  }
+  if (current.trim()) segments.push(current.trim());
+  return segments;
+}
+
+/** The rightmost compound of a selector -- the "subject" the rule is
+ * ultimately about (e.g. for `.card .title` the subject is `.title`; every
+ * element the rule can match is a `.title`). */
+function subjectCompound(selector: string): string {
+  const compounds = splitCompounds(selector);
+  return compounds.length > 0 ? (compounds[compounds.length - 1] ?? '') : '';
+}
+
+// Matches one simple-selector token: `::pseudo-element`, `:pseudo-class(...)`
+// or bare `:pseudo-class`, `#id`, `.class`, `[attr...]`, a bare element name,
+// or `*`. Order matters -- `::` must be tried before `:`.
+const TOKEN_RE = /::[\w-]+|:[\w-]+(?:\([^)]*\))?|#[\w-]+|\.[\w-]+|\[[^\]]*\]|[a-zA-Z][\w-]*|\*/g;
+
+function tokenize(compound: string): string[] {
+  return compound.match(TOKEN_RE) ?? [];
+}
+
+/** Standard specificity triple: [ids, classes+attributes+pseudo-classes,
+ * elements+pseudo-elements]. The universal selector `*` contributes to
+ * none of the three. Functional pseudo-classes (`:not(...)`, `:is(...)`)
+ * are counted as a single pseudo-class token each -- a simplification the
+ * codebase's actual selectors never exercise deeply enough to matter for a
+ * directional (>=) comparison. */
+function specificity(selector: string): [number, number, number] {
+  let ids = 0;
+  let classesEtc = 0;
+  let elementsEtc = 0;
+  for (const tok of tokenize(selector)) {
+    if (tok.startsWith('#')) ids += 1;
+    else if (tok.startsWith('::')) elementsEtc += 1;
+    else if (tok.startsWith(':') || tok.startsWith('.') || tok.startsWith('[')) classesEtc += 1;
+    else if (tok === '*') continue;
+    else elementsEtc += 1;
+  }
+  return [ids, classesEtc, elementsEtc];
+}
+
+/** True iff `a` is specificity-greater-than-or-equal-to `b`, compared as
+ * the standard lexicographic triple (ids, then classes, then elements). */
+function specificityGte(a: [number, number, number], b: [number, number, number]): boolean {
+  if (a[0] !== b[0]) return a[0] > b[0];
+  if (a[1] !== b[1]) return a[1] > b[1];
+  return a[2] >= b[2];
+}
+
+function isSubsetOf(subset: string[], superset: string[]): boolean {
+  if (subset.length === 0) return false;
+  const supersetSet = new Set(superset);
+  return subset.every((t) => supersetSet.has(t));
+}
+
+/** True iff a top-level (wide) declaration's selector would shadow a
+ * narrow (media-block) declaration's selector on cascade order: either the
+ * byte-identical selector (the original rule), or a subject-subset shadow
+ * -- a single compound with no combinator, whose tokens are a subset of
+ * the narrow selector's subject compound, at equal-or-greater
+ * specificity -- meaning every element the narrow rule can match, the wide
+ * rule can match too, at least as strongly. */
+function isShadow(narrowSelector: string, wideSelector: string): boolean {
+  if (wideSelector === narrowSelector) return true;
+  const wideCompounds = splitCompounds(wideSelector);
+  if (wideCompounds.length !== 1) return false; // must have NO combinator
+  const [wideCompound] = wideCompounds;
+  const wideTokens = tokenize(wideCompound ?? '');
+  const narrowTokens = tokenize(subjectCompound(narrowSelector));
+  if (!isSubsetOf(wideTokens, narrowTokens)) return false;
+  return specificityGte(specificity(wideSelector), specificity(narrowSelector));
+}
+
+/** Every `<narrow selector> { <property> }` shadowed by a top-level
+ * declaration, in the same sheet, AFTER the max-width block that set it
+ * narrowly has closed -- identical-string OR subject-subset (see
+ * `isShadow`). */
 function shadowedPairs(sheet: Sheet): string[] {
+  const { mediaDecls, topDecls } = classify(sheet.text);
+  const found = new Set<string>();
+  for (const md of mediaDecls) {
+    for (const td of topDecls) {
+      if (td.property === md.property && td.offset > md.mediaBlockEnd && isShadow(md.selector, td.selector)) {
+        found.add(`${sheet.label} — ${md.selector} { ${md.property} } shadowed by ${td.selector}`);
+      }
+    }
+  }
+  return [...found];
+}
+
+/** The original (pre-wave-28) identical-string-only rule, kept solely to
+ * prove containment below -- built from the SAME `classify` this file's
+ * production `shadowedPairs` uses, never a parallel copy. */
+function identicalStringPairs(sheet: Sheet): string[] {
   const { mediaDecls, topDecls } = classify(sheet.text);
   const found = new Set<string>();
   for (const md of mediaDecls) {
@@ -319,5 +463,80 @@ describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating sca
     expect(sheets.length).toBeGreaterThan(20);
     expect(sheets.some((s) => s.label === 'app/src/pages/content/content.css')).toBe(true);
     expect(sheets.some((s) => s.label === 'app/src/pages/comms/comms.css')).toBe(true);
+  });
+});
+
+// -- widening non-vacuity: two synthetic fixtures, run through the SAME
+// classify()/shadowedPairs() the production scan uses, never a parallel
+// copy (DEC-967: never validate a detector by reading the same array it
+// grades as its own evidence). ------------------------------------------
+
+describe('subject-subset widening (wave-28 DEC-385 amendment)', () => {
+  it('POSITIVE: a differently-written top-level selector at equal specificity, matching the same subject set, is caught -- and is NOT caught by identical-string matching alone', () => {
+    const sheet: Sheet = {
+      label: 'synthetic/positive.css',
+      text: `
+        @media (max-width: 700px) {
+          .a.b { padding: 0; }
+        }
+        .b.a { padding: 12px; }
+      `,
+    };
+    // Different selector strings ('.a.b' vs '.b.a'): the old rule is blind.
+    expect(identicalStringPairs(sheet)).toEqual([]);
+    // Same tokens {.a, .b}, same specificity [0,2,0]: the widened rule catches it.
+    const widened = shadowedPairs(sheet);
+    expect(widened).toHaveLength(1);
+    expect(widened[0]).toContain('.a.b');
+    expect(widened[0]).toContain('shadowed by .b.a');
+  });
+
+  it('NEGATIVE: a top-level descendant selector that does not match the narrow rule\'s subject set is NOT caught', () => {
+    const sheet: Sheet = {
+      label: 'synthetic/negative.css',
+      text: `
+        @media (max-width: 700px) {
+          .a.b { padding: 0; }
+        }
+        .c .b { padding: 12px; }
+      `,
+    };
+    expect(identicalStringPairs(sheet)).toEqual([]);
+    // '.c .b' is two compounds (a combinator is present) -- disqualified on
+    // that ground alone, independent of the subset/specificity checks.
+    expect(shadowedPairs(sheet)).toEqual([]);
+  });
+
+  it('the widened predicate is a STRICT superset of the identical-string predicate: every identical-string pair is also a widened pair, and the widened set can be strictly larger', () => {
+    const combined: Sheet = {
+      label: 'synthetic/combined.css',
+      text: `
+        @media (max-width: 700px) {
+          .a { padding: 0; }
+          .a.b { margin: 0; }
+        }
+        .a { padding: 12px; }
+        .b.a { margin: 8px; }
+        .c .b { margin: 4px; }
+      `,
+    };
+    const identical = identicalStringPairs(combined);
+    const widened = shadowedPairs(combined);
+    // The identical-string case ('.a' re-declared verbatim) is caught by both.
+    expect(identical).toHaveLength(1);
+    expect(identical[0]).toContain('.a { padding }');
+    // Containment: every identical-string pair's (selector, property) key
+    // appears as a widened pair too (labels differ by the trailing
+    // "shadowed by ..." clause the widened rule adds, so compare on the
+    // shared "<label> — <selector> { <property> }" prefix).
+    for (const pair of identical) {
+      expect(widened.some((w) => w.startsWith(pair))).toBe(true);
+    }
+    // Strict: the widened set additionally catches the '.a.b'/'.b.a' pair
+    // that identical-string matching missed, and still correctly excludes
+    // the '.c .b' descendant selector.
+    expect(widened.length).toBeGreaterThan(identical.length);
+    expect(widened.some((w) => w.includes('shadowed by .b.a'))).toBe(true);
+    expect(widened.some((w) => w.includes('.c .b'))).toBe(false);
   });
 });
