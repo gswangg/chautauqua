@@ -86,9 +86,27 @@ export function FilterBar({ filters, tracks, columns, visibleFieldIds, allTotal,
             data-status={status}
             className={filters.status.includes(status) ? 'chq-pill is-active' : 'chq-pill'}
             aria-pressed={filters.status.includes(status)}
+            // uf-submissions-phone-chips (DEC-825 wave-16 amendment): the
+            // frame's phone strip (docs/design/Chautauqua Submissions.dc.
+            // html:149 `Needs triage`) renames only the `pending` pill's
+            // VISUAL label at phone width; desktop keeps STATUS_LABELS.pending
+            // ('Pending') untouched. Same sibling-span idiom as
+            // .chq-comms-batch-toggle-label-desktop/-phone (DEC-833): both
+            // spans sit in the DOM, submissions.css picks one per width, and
+            // the accessible name is pinned here so it never changes across
+            // breakpoints (jsdom, and any AT ignoring the stylesheet, would
+            // otherwise concatenate both text nodes).
+            aria-label={status === 'pending' ? STATUS_LABELS.pending : undefined}
             onClick={() => toggleStatus(status)}
           >
-            {STATUS_LABELS[status]}
+            {status === 'pending' ? (
+              <>
+                <span className="chq-submissions-status-pending-desktop">{STATUS_LABELS.pending}</span>
+                <span className="chq-submissions-status-pending-phone">Needs triage</span>
+              </>
+            ) : (
+              STATUS_LABELS[status]
+            )}
           </button>
         ))}
 
