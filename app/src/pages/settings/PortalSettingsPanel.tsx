@@ -129,6 +129,18 @@ function paragraphCount(text: string | null): number {
 // precedent -- the capability renders twice, once on screen) and CSS
 // (settings-drill-rows.css's terminal max-width block) is the only thing
 // that decides which one is visible at which width.
+//
+// STILL-OPEN (desktop, not spent this wave -- w15-tf): the 1600 "editing
+// the speaker portal" EDIT frame draws its own boxed static readout above
+// the actual editable field, docs/design/Chautauqua Settings.dc.html:905
+// verbatim: `<div style="border:1px solid #BAB6A6; border-radius:4px;
+// background:#FAF8F2; padding:13px; min-height:96px; font-size:15px;
+// line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow.
+// Everything we need from you is on this page, in order.</div>` with its
+// own caption "Takes the full measure · appears above the task list"
+// below it (:906, already reused as this panel's edit-form hint at line
+// ~323). The edit form below ships a plain `.chq-textarea` in its place,
+// never that boxed 96px readout. A future desktop wave should look here.
 function WelcomeNoteReadout({ text }: { text: string | null }) {
   const trimmed = (text ?? '').trim();
   const content = trimmed.length === 0 ? 'No welcome note set.' : text;
