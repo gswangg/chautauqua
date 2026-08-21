@@ -133,19 +133,6 @@ describe("type-scale conformance (DEC-643)", () => {
       reason:
         "Same body role as --chq-type-body-size: body text's 400 weight is implicit (the CSS default) at almost every call site rather than spelled, so there is no single rule to point the token at yet.",
     },
-    {
-      token: "--chq-type-micro-size",
-      reason:
-        "Micro labels (10-11px uppercase tags: status pills, badges, the 'no red' lateness/clash indicators) are a distinct literal at each component that draws one; no shared .chq-* class exists yet to hold this token's reference.",
-    },
-    {
-      token: "--chq-type-micro-tracking",
-      reason: "Same micro-label role as --chq-type-micro-size: no shared rule exists yet to carry the reference.",
-    },
-    {
-      token: "--chq-type-micro-weight",
-      reason: "Same micro-label role as --chq-type-micro-size: no shared rule exists yet to carry the reference.",
-    },
   ];
 
   it("ledger reasons name a product reason, not a schedule", () => {

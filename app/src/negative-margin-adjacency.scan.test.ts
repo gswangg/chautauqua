@@ -374,13 +374,20 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
   // settings.css (DESKTOP_FLOOR_DIVERGENCE work) and overview.css (DEC-833's
   // four phone-only section labels), each pairing its phone rule with a
   // desktop `display: none`. Real new declarations, not a sweep regression.
-  it('the swept population carries exactly 174 comment-stripped `display: none` declarations', () => {
+  // 174 -> 186 (wave-17 Thunderdome megabatch): twelve phone-only stand-downs
+  // landed together -- contacts.css +7 (DEC-995's head-band `.chq-summary` /
+  // `.chq-contacts-filter-match-count` hides, DEC-996's `.chq-contacts-rail`,
+  // DEC-994's `.chq-contacts-segment-summary`), settings.css +2 (DEC-919's
+  // SummarySection h2 + Event head-action de-duplication), submissions.css +2
+  // and home.css.ts +1. Each is a real new declaration paired with a
+  // surviving path, not a sweep regression.
+  it('the swept population carries exactly 186 comment-stripped `display: none` declarations', () => {
     let total = 0;
     for (const s of SOURCES) {
       const stripped = stripCssComments(extractCssText(s));
       total += (stripped.match(/display\s*:\s*none\b/g) ?? []).length;
     }
-    expect(total).toBe(174);
+    expect(total).toBe(186);
   });
 
   it('finds exactly the 17 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {
