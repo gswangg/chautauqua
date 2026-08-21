@@ -593,8 +593,14 @@ describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
     // (unpainted-face) cancelled-padding member -- the rule builder
     // disclosure's chip edit control -- so the band's upper edge moves
     // again with the measurement.
+    // Re-measured on the Thunderdome megabatch's integrated tree: 34.
+    // v12m-w16-ui-r3-b's B8 interaction states added one more BORDERLESS
+    // (unpainted-face) cancelled-padding member among the three phone-only
+    // contacts chip controls -- a new member of the population, not a face
+    // regression (PAINTED_CANCELLED_PADDING_CEILING is still 0 and still
+    // met), so the band's upper edge moves with the measurement again.
     expect(MEMBER_COUNT.rules).toBeGreaterThanOrEqual(20);
-    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(33);
+    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(34);
   });
 
   describe('cancelledPaddingN', () => {

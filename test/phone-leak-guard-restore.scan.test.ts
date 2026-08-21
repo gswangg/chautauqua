@@ -27,6 +27,17 @@
 // restores the title, not the clash panel, and a descendant rule that names
 // the class only as an ancestor proves nothing about the class's own box.
 //
+// One structural exception, and only one: a guarded class whose phone-width
+// rule sets `display: none` under a `/* phone-hidden: <reason> */` receipt
+// (the DEC-919 convention app/src/phone-capability-removal.scan.test.ts
+// parses and enforces) is DECIDED, not stranded -- the receipt names the
+// surface the capability keeps. `.chq-phone-agenda-wordmark` is the live
+// case: DEC-919 wave-20 rules that Agenda 390 draws exactly ONE wordmark,
+// the app shell's, so the page's own copy is switched off at phone on
+// purpose. The receipt is what separates that from the zero-height accident
+// this pin exists to catch -- and being a receipt in the CSS itself, it
+// cannot go stale the way an exemption list here would.
+//
 // DEC-808: the population is DERIVED, never hand-listed. Every *.css under
 // app/src/ is walked (readdirSync, no file list), and a leak-guard is
 // recognised structurally -- a rule whose entire body is `display: none` and
@@ -102,10 +113,21 @@ function guardedClasses(css: string): string[][] {
   return out;
 }
 
-/** Every class whose OWN display is (re)declared inside a phone-width
- * (`max-width: <=700px`) media block. */
-function restoredClasses(css: string): Set<string> {
-  const out = new Set<string>();
+/** The classes named as the SUBJECT of a rule in `body`, unprefixed. */
+function subjectClasses(selector: string, into: Set<string>): void {
+  for (const sel of selector.split(",")) {
+    for (const cls of subjectOf(sel.trim()).match(/\.chq-phone-[a-z0-9-]+/g) ?? []) {
+      into.add(cls.slice(1));
+    }
+  }
+}
+
+/** Classes whose own display is (re)declared inside a phone-width
+ * (`max-width: <=700px`) media block: `restored` with a REAL display,
+ * `hidden` with `display: none`. */
+function phoneDisplayClasses(css: string): { restored: Set<string>; hidden: Set<string> } {
+  const restored = new Set<string>();
+  const hidden = new Set<string>();
   const mediaRe = /@media[^{]*max-width:\s*(\d+)px[^{]*\{/g;
   let mm: RegExpExecArray | null;
   while ((mm = mediaRe.exec(css)) !== null) {
@@ -119,20 +141,49 @@ function restoredClasses(css: string): Set<string> {
     }
     for (const rule of rules(css.slice(bodyStart, i - 1))) {
       if (!/(^|;)\s*display\s*:/.test(rule.body)) continue;
-      if (/display\s*:\s*none/.test(rule.body)) continue;
-      for (const sel of rule.selector.split(",")) {
-        for (const cls of subjectOf(sel.trim()).match(/\.chq-phone-[a-z0-9-]+/g) ?? []) {
-          out.add(cls.slice(1));
-        }
-      }
+      subjectClasses(rule.selector, /display\s*:\s*none/.test(rule.body) ? hidden : restored);
     }
+  }
+  return { restored, hidden };
+}
+
+/** DEC-919: a class the phone frame DELIBERATELY does not draw is switched
+ * off with a `/* phone-hidden: <reason> *\/` receipt sitting directly above
+ * its rule -- the same convention
+ * app/src/phone-capability-removal.scan.test.ts already parses and enforces.
+ * A guarded class resolved that way is not STRANDED, it is decided: the
+ * receipt names the capability's surviving surface (for
+ * `.chq-phone-agenda-wordmark`, the app-shell header's own `.chq-wordmark`,
+ * DEC-919 wave-20's "draw exactly ONE wordmark"). Crediting the receipt --
+ * rather than an exemption list this scan's own header rules out -- keeps
+ * the zero-height accident this pin exists to catch distinguishable from a
+ * recorded decision, structurally, with no ledger to go stale. Read off the
+ * RAW source, since the receipt IS a comment. */
+function receiptedHiddenClasses(rawCss: string): Set<string> {
+  const out = new Set<string>();
+  const re = /\/\*\s*phone-hidden:[\s\S]*?\*\/\s*([^{}]+)\{([^{}]*)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(rawCss)) !== null) {
+    if (!/display\s*:\s*none/.test(m[2] ?? "")) continue;
+    subjectClasses(m[1] ?? "", out);
   }
   return out;
 }
 
 const FILES = cssFiles(APP_SRC).map((path) => {
-  const css = stripComments(readFileSync(path, "utf-8"));
-  return { path, rel: path.slice(REPO_ROOT.length + 1), guards: guardedClasses(css), restored: restoredClasses(css) };
+  const raw = readFileSync(path, "utf-8");
+  const css = stripComments(raw);
+  const { restored, hidden } = phoneDisplayClasses(css);
+  const receipted = receiptedHiddenClasses(raw);
+  return {
+    path,
+    rel: path.slice(REPO_ROOT.length + 1),
+    guards: guardedClasses(css),
+    restored,
+    /** Guarded classes the phone layer switches OFF on purpose, receipt and
+     * all -- resolved, not stranded. */
+    decidedHidden: new Set([...hidden].filter((c) => receipted.has(c))),
+  };
 });
 const WITH_GUARDS = FILES.filter((f) => f.guards.length > 0);
 
@@ -149,7 +200,8 @@ describe("phone leak-guard restore parity", () => {
     for (const file of WITH_GUARDS) {
       for (const guard of file.guards) {
         for (const cls of guard) {
-          if (!file.restored.has(cls)) stranded.push(`${file.rel}: .${cls}`);
+          if (file.restored.has(cls) || file.decidedHidden.has(cls)) continue;
+          stranded.push(`${file.rel}: .${cls}`);
         }
       }
     }

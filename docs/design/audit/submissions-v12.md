@@ -49,8 +49,8 @@ route/page component and rendered against `docs/design/Chautauqua
 Submissions.dc.html`, receipts at
 `app/src/pages/Submissions.frame-verdicts.render.test.tsx`.
 
-4. **Frame :137 "Submissions" — DIVERGES (narrowed, task v12m-w21-l,
-   DEC-976).** The head band (H1 `Submissions` at :144, the
+4. **Frame :137 "Submissions" — DIVERGES (narrowed, task v12m-w21-l, DEC-976).**
+   The head band (H1 `Submissions` at :144, the
    `12 awaiting triage` summary, the 44px search field at :147, the status
    chip strip at :148-151) renders in the frame's own top-to-bottom order.
    (a) **CLOSED.** The pending chip DOES draw the frame's phone label:

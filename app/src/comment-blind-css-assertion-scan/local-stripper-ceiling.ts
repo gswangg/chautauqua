@@ -93,4 +93,15 @@
 // test.ts still present, the six converted files absent, the two
 // already-migrated files absent as before). Ceiling lowered to match: 91 ->
 // 88.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 88;
+// Thunderdome megabatch integration (medic pass): the two-sided companion
+// went RED the other way -- the measured population had fallen BELOW the
+// declared 88, which this instrument treats as a stale ceiling licensing
+// stagnation. Re-derived on the integrated tree: 86. The drop is real drain
+// work by lanes and repair commits that converted further local strippers to
+// test/helpers/strip-css-comments.ts's shared one without lowering this
+// constant (a lane-local run never includes this repo-wide scan, so nothing
+// told them): 090a7628 (wave-156 phone-frame receipts), ee6086a9
+// (forms-phone-390) and 6f0b5d48 (contacts head-band-face / rule-builder /
+// rule-chip-dismiss) all land inside this batch. Lowered 88 -> 86 from the
+// re-measured number, never by arithmetic on the batch size.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 86;
