@@ -187,7 +187,7 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(sessionRow?.textContent?.match(/S-001/g) ?? []).toHaveLength(1);
     expect(sessionRow?.querySelector('.chq-participation-menu-ref')).toHaveTextContent('S-001');
 
-    // Cell 3's declared register: frame :368 draws bare olive caps -- no
+    // Cell 3's declared register: frame :367 draws bare olive caps -- no
     // border, no fill -- via the scoped .chq-speaker-detail-sessions-row
     // override (speakers-css.test.ts pins the declaration; jsdom applies no
     // external stylesheet, so this asserts the markup carries the modifier
