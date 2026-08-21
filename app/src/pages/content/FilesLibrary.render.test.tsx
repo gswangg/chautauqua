@@ -348,7 +348,10 @@ describe('FilesLibrary render smoke', () => {
     // empty the list is a dead control.
     expect(within(typeTabs).queryByRole('tab', { name: /Poster/ })).not.toBeInTheDocument();
     expect(within(typeTabs).queryByRole('tab', { name: /Handout/ })).not.toBeInTheDocument();
-    expect(within(typeTabs).queryByRole('tab', { name: /Recording/ })).not.toBeInTheDocument();
+    // DEC-613 wave-159 amendment: the library's `recording` label is
+    // "Video", not "Recording" (Content.dc.html:307/:346) -- assert the
+    // library's own vocabulary, not the session strip's.
+    expect(within(typeTabs).queryByRole('tab', { name: /Video/ })).not.toBeInTheDocument();
 
     // The search box sits to the LEFT of the chip strip it narrows.
     const toolbar = screen.getByLabelText('Search files').closest('.chq-content-files-toolbar');

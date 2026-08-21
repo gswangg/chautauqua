@@ -50,8 +50,17 @@ export const DELIVERABLE_LABELS: Record<FileKind, string> = {
 export const HEADSHOT_KIND = 'headshot' as const;
 export type LibraryKind = FileKind | typeof HEADSHOT_KIND;
 export const LIBRARY_KINDS: readonly LibraryKind[] = [...FILE_KINDS, HEADSHOT_KIND];
+
+// DEC-613 wave-159 amendment: `recording` carries a per-SURFACE label. The
+// files library (Chautauqua Content.dc.html:307 desktop, :346 phone) calls
+// it "Video" -- this is a desktop-affecting change and it is legal
+// precisely because the 1600 frame at :307 demands it. DELIVERABLE_LABELS
+// keeps `recording: 'Recording'` because the SESSION deliverable strip
+// (:141 desktop, :387 phone) draws "Recording · 1 version" at both widths
+// -- two registers for one domain kind, split by surface, not by width.
 export const LIBRARY_KIND_LABELS: Record<LibraryKind, string> = {
   ...DELIVERABLE_LABELS,
+  recording: 'Video',
   headshot: 'Headshot',
 };
 

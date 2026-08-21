@@ -14,6 +14,7 @@ import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
 import { countOf } from '../../lib/plural';
 import { ARCHIVE_MAX_FILES, ARCHIVE_MAX_TOTAL_BYTES, archiveCapMessage } from '../../lib/file-caps';
+import { useIsPhone } from '../../lib/useIsPhone';
 
 interface FilesLibraryProps {
   eventId: string;
@@ -63,6 +64,11 @@ function filesFilterReason(q: string, kind: LibraryKind | ''): string {
  * never invalidates another chip's own printed number. There is no
  * separate per-kind fan-out and no separate unfiltered "totals" call. */
 export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibraryProps) {
+  // DEC-613 wave-159 amendment: the leading chip's visible text is a WIDTH
+  // register, not a vocabulary -- "All types" at desktop (Content.dc.html
+  // :305), "All" at 390 (:344). aria-label pins the tab's accessible name
+  // so it does not change with viewport.
+  const isPhone = useIsPhone();
   const [items, setItems] = useState<EventFileChainItem[]>([]);
   const [total, setTotal] = useState(0);
   const [totalSizeBytes, setTotalSizeBytes] = useState(0);
@@ -183,6 +189,8 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         </div>
         <div className="chq-content-files-header-actions">
           <span className="chq-summary">
+            {/* formatBytes' .toFixed(1) is NOT settled by the pack -- Content.dc.html:298
+                draws "412 MB" against Settings.dc.html:1629's "2.1 MB"; do not "fix" it here. */}
             {`${countOf(total, 'file')} · ${formatBytes(totalSizeBytes)}`}
           </span>
           {/* CNT-14 (DEC-160, wave-26 amendment): a bordered SECONDARY
@@ -239,13 +247,14 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
             type="button"
             role="tab"
             aria-selected={kind === ''}
+            aria-label="All types"
             className={kind === '' ? 'chq-pill is-active' : 'chq-pill'}
             onClick={() => {
               setKind('');
               setPage(1);
             }}
           >
-            All types
+            {isPhone ? 'All' : 'All types'}
           </button>
           {/* DEC-902: a kind with zero matches offers no chip -- a filter
               that can only empty the list is a dead control. kindCounts is
