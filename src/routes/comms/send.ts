@@ -4,7 +4,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { csrfJson, requireOrganizer } from "../../server/middleware";
+import { csrfJson, requireCookieSession, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
@@ -20,7 +20,9 @@ import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
 import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
-import { DEC_238, DEC_846 } from "../../decisions";
+import { DEC_027, DEC_238, DEC_846 } from "../../decisions";
+
+void DEC_027;
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
 import {
   requireFullMatch,
@@ -34,7 +36,11 @@ import {
 
 export const sendRoutes = new Hono<AppEnv>();
 
-sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJson, async (c) => {
+// DEC-027 wave-18 amendment: this route mints real claim tokens
+// indirectly via applyMintedPortalLinks below — a claim-token mint is a
+// credential mint, so requireCookieSession goes immediately after the
+// role guard.
+sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
   const auth = c.var.auth;

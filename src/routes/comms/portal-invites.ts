@@ -3,7 +3,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { csrfJson, requireOrganizer } from "../../server/middleware";
+import { csrfJson, requireCookieSession, requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { markParticipantsInvited } from "../../server/repo/participants";
@@ -20,10 +20,17 @@ import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
 import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
+import { DEC_027 } from "../../decisions";
+
+void DEC_027;
 
 export const portalInvitesRoutes = new Hono<AppEnv>();
 
-portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csrfJson, async (c) => {
+// DEC-027 wave-18 amendment: this route mints real claim tokens
+// (resolvePortalLinks(..., true) below) — a claim-token mint is a
+// credential mint, so requireCookieSession goes immediately after the
+// role guard.
+portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
 

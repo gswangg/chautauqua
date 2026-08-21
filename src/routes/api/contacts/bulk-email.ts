@@ -4,7 +4,7 @@
 
 import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
-import { csrfJson } from "../../../server/middleware";
+import { csrfJson, requireCookieSession } from "../../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../../domain/cap-copy";
@@ -21,10 +21,11 @@ import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
 import { newId } from "../../../domain/ids";
 import { dedupeCutoff, dedupeKey } from "../../../domain/comms-dedupe";
-import { DEC_766, DEC_238 } from "../../../decisions";
+import { DEC_766, DEC_238, DEC_027 } from "../../../decisions";
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
 
 void DEC_766;
+void DEC_027;
 
 // DEC-019/DEC-422 (amendment, wave 59): the bulk-email batch and the
 // compose batch are ONE cap -- MAX_COMPOSE_RECIPIENTS (src/domain/compose.ts),
@@ -164,7 +165,12 @@ function bulkEmailMergeFieldError(
 const BULK_EMAIL_PREVIEW_LIMIT = 5;
 
 export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
-  contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
+  // DEC-027 wave-18 amendment: this route mints real claim tokens
+  // indirectly via applyMintedPortalLinks below — a claim-token mint is a
+  // credential mint, so requireCookieSession goes immediately after the
+  // role guard (requireOrganizer is applied at the router level in
+  // src/routes/api/contacts/index.ts).
+  contactsRoutes.post("/contacts/bulk-email", requireCookieSession, csrfJson, async (c) => {
     const orgId = currentOrgId(c);
     const body = asRecord(await c.req.json().catch(() => {
       throw new ApiError("invalid", "Invalid JSON body");

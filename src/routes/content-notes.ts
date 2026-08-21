@@ -11,7 +11,7 @@
 
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
-import { requireOrganizer, csrfJson } from "../server/middleware";
+import { requireOrganizer, requireCookieSession, csrfJson } from "../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../server/http";
 import { MAX_COMMENT_BODY_LENGTH } from "../domain/files"; // DEC-244
 import { overCapFieldMessage, overCapSentence } from "../domain/cap-copy";
@@ -24,9 +24,10 @@ import type { KVStore } from "../auth/claim";
 import { resolvePortalLinks } from "../server/repo/portal-link";
 import { getFileScope, getSubmissionScope, insertFileComment, updateContentStatus } from "../server/repo/files";
 import { findAccountUserIds, loadComposeSubmissions } from "../server/repo/comms";
-import { DEC_009, DEC_317, DEC_573, DEC_720, DEC_741 } from "../decisions";
+import { DEC_009, DEC_027, DEC_317, DEC_573, DEC_720, DEC_741 } from "../decisions";
 
 void DEC_009;
+void DEC_027;
 void DEC_317;
 void DEC_573;
 void DEC_720;
@@ -50,7 +51,11 @@ interface ContentNoteBody {
 // -----------------------------------------------------------------------
 // POST /api/v1/submissions/:id/content-note — organizer-only (DEC-741)
 // -----------------------------------------------------------------------
-contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJson, async (c) => {
+// DEC-027 wave-18 amendment: this route mints real claim tokens
+// (resolvePortalLinks(..., true) below) — a claim-token mint is a
+// credential mint, so requireCookieSession goes immediately after the
+// role guard.
+contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const submissionId = c.req.param("id");
 
