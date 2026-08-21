@@ -19,7 +19,7 @@ import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
-import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
+import { collapsedRecipientSkips, dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
 import { DEC_027, DEC_238, DEC_846 } from "../../decisions";
 
 void DEC_027;
@@ -83,7 +83,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // this send will actually render, never a precedence guess.
   const perSubmissionVarsSpent =
     spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
-  const { targets, recipients } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
+  const { targets, recipients, withheld } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const preflightResult = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!preflightResult.ok) {
@@ -140,7 +140,16 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
     preflightResult.rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(now.getTime()),
   );
-  const { toSend: toSendKeys, skipped } = planComposeSends(preflightResult.rendered, recentlySent);
+  const { toSend: toSendKeys, skipped: plannedSkips } = planComposeSends(preflightResult.rendered, recentlySent);
+  // DEC-936 (wave-21 amendment): expandRecipients' contact-collapse ran
+  // BEFORE this render, so its withheld rows are absent from
+  // `preflightResult.rendered` and the planner never judged them. They are
+  // still recipients this batch held back, and DEC-238's own ComposeDedupeSkip
+  // contract says a held-back recipient is "named individually (never a bare
+  // count)" -- so they join the same list, ahead of the planner's own two
+  // stages, in the order the decisions were actually made.
+  const collapseSkips = collapsedRecipientSkips(withheld);
+  const skipped = [...collapseSkips, ...plannedSkips];
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   // DEC-846 wave-3 amendment: templateId is PROVENANCE, not authority — the
@@ -285,10 +294,25 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
     const renderedBySubmissionAndEmail = new Map(
       preflightResult.rendered.map((r) => [`${r.submissionId}::${r.email.trim().toLowerCase()}`, r]),
     );
+    // DEC-936 (wave-21 amendment): a COLLAPSE skip has no render of its own —
+    // its (contactId, submissionId) row was withheld upstream of the render
+    // pass, so the lookup above misses it. Its source is the SURVIVING row for
+    // the same contactId, and that substitution is exact rather than
+    // approximate: the collapse only happens when the composed text spends no
+    // per-submission merge var, so every row for one contactId renders a
+    // byte-identical subject and body. Keyed off the withheld ComposeRecipient
+    // (which carries contactId) rather than off ComposeDedupeSkip, which is a
+    // display shape and deliberately does not.
+    const withheldByKey = new Map(withheld.map((r) => [`${r.submissionId}::${r.email.trim().toLowerCase()}`, r]));
+    const renderedByContact = new Map(preflightResult.rendered.map((r) => [r.contactId, r]));
     const emailLogWriter = d1EmailLogWriter(c.var.db);
     const sentAtMs = now.getTime();
     for (const skip of skipped) {
-      const source = renderedBySubmissionAndEmail.get(`${skip.submissionId}::${skip.email.trim().toLowerCase()}`);
+      const key = `${skip.submissionId}::${skip.email.trim().toLowerCase()}`;
+      const collapsed = withheldByKey.get(key);
+      const source = collapsed
+        ? renderedByContact.get(collapsed.contactId)
+        : renderedBySubmissionAndEmail.get(key);
       if (!source) continue;
       await emailLogWriter.write({
         eventId,

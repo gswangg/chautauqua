@@ -16,6 +16,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+// DEC-374/DEC-613: the ONE string-aware comment stripper. A private naive
+// `/\*...\*/` regex has no notion of quoting, so a `/*` inside a CSS string
+// literal silently eats real product text -- the delay fuse DEC-613 names.
+import { stripCssComments } from "../../../../test/helpers/strip-css-comments";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, "contacts.css");
@@ -26,17 +30,18 @@ const FRAME_PATH = join(REPO_ROOT, "docs", "design", "Chautauqua Contacts.dc.htm
 const FRAME_TEXT = readFileSync(FRAME_PATH, "utf-8");
 const FRAME_LINES = FRAME_TEXT.split("\n");
 
-/** Blanks out /* ... *\/ comments in place, preserving length and newlines. */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
-}
+/** The whole sheet, comments removed once by the shared string-aware helper.
+ * Every offset below is an index into THIS text, never into the raw source:
+ * the shared stripper preserves line numbers but not byte length (it drops a
+ * comment's characters, keeping only its newlines), so raw offsets would no
+ * longer transfer the way the previous private length-preserving blanker let
+ * them. Slicing the stripped text throughout is what keeps that honest. */
+const CSS_STRIPPED = stripCssComments(CSS_TEXT);
 
 /** Finds every top-level (depth-0) `@media (max-width: 700px) { ... }`
- * block in the given CSS text via brace-matching over the comment-stripped
- * text, returning each block's [openIdx, closeIdx] byte range in the RAW
- * text (stripComments preserves length, so offsets transfer directly). */
-function findTopLevelPhoneBlocks(rawText: string): Array<{ openIdx: number; closeIdx: number }> {
-  const clean = stripComments(rawText);
+ * block via brace-matching, returning each block's [openIdx, closeIdx] byte
+ * range in the ALREADY-STRIPPED text it is handed. */
+function findTopLevelPhoneBlocks(clean: string): Array<{ openIdx: number; closeIdx: number }> {
   const blocks: Array<{ openIdx: number; closeIdx: number }> = [];
   let depth = 0;
   let headerStart = 0;
@@ -69,7 +74,7 @@ function findTopLevelPhoneBlocks(rawText: string): Array<{ openIdx: number; clos
   return blocks;
 }
 
-const PHONE_BLOCKS = findTopLevelPhoneBlocks(CSS_TEXT);
+const PHONE_BLOCKS = findTopLevelPhoneBlocks(CSS_STRIPPED);
 
 describe("contacts.css: single terminal @media(max-width:700px) block, unmodified by this fix", () => {
   it("has exactly one top-level phone block", () => {
@@ -78,15 +83,14 @@ describe("contacts.css: single terminal @media(max-width:700px) block, unmodifie
 
   it("that block is the file's last top-level construct (nothing but whitespace/comments follows its close brace)", () => {
     const block = PHONE_BLOCKS[0]!;
-    const after = CSS_TEXT.slice(block.closeIdx + 1);
-    const afterNoComments = stripComments(after);
-    expect(afterNoComments.trim().length).toBe(0);
+    const after = CSS_STRIPPED.slice(block.closeIdx + 1);
+    expect(after.trim().length).toBe(0);
   });
 });
 
 describe("contacts.css: rule-chip dismiss control's appended width-floor fix", () => {
   const block = PHONE_BLOCKS[0]!;
-  const blockText = CSS_TEXT.slice(block.openIdx, block.closeIdx + 1);
+  const blockText = CSS_STRIPPED.slice(block.openIdx, block.closeIdx + 1);
 
   // Locate every `.chq-contacts-filter-rule-chip-dismiss { ... }` rule
   // inside the phone block (there must be exactly two: the earlier landed
@@ -116,7 +120,7 @@ describe("contacts.css: rule-chip dismiss control's appended width-floor fix", (
   });
 
   it("no `chq-contacts-filter-rule-chip-dismiss` declaration appears anywhere after the phone block closes", () => {
-    const after = CSS_TEXT.slice(block.closeIdx + 1);
+    const after = CSS_STRIPPED.slice(block.closeIdx + 1);
     expect(after).not.toMatch(/chq-contacts-filter-rule-chip-dismiss/);
   });
 

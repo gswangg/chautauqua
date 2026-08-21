@@ -20,6 +20,17 @@ import type { Exclusion } from './types';
  *        at all. The reason cites the file:line where that behaviour is
  *        implemented, so the "residue is just an annotation" claim is
  *        itself checkable.
+ *   (iv) SPLIT (DEC-976 wave-21 amendment) -- the app draws EVERY word of
+ *        the caption, in the frame's own order, but a ruled phone
+ *        stand-down forced the sentence into sibling elements so half of it
+ *        is separately addressable. Nothing is composed from data and
+ *        nothing is deferred; the plain-substring matcher simply cannot see
+ *        across an element boundary. A SPLIT reason must quote EACH span's
+ *        source text verbatim -- which satisfies clause 4's
+ *        resolve-in-source check by construction -- and name the ruling
+ *        that forced the split, so the claim stays machine-checkable rather
+ *        than asserted.
+ *
  *   (iii) BLESSED/DEFERRED -- the caption draws a feature or rework the
  *         build does not carry, and DEVIATIONS.md §6 (or a DEC ruling) has
  *         already settled that as scope, not a defect. The reason quotes
@@ -917,5 +928,21 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'Panel, 45 min · AI Engineering',
     reason:
       "the same submit-post.tsx `metaParts` composing expression, this sample's track-only clause (no audience level answered) -- 'AI Engineering' is this fixture's own sample track name.",
+  },
+  // SHAPE (iv) SPLIT (DEC-976 wave-21 amendment, ruled on this exact row).
+  // The desktop 1600 hub is FROZEN and genuinely draws both sentences in one
+  // closing line, so neither sentence could be deleted; DEC-874's wave-19
+  // amendment split the paragraph into two sibling spans so the
+  // hidden-scores half alone can stand down at 390 with a `phone-hidden:`
+  // receipt, since the phone dock already states that exact sentence at that
+  // width. Every word is still drawn, in the frame's own reading order --
+  // only the element boundary between them is new, and that boundary is what
+  // this ledger's plain-substring matcher cannot see across.
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 866,
+    text: 'With one open plan this page is skipped \u2014 you land straight in its queue. Scores stay hidden from other reviewers.',
+    reason:
+      'app/src/pages/review/ReviewerQueue.tsx draws the caption whole, as two sibling spans inside one paragraph: `<span>With one open plan this page is skipped \u2014 you land straight in its queue.</span>{\' \'}` immediately followed by `<span className="chq-reviewer-plans-footnote-repeat">Scores stay hidden from other reviewers.</span>`. DEC-874\'s wave-19 amendment forced that split (desktop reading order byte-identical, the frozen 1600 frame untouched) so review.css\'s one terminal phone block can stand the second span down at 390 with a `phone-hidden:` receipt naming the dock band that already carries the same sentence there -- one sentence, one place, per width. Nothing is composed from data and nothing is deferred: the words are literal in source, split across an element boundary the plain-substring pass cannot cross.',
   },
 ];

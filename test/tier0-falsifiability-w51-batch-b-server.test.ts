@@ -609,7 +609,17 @@ describe("item 4: POST /compose/send collapses same-address/same-subject duplica
     // Stage 1 still collapses the duplicate before stage 2 consults the
     // window INSIDE the planner, which the sent/skipped assertions above
     // pin behaviourally.
-    expect(item4RecentlySentCalledWith).toHaveLength(2);
+    //
+    // DEC-936 (wave-19 ruling, landed f15d99c3; kept by the wave-21
+    // amendment): the subject+body here spend no per-submission merge var, so
+    // expandRecipients collapses this contact's two (contact, submission) rows
+    // to ONE before anything is rendered — hence ONE wanted key reaches
+    // loadRecentlySent, not two. The withheld row is still named in `skipped`
+    // above (wave-21: "a contact-collapse must NAME whom it collapsed"), so
+    // nothing is hidden; what changed is that a row the batch will never mail
+    // no longer costs a render or a dedupe key. The sibling test below, whose
+    // subject DOES spend {talk_title}, keeps the uncollapsed two-key shape.
+    expect(item4RecentlySentCalledWith).toHaveLength(1);
     for (const pair of item4RecentlySentCalledWith ?? []) {
       expect(pair.email).toBe("speaker@example.com");
     }

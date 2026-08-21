@@ -9,7 +9,7 @@ import * as repo from "../../server/repo/comms";
 import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { renderEmailHtml } from "../../mail/shell";
 import { requireOwnedEvent } from "./shared";
-import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
+import { collapsedRecipientSkips, dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
 import { DEC_238 } from "../../decisions";
 import {
   requireFullMatch,

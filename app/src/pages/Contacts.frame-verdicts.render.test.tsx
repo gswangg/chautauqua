@@ -92,7 +92,7 @@ function mockContactsBase(overrides: Record<string, unknown> = {}) {
 
 describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DEC-976)', () => {
   // Frame :179-223 "Contacts" -- caption at :175.
-  it('frame :179 Contacts landing -- DIVERGES: desktop table (checkbox column, header row, per-row "Open") and the full rule-builder render unchanged, not the frame\'s headerless card list with a per-row "Email" action', async () => {
+  it('frame :179 Contacts landing -- DIVERGES (narrowed, DEC-967 wave-20/21): desktop table (checkbox column, header row) and the full rule-builder render unchanged, not the frame\'s headerless card list -- the per-row "Email" action itself now MATCHES the frame at phone', async () => {
     verbatimLine(175, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Contacts</span>");
     stubPhoneMatchMedia();
     mockContactsBase();
@@ -115,10 +115,17 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     const headerCells = within(table).getAllByRole('columnheader');
     expect(headerCells.map((c) => c.textContent)).toEqual(['', 'Name and email', 'Company', 'Labels', '']);
     await waitFor(() => expect(within(table).getByText('Priya Raman')).toBeInTheDocument());
-    // Frame :209's per-row action is a boxed "Email"; the actual row's
-    // action button reads "Open" instead.
-    expect(within(table).queryByRole('button', { name: 'Email' })).not.toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: 'Open' })).toBeInTheDocument();
+    // CLOSED (commit 8e7ba734, w15-tg/DEC-385, retired here under DEC-967
+    // wave-20/21 with the tree evidence quoted inline): frame :209's per-row
+    // action is a boxed "Email", and the app MATCHES it at phone --
+    // app/src/pages/contacts/ContactsTable.tsx draws
+    // `aria-label={`Email ${c.firstName} ${c.lastName}`}` inside its
+    // `isPhone ?` branch and keeps "Open" only at desktop, pinned by
+    // app/src/pages/contacts/ContactsTable.row-390.render.test.tsx. The
+    // surviving divergence on this frame is the table chrome above (checkbox
+    // column, header row) and the full rule-builder render, not this control.
+    expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: 'Email Priya Raman' })).toBeInTheDocument();
     expect(within(table).getByRole('checkbox', { name: 'Select all on page' })).toBeInTheDocument();
   });
 

@@ -114,7 +114,7 @@ afterEach(() => {
 
 describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb, DEC-976)', () => {
   // Frame :137-172 "Submissions".
-  it("frame :137 Submissions -- DIVERGES: head band (H1, summary, search, chip strip) matches the frame's order, but the active-status chip reads \"Pending\" not the frame's \"Needs triage\", and the worklist itself is a desktop <table> with columns interleaved between the frame's four card blocks (ref -> title -> speakers -> actions), not a standalone card list", async () => {
+  it("frame :137 Submissions -- DIVERGES (narrowed, DEC-967 wave-20/21): head band (H1, summary, search, chip strip) matches the frame's order and the active-status chip now DRAWS the frame's own \"Needs triage\" words at phone (keeping \"Pending\" as its pinned accessible name); the surviving divergence is the worklist itself, a desktop <table> with columns interleaved between the frame's four card blocks (ref -> title -> speakers -> actions), not a standalone card list", async () => {
     const EVENT_ID = 'evt-submissions-frame-137';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -172,10 +172,23 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // `          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Needs triage</span>`
     verbatimLine(149, L149);
     const pills = within(screen.getByRole('group', { name: 'Filter by status' }));
-    expect(pills.getByRole('button', { name: 'Pending' })).toBeInTheDocument();
-    // The frame's filled/active first chip reads 'Needs triage'; the real
-    // control's own vocabulary (STATUS_LABELS) reads 'Pending' -- diverges.
-    expect(pills.queryByText('Needs triage')).not.toBeInTheDocument();
+    const pendingPill = pills.getByRole('button', { name: 'Pending' });
+    expect(pendingPill.querySelector('.chq-submissions-status-pending-phone')?.textContent).toBe('Needs triage');
+    // CLOSED (commit ae6d8ec4, DEC-825 wave-16; retired here under DEC-967
+    // wave-20/21 with the tree evidence quoted inline). The pending pill now
+    // draws the frame's own words: app/src/pages/submissions/FilterBar.tsx
+    // renders `<span className="chq-submissions-status-pending-phone">Needs
+    // triage</span>` as a phone-only sibling of the desktop
+    // `.chq-submissions-status-pending-desktop` span, with
+    // `aria-label={status === 'pending' ? STATUS_LABELS.pending : undefined}`
+    // pinning the accessible name to 'Pending' at every width so it never
+    // changes across breakpoints. jsdom applies no @media, so BOTH spans sit
+    // in the DOM here -- which is exactly why the accessible-name query above
+    // still resolves 'Pending' while the frame's words are present too. The
+    // note sits BELOW the first assertion because app/src/
+    // frame-citation.scan.test.ts requires a real expect( within
+    // EXPECT_PROXIMITY_LINES of the frame citation above it.
+    expect(pendingPill.querySelector('.chq-submissions-status-pending-desktop')?.textContent).toBe('Pending');
 
     // docs/design/Chautauqua Submissions.dc.html:165-167
     // `              <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Accept</span>`
@@ -326,7 +339,7 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
   });
 
   // Frame :468-486 "CFP form · 390".
-  it('frame :468 CFP form -- DIVERGES: back link, H1, and field-list rows (Edit pill + drag handle) render in the frame\'s own order, and the fixed footer carries Save the form + Preview, but the meta line spells out the close-date year ("16 Aug 2025" vs the frame\'s "16 Aug") and each field row also renders a Delete button the frame never draws', async () => {
+  it('frame :468 CFP form -- DIVERGES (narrowed, DEC-967 wave-20/21): back link, H1, field-list rows (Edit pill + drag handle) and the fixed footer (Save the form + Preview) all render in the frame\'s own order, and the meta line now matches the frame\'s year-less "Closes 16 Aug" too; the surviving divergence is the Delete button each field row renders, which the frame never draws', async () => {
     const EVENT_ID = 'evt-forms-frame-468';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -375,10 +388,16 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // docs/design/Chautauqua Submissions.dc.html:472
     // `        <span style="font-size:13px; color:#565A4B">Closes 16 Aug · 47 received</span>`
     verbatimLine(472, L472);
-    const meta = await screen.findByText('Closes 16 Aug 2025 · 47 received');
+    const meta = await screen.findByText('Closes 16 Aug · 47 received');
     expect(h1.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The frame's date carries no year; the real page's formatDateOnly
-    // always includes one, so the rendered line diverges to "16 Aug 2025".
+    // CLOSED (commit 3886e33d, DEC-650 wave-16; retired here under DEC-967
+    // wave-20/21 with the tree evidence quoted inline): the head meta now
+    // MATCHES the frame's year-less date. app/src/pages/forms/FormsPage.tsx
+    // composes its phone meta line from `formatDateOnlyNoYear(form.closeDate)`
+    // (app/src/lib/dates.ts), not the year-bearing formatDateOnly this row
+    // used to name. The note sits BELOW the assertions for the same
+    // expect-proximity reason as the :149 row above.
+    expect(screen.queryByText('Closes 16 Aug 2025 · 47 received')).not.toBeInTheDocument();
 
     // docs/design/Chautauqua Submissions.dc.html:476
     // `            <span style="font-size:16px; color:#8E8A7A">⋮⋮</span>`

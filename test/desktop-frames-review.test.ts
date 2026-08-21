@@ -100,12 +100,16 @@ describe("desktop frame claims: Review cluster (docs/design/Chautauqua Review.dc
     // Frame :866 `<div style="padding:15px 0 0; font-size:13px; color:#565A4B; line-height:1.5">With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.</div>`
     // -- the desktop (1600) multi-plan hub's own closing line, distinct from
     // the phone frame's split two-region version of the same two sentences.
+    const src = readSrc("app/src/pages/review/ReviewerQueue.tsx");
+    expect(src).toContain("With one open plan this page is skipped — you land straight in its queue.");
     // DEC-874 wave-19 amendment: the app splits this into two sibling
     // <span>s (desktop rendered text stays byte-identical, reading order
     // unchanged) so the second sentence alone can be hidden at 390 -- the
     // source literal is now two separate strings, not one contiguous run.
-    const src = readSrc("app/src/pages/review/ReviewerQueue.tsx");
-    expect(src).toContain("With one open plan this page is skipped — you land straight in its queue.");
+    // The note sits BELOW the first assertion on purpose: app/src/
+    // frame-citation.scan.test.ts requires a real expect( within
+    // EXPECT_PROXIMITY_LINES of the citation in the it() title above, so a
+    // growing preamble would unreceipt the claim it explains.
     expect(src).toContain("Scores stay hidden from other reviewers.");
     expect(src).toContain("chq-reviewer-plans-footnote");
     expect(src).toContain("chq-reviewer-plans-footnote-repeat");

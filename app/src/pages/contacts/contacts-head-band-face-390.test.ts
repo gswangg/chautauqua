@@ -8,6 +8,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+// DEC-374/DEC-613: the ONE string-aware stripper, never a private re-derivation
+// -- a naive regex has no notion of quoting and eats real product text after a
+// `/*` inside a string literal. Strips comments so a selector mentioned only in
+// prose can't false-match.
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'contacts.css');
@@ -25,10 +30,6 @@ const CSS = readFileSync(CSS_PATH, 'utf-8');
 const DESIGN = readFileSync(DESIGN_PATH, 'utf-8');
 const DESIGN_LINES = DESIGN.split('\n');
 
-/** Strip comments so a selector mentioned only in prose can't false-match. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Byte offsets of every `@media (max-width: 700px) {` opener in the
  * (comment-stripped) source, paired with the offset of its matching closing

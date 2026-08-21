@@ -18,13 +18,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+// DEC-374/DEC-613: the ONE string-aware stripper, never a private re-derivation.
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, 'contacts.css'), 'utf-8');
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
-}
 
 const STRIPPED = stripComments(CSS);
 

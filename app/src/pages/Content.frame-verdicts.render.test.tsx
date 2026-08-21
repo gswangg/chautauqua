@@ -191,7 +191,7 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
   });
 
   // Frame :338-368 "Files · 390" -- caption at :334.
-  it('frame :338 Files library (phone) -- DIVERGES: chip strip reads "All types" not "All", and the header row (not the frame\'s stat line alone) carries a Download-all control the frame reserves for the footer dock', async () => {
+  it('frame :338 Files library (phone) -- DIVERGES (narrowed, DEC-967 wave-21): the leading chip\'s ACCESSIBLE NAME is pinned to "All types" at every width while the frame draws bare "All" (the drawn word itself now matches), and the header row (not the frame\'s stat line alone) carries a Download-all control the frame reserves for the footer dock', async () => {
     verbatimLine(334, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Files · 390</span>");
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
@@ -228,15 +228,31 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
     // renders bare, exactly as the frame draws it.
     expect(screen.getByText('31 files · 412 MB')).toBeInTheDocument();
 
-    // Frame :344 draws a plain "All" chip and a "Video · 4" chip; the real
-    // toolbar reads "All types" (SessionList's tab-strip vocabulary carried
-    // over) and, since the domain kind is `recording` not `video`
-    // (DELIVERABLE_LABELS, types.ts), "Recording · 4" rather than "Video · 4".
+    // CLOSED (DEC-613 wave-159, retired here under DEC-967 wave-20/21 with
+    // the tree evidence quoted inline): the kind-chip VOCABULARY now MATCHES
+    // the frame. app/src/pages/content/types.ts declares
+    // `recording: 'Video'` on LIBRARY_KIND_LABELS in its own right instead of
+    // inheriting DELIVERABLE_LABELS' 'Recording', which the SESSION
+    // deliverable strip (:141/:387) keeps -- two registers for one domain
+    // kind, split by surface. The leading chip's visible text matches too:
+    // app/src/pages/content/FilesLibrary.tsx renders
+    // `{isPhone ? 'All' : 'All types'}`, so 390 draws the frame's bare "All".
+    //
+    // What still DIVERGES is the leading chip's ACCESSIBLE NAME: the same
+    // element pins `aria-label="All types"` at every width on purpose, so the
+    // tab's identity does not change with viewport while its drawn word does.
+    // The queries below are by accessible name, which is why 'All types'
+    // resolves and 'All' does not. This ledger mounts at jsdom's default
+    // width and stubs no matchMedia, so the DRAWN word here is the desktop
+    // register; the phone register is pinned separately, and by width, in
+    // app/src/pages/content/FilesLibrary.kind-vocabulary.render.test.tsx
+    // ('phone (390): the leading chip renders "All" visible text but keeps
+    // "All types" as its accessible name').
     expect(screen.queryByRole('tab', { name: 'All' })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'All types' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Slides · 22' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Video · 4' })).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Recording · 4' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Video · 4' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Recording · 4' })).not.toBeInTheDocument();
 
     // Frame :338-368 reserves "Download all"/"Search" for the sticky
     // footer dock (:365-367) -- the header row above the chips carries no
