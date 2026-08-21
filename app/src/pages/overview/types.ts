@@ -157,6 +157,11 @@ export interface OverviewPayload {
     conflictTotal: number;
     conflicts: AgendaConflict[];
     unplaced: UnplacedRow[];
+    // DEC-895 amendment (wave 148, w4-ak): the unplaced remainder's shared
+    // duration in minutes, or null when the remainder is empty, mixed, or
+    // any remainder row's format didn't parse -- see
+    // src/server/repo/overview/types.ts for the full invariant.
+    unplacedRemainderDurationMin: number | null;
   };
   'triage-counts': TriageCountsAggregate;
   review: ReviewAggregate;

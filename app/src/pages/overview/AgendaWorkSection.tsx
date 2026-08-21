@@ -39,8 +39,19 @@ void DEC_919; // wave-129 amendment (task w4-s): REVERSES the wave-128 label cla
 function agendaOverflowLine(payload: OverviewPayload): string {
   const extraUnplaced = payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length;
   const extraConflicts = payload.agendaWork.conflictTotal - payload.agendaWork.conflicts.length;
+  // DEC-895 amendment (wave 148, w4-ak): "· all need N minutes" only ever
+  // appends when the server found a single shared duration across every
+  // remainder row (Chautauqua Overview.dc.html:164) -- a mixed, partial, or
+  // absent remainder duration leaves the segment as plain "N more unplaced".
+  const remainderDurationMin = payload.agendaWork.unplacedRemainderDurationMin;
+  const unplacedSegment =
+    extraUnplaced > 0
+      ? remainderDurationMin !== null
+        ? `${extraUnplaced} more unplaced · all need ${remainderDurationMin} minutes`
+        : `${extraUnplaced} more unplaced`
+      : null;
   return joinSegments([
-    extraUnplaced > 0 ? `${extraUnplaced} more unplaced` : null,
+    unplacedSegment,
     extraConflicts > 0 ? `${extraConflicts} more ${plural(extraConflicts, 'conflict')}` : null,
   ]);
 }

@@ -140,6 +140,15 @@ export interface OverviewPayloadV2 extends OverviewPayload {
     conflictTotal: number;
     conflicts: ConflictRow[];
     unplaced: UnplacedRow[];
+    // DEC-895 amendment (wave 148, w4-ak): the unplaced REMAINDER's
+    // (unplacedTotal - unplaced.length rows never sent to the client)
+    // shared duration, in minutes -- non-null ONLY when the remainder is
+    // non-empty AND every remainder row carries a session_format answer
+    // AND all of those answers parse (parseFormatDurationMin) to the SAME
+    // minute count. Never derived from the visible capped rows (DEC-936:
+    // one row electing to speak for the rest) -- a mixed, partial, or
+    // unparseable remainder is null, and the client must not guess.
+    unplacedRemainderDurationMin: number | null;
   };
   // DEC-370 amendment (wave 5): the "Public pages" quiet row's summary
   // clause ("17 sessions live, with speakers and schedule") is composed

@@ -299,4 +299,14 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-ak (wave 148, DEC-895 amendment): Chautauqua Overview.dc.html:164
+// ("3 more unplaced · all need 120 minutes") built this task
+// (unplacedRemainderDurationMin, src/server/repo/overview.ts +
+// app/src/pages/overview/AgendaWorkSection.tsx). Forcing the ceiling to -1
+// after the build measured 14 (down from 15); the row itself moved to a new
+// COMPOSED exclusion (its composing template literal is invisible to
+// match.ts's own sourceDigitSkeleton pass -- an unbalanced-brace regex hazard
+// in that file, out of this task's file ownership, documented on the
+// exclusion entry). Lowered from 15 to 14.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;

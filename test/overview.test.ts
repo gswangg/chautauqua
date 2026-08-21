@@ -424,7 +424,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     expect(payload.overdueTasks).toEqual({ total: 0, rows: [] });
     expect(payload.triage).toEqual({ total: 0, oldestSubmittedAt: null, rows: [] });
     expect(payload.contentApproval).toEqual({ total: 0, reuploadedCount: 0, rows: [] });
-    expect(payload.agendaWork).toEqual({ unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] });
+    expect(payload.agendaWork).toEqual({ unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null });
   });
 
   it("deadlines resolve null independently per cell when a source is missing", async () => {
@@ -794,11 +794,15 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedCount: [{ count: 9 }],
           unplacedDetail: unplacedDetailRows,
         },
-        // A non-empty unplacedDetail feeds three more queries: the DEC-895
+        // A non-empty unplacedDetail feeds four more queries: the DEC-895
         // amendment (w2-f) participant lookup for the capped unplaced ids,
-        // the combined lead-speaker lookup, and the DEC-895 format-answer
-        // batch (all keyed on unplacedCappedIds).
-        [[], [], []],
+        // the combined lead-speaker lookup, the DEC-895 format-answer batch
+        // (all keyed on unplacedCappedIds), and the DEC-895 amendment (wave
+        // 148, w4-ak) remainder format-answer read (9 unplaced - 5 capped =
+        // 4-row remainder, fed empty here -> unplacedRemainderDurationMin
+        // stays null since the row count (0) doesn't match the remainder
+        // count (4)).
+        [[], [], [], []],
       ),
     );
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
@@ -807,6 +811,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     expect(payload.agendaWork.unplaced).toHaveLength(5);
     expect(payload.agendaWork.unplaced.map((r) => r.submissionId)).toEqual(["u0", "u1", "u2", "u3", "u4"]);
     expect(payload.agendaWork.unplaced.map((r) => r.ref)).toEqual(["DFC-001", "DFC-002", "DFC-003", "DFC-004", "DFC-005"]);
+    expect(payload.agendaWork.unplacedRemainderDurationMin).toBeNull();
   });
 
   // DEC-370: at scale (e.g. 60 accepted, unplaced) the payload must still
@@ -825,13 +830,114 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedCount: [{ count: 60 }],
           unplacedDetail: unplacedDetailRows,
         },
-        [[], [], []],
+        // See the 9-unplaced test above for why this is four queued
+        // responses, not three: the DEC-895 amendment (wave 148, w4-ak)
+        // remainder format-answer read is the fourth.
+        [[], [], [], []],
       ),
     );
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.agenda.unplaced).toBe(60);
     expect(payload.agendaWork.unplacedTotal).toBe(60);
     expect(payload.agendaWork.unplaced).toHaveLength(5);
+    expect(payload.agendaWork.unplacedRemainderDurationMin).toBeNull();
+  });
+
+  // DEC-895 amendment (wave 148, w4-ak): a real remainder read -- every one
+  // of the remainder's 3 rows (8 unplaced - 5 capped) answers session_format
+  // with the SAME parseable duration -> unplacedRemainderDurationMin is that
+  // shared minute count, never derived from the 5 visible rows themselves.
+  it("resolves unplacedRemainderDurationMin when every remainder row shares the same parseable format", async () => {
+    const now = 1_735_999_999_999;
+    const unplacedDetailRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `u${i}`,
+      seq: i + 1,
+      title: `Unplaced ${i}`,
+    }));
+    const db = makeFakeDb(
+      emptyResponses(
+        {
+          unplacedCount: [{ count: 8 }],
+          unplacedDetail: unplacedDetailRows,
+        },
+        [
+          [], // participant rows for the capped unplaced set
+          [], // lead-speaker rows for the capped unplaced set
+          [], // DEC-895: format-answer rows for the capped set (none -> durationMin null on all 5 visible rows)
+          [
+            { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
+            { submissionId: "u6", valueJson: JSON.stringify("Workshop (120 min)") },
+            { submissionId: "u7", valueJson: JSON.stringify("Workshop (120 min)") },
+          ], // DEC-895 amendment (w4-ak): remainder format-answer rows, all three the same 120-min format
+        ],
+      ),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
+    expect(payload.agendaWork.unplacedTotal).toBe(8);
+    expect(payload.agendaWork.unplacedRemainderDurationMin).toBe(120);
+  });
+
+  // DEC-936: a mixed remainder (two different parseable durations across
+  // the 3 remainder rows) must NOT let either value speak for the rest --
+  // unplacedRemainderDurationMin stays null.
+  it("leaves unplacedRemainderDurationMin null when remainder rows resolve to different durations", async () => {
+    const now = 1_735_999_999_999;
+    const unplacedDetailRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `u${i}`,
+      seq: i + 1,
+      title: `Unplaced ${i}`,
+    }));
+    const db = makeFakeDb(
+      emptyResponses(
+        {
+          unplacedCount: [{ count: 8 }],
+          unplacedDetail: unplacedDetailRows,
+        },
+        [
+          [],
+          [],
+          [],
+          [
+            { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
+            { submissionId: "u6", valueJson: JSON.stringify("Talk (30 min)") },
+            { submissionId: "u7", valueJson: JSON.stringify("Workshop (120 min)") },
+          ],
+        ],
+      ),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
+    expect(payload.agendaWork.unplacedRemainderDurationMin).toBeNull();
+  });
+
+  // DEC-895 amendment (w4-ak): a remainder row with no session_format
+  // answer at all means the answer-row count (2) falls short of the
+  // remainder count (3) -- the whole remainder is unresolved, null.
+  it("leaves unplacedRemainderDurationMin null when fewer remainder rows answered than the remainder count", async () => {
+    const now = 1_735_999_999_999;
+    const unplacedDetailRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `u${i}`,
+      seq: i + 1,
+      title: `Unplaced ${i}`,
+    }));
+    const db = makeFakeDb(
+      emptyResponses(
+        {
+          unplacedCount: [{ count: 8 }],
+          unplacedDetail: unplacedDetailRows,
+        },
+        [
+          [],
+          [],
+          [],
+          [
+            { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
+            { submissionId: "u6", valueJson: JSON.stringify("Workshop (120 min)") },
+          ],
+        ],
+      ),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
+    expect(payload.agendaWork.unplacedRemainderDurationMin).toBeNull();
   });
 
   // DEC-531: the row-materializing aggregateSpeakerCounts helper is gone —

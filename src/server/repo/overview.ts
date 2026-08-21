@@ -19,13 +19,13 @@
 // these wire keys and is pinned against this file by
 // test/overview-payload-contract.test.ts.
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { findConflicts, parseFormatDurationMin, type BlockedInterval, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { answerFieldRoleCondition, roleAnswerMap } from "./form-roles";
+import { answerFieldRoleCondition, roleAnswerLabel, roleAnswerMap } from "./form-roles";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
@@ -501,7 +501,13 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   // above (no await between them), and the three lookups they feed are
   // mutually independent of each other's results — one more Promise.all
   // wave, in the original leadSpeaker -> room -> format-answer call order.
-  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows] =
+  // --- DEC-895 amendment (wave 148, w4-ak): the count of unplaced rows the
+  // client never receives (the detail query's own ROW_CAP truncation) --
+  // computed here (before the Promise.all wave below) so the remainder read
+  // can be skipped outright when there is no remainder.
+  const unplacedRemainderCount = agenda.unplaced - unplacedCappedIds.length;
+
+  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows, remainderFormatAnswerRows] =
     await Promise.all([
       fetchLeadSpeakers(db, [...leadSpeakerIds]),
       (async () => {
@@ -541,7 +547,55 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         }
         return rows;
       })(),
+      // --- DEC-895 amendment (wave 148, w4-ak): the unplaced REMAINDER's
+      // (unplacedTotal minus the capped rows just above) own
+      // session_format-role answers. Same UNPLACED_ACCEPTED_CONDITIONS
+      // predicate the detail query above already applies, same
+      // answerFieldRoleCondition("session_format") as the DEC-895 reader
+      // above it, restricted to ids NOT IN unplacedCappedIds -- that
+      // exclusion list is never larger than ROW_CAP, so a single NOT IN
+      // clause is used rather than chunking. Skipped entirely when there is
+      // no remainder.
+      (async () => {
+        if (unplacedRemainderCount <= 0) return [] as { submissionId: string; valueJson: string }[];
+        return db
+          .select({
+            submissionId: schema.submissionAnswer.submissionId,
+            valueJson: schema.submissionAnswer.valueJson,
+          })
+          .from(schema.submissionAnswer)
+          .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionAnswer.submissionId))
+          .where(
+            and(
+              UNPLACED_ACCEPTED_CONDITIONS,
+              notInArray(schema.submission.id, unplacedCappedIds),
+              answerFieldRoleCondition("session_format"),
+            ),
+          );
+      })(),
     ]);
+
+  // --- DEC-895 amendment (wave 148, w4-ak): non-null ONLY when every
+  // remainder row answered (row count matches the remainder count exactly)
+  // and every one of those answers parses to the SAME duration. Mixed,
+  // partial, or unparseable ⇒ null (DEC-936: never let one row, or a
+  // majority, speak for the rest).
+  let unplacedRemainderDurationMin: number | null = null;
+  if (unplacedRemainderCount > 0 && remainderFormatAnswerRows.length === unplacedRemainderCount) {
+    const remainderDurations = new Set<number>();
+    let everyRemainderAnswerParsed = true;
+    for (const row of remainderFormatAnswerRows) {
+      const durationMin = parseFormatDurationMin(roleAnswerLabel(row.valueJson));
+      if (durationMin === null) {
+        everyRemainderAnswerParsed = false;
+        break;
+      }
+      remainderDurations.add(durationMin);
+    }
+    if (everyRemainderAnswerParsed && remainderDurations.size === 1) {
+      unplacedRemainderDurationMin = [...remainderDurations][0]!;
+    }
+  }
 
   // DEC-010 amendment (wave 66) / DEC-370 (wave-71 amendment): `blocked` was
   // built above (right after `placed`), from the ONE breaks read this
@@ -671,6 +725,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       ),
     })),
     unplaced: unplacedRows,
+    unplacedRemainderDurationMin,
   };
 
   // --- Comms: one aggregate query, never the whole email_log table

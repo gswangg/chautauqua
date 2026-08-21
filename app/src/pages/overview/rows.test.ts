@@ -31,7 +31,7 @@ function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
     overdueTasks: { total: 0, rows: [] },
     triage: { total: 0, oldestSubmittedAt: null, rows: [] },
     contentApproval: { total: 0, reuploadedCount: 0, rows: [] },
-    agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] },
+    agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null },
     'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
     review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
     speakers: { contactsOwing: 0, overdueAssignments: 0 },
@@ -92,7 +92,7 @@ describe('headlineCount / headlineText', () => {
       overdueTasks: { total: 3, rows: [] },
       triage: { total: 2, oldestSubmittedAt: null, rows: [] },
       contentApproval: { total: 1, reuploadedCount: 0, rows: [] },
-      agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [] },
+      agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null },
     });
     expect(headlineCount(p)).toBe(8);
     expect(headlineText(p)).toBe('Eight things need your attention');
@@ -112,7 +112,7 @@ describe('headlineCount / headlineText', () => {
       overdueTasks: { total: 6, rows: [] },
       triage: { total: 3, oldestSubmittedAt: null, rows: [] },
       contentApproval: { total: 1, reuploadedCount: 0, rows: [] },
-      agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [] },
+      agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null },
     });
     expect(headlineCount(p)).toBe(12);
     expect(headlineText(p)).toBe('12 things need your attention');
