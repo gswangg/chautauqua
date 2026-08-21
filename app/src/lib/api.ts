@@ -4,11 +4,12 @@
 // talk to /api/v1 — page code must never call fetch() directly.
 
 import { bumpMutationVersion, subscribeToMutationVersion } from './mutationSignal';
-import { DEC_013, DEC_700, DEC_678, DEC_851 } from '../../../src/decisions';
+import { DEC_013, DEC_700, DEC_678, DEC_851, DEC_154 } from '../../../src/decisions';
 void DEC_013;
 void DEC_700;
 void DEC_678;
 void DEC_851;
+void DEC_154;
 
 const API_PREFIX = '/api/v1';
 
@@ -283,6 +284,16 @@ export function apiDelete<T>(path: string): Promise<T> {
 // did not happen, silently leaving an authenticated session behind a page
 // that looks signed-out. Instead this throws, so the rejection surfaces to
 // the caller instead of being swallowed.
+//
+// DEC-154 (wave 158 amendment): navigate to the URL the server's redirect
+// named, not a path this client re-invents. src/routes/auth-login.tsx
+// redirects /logout's POST to /login?signed-out=1, and
+// src/routes/auth-helpers.ts's loginStatusLine is the single owner that
+// turns that query into the required confirmation line -- so a hardcoded
+// `/login` silently drops the confirmation. fetch follows the redirect and
+// exposes the final URL as res.url; use it, falling back to the literal
+// `/login?signed-out=1` (the same literal the server and loginStatusLine
+// already agree on) when res.url is absent or doesn't carry the query.
 export async function signOut(): Promise<void> {
   const res = await fetch('/logout', {
     method: 'POST',
@@ -292,7 +303,8 @@ export async function signOut(): Promise<void> {
   if (!res.ok) {
     throw new Error(`Sign-out failed: /logout responded ${res.status}`);
   }
-  window.location.assign('/login');
+  const destination = res.url && res.url.includes('signed-out=1') ? res.url : '/login?signed-out=1';
+  window.location.assign(destination);
 }
 
 // DEC-160: POST that returns a binary body (application/zip) rather than
