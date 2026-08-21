@@ -12,42 +12,16 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVE 18 HEAVILY COMPACTED: fast tier was red on main 8 files/8 tests at `6aa65834`, all fidelity/citation ratchets at ceiling 0 (DECLARED ceiling is a STRING, run the owning test); tree moved four times during planning, re-derive offender lists at a fresh sha; an exact-equality population pin is a merge-conflict magnet, use floors/supersets not equalities (DEC-808); a product scan must never read a verdict test's own frame-verbatim quote as vocabulary (DEC-374); claim-token mint scans missed `createClaimToken`/`applyMintedPortalLinks` for reading only a route's registration text, not indirect mints (DEC-027).
 - WAVE 19 HEAVILY COMPACTED: red set must be re-diffed against in-flight branches' `git diff --name-only main...`, not their briefs; ledgers still overstate the work by a large factor — Contacts 390 landing, Submissions 390 filterbar, CFP dateless meta line, portal profile H1, tap-floor-undeclared-v12's 23 offenders all already built; a negative verdict pin (`not.toMatch`) becomes a ratchet holding the product wrong the moment the fix lands cross-lane, convert with the fix (DEC-976); four `decisions/` citations broke from pure line drift, repair by converting to path+quoted-content, never re-pinning a line (DEC-967).
 
-## Wave 20 (planner notes)
+- WAVE 20 HEAVILY COMPACTED: re-measure the red set after every merge-train commit, not once (two of five reds went green mid-plan); a branch that `--is-ancestor` says MERGED may have committed ZERO, always `git rev-list --count main..<branch>`; DEC-967.md's dead-anchor CATALOGUE reads as an exhibit, not a defect — repairing it is the failure; a scribe amendment claiming "/admin/agenda draws two wordmarks" (DEC-919) was ITSELF wrong three waves later (see w21); ledgers overstate work in one direction, grep the tree before spending a lane.
 
-**RE-MEASURE AFTER EVERY MERGE-TRAIN COMMIT, NOT ONCE.** I measured
-test:fast in a detached worktree at abfda0c2: 5 files / 6 tests red.
-main then moved to 11a5fbe9 ("merge train: sigil the wave-19 amendment's
-two catalogued dead anchors") while I planned. Re-running just the five
-red files at the new sha showed TWO of them had gone green — the whole
-test/citation-form-drift.scan.test.ts lane I had drafted no longer had
-a defect to fix. A wave that trusts a 20-minute-old red set ships a lane
-that fixes nothing.
+## Wave 21 (planner notes)
 
-**A BRANCH THAT "MERGED" MAY HAVE COMMITTED NOTHING.** v12m-w19-e and
--f both point AT the scribe commit: --is-ancestor says MERGED,
-git rev-list --count main..<branch> says 0. Their four items (DEC-874's
-duplicate sentence, DEC-745's plan-editor shell, the CFP row, DEC-941's
-merge) never landed and are wave 20's lanes a/b/e/g. Always count, never
-ask whether it is reachable.
+**A SCRIBE AMENDMENT IS A CLAIM ABOUT THE TREE, NOT A RECEIPT.** `src/decisions-data/DEC-919.md:160` (scribe wave 20) asserts /admin/agenda draws TWO wordmarks. Commit `ae12c3b8` fixed that three waves earlier: `PhoneAgenda.tsx` carries `data-chq-phone-head`, styles.css's phone block stands the shell header down, and `PhoneAgenda.phone-head.render.test.tsx` pins attribute + CSS rule + DEC-380 doc text. Wave 20's lane `a` was built on that false premise; so were its lanes `b`/`g` (commit `13c3a025` had already landed the DEC-874 footnote split and the DEC-745 DEVIATIONS blessing). GREP THE TREE FOR THE RULED CONSTRUCT BEFORE SPENDING A LANE — a decision doc, a ledger row and a review-lens finding are all equally capable of describing a fixed defect.
 
-**AN EXHIBIT! SIGIL IS A THIRD ANSWER TO "IS THIS CITATION DEAD".**
-src/decisions-data/DEC-967.md catalogues dead anchors as the SUBJECT of
-its own sentences; the scan grades them INVERTED and goes red the moment
-one heals. Before repairing a "broken" citation in a decision doc, check
-whether it is an exhibit — repairing it is the failure.
+**RE-MEASURE THE RED SET; IT IS NOT ALL RATCHETS.** `test:fast` at `5f84024a` in a detached worktree: 11 files / 15 tests. Wave 20 inherited "5 files, all fidelity/citation ratchets" and would have missed the real one: DEC-936's wave-19 contact-collapse (`f15d99c3`) sits UPSTREAM of `planComposeSends`, so collapsed recipients never reach either dedupe stage and vanish from the 200 body — seven product reds across four comms-send files, invisible to every design ledger.
 
-**THE PACK DRAWS THE SHELL, SO A PAGE THAT DRAWS ITS OWN CHROME DOUBLES
-IT.** /admin/agenda at 390 stacks two chautauqua wordmarks (shell
-header + PhoneAgenda.tsx's own). The data-chq-phone-head contract is
-NOT the general answer: its own comment scopes it to frames drawing no
-wordmark/identity, and using it strands .chq-eventswitcher, which has
-no phone rule anywhere. The established reading for every other 390 frame
-that draws a wordmark is that the SHELL header is that wordmark
-(DEC-919 w20).
+**A LEDGER ROT AUDIT PAYS BETTER THAN A LEDGER ROW.** Nine clauses re-derived, SEVEN already satisfied (Submissions :137a/b and :468a/b, Content :198/:338, public CFP "Draft"). The mandate itself (`docs/mobile-campaign.md`) carries stale follow-ups too — the phone-CFP `reportValidity()` dead-end and the portal add-co-presenter draft loss are both built. Three stale rows are ALSO encoded as `not.toBeInTheDocument()` pins; retire row and pin in one commit (DEC-976).
 
-**LEDGERS STILL OVERSTATE THE WORK, IN ONE DIRECTION.** Four more rows I
-checked were already satisfied (Contacts 390 landing incl. per-row
-Email; Content :247's !phoneSelectMode guard; the import
-emailConflicts completion receipt; signOut()'s ?signed-out=1, and
-useCurrentEvent's cache eviction, both fixed by later amendments). Grep
-the TREE for the row's own claim before spending a lane.
+**A CEILING WHOSE ONLY LEGAL MOVE IS A RAISE IS ASKING THE WRONG QUESTION.** `FRAME_CAPTION_UNMATCHED_CEILING` went red because `13c3a025` split a caption across two spans so one could stand down at 390. Every word is still drawn; only the plain-substring matcher cannot cross an element boundary. Widen the exclusion GRAMMAR (COMPOSED shape (iv) SPLIT, quoting each span) instead of spending detection power on a raise.
+
+**BRANCH NAMESPACE, AGAIN:** `v12m-w21-a..g` were all pre-burned by a prior numbering with live worktrees; this wave runs `h..n`. Re-check `show-ref` + `packed-refs` + `worktree list` before AND after planning.
