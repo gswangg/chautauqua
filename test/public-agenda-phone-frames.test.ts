@@ -39,6 +39,8 @@
 import { describe, expect, it } from "vitest";
 import { AGENDA_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
 import { RAIL_CSS, RAIL_PHONE_CSS } from "../src/routes/public/css/rail.css";
+import { DaySwitcher } from "../src/routes/public/agenda-controls";
+import type { PublicEvent } from "../src/server/repo/public";
 import { CARDS_CSS, CARDS_PHONE_CSS } from "../src/routes/public/css/cards.css";
 import { CHROME_CSS, CHROME_PHONE_CSS } from "../src/routes/public/css/chrome.css";
 import { ACCENT_BOUND_CLASSES } from "../src/routes/public/css/accent-classes";
@@ -307,6 +309,62 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
   it("phone: the active day pill's own border-colour reads filled, not outlined-plus-filled", () => {
     const phone = findRule(PHONE.agenda, ".chq-pub-day-pill-active");
     expect(phone).toMatch(/border-color:\s*var\(--chq-ink\)/);
+  });
+
+  // docs/design/Chautauqua Public and Portal.dc.html:381
+  // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">My schedule · 4</span>`
+  // DEC-919: the day strip's terminal "My schedule · N" pill.
+  describe("the terminal 'My schedule · N' pill (DEC-919)", () => {
+    const EVENT: PublicEvent = {
+      id: "ev1",
+      orgId: "org1",
+      name: "Test Event",
+      slug: "conf",
+      startDate: "2026-08-10",
+      endDate: "2026-08-11",
+      location: null,
+      timezone: "UTC",
+      recordPrefix: "SES",
+      brandingJson: null,
+    };
+    const markup = String(
+      DaySwitcher({
+        days: ["2026-08-10", "2026-08-11"],
+        renderedDays: new Set(["2026-08-10"]),
+        event: EVENT,
+        surface: "agenda",
+        base: "/e",
+        activeDay: "2026-08-10",
+      }),
+    );
+
+    it("is present, idle-state (never chq-pub-day-pill-active), and links to the SAME /schedule surfacePath the header nav renders (DEC-613: one path derivation)", () => {
+      expect(markup).toMatch(
+        /<a class="chq-pub-day-pill chq-pub-my-schedule-pill" href="\/e\/conf\/schedule">/,
+      );
+      // never composed with the active-state modifier -- that belongs to
+      // the day filter only.
+      expect(markup).not.toMatch(/chq-pub-day-pill-active">[^<]*My schedule/);
+    });
+
+    it("carries a count element the ONE saved-schedule count (agenda-itinerary-script.tsx's ids[]) fills client-side — empty on first SSR paint, same idiom as #chq-ics-count", () => {
+      expect(markup).toMatch(/My schedule ·\s*<span id="chq-my-schedule-pill-count">0<\/span>/);
+    });
+
+    it("reaches the 44px floor via the SAME composed class as every other day pill: min-height + centred flex + non-zero horizontal padding, all three (DEC-393)", () => {
+      const phone = findLastRule(PHONE.agenda, DAY_PILL);
+      expect(phone).toMatch(/min-height:\s*44px/);
+      expect(phone).toMatch(/display:\s*flex/);
+      expect(phone).toMatch(/(?:align-items:\s*center|justify-content:\s*center)/);
+      expect(phone).toMatch(/padding:\s*0 15px/);
+    });
+
+    it("is phone-only: the 1600 desktop frame (:132) draws no such pill, so the base (non-media) rule hides it, and only the terminal <=700px block restores display:flex (DEC-385 single-direction)", () => {
+      const base = findRule(DESKTOP.agenda, ".chq-pub-my-schedule-pill");
+      expect(base).toMatch(/display:\s*none/);
+      const phone = findRule(PHONE.agenda, ".chq-pub-my-schedule-pill");
+      expect(phone).toMatch(/display:\s*flex/);
+    });
   });
 });
 

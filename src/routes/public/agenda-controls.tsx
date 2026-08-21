@@ -121,6 +121,25 @@ export function DaySwitcher(props: {
           </a>
         );
       })}
+      {/* docs/design/Chautauqua Public and Portal.dc.html:381 -- the 390 day
+          strip's terminal member, a fourth pill idle at every width (the
+          active state belongs to the day filter above, never to this one).
+          Phone-only: the 1600 desktop frame (:132 "Agenda · 1600") never
+          draws it -- "My schedule" there is the header nav's own <a>
+          (SURFACE_LABELS.schedule), which this pill links to via the SAME
+          surfacePath helper (DEC-613: never a second path derivation), so
+          this is a second entry point to the identical destination, not a
+          second destination. .chq-pub-my-schedule-pill is display:none
+          outside the phone media query (base, wide-first) and restored to
+          flex only inside agenda.css.ts's terminal <=700px block (DEC-385
+          single-direction). The count mirrors #chq-ics-count: the saved
+          schedule is client-side-only, so this renders empty on first
+          paint and agenda-itinerary-script.tsx's updateLink fills both ids
+          from the one ids[] it already computes (never a second count
+          derivation). */}
+      <a class="chq-pub-day-pill chq-pub-my-schedule-pill" href={surfacePath(event, "schedule", base)}>
+        My schedule · <span id="chq-my-schedule-pill-count">0</span>
+      </a>
     </nav>
   );
 }
