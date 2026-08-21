@@ -66,6 +66,7 @@ import {
   formatSummary,
   formatTypeRoleTable,
   INTERACTION_STATE_BLOCKING,
+  INTERACTIVE_CONTROL_SELECTOR,
   interactionStateErrorResult,
   interactionStateSummaryLine,
   mobileErrorResult,
@@ -201,18 +202,14 @@ export const ADMIN_MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = ROUTE_MA
   (entry) => (entry.role === "organizer" || entry.role === "reviewer") && entry.path !== "/admin/*",
 ).map((entry) => ({ path: entry.path, role: entry.role, expectedStatus: entry.expectedStatus }));
 
-/** DEC-387 control selector: the redesign's phone-bar/primary-control
- * vocabulary (tabbar links/buttons, .chq-btn, .chq-input, .chq-select,
- * header nav links), visible only — same `offsetParent !== null` filter as
- * the public mobile pass. */
-const ADMIN_MOBILE_CONTROL_SELECTOR = [
-  ".chq-tabbar a",
-  ".chq-tabbar button",
-  ".chq-btn",
-  ".chq-input",
-  ".chq-select",
-  "header nav a",
-].join(", ");
+// DEC-367/DEC-808 w7-dd: the admin mobile pass used to grade a hand-listed
+// six-selector control vocabulary (tabbar links/buttons, .chq-btn,
+// .chq-input, .chq-select, header nav links) — a hand-listed population is
+// not a population (DEC-180/DEC-808), applying here exactly as it applies
+// to a file list. It now grades INTERACTIVE_CONTROL_SELECTOR
+// (scripts/render-sweep-lib.ts): every element the DOM itself calls
+// interactive, visible only — same `offsetParent !== null` filter as the
+// public mobile pass.
 
 // DEC-991: KNOWN_CLIP_EXCEPTIONS is not a scheduling or deferred-work list.
 // The only admissible reason to name an offender here is a fact about the
@@ -1380,8 +1377,8 @@ async function main(): Promise<void> {
     // DEC-387: admin mobile pass (390x844, advisory). Organizer + reviewer
     // contexts logged in fresh (viewport is fixed per-context) and visited
     // at the same 390x844 viewport as the public mobile pass, evaluated with
-    // the same evaluateMobileRoute but the redesign's own control selector
-    // (ADMIN_MOBILE_CONTROL_SELECTOR). Failures only flip the exit code when
+    // the same evaluateMobileRoute but the full derived interactive control
+    // population (INTERACTIVE_CONTROL_SELECTOR). Failures only flip the exit code when
     // ADMIN_MOBILE_PASS_BLOCKING is true (false on landing; see its comment
     // in render-sweep-lib.ts for the flip rule).
     console.log("");
@@ -1419,7 +1416,7 @@ async function main(): Promise<void> {
       }
       try {
         adminMobileResults.push(
-          await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR, fontFloorResults),
+          await visitMobileRoute(context, baseUrl, entry, INTERACTIVE_CONTROL_SELECTOR, fontFloorResults),
         );
       } catch (err) {
         adminMobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
