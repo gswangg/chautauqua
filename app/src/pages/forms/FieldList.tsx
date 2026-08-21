@@ -347,7 +347,12 @@ export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: Fi
                   <Link to={row.viewLink.to} className="chq-btn chq-btn-tertiary">
                     {row.viewLink.label}
                   </Link>
-                  <button type="button" className="chq-btn chq-btn-tertiary" disabled>
+                  {/* DEC-919 amendment (wave 19): own class token, never a
+                      `:last-child` positional match (DEC-989) -- forms.css's
+                      phone block targets this token directly so a third
+                      action pill can never silently re-line itself into a
+                      hide rule aimed at "whatever sits last". */}
+                  <button type="button" className="chq-btn chq-btn-tertiary chq-forms-field-row-delete" disabled>
                     Delete
                   </button>
                 </>
@@ -365,9 +370,15 @@ export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: Fi
                   >
                     Edit
                   </button>
+                  {/* DEC-919 amendment (wave 19): own class token (see
+                      comment on the view-only Delete above) -- forms.css's
+                      phone block re-lines this exact token into FieldModal's
+                      far-left "Delete this question" action, never a
+                      `:last-child` match on whichever button happens to sit
+                      last in the actions strip (DEC-989). */}
                   <button
                     type="button"
-                    className="chq-btn chq-btn-tertiary"
+                    className="chq-btn chq-btn-tertiary chq-forms-field-row-delete"
                     disabled={busy || row.field.locked}
                     onClick={() => onDelete(row.field)}
                   >

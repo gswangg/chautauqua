@@ -147,7 +147,7 @@ describe('v12 phone frame "CFP form · 390" — the row list', () => {
     expect(btn).toMatch(/font-size:\s*13px/);
     expect(btn).toMatch(/font-weight:\s*600/);
 
-    expect(phoneRule(FORMS_CSS, '.chq-forms-field-actions .chq-btn:last-child')).toMatch(/display:\s*none/);
+    expect(phoneRule(FORMS_CSS, '.chq-forms-field-row-delete')).toMatch(/display:\s*none/);
   });
 });
 

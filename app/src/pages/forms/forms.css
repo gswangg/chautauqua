@@ -621,12 +621,17 @@
     font-weight: 600;
   }
 
-  /* phone-hidden: re-lined elsewhere -- Delete (the row's last action) is
-     reachable inside FieldModal's own "Delete this question" footer
+  /* phone-hidden: re-lined elsewhere -- the row's own Delete pill is
+     reachable inside FieldModal's own far-left "Delete this question"
      action (DEC-650 wave-66 amendment), opened via the remaining visible
-     Edit control on this same row; no capability is lost, only the
-     access path changes. */
-  .chq-forms-field-actions .chq-btn:last-child {
+     Edit control on this same row and calling the SAME onDelete handler
+     (FieldModal.delete-and-labels.render.test.tsx: 'renders a far-left
+     Delete when editing with onDelete, and calls the passed-in handler on
+     click'); no capability is lost, only the access path changes. Targeted
+     by its own class token, never `:last-child` (DEC-989 wave-19: a
+     positional match is not a population -- a third action pill would
+     silently inherit this hide rule under the old selector). */
+  .chq-forms-field-row-delete {
     display: none;
   }
 

@@ -107,15 +107,18 @@ describe('ruling (b): editing stays a per-question drill (frame caption "Reorder
 // stand-down, not markup removal (Delete survives via FieldModal's own
 // "Delete this question" footer action, reached through the same row's Edit).
 describe('ruling (a): the row Delete control stands down at 390, surviving inside FieldModal', () => {
-  it('.chq-forms-field-actions .chq-btn:last-child (the row Delete) is hidden inside the single terminal max-width:700px block', () => {
-    expect(() => ruleIn(PHONE, '.chq-forms-field-actions .chq-btn:last-child')).not.toThrow();
-    const deleteRule = ruleIn(PHONE, '.chq-forms-field-actions .chq-btn:last-child');
+  it('.chq-forms-field-row-delete (the row Delete, own class token -- DEC-989: never :last-child) is hidden inside the single terminal max-width:700px block', () => {
+    expect(() => ruleIn(PHONE, '.chq-forms-field-row-delete')).not.toThrow();
+    const deleteRule = ruleIn(PHONE, '.chq-forms-field-row-delete');
     expect(deleteRule).toMatch(/display:\s*none/);
     // Desktop stays the pair: this selector appears exactly once in the
     // file (inside the phone block) -- there is no unconditional twin
     // hiding the row's Delete outside the fold.
-    const occurrences = CSS.match(/\.chq-forms-field-actions \.chq-btn:last-child/g) ?? [];
+    const occurrences = CSS.match(/\.chq-forms-field-row-delete\b/g) ?? [];
     expect(occurrences.length).toBe(1);
+    // The old positional selector is gone entirely -- no rule anywhere in
+    // this sheet may target the row's actions strip by :last-child again.
+    expect(CSS_RAW).not.toMatch(/\.chq-forms-field-actions \.chq-btn:last-child/);
   });
 });
 
