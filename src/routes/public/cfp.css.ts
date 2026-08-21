@@ -113,7 +113,8 @@ export const CFP_CSS = `
 
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
   /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua Public
-     and Portal.dc.html:1003/:1289 draw the Submit-a-talk desktop dock's
+     and Portal.dc.html:1003/:1289 \`font-size:15px; font-weight:700">Submit
+     this talk\` draw the Submit-a-talk desktop dock's
      primary at min-height:50px and :1004/:1290 draw its secondary
      (Draft/"Save draft") at 48px -- both above the shared house registers
      (the primary button rule declares no min-height at desktop scope; the

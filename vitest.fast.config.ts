@@ -52,6 +52,11 @@ export default defineConfig({
       // window.localStorage, so vitest.config.ts pins it to jsdom despite
       // its plain-.test.ts name -- same shape as the entries above.
       "app/src/pages/comms/composeDraft.test.ts",
+      // v12m-w11-pa (DEC-919 wave-155 amendment): its two read-drill-primary
+      // `it()`s render ApiTokensPanel/PeopleRolesPanel and fireEvent on them,
+      // so vitest.config.ts pins it to jsdom despite its plain-.test.ts name
+      // -- same shape as the entries above.
+      "app/src/pages/settings/settings-phone-390.frames.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",

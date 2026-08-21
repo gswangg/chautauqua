@@ -171,7 +171,17 @@ describe('SettingsPage render smoke', () => {
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
     expect(await within(yourDataSection).findByText('CI pipeline')).toBeInTheDocument();
-    expect(within(yourDataSection).queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    // DEC-919 wave-155 amendment (task v12m-w11-pa): the READ drill now
+    // renders the frame's phone-only second primary, so 'New token' IS in
+    // the DOM on landing -- it used to be reachable only behind 'Change'.
+    // It is carried by .chq-settings-phone-action, the class the phone sheet
+    // shows and the desktop sheet hides, which is what keeps this a phone
+    // affordance rather than a second desktop control. Asserting the class
+    // (not merely presence) is what stops a future lane from satisfying this
+    // line with a plain always-on desktop button.
+    expect(within(yourDataSection).getByRole('button', { name: 'New token' })).toHaveClass(
+      'chq-settings-phone-action',
+    );
 
     fireEvent.click(within(yourDataSection).getByRole('button', { name: 'Change' }));
     await waitFor(() => {

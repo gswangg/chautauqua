@@ -539,7 +539,18 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // task's fix only moves already-resolved controls, so it cannot change this
 // bucket -- the two waves agreeing on 152 is the receipt that the drift was
 // w10-na's and is now settled.
-export const UNRESOLVED_COUNT_TRIPWIRE = 152;
+//
+// Re-measured by the wave-155 merge train (batch pb/pd/pf/pc/pa/pe): 152 ->
+// 151. Bisected across the train's six merge commits rather than assumed --
+// the count is 152 at the pb, pd, pf and pc merges and 151 from the pa merge
+// onward, so the mover is task pa (DEC-919 wave-155 amendment), whose
+// ApiTokensPanel/PeopleRolesPanel read drills newly render the frame's
+// phone-only primary. A drawn control that previously matched no source at
+// all now resolves to a real class token (.chq-settings-phone-action) with a
+// real CSS rule behind it, so it leaves this bucket. Same direction as
+// w10-na above: the population did not shrink, a member moved from
+// UNRESOLVED to resolved.
+export const UNRESOLVED_COUNT_TRIPWIRE = 151;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

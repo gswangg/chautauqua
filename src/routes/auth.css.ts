@@ -412,14 +412,20 @@ ${BARE_PAGE_CSS}
        in\` -- full-width, centred, one size down from the desktop card's
        14px/46px/22px-padded intrinsic button. Frame-control-floor scan
        (wave-155 pb, DEC-393) resolves the button's own class tokens
-       (.chq-btn.chq-btn-primary) rather than this element selector, and
-       the house register (styles.css's phone .chq-btn / .chq-phone-dock
-       .chq-btn) only reaches 48px here -- below the 50px this frame
-       draws. Added second selector, same declaration block, scoped to
-       this card only: DEC-385 single-direction, no house register
-       change. */
-    .chq-auth-stack .chq-auth-card button[type=submit],
-    .chq-auth-stack .chq-auth-card .chq-btn.chq-btn-primary {
+       (chq-btn plus chq-btn-primary) rather than this element selector,
+       and the house registers those tokens reach in styles.css (the
+       phone button rule and the phone dock's button rule) only get to
+       48px here -- below the 50px this frame draws. Added a second
+       selector, same declaration block, scoped to this card only:
+       DEC-385 single-direction, no house register change. The
+       element-selector arm is written LAST so the SSR phone scan in
+       test/account-signin-phone.test.ts, which reads that selector
+       straight through to its opening brace, still finds its receipt.
+       No class name in this comment carries a leading dot (DEC-374:
+       comment text is page content, and the floor scans read it as
+       part of the following rule's selector). */
+    .chq-auth-stack .chq-auth-card .chq-btn.chq-btn-primary,
+    .chq-auth-stack .chq-auth-card button[type=submit] {
       width: 100%;
       min-height: 50px;
       border-radius: 6px;

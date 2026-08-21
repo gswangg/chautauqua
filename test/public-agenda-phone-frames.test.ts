@@ -395,7 +395,14 @@ describe("v12 phone frame 'My schedule' (390) — saved-session list + .ics affo
     const base = findRule(DESKTOP.agenda, ".chq-pub-itinerary-cta");
     expect(base).toMatch(/background:\s*var\(--chq-brand\)/);
     const phone = findRule(PHONE.agenda, ".chq-pub-itinerary-cta");
-    expect(phone).toMatch(/min-height:\s*44px/);
+    // v12m-w11-pb (DEC-393 wave-155): this token is drawn at TWO heights --
+    // min-height:46px at :885 (quoted above) and min-height:48px at
+    // Public and Portal.dc.html:401 -- and this single rule is the only site
+    // declaring it a phone min-height. Raised 44px -> 48px, the max of the
+    // two drawn values, so it is at-least-drawn at both frames and still
+    // clears the 44px floor this `it()` is named for. Pinned exactly, not as
+    // a >=, so a later silent drop back under the floor still fails here.
+    expect(phone).toMatch(/min-height:\s*48px/);
     expect(phone).toMatch(/align-items:\s*center/);
     expect(phone).toMatch(/justify-content:\s*center/);
   });

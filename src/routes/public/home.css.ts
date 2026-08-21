@@ -46,7 +46,8 @@ export const HOME_CSS = `
      the offset is line-height-invariant, so no line-height is set here. */
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; position: relative; top: -2.5px; }
   /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua
-     Account.dc.html:51/:318 and Chautauqua Home.dc.html:214/:285 draw
+     Account.dc.html:51/:318 \`font-size:14px; font-weight:700">Sign in\`
+     and Chautauqua Home.dc.html:214/:285 draw
      "Sign in" at min-height:46-48px on desktop; this rule declared no
      min-height at all. 48px (the max of the two drawn values) covers both
      frame instances -- the scan grades declared height as at-least-drawn,
@@ -121,7 +122,7 @@ export const HOME_CSS = `
      with indexOf on it, so an earlier copy would redirect the scan.) */
   .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
   /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua
-     Home.dc.html:286 draws "API docs" at min-height:46px on desktop; the
+     Home.dc.html:286 \`>API docs ›</a>\` draws "API docs" at min-height:46px on desktop; the
      rule above declares no min-height at all (only the phone floor below
      existed). Already flex-centred with padding, so only the min-height
      is new. Kept as its OWN rule rather than folded into the block above:
