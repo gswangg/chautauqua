@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_RAW = readFileSync(join(HERE, 'forms.css'), 'utf-8');
@@ -16,7 +17,7 @@ const CSS_RAW = readFileSync(join(HERE, 'forms.css'), 'utf-8');
 // the selector captured by the regex-based rule scanner below. The
 // max-width-occurrence-count test still reads CSS_RAW, since two of its six
 // occurrences are themselves inside comments.
-const CSS = CSS_RAW.replace(/\/\*[\s\S]*?\*\//g, '');
+const CSS = stripCssComments(CSS_RAW);
 
 /** Concatenated body of the file's max-width media block, brace-matched. */
 function phoneLayer(css: string): string {
@@ -118,7 +119,7 @@ describe('ruling (a): the row Delete control stands down at 390, surviving insid
     expect(occurrences.length).toBe(1);
     // The old positional selector is gone entirely -- no rule anywhere in
     // this sheet may target the row's actions strip by :last-child again.
-    expect(CSS_RAW).not.toMatch(/\.chq-forms-field-actions \.chq-btn:last-child/);
+    expect(CSS).not.toMatch(/\.chq-forms-field-actions \.chq-btn:last-child/);
   });
 });
 
