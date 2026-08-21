@@ -171,14 +171,17 @@ describe('SettingsPage render smoke', () => {
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
     expect(await within(yourDataSection).findByText('CI pipeline')).toBeInTheDocument();
-    // DEC-919 wave-155 amendment (task v12m-w11-pa): the READ drill now
-    // renders the frame's phone-only second primary, so 'New token' IS in
-    // the DOM on landing -- it used to be reachable only behind 'Change'.
-    // It is carried by .chq-settings-phone-action, the class the phone sheet
-    // shows and the desktop sheet hides, which is what keeps this a phone
-    // affordance rather than a second desktop control. Asserting the class
-    // (not merely presence) is what stops a future lane from satisfying this
-    // line with a plain always-on desktop button.
+    // DEC-919 wave-155 (v12m-w11-pa) + wave-156 (qb-settings-yourdata-read-drill):
+    // the READ drill now renders the frame's phone-only second primary AND the
+    // per-row Revoke, so both are in the DOM on landing -- 'New token' used to
+    // be reachable only behind 'Change'. Receipted in full in
+    // ApiTokensPanel.render.test.tsx/settings-phone-390.frames.test.ts.
+    // 'New token' is carried by .chq-settings-phone-action, the class the phone
+    // sheet shows and the desktop sheet hides, which is what keeps this a phone
+    // affordance rather than a second desktop control. Asserting the class (not
+    // merely presence) is what stops a future lane from satisfying this line
+    // with a plain always-on desktop button.
+    expect(within(yourDataSection).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
     expect(within(yourDataSection).getByRole('button', { name: 'New token' })).toHaveClass(
       'chq-settings-phone-action',
     );

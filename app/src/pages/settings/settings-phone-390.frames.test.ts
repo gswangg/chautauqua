@@ -39,16 +39,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, within, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ApiTokensPanel } from './ApiTokensPanel';
 import { PeopleRolesPanel } from './PeopleRolesPanel';
+import { SettingsPage } from '../Settings';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
-// DEC-919 wave-155 amendment: the two "reads the frame's ... action" it()s
-// below render the real read-drill primaries -- everything else in this
-// file stays the pure source/CSS-scan style the header above describes.
+// DEC-919 wave-155/156 amendment: the "reads the frame's ... action" it()s
+// below render the real read-drill primaries -- both the panel in isolation
+// (wave-155) and the whole SettingsPage read drill (wave-156). Everything
+// else in this file stays the pure source/CSS-scan style the header describes.
 afterEach(() => cleanup());
 
 /** Exposes `location.search` for a `MemoryRouter`-wrapped render, without
@@ -281,6 +283,76 @@ describe('v12 phone frame "Settings · Your data" (390)', () => {
     fireEvent.click(buttons[0]!);
 
     expect(screen.getByTestId('location-search').textContent).toBe('?section=your-data&edit=1&intent=new');
+  });
+
+  it('mounts the "New token" primary in the read drill via the full SettingsPage', async () => {
+    // DEC-919 wave-156: a real render receipt against the tree, not a
+    // second citation of the frame -- ApiTokensPanel.tsx's `readOnly`
+    // branch mounts this button (task qb-settings-yourdata-read-drill).
+    const EVENT_ID = 'evt-390-your-data-new-token';
+    window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        slug: 'devcon-2026',
+        name: 'DevCon 2026',
+        startDate: '2026-09-01',
+        endDate: '2026-09-03',
+        location: 'Austin, TX',
+        timezone: 'America/Chicago',
+        recordPrefix: 'DC26',
+        branding: { logoUrl: '', accentColor: '' },
+      },
+      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+    });
+    render(createElement(MemoryRouter, { initialEntries: ['/settings?section=your-data'] }, createElement(SettingsPage)));
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    const newTokenBtn = await within(section).findByRole('button', { name: 'New token' });
+    expect(newTokenBtn).toHaveClass('chq-settings-phone-action');
+    window.localStorage.clear();
+    cleanup();
+  });
+
+  it('YourDataPanel read drill (?section=your-data, no edit=1) mounts both per-row actions and the New-token primary', async () => {
+    const EVENT_ID = 'evt-390-your-data-read-drill';
+    window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        slug: 'devcon-2026',
+        name: 'DevCon 2026',
+        startDate: '2026-09-01',
+        endDate: '2026-09-03',
+        location: 'Austin, TX',
+        timezone: 'America/Chicago',
+        recordPrefix: 'DC26',
+        branding: { logoUrl: '', accentColor: '' },
+      },
+      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+    });
+    // No `edit=1` -- this is the READ drill, not the edit drill: the
+    // per-row actions and the create primary must all be reachable without
+    // ever opening 'Change' (DEC-919 wave-156).
+    render(createElement(MemoryRouter, { initialEntries: ['/settings?section=your-data'] }, createElement(SettingsPage)));
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    // Exports row: per-row boxed "Download" (frame :409), reused from
+    // renderExportRowsPhone -- three real hrefs (submissions/contacts CSV,
+    // schedule ICS) render as links; "Everything, JSON" has no href so it
+    // renders as a button, asserted separately below.
+    expect(within(section).getAllByRole('link', { name: 'Download' }).length).toBeGreaterThan(0);
+    // "Everything, JSON" has no href -- it's the one Download rendered as a
+    // <button> rather than a link, same handler as the desktop pill.
+    expect(within(section).getAllByText('Download').some((el) => el.tagName === 'BUTTON')).toBe(true);
+    // API tokens row: per-row boxed "Revoke" (frame :423).
+    expect(within(section).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    // The filled 46px full-width "New token" primary (frame :426).
+    expect(within(section).getByRole('button', { name: 'New token' })).toBeInTheDocument();
+    // Still the read drill: no Change-drill-only content leaked in.
+    expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    window.localStorage.clear();
+    cleanup();
   });
 });
 

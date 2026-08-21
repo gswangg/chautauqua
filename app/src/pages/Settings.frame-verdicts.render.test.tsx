@@ -176,13 +176,19 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :393-441 "Settings · Your data".
-  it('frame :393 Your data -- DIVERGES: no per-row Download/Revoke action in read mode (per-row-action gap, previously documented)', async () => {
+  it('frame :393 Your data -- MATCHES: per-row Download/Revoke actions and the New-token primary render in the read drill', async () => {
     verbatimLine(390, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Your data</span>");
     renderDrilled('your-data');
     const section = screen.getByRole('region', { name: 'Your data' });
     await waitFor(() => expect(within(section).getByText(/API docs/i)).toBeInTheDocument());
-    expect(within(section).queryByRole('link', { name: 'Download' })).not.toBeInTheDocument();
-    expect(within(section).queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+    // DEC-919 wave-156 (task qb-settings-yourdata-read-drill): the per-row
+    // boxed Download (:409) and Revoke (:423) actions and the filled 46px
+    // New-token primary (:426) now render in the read drill itself -- CSS
+    // (not a second DOM copy) keeps them phone-only, so jsdom (no @media)
+    // sees them mounted here regardless of viewport.
+    expect(within(section).getAllByRole('link', { name: 'Download' }).length).toBeGreaterThan(0);
+    expect(within(section).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'New token' })).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 

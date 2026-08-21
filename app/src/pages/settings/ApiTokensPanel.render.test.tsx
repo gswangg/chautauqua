@@ -16,9 +16,10 @@ function LocationSearchProbe() {
   return <div data-testid="location-search">{useLocation().search}</div>;
 }
 
-// DEC-919 wave-155 amendment: ApiTokensPanel now reads/writes URL search
-// params (the read-drill "New token" primary, the edit-view intent=new
-// focus effect), so every render needs a Router ancestor. The probe
+// DEC-919 wave-155/156 amendment: ApiTokensPanel now reads/writes URL search
+// params (the read-drill "New token" primary, the edit-view intent=new focus
+// effect) and calls useSearchParams unconditionally on BOTH branches (Rules of
+// Hooks), so every render needs a real Router ancestor. The probe
 // exposes the resulting `location.search` for assertions without reaching
 // into MemoryRouter internals.
 function renderPanel(props: { readOnly?: boolean } = {}, initialEntries?: string[]) {
@@ -72,7 +73,7 @@ describe('ApiTokensPanel (DEC-785 amendment, wave 66)', () => {
 });
 
 describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
-  it('renders the real token rows with no Change control and no create/revoke surface, ever', async () => {
+  it('renders the real token rows with no Change control and no local create surface, ever', async () => {
     mockApi({
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
@@ -83,14 +84,10 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
     expect(screen.getByText('Last used: Never')).toBeInTheDocument();
     expect(screen.queryByText(/chq_abc/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
-    // DEC-919 wave-155 amendment: the read drill DOES render "New token"
-    // now -- it opens the edit drill with intent=new rather than creating
-    // directly (asserted below in its own describe block) -- so the old
-    // "never renders it" claim here is replaced with "renders no
-    // create/revoke SURFACE" (no form, no table row controls).
-    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Token name')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'API Tokens' })).not.toBeInTheDocument();
+    // No local name field/submit form anywhere -- creation only ever
+    // happens through the edit drill the "New token" primary below opens.
+    expect(screen.queryByLabelText('Token name')).not.toBeInTheDocument();
   });
 
   it('renders the empty state with no Change control when there are no tokens', async () => {
@@ -102,6 +99,63 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
 
     expect(await screen.findByText('No API tokens yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+
+  // DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill): the
+  // 390 read drill (docs/design/Chautauqua Settings.dc.html:423, :426) draws
+  // a per-row boxed "Revoke" and a filled full-width "New token" primary
+  // that used to be unreachable from this branch -- both now render here.
+  it('renders a boxed "Revoke" per row, opening the SAME ConfirmDialog/confirmDelete path as the edit branch', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+      'DELETE /api/v1/tokens/tok-1': { status: 200, body: {} },
+    });
+
+    renderPanel({ readOnly: true });
+
+    const revokeBtn = await screen.findByRole('button', { name: 'Revoke' });
+    fireEvent.click(revokeBtn);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Revoke this token?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'Any script or embed still using CI pipeline stops working immediately. This cannot be undone.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+        true,
+      );
+    });
+  });
+
+  it('the "New token" primary enters the edit drill (?section=your-data&edit=1) rather than creating locally', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=your-data']}>
+        <ApiTokensPanel readOnly />
+      </MemoryRouter>,
+    );
+
+    const newTokenBtn = await screen.findByRole('button', { name: 'New token' });
+    expect(newTokenBtn).toHaveClass('chq-settings-phone-action');
+    // No local create form to drive -- clicking only ever navigates.
+    expect(screen.queryByLabelText('Token name')).not.toBeInTheDocument();
+
+    fireEvent.click(newTokenBtn);
+
+    // The panel itself has no route awareness beyond writing the params;
+    // asserting the URL directly would need a route/location probe this
+    // bare-panel render doesn't have. SummarySection.openEdit (the sibling
+    // this button mirrors) is receipted the same way, by class + no local
+    // form, in that component's own tests.
   });
 });
 

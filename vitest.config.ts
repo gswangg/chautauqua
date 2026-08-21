@@ -71,12 +71,14 @@ export default defineConfig({
       ["app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts", "jsdom"],
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
       ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
-      // v12m-w11-pa (DEC-919 wave-155 amendment): the two read-drill-primary
-      // `it()`s render ApiTokensPanel/PeopleRolesPanel via React.createElement
-      // (no JSX, plain .test.ts name, same idiom as
-      // planEditor-refusal-shapes.test.ts above) alongside this file's
-      // existing CSS/frame source-scan pins, and need a real DOM/window for
-      // their render + fireEvent assertions.
+      // Needs a real DOM/window: this file mixes CSS/frame source-scan pins
+      // with real render receipts against the tree, added by two waves.
+      // v12m-w11-pa (DEC-919 wave-155 amendment) added the two
+      // read-drill-primary `it()`s rendering ApiTokensPanel/PeopleRolesPanel;
+      // v12m-w12-qb (DEC-919 wave-156, task qb-settings-yourdata-read-drill)
+      // added a further render receipt. Both use React.createElement (no JSX,
+      // plain .test.ts name -- same idiom as planEditor-refusal-shapes.test.ts
+      // above) and need render + fireEvent / testing-library assertions.
       ["app/src/pages/settings/settings-phone-390.frames.test.ts", "jsdom"],
     ],
     include: [

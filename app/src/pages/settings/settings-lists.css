@@ -42,6 +42,24 @@
   padding: 6px 0;
 }
 
+/* DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill):
+   ApiTokensPanel's `readOnly` row grows a per-row boxed "Revoke" (frame
+   :423) beside its existing name/detail stack -- phone-only, same
+   render-twice/show-once shape as .chq-settings-phone-action below. The
+   `-info` wrapper is `display:contents` at rest so the two spans it wraps
+   stay DIRECT children of `.chq-settings-summary-row`'s flex row -- byte-
+   identical desktop layout to before this row grew a third (hidden) child
+   -- and only becomes a real flex column inside the phone block, so the
+   name/detail stack sits above the action's own baseline instead of
+   spreading edge-to-edge against it. */
+.chq-settings-summary-row-info {
+  display: contents;
+}
+
+.chq-settings-summary-row-action {
+  display: none;
+}
+
 /* NOTE (wave 26, task-w26-b): the .chq-settings-public-pages-summary-value
    3-col grid and its -path sibling were deleted here when PublicPagesPanel
    stopped rendering that bespoke read row and moved to the shared summary
@@ -171,5 +189,37 @@
     font-size: 13px;
     color: var(--chq-ink-2);
     line-height: 1.5;
+  }
+
+  /* docs/design/Chautauqua Settings.dc.html:423
+     `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+     min-height:44px; display:flex; align-items:center; padding:0 14px;
+     font-size:13px; font-weight:600` -- ApiTokensPanel's readOnly per-row
+     "Revoke" box, byte-identical geometry to the edit branch's own boxed
+     actions (settings.css's `.chq-settings-panel .chq-link-button`). The
+     `-info` wrapper switches from `display:contents` (desktop, direct flex
+     children of the row) to a real column here so name sits above detail,
+     to the action box's left. */
+  .chq-settings-summary-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .chq-settings-summary-row-action {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
   }
 }

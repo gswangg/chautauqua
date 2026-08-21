@@ -40,7 +40,7 @@ describe('YourDataPanel', () => {
   // DEC-815 amendment (wave 4): the read view LISTS its sets at rest
   // (exports as real links, tokens as real rows) rather than describing
   // them in a sentence; only creation/import controls stay behind Change.
-  it('renders a read-only summary that lists the real exports and tokens, with no creation/import control before edit', async () => {
+  it('renders a read-only summary that lists the real exports and tokens, with no import control before edit', async () => {
     mockYourData({
       'GET /api/v1/tokens': listEnvelope([
         { id: 'tok-1', name: 'CI pipeline', tokenPrefix: 'chq_abc', lastUsedAt: null },
@@ -71,11 +71,14 @@ describe('YourDataPanel', () => {
 
     expect(await within(section).findByText('CI pipeline')).toBeInTheDocument();
     expect(within(section).getByText('Last used: Never')).toBeInTheDocument();
-    // DEC-919 wave-155 amendment: the read drill DOES render "New token"
-    // now (it opens the edit drill with intent=new, receipted end to end
-    // in ApiTokensPanel.render.test.tsx) -- only the create/revoke SURFACE
-    // stays behind Change.
-    expect(within(section).queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+    // DEC-919 wave-155 + wave-156 (task qb-settings-yourdata-read-drill):
+    // Revoke is a direct destructive act and New token is an edit-surface
+    // entry point -- both now render in the read drill itself
+    // (docs/design/Chautauqua Settings.dc.html:423, :426), receipted in full
+    // in ApiTokensPanel.render.test.tsx. Only the create/import SURFACE stays
+    // behind Change.
+    expect(within(section).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'New token' })).toHaveClass('chq-settings-phone-action');
 
     expect(
       within(section).queryByRole('button', { name: 'Import from Sessionboard' }),
