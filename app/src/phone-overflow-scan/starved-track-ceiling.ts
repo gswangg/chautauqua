@@ -28,4 +28,12 @@
 // (DEC-989 wave-146's "the merge train re-measures every touched constant
 // once per batch", restated here for this brand-new ratchet's first
 // re-seed).
-export const STARVED_FLEX_TRACK_CEILING = 2;
+//
+// THUNDERDOME MEGABATCH (wave-150, 19-branch batch): both lanes landed in the
+// same batch -- w5-bf's instrument and w5-bg's repair of the two offenders it
+// named. Re-measured against the fully integrated tree exactly as this
+// ratchet's own stale-ceiling failure message instructs (forced to -1, the
+// offender list read back): ZERO starved flexible tracks remain. Lowered
+// 2 -> 0. This is the ratchet working, not a widening: the population and the
+// check in ./checks.ts are untouched.
+export const STARVED_FLEX_TRACK_CEILING = 0;

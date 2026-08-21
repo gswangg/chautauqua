@@ -2161,8 +2161,9 @@ button.chq-speakers-status-overdue:hover {
   }
 
   /* DEC-833 amendment (v12m-w6-ci): the Sessions-section participation
-     trigger (.chq-participation-menu-trigger.chq-speakers-status-dense,
-     SpeakerDetailPage.tsx) measures 95x19px live at 390 -- the top-level
+     trigger (the participation-menu trigger carrying the dense
+     status-cell class, SpeakerDetailPage.tsx) measures 95x19px live at
+     390 -- the top-level
      .chq-participation-menu-trigger rule (:788-791) declares neither
      height nor min-height, and the phone-tap-target-scan's composition
      credit (b) rides it past clean on the strength of the dense/roomy
@@ -2177,7 +2178,7 @@ button.chq-speakers-status-overdue:hover {
      padding:0 12px), so the pack's own phone answer for the family is the
      roomy geometry. Delivered as geometry only, scoped to this row so nothing
      off the Sessions section is touched: same min-height/padding/radius as
-     .chq-speakers-status-roomy (:666-672), plus the flex centering the
+     the roomy status-cell rule (:666-672), plus the flex centering the
      floor rule requires. Colour and weight are untouched (B8: density
      differs only in geometry) -- this selector adds no `background`,
      `border` or `color` declaration. Desktop is byte-identical (DEC-385,
