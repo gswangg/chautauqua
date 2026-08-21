@@ -89,3 +89,81 @@ conditional this task's SCOPE LIMIT (measure, don't fix) puts out of
 bounds — flagged here per the task's design-gap instruction, consistent
 with the disposition every prior per-frame-verdict lane in this campaign
 (Settings, `settings-v12.md`) already used for the same family of finding.
+
+**Update (w17-c, DEC-825): all four rows retired.** Re-derived each
+against the current tree before writing a disposition — a verdict row
+rots faster than the code it describes (field guide).
+
+- `:198` Content (worklist) — **RESOLVED.** The checkbox-first-cell gap
+  ("no selection control anywhere" vs. an always-visible tick) and the
+  status-before-title ordering gap were already closed by an earlier wave
+  (`.chq-content-worklist .chq-content-table tr.chq-content-row >
+  td:nth-child(1)` carries a rest-state `display: none`, and the status
+  cell's `order` sorts ahead of the title cell's in content.css's terminal
+  `@media (max-width: 700px)` block). The one gap that survived —
+  Speaker / Latest file / Status as three separate cells rather than the
+  frame's one combined meta line — is closed by this task: `docs/design/
+  Chautauqua Content.dc.html:220` draws `{{ row.speaker }} · {{ row.file
+  }}, {{ row.when }}` as ONE line, and content.css's row now lays out with
+  a wrapping flex line-box (`display: flex; flex-wrap: wrap`) so speaker
+  and latest-file share a line via `order` instead of a fixed two-column
+  grid split. Receipt: `app/src/pages/content/ContentApp.download-all-
+  flex.receipt.render.test.tsx`.
+
+- `:247` Content · selecting — **RESOLVED (already fixed, retired here).**
+  `app/src/pages/content/ContentApp.tsx`'s idle summary-line clause now
+  carries an explicit `!phoneSelectMode` guard — `{!submissionId && view
+  === 'worklist' && !phoneSelectMode && counts.needs_decision !== null &&
+  ...}` — so the
+  summary line and the "N selected / All N / Done" meta row are mutually
+  exclusive, exactly the guard this row's divergence said was missing
+  (w15-ta, DEC-825 wave-159). Pinned by `app/src/pages/content/
+  ContentApp.worklist-390.render.test.tsx`'s "rest summary vs selecting
+  meta row are exclusive" describe block, which exercises both states
+  through `ContentApp`'s real `/content` route. Not re-measured for the
+  glyph/footer-placement sub-clauses this row also raised (out of this
+  task's remit — content.css + this ledger only); those stay open only if
+  a future probe reproduces them against the current tree.
+
+- `:338` Files · 390 — **RESOLVED.** Three of this row's four clauses were
+  already closed by earlier waves: the chip-strip vocabulary now reads
+  "All" at 390 / "All types" at desktop (`app/src/pages/content/
+  FilesLibrary.tsx` renders `{isPhone ? 'All' : 'All types'}`) matching
+  `docs/design/Chautauqua Content.dc.html:344`'s `<span
+  style="flex-shrink:0; background:#1B1D17; color:#F4F1E8;
+  border-radius:99px; min-height:44px; display:flex; align-items:center;
+  padding:0 14px; font-size:13px; font-weight:600">All</span>` at the
+  phone width this row is about; and the "Video"/"Recording" split
+  is now per-surface (`app/src/pages/content/types.ts`'s
+  `LIBRARY_KIND_LABELS` declares `recording: 'Video'` in its own right,
+  DEC-613 wave-159 amendment). The byte-format clause ("412.0 MB" vs. the
+  frame's bare "412 MB") is NOT fixed by this task or by any lane yet —
+  DEC-613's wave-17 amendment RULES `formatBytes` to trim a trailing `.0`,
+  but a ruling is not a receipt of build (field guide); cited here as
+  **DEC-613** (see `src/decisions-data/DEC-613.md`'s wave-17 amendment),
+  never by a line number, since the fix has not landed. This task closes
+  the fourth and final clause — the header's duplicate "Download …(.zip)"
+  control: `docs/design/Chautauqua Content.dc.html:342` draws the header
+  row as `<span style="font-size:13px; color:#565A4B">31 files · 412
+  MB</span>` with no download control beside it, reserving "Download all"
+  for the sticky footer dock alone — `docs/design/Chautauqua
+  Content.dc.html:360` draws `<span style="flex:1; background:#4E5C31;
+  color:#F7F9F0; border-radius:6px; min-height:48px; display:flex;
+  align-items:center; justify-content:center; font-size:14px;
+  font-weight:700">Download all</span>`. content.css's terminal
+  block now hides `.chq-content-files-download-all-wrap` wholesale at 390
+  (RE-LINED, not removed — the identical control is live in
+  `.chq-phone-dock`'s primary `chq-btn-primary` "Download all" button).
+  Receipt: `app/src/pages/content/ContentApp.download-all-flex.receipt
+  .render.test.tsx`.
+
+- `:373` Session · deliverable — **RESOLVED (already fixed, retired
+  here).** `app/src/pages/content/DeliverableDetail.stack-390.render
+  .test.tsx` (w15-tc, DEC-989 wave-159) pins content.css's terminal
+  `@media (max-width: 700px)` block flattening `.chq-content-group-body`
+  into one ordered flex column (`display: flex; flex-direction: column`)
+  and hoisting both DOM columns plus `CommentThread` with `display:
+  contents`, reordering the frame's five body pieces (version rows, notes
+  label, comment rows, upload link, note textbox) via `order` while
+  leaving the desktop two-column DOM untouched (DEC-385). Verified green
+  on this branch before retiring the row.

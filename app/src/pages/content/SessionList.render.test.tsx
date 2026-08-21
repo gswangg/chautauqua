@@ -1412,20 +1412,22 @@ describe('SessionList: the 390 queue card follows the v12 frame anatomy', () => 
   it('reflows the six desktop columns into the frame stack — tick + status, title, meta, actions', () => {
     const { body } = contentPhoneBlock();
 
-    // The card itself: a two-track grid, not the old display:block stack.
+    // w17-c (DEC-825): the card itself is now a wrapping flex line-box, not
+    // the old two-track grid -- `order` carries the reading-order job the
+    // grid's placement used to.
     const row = ruleBody(body, ROW);
-    expect(row).toMatch(/display:\s*grid/);
-    expect(row).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\)/);
+    expect(row).toMatch(/display:\s*flex/);
+    expect(row).toMatch(/flex-wrap:\s*wrap/);
     expect(row).toMatch(/row-gap:\s*9px/);
 
-    // Frame order: tick and the status flag share row 1; the session title
-    // spans the measure; the Approve/Open pair closes the card.
-    expect(ruleBody(body, `${ROW} > td:nth-child(1)`)).toMatch(/grid-row:\s*1/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/grid-row:\s*1/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/grid-column:\s*2/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/grid-row:\s*2/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/grid-row:\s*5/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/grid-column:\s*1 \/ span 2/);
+    // Frame order: tick and the status flag lead; the session title takes
+    // its own full-width line; the Approve/Open pair closes the card.
+    expect(ruleBody(body, `${ROW} > td:nth-child(1)`)).toMatch(/order:\s*1/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/order:\s*2/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/order:\s*3/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/flex:\s*0 0 100%/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/order:\s*6/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/flex:\s*0 0 100%/);
   });
 
   it('grows the row title to the frame 17px and keeps the action pair full-measure at the 44px floor', () => {

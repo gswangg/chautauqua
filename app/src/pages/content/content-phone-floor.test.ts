@@ -310,26 +310,28 @@ describe('content.css phone 44px floor + 390 overflow fixes (task w8-e)', () => 
       });
     }
 
-    // REPOINTED (DEC-576 wave-125 / DEC-919): the fifth container of this
-    // batch, `.chq-content-files-header-actions .chq-btn`, no longer takes
-    // its floor from content.css. Its single `.chq-btn` child is the
-    // Download-all control (FilesLibrary.tsx, `.chq-content-files-download-
-    // all-wrap > .chq-btn`), which content.css now HIDES at 390 because the
-    // live control moved into the frame's pinned `.chq-phone-dock` with the
-    // same handler and disabled state. The floor did not disappear -- it is
-    // delivered by the shell's own `.chq-phone-dock .chq-btn` rule at 48px,
-    // which exceeds this batch's 44px. This test pins that real delivery
-    // and the hiding that makes it the only visible copy, so a wave that
-    // un-hides the header button (or drops the shell floor) turns red here
-    // rather than silently shipping an unfloored 390 control (DEC-919: the
-    // tap floor protects what is ON the screen).
-    it('.chq-content-files-header-actions .chq-btn: header copy is hidden at 390 and the live dock copy carries the floor (shell rule, >= 44px)', () => {
-      const headerButton = ruleBody(secondBlockText, '.chq-content-files-download-all-wrap > .chq-btn');
+    // REPOINTED (DEC-576 wave-125 / DEC-919, widened w17-c DEC-825): the
+    // fifth container of this batch, `.chq-content-files-header-actions
+    // .chq-btn`, no longer takes its floor from content.css. Its single
+    // `.chq-btn` child is the Download-all control, wrapped in
+    // `.chq-content-files-download-all-wrap` (FilesLibrary.tsx), which
+    // content.css now HIDES WHOLESALE at 390 (not just the button) because
+    // the live control moved into the frame's pinned `.chq-phone-dock`
+    // with the same handler and disabled state. The floor did not
+    // disappear -- it is delivered by the shell's own `.chq-phone-dock
+    // .chq-btn` rule at 48px, which exceeds this batch's 44px. This test
+    // pins that real delivery and the hiding that makes it the only
+    // visible copy, so a wave that un-hides the header wrap (or drops the
+    // shell floor) turns red here rather than silently shipping an
+    // unfloored 390 control (DEC-919: the tap floor protects what is ON
+    // the screen).
+    it('.chq-content-files-header-actions .chq-btn: header wrap is hidden at 390 and the live dock copy carries the floor (shell rule, >= 44px)', () => {
+      const headerWrap = ruleBody(secondBlockText, '.chq-content-files-download-all-wrap');
       expect(
-        headerButton,
-        'expected content.css to declare the header Download-all button at phone width',
+        headerWrap,
+        'expected content.css to declare the header Download-all wrap at phone width',
       ).not.toBeNull();
-      expect(headerButton!).toMatch(/display\s*:\s*none/);
+      expect(headerWrap!).toMatch(/display\s*:\s*none/);
 
       // No competing floor is minted here for the hidden header copy.
       expect(ruleBody(secondBlockText, '.chq-content-files-header-actions .chq-btn')).toBeNull();
