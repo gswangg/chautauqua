@@ -410,8 +410,16 @@ ${BARE_PAGE_CSS}
     /* :136 \`background:#4E5C31; ... border-radius:6px; min-height:50px;
        ... justify-content:center; font-size:15px; font-weight:700">Sign
        in\` -- full-width, centred, one size down from the desktop card's
-       14px/46px/22px-padded intrinsic button. */
-    .chq-auth-stack .chq-auth-card button[type=submit] {
+       14px/46px/22px-padded intrinsic button. Frame-control-floor scan
+       (wave-155 pb, DEC-393) resolves the button's own class tokens
+       (.chq-btn.chq-btn-primary) rather than this element selector, and
+       the house register (styles.css's phone .chq-btn / .chq-phone-dock
+       .chq-btn) only reaches 48px here -- below the 50px this frame
+       draws. Added second selector, same declaration block, scoped to
+       this card only: DEC-385 single-direction, no house register
+       change. */
+    .chq-auth-stack .chq-auth-card button[type=submit],
+    .chq-auth-stack .chq-auth-card .chq-btn.chq-btn-primary {
       width: 100%;
       min-height: 50px;
       border-radius: 6px;

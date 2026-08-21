@@ -2,23 +2,23 @@
 
 Measured on branch `v12m-w7-da` by `test/frame-control-floor.scan.test.ts`, forcing `FRAME_FLOOR_DIVERGENCE_CEILING` to `-1` and reading the printed offender list back. Population: 235 drawn phone controls across all 13 `docs/design/*.dc.html` files (155 resolved to a source element, 153 of those to no `chq-` rule or no exact-text match and are counted UNRESOLVED rather than offenders -- see the scan's own header for the disposition rule). 7 controls declare a `min-height` STRICTLY BELOW the floor their own frame draws.
 
-This document only records the measured divergence. No product CSS byte changes with it -- draining these seven is a later, separately-ruled act (the same disposition DEC-967 wave-133 gave `LINE_KEYED_CITATION_CEILING`).
+Wave-155 pb (DEC-393) drained all 7: each fixed at the token the scan resolved, in a scoped rule inside the owning sheet's terminal `@media (max-width: 700px)` block (DEC-385 single-direction, no house register raised). `FRAME_FLOOR_DIVERGENCE_CEILING` is `0`.
 
-## Offenders
+## Drained (formerly Offenders, wave-155 pb)
 
-1. **"Sign in"** -- docs/design/Chautauqua Account.dc.html:136 draws `min-height:50px`. Rendered by `src/routes/auth-views.tsx` line 129 as a `.chq-btn.chq-btn-primary` control. `app/src/styles.css`\`.chq-btn { min-height: 44px;` declares 44px (checked; `.chq-btn-primary` adds no further height) -- 6px short of the frame's 50px.
+1. **"Sign in"** -- docs/design/Chautauqua Account.dc.html:136 draws `min-height:50px`. Token `.chq-btn.chq-btn-primary`. Landed rule, `src/routes/auth.css.ts`: `` .chq-auth-stack .chq-auth-card .chq-btn.chq-btn-primary { width: 100%; min-height: 50px; border-radius: 6px; font-size: 15px; } ``
 
-2. **"Edit"** -- docs/design/Chautauqua Contacts.dc.html:435 draws `min-height:48px`. Rendered as a `.chq-link-button.chq-settings-inline-action` control. `app/src/styles.css`\`.chq-link-button {` carries the shared house link register's phone floor of 44px -- 4px short of the frame's 48px.
+2. **"Edit"** -- docs/design/Chautauqua Contacts.dc.html:435 draws `min-height:48px`. Token `.chq-link-button.chq-settings-inline-action`. Landed rule, `app/src/pages/settings/settings.css`: `` .chq-link-button.chq-settings-inline-action { min-height: 48px; } ``
 
-3. **"Edit"** -- docs/design/Chautauqua Public and Portal.dc.html:589 draws `min-height:48px`, the same `.chq-link-button.chq-settings-inline-action` control as offender 2 above and the same 44px-declared shortfall.
+3. **"Edit"** -- docs/design/Chautauqua Public and Portal.dc.html:589 draws `min-height:48px`, the same `.chq-link-button.chq-settings-inline-action` token and landed rule as row 2.
 
-4. **"‹ Previous"** -- docs/design/Chautauqua Docs.dc.html:201 draws `min-height:46px`. Rendered by `app/src/pages/submissions/SubmissionDetailPage.tsx` as `.chq-detail-position-prev`. `app/src/pages/submissions/detail.css`\`.chq-detail-position-prev,` declares 44px -- 2px short of the frame's 46px (DEC-393 wave-92's own amendment already names this exact pager pair as drawing 46px on the Docs frame, but the ruling closed the Docs sheet's own pager, not the shared submissions-detail token this label actually resolves to).
+4. **"‹ Previous"** -- docs/design/Chautauqua Docs.dc.html:201 draws `min-height:46px`. Token `.chq-detail-position-prev`. Landed rule, `app/src/pages/submissions/detail.css`: `` .chq-detail-position-prev, .chq-detail-position-next { min-height: 46px; } ``
 
-5. **"Next ›"** -- docs/design/Chautauqua Docs.dc.html:202 draws `min-height:46px`, the same `.chq-detail-position-next` sibling token, same 44px-declared shortfall.
+5. **"Next ›"** -- docs/design/Chautauqua Docs.dc.html:202 draws `min-height:46px`, the same `.chq-detail-position-next` token and landed rule as row 4.
 
-6. **"Download .ics"** -- docs/design/Chautauqua Public and Portal.dc.html:401 draws `min-height:46px`. Rendered across `src/routes/public/agenda.tsx`/`agenda-rail.tsx`/`sessions.tsx`/`detail.tsx` as `.chq-pub-itinerary-cta`. `src/routes/public/css/agenda.css.ts`\`.chq-pub-itinerary-cta { min-height: 44px; display: inline-flex;` declares 44px -- 2px short of the frame's 46px.
+6. **"Download .ics"** -- docs/design/Chautauqua Public and Portal.dc.html:401 draws `min-height:46px`. Token `.chq-pub-itinerary-cta`. Landed rule, `src/routes/public/css/agenda.css.ts`: `` .chq-pub-itinerary-cta { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; } ``
 
-7. **"Download .ics"** -- docs/design/Chautauqua Public and Portal.dc.html:885 draws `min-height:48px`, the same `.chq-pub-itinerary-cta` token as offender 6, 4px short of the frame's 48px this time (the same token is drawn at two different heights by two different frame instances -- a fact about the pack, not a fact this scan resolves further).
+7. **"Download .ics"** -- docs/design/Chautauqua Public and Portal.dc.html:885 draws `min-height:48px`, the same `.chq-pub-itinerary-cta` token and landed rule as row 6 -- 48px satisfies both drawn values (46px and 48px) with one rule.
 
 ## Not offenders (UNRESOLVED, 153 of 235)
 

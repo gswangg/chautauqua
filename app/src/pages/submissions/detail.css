@@ -906,6 +906,15 @@
     text-overflow: ellipsis;
   }
 
+  /* frame-control-floor scan (wave-155 pb, DEC-393): Docs.dc.html:201/:202
+     draw '‹ Previous'/'Next ›' at min-height:46px, above the 44px the
+     shared rule above (:890, also covering .chq-detail-back) declares.
+     Scoped to these two tokens only -- .chq-detail-back stays at 44px. */
+  .chq-detail-position-prev,
+  .chq-detail-position-next {
+    min-height: 46px;
+  }
+
   /* DEC-393 wave-87 amendment: 'Delete this submission' is a bare <Link>
      (no .chq-btn) -- the row-action-anchor floor evasion. */
   .chq-detail-delete-link {
