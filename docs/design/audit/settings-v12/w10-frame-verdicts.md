@@ -40,16 +40,43 @@ pages, Speaker portal and Saved embeds match.** The remaining two rows
 (`:316`, `:552`) are instances of the DEC-728 read/edit-split gap named
 above.
 
+**Amendment (wave 17, task w17-d, DEC-919):** every 390 drill frame in this
+family draws the head band as ONE title and nothing else above the body
+rows — no second label, no head action, for Event specifically (Tracks and
+rooms, People and roles keep a head action; only Event's frame draws a
+footer primary that already reaches the same edit surface).
+
+docs/design/Chautauqua Settings.dc.html:319
+`<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">Event</h1>`
+
+docs/design/Chautauqua Settings.dc.html:335
+`<span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save</span>`
+
+`SummarySection`'s own head (`SummarySection.tsx`) duplicated that title as
+a second `<h2>` at 390, alongside `Settings.tsx`'s existing
+`.chq-settings-drill-title` H1 twin. Closed for every `SummarySection`
+read drill (Event, Tracks and rooms, People and roles, Public pages) by a
+single direct-child-scoped rule appended to settings.css's terminal
+`@media (max-width: 700px)` block (`.chq-settings-panel >
+.chq-settings-section-head > h2`); the h2 carried no capability of its
+own, `aria-label={label}` on the panel `<section>` already supplies the
+accessible name. Event's head "Change" action additionally stands down at
+390, scoped by a new `data-chq-section` attribute on `SummarySection`'s
+root — a re-line onto the frame's own footer "Save" (cited above), which
+DEC-919 wave-156 already renders in the read drill and which opens the
+identical `?section=event&edit=1` drill. No other section's head action is
+touched.
+
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
 | `:275` Settings (landing) | MATCHES | Index row order (label + "Open" + detail) equals the frame's `mobileGroups` order; DEC-691/DEC-747 rail order. |
-| `:316` Settings · Event | DIVERGES (narrowed, DEC-919 wave-156) | Read view is `SummarySection`'s head-first "Change" (button precedes every row); frame draws content rows then a Save/Cancel footer. The footer's "Save" primary now renders in read mode too (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`), pressing it enters the edit drill (`?section=event&edit=1`) rather than saving nothing — a read view holds no form to submit. "Cancel" has nothing to cancel in read mode and stays unbuilt. |
+| `:316` Settings · Event | DIVERGES (narrowed, DEC-919 wave-17) | CLOSED wave 17 (task w17-d, DEC-919): the head band now shows the frame's ONE title — `SummarySection`'s own duplicate `<h2>` is hidden at 390 (`.chq-settings-panel > .chq-settings-section-head > h2`, settings.css terminal block), leaving `Settings.tsx`'s `.chq-settings-drill-title` H1 as the sole visible label. The head's "Change" action also stands down at 390 (`.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action`) — a RE-LINE, not a removal: the frame's own footer "Save" (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`) already renders in read mode and opens the identical `?section=event&edit=1` drill the head action opened. **Still unbuilt:** "Cancel" has nothing to cancel in a read view (no form is open to discard) and stays unbuilt, same disposition as wave 156. |
 | `:347` Settings · Tracks and rooms | MATCHES | CLOSED wave 156 (task qe-tracks-rooms-read-drill): the read view now renders a boxed 44px "Edit" per row plus a dashed "Add a track"/"Add a room" row closing each list (frame `:364,367,379,382`), phone-only via `settings-lists.css`'s terminal `@media (max-width: 700px)` block; both drill into the section's existing edit surface (`?section=tracks-rooms&edit=1`), reusing `useTracksRoomsPanel`'s existing `toggleAddTrack`/`toggleAddRoom` state rather than minting a second one. Your-data's own per-row Download/Revoke gap (`:409,423`) is closed separately by task qb-settings-yourdata-read-drill, same wave. |
 | `:393` Settings · Your data | MATCHES | Per-row boxed "Download" (Exports) and "Revoke" (API tokens) actions, plus the filled 46px full-width "New token" primary, all render in the read drill (task qb-settings-yourdata-read-drill, wave 156). Download performs in place against the existing export hrefs; Revoke opens `ApiTokensPanel`'s existing `ConfirmDialog`; New token enters `?section=your-data&edit=1`, landing on the already-open create form. Closes the still-open remainder of the masked-tokens/Revoke/New-token finding (wave 118). |
 | `:444` Settings · Call for papers | MATCHES | Per-question list (`:467-475`, one row + boxed "Edit" per question) now renders in the read drill (task re, wave 157, DEC-919 clause (b)); each row's boxed "Edit" carries that question's own `id` to `/submissions/forms?fieldId=…` so the tap lands on the field that was tapped, not the builder's index. Field editing itself still stays in the form builder — delegation decides the destination, never whether the control exists. |
 | `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
 | `:510` Settings · Speaker portal | MATCHES | Welcome note (`:518`) now renders the stored welcome text verbatim inside a boxed ~88px readout matching the frame's padding/line-height/overflow treatment (task re, wave 157, DEC-919 clause (a)). Desktop's pre-existing computed "Shown above the task list · N paragraph(s)" line stays mounted, frozen, alongside it — CSS (settings-drill-rows.css's terminal max-width block) is the only thing deciding which one is visible at which width. |
-| `:552` Settings · People and roles | DIVERGES (narrowed, DEC-919 wave-156) | No per-row boxed "Change" (`:560`) — DEVIATIONS.md §6 blesses this omission (users are org-scoped), not re-litigated. The always-on primary "Invite someone" (`:565`) now renders in read mode too (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`), opening the panel's existing invite dialog directly — its own surface, not a form submit. |
+| `:552` Settings · People and roles | DIVERGES (narrowed, DEC-919 wave-156) | No per-row boxed "Change" (`:560`) — DEVIATIONS.md §6 blesses this omission (users are org-scoped), not re-litigated. The always-on primary "Invite someone" (`:565`) now renders in read mode too (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`), opening the panel's existing invite dialog directly — its own surface, not a form submit. The wave-17 h2 de-duplication (see `:316`'s row) applies here too — the head's "Change" action itself is untouched (kept, since it is People's only route to role editing at 390 per DEVIATIONS §6). |
 | `:578` Settings · Saved embeds | MATCHES (nested) | Closed wave 156, DEC-728: renders as its own 390 screen at `?section=public-pages&view=embeds` (a nested drill under Public pages, not an eighth `SECTIONS` entry — DEC-747/DEC-691). Own back-link ("‹ Public pages", returning to the Public pages read drill rather than the section index — DESIGN-RULINGS:247), own H1 ("Saved embeds", via `Settings.tsx`'s existing `phoneDrillTitle` machinery) and the "N on · N off" summary (`:582`) directly under it all render. Public pages' own read drill, at rest, now carries the screen's entry point instead of always mounting the full row list inline. Row-shape differences (Turn on/off + Get code pair vs. "four flush buttons") already documented in `docs/probes/metafid-phoneA-2026-08-19.md`. |
 
 **Nothing in this list (besides the now-closed `:578` row) is a

@@ -35,4 +35,7 @@ seven of nine 390 read frames match (landing, Tracks and rooms, Your data,
 Call for papers, Public pages, Speaker portal, Saved embeds); two diverge
 (`:316` Settings · Event, `:552` People and roles), both narrowed to the
 same DEC-919/DEC-728 read/edit-split gap — a missing frame-drawn footer
-primary in read mode, not a phone-CSS or markup-order defect.
+primary in read mode, not a phone-CSS or markup-order defect. Wave 17 (task w17-d, DEC-919) narrowed `:316`
+further — the drill head band now draws the frame's single title, and
+Event's head "Change" action re-lines onto the frame's own footer
+primary; see that submodule's wave-17 amendment.

@@ -2761,4 +2761,67 @@
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* w17-d/DEC-919 (wave 17 ruling): every 390 drill frame (Chautauqua
+     Settings.dc.html:316 Event, :347 Tracks and rooms, :481 Public pages,
+     :552 People and roles, and siblings in this same family) draws the
+     head band as ONE title -- `‹ Settings` then a single `<h1>` -- and
+     nothing else above the body rows. Settings.tsx already renders that
+     H1 as `.chq-settings-drill-title` (its own phone-only twin of the
+     page title, :398-403) whenever a section is drilled. SummarySection's
+     OWN head (rendered in its non-editing/read branch, :92-99 above) adds
+     a SECOND label -- `.chq-settings-section-head > h2` -- so the section
+     name paints twice at 390. Scoped to a DIRECT-CHILD chain rooted at
+     `.chq-settings-panel` (SummarySection's own `<section>` root) so this
+     reaches only SummarySection's own head, never the nested
+     `.chq-settings-section-head`s panels render deeper inside their own
+     read/edit content as `children` (e.g. TracksRoomsPanel's "Tracks ·
+     N"/"Rooms · N" sub-heads matching frame :353's 2px-ruled caption, or
+     PeopleRolesPanel's edit-view "People · N" head) -- every one of those
+     lives inside a `.chq-settings-row`/`.chq-settings-edit-*` wrapper, not
+     as a direct child of the panel `<section>`, and all of them use `h3`
+     or sit deeper than one level, so this selector cannot reach them
+     (verified by rendering, not by grep -- see
+     SummarySection.phone-drill-head.render.test.tsx). The `<h2>` carries
+     no capability of its own -- `aria-label={label}` on the `<section>`
+     (:92) already supplies the accessible name it used to double as -- so
+     this is a pure de-duplication, not a removal. This also makes the
+     `.chq-settings-numbered .chq-settings-section-head` column-reverse
+     rule above (settings.css:2610-2613) inert for SummarySection's own
+     head at this width once its only visible child is the action button
+     -- left as-is rather than deleted, since w14-m's citations at
+     :2593-2609 describe behaviour another lane's frame still cites, and a
+     `column-reverse` on a single remaining flex child is a no-op, not a
+     conflict. */
+  .chq-settings-panel > .chq-settings-section-head > h2 {
+    display: none;
+  }
+
+  /* w17-d/DEC-919 (wave 17 ruling, act (b)): Event's frame (:316) draws
+     its head as back-link + H1 ONLY -- no head action -- because the
+     frame's OWN read-drill footer already carries a filled, full-width
+     "Save" control (:334,
+     `.chq-settings-drillrow-footer-primary`/EventSettingsPanel.tsx
+     `readFooterPrimary`, DEC-919 wave-156) that opens the identical
+     `?section=event&edit=1` drill this head's "Change" button
+     (SummarySection.tsx's `openEdit`) opens. Two on-screen controls
+     reaching the same edit surface is the exact case DEC-919 permits
+     standing the head action down for -- this is a RE-LINE onto the
+     footer's "Save", not a capability removal: `.chq-settings-
+     drillrow-footer-primary` still carries the openEdit route below.
+     Scoped with `data-chq-section="event"` (SummarySection.tsx, additive,
+     no visual effect) so no other section's head action is touched --
+     People and roles keeps its "Change" (DEVIATIONS §6 blesses the
+     per-row "Change" as omitted at 390, so the head action is People's
+     ONLY route to role editing there and hiding it would be the
+     capability removal DEC-919 forbids); every other drilled section
+     (Tracks and rooms, Your data, Call for papers, Speaker portal) has no
+     frame-drawn head-action-duplicating footer primary and keeps its head
+     action too. With the h2 above also hidden, Event's head becomes an
+     action-only band; every other section's head becomes an
+     action-only band too (unchanged by this rule, already true before it
+     since only the h2 rule above touches them). */
+  .chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action {
+    display: none;
+  }
 }
