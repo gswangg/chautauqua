@@ -53,7 +53,7 @@ export interface ComposeRecipient {
 }
 
 export type ExpandRecipientsResult =
-  | { ok: true; recipients: ComposeRecipient[] }
+  | { ok: true; recipients: ComposeRecipient[]; collapsed: ComposeRecipient[] }
   | { ok: false; error: "invalid"; message: string };
 
 /**
@@ -110,6 +110,13 @@ export function spendsPerSubmissionVars(text: string): boolean {
  * Rejects the whole batch as 'invalid' when the FINAL (post-collapse) count
  * exceeds MAX_COMPOSE_RECIPIENTS (DEC-019: the producer must narrow the
  * batch, no silent truncation).
+ *
+ * DEC-936 (wave-21 amendment): the withheld (contact, submission) rows are
+ * returned alongside the kept ones as `collapsed`, in encounter order —
+ * always present, empty when `perSubmissionVarsSpent` is true. This lets
+ * callers report the collapse as a skip instead of silently dropping the
+ * rows. The MAX_COMPOSE_RECIPIENTS cap counts `recipients` only; the
+ * collapse's cap benefit (fewer kept rows) is unchanged.
  */
 export function expandRecipients(
   submissions: ComposeSubmission[],
@@ -128,13 +135,19 @@ export function expandRecipients(
   }
 
   let recipients: ComposeRecipient[];
+  let collapsed: ComposeRecipient[];
   if (opts.perSubmissionVarsSpent) {
     recipients = expanded;
+    collapsed = [];
   } else {
     const seenContacts = new Set<string>();
     recipients = [];
+    collapsed = [];
     for (const r of expanded) {
-      if (seenContacts.has(r.contactId)) continue;
+      if (seenContacts.has(r.contactId)) {
+        collapsed.push(r);
+        continue;
+      }
       seenContacts.add(r.contactId);
       recipients.push(r);
     }
@@ -147,7 +160,7 @@ export function expandRecipients(
       message: `${recipients.length} recipients exceeds the ${MAX_COMPOSE_RECIPIENTS}-recipient cap; narrow the batch.`,
     };
   }
-  return { ok: true, recipients };
+  return { ok: true, recipients, collapsed };
 }
 
 /**

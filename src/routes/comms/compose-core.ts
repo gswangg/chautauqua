@@ -375,7 +375,7 @@ export async function buildRenderTargets(
       vars,
     });
   }
-  return { targets, recipients: recipientAccounts };
+  return { targets, recipients: recipientAccounts, collapsed: expanded.collapsed };
 }
 
 /** DEC-037 amendment: the single source of the mail-shell options both

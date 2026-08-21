@@ -9,7 +9,7 @@ import * as repo from "../../server/repo/comms";
 import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { renderEmailHtml } from "../../mail/shell";
 import { requireOwnedEvent } from "./shared";
-import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
+import { dedupeCutoff, planComposeSends, type ComposeDedupeSkip } from "../../domain/comms-dedupe";
 import { DEC_238 } from "../../decisions";
 import {
   requireFullMatch,
@@ -65,7 +65,7 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   // same list by construction.
   const perSubmissionVarsSpent =
     spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
-  const { targets } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
+  const { targets, collapsed } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
@@ -95,7 +95,23 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
     result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(Date.now()),
   );
-  const { toSend, skipped } = planComposeSends(result.rendered, recentlySent);
+  const { toSend, skipped: plannedSkipped } = planComposeSends(result.rendered, recentlySent);
+  // DEC-936 (wave-21 amendment): rows the DEC-936 contact-collapse withheld
+  // upstream in expandRecipients are folded into the SAME `skipped` array
+  // planComposeSends produces, reported as 'duplicate_in_batch' with no
+  // retryAtIso — placed BEFORE the planner's own stage-1 skips so the
+  // intra-batch stage still reads first. Collapsed rows carry distinct
+  // submissionIds (per-submission, pre-collapse), so they never collide with
+  // a skipByKey entry keyed on submissionId+lowercased email below.
+  const skipped: ComposeDedupeSkip[] = [
+    ...collapsed.map((r) => ({
+      email: r.email,
+      name: r.name,
+      submissionId: r.submissionId,
+      reason: "duplicate_in_batch" as const,
+    })),
+    ...plannedSkipped,
+  ];
   const toSendSet = new Set(toSend);
   const skipByKey = new Map(skipped.map((s) => [`${s.submissionId}:${s.email.trim().toLowerCase()}`, s]));
 

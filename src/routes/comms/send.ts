@@ -19,7 +19,7 @@ import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
-import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
+import { dedupeCutoff, planComposeSends, type ComposeDedupeSkip } from "../../domain/comms-dedupe";
 import { DEC_027, DEC_238, DEC_846 } from "../../decisions";
 
 void DEC_027;
@@ -83,7 +83,13 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // this send will actually render, never a precedence guess.
   const perSubmissionVarsSpent =
     spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
-  const { targets, recipients } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
+  const { targets, recipients, collapsed } = await buildRenderTargets(
+    c,
+    event,
+    submissions,
+    input.feedback,
+    perSubmissionVarsSpent,
+  );
 
   const preflightResult = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!preflightResult.ok) {
@@ -140,7 +146,24 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
     preflightResult.rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(now.getTime()),
   );
-  const { toSend: toSendKeys, skipped } = planComposeSends(preflightResult.rendered, recentlySent);
+  const { toSend: toSendKeys, skipped: plannedSkipped } = planComposeSends(preflightResult.rendered, recentlySent);
+  // DEC-936 (wave-21 amendment): rows the DEC-936 contact-collapse withheld
+  // upstream in expandRecipients are folded into the SAME `skipped` array
+  // that planComposeSends produces, reported as 'duplicate_in_batch' with no
+  // retryAtIso — placed BEFORE the planner's own stage-1 skips so the
+  // intra-batch stage still reads first in the response. They were never in
+  // `preflightResult.rendered`, so planComposeSends never saw them and no
+  // claim token is minted for them (they're not in `toSend`, by
+  // construction).
+  const skipped: ComposeDedupeSkip[] = [
+    ...collapsed.map((r) => ({
+      email: r.email,
+      name: r.name,
+      submissionId: r.submissionId,
+      reason: "duplicate_in_batch" as const,
+    })),
+    ...plannedSkipped,
+  ];
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   // DEC-846 wave-3 amendment: templateId is PROVENANCE, not authority — the
@@ -272,6 +295,16 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // in `preflightResult.rendered` by (submissionId, lower(email)) — the same
   // UNMINTED render the planner itself was fed.
   //
+  // DEC-936 (wave-21 amendment): a `collapsed` row (folded into `skipped`
+  // above) was NEVER rendered — expandRecipients withheld it upstream of
+  // buildRenderTargets, so it has no (submissionId, email) entry in
+  // `preflightResult.rendered`. Its contactId's KEPT row was rendered
+  // though, and — by construction of the collapse (it only fires when
+  // `perSubmissionVarsSpent` is false, i.e. the composed text carries no
+  // per-submission token) — that kept row's subject/text is the exact text
+  // this withheld recipient would also have rendered. `renderedByContact`
+  // is the fallback source for exactly those rows.
+  //
   // Invariant 1: loadRecentlySent (src/server/repo/comms.ts) filters
   // `status = 'sent'`, so a skipped row written here can never itself count
   // as a prior send and cause a second skip — covered by
@@ -285,10 +318,19 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
     const renderedBySubmissionAndEmail = new Map(
       preflightResult.rendered.map((r) => [`${r.submissionId}::${r.email.trim().toLowerCase()}`, r]),
     );
+    const collapsedContactIds = new Set(collapsed.map((r) => r.contactId));
+    const renderedByContact = new Map(
+      preflightResult.rendered.filter((r) => collapsedContactIds.has(r.contactId)).map((r) => [r.contactId, r]),
+    );
+    const collapsedContactBySubmissionAndEmail = new Map(
+      collapsed.map((r) => [`${r.submissionId}::${r.email.trim().toLowerCase()}`, r.contactId]),
+    );
     const emailLogWriter = d1EmailLogWriter(c.var.db);
     const sentAtMs = now.getTime();
     for (const skip of skipped) {
-      const source = renderedBySubmissionAndEmail.get(`${skip.submissionId}::${skip.email.trim().toLowerCase()}`);
+      const key = `${skip.submissionId}::${skip.email.trim().toLowerCase()}`;
+      const collapsedContactId = collapsedContactBySubmissionAndEmail.get(key);
+      const source = collapsedContactId !== undefined ? renderedByContact.get(collapsedContactId) : renderedBySubmissionAndEmail.get(key);
       if (!source) continue;
       await emailLogWriter.write({
         eventId,
