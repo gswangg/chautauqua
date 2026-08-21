@@ -30,10 +30,20 @@
 // the `<select>` element itself, rather than rendering a `▾` glyph as
 // JSX text -- this scan's `▾`-glyph rule does not apply to that mechanism
 // and must not be extended to flag it.
+//
+// DEC-374 (wave-18 amendment: FRAME EVIDENCE IS NOT PRODUCT COPY). A test
+// file that quotes docs/design/*.dc.html VERBATIM inside a string/backtick
+// literal (a `verbatimLine(...)` receipt, a citation quote) is receipting
+// the frame, not authoring product JSX -- this scan's subject is product
+// markup, so any otherwise-bare `▾` that resolves to a verbatim frame
+// quote via test/helpers/frame-evidence.ts's isFrameEvidence() is excluded
+// from the offender population before it is built, exactly like a
+// DISCLOSURE_TOGGLE_OK entry.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { isFrameEvidence } from '../../test/helpers/frame-evidence';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -197,6 +207,15 @@ describe('select-caret scan (DEC-993 wave-19 amendment, DESIGN-RULINGS B8)', () 
         if (!consumed.has(idx)) {
           const line = content.slice(0, idx).split('\n').length;
           const key = `${rel}:${line}`;
+          const lineText = content.split('\n')[line - 1] ?? '';
+          const idxOnLine = idx - (content.lastIndexOf('\n', idx) + 1);
+          // DEC-374 (wave-18 amendment): a bare ▾ that is a verbatim frame
+          // quote inside a test-file string/backtick literal is evidence,
+          // not product copy -- excluded before the assertion below.
+          if (isFrameEvidence(rel, lineText, idxOnLine)) {
+            idx = content.indexOf('▾', idx + 1);
+            continue;
+          }
           // DEC-993 (DESIGN-RULINGS B8): docs/design/Chautauqua
           // Speakers.dc.html: 68-70 gives the caret its own element, e.g.
           // `<span style="color:#565A4B; padding-left:6px">▾</span>` (and

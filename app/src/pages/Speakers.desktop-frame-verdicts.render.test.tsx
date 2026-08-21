@@ -231,7 +231,7 @@ describe('v12 Speakers DESKTOP (1600) frames: per-frame render verdict receipts 
       );
     }
 
-    it('DIVERGES: the frame draws ONE header participation dropdown ("Confirmed ▾"); the header carries no trigger at all in the tree (DEC-936 USER RULING, blessed)', async () => {
+    it('DIVERGES: the frame draws ONE header participation dropdown trigger (a caret-suffixed "Confirmed" control); the header carries no trigger at all in the tree (DEC-936 USER RULING, blessed)', async () => {
       renderDetail();
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Priya Raman' })).toBeInTheDocument());
       const head = document.querySelector('.chq-speaker-detail-head');
