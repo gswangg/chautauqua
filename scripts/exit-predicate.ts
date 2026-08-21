@@ -598,6 +598,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // cannot (a dock split across a CSS declaration and a separate renderer
   // that never spells all of its copy). test/phone-dock-ledger.scan.test.ts.
   "PHONE_DOCK_UNCLAIMED_CEILING",
+  // wave-146 (task w20-a, DEC-937): pack declaration vocabulary ratchet --
+  // grades every product font-style/border-radius declaration against the
+  // value set the 13 frame files actually draw
+  // (test/pack-declaration-vocabulary.scan.test.ts).
+  "PACK_VOCABULARY_OFFENDERS_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -654,6 +659,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
   // above -- never a declared-but-unread knob (DEC-851/DEC-988).
   "PHONE_DOCK_UNCLAIMED_CEILING",
+  // wave-146 (task w20-a): pack declaration vocabulary ratchet, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PACK_VOCABULARY_OFFENDERS_CEILING",
 ];
 
 /**

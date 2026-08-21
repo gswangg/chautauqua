@@ -450,7 +450,7 @@ a.chq-speakers-task-title:hover {
    is a caption naming a stated decision, not a strip hiding the row. */
 .chq-speakers-not-chasing {
   font-size: 12px;
-  font-style: italic;
+  font-weight: 600;
   color: var(--chq-muted);
 }
 
@@ -1036,7 +1036,7 @@ button.chq-speakers-status-overdue:hover {
   margin-inline: -8px;
   padding: 2px 8px;
   font-size: 11px;
-  font-style: italic;
+  font-weight: 600;
   color: var(--chq-muted);
 }
 
