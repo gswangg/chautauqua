@@ -757,3 +757,23 @@ carries this section's ruling in full; these five entries are its record.
   desktop geometry change (DEC-385). The input keeps its `aria-label` and
   stays the one rename affordance — the heading is not a second editable
   copy of the name (DEC-613). DEC-745 wave-19 amendment.
+- **A `ModalFrame` dialog's title stays an `<h2>` referenced by
+  `aria-labelledby`, not the frame's `<h1>`.** Every `docs/design/*.dc.html`
+  390 drill frame that stands in for a `ModalFrame`-built dialog (e.g.
+  `Chautauqua Contacts.dc.html:410` "Contact · 390") draws its head as an
+  `<h1>`, because a static frame has no concept of "this screen is a
+  dialog layered over a page" — it draws every full-screen drill as if it
+  were the page. `ModalFrame.tsx` renders the dialog's title as an
+  `<h2 id="…">` and points the dialog's `role="dialog"` root at it via
+  `aria-labelledby`, which is the correct document outline for a modal:
+  the page underneath already owns the one `<h1>` for that route, and a
+  dialog is a transient layer on top of it, not a replacement page. The
+  frame's `<h1>` is a drawing convention for a full-screen drill, not a
+  semantic instruction — demoting the page's real `<h1>` so a dialog's
+  title could outrank it would trade an accessibility contract (one
+  `<h1>` per document, dialogs labelled relative to their trigger) for a
+  pixel-level resemblance to the mock. Left as `<h2>`; the title's visual
+  register (size/weight/tracking) still matches the frame at 390 (v12m-w21-m,
+  DEC-613 wave-21, `app/src/components/modal-frame.css`) — only the tag
+  name diverges, and it diverges on purpose. Recorded here per DEC-613
+  wave-21's ruling so no future wave spends a lane rebuilding it.
