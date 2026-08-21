@@ -117,9 +117,9 @@ export const CFP_CSS = `
      rendering with no declared style -- same small/muted note treatment
      as .chq-cfp-actions-note above. */
   /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
-     idiom): submit-views.tsx renders "Already have an account? <a>Sign in
-     to the speaker portal</a> ›" as one running sentence inside this note;
-     the classless <a> is a phrase, not a standalone control. */
+     idiom): submit-views.tsx's .chq-cfp-identity-note renders its lead
+     sentence and trailing sign-in link as one running sentence inside this
+     note; the classless <a> is a phrase, not a standalone control. */
   .chq-cfp-identity-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
   /* DEC-951: a one-column list at the form's measure -- the fieldset never
@@ -440,10 +440,10 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     .chq-cfp-actions-note { display: none; }
     .chq-cfp-actions .chq-btn-primary { flex: 1; min-height: 48px; }
 
-    /* task w18-e (SSR_CLASSLESS_ANCHOR_CEILING drain): "Browse the
-       sessions ›" / "Submit another talk ›" / "Browse the programme ›"
-       (.chq-cfp-links) are each the sole content of their own row inside
-       .chq-cfp-links -- a standalone forward path, same disposition as
+    /* task w18-e (SSR_CLASSLESS_ANCHOR_CEILING drain): submit-views.tsx's
+       three .chq-cfp-links dead-end/confirmation anchors are each the sole
+       content of their own row inside .chq-cfp-links -- a standalone
+       forward path, same disposition as
        portal.css.ts's .chq-portal-standalone-link (real floor, not
        inline-in-prose). The shared rule above (cfp.css.ts:295-296) already
        carries min-height:44px and non-zero horizontal padding, but
