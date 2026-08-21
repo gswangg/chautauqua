@@ -2159,4 +2159,34 @@ button.chq-speakers-status-overdue:hover {
   .chq-speaker-detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* DEC-833 amendment (v12m-w6-ci): the Sessions-section participation
+     trigger (.chq-participation-menu-trigger.chq-speakers-status-dense,
+     SpeakerDetailPage.tsx) measures 95x19px live at 390 -- the top-level
+     .chq-participation-menu-trigger rule (:788-791) declares neither
+     height nor min-height, and the phone-tap-target-scan's composition
+     credit (b) rides it past clean on the strength of the dense/roomy
+     pair sharing the same button, so no ratchet catches it even though
+     the DENSE geometry it actually paints never reaches the floor.
+
+     The class list stays dense (SpeakerDetailPage.render.test.tsx:297-298
+     pins chq-speakers-status-dense and NOT chq-speakers-status-roomy --
+     that pin is desktop-correct and untouched here). No 390 speaker-detail
+     frame exists in the pack; the Roster frame at :270 draws this same
+     control family through inviteStyleM (:775, min-height:44px;
+     padding:0 12px), so the pack's own phone answer for the family is the
+     roomy geometry. Delivered as geometry only, scoped to this row so nothing
+     off the Sessions section is touched: same min-height/padding/radius as
+     .chq-speakers-status-roomy (:666-672), plus the flex centering the
+     floor rule requires. Colour and weight are untouched (B8: density
+     differs only in geometry) -- this selector adds no `background`,
+     `border` or `color` declaration. Desktop is byte-identical (DEC-385,
+     desktop rules never touched by a narrow override). */
+  .chq-speaker-detail-sessions-row .chq-participation-menu-trigger {
+    min-height: 44px;
+    padding: 0 10px;
+    border-radius: var(--chq-r-ctl);
+    display: flex;
+    align-items: center;
+  }
 }
