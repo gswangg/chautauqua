@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { msToDateInput, dateInputToMs, formatDateOnly } from '../../lib/dates';
+import { msToDateInput, dateInputToMs, formatDateOnlyNoYear } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -281,7 +281,10 @@ export function FormsPage() {
   // numbers only, never the frame's sample "47" -- '—' while the count is
   // loading/failed, same fallback the strip's own receivedText already uses.
   const receivedCountText = received === 'loading' || received === 'error' ? '—' : String(received.total);
-  const closesText = form.closeDate ? formatDateOnly(form.closeDate) : 'No close date set';
+  // DEC-650 wave-16 amendment: the frame's head meta draws the close date
+  // year-less ("Closes 16 Aug"), unlike the desktop strip's own cell (which
+  // stays on formatDateOnly, untouched, below) -- one register per surface.
+  const closesText = form.closeDate ? formatDateOnlyNoYear(form.closeDate) : 'No close date set';
   const phoneMetaText = `Closes ${closesText} · ${receivedCountText} received`;
   // Shared with FieldModal's header line (DEC-650(d)/wave-66 amendment):
   // the same real count, never a second fetch or a fabricated number.

@@ -100,6 +100,25 @@ describe('ruling (b): editing stays a per-question drill (frame caption "Reorder
   });
 });
 
+// DEC-650 wave-16 amendment: at 390 the row stands down to ONE boxed 44px
+// Edit pill (frame docs/design/Chautauqua Submissions.dc.html's 390 CFP-form
+// frame, field row `Edit` -- no Delete pill drawn); the 1600 CFP-builder
+// frame's own row draws the Edit/Delete PAIR, so this is a phone-width
+// stand-down, not markup removal (Delete survives via FieldModal's own
+// "Delete this question" footer action, reached through the same row's Edit).
+describe('ruling (a): the row Delete control stands down at 390, surviving inside FieldModal', () => {
+  it('.chq-forms-field-actions .chq-btn:last-child (the row Delete) is hidden inside the single terminal max-width:700px block', () => {
+    expect(() => ruleIn(PHONE, '.chq-forms-field-actions .chq-btn:last-child')).not.toThrow();
+    const deleteRule = ruleIn(PHONE, '.chq-forms-field-actions .chq-btn:last-child');
+    expect(deleteRule).toMatch(/display:\s*none/);
+    // Desktop stays the pair: this selector appears exactly once in the
+    // file (inside the phone block) -- there is no unconditional twin
+    // hiding the row's Delete outside the fold.
+    const occurrences = CSS.match(/\.chq-forms-field-actions \.chq-btn:last-child/g) ?? [];
+    expect(occurrences.length).toBe(1);
+  });
+});
+
 describe('phone drill head reuses the landed v12 scaffold, resetting only what the desktop-frozen unconditional rule would otherwise fight', () => {
   it('.chq-forms-header resets align-items for the shared column layout (the desktop rule stays flex-end/row, frozen, unconditional)', () => {
     const header = ruleIn(PHONE, '.chq-forms-header');

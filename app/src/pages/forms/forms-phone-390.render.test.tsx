@@ -72,7 +72,11 @@ describe('FormsPage phone drill head + dock (frame 03--06, task w2-h)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Closes 16 Aug 2026 · 47 received')).toBeInTheDocument();
+      // DEC-650 wave-16 amendment: the head meta line's close date drops the
+      // year (see the frame citation two lines below) -- the desktop
+      // strip's own cell keeps its year, this line does not.
+      expect(screen.getByText('Closes 16 Aug · 47 received')).toBeInTheDocument();
+      expect(screen.queryByText(/Closes 16 Aug 2026/)).not.toBeInTheDocument();
     });
 
     // Head: back link + drill H1 + the real closes-date/received meta line,
@@ -85,7 +89,9 @@ describe('FormsPage phone drill head + dock (frame 03--06, task w2-h)', () => {
     expect(backLink).toHaveClass('chq-phone-back');
     const heading = within(header).getByRole('heading', { name: 'CFP form' });
     expect(heading).toHaveClass('chq-page-title');
-    expect(within(header).getByText('Closes 16 Aug 2026 · 47 received')).toBeInTheDocument();
+    const meta = within(header).getByText('Closes 16 Aug · 47 received');
+    expect(meta).toBeInTheDocument();
+    expect(meta.textContent).not.toMatch(/\d{4}/);
 
     // Dock: "Save the form" (filled/primary, dirty-gated like the desktop
     // header's Save) over a bordered (secondary) "Preview" -- second
@@ -100,6 +106,16 @@ describe('FormsPage phone drill head + dock (frame 03--06, task w2-h)', () => {
 
     // Reorder handle: the ONE reorder affordance stays a real button (DEC-715).
     expect(screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' })).toBeInTheDocument();
+
+    // DEC-650 wave-16 amendment: the row's Edit/Delete PAIR is desktop
+    // markup (forms.css's phone block stands Delete down via
+    // `.chq-forms-field-actions .chq-btn:last-child { display: none }`,
+    // a CSS-only fold that jsdom does not apply) -- so BOTH controls stay
+    // in the DOM at every width, and this is the render-side half of the
+    // desktop-frozen assertion (the CSS scan owns the phone-only fold).
+    const titleRow = screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' }).closest('.chq-forms-field-row') as HTMLElement;
+    expect(within(titleRow).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(titleRow).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
   it('shows a "no date set" fallback and "—" received count while the submissions total has not loaded, never a fabricated number', async () => {
