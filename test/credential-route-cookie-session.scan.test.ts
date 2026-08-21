@@ -326,7 +326,20 @@ const ALL_ROUTES_ROOT = join(ROOT, "src", "routes");
 // hasMintingResolvePortalLinksCall below parses each resolvePortalLinks(
 // call's own argument list and only counts it when the LAST (mintClaimTokens)
 // argument is the literal `true`.
-const CREDENTIAL_PRIMITIVES = ["hashPassword(", "issueSessionRevokingAll(", "buildSessionCookie(", "applyMintedPortalLinks("];
+const CREDENTIAL_PRIMITIVES = [
+  "hashPassword(",
+  "issueSessionRevokingAll(",
+  "buildSessionCookie(",
+  "applyMintedPortalLinks(",
+  // DEC-027 wave-20 amendment: mintPortalLinks( (the named entry point
+  // portal-invites.ts/content-notes.ts now call, over a bare
+  // resolvePortalLinks(..., true)) and createClaimToken( (the primitive
+  // itself -- a route that reaches it directly, like the public CFP
+  // submit door, mints a credential regardless of which wrapper it went
+  // through).
+  "mintPortalLinks(",
+  "createClaimToken(",
+];
 
 /** Splits a call's argument-list text (the text between, but not
  * including, its outer parens) into top-level arguments -- commas nested
@@ -396,6 +409,11 @@ function hasMintingResolvePortalLinksCall(strippedSrc: string): boolean {
 // DEC-027 wave-70: the exemption list is CLOSED. A fourth entry needs a
 // written justification added directly to this record (and reflected in the
 // comment below) -- it must never be extended by simply adding a file name.
+//
+// DEC-027 wave-20 amendment: a fourth entry, src/routes/public/submit-post.tsx,
+// joins this CLOSED list -- the exemption list is now FOUR entries, per the
+// measured offender list produced by widening CREDENTIAL_PRIMITIVES to
+// createClaimToken( (see that constant's comment above).
 const UNAUTHENTICATED_DOORS: Record<string, string> = {
   "src/routes/auth-login.tsx":
     "the login door itself -- runs with no c.var.auth at all (it is the credential MINT, not a rotation by an already-authenticated principal); requireCookieSession's refusal ('not a signed-in session') is unreachable with no session to reject",
@@ -403,6 +421,8 @@ const UNAUTHENTICATED_DOORS: Record<string, string> = {
     "account-claim: the 'auth' is possession of an unguessable KV claim token, not a session -- there is no c.var.auth yet for requireCookieSession to inspect",
   "src/routes/auth-reset.tsx":
     "password-reset: the 'auth' is possession of an unguessable KV reset token, not a session -- same no-session model as auth-claim.tsx",
+  "src/routes/public/submit-post.tsx":
+    "the public CFP submit door: runs with no c.var.auth at all -- it mints the submitter's own claim token on their own just-created submission (createClaimToken at :512), the same no-session model as auth-claim.tsx/auth-reset.tsx, not an already-authenticated principal rotating a credential",
 };
 
 const MUTATING_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
@@ -462,9 +482,14 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-70 amendment: whole
     ).toEqual([]);
   });
 
-  it("UNAUTHENTICATED_DOORS is exactly the three declared no-session credential-mint routes, each with a written reason", () => {
+  it("UNAUTHENTICATED_DOORS is exactly the four declared no-session credential-mint routes, each with a written reason", () => {
     expect(Object.keys(UNAUTHENTICATED_DOORS).sort()).toEqual(
-      ["src/routes/auth-claim.tsx", "src/routes/auth-login.tsx", "src/routes/auth-reset.tsx"].sort(),
+      [
+        "src/routes/auth-claim.tsx",
+        "src/routes/auth-login.tsx",
+        "src/routes/auth-reset.tsx",
+        "src/routes/public/submit-post.tsx",
+      ].sort(),
     );
     for (const [file, reason] of Object.entries(UNAUTHENTICATED_DOORS)) {
       expect(reason.length, `${file}'s UNAUTHENTICATED_DOORS entry must carry a written reason`).toBeGreaterThan(20);
