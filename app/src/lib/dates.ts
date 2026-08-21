@@ -90,6 +90,24 @@ export function formatDateOnly(ms: number | null | undefined): string {
 }
 
 /**
+ * DEC-650 wave-16 amendment: format a UTC-midnight epoch-ms calendar-date
+ * value as "16 Aug" -- formatDateOnly's year-less twin, for the ONE surface
+ * that draws a close date beside its own already-visible year context (the
+ * CFP builder's 390 phone head meta line, docs/design/Chautauqua
+ * Submissions.dc.html's 390 CFP-form frame: `Closes 16 Aug · 47 received`).
+ * Reads the timestamp in the UTC timezone (DEC-153), day/short-month order
+ * built by hand (DEC-963, never Intl/toLocaleDateString). '—' for
+ * null/undefined/NaN/invalid. Every other date-only call site keeps using
+ * formatDateOnly -- do not repoint an existing caller at this function.
+ */
+export function formatDateOnlyNoYear(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${date.getUTCDate()} ${SHORT_MONTH_NAMES[date.getUTCMonth()]}`;
+}
+
+/**
  * Format an epoch-ms timestamp as "<D> <Mon>, HH:MM" (24-hour) for display;
  * '—' for null/undefined/NaN/invalid. Use for LISTS OF DIFFERENT OBJECTS
  * (createdAt, updatedAt, sentAt, uploadedAt, etc. across distinct rows --
