@@ -73,11 +73,11 @@
   flagged. That ruling supersedes the `v12m-w8-b` phone-width fix this row
   used to describe (settings.css`text-align: left;`, and the ONE consumer
   moved to `.chq-settings-note`
-  (app/src/pages/settings/CallForPapersPanel.tsx:566
+  (app/src/pages/settings/CallForPapersPanel.tsx
   `<p className="chq-settings-note">`)) — the desktop rule this row flagged no
   longer exists to still govern
-  TrackEditRow.tsx:99 `{inUse ? <p className="chq-settings-row-hint">In use — retire it instead of removing</p> : null}`
-  and RoomEditRow.tsx:96 `{inUse ? <p className="chq-settings-row-hint">Has scheduled sessions — cannot be removed</p> : null}`,
+  app/src/pages/settings/tracksRooms/TrackEditRow.tsx `{inUse ? <p className="chq-settings-row-hint">In use — retire it instead of removing</p> : null}`
+  and app/src/pages/settings/tracksRooms/RoomEditRow.tsx `{inUse ? <p className="chq-settings-row-hint">Has scheduled sessions — cannot be removed</p> : null}`,
   both rendered inside .chq-settings-edit-row's 3-column grid (defined at
   settings.css:1061-1067; no grid-column property is set on the hint
   paragraph itself, so it lands in the leading minmax(0, 1fr) track and

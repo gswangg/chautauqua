@@ -226,6 +226,20 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // citations coexist with this lane's own true count -- the two-sided
 // ratchet's failure message requires writing the measured figure, and the
 // merge train reconciles the final integrated number (DEC-989).
+// Wave 149 (task w5-bc, mandate/probe drain; siblings v12m-w5-ba draining
+// src/decisions-data/DEC-*.md and v12m-w5-bb draining docs/design/audit/*.md
+// against the same population): measured 30 on this branch (forced to -1,
+// offender list read row by row) -- main had drifted the population up from
+// 24 while other lanes wrote fresh line-keyed citations. This task's own
+// scope is exactly four files (docs/probes/metafid-desktop-2026-08-19.md,
+// docs/probes/metafid-round2-2026-08-20.md, docs/probes/metafid-round3-2026-08-20.md,
+// docs/mobile-campaign.md); converted its eight offenders there to the
+// drift-proof bare-path shape (drop ":line", keep the backtick-quoted
+// receipt, quote still resolves verbatim in its cited file). Re-measured
+// after the conversion: 22. This is a RAISE from the stale 24 -> 30 the
+// scan found on main before this task's own fix, then a real LOWERING
+// 30 -> 22 from this task's own drain; the merge train reconciles the
+// remainder once the two sibling lanes land theirs.
 //
 // THUNDERDOME MEGABATCH (wave-150, 19-branch batch): each lane above
 // measured this ratchet against a tree carrying only its OWN work, so no

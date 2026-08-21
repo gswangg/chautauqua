@@ -8,7 +8,7 @@ Four parallel probes: Content cluster, Wave-A docks, Wave-B small surfaces, regr
 - **Wave-A docks: 4/5.** CFP wizard (round-1 critical re-verified: step 1 submits), portal profile, portal session, portal task form (live-verified, not just unit test) all PASS. **Contacts Pipeline dock: MISSING** — no bottom band exists at all in PipelineBoard.tsx; tab-bar suppression symptom exactly as round-2 predicted. Page not broken (inline primary action reachable) but frame not met. → RED SET.
 - **Wave-B: CLOSED.** Tap-floor tokens (Settings/Comms/Contacts all ≥44), /login gaps (14px, focus ring clear), Settings back/title order ×6 (+1 no-edit-view by design), Comms drill-head suppression, CFP column (358px budget, gutter cancelled). 0px document overflow on 21 routes; desktop spot-checks unchanged.
 - **Regression smoke: Speakers REGRESSED; other five clusters STILL-DONE.**
-  1. `app/src/pages/speakers/speakers.css:1342-1347` — `.chq-speaker-detail-grid` (`minmax(0,1fr) 320px`) has NO phone collapse; at 390 the main column starves to 4px, section labels wrap one character per line. High-traffic path (roster → Open profile).
+  1. `app/src/pages/speakers/speakers.css` — `.chq-speaker-detail-grid` (`minmax(0,1fr) 320px`) has NO phone collapse; at 390 the main column starves to 4px, section labels wrap one character per line. High-traffic path (roster → Open profile).
   2. `app/src/pages/speakers/task-view.css:290-295` — phone override declares `grid-template-columns: 26px 1fr` for 5-cell task-drill rows; auto-placement zigzags answer/status text into the 26px checkbox column. Both tabs of /admin/speakers/tasks/:id affected.
   - Both desktop-1280-clean and zero-document-overflow → invisible to overflow-only ratchets. → RED SET.
 
@@ -17,6 +17,10 @@ Four parallel probes: Content cluster, Wave-A docks, Wave-B small surfaces, regr
 1. Speakers detail grid phone collapse (fix at bell, meta lane)
 2. Speakers task-drill row column count (fix at bell, meta lane)
 3. Contacts Pipeline dock — build using the established dock mechanism (engine, post-cut wave)
+   CLOSED (wave 149, DEC-967 superseding the old no-dock DEVIATIONS entry):
+   app/src/pages/contacts/PipelineBoard.tsx `<div className="chq-phone-dock" data-chq-phone-dock>`,
+   with a companion comment naming the frame's dock band as replacing the
+   head's own "Add to the pipeline" action at phone width.
 
 ## Notes
 
