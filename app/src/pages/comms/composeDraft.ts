@@ -14,11 +14,16 @@
 // organizer has actually completed, not their still-being-typed subject
 // line.
 //
-// Fail loudly (house rule): localStorage is OUR OWN writer here, not an
-// external boundary, so a stored value that doesn't match the shape this
-// module itself wrote is a bug, not an expected malformed input -- it
-// throws rather than silently discarding the draft or falling back to a
-// default.
+// Fail loudly (house rule), refined by `app/src/pages/comms/composeDraft.ts`
+// (DEC-621 wave-33): the SHAPE this module writes is ours and stays loud --
+// a caller handing writeComposeDraft a malformed ComposeDraft is a bug and
+// throws. But the STORE is not our writer, it is a boundary: localStorage
+// outlives deploys, tabs, and shape migrations, so a record written by a
+// past version of this module (or corrupted by the browser) is an expected
+// external input, not a programming error. An unreadable record is evicted
+// and reported as absent (null) rather than crashing the page that is the
+// organizer's only path back to a working compose flow -- see DEC-621
+// wave-33 for the live /comms outage this replaces.
 export interface ComposeDraft {
   templateName: string | null;
   subject: string;
@@ -51,21 +56,38 @@ function assertValidDraft(value: unknown): asserts value is ComposeDraft {
 }
 
 /** Reads the draft for `eventId`, or null when none is stored. A stored
- * value that fails to parse or doesn't match the shape this module wrote
- * THROWS -- see the module doc comment. */
+ * value that fails to parse or doesn't match the shape this module writes
+ * is an unreadable record from the storage boundary (DEC-621 wave-33): it
+ * is evicted (removeItem) and treated as absent, returning null. Caller
+ * errors (e.g. an empty eventId) still throw from storageKey above. */
 export function readComposeDraft(eventId: string): ComposeDraft | null {
-  const raw = window.localStorage.getItem(storageKey(eventId));
+  const key = storageKey(eventId);
+  const raw = window.localStorage.getItem(key);
   if (raw === null) return null;
-  const parsed: unknown = JSON.parse(raw);
-  assertValidDraft(parsed);
-  return parsed;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    assertValidDraft(parsed);
+    return parsed;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
 }
 
 /** Writes the draft for `eventId`. Called on each ComposeWizard step
- * advance -- never on keystroke. */
+ * advance -- never on keystroke. The shape is validated first and still
+ * throws loudly on a caller bug; only the localStorage.setItem call itself
+ * is guarded (DEC-621 wave-33) -- a storage exception (quota, Safari
+ * private mode) abandons the write and evicts the key so a truncated
+ * record can never be read back. */
 export function writeComposeDraft(eventId: string, draft: ComposeDraft): void {
   assertValidDraft(draft);
-  window.localStorage.setItem(storageKey(eventId), JSON.stringify(draft));
+  const key = storageKey(eventId);
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    window.localStorage.removeItem(key);
+  }
 }
 
 /** Clears the draft for `eventId`, e.g. on a successful send. */
