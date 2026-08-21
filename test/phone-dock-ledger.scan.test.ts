@@ -118,6 +118,29 @@
 //      f79ddeb5) resolve to a claim under the repaired predicate --
 //      RATCHET: PHONE_DOCK_UNCLAIMED_CEILING=0 (was 13; predicate widened
 //      per DEC-976 wave-138's re-seed rule: this is a repair, not a raise).
+//
+//      DEC-976 wave-146 (task w21-b): three further repairs, each with its
+//      own claim in the code above.
+//        (1) `hasDockGeometryRule` only ran when `file.endsWith('.css')`;
+//            every SSR stylesheet in this repo is a `*.css.ts` module, so
+//            that arm had NEVER fired for src/**. `isStylesheetFile` now
+//            admits `.css.ts` too.
+//        (2) already landed at w20-c (the indirection + derived-vocabulary
+//            widening above) -- re-verified, not re-done.
+//        (3) added a third exclusion table, NON_BUILD, distinct from
+//            FIXTURE/COMPOSED: a label a standing ruling explicitly
+//            forbids building, quoted by file:line. 'Save draft' moves out
+//            of COMPOSED_EXCLUSIONS (it was never "composed", it is
+//            "must not exist") into NON_BUILD_EXCLUSIONS, citing
+//            src/decisions-data/DEC-576.md:59 and DEVIATIONS.md §6 by name.
+//      Re-measured with the ceiling forced to -1: still 0 offenders (the
+//      .css.ts admission finds no NEW claimant the derived-class-vocabulary
+//      path hadn't already found, since DOCK_CLASS_VOCAB is itself sourced
+//      from ssrCssSources() which already reads .css.ts text -- but the
+//      geometry arm is no longer dead code, and a future band that relies
+//      on the literal sticky/bottom/border-top geometry rather than a
+//      vocabulary class will now be reachable). RATCHET:
+//      PHONE_DOCK_UNCLAIMED_CEILING=0 (unchanged; a repair, not a raise).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -509,9 +532,20 @@ function declaresDockViaSlotIndirection(raw: string): boolean {
   return false;
 }
 
+// DEC-976 wave-146 (task w21-b), change (1): every server-rendered
+// stylesheet in this repo is a `*.css.ts` module (src/'s CSS-in-JS
+// `*_CSS` exports), and `'x.css.ts'.endsWith('.css')` is false -- so this
+// branch had NEVER executed for a single file under src/**, and the SSR
+// half of the geometry check was dead code. Admit `.css.ts` alongside
+// `.css` so the rule actually reaches the stylesheets it was written to
+// grade (app/src/'s plain `.css` files still take the same path).
+function isStylesheetFile(file: string): boolean {
+  return file.endsWith('.css') || file.endsWith('.css.ts');
+}
+
 function declaresDockBand(file: string, raw: string): boolean {
   if (/data-chq-phone-dock/.test(raw) || /\bchq-phone-dock\b/.test(raw)) return true;
-  if (file.endsWith('.css') && hasDockGeometryRule(raw)) return true;
+  if (isStylesheetFile(file) && hasDockGeometryRule(raw)) return true;
   if (declaresDockClassDirectly(raw)) return true;
   if (declaresDockViaSlotIndirection(raw)) return true;
   return false;
@@ -599,19 +633,30 @@ const COMPOSED_EXCLUSIONS = [
     reason:
       "COMPOSED, digit-fixture: app/src/pages/content/SessionList.tsx renders the bulk-approve primary as `Approve {selectedIds.size}` -- the frame's fixture count '2' is not a literal the app types anywhere.",
   },
+];
+
+// (c) NON_BUILD -- DEC-976 wave-146 (task w21-b) change (3): a third table,
+// distinct from FIXTURE (a frame's own mock content) and COMPOSED (the app
+// assembles the same words at render time). A NON_BUILD row is a label a
+// standing ruling explicitly forbids building at all -- excluding it is not
+// "the app spells this differently", it is "the app must not build this
+// control". Each entry quotes the ruling verbatim, by file:line, so the
+// exclusion rots loudly the day that ruling is reversed rather than lands.
+const NON_BUILD_EXCLUSIONS = [
   {
     fileName: 'Chautauqua Public and Portal.dc.html',
     line: 520,
     label: 'Save draft',
     reason:
-      'BLESSED NON-BUILD (DEC-576 wave-128 amendment): "The frame\'s secondary \'Save draft\' is NOT built -- DEVIATIONS.md §6 already defers hotel-form save-draft, and a bordered control that persists nothing is the thing wave-110 forbids." TaskFormPage adopts the frame\'s dock band for its primary (`TASK_FORM_SUBMIT_LABEL`) only.',
+      'src/decisions-data/DEC-576.md:59 (wave-128 amendment): "The frame\'s secondary \'Save draft\' is NOT built -- DEVIATIONS.md §6 already defers hotel-form save-draft, and a bordered control that persists nothing is the thing wave-110 forbids." DEVIATIONS.md §6 independently lists "Hotel-form save-draft" among deferred post-deadline scope. TaskFormPage adopts the frame\'s dock band for its primary (`TASK_FORM_SUBMIT_LABEL`) only.',
   },
 ];
 
 function isExcluded(l: DockLabel): boolean {
   return (
     FIXTURE_EXCLUSIONS.some((e) => e.fileName === l.fileName && e.line === l.line && e.label === l.label) ||
-    COMPOSED_EXCLUSIONS.some((e) => e.fileName === l.fileName && e.line === l.line && e.label === l.label)
+    COMPOSED_EXCLUSIONS.some((e) => e.fileName === l.fileName && e.line === l.line && e.label === l.label) ||
+    NON_BUILD_EXCLUSIONS.some((e) => e.fileName === l.fileName && e.line === l.line && e.label === l.label)
   );
 }
 
@@ -693,6 +738,14 @@ describe('phone dock membership ledger (DEC-976, v12 mobile campaign)', () => {
   it('COMPOSED exclusions each resolve to their cited file:line:label in the current pack', () => {
     const allLabels = ACTION_DOCKS.flatMap((b) => b.labels);
     for (const e of COMPOSED_EXCLUSIONS) {
+      const hit = allLabels.find((l) => l.fileName === e.fileName && l.line === e.line && l.label === e.label);
+      expect(hit, `${e.fileName}:${e.line} -- "${e.label}" no longer resolves in the pack`).toBeDefined();
+    }
+  });
+
+  it('NON_BUILD exclusions each resolve to their cited file:line:label in the current pack', () => {
+    const allLabels = ACTION_DOCKS.flatMap((b) => b.labels);
+    for (const e of NON_BUILD_EXCLUSIONS) {
       const hit = allLabels.find((l) => l.fileName === e.fileName && l.line === e.line && l.label === e.label);
       expect(hit, `${e.fileName}:${e.line} -- "${e.label}" no longer resolves in the pack`).toBeDefined();
     }
