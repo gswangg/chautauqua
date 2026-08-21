@@ -24,6 +24,10 @@ const RAIL_CSS = readFileSync(
   join(__dirname, "..", "src", "routes", "public", "css", "rail.css.ts"),
   "utf8",
 );
+const EMPTY_CSS = readFileSync(
+  join(__dirname, "..", "src", "routes", "public", "css", "empty.css.ts"),
+  "utf8",
+);
 
 /** Extracts the exported template-literal string body: from the first
  * backtick after `export const <NAME> = ` to the LAST backtick in the file.
@@ -246,6 +250,54 @@ describe("rail.css.ts: .chq-pub-save/.chq-pub-schedule-remove/.chq-pub-lastyear-
     const last = at(blocks, -1);
     const trailing = body.slice(last.end + 1).trim();
     expect(trailing).toBe("");
+  });
+});
+
+describe("empty.css.ts: fresh zero-state headline joins the page-title register at 390 (DEC-367 wave-20-f)", () => {
+  // The desktop rule (EMPTY_CSS, G13) sizes .chq-pub-empty-block-fresh
+  // .chq-pub-empty-what off --chq-type-page-title-size (36px, never
+  // redefined at any width), which left it larger than the page's own H1
+  // (.chq-pub-surface-title's phone rule, rail.css.ts, 26px) -- the
+  // phoneB/round-2 probe's "pub-empty-what 36px > page H1" row. Fixed by
+  // pinning the SAME 26px value in this sheet's own terminal phone block,
+  // never by touching the shared token (which would move desktop).
+  const emptyBody = templateBody(EMPTY_CSS);
+  const railBody = templateBody(RAIL_CSS);
+  const emptyBlocks = extract700Blocks(emptyBody);
+  const railBlocks = extract700Blocks(railBody);
+
+  it("empty.css.ts declares exactly one phone block", () => {
+    expect(emptyBlocks.length).toBe(1);
+  });
+
+  it("the phone block is still the LAST top-level construct in the module (nothing reordered)", () => {
+    const last = at(emptyBlocks, -1);
+    const trailing = emptyBody.slice(last.end + 1).trim();
+    expect(trailing).toBe("");
+  });
+
+  it("declares .chq-pub-empty-block-fresh .chq-pub-empty-what at phone width", () => {
+    const last = at(emptyBlocks, -1);
+    const rule = lastRuleFor(last.body, ".chq-pub-empty-block-fresh .chq-pub-empty-what");
+    expect(rule).toMatch(/font-size:\s*26px\s*;/);
+  });
+
+  it("declares .chq-pub-empty-block-fresh .chq-pub-empty-reason at phone width, in proportion", () => {
+    const last = at(emptyBlocks, -1);
+    const rule = lastRuleFor(last.body, ".chq-pub-empty-block-fresh .chq-pub-empty-reason");
+    expect(rule).toMatch(/font-size:\s*13px\s*;/);
+  });
+
+  it("the fresh headline's phone size never exceeds the page's own H1 (.chq-pub-surface-title) at the same width", () => {
+    const emptyLast = at(emptyBlocks, -1);
+    const railLast = at(railBlocks, -1);
+    const whatRule = lastRuleFor(emptyLast.body, ".chq-pub-empty-block-fresh .chq-pub-empty-what");
+    const titleRule = lastRuleFor(railLast.body, ".chq-pub-surface-title");
+    const whatSize = Number(/font-size:\s*(\d+)px\s*;/.exec(whatRule)?.[1]);
+    const titleSize = Number(/font-size:\s*(\d+)px\s*;/.exec(titleRule)?.[1]);
+    expect(whatSize).toBeGreaterThan(0);
+    expect(titleSize).toBeGreaterThan(0);
+    expect(whatSize).toBeLessThanOrEqual(titleSize);
   });
 });
 

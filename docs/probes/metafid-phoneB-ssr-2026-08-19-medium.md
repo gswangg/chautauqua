@@ -42,7 +42,22 @@ short index header for the full split map.)
   portal footer 93px ink stub +
   duplicate Sign out; overview remind-all breaks gutters; tab-bar dot
   flow/baseline defects (dot above label, all five items, per frames);
-  pub-empty-what 36px > page H1; speakers Remind-outstanding wraps in 107px
+  speakers Remind-outstanding wraps in 107px
   box; OVERDUE filled chip vs frame's weighted text at 390; portal edit
   scope (frame :597 scopes to title/abstract, live ships full CFP);
   scorecard copy drift (Read-full absent, recuse wording, "—" vs "Not yet").
+  CLOSED (wave v12m-w20-f, DEC-367): "pub-empty-what 36px > page H1" —
+  `src/routes/public/css/empty.css.ts`'s terminal `@media (max-width:
+  700px)` block now sets `.chq-pub-empty-block-fresh .chq-pub-empty-what`
+  to `font-size: 26px`, the same value `src/routes/public/css/rail.css.ts`'s
+  own terminal phone block gives `.chq-pub-surface-title` (the page's H1)
+  at the same width — never a third hand-typed number, never by
+  redefining `--chq-type-page-title-size` (frozen at desktop's 36px). The
+  desktop rule this closes against is drawn by
+  `docs/design/Chautauqua Public and Portal.dc.html`'s "Public sessions ·
+  nothing published" frame, whose zero-state headline ("The programme is
+  not out yet") sits below the surface title the same way this fix keeps
+  them ordered at 390. The `.chq-pub-empty-reason` companion is brought
+  into proportion in the same block, reusing this file's own 13px quiet
+  register (the 'filtered' variant's reason size) rather than inventing a
+  new number.
