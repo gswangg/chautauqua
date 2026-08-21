@@ -1242,7 +1242,17 @@ export function SubmissionDetailPage() {
               retitled Abstract -- content and inline-edit behaviour
               unchanged. */}
           <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Abstract</h2>
+            {/* DEC-878 (wave-16 amendment): docs/design/Chautauqua
+                Submissions.dc.html:355
+                `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+                -- the 390 "Submission detail" frame's scroll body opens
+                directly on the abstract paragraph with no heading drawn
+                above it. The heading stays for structure/a11y but is
+                visually stood down at 390 via
+                .chq-detail-section-title-frameless (screen-reader-only,
+                never display:none, so no capability is removed -- DEC-919's
+                capability-removal receipt is satisfied by construction). */}
+            <h2 className="chq-detail-section-title chq-detail-section-title-frameless">Abstract</h2>
             <div className="chq-detail-section-body">
               {!editing ? (
                 // DEC-900 (ruling A6): the header's "Edit title and
@@ -1330,7 +1340,14 @@ export function SubmissionDetailPage() {
               grid with 1px hairline row rules the frame calls for (already
               .chq-answer-row's shape -- unchanged here). */}
           <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Form answers</h2>
+            {/* DEC-878 (wave-16 amendment): docs/design/Chautauqua
+                Submissions.dc.html:355
+                `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+                -- the same 390 "Submission detail" frame's scroll body runs
+                straight into the answer rows with no heading above them
+                either. Same .chq-detail-section-title-frameless treatment
+                as Abstract above: screen-reader-only, never display:none. */}
+            <h2 className="chq-detail-section-title chq-detail-section-title-frameless">Form answers</h2>
             <div className="chq-detail-section-body">
               {answerRows.length === 0 ? (
                 <p>No custom answers.</p>
