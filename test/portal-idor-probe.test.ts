@@ -42,7 +42,7 @@
 // resolver returning null for submission/resource routes). No route file
 // changed.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
@@ -361,8 +361,24 @@ function enumeratePortalParamRoutes(app: Hono<AppEnv>): { method: string; path: 
 const CSRF_TOKEN = "portal-idor-probe-csrf-token";
 
 describe("speaker-portal same-role wrong-owner IDOR probe (DEC-550, wave-35 amendment)", () => {
-  it("enumerates at least the /portal :param routes this task expects to exist (composition sanity)", async () => {
-    const { app } = await buildActorApp();
+  // Perf note (DEC-989 wave-149 amendment): buildActorApp() pays the whole
+  // route-tree module-graph import (parseIndexMounts()) exactly once, cold,
+  // the first time it runs -- that cold import was the entire cost behind
+  // the "composition sanity" test's timeout, since it used to build its own
+  // fresh app while the sibling test's app (built second) got the already-
+  // warm graph. beforeAll's hook budget is separate from each test's 5000ms
+  // budget, so building once here and sharing the handle keeps both tests'
+  // own bodies cheap. The second test's per-route isolation is unchanged --
+  // it still calls reset() before every request.
+  let app: Awaited<ReturnType<typeof buildActorApp>>["app"];
+  let touched: Awaited<ReturnType<typeof buildActorApp>>["touched"];
+  let reset: Awaited<ReturnType<typeof buildActorApp>>["reset"];
+
+  beforeAll(async () => {
+    ({ app, touched, reset } = await buildActorApp());
+  });
+
+  it("enumerates at least the /portal :param routes this task expects to exist (composition sanity)", () => {
     const routes = enumeratePortalParamRoutes(app);
     // Floor on the enumerated count -- a silent narrowing of the composed
     // route table would otherwise pass this probe vacuously.
@@ -371,7 +387,6 @@ describe("speaker-portal same-role wrong-owner IDOR probe (DEC-550, wave-35 amen
   });
 
   it("every /portal :param route refuses a wrong-owner request at its ledgered status, never touching the db/store", async () => {
-    const { app, touched, reset } = await buildActorApp();
     const routes = enumeratePortalParamRoutes(app);
     const failures: string[] = [];
     const matchedLedgerKeys = new Set<string>();

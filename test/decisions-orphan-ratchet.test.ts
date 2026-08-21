@@ -80,22 +80,31 @@ function directoryExists(path: string): boolean {
 // Which declared DEC_NNN identifiers appear (word-boundary, so DEC_04 never
 // matches DEC_040) anywhere under src/ or app/src/, excluding the decisions
 // machinery itself.
+//
+// Performance note (DEC-989 wave-149 amendment): this used to compile one
+// `new RegExp("\\bDEC_NNN\\b")` per (file, still-unreferenced id) pair --
+// up to ~1000 files x ~999 ids -- and test each against the whole file
+// text, which timed out the suite. Instead, read each file once and pull
+// every `DEC_\d+` token out with a single module-level /g regex, then
+// intersect that token set with `declared`. This is the exact same
+// semantics (word-boundary token match: \b anchors the same positions a
+// literal token scan finds) in one linear pass over the corpus instead of
+// a quadratic one.
+const DEC_TOKEN_PATTERN = /\bDEC_\d+\b/g;
+
 function referencedDecConstants(declared: string[]): Set<string> {
+  const declaredSet = new Set(declared);
   const files = [
     ...walkSourceFiles(srcDir, isExcludedFromWalk),
     ...(directoryExists(appSrcDir) ? walkSourceFiles(appSrcDir, isExcludedFromWalk) : []),
   ];
   const referenced = new Set<string>();
-  const remaining = new Set(declared);
   for (const file of files) {
-    if (remaining.size === 0) break;
+    if (referenced.size === declaredSet.size) break;
     const contents = readFileSync(file, "utf8");
-    for (const id of [...remaining]) {
-      const pattern = new RegExp(`\\b${id}\\b`);
-      if (pattern.test(contents)) {
-        referenced.add(id);
-        remaining.delete(id);
-      }
+    for (const match of contents.matchAll(DEC_TOKEN_PATTERN)) {
+      const token = match[0];
+      if (declaredSet.has(token)) referenced.add(token);
     }
   }
   return referenced;
