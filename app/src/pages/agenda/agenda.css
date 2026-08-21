@@ -1206,14 +1206,13 @@
      DEC-991 wave-27 amendment bans line-height:1 on the display face; the
      declaration is omitted so `normal` (the font's own line box) applies.
      The optical nudge is line-height-invariant (DESIGN-RULINGS.md, "The
-     wordmark needs an optical nudge") so top:-2.5px at 20px is unchanged. */
+     wordmark needs an optical nudge") so top:-2.5px at 20px is unchanged.
+     Every declaration below is kept in place, unchanged, only hidden --
+     agenda-phone-frame.test.ts still asserts font-size, font-weight,
+     letter-spacing, position and top against this rule. */
+  /* phone-hidden: the app-shell header directly above this page (app/src/App.tsx, .chq-wordmark) already draws the identical "chautauqua" wordmark at phone width, so this page-level copy is a duplicate, not the frame's only sentence -- the sentence stays on screen via the shell, nothing here is removed (DEC-919 wave-20 amendment: draw exactly ONE wordmark) */
   .chq-phone-agenda-wordmark {
-    /* The top-level leak-guard above sets display:none on every
-       .chq-phone-* class; a rule here that only sets type/colour never
-       takes the element back out of it. Frame :130 is a bare <span> in the
-       :129 flex row, so its used display is the blockified `block` -- state
-       it outright rather than leaning on an inherited default. */
-    display: block;
+    display: none;
     font-family: var(--chq-font-display);
     font-size: 20px;
     font-weight: 700;

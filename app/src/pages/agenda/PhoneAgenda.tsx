@@ -152,24 +152,23 @@ export function PhoneAgenda({
   // (:128 `border-bottom:1px solid #1B1D17; padding:14px 16px;
   // flex-shrink:0; display:flex; flex-direction:column`), carrying the
   // wordmark at :130 beside the page-specific "6 unplaced · 2 clash"
-  // counter at :131 -- no app-shell header drawn above it anywhere in the
-  // frame. This is the header-region twin of the footer contract
-  // (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`, see
-  // Scorecard.tsx): a page that draws its own phone head band declares
-  // data-chq-phone-head on its root and styles.css's
-  // `.chq-shell:has([data-chq-phone-head]) .chq-header` (inside its
-  // max-width:700px block) stands the shell header down, DEC-385
-  // single-direction. Desktop cannot be reached by this change: Agenda.tsx
-  // mounts PhoneAgenda only under `isPhone`, and the stand-down rule lives
-  // only inside styles.css's max-width block, never at top level.
+  // counter at :131.
   //
-  // No capability is lost by suppressing the shell header here: this
-  // page's footer is `.chq-phone-footer`, never `data-chq-phone-dock`, so
-  // `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` does not fire --
-  // the tab bar stays mounted and Sign out / the event switcher stay
-  // reachable through the More sheet (DEC-369/DEC-381).
+  // DEC-919 (wave-20 amendment): the app-shell header ABOVE this page
+  // already draws the identical "chautauqua" wordmark, so the frame's
+  // single wordmark is drawn by the shell, not by this component -- no
+  // `data-chq-phone-head` here. That attribute's contract
+  // (`.chq-shell:has([data-chq-phone-head]) .chq-header`, styles.css) is
+  // scoped to pages whose frame draws NO wordmark/identity at all (the
+  // Review-queue drill-in, Scorecard); Agenda's frame draws a wordmark, so
+  // setting the attribute here would stand the shell header down with
+  // nothing standing in for it (this page's own `.chq-phone-agenda-
+  // wordmark` is display:none at phone, agenda.css) and would also strand
+  // `.chq-eventswitcher`, which has no phone rule anywhere in styles.css.
+  // The counter itself stays a page-drawn element (`.chq-phone-agenda-
+  // counts`, unaffected by this change).
   return (
-    <div className="chq-phone-agenda" data-chq-phone-head>
+    <div className="chq-phone-agenda">
       <div className="chq-phone-agenda-head">
         <div className="chq-phone-agenda-head-top">
           <span className="chq-phone-agenda-wordmark">chautauqua</span>
