@@ -2205,6 +2205,16 @@
     margin-inline: -10px;
   }
 
+  /* frame-control-floor scan (wave-155 pb, DEC-393): the "Edit" label on
+     Contacts.dc.html:435 and Public and Portal.dc.html:589 both draw
+     min-height:48px, above the 44px .chq-link-button.chq-settings-inline-
+     action declares. Scoped rule, this compound selector only -- the
+     house register .chq-link-button (app/src/styles.css) and the plain
+     .chq-settings-inline-action rule above are both untouched. */
+  .chq-link-button.chq-settings-inline-action {
+    min-height: 48px;
+  }
+
   /* .chq-settings-edit-row-actions (TrackEditRow/RoomEditRow) wraps plain
      .chq-link-button Save/Cancel/Remove controls -- the container stays a
      flex row, the floor lands on each anchor inside it. */

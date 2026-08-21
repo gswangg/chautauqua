@@ -509,16 +509,16 @@ const OFFENDERS: Graded[] = GRADED.filter((g) => g.reason === 'resolved' && g.re
 const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved');
 
 // -- Ratchets ------------------------------------------------------------
-// Measured on this branch (v12m-w7-da) by forcing FRAME_FLOOR_DIVERGENCE_CEILING
-// to -1 and reading the printed offender list back: 7 drawn controls
-// declare a min-height strictly below the floor their own frame draws --
-// "Sign in" (Account:136, drawn 50/declares 48), "Edit" (Contacts:435,
-// drawn 48/declares 44; Public and Portal:589, drawn 48/declares 44),
-// "‹ Previous"/"Next ›" (Docs:201-202, drawn 46/declares 44), and
-// "Download .ics" (Public and Portal:401, drawn 46/declares 44; :885, drawn
-// 48/declares 44). Real frame/app divergences, not fixture noise -- see
-// docs/design/audit/frame-control-floor-390-v12.md.
-export const FRAME_FLOOR_DIVERGENCE_CEILING = 7;
+// Wave-155 pb (DEC-393): the 7 offenders measured on v12m-w7-da -- "Sign in"
+// (Account:136, drawn 50/declared 48), "Edit" (Contacts:435, drawn 48/
+// declared 44; Public and Portal:589, drawn 48/declared 44), "‹ Previous"/
+// "Next ›" (Docs:201-202, drawn 46/declared 44), and "Download .ics" (Public
+// and Portal:401, drawn 46/declared 44; :885, drawn 48/declared 44) -- are
+// each fixed at the token the scan resolved, in a scoped rule inside the
+// owning sheet's terminal max-width:700px block. Re-measured on this branch
+// by forcing this ceiling to -1: 0 offenders remain. See
+// docs/design/audit/frame-control-floor-390-v12.md's DRAINED section.
+export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808): re-measured
 // on this branch the same way, so the population cannot silently shrink to
@@ -534,6 +534,11 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 7;
 // that previously resolved to NO CSS rule now resolves to one and leaves
 // this bucket. The population did not shrink -- a member moved from
 // UNRESOLVED to resolved, which is the direction this campaign wants.
+//
+// Re-measured again wave-155 pb, independently, and read the same 152. That
+// task's fix only moves already-resolved controls, so it cannot change this
+// bucket -- the two waves agreeing on 152 is the receipt that the drift was
+// w10-na's and is now settled.
 export const UNRESOLVED_COUNT_TRIPWIRE = 152;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {

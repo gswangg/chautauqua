@@ -550,7 +550,11 @@ export const AGENDA_PHONE_CSS = `
       order: -1;
     }
     .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-    .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    /* frame-control-floor scan (wave-155 pb, DEC-393): "Download .ics" draws
+       min-height:46px at Public and Portal.dc.html:401 and 48px at :885 --
+       raised from 44px to 48px, which satisfies both drawn values (single
+       rule, only site this token declares a phone min-height). */
+    .chq-pub-itinerary-cta { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the day-switcher
        pill sizes to padding on desktop, per docs/design/README.md
        §Controls. */
