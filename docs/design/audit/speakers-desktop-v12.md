@@ -111,15 +111,141 @@ budget the two frames as one route with two fixtures.
   pair uniformly, matching the same colour/weight family the matrix's dense
   half uses (pinned separately by `speakers-css.test.ts`).
 
+## Frame :187 "New task"
+
+**MATCHES**, with one previously-ruled additive divergence filed alongside
+it. Entered via `SpeakersPage` at `/speakers`, opened from the head's `New
+task` button. Receipts live in
+`Speakers-states.desktop-frame-verdicts.render.test.tsx` (w24-e, DEC-651).
+
+- Title/subtitle (frame :193-194, `New task` over `Created for all 12
+  accepted speakers`) MATCHES: `TaskModal`'s create-mode title and subtitle
+  render the identical strings, the count read straight off the fixture's
+  own `acceptedCount`.
+- **Kind order** (frame :208-210, Upload / Form / Acknowledge) MATCHES:
+  `TaskModal`'s segmented control renders the three buttons in that exact
+  order.
+- Required defaults checked (frame :213-215) MATCHES.
+- Actions (frame :218-219, `Create the task` / `Cancel`) MATCH.
+- **DIVERGES (additively, previously blessed).** The frame's last field
+  before the action row is the Required checkbox (:213) — there is no
+  audience/assignee section anywhere in this modal. The tree inserts an
+  "Assign to" radio group (`Everyone accepted (N)` / `Only the people I
+  choose`) between Required and the action row. This is DEC-746's wave-59
+  amendment, on the record as an intentional addition ("no new frame
+  exists for this in the V11 pack, so this reuses the existing
+  vocabulary") — filed here as a receipt, not new debt.
+
+## Frame :228 "Task response"
+
+**DIVERGES** on one wording point; otherwise MATCHES. Entered via
+`TaskView` at `/speakers/tasks/:taskId`, opened from an answered row's
+`Open` action (frame :228's own entry point, "as answered").
+
+- Q&A rows (frame :242-243) MATCH: each response field renders as a
+  question/answer pair inside a definition list.
+- The `Reopen this task` action and its caption (frame :247, "Sets it back
+  to pending — the next reminder picks it up") MATCH verbatim, rendered
+  only once the response has loaded.
+- **DIVERGES.** The frame's subtitle names WHEN THE TASK WAS SENT (frame
+  :235, `Priya Raman · sent 2 Apr`). `ResponseModal.tsx`'s subtitle instead
+  names when the response was COMPLETED (`{contactName} · Completed
+  {formatDate(detail.completedAt)}`) — a different fact (send date vs.
+  completion date), not a wording variant of the same fact. Filed here as
+  measurement; not fixed (desktop is frozen).
+
+## Frame :288 "Participation · open"
+
+**MATCHES.** Entered via `SpeakerDetailPage` at `/speakers/:contactId`,
+opened from a Sessions row's `ParticipationMenu` trigger (the same live,
+per-session menu :319's verdict above already establishes).
+
+- Identity header (frame :294-295, name over `Northwind Data · no portal
+  account`) MATCHES verbatim.
+- **The menu body** (frame :298, `hint-placeholder-count="4"`) MATCHES: the
+  previously-ruled DEC-869 shape — exactly 3 SELECTABLE states (`Not
+  invited` / `Confirmed` / `Declined`) plus `Send portal invite` occupying
+  the Invited slot as an action rather than a fourth radio — renders the
+  same 4-item count the frame's own placeholder hints at (3 + 1).
+- Footer caption (frame :311, `Only "Invited" sends anything — the other
+  two just record what you already know`) MATCHES verbatim.
+
+## Frame :442 "Speakers · search found nothing"
+
+**MATCHES** (mechanism; the frame's own worked example uses a different
+facet). Entered via `SpeakersPage` at `/speakers`, a STATE: typing a query
+into the search box that matches no speaker.
+
+- The frame (:478-479) draws ONE reason sentence naming the excluding
+  facet plus ONE escape action, worked against the "Overdue only" pill
+  ("Marcus Okafor is on the roster, but nothing of his is overdue.
+  Clearing "Overdue only" finds him."). `OnboardingGrid`'s `narrowing.ts`
+  implements that SAME naming/escape mechanism per-facet — this verdict
+  drives it through the SEARCH facet instead (the frame draws no
+  search-specific worked example): typing `okafor` where nothing matches
+  renders `No speakers match "okafor".` and a `Clear the search filter ›`
+  escape action, naming the one active facet and offering to clear
+  exactly it, matching the frame's structural rule.
+- The H1 aggregate line stays mounted above the card body, matching the
+  frame drawing it above the filter strip in every state.
+
+## Frame :491 "Review these reminders"
+
+**DIVERGES** on the email preview's presentation; otherwise MATCHES.
+Entered via `SpeakersPage` at `/speakers`, opened from the `Remind all
+outstanding` head action.
+
+- Title (frame :498, `Review these reminders`) MATCHES.
+- `Send these N` / `Cancel` / `Logged in Comms history` (frame :540)
+  MATCH, and the per-recipient row renders the fixture's name.
+- **DIVERGES.** The frame (:498-536) draws a fully rendered HTML email
+  card under the "What Marcus will read" eyebrow: a `DevFlow Conf 2027`
+  header, a greeting, a "Still to do" bulleted block, and a rendered CTA
+  button reading `Open your tasks` (frame :529). `RemindPreviewModal.tsx`
+  instead renders the SAME draft as plain text inside a bare `<pre
+  class="chq-speakers-remind-draft-text">` — no header band, no styled
+  button, `Open your tasks` present only as plain text inside the `<pre>`,
+  never as a link or button. The underlying text content (greeting, nudge,
+  "Still to do", portal link, signature) is present; the frame's RENDERED
+  card presentation is not. Filed here as measurement; not fixed (desktop
+  is frozen).
+
+## Frame :549 "Speakers · a write failed"
+
+**MATCHES.** Entered via `SpeakersPage` at `/speakers`, a STATE: an
+optimistic cell-status flip that the server's PATCH rejects.
+
+- The banner's bold title (frame :568, `Marcus Okafor's headshot task did
+  not change`) and muted body (frame :569, naming the cause and the
+  restored status) MATCH verbatim — `cellFailureTitle`/`cellFailureBody`
+  compose the identical two-line shape, with the server's own wording
+  substituted into the cause clause (DEC-856) rather than a generic
+  guess.
+- Recovery actions (frame :572-573, `Reload the grid` then `Try again`)
+  MATCH, in that order.
+- **The rollback is said out loud, not silent.** The optimistically-flipped
+  cell reverts to its pre-flip status (`OVERDUE`) and stays marked "not
+  saved" until the banner clears — a functional, per-cell rollback (never
+  a whole-grid snapshot that would also revert a concurrent success), with
+  the banner naming exactly the row it affects.
+
 ## Summary
 
 | Frame | Verdict |
 | --- | --- |
 | :28 Onboarding grid · 1600 | MATCHES |
+| :187 New task | MATCHES (+ blessed additive divergence, DEC-746) |
+| :228 Task response | DIVERGES (subtitle: sent vs. completed date) |
+| :288 Participation · open | MATCHES |
 | :319 Speaker detail · /admin/speakers/:contactId | DIVERGES (blessed, DEC-936) |
+| :442 Speakers · search found nothing | MATCHES |
+| :491 Review these reminders | DIVERGES (plain-text draft vs. rendered email card) |
+| :549 Speakers · a write failed | MATCHES |
 | :598 One task, every speaker | MATCHES |
 | :665 One task · still waiting | MATCHES |
 
-3 of 4 frames MATCH as rendered; the one DIVERGES row is a previously-ruled,
-intentional divergence (per-session participation beats a single header
-status), not new debt. No desktop byte was moved to produce this verdict.
+7 of 10 frames MATCH outright as rendered (an 8th, :187, matches with one
+previously-blessed additive divergence filed alongside it); the two
+DIVERGES rows found this wave (:228, :491) are real presentation/wording
+gaps, filed as measurement per the mandate's desktop freeze — no desktop
+byte was moved to produce any verdict in this document.
