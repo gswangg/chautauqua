@@ -1394,11 +1394,17 @@ button.chq-speakers-status-overdue:hover {
    session row in the seed: "Not placed" through "Wed 12 May 09:30-10:00,
    Room 2A" swung the pre-status gap 20px-87px before this rule; right-
    aligning closes it to a constant 18px (the row's own `gap`) for all of
-   them. DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
+   them. `min-width: 0` for the same reason the tasks row needs it below --
+   a grid item's automatic min size is its min-content width, and nowrap
+   makes that the full schedule string, so the item's own box was blowing
+   out past its 150px track for anything longer than "Not placed" and
+   text-align:right was anchoring to that wider box, not the track.
+   DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
    right-align before status ink". */
 .chq-speaker-detail-sessions-row > :nth-child(2) {
   text-align: right;
   white-space: nowrap;
+  min-width: 0;
 }
 
 /* User-filed (speaker detail, Elliot Ekström): each row is its OWN grid, so
@@ -1472,11 +1478,25 @@ button.chq-speakers-status-overdue:hover {
    constant `gap` (18px) before the status track, for every copy variant
    ("Was due …" and "Due …" both). Text-align, not justify-self -- the cell
    stays a full-width grid item so the 18px gap comes from the row's own
-   `gap`, never a hand-tuned margin. DESIGN-RULINGS.md, "Speaker detail --
-   due-date and schedule columns right-align before status ink". */
+   `gap`, never a hand-tuned margin.
+
+   `min-width: 0` is load-bearing, not decoration: a grid item's automatic
+   minimum size defaults to its MIN-CONTENT width, and `white-space:nowrap`
+   makes min-content equal the full unwrapped string -- so "Was due 16 Aug
+   2026" (wider than the 132px track) was blowing the item's own box out
+   past the track to fit, and text-align:right then anchored to THAT wider
+   box's right edge, 13px past the real track edge (measured live: gap
+   4.56px-4.83px instead of 18px, only the shorter "Due …" strings that fit
+   under 132px happened to land on 18px by coincidence). Zeroing min-width
+   lets the item honour the track's actual 132px and overflow into the
+   title column's own generous whitespace instead, which is where the
+   overflow already went before this fix (nowrap was never new). DESIGN-
+   RULINGS.md, "Speaker detail -- due-date and schedule columns right-align
+   before status ink". */
 .chq-speaker-detail-tasks-row > :nth-child(2) {
   white-space: nowrap;
   text-align: right;
+  min-width: 0;
 }
 
 .chq-speaker-detail-tasks-row > :nth-child(4) {

@@ -192,10 +192,18 @@
    date column (:624), which sits before an action LINK, not a status
    token, and is a different pattern the ruling does not cover.
    DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
-   right-align before status ink". */
+   right-align before status ink".
+
+   `min-width: 0` for the same reason speakers.css's sibling fixes need it:
+   a grid item's automatic min size defaults to its min-content width, and
+   nowrap makes that the full "N sends · last DATE" string -- without this
+   the item's own box blows out past its 148px track for anything longer
+   than "Never", and text-align:right anchors to that wider box instead of
+   the track. */
 .chq-taskview-waiting .chq-taskview-row > :nth-child(4) {
   text-align: right;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .chq-taskview-row:hover {
