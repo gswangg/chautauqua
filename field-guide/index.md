@@ -10,35 +10,44 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVE 16 HEAVILY COMPACTED: branch letters pre-burned again, moved to `ua..ui`; a full-suite run against shared `main` can report a phantom red while the scribe writes mid-suite, re-run the single failing file; verdict ledgers rot faster than the code they grade, check the owning file's comment block before spending a lane on a row; the 390 verdict sweep is COMPLETE (53/53 phone + 4 desktop), remaining work is DIVERGES rows, DEVIATIONS, and the five DEC-069 verification slots; some lanes land committed-but-UNMERGED, read ledgers via `git show <branch>:<path>` until the train lands them.
 - WAVE 17 HEAVILY COMPACTED: namespace held clean for once; ledgers are the campaign's biggest liability not the code — a dozen DIVERGES rows advertised work already landed, verdict tests still asserting stale truth (DEC-976: row+test move in one commit, `git log -S` before planning); a "two registers" verdict can be a two-sample undercount, enumerate the WHOLE drawn population (DEC-613/DEC-180); a control-floor row can resolve to the WRONG element by text-match, fix the frame's actual control then correct the join (DEC-393); exit-predicate reality check: all 31 ceilings DECLARED ONLY, not measured, all five DEC-069 slots VOID.
 - WAVE 18 HEAVILY COMPACTED: fast tier was red on main 8 files/8 tests at `6aa65834`, all fidelity/citation ratchets at ceiling 0 (DECLARED ceiling is a STRING, run the owning test); tree moved four times during planning, re-derive offender lists at a fresh sha; an exact-equality population pin is a merge-conflict magnet, use floors/supersets not equalities (DEC-808); a product scan must never read a verdict test's own frame-verbatim quote as vocabulary (DEC-374); claim-token mint scans missed `createClaimToken`/`applyMintedPortalLinks` for reading only a route's registration text, not indirect mints (DEC-027).
+- WAVE 19 HEAVILY COMPACTED: red set must be re-diffed against in-flight branches' `git diff --name-only main...`, not their briefs; ledgers still overstate the work by a large factor — Contacts 390 landing, Submissions 390 filterbar, CFP dateless meta line, portal profile H1, tap-floor-undeclared-v12's 23 offenders all already built; a negative verdict pin (`not.toMatch`) becomes a ratchet holding the product wrong the moment the fix lands cross-lane, convert with the fix (DEC-976); four `decisions/` citations broke from pure line drift, repair by converting to path+quoted-content, never re-pinning a line (DEC-967).
 
-## Wave 19 (planner notes)
+## Wave 20 (planner notes)
 
-**MEASURE THE SUITE, THEN READ THE DIFF BETWEEN THE REDS AND THE PLAN.**
-I ran `test:fast` in a detached worktree pinned to `8489dfef` (never the
-shared checkout — which was carrying two uncommitted files from another
-agent mid-run): 12 files / 13 tests red. Nine were already wave-18 lanes.
-The four that were NOT are the whole reason this wave exists. A red set is
-only actionable once you subtract what is already in flight, and that
-subtraction needs the in-flight branches' `git diff --name-only main...`,
-not their briefs.
+**RE-MEASURE AFTER EVERY MERGE-TRAIN COMMIT, NOT ONCE.** I measured
+test:fast in a detached worktree at abfda0c2: 5 files / 6 tests red.
+main then moved to 11a5fbe9 ("merge train: sigil the wave-19 amendment's
+two catalogued dead anchors") while I planned. Re-running just the five
+red files at the new sha showed TWO of them had gone green — the whole
+test/citation-form-drift.scan.test.ts lane I had drafted no longer had
+a defect to fix. A wave that trusts a 20-minute-old red set ships a lane
+that fixes nothing.
 
-**THE LEDGERS OVERSTATE THE WORK BY A LARGE FACTOR, IN ONE DIRECTION.**
-Every one of eight candidate build items I inherited or derived turned out
-already built: Contacts 390 landing (chip strip, segment pills,
-table→cards, `Email` action all present), Submissions 390 filterbar
-(Status caption, divider and ColumnPicker all `display:none` with DEC-919
-receipts; `Needs triage` label swap landed w16), CFP-builder's dateless
-meta line (`formatDateOnlyNoYear`), portal profile H1 (`Your profile`),
-`tap-floor-undeclared-v12.md`'s 23 offenders (owning scan measures 0).
-Ledgers rot toward pessimism; the code moves and the row does not. Grep
-the TREE for the row's own claim before spending a lane on it.
+**A BRANCH THAT "MERGED" MAY HAVE COMMITTED NOTHING.** v12m-w19-e and
+-f both point AT the scribe commit: --is-ancestor says MERGED,
+git rev-list --count main..<branch> says 0. Their four items (DEC-874's
+duplicate sentence, DEC-745's plan-editor shell, the CFP row, DEC-941's
+merge) never landed and are wave 20's lanes a/b/e/g. Always count, never
+ask whether it is reachable.
 
-**A NEGATIVE VERDICT PIN IS A RATCHET HOLDING THE PRODUCT WRONG.**
-`home-account-docs-390-frame-verdicts` asserts `not.toMatch(/href=\"\\/docs
-\\/api\"/)` — the fix landed in another lane and turned the pin red, so
-green now REQUIRES the divergence. Convert negative pins with the fix, and
-when the fix lands cross-lane, schedule the pin next wave (DEC-976 w19).
+**AN EXHIBIT! SIGIL IS A THIRD ANSWER TO "IS THIS CITATION DEAD".**
+src/decisions-data/DEC-967.md catalogues dead anchors as the SUBJECT of
+its own sentences; the scan grades them INVERTED and goes red the moment
+one heals. Before repairing a "broken" citation in a decision doc, check
+whether it is an exhibit — repairing it is the failure.
 
-**FOUR NEW `decisions/` CITATIONS BROKE FROM LINE DRIFT ALONE** (1290 →
-1294). Repair by CONVERTING to path+quoted-content, never by re-pinning a
-line — a re-pin buys one wave (DEC-967 w19).
+**THE PACK DRAWS THE SHELL, SO A PAGE THAT DRAWS ITS OWN CHROME DOUBLES
+IT.** /admin/agenda at 390 stacks two chautauqua wordmarks (shell
+header + PhoneAgenda.tsx's own). The data-chq-phone-head contract is
+NOT the general answer: its own comment scopes it to frames drawing no
+wordmark/identity, and using it strands .chq-eventswitcher, which has
+no phone rule anywhere. The established reading for every other 390 frame
+that draws a wordmark is that the SHELL header is that wordmark
+(DEC-919 w20).
+
+**LEDGERS STILL OVERSTATE THE WORK, IN ONE DIRECTION.** Four more rows I
+checked were already satisfied (Contacts 390 landing incl. per-row
+Email; Content :247's !phoneSelectMode guard; the import
+emailConflicts completion receipt; signOut()'s ?signed-out=1, and
+useCurrentEvent's cache eviction, both fixed by later amendments). Grep
+the TREE for the row's own claim before spending a lane.
