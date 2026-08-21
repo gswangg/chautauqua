@@ -45,7 +45,15 @@ export const HOME_CSS = `
      Grotesk's asymmetric box drops the ink below the flex box's centre;
      the offset is line-height-invariant, so no line-height is set here. */
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; position: relative; top: -2.5px; }
-  .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
+  /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua
+     Account.dc.html:51/:318 and Chautauqua Home.dc.html:214/:285 draw
+     "Sign in" at min-height:46-48px on desktop; this rule declared no
+     min-height at all. 48px (the max of the two drawn values) covers both
+     frame instances -- the scan grades declared height as at-least-drawn,
+     not equal. Centred flex plus horizontal padding added so the reserved
+     height is actually filled, matching the phone rule below rather than
+     just reserving blank space above/below the text. */
+  .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; min-height: 48px; display: flex; align-items: center; padding: 0 2px; }
 
   .chq-home-body { padding-block: 36px 40px; ${HOME_BODY_MEASURE} display: flex; flex-direction: column; gap: 34px; flex: 1 0 auto; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
@@ -112,6 +120,16 @@ export const HOME_CSS = `
      comment: test/tier0-falsifiability-w46.test.ts locates the phone block
      with indexOf on it, so an earlier copy would redirect the scan.) */
   .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
+  /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua
+     Home.dc.html:286 draws "API docs" at min-height:46px on desktop; the
+     rule above declares no min-height at all (only the phone floor below
+     existed). Already flex-centred with padding, so only the min-height
+     is new. Kept as its OWN rule rather than folded into the block above:
+     the comment directly above that block already names the sibling quiet
+     token with a leading dot, and the desktop-control-floor scan reads
+     comment text as part of the following rule's raw selector -- folding
+     a min-height into that block's body would credit the quiet token too. */
+  .chq-home-action-tertiary { min-height: 46px; }
   a.chq-home-action-tertiary:hover { color: var(--chq-brand); }
 
   .chq-home-row-published { padding: 18px 0; }

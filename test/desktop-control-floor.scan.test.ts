@@ -72,14 +72,28 @@
 //      at 0. A row with no label match, no extractable token, or no rule
 //      mentioning any extracted token is UNRESOLVED -- counted separately
 //      with its own two-sided tripwire (DEC-808: every ratchet in this
-//      campaign is two-sided). MEASURED: 23 offenders, 129 unresolved (91
-//      no label match, 38 label matched but no extractable token; zero
-//      rows with a token and no rule at all) -- the JOIN's own
+//      campaign is two-sided). MEASURED (wave 151): 23 offenders, 129
+//      unresolved (91 no label match, 38 label matched but no extractable
+//      token; zero rows with a token and no rule at all) -- the JOIN's own
 //      conservatism (a same-tag, text-node-only class read) means over a
 //      third of the population lands UNRESOLVED rather than falsely OK or
 //      falsely offending; a later wave with a real DOM-aware reader can
 //      drain the unresolved bucket without this ledger's offender ratchet
 //      ever having asserted something untrue.
+//
+//      WAVE 155 (DEC-393 amendment, task pe): of the 23, 12 are field-name
+//      eyebrow chips the pack draws bordered at 44-46px and the app
+//      correctly renders as plain text (`.chq-portal-field-label`,
+//      `.chq-page-title`, `.chq-section-label`) -- BLESSED as a class in
+//      docs/design/DEVIATIONS.md, no CSS moved. Four scoped desktop rules
+//      (Sign in, API docs, Submit-a-talk, Save draft) DRAINED the nine
+//      remaining real-control offender rows those four controls accounted
+//      for -- see docs/design/audit/desktop-control-floor-v12.md for both
+//      lists.
+//      Two rows ("Back to sign in", "Waitlist") are neither an eyebrow nor
+//      in this wave's drain set -- real, unaddressed offenders, left for a
+//      later wave (flagged in the audit doc, not silently absorbed into
+//      either bucket). MEASURED post-drain: 14 offenders.
 //
 //   4. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      DESKTOP_FLOOR_DIVERGENCE_CEILING is a single exported const, hand-
@@ -569,7 +583,7 @@ const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 // printed row list. Two-sided per DEC-808 (every ratchet in this campaign
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 23;
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 14;
 export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 129;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {

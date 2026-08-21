@@ -539,6 +539,13 @@ const LEDGER: LedgerEntry[] = [
       "DEC-745 wave-150 amendment: the still-owed build recorded through wave-149 (getPriorPublicEvent existed but NotYetOpenPage was never wired to it) landed -- NotYetOpenPage now resolves getPriorPublicEvent at all three call sites and renders the frame's 'Browse last year's sessions' label pointing at the prior edition's sessions surface when one qualifies, falling back to the original link/label unchanged otherwise. This bullet is its own record of that build; nothing external adjudicates it.",
     superseded: { literal: "RETIRES the entry recorded above through wave-149" },
   },
+  {
+    key: "field-name-eyebrows-drawn-as-bordered-chips-rendered-as-plain-text",
+    status: "honored",
+    reason:
+      "DEC-393 wave-155 amendment (task pe): test/desktop-control-floor.scan.test.ts's desktop drawn-floor ledger extracts any pack element with a min-height + border-radius + (border/background) shape as a DRAWN CONTROL, with no way to tell a real control from decoration. Twelve of that ledger's 23 wave-151 offenders are field-name/section-name labels the pack draws as bordered chips that the app correctly renders as plain, unbordered text via .chq-portal-field-label / .chq-page-title / .chq-section-label -- none of the three is a control anywhere in the app.",
+    honored: { kind: "present", file: "src/routes/portal/portal.css.ts", literal: ".chq-portal-field-label {", testFile: "test/desktop-control-floor.scan.test.ts" },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -744,8 +751,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(20);
-    expect(derived.length).toBe(42);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
+    expect(derived.length).toBe(43);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
