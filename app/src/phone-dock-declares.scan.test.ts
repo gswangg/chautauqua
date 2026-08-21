@@ -19,6 +19,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -32,10 +33,6 @@ function walk(dir: string, suffix: string): string[] {
     else if (entry.endsWith(suffix)) out.push(p);
   }
   return out;
-}
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Extracts the body text of every @media block whose condition mentions

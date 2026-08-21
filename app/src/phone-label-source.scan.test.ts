@@ -25,6 +25,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -37,10 +38,6 @@ function allAppCssFiles(root: string): string[] {
     out.push(join(entry.parentPath, entry.name));
   }
   return out.sort();
-}
-
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Extracts the bodies of every top-level `@media (...max-width...) { ... }`

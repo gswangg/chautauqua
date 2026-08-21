@@ -19,6 +19,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const appSrcDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -218,10 +219,6 @@ function desktopFreezePopulation(): CssSource[] {
   return [...appSources, ...ssrSources].sort((a, b) => a.rel.localeCompare(b.rel));
 }
 
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-}
-
 // Matches an @media rule's CONDITION LIST ONLY (up to its opening `{`), the
 // same scoping test/breakpoint-conformance.test.ts uses -- `min-width` is
 // also a legitimate ordinary CSS declaration property (e.g. on a <select>
@@ -229,7 +226,7 @@ function stripComments(src: string): string {
 // must never trip this check; only a min-width WITHIN an @media condition
 // list is a violation.
 function hasMinWidthMediaQuery(text: string): boolean {
-  const clean = stripComments(text);
+  const clean = stripCssComments(text);
   const mediaRe = /@media\s*([^{]+)\{/g;
   let m: RegExpExecArray | null;
   while ((m = mediaRe.exec(clean))) {

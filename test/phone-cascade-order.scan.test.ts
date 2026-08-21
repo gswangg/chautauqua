@@ -47,16 +47,11 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ssrCssSources } from './helpers/ssr-css-sources';
+import { stripCssComments as stripComments } from './helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..');
 const APP_SRC_ROOT = join(REPO_ROOT, 'app', 'src');
-
-// -- comment stripping -------------------------------------------------
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 // -- population: every *.css under app/src ------------------------------
 
