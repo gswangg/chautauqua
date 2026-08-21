@@ -1202,6 +1202,14 @@
   border: 1px solid var(--chq-rule);
   background: var(--chq-surface);
   color: var(--chq-ink);
+  /* DEC-393 wave-17: `Chautauqua Contacts.dc.html`:602 draws the "As" role
+     chip at `min-height:46px; ... padding:0 15px` -- the desktop floor its
+     own frame draws. `.chq-btn` (app/src/styles.css) already supplies
+     `display: inline-flex; align-items: center; padding: 10px 16px`, so
+     only the missing min-height is restated here; the compound selector
+     (0,2,0) matches this file's existing idiom above and wins regardless
+     of load order. */
+  min-height: 46px;
 }
 
 .chq-btn.chq-add-to-event-role-btn:hover {

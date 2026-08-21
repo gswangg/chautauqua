@@ -1,9 +1,10 @@
-# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment)
+# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17)
 
 Measured by `test/desktop-control-floor.scan.test.ts` on this branch. This
 file MEASURES ONLY -- it changes no product CSS byte except the one
-authorised byte wave-157's repair adds (see "Offenders: 3" below), and
-desktop stays otherwise frozen. See that file's own header for the full
+authorised byte wave-157's repair adds and the one appended byte wave-17
+adds to `contacts-panels.css` (see "Offenders: 2" below), and desktop stays
+otherwise frozen. See that file's own header for the full
 population/join/grade methodology.
 
 ## Population
@@ -94,46 +95,88 @@ scoping rule, `flex: 1`) gains `min-height: 44px`, citing
 floors the REAL control the frame draws; the ledger's own count cannot
 reflect that (the row still resolves to Overview's button, unaffected by a
 rule scoped to `.chq-detail-decision-secondary-pair .chq-btn`, a different
-token/selector entirely) -- `DESKTOP_FLOOR_DIVERGENCE_CEILING` is seeded at
-the honest measured value (3, below), not driven to 0 on the strength of a
-product fix this scan cannot verify. `.chq-btn`, `.chq-btn-primary`,
-`.chq-btn-secondary` and `src/routes/auth.css.ts` are untouched, per this
-wave's scope.
+token/selector entirely) -- `DESKTOP_FLOOR_DIVERGENCE_CEILING` was seeded at
+the then-honest measured value (originally 3, below; wave 156 and wave 17
+each independently fixed one of the other two rows in product code without
+the ledger's join being able to see either fix, so the measured ceiling
+fell to 2 without this offender count ever moving -- see "Offenders: 2"
+below), never driven to 0 on the strength of a product fix this scan
+cannot verify. `.chq-btn`, `.chq-btn-primary`, `.chq-btn-secondary` and
+`src/routes/auth.css.ts` are untouched, per this wave's scope.
 
-## Offenders: 3 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 3`, was 14)
+## Offenders: 2 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 2`, was 3)
 
-### Genuinely new, surfaced by the repair -- recorded, NOT drained (2 rows)
+### RESOLVED (wave 17, DEC-393): the two role-chip strips, and this
+### section's own stale resolution corrected
 
-The widened own-text-exact search resolves two of the wave-155 "blessed
-eyebrow" rows to a real, control-shaped token that the pre-repair join
-never found (both previously resolved only to
-`chq-comms-feedback-eyebrow`/`chq-page-title`, neither control-shaped, and
-were BLESSED alongside the other ten -- see `docs/design/DEVIATIONS.md`'s
-"Field-name eyebrows drawn as bordered chips, rendered as plain text"
-entry, unchanged by this wave):
+The "Genuinely new, surfaced by the repair -- recorded, NOT drained (2
+rows)" text below this heading (kept, struck through in spirit, for the
+history) was already half-overtaken by the time this wave read it: the
+`DESKTOP_FLOOR_DIVERGENCE_CEILING = 3` this section's own title still
+named had been lowered to `2` back in wave 156 (task qh,
+`app/src/pages/settings/settings.css`, commit "Desktop drawn-floor drain:
+PeopleRolesPanel Reviewer/Organizer chips") -- this file was never updated
+to say so. That is the SAME "ledger rot" phenomenon the scribe has flagged
+repeatedly across the campaign: the code moved, the ledger prose did not.
+Corrected here, along with the second, mis-diagnosed row this task was
+scoped to fix:
 
-- `docs/design/Chautauqua Contacts.dc.html`:602 -- "Reviewer" (frame "Add
-  to an event") draws `min-height:46px`.
-- `docs/design/Chautauqua Settings.dc.html`:1302 -- "Reviewer" (frame
-  "Invite someone") draws `min-height:44px`.
+- **Settings -- `docs/design/Chautauqua Settings.dc.html`:1302** ("Reviewer",
+  frame "Invite someone", `min-height:44px`). ALREADY RESOLVED, wave 156
+  (not by this task): `app/src/pages/settings/PeopleRolesPanel.tsx`'s two
+  `role="radio"` buttons (`chq-pill`/`chq-pill is-active`) are floored by
+  `app/src/pages/settings/settings.css`'s
+  `[aria-labelledby='people-invite-role-label'] .chq-pill { min-height:
+  44px; }` -- scoped to this radiogroup's own `aria-labelledby` anchor, so
+  the shared `.chq-pill` house register and every other chip strip in the
+  app stay untouched. `.chq-pill`'s own base (`app/src/styles.css`)
+  already supplies `display: inline-flex; align-items: center; padding: 5px
+  12px`, so all three of DESIGN-RULINGS:189's required properties
+  (min-height, centred flex, horizontal padding) are present. This task
+  found `settings.css` already carrying the fix and made no further
+  product change to it (also out of scope per this task's own "DO NOT
+  TOUCH settings.css" instruction, another lane owns its terminal phone
+  block this batch).
 
-Both resolve to `chq-pill`: `app/src/pages/settings/PeopleRolesPanel.tsx`'s
-role-invite chip, `<button type="button" role="radio" ... className={newRole
-=== 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}>Reviewer</button>` --
-own text content exactly "Reviewer". `chq-pill`
-(`app/src/styles.css`) is genuinely control-shaped (`border: 1px solid
-var(--chq-border-strong); border-radius: var(--chq-r-pill); padding: 5px
-12px; background: var(--chq-surface); ...`) and declares no min-height
-anywhere in the corpus at top level. This is a real, previously-hidden
-desktop floor gap on a real interactive control (a `role="radio"` chip) --
-per this task's scope, RECORDED here rather than fixed (no CSS byte
-authorised for it; "THE ONE AUTHORISED PRODUCT BYTE" is
-`.chq-detail-decision-secondary-pair .chq-btn` only). The `Settings.dc.html`
-"Invite someone" frame is very plausibly this exact control's own frame;
-whether `Contacts.dc.html`'s "Add to an event" flow renders the SAME
-`PeopleRolesPanel` component or a distinct, as-yet-unlocated one is left
-for a later wave along with the fix itself -- not adjudicated here, per
-this task's "never drained on your own judgment" instruction.
+- **Contacts -- `docs/design/Chautauqua Contacts.dc.html`:602** ("Reviewer",
+  frame "Add to an event", `min-height:46px`). RESOLVED this wave. The
+  resolution recorded above this section ("Both resolve to `chq-pill`...
+  role-invite chip") is WRONG for this row -- `chq-pill` is
+  PeopleRolesPanel's Settings control, a different page entirely.
+  `AddToEventModal.tsx`'s own header comment states the reason the scan's
+  text-match join can never see this row's real control directly: "never a
+  hardcoded Speaker/Reviewer/Guest list" -- the role buttons render from
+  `PARTICIPANT_ROLE_OPTIONS`, so no literal "Reviewer" string exists in
+  this file for an own-text-exact join to land on; the join's only
+  corpus-wide match for the string "Reviewer" is PeopleRolesPanel's unrelated
+  chip, which is why this row has always resolved there. The REAL control is
+  `AddToEventModal.tsx`'s `chq-btn chq-add-to-event-role-btn` button
+  (~:173) inside `.chq-segmented`. `app/src/pages/contacts/contacts-panels.css`'s
+  `.chq-btn.chq-add-to-event-role-btn` family (~:1201) previously set only
+  border/background/colour; this wave appends `min-height: 46px` to that
+  same rule (same compound-selector idiom the file already uses, so it
+  wins over the shared `.chq-btn` base regardless of load order). `.chq-btn`
+  (`app/src/styles.css`) already supplies `display: inline-flex;
+  align-items: center; padding: 10px 16px`, so the appended byte alone
+  completes all three of DESIGN-RULINGS:189's required properties.
+
+  **The ledger's own count cannot reflect this fix, by the same
+  construction as the "Waitlist" survivor below**: the row's resolution
+  stays mis-attributed to `chq-pill`/PeopleRolesPanel (now declaring 44px
+  via the wave-156 Settings fix above), which is still `< 46` against
+  this row's own 46px drawn floor -- the JOIN has no way to relocate
+  itself to a dynamically-rendered control's class, so it keeps grading
+  this row against the WRONG element. The real control is genuinely
+  floored in product CSS (see the receipt test
+  `app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts`, which
+  asserts the frame line and the CSS rule byte-for-byte); this row simply
+  cannot be drained by construction. `DESKTOP_FLOOR_DIVERGENCE_CEILING`
+  stays at its already-measured value of `2` (re-measured on this branch
+  by forcing it to `-1`: unchanged before and after this wave's CSS
+  change, since the mis-attributed row's resolved-token height moved from
+  0px to 44px but never reaches the drawn 46px) -- NOT driven to `1` or `0`
+  on judgment, per this task's own instruction and the "Waitlist"
+  precedent immediately below.
 
 ### The one genuine survivor (1 row, carried forward from wave 155/151)
 
