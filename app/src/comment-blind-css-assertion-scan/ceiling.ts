@@ -39,4 +39,24 @@
 // touched file still passed once routed through the real stripper -- no
 // false receipt (a comment-satisfied assertion) was found in this batch.
 // Ceiling lowered by exactly 5, 38 -> 33.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 33;
+//
+// v12m-w12-qj (wave 156, DEC-374 wave-156 amendment): migrated the nine
+// phone-frame receipt files this task owns (review-phone-frames.test.ts,
+// review-admin-phone-frames.test.ts, scorecard-phone-frames.test.ts,
+// content-phone-frames.test.ts, forms-phone-frames.test.ts,
+// agenda-phone-frame.test.ts, comms-drill-phone-frames.w7d.test.ts,
+// test/portal-session-phone-frames.test.ts, test/cfp-phone-steps.test.ts)
+// onto the shared, string-aware test/helpers/strip-css-comments.ts, each
+// replacing a private `.replace(/\/\*[\s\S]*?\*\//g, '')`-shaped regex (or,
+// for portal-session-phone-frames.test.ts / cfp-phone-steps.test.ts, no
+// stripping at all) with a real `stripCssComments(...)` call. Re-measured
+// with the ceiling forced to -1: 29 offenders remain (down from 38), and
+// none of the nine migrated files are among them -- every assertion in all
+// nine stayed green against the stripped source, so this migration found
+// no false receipt to repair in this file set (the naive local regexes
+// were, on inspection, already comment-correct for the CSS these nine
+// files hold; the one deliberate exception, cfp-phone-steps.test.ts's
+// DEC-919 "phone-hidden:" receipt check, still reads the RAW source on
+// purpose, since that assertion's subject IS the comment). Migrating the
+// remaining 29 offenders is explicitly a later, separately-ruled wave.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 29;
