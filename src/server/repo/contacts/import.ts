@@ -22,6 +22,15 @@ import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import { newId } from "../../../domain/ids";
 import { backfillNullAttributionMany } from "../attribution";
 import { touchSubmissionsForContacts } from "../submissions/touch";
+// NOTE: the task brief that drove this change cited "DEC-994" for the
+// merge-FILL login-identity contract, but src/decisions-data/part4.ts's
+// DEC_994 constant is already bound to an unrelated ruling (session-minting
+// revoke-first). That id collided (see field-guide wave-22 "DEC ID
+// COLLISION" note) -- the actual binding decision for this file's fill-path
+// contract is DEC-456 (contact.email writes cascade to the linked user row
+// or fail with 409), referenced below.
+import { DEC_456 } from "../../../decisions";
+void DEC_456;
 
 export interface ImportSkip {
   line: number;
@@ -126,10 +135,16 @@ function createCommitRow(id: string, orgId: string, input: Omit<ContactRecord, "
  * carry the base row's existing values so a partial patch never blanks a
  * column — this is the same "omitted from patch = leave alone" contract
  * updateContactForImport enforced per-column, just applied to a full row
- * instead of a per-column conditional SQL SET. createdAt/id/orgId/email
- * are carried through unchanged (import patches never touch email —
- * resolveImportUpsert never puts `email` in an update patch, so this path
- * never cascades onto schema.user's DEC-456 login-identity check). */
+ * instead of a per-column conditional SQL SET. createdAt/id/orgId are
+ * carried through unchanged. email is carried through unchanged for every
+ * plain update AND for a merge onto a target with a non-blank stored email
+ * (resolveImportUpsert never puts `email` in an update patch) — but a merge
+ * FILL (target's stored email is blank) DOES set a new email, applied
+ * directly onto the pending row rather than through this patch helper (see
+ * applyImportRows' merge branch below). That fill path DOES cascade onto
+ * schema.user's DEC-456 login-identity check, corrected per DEC-456 (worker
+ * w22-g; the brief's cited "DEC-994" collides with an unrelated existing
+ * ruling, see the decisions import above). */
 function applyCommitPatch(base: ContactCommitRow, patch: Partial<Omit<ContactRecord, "id">>, now: Date): ContactCommitRow {
   return {
     ...base,
@@ -198,8 +213,13 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
           // email is blank (a fill). Every other row -- plain update or merge
           // onto a contact that already has an address -- carries the base
           // row's own email through unchanged (applyCommitPatch never touches
-          // it), so this stays a same-value no-op and never cascades onto
-          // schema.user's DEC-456 login identity.
+          // it), so this stays a same-value no-op for those rows. A fill row
+          // DOES carry a changed value, and DEC-456 governs it exactly as it
+          // governs patchContact's edit path: applyImportRows refuses the fill
+          // up front when a `user` row already owns the address under a
+          // different contact, and cascades the newly-filled address onto the
+          // merge target's own linked `user` row after this flush commits
+          // (see the fill branch and the cascade below).
           email: sql`excluded.email`,
           firstName: sql`excluded.first_name`,
           lastName: sql`excluded.last_name`,
@@ -348,10 +368,16 @@ export async function applyImportRows(
   }
 
   const fileEmails = new Set<string>();
-  for (const { parsed } of rows) {
+  // DEC-456 (worker w22-g): line -> normalized email, built in this same
+  // single pass over `rows` so the merge-fill pre-pass below (and the
+  // per-line lookups later in the commit loop) never re-scans the file.
+  const emailByLine = new Map<number, string>();
+  for (const { line, parsed } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
     if (!email || email.trim() === "" || !isValidEmail(email)) continue;
-    fileEmails.add(normalizeEmail(email));
+    const key = normalizeEmail(email);
+    fileEmails.add(key);
+    emailByLine.set(line, key);
   }
 
   const byEmail = new Map<string, string>();
@@ -424,6 +450,37 @@ export async function applyImportRows(
     existingCustomFieldsById.set(target.id, parseContactCustomFields(target.customFieldsJson));
   }
 
+  // DEC-456 (worker w22-g, corrected from the brief's collided "DEC-994"
+  // citation): a merge FILL (target's stored email is blank) is not exempt
+  // from the same login-identity conflict check patchContact enforces on
+  // every other email write. A fill candidate is any merge line whose
+  // target has a blank stored email -- `userOwnerByEmail` is a SINGLE
+  // batched pre-pass lookup over that whole set (never a per-line query,
+  // same discipline as byEmail/existingById above), keyed by the lowered
+  // address it owns.
+  const fillCandidateEmails = new Set<string>();
+  for (const [line, target] of mergeTargetsByLine) {
+    if (target.email.trim() !== "") continue;
+    const key = emailByLine.get(line);
+    if (key !== undefined) fillCandidateEmails.add(key);
+  }
+  const userOwnerByEmail = new Map<string, { userId: string; contactId: string | null }>();
+  for (const batch of chunkIds([...fillCandidateEmails])) {
+    const owners = await db
+      .select({ id: schema.user.id, contactId: schema.user.contactId, email: schema.user.email })
+      .from(schema.user)
+      .where(inArray(sql`lower(${schema.user.email})`, batch));
+    for (const owner of owners as { id: string; contactId: string | null; email: string }[]) {
+      userOwnerByEmail.set(normalizeEmail(owner.email), { userId: owner.id, contactId: owner.contactId });
+    }
+  }
+  // DEC-456: after the commit flush below succeeds, every fill that lands
+  // cascades its new address onto the merge target's own linked `user` row
+  // -- collected here (contactId -> the address just filled), flushed in
+  // the SAME place patchContact's cascade fires relative to its own write
+  // (after the contact row itself is committed).
+  const fillLoginCascade = new Map<string, string>();
+
   const addContactId = (id: string) => {
     if (!seenContactIds.has(id)) {
       seenContactIds.add(id);
@@ -479,13 +536,24 @@ export async function applyImportRows(
       // REPLACES the target's stored email" is REVERSED. A merge FILLS a
       // blank stored email and never replaces a non-blank one: the field is
       // structurally absent from describeImportOverwrites, so the dry run
-      // cannot name the one value the merge destroys, and DEC-456/DEC-479's
-      // login cascade (which patchContact and mergeContacts both run) has no
-      // counterpart on this path — a write that cannot be previewed and
-      // cannot honour the cascade does not get to be the one that decides a
-      // person's address. The offered address is reported instead, and the
-      // pick-a-side act stays with the Duplicates/merge tool, whose planMerge
-      // already rules exactly this precedence (DEC-167).
+      // cannot name the one value the merge destroys, and a replace has no
+      // way to honour DEC-456's conflict/cascade contract for a value that
+      // was never previewed. The offered address is reported instead when a
+      // replace would have happened, and the pick-a-side act stays with the
+      // Duplicates/merge tool, whose planMerge already rules exactly this
+      // precedence (DEC-167).
+      //
+      // DEC-456 (corrected, worker w22-g — the brief's cited "DEC-994"
+      // collides with an unrelated existing ruling, see the decisions import
+      // above): a FILL is not exempt from patchContact/mergeContacts' own
+      // login-identity contract just because it is not a replace. Below, the
+      // fill branch (a) refuses the line before any write when a `schema.user`
+      // row already owns the offered address under a DIFFERENT contact (the
+      // SAME conflict patchContact enforces), and (b) after the commit flush,
+      // cascades the newly-filled address onto the merge target's own linked
+      // `user` row (the SAME cascade patchContact runs) — so a CSV merge fill
+      // can no longer hand a contact an address another account already owns,
+      // or leave that account's own login identity stale.
       const decision = resolveImportUpsert(
         mergeTargetId,
         normalizedParsed as Partial<ContactRecord>,
@@ -517,7 +585,25 @@ export async function applyImportRows(
             { mergeLines: `line ${line}: resolves to an update` },
           );
         }
+        // DEC-456: refuse the fill, before any write, when a `schema.user`
+        // row already owns this address under a DIFFERENT contact -- the
+        // SAME conflict patchContact enforces on every organizer-driven
+        // email edit. Checked against the single batched pre-pass above,
+        // never a per-line query.
+        const owner = userOwnerByEmail.get(key);
+        if (owner && owner.contactId !== mergeTargetId) {
+          throw new ApiError(
+            "invalid",
+            `Line ${line}: this email already belongs to another account`,
+            { mergeLines: `line ${line}: email belongs to another account` },
+          );
+        }
         pendingById.set(mergeTargetId, { ...patched, email: key });
+        // DEC-456: this fill is landing -- cascade the new address onto the
+        // merge target's own linked `user` row after the commit flush below
+        // succeeds (mirrors patchContact's cascade, which runs only after
+        // the contact row itself is written).
+        fillLoginCascade.set(mergeTargetId, key);
       } else {
         pendingById.set(mergeTargetId, patched);
         if (storedEmail !== key) {
@@ -600,6 +686,17 @@ export async function applyImportRows(
   if (updateRows.length > 0) await flushContactUpdates(db, updateRows);
   if (attributionUpdates.length > 0) await backfillNullAttributionMany(db, attributionUpdates);
   if (renamedContactIds.length > 0) await touchSubmissionsForContacts(db, renamedContactIds, now);
+  // DEC-456: cascade every landed merge fill onto its target's own linked
+  // `user` row, exactly as patchContact does -- fired only after the
+  // contact row itself is committed above. Bounded by this run's merge
+  // lines (never the full import row count), so a plain per-contact update
+  // (patchContact's own idiom) rather than a chunked batch statement.
+  for (const [contactId, email] of fillLoginCascade) {
+    await db
+      .update(schema.user)
+      .set({ email, updatedAt: now })
+      .where(eq(schema.user.contactId, contactId));
+  }
 
   return { created, updated, skipped, emailConflicts, contactIds };
 }
