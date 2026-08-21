@@ -77,7 +77,30 @@ function extractBacktickRoutePaths(markdown: string): string[] {
 // Routes deliberately not named in AUDIT.md, with a reason each. Keep this
 // list short and commented — anything added here is a route this test will
 // no longer catch drifting.
-const EXCLUDED = new Set<string>([]);
+//
+// DEC-144 (wave-154 amendment): tab/panel sub-state rows added so the
+// render sweep visits every tab/panel a page declares, not just its
+// default. Each is a `?query=` sub-state of a base path AUDIT.md already
+// documents (`/admin/content`, `/admin/comms`, `/admin/contacts`,
+// `/admin/settings`) -- the underlying surface is named, only the specific
+// tab/panel isn't broken out as its own AUDIT.md line.
+const EXCLUDED = new Set<string>([
+  "/admin/content?tab=approved",
+  "/admin/content?tab=all",
+  "/admin/content?view=files",
+  "/admin/comms?tab=templates",
+  "/admin/comms?tab=history",
+  "/admin/contacts?tab=pipeline",
+  "/admin/contacts?tab=duplicates",
+  "/admin/contacts?tab=segments",
+  "/admin/settings?section=event",
+  "/admin/settings?section=cfp",
+  "/admin/settings?section=tracks-rooms",
+  "/admin/settings?section=public-pages",
+  "/admin/settings?section=portal",
+  "/admin/settings?section=your-data",
+  "/admin/settings?section=people",
+]);
 
 describe("docs/AUDIT.md route claims vs app/src/routeManifest.ts (DEC-618)", () => {
   const auditText = readFileSync(AUDIT_PATH, "utf-8");
