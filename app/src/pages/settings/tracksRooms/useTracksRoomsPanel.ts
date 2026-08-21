@@ -24,6 +24,10 @@ export function useTracksRoomsPanel(sectionKey: string) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [searchParams, setSearchParams] = useSearchParams();
   const editing = searchParams.get('section') === sectionKey && searchParams.get('edit') === '1';
+  // frame :364/:367 (DEC-919 wave-156 read-drill ruling): a per-row 'Edit'
+  // is an edit-surface act -- it carries the tapped row's identity into the
+  // edit drill's own URL so the drill can open on THAT row, not the index.
+  const focusRowId = searchParams.get('row');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -130,8 +134,61 @@ export function useTracksRoomsPanel(sectionKey: string) {
       const params = new URLSearchParams(prev);
       params.delete('section');
       params.delete('edit');
+      params.delete('row');
       return params;
     });
+  }
+
+  // frame :364/:367 read-drill controls (DEC-919 wave-156 ruling): the
+  // per-row 'Edit' opens the edit drill scoped to that row's identity; the
+  // dashed 'Add a track'/'Add a room' rows open the drill with that
+  // section's own add form already revealed -- both reuse the section's
+  // one edit-drill entry (SummarySection's `?section=<key>&edit=1`,
+  // DEC-728) rather than minting a second one (DEC-613).
+  function openRowEdit(rowId: string) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', sectionKey);
+      params.set('edit', '1');
+      params.set('row', rowId);
+      return params;
+    });
+  }
+
+  function enterEditing() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', sectionKey);
+      params.set('edit', '1');
+      return params;
+    });
+  }
+
+  // The dashed read-view rows are a direct-open equivalent of the drill's
+  // own head/phone 'Add a track'/'Add a room' controls -- entering editing
+  // then reusing toggleAddTrack/toggleAddRoom (never a third copy of that
+  // open/close vocabulary, DEC-613). Read view only ever reaches this with
+  // the add form already closed (closeEdit always retires it), so the
+  // toggle always opens here.
+  function openAddTrack() {
+    enterEditing();
+    toggleAddTrack();
+  }
+
+  function openAddRoom() {
+    enterEditing();
+    toggleAddRoom();
+  }
+
+  function clearRowParam() {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('row');
+        return params;
+      },
+      { replace: true },
+    );
   }
 
   // The rows whose unsaved edits Done would otherwise lose -- named (by
@@ -427,6 +484,11 @@ export function useTracksRoomsPanel(sectionKey: string) {
     eventLoading,
     eventError,
     editing,
+    focusRowId,
+    openRowEdit,
+    openAddTrack,
+    openAddRoom,
+    clearRowParam,
     tracks,
     rooms,
     error,

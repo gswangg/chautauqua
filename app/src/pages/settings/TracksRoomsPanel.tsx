@@ -12,6 +12,7 @@
 // ./tracksRooms/TrackEditRow / ./tracksRooms/RoomEditRow. This module is
 // the view that wires them together -- no behaviour change from the
 // previous single-file version.
+import { useEffect } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { plural, countOf } from '../../lib/plural';
@@ -43,6 +44,11 @@ export function TracksRoomsPanel() {
     eventLoading,
     eventError,
     editing,
+    focusRowId,
+    openRowEdit,
+    openAddTrack,
+    openAddRoom,
+    clearRowParam,
     tracks,
     rooms,
     error,
@@ -90,6 +96,23 @@ export function TracksRoomsPanel() {
     onRoomCapacityChange,
   } = useTracksRoomsPanel(SECTION_KEY);
 
+  // DEC-919 wave-156 ruling: a per-row 'Edit' navigates into the edit
+  // drill carrying that row's identity (`row=<id>`) so the drill opens on
+  // the row that was tapped, not on the index -- scroll/focus it once its
+  // input exists in the drill's DOM, then drop the param (PeopleRolesPanel
+  // openDuplicateRow's own getElementById/focus/scrollIntoView idiom).
+  useEffect(() => {
+    if (!editing || !focusRowId) return;
+    const el =
+      document.getElementById(`chq-track-name-${focusRowId}`) ??
+      document.getElementById(`chq-room-name-${focusRowId}`);
+    if (!el) return;
+    el.focus();
+    el.scrollIntoView?.({ block: 'center' });
+    clearRowParam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, focusRowId, tracks, rooms]);
+
   const readValue = (
     <div className="chq-settings-tracks-rooms-grid">
       <div className="chq-settings-tracks-rooms-col" aria-label="Tracks">
@@ -106,8 +129,31 @@ export function TracksRoomsPanel() {
           <div key={track.id} className="chq-settings-tracks-rooms-row">
             <span>{track.name}</span>
             <span className="chq-settings-tracks-rooms-count">{track.submissionCount} submissions</span>
+            {/* docs/design/Chautauqua Settings.dc.html:364 `border:1px
+                solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+                min-height:44px; display:flex; align-items:center;
+                padding:0 14px; font-size:13px; font-weight:600` -- a
+                per-row edit-surface act (DEC-919 wave-156): navigates into
+                the edit drill with THIS row's identity, phone-only (the
+                desktop read view's one drill action stays the section
+                head's 'Add'/'Change', unchanged). */}
+            <button
+              type="button"
+              className="chq-settings-tracks-rooms-edit"
+              aria-label={`Edit ${track.name}`}
+              onClick={() => openRowEdit(track.id)}
+            >
+              Edit
+            </button>
           </div>
         ))}
+        {/* docs/design/Chautauqua Settings.dc.html:367 -- read-side dashed
+            sibling of the drill's own 'Add a track' (DEC-919 wave-156): a
+            direct open into the section's existing add form, reusing
+            toggleAddTrack (DEC-613). */}
+        <button type="button" className="chq-settings-drillrow-add" onClick={openAddTrack}>
+          Add a track
+        </button>
       </div>
       <div className="chq-settings-tracks-rooms-col" aria-label="Rooms">
         <div className="chq-settings-tracks-rooms-phone-caption">
@@ -121,8 +167,23 @@ export function TracksRoomsPanel() {
             <span className="chq-settings-tracks-rooms-count">
               {room.capacity !== null ? `${room.capacity} seats` : 'No capacity set'}
             </span>
+            {/* docs/design/Chautauqua Settings.dc.html:364 twin for rooms
+                (same rule verbatim) -- same per-row edit-surface act. */}
+            <button
+              type="button"
+              className="chq-settings-tracks-rooms-edit"
+              aria-label={`Edit ${room.name}`}
+              onClick={() => openRowEdit(room.id)}
+            >
+              Edit
+            </button>
           </div>
         ))}
+        {/* docs/design/Chautauqua Settings.dc.html:382 -- read-side dashed
+            sibling of the drill's own 'Add a room'. */}
+        <button type="button" className="chq-settings-drillrow-add" onClick={openAddRoom}>
+          Add a room
+        </button>
       </div>
     </div>
   );

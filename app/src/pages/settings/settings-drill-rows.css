@@ -37,6 +37,19 @@
   display: none;
 }
 
+/* frame :364/:367 read-drill controls (DEC-919 wave-156 ruling): the
+   per-row 'Edit' beside every track/room row in the SUMMARY (read) view,
+   phone-only -- distinct from the edit drill's own per-row Save/Cancel/
+   Remove, which are desktop-and-phone already. Rides the same 2-column
+   `.chq-settings-tracks-rooms-row { grid-template-columns: 1fr auto }`
+   (settings.css, frozen/untouched) as an unconditional third JSX child:
+   `display:none` here removes it from that grid entirely at desktop, so
+   the frozen 2-column layout is pixel-unchanged; the phone rule below
+   turns it into a third, auto-sized implicit grid column. */
+.chq-settings-tracks-rooms-edit {
+  display: none;
+}
+
 /* docs/design/Chautauqua Settings.dc.html:367
    `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
    font-size:13px; font-weight:700; color:#4E5C31` -- the dashed Add
@@ -121,6 +134,27 @@
 @media (max-width: 700px) {
   .chq-settings-drillrow-add {
     display: flex;
+  }
+
+  /* docs/design/Chautauqua Settings.dc.html:364/:364-mirror(rooms)
+     `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+     min-height:44px; display:flex; align-items:center; padding:0 14px;
+     font-size:13px; font-weight:600` */
+  .chq-settings-tracks-rooms-edit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    /* Same DEC-577/DEC-808 contract as .chq-settings-drillrow-add: a class
+       landing on a <button> must declare its own font-family. */
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
   }
 
   .chq-settings-drillrow-exports-phone {

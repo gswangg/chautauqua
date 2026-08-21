@@ -161,17 +161,20 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :347-390 "Settings · Tracks and rooms".
-  it('frame :347 Tracks and rooms -- DIVERGES: no per-row Edit action, no dashed Add-a-track/Add-a-room row in read mode', async () => {
+  it('frame :347 Tracks and rooms -- MATCHES: a per-row Edit action and dashed Add-a-track/Add-a-room rows draw in read mode (DEC-919 wave-156)', async () => {
     verbatimLine(344, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Tracks and rooms</span>");
     renderDrilled('tracks-rooms');
     const section = screen.getByRole('region', { name: 'Tracks and rooms' });
     await waitFor(() => expect(within(section).getByText('Keynotes')).toBeInTheDocument());
-    // Already documented (settings-v12.md): the read view has no per-row
-    // 'Edit' pill and no 'Add a track'/'Add a room' dashed control -- only
-    // the section-level 'Change' drill.
-    expect(within(section).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(within(section).queryByText('Add a track')).not.toBeInTheDocument();
-    expect(within(section).queryByText('Add a room')).not.toBeInTheDocument();
+    // :364/:367 (DEC-919 wave-156 ruling): every track/room row now has
+    // its own 'Edit' (a distinct accessible name per row, boxed 44px --
+    // phone-only, CSS-gated, jsdom applies no @media so it's present here
+    // unconditionally), and a dashed 'Add a track'/'Add a room' row draws
+    // below each list, alongside the section-level 'Add' drill that stays.
+    expect(within(section).getByRole('button', { name: 'Edit Keynotes' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Edit Main Hall' })).toBeInTheDocument();
+    expect(within(section).getByText('Add a track')).toBeInTheDocument();
+    expect(within(section).getByText('Add a room')).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Add' })).toBeInTheDocument();
   });
 
