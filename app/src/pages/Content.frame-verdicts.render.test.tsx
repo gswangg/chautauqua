@@ -29,6 +29,14 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ContentApp } from './content/ContentApp';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
+// DEC-761/DEC-998 shape: code that depends on a decision must reference its
+// constant. DEC-901 is what the ":373" block below verifies (the frame's
+// single-stack order at 390); DEC-967 governs the retirement-with-evidence
+// shape this task's ":338" fix follows.
+import { DEC_901, DEC_967 } from '../../../src/decisions';
+
+void DEC_901;
+void DEC_967;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
@@ -191,7 +199,7 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
   });
 
   // Frame :338-368 "Files · 390" -- caption at :334.
-  it('frame :338 Files library (phone) -- DIVERGES: chip strip reads "All types" not "All", and the header row (not the frame\'s stat line alone) carries a Download-all control the frame reserves for the footer dock', async () => {
+  it('frame :338 Files library (phone) -- DIVERGES: the header row (not the frame\'s stat line alone) carries a Download-all control the frame reserves for the footer dock (w21-k: the chip-vocabulary clause this title used to carry -- "All types" not "All", "Recording" not "Video" -- is STALE; see docs/design/audit/content-v12.md)', async () => {
     verbatimLine(334, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Files · 390</span>");
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
@@ -228,15 +236,23 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
     // renders bare, exactly as the frame draws it.
     expect(screen.getByText('31 files · 412 MB')).toBeInTheDocument();
 
-    // Frame :344 draws a plain "All" chip and a "Video · 4" chip; the real
-    // toolbar reads "All types" (SessionList's tab-strip vocabulary carried
-    // over) and, since the domain kind is `recording` not `video`
-    // (DELIVERABLE_LABELS, types.ts), "Recording · 4" rather than "Video · 4".
-    expect(screen.queryByRole('tab', { name: 'All' })).not.toBeInTheDocument();
+    // Frame :344 draws a plain "All" chip and a "Video · 4" chip -- w21-k:
+    // both clauses this comment used to flag as divergent now MATCH.
+    // "All types" is the tab's `aria-label` (FilesLibrary.tsx:252) at every
+    // width, so `getByRole('tab', { name: 'All types' })` finds it
+    // regardless of the visible text underneath (`isPhone ? 'All' :
+    // 'All types'`, :259) -- the accessible name never diverged from the
+    // frame's own "All", it was only ever the VISIBLE label that read
+    // longer. And the domain kind `recording` now carries a per-SURFACE
+    // label (`LIBRARY_KIND_LABELS`, app/src/pages/content/types.ts, DEC-613
+    // wave-159 amendment): the files library calls it "Video" at every
+    // width (the SESSION deliverable strip elsewhere keeps "Recording" --
+    // two registers for one domain kind, split by surface, not by width),
+    // so this chip reads "Video · 4" exactly as the frame draws it.
     expect(screen.getByRole('tab', { name: 'All types' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Slides · 22' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Video · 4' })).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Recording · 4' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Video · 4' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Recording · 4' })).not.toBeInTheDocument();
 
     // Frame :338-368 reserves "Download all"/"Search" for the sticky
     // footer dock (:365-367) -- the header row above the chips carries no
@@ -262,7 +278,7 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
   });
 
   // Frame :373-419 "Session · deliverable" -- caption at :369.
-  it('frame :373 Session deliverable detail -- DIVERGES: Deliverables and Notes render as two side-by-side DOM columns, not one stacked scroll (versions -> notes -> upload -> note box)', async () => {
+  it('frame :373 Session deliverable detail -- RESOLVED (w21-k, DEC-901): content.css\'s terminal phone block unwraps both columns to `display: contents` and orders every promoted child in the frame\'s stack sequence; see content-phone-frames.test.ts for the order-contract receipt (jsdom applies no @media, so this render test only pins the DOM those rules must reach)', async () => {
     verbatimLine(369, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Session · deliverable</span>");
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([oneWorklistRow]),
@@ -305,32 +321,41 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
 
     // Frame :391-419 stacks ONE scrolling column: version rows, then a
     // 2px-ruled "Notes on the slides" label, then comment rows, then the
-    // "Upload a file for the speaker" link, then the note textbox --
-    // named in DOM source order, all as SIBLINGS. The real body instead
-    // splits into two side-by-side <div> columns
-    // (.chq-content-files-col / .chq-content-comments-col), each the
-    // FIRST child of its own column rather than later siblings of one
-    // shared list.
+    // "Upload a file for the speaker" link, then the note textbox. DEC-385
+    // forbids forking that markup per-width, so the DOM itself keeps the
+    // desktop two-column split (.chq-content-files-col /
+    // .chq-content-comments-col) at every width, including 390 -- what
+    // changes at 390 is content.css's terminal phone block turning both
+    // columns (plus CommentThread's own root) `display: contents` and
+    // giving every promoted grandchild an `order` that reaches the frame's
+    // sequence. jsdom renders no stylesheet, so this DOM-level test still
+    // finds two column wrappers here -- that is the CORRECT, unchanged
+    // shape (DEC-385 desktop-frozen, no markup fork), not a divergence.
+    // The order contract itself -- version list < notes label < comment
+    // list < upload zone < composer -- is verified against the CSS text in
+    // content-phone-frames.test.ts, which jsdom cannot exercise from here.
     const body = document.querySelector('.chq-content-group-body');
     expect(body).not.toBeNull();
     const filesCol = body!.querySelector('.chq-content-files-col');
     const commentsCol = body!.querySelector('.chq-content-comments-col');
     expect(filesCol).not.toBeNull();
     expect(commentsCol).not.toBeNull();
-    // The two columns are DOM SIBLINGS of the same parent, not one column
-    // nested after the other the way the frame's single stack would read.
     expect(filesCol!.parentElement).toBe(commentsCol!.parentElement);
 
     await waitFor(() => {
       expect(within(filesCol as HTMLElement).getByText('slides-v3.pdf')).toBeInTheDocument();
     });
     expect(within(commentsCol as HTMLElement).getByText('Notes on the slides')).toBeInTheDocument();
-    // The "Upload a file for the speaker" affordance (frame :415) lives in
-    // the LEFT (files) column, not appended after the notes thread the
-    // way the frame's single stack draws it. (UploadZone renders both a
-    // desktop and a phone prompt string on the same control; jsdom applies
-    // no @media so both text nodes coexist here -- querying the phone
-    // prompt specifically, which is the one the frame's own copy matches.)
+    // The "Upload a file for the speaker" affordance (frame :417) is still
+    // a DOM descendant of the files column -- `display: contents` promotes
+    // its BOX into the group body's flex context without moving the NODE
+    // itself, so it stays reachable through `filesCol` here exactly as
+    // before; content.css's `order` is what places it after the notes
+    // label and comment list visually, not a DOM move. (UploadZone renders
+    // both a desktop and a phone prompt string on the same control; jsdom
+    // applies no @media so both text nodes coexist here -- querying the
+    // phone prompt specifically, which is the one the frame's own copy
+    // matches.)
     expect(within(filesCol as HTMLElement).getByText('Upload a file for the speaker')).toBeInTheDocument();
   });
 });

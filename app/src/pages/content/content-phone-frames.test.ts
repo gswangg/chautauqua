@@ -36,6 +36,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+// DEC-761/DEC-998 shape: code that depends on a decision must reference its
+// constant. DEC-901 is what the "Session · deliverable" order-contract test
+// below verifies; DEC-967 governs the verbatim frame citation it opens
+// with.
+import { DEC_901, DEC_967 } from '../../../../src/decisions';
+
+void DEC_901;
+void DEC_967;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -54,6 +62,18 @@ const CONTENT_CSS = read('content.css');
 // Reading it here verifies the frame's chip geometry without content.css
 // having to redeclare a rule it deliberately leaves to the shared class.
 const STYLES_CSS = read('../../styles.css');
+
+// DEC-967 verbatim citation, mirroring Content.frame-verdicts.render.test
+// .tsx's own `verbatimLine` -- reads the ACTUAL design-file line rather
+// than trusting a copied string to stay in sync with it.
+const REPO_ROOT = join(HERE, '..', '..', '..', '..');
+const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Content.dc.html');
+function verbatimLine(lineNo: number, literal: string): void {
+  const lines = readFileSync(DESIGN_FILE, 'utf-8').split('\n');
+  const line = lines[lineNo - 1];
+  if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
+  expect(line).toBe(literal);
+}
 
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`,
  * brace-matched rather than regex-bounded (see contacts-phone-frames.test.ts
@@ -105,6 +125,20 @@ function phoneRule(css: string, selector: string): string {
   }
   if (bodies.length === 0) throw new Error(`no phone rule for ${selector}`);
   return bodies.join('\n');
+}
+
+/** The numeric `order:` a phone rule for `selector` declares. Throws (fail
+ * loudly, no silent 0-default) rather than returning the flex initial value
+ * for a selector this task expects to always carry an explicit order --
+ * DeliverableDetail.stack-390's whole point is that NOTHING promoted into
+ * `.chq-content-group-body`'s flex context is left at the `order: 0`
+ * default, which would silently hoist an unassigned child to the head of
+ * the stack. */
+function phoneOrder(css: string, selector: string): number {
+  const body = phoneRule(css, selector);
+  const m = body.match(/order:\s*(-?\d+)/);
+  if (!m) throw new Error(`no order: declared for ${selector}`);
+  return Number(m[1]);
 }
 
 describe('DEC-385: the content phone layer is single-direction, one trailing block', () => {
@@ -364,5 +398,96 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
     const both = phoneRule(CONTENT_CSS, '.chq-content-comment-actions .chq-btn');
     expect(both).toMatch(/min-height:\s*48px/);
     expect(phoneRule(CONTENT_CSS, '.chq-content-comment-actions .chq-btn-primary')).toMatch(/flex:\s*1 1 auto/);
+  });
+
+  // w21-k (DEC-901 amendment): docs/design/Chautauqua Content.dc.html:391-419
+  // draws the phone body as ONE scrolling column -- version rows, then the
+  // 2px-ruled "Notes on the <kind>" label, then comment rows, then the
+  // dashed "Upload a file for the speaker" link, then the note textbox --
+  // in that DOM-source order. The real tree keeps the desktop two-column
+  // split (`.chq-content-files-col` / `.chq-content-comments-col`, DEC-385:
+  // never forked, never reordered in the DOM itself); this block's own
+  // `display: contents` + `order` construct is what reaches the frame's
+  // single stack at 390 (verified here by reading the numbers, since jsdom
+  // applies no @media -- Content.frame-verdicts.render.test.tsx's :373
+  // block is the DOM-level receipt for the two columns staying real
+  // siblings under this same rule set).
+  it('unwraps both columns (plus CommentThread\'s own root) to `display: contents` and orders every promoted child in the frame\'s sequence', () => {
+    verbatimLine(
+      417,
+      '        <a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>',
+    );
+
+    // The two column DIVs plus CommentThread's own `.chq-comment-thread`
+    // root all unwrap -- their real children become flex items of
+    // `.chq-content-group-body` directly, never a fourth copy of the
+    // column markup. Each is its own member of the rule's selector list
+    // (phoneRule compares whole members, never a substring), so all three
+    // are checked individually.
+    for (const wrapper of [
+      '.chq-content-group-body > .chq-content-files-col',
+      '.chq-content-group-body > .chq-content-comments-col',
+      '.chq-content-group-body .chq-comment-thread',
+    ]) {
+      expect(phoneRule(CONTENT_CSS, wrapper)).toMatch(/display:\s*contents/);
+    }
+
+    // Every promoted grandchild this task's frame passage names, read off
+    // its own `order:` -- never assumed from the `order: 0` default, which
+    // would silently hoist an unassigned child to the head of the stack.
+    const deliverablesLabel = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-deliverables-label');
+    const chipstrip = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-files-col > .chq-chipstrip');
+    const chipCaption = phoneOrder(
+      CONTENT_CSS,
+      '.chq-content-group-body .chq-content-files-col > .chq-content-chip-caption',
+    );
+    // VersionList.tsx's root is a Fragment -- its own delete-error span and
+    // empty state render as literal siblings of the list, not nested
+    // inside it -- so the list, the error and the empty state all share
+    // this one order slot; the list itself is the member checked here.
+    const versionList = phoneOrder(
+      CONTENT_CSS,
+      '.chq-content-group-body .chq-content-files-col > .chq-content-version-list',
+    );
+    expect(
+      phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-files-col > .chq-error'),
+    ).toBe(versionList);
+    expect(phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-files-col .chq-empty-block')).toBe(
+      versionList,
+    );
+    const notesLabel = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-notes-label');
+    // Same Fragment shape on the comments side: the comment list and
+    // CommentThread's own "No comments yet" empty state share one slot.
+    const commentList = phoneOrder(
+      CONTENT_CSS,
+      '.chq-content-group-body .chq-content-comments-col .chq-content-comment-list',
+    );
+    expect(
+      phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-comments-col .chq-empty-block'),
+    ).toBe(commentList);
+    const reopenedNotice = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-upload-reopened-notice');
+    const uploadZone = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-upload-zone');
+    const composer = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-comment-composer');
+    const composerError = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-comment-thread > .chq-error');
+    const phoneDock = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-phone-dock');
+    const commentSent = phoneOrder(CONTENT_CSS, '.chq-content-group-body .chq-content-comment-sent');
+
+    // Frame :391-419's own order: version rows -> notes label -> comment
+    // rows -> the dashed upload link -> the note textbox. The reopened
+    // notice (real product disclosure the frame never draws) sits with the
+    // upload action it reports on; the composer's own error/sent states
+    // (also not drawn by the frame) trail the composer they belong to; the
+    // phone dock is pinned last, matching where it already renders.
+    expect(deliverablesLabel).toBeLessThan(chipstrip);
+    expect(chipstrip).toBeLessThan(chipCaption);
+    expect(chipCaption).toBeLessThan(versionList);
+    expect(versionList).toBeLessThan(notesLabel);
+    expect(notesLabel).toBeLessThan(commentList);
+    expect(commentList).toBeLessThan(reopenedNotice);
+    expect(reopenedNotice).toBeLessThan(uploadZone);
+    expect(uploadZone).toBeLessThan(composer);
+    expect(composer).toBeLessThan(composerError);
+    expect(composerError).toBeLessThan(phoneDock);
+    expect(phoneDock).toBeLessThan(commentSent);
   });
 });
