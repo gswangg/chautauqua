@@ -15,12 +15,12 @@ import { renderEmailHtml } from "../../mail/shell";
 import { buildIcsEvent } from "../../mail/ics";
 import { resolveIcsOrganizerEmail } from "../../server/context";
 import { zonedMinutesToUtc } from "../../lib/timezone";
-import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
+import { preflightRender, spendsPerSubmissionContent } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
 import { collapsedRecipientSkips, dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
-import { DEC_027, DEC_238, DEC_846 } from "../../decisions";
+import { DEC_027, DEC_238, DEC_846, DEC_936 } from "../../decisions";
 
 void DEC_027;
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
@@ -81,8 +81,12 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // re-render (preflightRender is pure, so the second pass costs no IO).
   // DEC-936 (wave-19 amendment): dedup is conditional on the composed text
   // this send will actually render, never a precedence guess.
-  const perSubmissionVarsSpent =
-    spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
+  // DEC-936 (wave-22 amendment): an .ics attachment is per-submission composed content exactly
+  // like {talk_title} — spendsPerSubmissionContent folds attachIcs into the
+  // same predicate so two accepted sessions with a static subject/body still
+  // expand to two rows (and two distinct calendar invites) instead of
+  // collapsing.
+  const perSubmissionVarsSpent = spendsPerSubmissionContent(input);
   const { targets, recipients, withheld } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const preflightResult = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
@@ -134,13 +138,25 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // `preflightResult.rendered` — the UNMINTED render — so a claim token is
   // never part of the dedupe identity. Its survivors are `toSendKeys`; the
   // mint and the final render happen below, after the last 400.
+  // DEC-936 (wave-22 amendment): an .ics attachment IS per-submission
+  // composed content. Thread the stage-1 attachment identity onto the rendered rows
+  // fed to the planner — "" (not attached, or unconditionally-identical
+  // content) when attachIcs is false, else the submissionId (the .ics
+  // attachment's own identity, mirrored 1:1 in the fan-out loop's
+  // `chq-<submissionId>.ics` filename below). Does not change the JSON wire
+  // shape returned to the client — only the planner's internal input.
+  void DEC_936;
+  const rendered = preflightResult.rendered.map((r) => ({
+    ...r,
+    attachmentKey: input.attachIcs ? r.submissionId : "",
+  }));
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    preflightResult.rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(now.getTime()),
   );
-  const { toSend: toSendKeys, skipped: plannedSkips } = planComposeSends(preflightResult.rendered, recentlySent);
+  const { toSend: toSendKeys, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);
   // DEC-936 (wave-21 amendment): expandRecipients' contact-collapse ran
   // BEFORE this render, so its withheld rows are absent from
   // `preflightResult.rendered` and the planner never judged them. They are
