@@ -6,7 +6,7 @@ DEVIATIONS.md (user overrides). This file is the campaign mandate the planner
 works from, tiered.
 
 ## TIER 0 (2026-08-19 meta-probe, VERIFIED reds — work these before all else)
-docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDES their open rows: docs/probes/metafid-round2-2026-08-20.md — work its WAVE A (docks) then WAVE B (tokens+layouts); everything else there is verified fixed. Desktop file still current: docs/probes/metafid-desktop-2026-08-19.md. The two CRITICALS in B are being fixed by a META lane — do not duplicate; take everything else. Start with
+docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDES their open rows: docs/probes/metafid-round2-2026-08-20.md — work its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDES round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md records Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... CURRENT RED SET" section below records round 3's three-item red set as now CLOSED as well — the "two CRITICALS in B are being fixed by a META lane" sentence this paragraph used to end on described that in-flight state three probe rounds ago and is stale; there is no META lane still in flight against WAVE B today. Desktop file still current: docs/probes/metafid-desktop-2026-08-19.md. Start with
 its two disproportionate root fixes (bordered-control negative-margin misuse;
 settings section-action floor), then the S1 breaks, then S2 structure.
 
@@ -279,17 +279,30 @@ end-to-end), Wave B is CLOSED (all five items measured fixed, 0px overflow on
 21 routes), and four of five Wave-A docks pass live (CFP wizard, portal
 profile, portal session, portal task form).
 
-Remaining red set, in priority order:
+Remaining red set, in priority order — all three items below are now
+resolved (recorded here per DEC-069 wave-140: a row is CLOSED, never
+deleted, the moment the tree satisfies it):
 
 1. **Contacts Pipeline dock (Wave A, last open item).** No bottom dock exists
    at 390 on /admin/contacts?tab=pipeline — PipelineBoard.tsx has no dock
    wiring at all, while the tab bar already suppresses as if one were
    mounted. Build it with the established dock mechanism (sticky bottom band,
-   last-in-flex-order per content.css:1950's `order: 1` idiom, ≥44px
-   controls, tab-bar suppression contract). The inline "Add to the pipeline"
-   action remains the desktop truth.
+   last-in-flex-order per app/src/pages/content/content.css's `order: 1`
+   idiom, ≥44px controls, tab-bar suppression contract). The inline "Add to
+   the pipeline" action remains the desktop truth.
+   CLOSED (wave 149, DEC-967 superseding the old no-dock DEVIATIONS entry):
+   app/src/pages/contacts/PipelineBoard.tsx `<div className="chq-phone-dock" data-chq-phone-dock>`,
+   with a companion comment naming the frame's dock band as replacing the
+   head's own "Add to the pipeline" action at phone width.
 2. Speakers regressions from this round were fixed in the meta lane at the
    Cut-3 pause (speaker-detail grid collapse; task-drill row placement) — do
    not re-open; treat those two rules as settled truth.
+   CLOSED (Cut-3 meta lane, commit `847569086849adcb4447d81552e0ad6c8ea2310c`
+   "Cut-3 meta lane: collapse speaker-detail grid and re-place five-cell
+   task rows at 390; record probe round 3"): app/src/pages/speakers/speakers.css
+   and app/src/pages/speakers/task-view.css both carry the phone-collapse
+   rules this row asked for.
 3. Watch item, not a task: Pipeline "Move ›" control measures exactly 44×44 —
    zero margin against the floor if any token shrinks.
+   CLOSED (same Cut-3 meta lane pass; no regression observed since): the
+   token has not shrunk and the control still measures at the 44px floor.

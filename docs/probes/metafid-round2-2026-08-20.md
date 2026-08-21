@@ -57,6 +57,10 @@
   head is derived from the Pipeline · 390 frame's band. The five real
   390 frames are Contacts/Directory, "Contact · 390", "Pipeline · 390",
   "Import CSV · 390", "Merge · 390".)
+  CLOSED (wave 149, DEC-967 superseding the old no-dock DEVIATIONS entry):
+  app/src/pages/contacts/PipelineBoard.tsx `<div className="chq-phone-dock" data-chq-phone-dock>`,
+  with a companion comment naming the frame's dock band as replacing the
+  head's own "Add to the pipeline" action at phone width.
 
 ## WAVE B — tokens + localized layouts
 - Tap-floor tokens originally reported under 44 (mechanical; sibling
