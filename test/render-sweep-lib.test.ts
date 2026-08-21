@@ -766,12 +766,13 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     // going through one of the two functions checked above, or through the
     // measureFontFloor() / measureContrast() / measureClipOffenders() /
     // measureTypeRoles() / measureFocusState() / measureHoverState() /
-    // measureDisabledState() helpers those functions call after installing
-    // the shim (DEC-421/DEC-426/DEC-620/DEC-643/DEC-409 wave-35 amendment) —
-    // the module has no page.evaluate call sites outside visitRoute,
+    // measureDisabledState() / measureOverlapBoxes() (DEC-919 w7-de) helpers
+    // those functions call after installing the shim
+    // (DEC-421/DEC-426/DEC-620/DEC-643/DEC-409 wave-35 amendment) — the
+    // module has no page.evaluate call sites outside visitRoute,
     // visitMobileRoute, measureFontFloor, measureContrast,
     // measureClipOffenders, measureTypeRoles, measureFocusState,
-    // measureHoverState, and measureDisabledState.
+    // measureHoverState, measureDisabledState, and measureOverlapBoxes.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
@@ -810,6 +811,15 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     const measureDisabledStateEnd = source.indexOf("\n}\n", measureDisabledStateStart) + 3;
     const measureDisabledStateBody = source.slice(measureDisabledStateStart, measureDisabledStateEnd);
     const evaluateCallsInMeasureDisabledState = (measureDisabledStateBody.match(/page\.evaluate\(/g) ?? []).length;
+    // DEC-919 w7-de: the 390 sibling-overlap pass's own box collector,
+    // added alongside the other measure* helpers above — same convention
+    // (a single page.evaluate call, shim already installed by the caller
+    // via addInitScript before goto).
+    const measureOverlapBoxesStart = source.indexOf("async function measureOverlapBoxes(");
+    expect(measureOverlapBoxesStart).toBeGreaterThan(-1);
+    const measureOverlapBoxesEnd = source.indexOf("\n}\n", measureOverlapBoxesStart) + 3;
+    const measureOverlapBoxesBody = source.slice(measureOverlapBoxesStart, measureOverlapBoxesEnd);
+    const evaluateCallsInMeasureOverlapBoxes = (measureOverlapBoxesBody.match(/page\.evaluate\(/g) ?? []).length;
     expect(evaluateCallCount).toBe(
       evaluateCallsInVisitRouteBody +
         evaluateCallsInMobileBody +
@@ -819,7 +829,8 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
         evaluateCallsInMeasureTypeRoles +
         evaluateCallsInMeasureFocusState +
         evaluateCallsInMeasureHoverState +
-        evaluateCallsInMeasureDisabledState,
+        evaluateCallsInMeasureDisabledState +
+        evaluateCallsInMeasureOverlapBoxes,
     );
   });
 });

@@ -96,6 +96,19 @@ import {
   NAMED_CONTRAST_SELECTOR,
   type ContrastResult,
 } from "./render-sweep-contrast";
+// DEC-919 w7-de: 390 sibling-overlap detector -- see
+// scripts/render-sweep-overlap-lib.ts's header for the defect class this
+// closes (two boxes occupying the SAME pixels, which neither the overflow
+// nor the tap-floor predicate can express).
+import {
+  allOverlapsPassed,
+  evaluateOverlapRoute,
+  formatOverlapTable,
+  OVERLAP_PASS_BLOCKING,
+  OVERLAP_TOLERANCE_PX,
+  type OverlapBox,
+  type OverlapRouteResult,
+} from "./render-sweep-overlap-lib";
 import { ensureDevVars } from "./ensure-dev-vars";
 
 // DEC-253: the no-login/portal mobile-bar surfaces (390x844). Seed literals
@@ -779,6 +792,56 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
 // page.evaluate callback rather than a helper serialised across the
 // boundary (DEC-411) — must only be called on a page that already had
 // PAGE_EVALUATE_KEEPNAMES_SHIM applied via addInitScript.
+/** DEC-919 w7-de: collects one OverlapBox per visible, OWN-text-bearing
+ * element on the current page (already navigated by the caller) for
+ * findOverlaps. "Own text" excludes descendant elements' text so an
+ * ancestor wrapping many children doesn't itself qualify as text-bearing
+ * (that would swamp the pairwise scan with legitimate containment) — only
+ * the element(s) whose own text node(s) are non-empty. */
+async function measureOverlapBoxes(page: Page): Promise<OverlapBox[]> {
+  return page.evaluate(() => {
+    const describe = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      const classes = Array.from(el.classList).slice(0, 3);
+      return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+    };
+    const ownText = (el: Element): string => {
+      let childText = "";
+      for (const child of Array.from(el.children)) childText += child.textContent ?? "";
+      return (el.textContent ?? "").replace(childText, "");
+    };
+    const out: {
+      selector: string;
+      text: string;
+      top: number;
+      left: number;
+      width: number;
+      height: number;
+      position: string;
+      zIndex: string;
+    }[] = [];
+    const all = Array.from(document.body.querySelectorAll("*")) as HTMLElement[];
+    for (const el of all) {
+      if (el.offsetParent === null) continue; // visible only (not display:none)
+      const text = ownText(el);
+      if (text.trim().length === 0) continue;
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      out.push({
+        selector: describe(el),
+        text: text.trim(),
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        position: style.position,
+        zIndex: style.zIndex,
+      });
+    }
+    return out;
+  });
+}
+
 async function measureContrast(
   page: Page,
 ): Promise<{
@@ -1433,6 +1496,77 @@ async function main(): Promise<void> {
     console.log(formatMobileSummary(adminMobileResults));
 
     if (!allMobilePassed(adminMobileResults) && ADMIN_MOBILE_PASS_BLOCKING) {
+      failed = true;
+    }
+
+    // DEC-919 w7-de: 390 sibling-overlap pass (advisory) — re-visits the
+    // SAME route population the admin-mobile pass above just visited
+    // (ADMIN_MOBILE_ROUTE_MANIFEST, the organizer + reviewer routes at
+    // 390x844), collecting one box per text-bearing element with a single
+    // page.evaluate and handing it to findOverlaps. This is the instrument
+    // that catches two boxes occupying the SAME pixels — a defect class
+    // overflow (measures the document) and the tap floor (measures one box)
+    // are both structurally blind to; see
+    // scripts/render-sweep-overlap-lib.ts's header for the verified
+    // byline/schedule-link reproduction this closes. Fresh login contexts
+    // (the admin-mobile pass's own contexts were already closed above) —
+    // deliberately its own pass, not folded into the loop above, so this
+    // task's hunk stays confined to new code and never touches
+    // ADMIN_MOBILE_CONTROL_SELECTOR/ADMIN_MOBILE_ROUTE_MANIFEST themselves.
+    console.log("");
+    console.log("render-sweep: 390 sibling-overlap pass (advisory)...");
+    const overlapContextByRole = new Map<"organizer" | "reviewer", BrowserContext>();
+    const overlapLoginErrorByRole = new Map<"organizer" | "reviewer", string>();
+    for (const role of ["organizer", "reviewer"] as const) {
+      const persona = personaForRole(role, fixture.identities);
+      if (!persona) throw new Error(`render-sweep: fixture is missing the ${role} identity`);
+      try {
+        overlapContextByRole.set(role, await loginContext(browser, baseUrl, persona, { viewport: MOBILE_VIEWPORT }));
+      } catch (err) {
+        overlapLoginErrorByRole.set(role, err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    const overlapResults: OverlapRouteResult[] = [];
+    for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
+      const role = entry.role as "organizer" | "reviewer";
+      const context = overlapContextByRole.get(role);
+      if (!context) {
+        const loginError = overlapLoginErrorByRole.get(role);
+        overlapResults.push({
+          path: entry.path,
+          offenders: [],
+          ok: false,
+          failureReason:
+            loginError !== undefined
+              ? `login failed for role '${entry.role}': ${loginError}`
+              : `no overlap browser context for role '${entry.role}'`,
+        });
+        continue;
+      }
+      const page = await context.newPage();
+      await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
+      try {
+        await page.goto(`${baseUrl}${entry.path}`, { waitUntil: "networkidle" });
+        const boxes = await measureOverlapBoxes(page);
+        overlapResults.push(evaluateOverlapRoute(entry.path, boxes, { tolerancePx: OVERLAP_TOLERANCE_PX }));
+      } catch (err) {
+        overlapResults.push({
+          path: entry.path,
+          offenders: [],
+          ok: false,
+          failureReason: err instanceof Error ? err.message : String(err),
+        });
+      } finally {
+        await page.close();
+      }
+    }
+    for (const ctx of overlapContextByRole.values()) await ctx.close();
+
+    console.log("");
+    console.log(formatOverlapTable(overlapResults));
+
+    if (!allOverlapsPassed(overlapResults) && OVERLAP_PASS_BLOCKING) {
       failed = true;
     }
 
