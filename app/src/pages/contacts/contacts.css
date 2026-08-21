@@ -1767,4 +1767,29 @@
   .chq-contacts-filter-rule-chip-dismiss:active {
     color: var(--chq-ink);
   }
+
+  /* task v12m-w16-ui-r5-e (DEC-930 wave-16-r5 amendment): docs/design/
+     Chautauqua Contacts.dc.html:187 `display:flex; gap:7px; overflow-x:auto;
+     -webkit-overflow-scrolling:touch` and :188 `flex-shrink:0; font-size:10px;
+     font-weight:800; letter-spacing:0.12em; text-transform:uppercase;
+     color:#565A4B; min-height:44px; display:flex; align-items:center` draw
+     exactly ONE narrowing caption on this band -- the chip strip's own `All
+     of`. `.chq-contacts-filter-rules-caption` (the desktop builder's
+     `Matching all of`) is display:none on the builder row until disclosed,
+     but the instant the builder opens (`.is-builder-open`) both captions
+     paint 11px apart, stating the same AND twice in two vocabularies --
+     DEC-613's one-vocabulary-never-a-second-copy doctrine. This is
+     capability SUBSTITUTION, not removal: the reading survives 11px below
+     as `.chq-contacts-filter-chipstrip-caption`, which is the strip's own
+     accessible name via `aria-labelledby` (FilterRulesPanel.tsx's
+     `chipstripCaptionId`) and is visible whether the builder is open or
+     closed -- unlike the builder's caption, which carries no `id` and names
+     nothing. Declared here, at the very end of this file's single terminal
+     block, so it supersedes the earlier `.chq-contacts-filter-rules-caption`
+     ellipsis rule (~line 1034, unedited) on source order alone -- both
+     rules have equal specificity, and the later declaration wins without
+     touching the earlier one. */
+  .chq-contacts-filter-rules-caption {
+    display: none;
+  }
 }
