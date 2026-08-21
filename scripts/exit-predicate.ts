@@ -609,6 +609,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // verbatim (a server-rendered stylesheet comment leaking product copy
   // onto the page a second time, test/css-comment-copy-leak.scan.test.ts).
   "CSS_COMMENT_COPY_LEAK_CEILING",
+  // wave-149 (task w5-bf, DEC-919 amendment): starved flex-track ratchet --
+  // grades whether a grid rule effective at the 390 phone frame yields a
+  // flexible track narrower than the grid's own widest fixed track
+  // (app/src/phone-overflow-scan/starved-track-ceiling.ts, checked by
+  // app/src/phone-horizontal-overflow.scan.test.ts).
+  "STARVED_FLEX_TRACK_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -673,6 +679,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988).
   "CSS_COMMENT_COPY_LEAK_CEILING",
+  // wave-149 (task w5-bf): starved flex-track ratchet, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "STARVED_FLEX_TRACK_CEILING",
 ];
 
 /**

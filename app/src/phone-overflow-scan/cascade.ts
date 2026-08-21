@@ -17,6 +17,17 @@
 // A phone rule that overrides an unrelated property no longer hides a real
 // offender; a phone rule that actually overrides the flagged property still
 // clears it, exactly as before.
+//
+// DEC-991 (wave-149 amendment): `rule.isPhoneScoped` (consumed below by both
+// `isCandidateRule` and `effectiveBodyFor`) is now computed by
+// `appliesAt390`, not `isPhoneCondition` -- see ./rules.ts's `mediaSpans`,
+// the single point where that widening happens. A rule inside
+// `@media (max-width: 900px)` genuinely applies at the 390 phone frame and
+// is therefore now a real phone-scoped override for candidacy and cascade
+// purposes here, even though it is not the sheet's DEC-385 terminal
+// `<=700px` block. Neither function in this file changed shape -- the
+// widening lives entirely in what `isPhoneScoped` already means by the time
+// a `Rule` reaches this module.
 import type { Rule } from './rules';
 
 /** Ordered `[property, value]` pairs parsed out of a declaration body. */
