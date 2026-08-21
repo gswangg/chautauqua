@@ -34,7 +34,7 @@ export const DEC_028 = "Portal splits into parallel sub-apps with a create-if-mi
 export const DEC_029 = "Amendment (wave 114): the co-presenter second submit echoes the WHOLE typed draft — tracks included, not just the answers";
 export const DEC_030 = "Overview is a worklist: one GET /api/v1/events/:eventId/overview payload, six cards, every number links to the screen that clears it";
 export const DEC_031 = "Saved views are server rows scoped to the event; Submissions toolbar gains Views dropdown, New submission modal, Clone row action";
-export const DEC_032 = "Amendment (wave 143): The Settings retention block is a recorded GAP in the deviations ledger, never an honored deviation";
+export const DEC_032 = "Wave-148 amendment: resource download tracking is a recorded non-build, and the caption that names it exits the ledger as UNBACKED rather than as a false COMPOSED";
 export const DEC_033 = "Form builder SPA at /admin/submissions/forms consuming the landed w2-c API; no new server endpoints";
 export const DEC_034 = "CI (typecheck + tests) plus a 2k-row perf harness that boots wrangler dev locally — budgets enforced, zero secrets";
 export const DEC_035 = "Ratify bootstrap split: src/server/app.ts + src/server/scheduled.ts";
@@ -43,7 +43,7 @@ export const DEC_037 = "Email HTML built only via escapeHtml/textToHtml in src/m
 export const DEC_038 = "Scoped KV rate limiter in src/lib/rate-limit.ts; login/claim limits";
 export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans only via getPlanForOrg";
 export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
-export const DEC_041 = "Amendment (wave 117): A read-only answer is rendered read-only: the portal edit form stops offering a file picker whose bytes it will drop";
+export const DEC_041 = "Wave-148 amendment: the portal edit page's Session length is a read-only row sourced from the submission's own format answer, and is omitted when not derivable";
 export const DEC_042 = "Root README.md is the evaluator entrypoint";
 export const DEC_043 = "Org user directory + reviewer provisioning API (/api/v1/users)";
 export const DEC_044 = "Plan-reviewer assignments addressed by plan_reviewer.id";
