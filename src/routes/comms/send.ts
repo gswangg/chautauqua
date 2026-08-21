@@ -15,7 +15,7 @@ import { renderEmailHtml } from "../../mail/shell";
 import { buildIcsEvent } from "../../mail/ics";
 import { resolveIcsOrganizerEmail } from "../../server/context";
 import { zonedMinutesToUtc } from "../../lib/timezone";
-import { preflightRender } from "../../domain/compose";
+import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
@@ -73,7 +73,11 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // must throw the 400 before any KV credential is minted. Only once
   // preflightRender accepts the batch do we mint real portal links and
   // re-render (preflightRender is pure, so the second pass costs no IO).
-  const { targets, recipients } = await buildRenderTargets(c, event, submissions, input.feedback);
+  // DEC-936 (wave-19 amendment): dedup is conditional on the composed text
+  // this send will actually render, never a precedence guess.
+  const perSubmissionVarsSpent =
+    spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
+  const { targets, recipients } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const preflightResult = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!preflightResult.ok) {

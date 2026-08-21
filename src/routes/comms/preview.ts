@@ -6,7 +6,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/comms";
-import { preflightRender } from "../../domain/compose";
+import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
 import { renderEmailHtml } from "../../mail/shell";
 import { requireOwnedEvent } from "./shared";
 import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
@@ -59,7 +59,13 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
 
   // DEC-397: preview never mints credentials — buildRenderTargets always
   // resolves links with mintClaimTokens=false now.
-  const { targets } = await buildRenderTargets(c, event, submissions, input.feedback);
+  // DEC-936 (wave-19 amendment): dedup is conditional on the composed text
+  // this preview actually renders, never a precedence guess — the same
+  // computation send.ts runs, so the preview count and the send are the
+  // same list by construction.
+  const perSubmissionVarsSpent =
+    spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
+  const { targets } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
