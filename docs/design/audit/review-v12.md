@@ -14,11 +14,11 @@ Numbered findings the task window could not resolve within scope.
 criterion unscored") both draw the phone device box edge-to-edge with no
 tab bar row. Re-derived against main: the shell-level decision this
 finding correctly deferred has since been made. `App.tsx`'s `PhoneTabBar`
-mounts unconditionally in the shell (`App.tsx:474` — `<PhoneTabBar />`), but
+mounts unconditionally in the shell (`app/src/App.tsx` — `<PhoneTabBar />`), but
 `styles.css:2302` gives the shell a general attribute contract — any
 page root that sets `data-chq-phone-dock` suppresses the tab bar via
 `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar { display: none }`.
-`Scorecard.tsx:538` builds `phoneRegionDeclarations` (`{...(isPhone ?
+`app/src/pages/review/Scorecard.tsx` builds `phoneRegionDeclarations` (`{...(isPhone ?
 { 'data-chq-phone-dock': true, 'data-chq-phone-head': true } : {})}`),
 spread onto the page root at `Scorecard.tsx:548`, opting the reviewer
 scorecard into that contract,

@@ -20,9 +20,9 @@ review-cluster consumer of it as a BARE class (not paired with
 `.chq-review-plan-actions > .chq-link-button`, which this wave's fix already
 covers) still measures under 44px on a phone frame:
 
-- `ProgressPanel.tsx:231,240` — "Remind laggards" and its retry action,
+- `app/src/pages/review/ProgressPanel.tsx` (two call sites) — "Remind laggards" and its retry action,
   class `chq-link-button chq-section-action`.
-- `ResultsTable.tsx:381,391` — "Export CSV" / round switch links, class
+- `app/src/pages/review/ResultsTable.tsx` (two call sites) — "Export CSV" / round switch links, class
   `chq-section-action chq-link-button` / `chq-link-button` (Link).
 - `PlanEditor.tsx:2058` — reviewer-row secondary action, class
   `chq-link-button chq-section-action`.

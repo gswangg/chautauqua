@@ -240,6 +240,19 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // scan found on main before this task's own fix, then a real LOWERING
 // 30 -> 22 from this task's own drain; the merge train reconciles the
 // remainder once the two sibling lanes land theirs.
+// Wave v12m-w5-bb: converted all 16 line-keyed citations owned by this
+// task (docs/design/audit/comms-drill-v12.md, desktop-frame-ledger-v12.md,
+// phone-dock-declaration-v12.md, phone-tap-floor-links.md,
+// review-tap-floor-v12.md and review-v12.md) to the drift-proof bare-path
+// shape -- each converted quote re-verified to still resolve verbatim in
+// its cited file. Measured on this branch (forced to -1, offender list
+// read row by row): 30 -> 14. Sibling lanes v12m-w5-ba
+// (src/decisions-data/*.md) and v12m-w5-bc (docs/probes/*,
+// docs/mobile-campaign.md) are draining the remaining 14 offenders
+// concurrently against their own bases, so 14 is THIS branch's figure,
+// not necessarily the merge train's -- per DEC-989 wave-146, the
+// integrated tree is the merge train's to re-measure once all three
+// lanes land.
 //
 // THUNDERDOME MEGABATCH (wave-150, 19-branch batch): each lane above
 // measured this ratchet against a tree carrying only its OWN work, so no

@@ -21,7 +21,7 @@ portal gap below -- is FIXED as of wave-106:
 | `.chq-contacts-import-phone-dock` | app/src/pages/contacts/contacts-panels.css`.chq-contacts-import-phone-dock {` | `app/src/pages/contacts/ImportWizard.tsx:1056` | Contacts | FIXED (DEC-576 wave-106). |
 
 `ImportWizard` renders through `ModalFrame`, which `createPortal`s its whole
-tree to `document.body` (`app/src/components/ModalFrame.tsx:161-177` —
+tree to `document.body` (`app/src/components/ModalFrame.tsx` —
 `return createPortal(`) --
 entirely outside `.chq-shell`/`.chq-main`, so neither existing shell
 `:has()` selector (scoped to `.chq-shell`/`.chq-main` descendants) could
