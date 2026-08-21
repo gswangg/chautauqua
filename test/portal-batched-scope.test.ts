@@ -226,6 +226,13 @@ function buildTwoOrgFixture(): DataByTag {
         filename: "b-slides.pdf",
         sizeBytes: 100,
         createdAt: now,
+        // DEC-908 (wave-152): listLatestDeliverables fails loudly on a file
+        // row with no stored version_no (DEC-818's identical rule in
+        // files-library-list.ts). This fixture predates that guard; it
+        // carries a real versionNo rather than the guard being relaxed, and
+        // the positive case below asserts the resolved value so the repair
+        // leaves a pin behind instead of just restoring green.
+        versionNo: 3,
       },
     ],
     // DEC-592/DEC-755: session format is resolved through the field's ROLE,
@@ -255,13 +262,17 @@ describe("DEC-962: portal batched deliverable reads scope in the SQL, not the ca
     const db = makeDb(buildTwoOrgFixture());
     const result = await listLatestDeliverables(db, "contact-b", "org-b", ["sub-b"]);
     expect(result.size).toBe(1);
-    expect(result.get("sub-b")).toMatchObject({ id: "file-b1", filename: "b-slides.pdf" });
+    expect(result.get("sub-b")).toMatchObject({ id: "file-b1", filename: "b-slides.pdf", versionNo: 3 });
   });
 
   it("getLatestDeliverable: speaker B's own submissionId still resolves for speaker B", async () => {
     const db = makeDb(buildTwoOrgFixture());
     const result = await getLatestDeliverable(db, "contact-b", "org-b", "sub-b");
-    expect(result).toMatchObject({ id: "file-b1", filename: "b-slides.pdf" });
+    // The single-read form deliberately does not select version_no (its
+    // callers never need it), so versionNo is null here by construction --
+    // asserted rather than left implicit, so the two reads' differing
+    // contracts stay visible side by side.
+    expect(result).toMatchObject({ id: "file-b1", filename: "b-slides.pdf", versionNo: null });
   });
 
   it("listLatestDeliverables: a submissionId from the RIGHT contact but the WRONG org still gets no rows", async () => {

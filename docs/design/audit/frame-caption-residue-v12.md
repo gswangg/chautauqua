@@ -9,12 +9,15 @@
 > (`test/frame-caption-ledger/ceiling.ts`) lowered in the same commit
 > (DEC-976).
 >
-> **This table is measured on branch `v12m-w4-aq`, forked from main at
-> `766c2f92`.** It supersedes the prior `v12m-w21-c` (wave-146) version of
-> this document in full — every row below was re-grepped against the current
-> tree, not inherited. The merge train re-derives the INTEGRATED figure once
-> this branch and its eight sibling wave-148 lanes land; do not treat the
-> count below as the campaign's post-merge number.
+> **This table supersedes the wave-146 version of this document in full** —
+> every row below was re-grepped against the tree rather than inherited from
+> the older table. The counts in the next paragraph are the PRE-MERGE
+> figures they were taken as. The merge train has since re-derived the
+> INTEGRATED figure, and `FRAME_CAPTION_UNMATCHED_CEILING`
+> (`test/frame-caption-ledger/ceiling.ts`) now reads `0`: read the count
+> below as history and the ceiling as the live number (DEC-976, DEC-989).
+> Three rows are re-graded **CLOSED** in place below, per this document's
+> own rule above — the builds that closed them landed in the same batch.
 
 `test/frame-caption-ledger.scan.test.ts`'s own population/match/exclusion
 machinery, forced to `-1` on this branch, measures **14** unmatched captions
@@ -51,10 +54,10 @@ that file, not by this one (out of this task's owned files).
 | Chautauqua Comms.dc.html | 757 | "Comms · Compose · step 3" | Re-verified: the whole "Compose · send blocked" 1600px exhibit is unbuilt — `app/src/pages/comms/ComposeWizard.tsx` has no step-breadcrumb header render site of any kind (grepped for a step-index heading pattern; none exists), so this line's own referent is missing, not just its wording. |
 | Chautauqua Comms.dc.html | 769 | "Your body uses {session_time}, and three of these speakers have no slot yet. They would receive the literal text "{session_time}"." | Re-verified: `session_time` is a real merge field (`src/mail/render.ts`'s `MERGE_FIELDS`/`MERGE_FIELD_SAMPLES`, DEC-660 wave-142) and `src/routes/comms/compose-core.ts:347-349` resolves it per-recipient from the same `icsScheduleMap` the compose table's Slot column uses, `null` for an unscheduled recipient. Still missing: the compose-time warning **banner** naming `{session_time}` usage against unscheduled recipients — grepped `app/src/pages/comms/ComposeWizard.tsx` for any `session_time`/banner reference naming it: zero hits; the nearest analogue (`{feedback}`-needs-a-plan reveal) is a different mechanism for a different merge field. |
 | Chautauqua Overview.dc.html | 164 | "3 more unplaced · all need 120 minutes" | Corrected this task (see note above): not a missing `durationMin` field (DEC-895 landed it) — the blocker is `src/server/repo/overview.ts`'s `unplacedDetailRows` being a `LIMIT ROW_CAP` query, so the client holds a total COUNT but no duration DATA for any row past the cap. Composing "all need 120 minutes" from the visible rows would speak for rows the client cannot see (DEC-936). |
-| Chautauqua Public and Portal.dc.html | 444 | "Talk, 30 min · Platform &amp; Infra · accepted 14 Mar" | Re-verified: the portal home's `SessionCard` (`src/routes/portal/index.tsx:231`) composes `metaParts` from track-name and an accepted-at-derived clause only — no format/duration clause. The richer "REF · format · track" line exists at :278 and :471, but on a different card / the separate submission-detail page, not this one. |
-| Chautauqua Public and Portal.dc.html | 445 | "Slides v3 · with the organisers" | Re-verified: the same `SessionCard`'s deliverable line (`src/routes/portal/index.tsx:241`) renders `{deliverable.filename} · uploaded {date}` only — no review-status clause ("with the organisers") exists anywhere in that component. |
+| Chautauqua Public and Portal.dc.html | 444 | "Talk, 30 min · Platform &amp; Infra · accepted 14 Mar" | **CLOSED (DEC-908, wave-150).** The recorded blocker no longer reproduces: the portal home's `SessionCard` now composes the frame's format-first meta order, src/routes/portal/index.tsx`const formatLabel =` deriving the clause through the one `sessionFormatLabel` vocabulary and placing it ahead of track-name and the accepted-at clause — never a second '(N min)' parser, and omitted rather than fabricated when the stored answer carries no parseable duration (DEC-895). |
+| Chautauqua Public and Portal.dc.html | 445 | "Slides v3 · with the organisers" | **CLOSED (DEC-908, wave-150).** The recorded blocker no longer reproduces: the same card's deliverable line now carries the version + review-status clause the frame draws, src/routes/portal/index.tsx`v{deliverableVersionOrThrow(deliverable)} · with the organisers`, built from the SAME vocabulary the submission detail page already established — and failing loudly rather than defaulting when the stored version is null (DEC-818). |
 | Chautauqua Public and Portal.dc.html | 620 | "Talk, 30 min · set by the organisers" | Re-verified: grepped `src/server/repo/portal-edit.ts` and `src/routes/portal/edit.tsx` for `durationMin`/"Session length" — zero hits. `EditableSubmissionData` carries no duration field, and there is no read-only "Session length" row to render one. |
-| Chautauqua Public and Portal.dc.html | 847 | "Evaluating Agents runs 10:00–12:00, over both Taming 40-Minute CI and Your AI Pair Programmer." | Re-verified: `src/routes/public/agenda-itinerary-script.tsx:144` composes only `item.title + ' overlaps ' + otherTitle + '.'` — a single simpler per-pair sentence, never the frame's richer clause naming the time range and "both" talks in one sentence. |
+| Chautauqua Public and Portal.dc.html | 847 | "Evaluating Agents runs 10:00–12:00, over both Taming 40-Minute CI and Your AI Pair Programmer." | **CLOSED (DEC-555, wave-148 amendment).** The recorded blocker no longer reproduces: the overlaps panel now emits one sentence per COVERING session, naming its own clock range and every title it covers — src/routes/public/agenda-itinerary-script.tsx`item.title + ' runs '` composes exactly the frame's richer clause. The simpler per-pair sentence survives only for a saved item that carries no range at all. |
 | Chautauqua Public and Portal.dc.html | 1080 | "Talk, 30 min · Platform &amp; Infra · intermediate" | Re-verified: the CFP confirmation card's `meta` (`class="chq-cfp-confirm-card-meta"`, `src/routes/public/submit-views.tsx:787`) composes track-then-format only, and `test/cfp-confirmation-email-honesty.test.ts:318` pins that exact order/content (`Main Track · Talk (45 min)`) — reordering to format-then-track or adding the frame's third audience-level clause risks breaking that pin. |
 | Chautauqua Public and Portal.dc.html | 1130 | "Lightning talk, 10 min · Developer Experience" | Same `chq-cfp-confirm-card-meta` slot and same pinned-order conflict as :1080 above. |
 | Chautauqua Public and Portal.dc.html | 1153 | "Panel, 45 min · AI Engineering" | Same `chq-cfp-confirm-card-meta` slot and same pinned-order conflict as :1080/:1130 above. |

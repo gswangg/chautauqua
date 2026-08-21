@@ -83,12 +83,13 @@ sibling `.chq-settings-room-edit-row` (same co-classed base, a fourth,
 wider fixed track) was already re-lined to a single column at
 `settings.css:2314` in an earlier wave — this row is the missed twin.
 
-**Sibling lane `v12m-w5-bg` repairs both offenders concurrently** (re-lining
-each into its sheet's terminal `<=700px` phone block); this task owns only
-the instrument, landing it with the ceiling at the currently-measured `2`
-per DEC-069 wave-141/143's "a new ceiling lands with its exit-predicate row
-and fixture in the same commit". The merge train re-measures the integrated
-tree once both lanes land, per DEC-989 wave-146's standing rule.
+**Both offenders are repaired** — each re-lined into its own sheet's
+terminal `<=700px` phone block — and the instrument that names them landed
+in the same batch. The ceiling was seeded at the then-measured `2`, per
+DEC-069 wave-141/143's "a new ceiling lands with its exit-predicate row and
+fixture in the same commit"; re-measured against the integrated tree it
+reads ZERO, and DEC-989 wave-146's standing rule lowered it `2 -> 0`. The
+two rows above are therefore a record of what was fixed, not of work owed.
 
 ## The gap-attribution conservatism
 

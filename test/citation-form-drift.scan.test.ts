@@ -264,8 +264,28 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // (ceiling forced to -1, offender list read back) -- never a lane's
 // pre-merge figure and never a guess.
 // Measured against the fully integrated megabatch tree: 4. Lowered 26 -> 4.
-// RATCHET: LINE_KEYED_CITATION_CEILING=4
-export const LINE_KEYED_CITATION_CEILING = 4;
+//
+// THUNDERDOME MEGABATCH (wave-152, post-batch repair pass): the wave-152
+// scribe amendments to DEC-908/DEC-919/DEC-967 each wrote a NEW line-keyed
+// citation, taking the integrated count 4 -> 7 -- the shape DEC-967's own
+// wave-152 ruling ("a line-keyed ledger entry is a citation and rots
+// exactly like one") forbids, breached by the ruling that states it.
+// Repaid by the wave that breached it, per DEC-967 wave-149, rather than
+// deferred: DEC-908's and DEC-919's were CONVERTED to the drift-proof
+// bare-path shape this file prescribes (never re-pointed), and DEC-967's
+// two were sigilled EXHIBIT! -- both are dead anchors the ruling
+// CATALOGUES as evidence (a stale ledger key, a suffix-fragment path), so
+// the drift-proof shape is unavailable to them by construction and the
+// inverted grading in test/decision-doc-citation.scan.test.ts re-verifies
+// each run that they are still broken. The same pass re-graded
+// docs/design/audit/frame-caption-residue-v12.md's three rows CLOSED (the
+// megabatch BUILT the gaps they recorded), retiring their three drifted
+// line-keyed citations into drift-proof form in the same edit.
+// Re-measured against the integrated tree (forced to -1, offender list read
+// back): 1 -- the sole survivor is DEC-967's own cfp.css.ts:118-122
+// self-quoting paragraph. Lowered 4 -> 1.
+// RATCHET: LINE_KEYED_CITATION_CEILING=1
+export const LINE_KEYED_CITATION_CEILING = 1;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

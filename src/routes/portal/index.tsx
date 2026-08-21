@@ -267,7 +267,7 @@ function SessionCard(props: {
         <span class="chq-portal-detail">
           {/* DEC-908 (wave-150 amendment): version + review-status clause,
               docs/design/Chautauqua Public and Portal.dc.html:445 draws
-              "Slides v3 · with the organisers" -- composed here exactly as
+              `Slides v3 · with the organisers` -- composed here exactly as
               the ruling states, from the SAME vocabulary the submission
               detail page's own "v{n} · ... · Shared with the organisers"
               clause (index.tsx:544) already established, never a second

@@ -570,7 +570,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       : "pending-existing-contact";
 
   // DEC-098 (wave 8 amendment) / DEC-908 (wave-148 amendment): the
-  // confirmation card states the talk's format, track(s) and audience
+  // confirmation card states the talk's format, tracks and audience
   // level, in the frame's clause order (Chautauqua Public and
   // Portal.dc.html:1080/:1130/:1153 -- "Talk, 30 min · Platform & Infra ·
   // intermediate") -- built from what was JUST persisted, no extra query.

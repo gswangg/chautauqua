@@ -280,6 +280,11 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
     "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
     "(DEC-518). Extracts CSS rules and media spans; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/starved-track-ceiling.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Carries STARVED_FLEX_TRACK_CEILING alone, isolated so a re-measuring worker touches " +
+    "only the constant and its history; it is scan vocabulary, never SPA bundle code.",
   "app/src/pages/agenda/types.ts":
     "Type-only module -- every consumer (DayGrid, SessionCard, ConflictChip, phoneSlots, PhoneAgenda, " +
     "UnscheduledTray, state.ts) imports it exclusively via `import type`, which erases at build time and confers " +
