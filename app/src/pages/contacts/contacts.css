@@ -122,6 +122,16 @@
   white-space: nowrap;
 }
 
+/* DEC-993/DEC-919 (task r1-b; see FilterRulesPanel.tsx's import-block note
+   on the DEC-993/DEC-992 numbering mismatch): the phone-only builder-close
+   control ("Done") renders unconditionally in the DOM (the DEC-937
+   wave-129 shape) but has nothing to close at desktop, where the rule
+   groups are never collapsed -- hidden here by default; the terminal
+   phone block turns it back on only for the collapsed-builder state. */
+.chq-contacts-filter-builder-done {
+  display: none;
+}
+
 /* DEC-937 wave-129 amendment: docs/design/Chautauqua Contacts.dc.html:192
    (`border:1px dashed #A9AE94; border-radius:4px; min-height:44px;
    display:flex; align-items:center; padding:0 13px; font-size:13px;
@@ -1483,5 +1493,76 @@
 
   .chq-contacts-segment-summary {
     display: none;
+  }
+
+  /* DEC-993/DEC-919 (task r1-b; see FilterRulesPanel.tsx's import-block
+     note on the DEC-993/DEC-992 numbering mismatch -- src/decisions-data's
+     actual DEC-993/DEC-992 are unrelated mail-merge/contact-merge
+     decisions, so this cites DEC-919's established capability-preservation
+     carve-out instead of a false compile-checked dependency).
+
+     THE PROBLEM: at 390 the chip strip (above) already shows every active
+     rule, so the desktop rule groups stacked below it under the plain
+     `.chq-contacts-filter-rules-row { flex-direction: column; ... }` rule
+     (further up this SAME terminal block) restated the same rule twice on
+     one screen. Deleting the groups outright would remove the only way to
+     AUTHOR or EDIT a rule on a phone, which DEC-919 forbids -- disclosure
+     is the surviving path: the row collapses by default and `+ Rule` (or
+     tapping a chip's body) opens it.
+
+     Declared AFTER that earlier `.chq-contacts-filter-rules-row` rule in
+     this same block (DEC-385 single-direction: narrow overrides wide via
+     max-width media queries ONLY) -- nothing above this point moves. The
+     `.is-builder-open` rule is declared SECOND, after the plain hide, so
+     it wins the cascade on an equal-specificity tie by source order
+     (test/phone-terminal-block.scan.test.ts's own rationale) while the
+     earlier column-stack rule for the open state is left untouched.
+
+     CAPABILITY RECEIPT (DEC-993/DEC-919): nothing is removed. Authoring a
+     rule -> `+ Rule` (adds a rule AND opens the builder). Editing a rule ->
+     tapping the rule chip's body (opens the builder on the existing rule).
+     Removing a rule -> the chip's own ✕, or "Remove" inside the open
+     builder -- both bypass the builder-open toggle entirely, they act on
+     the rule list directly. Reading the active rule set -> the chip strip,
+     unconditionally visible whether the builder is open or closed. Saving
+     the rule set -> "Save as a segment", still inside this row and
+     reachable whenever the builder is open. */
+  .chq-contacts-filter-rules-row {
+    display: none;
+  }
+
+  .chq-contacts-filter-rules-row.is-builder-open {
+    display: flex;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:192 `border:1px dashed
+     #A9AE94; border-radius:4px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:13px; font-weight:700;
+     color:#4E5C31` -- the same dashed "+ Rule" chip idiom cited above for
+     `.chq-contacts-filter-add-chip`; this rule styles the chip's inner
+     label button, not the chip itself. Single-compound selector on
+     purpose, mirroring `.chq-contacts-filter-rule-chip-dismiss` above --
+     not a descendant combinator, so it stays out of
+     cancelled-padding-gap.scan.test.ts's population. */
+  .chq-contacts-filter-rule-chip-edit {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .chq-contacts-filter-builder-done {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: 16px;
   }
 }
