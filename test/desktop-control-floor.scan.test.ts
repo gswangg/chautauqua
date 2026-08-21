@@ -95,6 +95,36 @@
 //      later wave (flagged in the audit doc, not silently absorbed into
 //      either bucket). MEASURED post-drain: 14 offenders.
 //
+//      WAVE 156 (DEC-393 amendment, clause (a), task qg): the wave-155
+//      amendment's own drain -- "Sign in" -- resolved the offender list to
+//      14, but DIDN'T add a machine-checked guard for the 12 label-eyebrow
+//      rows clause (a) names; they still graded OFFENDER by luck of not yet
+//      being re-measured. This wave adds that guard to `gradeControl`
+//      itself: an OFFENDER additionally requires at least one resolved
+//      token whose own top-level rule is CONTROL-SHAPED (declares `border:`,
+//      `background:`, `padding-inline:`, or `min-height:` -- literal
+//      property names only, never `-\w+`-suffixed variants like
+//      `border-bottom`, which is a typography underline accent, not a
+//      control box). Control-shapedness is read off the rule's SELECTOR too:
+//      a token only "owns" a rule when it is the rightmost (own-element)
+//      compound of a comma-separated selector -- `.chq-detail-section-title
+//      button { background: none; border: none; ... }` resets a NESTED
+//      reset-button, not the label's own box, and wrongly graded
+//      `chq-detail-section-title` (and therefore Speakers.dc.html:209
+//      "Form") control-shaped before this refinement. A token set that is
+//      wholly typography/column registers grades `unresolved`/
+//      `no-control-shape` instead of `offender`. MEASURED post-corroboration
+//      (this branch, forcing both ceilings to -1): 1 offender ("Waitlist",
+//      Chautauqua Submissions.dc.html:314 -- the sole real, uncorroborated
+//      divergence; "Back to sign in" was already drained by wave-155's own
+//      four scoped-rule fixes), 142 unresolved (129 + the 13 rows this
+//      clause reclassifies: the 12 clause-(a) eyebrows plus
+//      Chautauqua Contacts.dc.html:601 "Speaker", which the wave-155 prose
+//      did not name but which the same control-shapedness test resolves
+//      identically). Full per-row breakdown in
+//      docs/design/audit/desktop-control-floor-v12.md. This wave changes
+//      not one product CSS byte -- test/docs only, per its own task scope.
+//
 //   4. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      DESKTOP_FLOOR_DIVERGENCE_CEILING is a single exported const, hand-
 //      measured on this branch by forcing it to -1 and reading the printed
@@ -529,6 +559,128 @@ function resolveTokenMinHeightIndexed(token: string): { hasRule: boolean; maxMin
   return TOKEN_INDEX.get(token) ?? { hasRule: false, maxMinHeight: null };
 }
 
+// -- Corroboration: a token set is only OFFENDER-eligible when at least one
+// of its resolved tokens is itself CONTROL-SHAPED -- its own top-level
+// (non-@media) rule declares a border, a background, a padding-inline, or a
+// min-height. A token set consisting solely of typography/column registers
+// (e.g. .chq-page-title, .chq-portal-field-label) grades UNRESOLVED under a
+// new reason instead of falsely OFFENDING, mirroring this file's existing
+// `aria-label="File type"`/chq-chipstrip guard for a different shape (that
+// guard's own header calls the drop to UNRESOLVED "honest"). Control-
+// shapedness is derived from the RULE BODY, never from a hand-listed token
+// allowlist (DEC-180: a hand-listed population is not a population). ------
+
+// Literal property names only -- deliberately NOT `-\w+`-suffixed
+// (border-bottom, border-color, background-image, ...), mirroring
+// `drawnControlFloor`'s own literal `border:`/`background:` substring test
+// above. A directional `border-bottom` underline is a typography accent
+// (e.g. `.chq-section-label { border-bottom: 2px solid ...; }`, the eyebrow
+// rule the wave-156 amendment names), never the bordered/filled/padded
+// control BOX this clause exists to detect.
+const CONTROL_SHAPE_RE = /\b(?:border|background|padding-inline|min-height)\s*:/;
+
+/** True when `token` is the RIGHTMOST (own-element) simple selector of at
+ * least one comma-separated selector in `selectorText` -- boundary-anchored
+ * like `selectorMentionsToken`, but additionally rejects a match that is
+ * only an ANCESTOR of the styled element (`.token button`, `.token > .bar`,
+ * `.token .child`): a combinator (whitespace/`>`/`+`/`~`) followed by
+ * further selector content after the match means some OTHER element
+ * receives the declared properties, not `.token` itself. A compound
+ * extension with no combinator (`.token.other`, `.token:hover`,
+ * `.token[data-x]`) still owns the rule -- same element. Needed only for
+ * the control-shape corroboration below: `selectorMentionsToken`/
+ * `resolveTokenMinHeightIndexed` above are untouched (DEC-393 wave-151's
+ * own min-height resolution is out of this task's scope, INSTRUMENT ONLY).
+ * Measured false positive this guards: `.chq-detail-section-title button {
+ * background: none; border: none; ... }` in app/src/pages/submissions/
+ * detail.css resets a nested reset-button, not the label's own box --
+ * without this guard `chq-detail-section-title` (and therefore Chautauqua
+ * Speakers.dc.html:209's "Form") wrongly grades control-shaped. */
+function selectorOwnsToken(selectorText: string, token: string): boolean {
+  const needle = `.${token}`;
+  for (const rawSel of selectorText.split(',')) {
+    let idx = rawSel.indexOf(needle);
+    while (idx !== -1) {
+      const before = idx > 0 ? rawSel[idx - 1] : undefined;
+      const afterIdx = idx + needle.length;
+      const after = rawSel[afterIdx];
+      if (!isTokenChar(before) && !isTokenChar(after)) {
+        const rest = rawSel.slice(afterIdx);
+        if (!/[\s>+~][^\s]/.test(rest)) return true;
+      }
+      idx = rawSel.indexOf(needle, idx + 1);
+    }
+  }
+  return false;
+}
+
+/** True when `token`'s own top-level (non-@media) rule(s) anywhere in the
+ * corpus declare a border, a background, a padding-inline, or a min-height
+ * -- the control-shape test. Built into the same one-pass TOKEN_INDEX walk
+ * (never a second corpus scan) so this stays O(rules) total, like
+ * resolveTokenMinHeightIndexed's own index. Exported for the non-vacuity
+ * fixture below, driven over a fabricated blob, never a real product
+ * token. */
+export function tokenIsControlShaped(token: string, blobs: readonly string[]): boolean {
+  for (const blob of blobs) {
+    RULE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = RULE_RE.exec(blob))) {
+      const selectorText = m[1]!;
+      const body = m[2]!;
+      if (!selectorOwnsToken(selectorText, token)) continue;
+      if (CONTROL_SHAPE_RE.test(body)) return true;
+    }
+  }
+  return false;
+}
+
+/** Own-element class tokens per comma-separated selector -- the rightmost
+ * compound part only (after the last combinator), companion to
+ * `selectorOwnsToken`'s per-token search, used to build `CONTROL_SHAPE_INDEX`
+ * below in one pass instead of re-testing every known token per rule (same
+ * relationship `SELECTOR_CLASS_TOKEN_RE`'s single-pass extraction has to
+ * `selectorMentionsToken` above). `.token button` yields no token for
+ * `token` (an ancestor, not the styled element); `.token.other` and
+ * `.token:hover` both yield `token` (same element). */
+function rightmostSelectorTokens(selectorText: string): string[] {
+  const out: string[] = [];
+  for (const rawSel of selectorText.split(',')) {
+    const parts = rawSel.trim().split(/[\s>+~]+/).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (!last) continue;
+    SELECTOR_CLASS_TOKEN_RE.lastIndex = 0;
+    let tm: RegExpExecArray | null;
+    while ((tm = SELECTOR_CLASS_TOKEN_RE.exec(last))) out.push(tm[1]!);
+  }
+  return out;
+}
+
+/** One-pass precomputed companion to `TOKEN_INDEX`: every top-level rule is
+ * visited exactly once (same walk TOKEN_INDEX was built from, not a second
+ * scan) and every `chq-`-token-shaped class that OWNS its selector's
+ * rightmost compound (never merely an ancestor in a descendant selector) is
+ * marked control-shaped the moment any one of its rules declares a border,
+ * background, padding-inline, or min-height. */
+const CONTROL_SHAPE_INDEX = new Map<string, boolean>();
+for (const blob of TOPLEVEL_BLOBS) {
+  RULE_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = RULE_RE.exec(blob))) {
+    const selectorText = m[1]!;
+    const body = m[2]!;
+    const shaped = CONTROL_SHAPE_RE.test(body);
+    if (!shaped) continue;
+    for (const tok of rightmostSelectorTokens(selectorText)) {
+      CONTROL_SHAPE_INDEX.set(tok, true);
+    }
+  }
+}
+
+function tokenIsControlShapedIndexed(token: string): boolean {
+  return CONTROL_SHAPE_INDEX.get(token) ?? false;
+}
+
 // -- Join + grade every drawn control ---------------------------------------
 
 export type RowStatus = 'ok' | 'offender' | 'unresolved';
@@ -536,7 +688,7 @@ export type RowStatus = 'ok' | 'offender' | 'unresolved';
 export interface GradedRow {
   control: DrawnControl;
   status: RowStatus;
-  reason: 'no-label-match' | 'no-token' | 'no-rule' | null;
+  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | null;
   tokens: string[];
   declaredMinHeight: number | null;
 }
@@ -571,6 +723,15 @@ function gradeControl(control: DrawnControl): GradedRow {
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
+  if (status === 'offender' && !tokens.some((t) => tokenIsControlShapedIndexed(t))) {
+    // Corroboration (DEC-393 wave-156 clause (a)): none of the resolved
+    // tokens is itself control-shaped -- the whole set is a typography/
+    // column register (e.g. .chq-page-title, .chq-portal-field-label)
+    // resolving purely by co-incidence of a shared class list. Grading this
+    // OFFENDER would put min-height on a heading; drop to UNRESOLVED,
+    // honest per the file's own existing chq-chipstrip precedent.
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared };
+  }
   return { control, status, reason: null, tokens, declaredMinHeight: declared };
 }
 
@@ -583,8 +744,8 @@ const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 // printed row list. Two-sided per DEC-808 (every ratchet in this campaign
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 14;
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 129;
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 1;
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 142;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
@@ -681,6 +842,51 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     // NEGATIVE: an unmentioned token has no rule at all.
     const unresolved = resolveTokenMinHeight('chq-zzy-unmentioned', [stripped]);
     expect(unresolved).toEqual({ hasRule: false, maxMinHeight: null });
+  });
+
+  it('non-vacuity: control-shape corroboration -- fabricated positive (bordered control) vs negative (typography-only) tokens', () => {
+    // POSITIVE: a fabricated control-shaped rule -- declares border-radius
+    // and min-height, the drawn-control face itself -- is control-shaped.
+    const controlBlob = normalizeSource(
+      '.chq-zzy-control { border: 1px solid #BAB6A6; border-radius: 6px; min-height: 46px; }'
+    );
+    expect(tokenIsControlShaped('chq-zzy-control', [stripMediaBlocks(controlBlob)])).toBe(true);
+
+    // POSITIVE (background-only face, e.g. a solid chip with no border):
+    const bgBlob = normalizeSource('.chq-zzy-chip { background: #4E5C31; border-radius: 4px; min-height: 44px; }');
+    expect(tokenIsControlShaped('chq-zzy-chip', [stripMediaBlocks(bgBlob)])).toBe(true);
+
+    // POSITIVE (padding-inline face, no border/background of its own):
+    const padBlob = normalizeSource('.chq-zzy-padded { padding-inline: 18px; min-height: 44px; }');
+    expect(tokenIsControlShaped('chq-zzy-padded', [stripMediaBlocks(padBlob)])).toBe(true);
+
+    // NEGATIVE: a fabricated typography/column register -- font-size,
+    // letter-spacing, text-transform, no border/background/padding-inline/
+    // min-height anywhere in its own rule -- is NOT control-shaped, exactly
+    // the .chq-page-title / .chq-portal-field-label shape this clause
+    // exists to keep off the offender ledger.
+    const labelBlob = normalizeSource(
+      '.chq-zzy-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }'
+    );
+    expect(tokenIsControlShaped('chq-zzy-label', [stripMediaBlocks(labelBlob)])).toBe(false);
+
+    // NEGATIVE: an unmentioned token has no rule at all, so it is not
+    // control-shaped either (absence, never a false positive).
+    expect(tokenIsControlShaped('chq-zzy-unmentioned-shape', [stripMediaBlocks(labelBlob)])).toBe(false);
+
+    // FULL-PIPELINE GRADE: a fabricated offender row whose ONLY resolved
+    // token is the typography-only register above must be reclassified to
+    // 'unresolved'/'no-control-shape' rather than 'offender', mirroring
+    // gradeControl's own corroboration clause (re-implemented here over the
+    // fabricated blob set, never the real corpus/TOKEN_INDEX, since those
+    // are frozen at module load over app/src+src).
+    const fabricatedTokens = ['chq-zzy-label'];
+    const fabricatedBlobs = [stripMediaBlocks(labelBlob)];
+    const fabricatedResolved = resolveTokenMinHeight('chq-zzy-label', fabricatedBlobs);
+    expect(fabricatedResolved.hasRule).toBe(true); // rule exists (grades OFFENDER pre-corroboration)
+    expect(fabricatedResolved.maxMinHeight).toBeNull(); // declares 0 -- an offender at 0 by the file's own grammar
+    const anyControlShaped = fabricatedTokens.some((t) => tokenIsControlShaped(t, fabricatedBlobs));
+    expect(anyControlShaped).toBe(false); // corroboration clause fires: reclassify to unresolved
   });
 
   it(`never exceeds DESKTOP_FLOOR_DIVERGENCE_CEILING (${DESKTOP_FLOOR_DIVERGENCE_CEILING}) resolved offenders`, () => {

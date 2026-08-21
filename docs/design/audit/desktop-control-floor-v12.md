@@ -148,3 +148,112 @@ resolves to SOME rule (the offender-at-0 shape above), not an absent one.
 Draining the unresolved bucket is a JOIN-technique improvement (a DOM-aware
 or nested-element-aware class reader), not a CSS fix, and is left to a
 later wave per this ledger's own header.
+
+## Wave 156 -- corroboration (DEC-393 amendment, clause (a), task qg)
+
+INSTRUMENT ONLY: this section's work changes no product CSS byte, and
+`test/desktop-control-floor.scan.test.ts` is the only code touched.
+
+Clause (a) ruled that an OFFENDER row additionally requires at least one
+resolved token whose own top-level rule is CONTROL-SHAPED -- declares
+`border:`, `background:`, `padding-inline:`, or `min-height:` (literal
+property names only, never a `-\w+`-suffixed variant such as
+`border-bottom`, which is a typography underline accent, not a control
+box), and only when the token OWNS the rightmost (own-element) compound of
+its selector -- a token that is merely an ANCESTOR in a descendant
+selector (`.token button { border: none; }`) does not count, since that
+rule paints the descendant, not `.token` itself. A token set consisting
+solely of typography/column registers now grades `unresolved`/
+`no-control-shape` instead of `offender`.
+
+This drops the 12 "Blessed" field-name-eyebrow rows from the previous
+section OUT of the offender count entirely (they no longer need a
+DEVIATIONS.md class-level waiver to explain why they stay counted as
+offenders -- the scan itself now agrees they were never real controls),
+plus one row wave-155's own prose did not separately name:
+`docs/design/Chautauqua Contacts.dc.html`:601 "Speaker" (frame "Add to an
+event", `min-height:46px`) -- tokens `chq-content-worklist-col-speaker`,
+`chq-review-results-col-speaker`, `chq-page-title`, `chq-section-label`,
+`chq-meta`. None of these five tokens' own top-level rules declares a
+border/background/padding-inline/min-height (the column-width rules
+`chq-content-worklist-col-speaker`/`chq-review-results-col-speaker`
+declare only `width`), so the row is control-shape-uncorroborated exactly
+like the twelve named eyebrows.
+
+The 13 rows reclassified from `offender` to `unresolved`/`no-control-shape`
+this wave (all draw a bordered/backgrounded chip shape in the frame but
+resolve only to typography or column-width registers in the app):
+
+- `docs/design/Chautauqua Account.dc.html`:225 -- "Back to sign in" (frame
+  "Reset · link sent", `min-height:46px`); resolves to `chq-auth-tertiary`,
+  a plain anchor register with no border/background/padding-inline/
+  min-height at desktop scope anywhere in the corpus. Previously listed
+  above as one of wave-155's two live "neither drained nor blessed"
+  offenders; corroboration shows it was never a real control-shape
+  divergence either -- same shape as the twelve eyebrows, just not named
+  as one.
+- `docs/design/Chautauqua Contacts.dc.html`:601 -- "Speaker" (frame "Add to
+  an event", `min-height:46px`); tokens as above.
+- `docs/design/Chautauqua Contacts.dc.html`:602 -- "Reviewer" (frame "Add
+  to an event", `min-height:46px`); resolves to
+  `chq-comms-feedback-eyebrow`, `chq-page-title`.
+- `docs/design/Chautauqua Contacts.dc.html`:824 -- "First name" (frame "New
+  contact", `min-height:46px`); resolves to `chq-portal-field-label`.
+- `docs/design/Chautauqua Contacts.dc.html`:828 -- "Last name" (frame "New
+  contact", `min-height:46px`); resolves to `chq-portal-field-label`.
+- `docs/design/Chautauqua Contacts.dc.html`:839 -- "Company" (frame "New
+  contact", `min-height:46px`); resolves to `chq-contacts-col-company`,
+  `chq-portal-field-label`.
+- `docs/design/Chautauqua Public and Portal.dc.html`:1435 -- "First name"
+  (frame "Portal · Edit your session · desktop", `min-height:46px`);
+  resolves to `chq-portal-field-label`.
+- `docs/design/Chautauqua Public and Portal.dc.html`:1439 -- "Last name"
+  (frame "Portal · Edit your session · desktop", `min-height:46px`);
+  resolves to `chq-portal-field-label`.
+- `docs/design/Chautauqua Settings.dc.html`:1064 -- "Sessions" (frame
+  "Settings · editing one saved embed", `min-height:46px`); resolves to
+  `chq-section-label`, `chq-pub-section-title`, `chq-pub-surface-title`,
+  `chq-home-action-quiet` -- the last of which declares a border/
+  background/padding-inline/min-height only inside its phone `@media
+  (max-width: 700px)` scope in `src/routes/public/home.css.ts` (`
+  .chq-home-action-quiet { min-height: 44px; padding: 0 8px; ... }`),
+  stripped before this ledger's desktop grading per DEC-385, so it does not
+  corroborate the row at desktop scope.
+- `docs/design/Chautauqua Settings.dc.html`:1287 -- "First name" (frame
+  "Invite someone", `min-height:46px`); resolves to
+  `chq-portal-field-label`.
+- `docs/design/Chautauqua Settings.dc.html`:1291 -- "Last name" (frame
+  "Invite someone", `min-height:46px`); resolves to
+  `chq-portal-field-label`.
+- `docs/design/Chautauqua Settings.dc.html`:1302 -- "Reviewer" (frame
+  "Invite someone", `min-height:44px`); resolves to
+  `chq-comms-feedback-eyebrow`, `chq-page-title`.
+- `docs/design/Chautauqua Speakers.dc.html`:209 -- "Form" (frame "New
+  task", `min-height:46px`); resolves to `chq-section-label`,
+  `chq-detail-section-title`. Measured false positive the own-element
+  selector guard closes: `chq-detail-section-title`'s OWN rule (
+  `app/src/pages/submissions/detail.css`) declares only `margin`,
+  `padding-bottom`, `border-bottom`, and typography properties; a SEPARATE
+  descendant rule in the same file, `` .chq-detail-section-title button ``,
+  declares `background: none; border: none;` for a nested reset-button
+  child, not the label's own box. Before the own-element selector guard,
+  that descendant rule wrongly control-shaped `chq-detail-section-title`
+  and this row stayed a false offender even after the border-suffix fix
+  alone.
+
+### Remaining offender: 1 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 1`, was 14)
+
+- `docs/design/Chautauqua Submissions.dc.html`:314 -- "Waitlist" (frame
+  "Submission detail · /submissions/:id", `min-height:44px`); resolves to
+  `chq-overview-btn`, `chq-overview-btn-waitlist`. `chq-overview-btn`'s own
+  top-level rule (`app/src/pages/submissions/detail.css`) declares
+  `border-radius`, `padding: 0 16px`, and other control properties --
+  genuinely control-shaped -- and declares no `min-height` anywhere, so
+  this remains a real, corroborated divergence at 0px against a drawn 44px
+  floor, left for a later wave exactly as wave-155 flagged it.
+
+### Unresolved: 142 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 142`, was 129)
+
+129 (unchanged JOIN-side population, per the "Unresolved: 129" section
+above) + 13 rows this wave's `no-control-shape` reason reclassifies out of
+the offender bucket, listed in full above.
