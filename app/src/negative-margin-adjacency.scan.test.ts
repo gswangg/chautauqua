@@ -370,16 +370,20 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
   // read drill's per-row boxed action is phone-only, so
   // `.chq-settings-summary-row-action` carries a desktop `display: none` in
   // settings-lists.css -- a real new declaration, not a sweep regression.
-  it('the swept population carries exactly 169 comment-stripped `display: none` declarations', () => {
+  // 169 -> 174 (wave-16 megabatch): phone-only reveals landed in
+  // settings.css (DESKTOP_FLOOR_DIVERGENCE work) and overview.css (DEC-833's
+  // four phone-only section labels), each pairing its phone rule with a
+  // desktop `display: none`. Real new declarations, not a sweep regression.
+  it('the swept population carries exactly 174 comment-stripped `display: none` declarations', () => {
     let total = 0;
     for (const s of SOURCES) {
       const stripped = stripCssComments(extractCssText(s));
       total += (stripped.match(/display\s*:\s*none\b/g) ?? []).length;
     }
-    expect(total).toBe(169);
+    expect(total).toBe(174);
   });
 
-  it('finds exactly the 16 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {
+  it('finds exactly the 17 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {
     const found = ALL_CANDIDATES.map((c) => `${c.fileRel} :: ${c.selector}`).sort();
     const expected = [
       'app/src/components/error-states.css :: .chq-error-summary a.chq-error-summary-link',
@@ -395,6 +399,11 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
       'app/src/pages/review/review.css :: .chq-review-editor-title-input',
       'app/src/pages/review/review.css :: .chq-review-criterion-weight-caption',
       'app/src/pages/submissions/detail.css :: .chq-detail-placement',
+      // DEC-878 wave-16 amendment: the phone stand-down for the Abstract /
+      // Form-answers headings copies the house visually-hidden recipe
+      // verbatim, `margin: -1px` included -- receipted in detail.css, and
+      // the adjacency ratchet below still reads 0 offenders.
+      'app/src/pages/submissions/detail.css :: .chq-detail-section-title-frameless',
       'app/src/styles.css :: .chq-check-hit',
       'src/routes/public/css/chrome.css.ts :: .chq-visually-hidden',
       'src/routes/public/css/chrome.css.ts :: .chq-pub-activefilters',

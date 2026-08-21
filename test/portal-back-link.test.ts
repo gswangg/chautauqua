@@ -114,8 +114,11 @@ describe("GET /portal/profile — back link agrees with its own destination", ()
     expect(expectedEntry, `no PORTAL_BACK_LINKS entry for rendered href ${href}`).toBeDefined();
     expect(label).toContain(expectedEntry!.label);
 
-    // The page heading is the page's only <h1>, not a demoted <h2>.
-    expect(html).toContain('<h1 class="chq-portal-hero">My Profile</h1>');
-    expect(html).not.toContain('<h2 class="chq-portal-hero">My Profile</h2>');
+    // The page heading is the page's only <h1>, not a demoted <h2>. Its copy
+    // and drill register are DEC-576's wave-16 amendment: a back-linked
+    // portal H1 reads the frame's literal ('Your profile', frame :534) and
+    // carries chq-portal-hero-drill for the 25px register.
+    expect(html).toContain('<h1 class="chq-portal-hero chq-portal-hero-drill">Your profile</h1>');
+    expect(html).not.toContain('<h2 class="chq-portal-hero chq-portal-hero-drill">Your profile</h2>');
   });
 });

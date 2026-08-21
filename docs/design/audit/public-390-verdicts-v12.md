@@ -67,14 +67,19 @@ Both are copy-only mismatches; the surrounding anatomy (two controls in the
 dock, filled primary "Next: about you" first, Track/Format fieldsets in
 frame order) matches.
 
-## 4. Submitted (:1074-1093) — DIVERGES (two items)
+## 4. Submitted (:1074-1093) — RESOLVED (both items, DEC-908 wave-16 amendment)
 
 `POST /submit/:eventSlug`, `ConfirmationPage`'s `"fresh"` state
 (`submit-views.tsx:782`). Eyebrow ("SUBMITTED · <ref>"), title ("That's in.
 Check your email."), the password block ("Set a password now" / "Create a
 password" → `/claim/<token>`), and the spam note all match.
 
-- **Card omits the third speaker · company line.** :1081 draws a third line
+- **Card omits the third speaker · company line.** RESOLVED (DEC-908 wave-16
+  amendment): `ConfirmationPage` now takes a `speakerLine` prop and renders it
+  as a second `.chq-cfp-confirm-card-meta` span in the `"fresh"` state only,
+  built in `submit-post.tsx` from the `firstName`/`lastName`/`resolvedCompany`
+  the request just persisted (no extra query; bare name when there is no
+  company; `null` renders nothing). Original finding follows. :1081 draws a third line
   inside the confirmation card, `"Priya Raman · Latticework Systems"` (the
   submitting speaker's name and company). `ConfirmationPage`
   (`submit-views.tsx:794-809`) renders exactly two children inside
@@ -87,9 +92,11 @@ password" → `/claim/<token>`), and the spam note all match.
   narrow: a speaker/company line is fetched nowhere in `submit-post.tsx`'s
   confirmation-render path and would need a new clause added to the `meta`
   composition at `submit-post.tsx:583-599`.
-- **Way-forward link label.** :1092 draws `"Browse the sessions ›"`. The
-  tree's `.chq-cfp-links` row (`src/routes/public/submit-views.tsx:896`)
-  renders `Browse the programme &rsaquo;` to the identical
+- **Way-forward link label.** RESOLVED (DEC-908 wave-16 amendment): the
+  `.chq-cfp-links` row in `src/routes/public/submit-views.tsx` now renders the
+  frame's own label to the same route; only the noun was wrong, the `href` was
+  always correct. Original finding follows. :1092 draws `"Browse the sessions ›"`. The
+  tree's `.chq-cfp-links` row renders the "programme" wording to the identical
   `/e/:eventSlug/sessions` route — the destination is correct, the label
   word differs ("programme" vs "sessions"). No DEVIATIONS.md or DEC entry
   names this
@@ -128,6 +135,6 @@ no `/claim/` path is minted or rendered. No divergence found.
 | 1 | Public agenda | :371 | MATCHES |
 | 2 | My schedule · /schedule | :864 | MATCHES |
 | 3 | Submit a talk | :1017 | DIVERGES (label wording ×2: "Session format" vs "Format", "Save draft" vs "Draft") |
-| 4 | Submitted | :1074 | DIVERGES (missing speaker·company card line; "Browse the programme" vs "Browse the sessions") |
+| 4 | Submitted | :1074 | MATCHES (both findings resolved, DEC-908 wave-16 amendment) |
 | 5 | Submitted · email already known | :1124 | MATCHES |
 | 6 | Submitted · has an account | :1147 | MATCHES |

@@ -276,7 +276,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     // renders, at any task-list state.
     expectInOrder(html, [
       '<a href="/portal" class="chq-portal-back">‹ Your portal</a>',
-      '<h1 class="chq-portal-hero">Your tasks</h1>',
+      '<h1 class="chq-portal-hero chq-portal-hero-drill">Your tasks</h1>',
       '<div class="chq-portal-row" id="task-assign-1">',
       '<span class="chq-portal-row-title">Confirm bio</span>',
       '<div class="chq-portal-row" id="task-assign-form-1">',
@@ -294,7 +294,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     expect(html).not.toContain(">Later<");
   });
 
-  it("frame :531 'Portal · Your profile' (GET /portal/profile) -- DIVERGES: the H1 reads 'My Profile' where the frame draws 'Your profile', and the docked footer has no secondary", async () => {
+  it("frame :531 'Portal · Your profile' (GET /portal/profile) -- DIVERGES: the docked footer has no secondary; the H1 now matches the frame's 'Your profile' at the drill register (DEC-576 wave-16 amendment)", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:531 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
     verbatimLine(531, FRAME_LINE);
     const app = await buildApp();
@@ -305,22 +305,26 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     // Frame :528-556 draws: back link '‹ Your portal', h1 'Your profile',
     // a headshot section, profile fields, then a docked footer with a
     // PRIMARY 'Save' + a bordered SECONDARY 'Cancel'. The route matches
-    // back link + headshot section + field anatomy, but the H1 text
-    // itself reads 'My Profile' (ProfilePage, src/routes/portal/profile.tsx)
-    // -- a different string from the frame's 'Your profile' -- and the
-    // docked footer (profileDock) renders only 'Save profile', with no
-    // Cancel control (DEC-576's "never manufactured just to fill the band"
-    // rule, recorded in that file's own comment as a DEVIATIONS.md entry).
+    // back link + H1 + headshot section + field anatomy: DEC-576's wave-16
+    // amendment corrected the H1 to the frame's literal 'Your profile' and
+    // gave it `chq-portal-hero-drill` (a back-linked H1 is a drill-in and
+    // takes the frame's 25px register at :534), closing the copy half of
+    // this verdict. What still diverges is the dock -- profileDock renders
+    // only 'Save profile', with no Cancel control (DEC-576's "never
+    // manufactured just to fill the band" rule, recorded in that file's own
+    // comment as a DEVIATIONS.md entry).
     expectInOrder(html, [
       '<a href="/portal" class="chq-portal-back">‹ Your portal</a>',
-      '<h1 class="chq-portal-hero">My Profile</h1>',
+      '<h1 class="chq-portal-hero chq-portal-hero-drill">Your profile</h1>',
       '<section aria-label="Headshot" class="chq-section chq-portal-profile-head">',
       '<section aria-label="Profile details" class="chq-section">',
       '<footer class="chq-portal-footer">',
       '<div class="chq-portal-dock">',
       '<button type="submit" form="chq-portal-profile-form" class="chq-btn chq-btn-primary">Save profile</button>',
     ]);
-    expect(html).not.toContain(">Your profile<");
+    // The frame's literal now renders, and the old 'My Profile' string is gone.
+    expect(html).toContain(">Your profile<");
+    expect(html).not.toContain("My Profile");
     const dockOpen = html.indexOf('<div class="chq-portal-dock">');
     const dockClose = html.indexOf("</div>", dockOpen);
     const dockBody = html.slice(dockOpen, dockClose);
@@ -344,7 +348,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     // docked control.
     expectInOrder(html, [
       '<a href="/portal" class="chq-portal-back">‹ Your portal</a>',
-      '<h1 class="chq-portal-hero chq-portal-resources-hero">Resources</h1>',
+      '<h1 class="chq-portal-hero chq-portal-hero-drill chq-portal-resources-hero">Resources</h1>',
       '<p class="chq-portal-sub">The same for every speaker · nothing here is about your session</p>',
       '<footer class="chq-portal-footer">',
       '<span class="chq-portal-resources-footer-note">Questions? Reply to any of our emails.</span>',

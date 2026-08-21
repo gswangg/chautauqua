@@ -338,7 +338,7 @@ describe("CFP confirmation card states format, track and audience level in frame
     expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Talk, 45 min · Main Track · intermediate</span>');
   });
 
-  it("submission with neither a track nor a format renders the card with the title only and no meta element", async () => {
+  it("submission with neither a track nor a format renders no format/track meta clause (only DEC-908's speaker line)", async () => {
     const { db } = fakeDb(selectQueueForWithFormatNoTracks());
     const app = appWithDb(db);
 
@@ -355,7 +355,13 @@ describe("CFP confirmation card states format, track and audience level in frame
 
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).not.toContain('class="chq-cfp-confirm-card-meta"');
+    // With no track and no format there is no format/track clause to draw.
+    // DEC-908's wave-16 amendment gives the fresh state a SECOND card line
+    // (the submitter's own `name · company`, frame :1081), which shares this
+    // class -- so the card carries exactly one meta span here, and it is the
+    // speaker line, never a format/track clause.
+    const metas = html.match(/<span class="chq-cfp-confirm-card-meta">([^<]*)<\/span>/g) ?? [];
+    expect(metas).toEqual(['<span class="chq-cfp-confirm-card-meta">Ada Lovelace</span>']);
   });
 
   it("submission with only a track (no format) renders that clause with no separator", async () => {

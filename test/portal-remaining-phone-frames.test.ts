@@ -83,7 +83,7 @@ describe('"Portal · Resources" 390 frame (docs/design/Chautauqua Public and Por
   it("H1 (:1564) is a 25px back-linked drill, not the 27px cluster-landing token", () => {
     const line = dcLine(1564);
     expect(line).toContain('font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05');
-    expect(html).toContain('class="chq-portal-hero chq-portal-resources-hero"');
+    expect(html).toContain('class="chq-portal-hero chq-portal-hero-drill chq-portal-resources-hero"');
     expect(APPENDED).toMatch(
       /\.chq-portal-resources-hero\s*\{\s*font-size:\s*var\(--chq-type-page-title-phone-drill\);\s*\}/,
     );

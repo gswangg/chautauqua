@@ -297,7 +297,10 @@ describe("portal 390 frame verdicts — drill/state frames (DEC-976 wave-158)", 
 
     // docs/design/Chautauqua Public and Portal.dc.html:566
     // `<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Your session</h1>`
-    expect(html).toContain('<h1 class="chq-portal-hero">Your session</h1>');
+    // The 25px in that frame line is the drill register, carried by
+    // chq-portal-hero-drill (DEC-576 wave-16 amendment: a back-linked
+    // portal H1 is a drill-in).
+    expect(html).toContain('<h1 class="chq-portal-hero chq-portal-hero-drill">Your session</h1>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:589
     // `<span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Edit</span>`

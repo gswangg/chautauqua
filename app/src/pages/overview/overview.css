@@ -147,7 +147,7 @@
    since every primary toolbar button also carries that base class. */
 /* tap-floor-exempt: DEC-393 wave-120 receipt (task w9-i): no selector-
    specific phone rule is needed -- every markup site that carries this
-   class also carries `chq-overview-toolbar-btn` (Overview.tsx:314,
+   class also carries `chq-overview-toolbar-btn` (Overview.tsx:319,
    `className="chq-overview-toolbar-btn chq-overview-toolbar-btn-primary"`,
    the header's only primary toolbar button), and that base class's own
    phone rule (below, in the terminal `@media (max-width: 700px)` block)
