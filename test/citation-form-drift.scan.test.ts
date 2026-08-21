@@ -193,7 +193,7 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // file) -- no ruling's MEANING changed, only the citation's coordinate
 // shape. Re-measured after the conversion: 25, all outside
 // src/decisions-data/. Lowered 57 -> 25.
-export const LINE_KEYED_CITATION_CEILING = 25;
+export const LINE_KEYED_CITATION_CEILING = 24;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
