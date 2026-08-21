@@ -727,6 +727,21 @@ carries this section's ruling in full; these five entries are its record.
   would delete rename-in-place, a shipped capability the frame predates,
   and the row's Duplicate/Save-not-Cancel pair is itself an earlier,
   already-blessed deviation (DEC-745 wave-98 amendment, recorded above).
+- **Settings · Event's read-drill footer has no Cancel.** The frame draws a
+  content+Save/Cancel-footer anatomy for the drilled Event screen; the read
+  view instead stands the head's own "Change" action down at 390 (a read
+  view holds no form to submit, so no Cancel is manufactured to pair with
+  it) because the read drill's own footer primary already carries the
+  identical edit route: app/src/pages/settings/settings.css`.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action {`.
+  The frame's full Save/Cancel pair renders in the edit drill itself, where
+  a form genuinely exists to submit or discard:
+  app/src/pages/settings/EventSettingsPanel.tsx`className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>`.
+  This is the same never-manufactured-to-fill-the-band principle recorded
+  above for the portal tasks and profile docks (this section's "Portal ·
+  Your profile dock has no Cancel" entry, and the tasks dock's identical
+  "Later" omission) — a control is drawn only where a same-screen affordance
+  actually discharges it, never invented to complete a shape the frame
+  drew.
   What was genuinely missing — a level-1 heading naming the plan, since
   the name previously existed only as a form-control's `aria-label` — is
   now built: `PlanEditor.tsx` renders one visually-hidden
