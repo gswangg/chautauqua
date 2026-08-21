@@ -1418,6 +1418,20 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
   },
+  // v12m-w4-al (wave-148, DEC-709 amendment): the phone plan-editor head
+  // subtitle, composed at PlanEditor.tsx's planHeadSubtitle from
+  // draft.trackIds (resolved against the loaded tracks list), draft.closeAt
+  // (via lib/dates.ts's formatDateOnly, the ONE calendar-date-only
+  // formatter per DEC-153/DEC-907) and draft.maxEvaluationsPerSubmission
+  // (via the file's own countOf). Cited by the composing expression, not a
+  // coordinate, per DEC-967.
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 598,
+    text: 'AI Engineering · closes 30 Aug · 2 reviews per talk',
+    reason:
+      "app/src/pages/review/PlanEditor.tsx's planHeadSubtitle composes `[trackNames, closesClause, reviewsClause].filter(...).join(' · ')` from `draft.trackIds.map((id) => tracks.find((t) => t.id === id)?.name ?? id).join(', ')`, `` `closes ${formatDateOnly(draft.closeAt)}` `` and `` `${countOf(draft.maxEvaluationsPerSubmission, 'review')} per talk` `` -- every input already lives in this component's own state, rendered phone-only (isPhone) as `.chq-review-editor-head-subtitle`, matching the frame's 'AI Engineering · closes 30 Aug · 2 reviews per talk' for a single-track plan closing 30 Aug with 2 reviews per talk. formatDateOnly renders the UTC calendar day with its year (DEC-153 bans toLocaleDateString/local-timezone reads for date-only fields), so the exact digits/year the ledger's digit-skeleton pass sees vary by plan, not the frame's fixture year -- the grammar and separators are the live match this exclusion records.",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

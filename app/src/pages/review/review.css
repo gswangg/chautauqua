@@ -2966,4 +2966,16 @@
     justify-content: center;
     padding: 0 4px;
   }
+
+  /* DEC-709 (wave-148 amendment): the 390 plan-editor head subtitle
+     (`Chautauqua Review.dc.html:598`, "AI Engineering · closes 30 Aug ·
+     2 reviews per talk") -- phone-only per DEC-385, the desktop head has
+     no equivalent span and stays frozen. 13px/#565A4B matches the frame
+     exactly; --chq-muted is that same hex (styles.css:29). */
+  .chq-review-editor-head-subtitle {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--chq-muted);
+    line-height: 1.4;
+  }
 }

@@ -299,4 +299,16 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-al (wave-148, task w4-al, DEC-709 amendment): the recorded
+// blocker at Chautauqua Review.dc.html:598 (v12m-w18-c's note above: "no
+// composing site anywhere in PlanEditor.tsx joins a track name, an
+// absolute close date and the reviews-per-talk count into one subtitle")
+// was a fact about form STRUCTURE, not data availability -- every input
+// (draft.trackIds resolved against the loaded tracks list, draft.closeAt,
+// draft.maxEvaluationsPerSubmission) already lives in this component's own
+// state. Built PlanEditor.tsx's planHeadSubtitle (phone-only, DEC-385) and
+// added the matching COMPOSED exclusion above. Forced to -1 and read back
+// on this branch: 14, entirely the loss of the Review.dc.html:598 row --
+// no other offender's fileName or text changed.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
