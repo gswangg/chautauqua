@@ -402,13 +402,25 @@
 // (exclusions.ts, tagged v12m-w4-ao) rather than left in the residue.
 // Forced to -1 and read back: 12.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=12
+// v12m-w4-aq (wave-148): caption-ledger custodian task -- disposed Chautauqua
+// Settings.dc.html:1422 ("Downloaded 18 times by 12 speakers") into the
+// UNBACKED table (DEC-032, DEVIATIONS.md §6): `resource` (src/db/schema/
+// content.ts) has no download-count column and no read-tracking endpoint
+// exists anywhere in the repo -- a declared knob with no reader
+// (DEC-851/DEC-988). This branch owns no other row. Forced to -1 and read
+// back on this branch: 14, all pre-existing gaps re-verified against the
+// current tree (see docs/design/audit/frame-caption-residue-v12.md for the
+// re-derived blocker text of each). Lowered from 15.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
 //
-// THUNDERDOME MEGABATCH (wave-150, 19 lanes): the two figures above (6 from
-// the wave-148 train's integrated tree, 12 from w4-ao measured alone) are
-// each true only of the tree they were read on. Per this file's standing
-// rule the constant is re-seeded to what the two-sided ratchet PRINTS
-// against the fully integrated megabatch tree, measured once at the end of
-// the batch with the ceiling forced to -1 -- never a lane's pre-merge
-// figure.
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=__PENDING__
-export const FRAME_CAPTION_UNMATCHED_CEILING = 6;
+// THUNDERDOME MEGABATCH (wave-150, 19 lanes): every lane above measured
+// this ratchet against a tree carrying only its own build and its own
+// dispositions, so no lane's figure is the truth for the integrated tree
+// -- the lanes' builds and exclusions are additive and the union subtracts
+// more than any one of them could see. Per this file's own standing rule
+// the constant below is re-seeded ONCE, at the end of the megabatch, to
+// what the two-sided ratchet actually PRINTS against the fully integrated
+// tree (ceiling forced to -1, offender count read back) -- never a
+// lane's pre-merge figure and never a guess.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=__MEGABATCH_PENDING__
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;

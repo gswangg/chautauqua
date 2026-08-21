@@ -437,6 +437,12 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
         </ModalFrame>
       )}
 
+      {/* Deliberately does NOT build the frame's delete-modal download-count
+       * line (docs/design/Chautauqua Settings.dc.html:1422, "Downloaded 18
+       * times by 12 speakers") -- the `resource` table (src/db/schema/
+       * content.ts) has no download-count column and no read-tracking
+       * endpoint exists anywhere in the repo; recorded as a deliberate
+       * non-build on DEC-032 (task w4-aq). */}
       {pendingDelete && (
         <ConfirmDialog
           title="Delete this resource?"
