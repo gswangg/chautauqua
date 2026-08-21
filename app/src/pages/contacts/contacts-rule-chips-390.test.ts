@@ -1,4 +1,4 @@
-// DEC-992: the rule chip strip's four phone declarations
+// src/decisions-data/DEC-919.md: the rule chip strip's four phone declarations
 // (`.chq-contacts-filter-chipstrip`, `.chq-contacts-filter-chipstrip > *`,
 // `.chq-contacts-filter-chipstrip-caption`, `.chq-contacts-filter-rule-chip`,
 // `.chq-contacts-filter-rule-chip-dismiss`) must all live inside contacts.css's
@@ -50,7 +50,7 @@ const RULE_CHIP_SELECTORS = [
   '.chq-contacts-filter-rule-chip-dismiss {',
 ];
 
-describe('Contacts rule chip strip — phone declarations (DEC-992)', () => {
+describe('Contacts rule chip strip — phone declarations (src/decisions-data/DEC-919.md)', () => {
   it('contacts.css has exactly one terminal phone block', () => {
     const blocks = phoneBlocks(STRIPPED);
     expect(blocks.length).toBe(1);

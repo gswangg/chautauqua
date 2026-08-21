@@ -1,4 +1,4 @@
-// task r1-d (DEC-995): contacts.css text scan for the phone head band's
+// task r1-d (src/decisions-data/DEC-919.md): contacts.css text scan for the phone head band's
 // `N of M` counter. Six rules land inside the file's LAST (terminal)
 // `@media (max-width: 700px)` block per DEC-385 (single-direction, one
 // terminal block -- test/phone-terminal-block.scan.test.ts owns the
@@ -44,7 +44,7 @@ function maxWidth700Blocks(css: string): Array<{ start: number; end: number; bod
 const STRIPPED = stripComments(CSS);
 const BLOCKS = maxWidth700Blocks(STRIPPED);
 
-describe('contacts.css phone head band (DEC-995)', () => {
+describe('contacts.css phone head band (src/decisions-data/DEC-919.md)', () => {
   it('has at least one max-width:700px block, and the six new rules all live inside the LAST one', () => {
     expect(BLOCKS.length).toBeGreaterThan(0);
     const last = BLOCKS[BLOCKS.length - 1]!;

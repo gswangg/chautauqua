@@ -1,4 +1,4 @@
-// SegmentPillStrip render coverage (task r1-c, DEC-994/DEC-919): the
+// SegmentPillStrip render coverage (task r1-c, src/decisions-data/DEC-919.md): the
 // Contacts 390 landing head's second strip -- the saved-segment filter
 // re-lined as All / `name · count` pills. Counts are handed in, never
 // recomputed (DEC-710); the segment population only asserts absence once

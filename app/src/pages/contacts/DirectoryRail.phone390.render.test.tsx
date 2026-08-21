@@ -1,6 +1,6 @@
-// DEC-996 (task r1-e): the DirectoryRail stands down at 390 -- the frame's
+// src/decisions-data/DEC-919.md (task r1-e): the DirectoryRail stands down at 390 -- the frame's
 // phone body is the scrolling headerless card list alone, with no rail
-// beneath it. That stand-down is legal only under DEC-919's carve-out ("a
+// beneath it. That stand-down is legal only under src/decisions-data/DEC-919.md's carve-out ("a
 // hidden control
 // with no offset is still on the screen" -- a section can go display:none
 // ONLY if every capability it carried has a surviving full-screen path
@@ -84,7 +84,7 @@ afterEach(() => {
   resetEventsCacheForTests();
 });
 
-describe('DEC-996: DirectoryRail stands down at 390, its capabilities survive elsewhere', () => {
+describe('src/decisions-data/DEC-919.md: DirectoryRail stands down at 390, its capabilities survive elsewhere', () => {
   it('the Segments · N and Duplicates · N tab chips are both present at 390 (the surviving paths for Saved segments and Possible duplicates)', async () => {
     stubPhoneMatchMedia();
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);

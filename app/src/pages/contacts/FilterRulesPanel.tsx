@@ -42,7 +42,7 @@ const OP_OPTIONS: { value: SegmentRule['op']; label: string }[] = [
 
 const CUSTOM_FIELD_CHOICE = 'custom';
 
-// DEC-992: the 390 head's rule strip projects each ACTIVE rule as a
+// src/decisions-data/DEC-919.md: the 390 head's rule strip projects each ACTIVE rule as a
 // dismissible chip, in the SAME vocabulary the desktop builder uses for its
 // own field/op selects (FIELD_LABELS / OP_OPTIONS above) -- not
 // segments.ts's describeRules, which renders `=`/`≠` and quotes for the
@@ -164,7 +164,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           "+ Rule" chip, not the desktop panel's plain-text "Add a rule" --
           a shared idiom (this tertiary button) is still scoped by the
           frame that draws it. Both controls render unconditionally (the
-          capability renders twice in the DOM, once on screen, DEC-919's
+          capability renders twice in the DOM, once on screen, src/decisions-data/DEC-919.md's
           established shape); contacts.css's terminal max-width:700px
           block is the ONLY place that decides which one is visible, so
           exactly one copy is ever on screen at a given width. Same
