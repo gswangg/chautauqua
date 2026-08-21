@@ -35,4 +35,31 @@
 // replaced with the shared import; every assertion in every touched file
 // still passed once routed through the real stripper -- no false receipt
 // was found in this batch. Ceiling lowered by exactly 6, 102 -> 96.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 96;
+// v12m-w19-b (wave 19, task w19-b, DEC-374/DEC-613 drain continued):
+// converted 8 more local strippers to the shared import --
+// app/src/pages/contacts/contacts-head-band-390.test.ts,
+// app/src/pages/contacts/contacts-rule-chips-390.test.ts,
+// app/src/pages/overview/overview-phone-floor.test.ts,
+// app/src/pages/overview/overview-link-register.test.ts,
+// app/src/pages/agenda/agenda-phone-floor.test.ts,
+// app/src/phone-dock-desktop-hidden.test.ts,
+// app/src/phone-layer-source-order.test.ts,
+// app/src/pages/page-sheet-source-order.test.ts. Deliberately left alone:
+// app/src/pages/contacts/contacts-segment-pills-390.test.ts (its private
+// stripper blanks comments byte-for-byte in place so downstream offsets
+// stay valid indices into the RAW file, e.g. `CSS.slice(block.start,
+// block.end)`; the shared helper only preserves newline COUNT through a
+// multi-line comment, not column width, so swapping it in would desync
+// every such offset), and test/breakpoint-conformance.test.ts,
+// test/control-class-conformance.test.ts, test/dialog-conformance.test.ts
+// (each also strips `//` line comments over .tsx/.ts sources -- a real
+// capability the shared helper, CSS-`/* */`-only, does not have; dropping
+// it would silently stop stripping line comments, not just change offsets).
+// Every touched file's own tests still passed once routed through the real
+// stripper -- no false receipt was found in this batch. All 8 converted
+// files were confirmed (by forcing this ceiling to -1 and reading the
+// offender-list detail) to be counted in the pre-conversion measurement.
+// Re-measured offender count after conversion: 91 -- not 96-8=88, so
+// re-derive from the real number, never arithmetic on the batch size.
+// Ceiling lowered to match: 96 -> 91.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 91;

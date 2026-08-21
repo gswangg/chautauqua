@@ -26,23 +26,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLES_PATH = join(HERE, 'styles.css');
-
-/** Strips /* ... *\/ block comments so comment prose can't be mistaken for
- *  rule bodies or confuse the brace matcher. Replaces each stripped
- *  comment with the SAME number of newlines it contained (and nothing
- *  else) so every line number computed against the stripped source still
- *  matches the original file -- a naive strip-to-empty-string shifts every
- *  line after a multi-line comment upward and silently corrupts every
- *  downstream `line N` citation. */
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, (match) => {
-    const newlineCount = (match.match(/\n/g) ?? []).length;
-    return '\n'.repeat(newlineCount);
-  });
-}
 
 interface TopLevelBlock {
   /** Raw selector or at-rule prelude, e.g. ".chq-main" or "@media (max-width: 700px)". */

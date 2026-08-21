@@ -33,6 +33,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'overview.css');
@@ -48,11 +49,6 @@ function allTsxFiles(root: string): string[] {
     out.push(join(entry.parentPath, entry.name));
   }
   return out;
-}
-
-/** Strips `/* … *\/` comments. */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Every top-level construct (a plain rule OR a whole `@media { ... }`
