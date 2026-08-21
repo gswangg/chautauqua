@@ -437,6 +437,7 @@ export function AgendaPage() {
                 dayStartMin={DAY_START_MIN}
                 dayEndMin={DAY_END_MIN}
                 gridMin={GRID_MIN}
+                breaks={dayBreaks}
                 onPlace={handlePlace}
                 onUnschedule={handleUnschedule}
                 onAutoSchedule={handleAutoSchedule}

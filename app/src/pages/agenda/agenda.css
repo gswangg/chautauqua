@@ -1145,6 +1145,7 @@
 .chq-phone-slot-card-title,
 .chq-phone-slot-clash,
 .chq-phone-slot-clash-item,
+.chq-phone-slot-clash-move,
 .chq-phone-slot-free,
 .chq-phone-slot-free-label,
 .chq-phone-slot-free-length,
@@ -1425,6 +1426,28 @@
 
   .chq-phone-slot-clash .chq-phone-slot-card-title {
     color: var(--chq-on-ink);
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:171 -- the clash card's one-tap
+     resolution: `background:#F4F1E8; color:#1B1D17; border-radius:5px;
+     min-height:44px; display:flex; align-items:center;
+     justify-content:center; font-size:13px; font-weight:700` -- the
+     inverse fill of the ink card it sits in, at the 44px floor with
+     centred flex and non-zero horizontal padding (DEC-895). */
+  .chq-phone-slot-clash-move {
+    background: var(--chq-on-ink);
+    color: var(--chq-ink);
+    border: none;
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
   }
 
   .chq-phone-slot-free {
