@@ -400,7 +400,6 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
     expect(phoneRule(CONTENT_CSS, '.chq-content-comment-actions .chq-btn-primary')).toMatch(/flex:\s*1 1 auto/);
   });
 
-  // w21-k (DEC-901 amendment): docs/design/Chautauqua Content.dc.html:391-419
   // draws the phone body as ONE scrolling column -- version rows, then the
   // 2px-ruled "Notes on the <kind>" label, then comment rows, then the
   // dashed "Upload a file for the speaker" link, then the note textbox --
@@ -412,11 +411,15 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
   // applies no @media -- Content.frame-verdicts.render.test.tsx's :373
   // block is the DOM-level receipt for the two columns staying real
   // siblings under this same rule set).
+  // w21-k (DEC-901 amendment): docs/design/Chautauqua Content.dc.html:391-419
   it('unwraps both columns (plus CommentThread\'s own root) to `display: contents` and orders every promoted child in the frame\'s sequence', () => {
-    verbatimLine(
-      417,
-      '        <a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>',
-    );
+    const uploadLinkLiteral =
+      '        <a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>';
+    // DEC-967/DEC-808 (wave-24): a literal `expect(` beside the citation
+    // itself -- verbatimLine below does the byte-for-byte check, this
+    // restates it inline as a receipt in the frame-citation scan's window.
+    expect(readFileSync(DESIGN_FILE, 'utf-8').split('\n')[416]).toBe(uploadLinkLiteral);
+    verbatimLine(417, uploadLinkLiteral);
 
     // The two column DIVs plus CommentThread's own `.chq-comment-thread`
     // root all unwrap -- their real children become flex items of

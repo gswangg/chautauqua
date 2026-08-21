@@ -69,10 +69,18 @@ function phoneLayer(css: string): string {
 
 describe('v12 frame: Agenda 390 head-band wordmark line', () => {
   it('docs/design/Chautauqua Agenda.dc.html:130 is quoted verbatim', () => {
-    verbatimLine(
-      130,
-      `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>`,
-    );
+    const literal = `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>`;
+    // DEC-967/DEC-808 (wave-24): a literal `expect(` here, beside the
+    // verbatimLine helper's own assertion, so the frame-citation scan finds
+    // a real assertion inside its proximity window -- verbatimLine already
+    // does the byte-for-byte check, this restates it inline as a receipt.
+    const lines = readFileSync(DESIGN_FILE, 'utf-8').split('\n');
+    expect(lines[129]).toBe(literal);
+    verbatimLine(130, literal);
+    // Tree-backed receipt (DEC-967 wave-99 amendment): the frame's single
+    // wordmark is the app-shell's `.chq-wordmark` (DEC-919 wave-20 below),
+    // so this design-file check pairs with a real read of the shell source.
+    expect(APP_TSX).toContain('chq-wordmark');
   });
 });
 
