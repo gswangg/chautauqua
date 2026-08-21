@@ -170,3 +170,22 @@ double up above a drill's own head band; the outer app shell chrome
 above `.chq-page` for Contacts is a separate register surface. Recorded
 here as a register fact about where the decision lives, not as a claim
 on anyone's calendar (DEC-518).
+
+## Per-frame render verdicts (w13-ri, DEC-976 wave-157)
+
+Contacts had FIVE width:390px frames in `docs/design/Chautauqua
+Contacts.dc.html` and none had ever been rendered against a per-frame
+verdict before this task — several carried the CLOSED claims above,
+closed on grep evidence rather than a render. Receipts for every row below
+live in `app/src/pages/Contacts.frame-verdicts.render.test.tsx`, entered
+through the real route each frame is actually reached by (`ContactsPage`
+for the four `/contacts` frames, `MergePage` for its own `/contacts/merge`
+route) — never a sub-component mounted directly.
+
+| Frame | Verdict | What diverges |
+| --- | --- | --- |
+| `Chautauqua Contacts.dc.html` "Contacts" (390 landing) | DIVERGES | The frame draws a headerless card list (name / company·role / tags, one boxed "Email" action per row) under a search box, an "All of … + Rule" chip row and an All/Speakers/Reviewers pill row, ending in a shell tab-bar footer. The actual read is the SAME desktop `<table class="chq-table chq-contacts-table">` at every width — a checkbox column, "Name and email"/"Company"/"Labels" header row, and a per-row "Open" action instead of "Email" — plus the full desktop `FilterRulesPanel` rule builder above it, not the frame's chip strip. |
+| `Chautauqua Contacts.dc.html` "Contact · 390" | DIVERGES | The frame draws its own full-screen route: a `‹ Contacts` back link and nothing else in the head band. The actual screen is `ContactDrawer`, mounted through the shared `ModalFrame` as a `role="dialog"` portal — an H2 title (not the frame's own H1) and an always-on "Close" button beside the back link that the frame never draws. The two-control dock below (`Email <name>` / `Edit`, DEC-959) matches exactly, as does the title-register gap already filed above (Finding 4). |
+| `Chautauqua Contacts.dc.html` "Pipeline · 390" | MATCHES | Back link, H1, the "N people" caption, the five-stage chip strip, the per-row card ending in a "Move ›" control, and the "Add someone"/"Filter" dock all render exactly as drawn. |
+| `Chautauqua Contacts.dc.html` "Import CSV · 390" | DIVERGES | The frame draws a `‹ Contacts` back link in the head band (`:489`). `ImportWizard` never passes `ModalFrame` a `backLink` prop, so only the shared "Close" control renders — no back link at all. The one-column-per-screen pager body (eyebrow, column name, samples, "Import it as" rule, radio targets) and its "Next column"/"Skip" dock match, per findings 1-2 (RESOLVED, DEC-663 wave-108) above. |
+| `Chautauqua Contacts.dc.html` "Merge · 390" | DIVERGES | The frame body goes straight from the head band into the field-by-field compare rows — no picker block. `MergePage` renders an additional `.chq-contacts-merge-picks` radio-list block (one radio per contact, with email/company/title) above the compare rows, with no frame counterpart. The consequence box (Finding 3 above) is STALE as currently written: `w2-c` folded the rule/impact text into ONE `<p>`, not the two `<p>`s the finding still describes — the per-field keep/drop pair and the "Merge them"/"Not a duplicate" footer both match as drawn. |
