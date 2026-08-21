@@ -92,6 +92,59 @@ pair). This is a ruling, not a code change beyond what the finding's own
 "What was built" section already shipped (the CSS-only dock geometry) —
 cite DEVIATIONS.md §3 rather than claiming new code. Closed.
 
+## 5. w29-e: three new gaps found reviewing the whole 594-673 extent -- the per-criterion "Options"/"Weight" eyebrows have no phone text counterpart, and both consequence lines (:640, :662) use different grammar than the frame draws
+
+`app/src/pages/review/PlanEditor.frame390.render.test.tsx` grades the whole
+"Plan editor · 390" extent (24 drawn strings) with `verbatimLine` citations
+for every one of them plus render assertions against the shipped tree.
+Twenty-one of the 24 already match (accounting for the pre-existing,
+already-ruled divergences: `Reviewers`→`Who reviews what`, `Swap`→`Remove`,
+the dock's Duplicate/Save pair — all cited above / in
+`docs/design/DEVIATIONS.md`). Three do not, and none of the three is fixable
+inside this task's OWNS list (`PlanEditor.frame390.render.test.tsx`, this
+audit file, `review.css`'s terminal phone block only) — DEC-385 wave-29
+condition (4) ("touches only files the lane OWNS") fails for all three
+because the fix is in `PlanEditor.tsx`, which this task does not own.
+
+**(a) `:612`/`:627` "Options"/"Weight" eyebrows are not phone-rendered
+anywhere.** The frame draws these as visible per-criterion labels beside the
+options list and the weight input. The built tree carries those exact words
+in exactly one place — `.chq-review-criteria-head-row`
+(`PlanEditor.tsx:1799`), an `aria-hidden="true"` desktop column-header row
+rendered *unconditionally*, not gated by `isPhone` and not scoped per
+criterion. A screen reader user on phone never hears "Options" or "Weight"
+named before the corresponding control. Disposition: needs a real fix in
+`PlanEditor.tsx` (a phone-only, per-criterion eyebrow beside each options
+block / weight span, mirroring the already-shipped `chq-review-criteria-
+count-phone`/`chq-review-reviewers-count-phone` pattern) — filed here, not
+built.
+
+**(b) `:640`'s second clause is a different sentence.** Frame: "N of about M
+· the two scored ones average by weight". Shipped
+(`PlanEditor.tsx:2241`): "N of about M · more than that and reviewers rush
+the last ones" (`chq-review-criteria-cap-notice`). The prefix matches; the
+consequence named is entirely different copy, describing a soft-cap warning
+rather than a scoring-mechanics fact. Not obviously a bug — the shipped
+sentence is plausible standalone copy — but it is not what the frame draws,
+and no `DEVIATIONS.md` entry rules on it. Disposition: a design call
+(replace the shipped clause, or bless the divergence), out of this task's
+scope to make.
+
+**(c) `:662` is a different sentence, not just different numbers.** Frame:
+"Would assign N of M · you confirm before anything saves" — a preview-count
+sentence. Shipped (`PlanEditor.tsx:2334`, `capRowSummaryLine` ->
+`distributeSummaryText`): "N talks · M reviews needed at K each · R
+reviewers" — a capacity-summary sentence with no "would assign" framing and
+no explicit confirm-before-save language. `DEC-745 wave-72`'s own comment at
+`PlanEditor.tsx:263-266` states this grammar is deliberate (`distributeSummaryText`
+is shared with the post-preview confirm panel and was chosen over the
+frame's wording), so this is very likely an already-made design call that
+was never logged in `DEVIATIONS.md` — filed here so a future ruling pass
+can either write it down there or correct it back toward the frame.
+
+None of the three block anything else; the extent's remaining 21 strings
+are conformant. Not resolvable within this task's file ownership.
+
 ## What was built (for completeness, not a gap)
 
 - Criteria list: stacked cards via `flex-wrap` (no DOM reorder), the
