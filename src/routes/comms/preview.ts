@@ -6,7 +6,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/comms";
-import { preflightRender, spendsPerSubmissionVars } from "../../domain/compose";
+import { preflightRender, spendsPerSubmissionContent } from "../../domain/compose";
 import { renderEmailHtml } from "../../mail/shell";
 import { requireOwnedEvent } from "./shared";
 import { collapsedRecipientSkips, dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
@@ -63,8 +63,10 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   // this preview actually renders, never a precedence guess — the same
   // computation send.ts runs, so the preview count and the send are the
   // same list by construction.
-  const perSubmissionVarsSpent =
-    spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
+  // DEC-936 (wave-22 amendment): spendsPerSubmissionContent folds attachIcs into the same
+  // predicate send.ts now uses, so the preview and the send never disagree
+  // about whether an .ics-bearing compose collapses.
+  const perSubmissionVarsSpent = spendsPerSubmissionContent(input);
   const { targets, withheld } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
@@ -89,20 +91,31 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   // but it is never a fabricated number: it is the same arithmetic send.ts
   // would run against the same input right now.
   void DEC_238;
+  // DEC-936 (wave-22 amendment): same attachment-identity thread as send.ts — see its comment.
+  // Not part of the JSON wire shape (`items`/`plan` below never carry
+  // `attachmentKey`), only the planner's internal input.
+  const rendered = result.rendered.map((r) => ({
+    ...r,
+    attachmentKey: input.attachIcs ? r.submissionId : "",
+  }));
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(Date.now()),
   );
-  const { toSend, skipped: plannedSkips } = planComposeSends(result.rendered, recentlySent);
+  const { toSend, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);
   // DEC-936 (wave-21 amendment): the contact-collapse held its rows back
   // BEFORE this render, so they are absent from `result.rendered` and the
   // planner never saw them. They are still recipients this batch withheld, so
   // they join the same named list — collapse skips first, then the planner's
   // own two stages, mirroring the order the decisions were actually made in.
   const skipped = [...collapsedRecipientSkips(withheld), ...plannedSkips];
-  const toSendSet = new Set(toSend);
+  // DEC-936 (wave-22 amendment): keyed by (submissionId, email) rather than object identity —
+  // `toSend`'s rows are the `rendered` copies (each carrying `attachmentKey`),
+  // not the same object references as `result.rendered` below, so an
+  // identity-based Set would never match.
+  const toSendKeySet = new Set(toSend.map((r) => `${r.submissionId}:${r.email.trim().toLowerCase()}`));
   const skipByKey = new Map(skipped.map((s) => [`${s.submissionId}:${s.email.trim().toLowerCase()}`, s]));
 
   // DEC-037 amendment: the preview's `html` field renders through the exact
@@ -116,10 +129,11 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
     // Per-item disposition: which of send's two outcomes this recipient
     // would land in right now, so the SPA can render a per-row skip badge
     // without re-deriving the dedupe decision client-side.
-    if (toSendSet.has(r)) {
+    const itemKey = `${r.submissionId}:${r.email.trim().toLowerCase()}`;
+    if (toSendKeySet.has(itemKey)) {
       return { ...withFeedback, willSend: true as const };
     }
-    const skip = skipByKey.get(`${r.submissionId}:${r.email.trim().toLowerCase()}`)!;
+    const skip = skipByKey.get(itemKey)!;
     return { ...withFeedback, willSend: false as const, skipReason: skip.reason, retryAtIso: skip.retryAtIso };
   });
 

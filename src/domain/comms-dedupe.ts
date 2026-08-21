@@ -30,6 +30,19 @@ export function dedupeKey(toEmail: string, subject: string): string {
   return JSON.stringify([toEmail.trim().toLowerCase(), subject]);
 }
 
+/** DEC-936 (wave-22 amendment): the stage-1 (intra-batch) key — (lower-cased, trimmed email,
+ * exact rendered subject, attachmentKey). Stage 1 alone grows an
+ * attachmentKey term beyond dedupeKey's (email, subject) pair: two rendered
+ * rows for one contact can share an identical subject+body (no
+ * PER_SUBMISSION_MERGE_VARS token spent) while still attaching two DIFFERENT
+ * per-submission .ics invites, and stage 1 must not collapse them.  Stage 2
+ * (already_sent_recently) stays on plain dedupeKey — email_log records no
+ * attachment identity, so the cross-call window can only honestly be judged
+ * at the granularity the store keeps. */
+export function intraBatchKey(toEmail: string, subject: string, attachmentKey: string): string {
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, attachmentKey]);
+}
+
 /** A recipient the dedupe planner held back, named individually (never a
  * bare count) — mirrors app/src/pages/comms/types.ts's
  * ComposeSkippedRecipient, which is the wire shape this is serialized as. */
@@ -80,7 +93,7 @@ export function collapsedRecipientSkips(
  * multi-recipient batch is judged against one consistent read of
  * email_log, not interleaved with this call's own sends). */
 export function planComposeSends<
-  T extends { email: string; name: string; subject: string; submissionId: string },
+  T extends { email: string; name: string; subject: string; submissionId: string; attachmentKey?: string },
 >(
   rendered: readonly T[],
   recentlySent: ReadonlyMap<string, number>,
@@ -89,7 +102,11 @@ export function planComposeSends<
   const seenInBatch = new Set<string>();
   const afterIntraBatch: T[] = [];
   for (const r of rendered) {
-    const key = dedupeKey(r.email, r.subject);
+    // DEC-936 (wave-22 amendment): stage 1 keys on attachment identity too — see intraBatchKey.
+    // `attachmentKey` defaults to "" for a caller that never sets it (e.g. a
+    // non-ics compose), which reduces this to plain dedupeKey(email,subject)
+    // behaviour, unchanged from before this amendment.
+    const key = intraBatchKey(r.email, r.subject, r.attachmentKey ?? "");
     if (seenInBatch.has(key)) {
       skipped.push({ email: r.email, name: r.name, submissionId: r.submissionId, reason: "duplicate_in_batch" });
       continue;

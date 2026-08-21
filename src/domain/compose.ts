@@ -108,6 +108,29 @@ export function spendsPerSubmissionVars(text: string): boolean {
   return false;
 }
 
+/** DEC-936 (wave-22 amendment): whether this compose's rendered CONTENT differs meaningfully
+ * across one contact's submissions — either the text spends a
+ * PER_SUBMISSION_MERGE_VARS token (spendsPerSubmissionVars), or the send
+ * attaches a per-submission .ics invite (attachIcs). An .ics attachment is
+ * per-submission composed content exactly like {talk_title}: two accepted
+ * sessions for one speaker with a static subject/body but attachIcs=true
+ * must not collapse to one row (src/domain/compose.ts's expandRecipients),
+ * because the two rows differ in the one thing this send actually attaches.
+ * ONE source for the collapse predicate (DEC-613/DEC-180) — both
+ * src/routes/comms/send.ts and src/routes/comms/preview.ts call this instead
+ * of re-deriving the two-term OR by hand. */
+export function spendsPerSubmissionContent(input: {
+  subjectTemplate: string;
+  bodyTemplate: string;
+  attachIcs?: boolean;
+}): boolean {
+  return (
+    spendsPerSubmissionVars(input.subjectTemplate) ||
+    spendsPerSubmissionVars(input.bodyTemplate) ||
+    input.attachIcs === true
+  );
+}
+
 /**
  * Expands the selected submissions into one recipient row per
  * (contactId, submissionId) — every participant on every selected
