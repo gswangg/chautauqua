@@ -76,10 +76,10 @@ this task measures, it does not touch `app/src/pages/content/**.css` or
 
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
-| `:198` Content (worklist) | DIVERGES | The frame draws each row as one stacked card — status pill, then title, then "speaker · file, when" on one line, then an Approve/Open action row, with no selection control anywhere. The real row is a `<table>` `<tr>` whose first cell is a per-row selection checkbox (DEC-825 amendment) ahead of the Session cell, with Speaker / Latest file / Status as three separate cells rather than one combined meta line, and status trailing the title rather than leading it. |
-| `:247` Content · selecting | DIVERGES (narrowed, DEC-967 wave-20) | The row's summary-line clause is RETIRED: `app/src/pages/content/ContentApp.tsx``{!submissionId && view === 'worklist' && !phoneSelectMode && counts.needs_decision !== null && reUploadedCount !== null && (` carries the `!phoneSelectMode` guard this clause said was missing, and the second `{!submissionId && view === 'worklist' && !phoneSelectMode && (` clause beneath it guards the Select toggle the same way — the idle summary line and the "N selected / All N / Done" meta row (`app/src/pages/content/ContentApp.tsx``{!submissionId && view === 'worklist' && phoneSelectMode && (`) are mutually exclusive, never mounted together (landed w15-ta, DEC-825 wave-159; pinned by `app/src/pages/content/ContentApp.worklist-390.render.test.tsx`). The row's other two clauses still hold: the per-row check-mark glyph is still the SAME plain checkbox input the rest-state row uses (`app/src/pages/content/SessionList.tsx``className="chq-check"` inside the worklist `<thead>`/row cells — matches in spirit, not in glyph), and the docked "Approve N" footer still renders as a `.chq-bulkbar` flex sibling of the `<table>` inside `.chq-content-worklist` (`app/src/pages/content/SessionList.tsx``bar is the LAST flex child of \`.chq-content-worklist\`: mounted ahead`), not as the header block's own footer band. |
-| `:338` Files · 390 | DIVERGES | Chip-strip vocabulary: the frame's plain "All" chip reads "All types" (SessionList's tab-strip wording carried over unchanged), and the frame's "Video · 4" chip reads "Recording · 4" (the domain kind is `recording`, not `video` — `DELIVERABLE_LABELS`, `app/src/pages/content/types.ts`). The stat line matches in shape but always carries one decimal place ("412.0 MB", not the frame's bare "412 MB" — `formatBytes`, `src/domain/files.ts`, always calls `.toFixed(1)`). The frame reserves "Download all"/"Search" for the sticky footer dock only (:365-367); the real header row (`.chq-content-files-header-row`) ALSO mounts a scoped "Download …(.zip)" secondary beside the stat line — a second copy of the same capability (a deliberate wave-125 amendment per the component's own comment), not what the frame draws. The footer dock itself DOES match: a primary "Download …(.zip)" beside a bordered "Search" secondary, both min-height 48px. |
-| `:373` Session · deliverable | DIVERGES | The header (back link, H1 title, "Speaker · CODE" subtitle, content-status band with a same-row Approve) matches. The frame stacks ONE scrolling column below it — version rows, then a 2px-ruled "Notes on the &lt;kind&gt;" label, then comment rows, then the "Upload a file for the speaker" link, then the note textbox, all as later siblings of one shared list. The real body instead splits into two side-by-side DOM columns (`.chq-content-files-col` / `.chq-content-comments-col`, DOM siblings of `.chq-content-group-body`) — versions plus the upload zone in the left column, "Notes on the slides" plus the comment thread in the right column — never one linear stack. |
+| `:198` Content (worklist) | **CLOSED** (task w25-h, re-verified against tree) | See "Update (wave 25, task w25-h)" below. |
+| `:247` Content · selecting | **CLOSED** (task w25-h, re-verified against tree) | See "Update (wave 25, task w25-h)" below. |
+| `:338` Files · 390 | **CLOSED** (task w25-h, re-verified against tree) | See "Update (wave 25, task w25-h)" below. |
+| `:373` Session · deliverable | **CLOSED** (task w25-h, re-verified against tree) | See "Update (wave 25, task w25-h)" below. |
 
 **Nothing in this list is a phone-block-CSS or markup-order fix.** Every
 row is a genuine architectural/content gap (a table-row worklist vs. a
@@ -255,3 +255,135 @@ byte-format clause that no longer holds).
   carry (DEC-976: the pin moves with the fix). The row stays **DIVERGES**
   only for the still-real header-duplicate-control clause; the two
   vocabulary clauses that motivated the original citation are retired.
+
+<!-- w25-h (DEC-976 wave-25) -->
+
+## Update (wave 25, task w25-h): all four rows CLOSED, each re-verified against the tree before writing
+
+Per the field guide ("a ledger row is a claim about the tree, not a
+receipt") and the planner's own note that the three spot-checked rows
+below read STALE, this task re-derived every one of the four table rows
+above against `HEAD` on this branch itself before converting a single
+Verdict cell — none of the four claims below is inherited from the w17-c
+or wave-21 prose earlier in this file, though all four independently
+confirm it.
+
+- **`:198` Content (worklist) — CLOSED.** `app/src/pages/content/
+  content.css`'s terminal `@media (max-width: 700px)` block makes
+  `.chq-content-worklist .chq-content-table tr.chq-content-row` a wrapping
+  flex card, quoted verbatim:
+
+  ```
+  .chq-content-worklist .chq-content-table tr.chq-content-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 9px;
+    row-gap: 9px;
+  }
+  ```
+
+  with the per-cell `order` sequence status (`td:nth-child(5)`, `order: 2`)
+  ahead of the session title (`td:nth-child(2)`, `order: 3`), and speaker
+  (`td:nth-child(3)`, `order: 4`) sharing one flex line with latest-file
+  (`td:nth-child(4)`, `order: 5`) via a `::before { content: '·'; }`
+  separator — the frame's own `{{ row.speaker }} · {{ row.file }}, {{
+  row.when }}` one-line meta (`docs/design/Chautauqua Content.dc.html:220`).
+  This is the same DOM-fact-vs-screen-fact distinction
+  `docs/design/audit/submissions-v12.md`'s clause-(b) closure for its own
+  `:137` phone row uses: a `<table>`/`<tr>` ELEMENT that a `max-width:
+  700px` media rule (DEC-385, single-direction) reflows into the frame's
+  card is a DOM fact, not a screen fact — the row draws as the frame's
+  card at 390 regardless of the tag it is built from. Receipt:
+  `app/src/pages/content/ContentApp.download-all-flex.receipt.render.test.tsx`'s
+  first `describe` block (`"content.css 390: worklist meta line is a
+  wrapping flex line-box..."`) pins this exact rule shape byte-for-byte
+  against the same design-file line quoted above.
+
+- **`:247` Content · selecting — CLOSED.** `app/src/pages/content/
+  ContentApp.tsx` carries the `!phoneSelectMode` guard on both clauses the
+  row's original divergence named, quoted verbatim:
+
+  ```
+  {!submissionId && view === 'worklist' && !phoneSelectMode && counts.needs_decision !== null && reUploadedCount !== null && (
+  ```
+
+  and
+
+  ```
+  {!submissionId && view === 'worklist' && !phoneSelectMode && (
+  ```
+
+  against the "N selected / All N / Done" meta row's own guard,
+
+  ```
+  {!submissionId && view === 'worklist' && phoneSelectMode && (
+  ```
+
+  — the idle summary line and the selecting-mode meta row are mutually
+  exclusive, never mounted together, exactly as the frame's "selecting"
+  390 cut draws only the meta row and the "rest" cut draws only the
+  summary line. Receipt: `app/src/pages/content/
+  ContentApp.worklist-390.render.test.tsx`'s "rest summary vs selecting
+  meta row are exclusive" describe block, exercised through `ContentApp`'s
+  real `/content` route.
+
+- **`:338` Files · 390 — CLOSED.** Every clause this row ever carried is
+  now built:
+  - Chip vocabulary is a per-surface register, not a per-width one:
+    `app/src/pages/content/types.ts`'s `LIBRARY_KIND_LABELS` gives
+    `recording: 'Video'` for the files library, and `FilesLibrary.tsx`
+    renders `isPhone ? 'All' : 'All types'` for the leading chip, split by
+    width as `FilesLibrary.kind-vocabulary.render.test.tsx` pins against a
+    `verbatimLine` citation of the frame's own `:344` "All" chip markup.
+  - The "412.0 MB" claim this row carried was itself wrong: `src/domain/
+    files.ts`'s `formatBytes` renders an integral byte count bare —
+    `Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)` —
+    so "412 MB" already matches the frame's :342 stat line without a
+    trailing ".0".
+  - The header's duplicate "Download …(.zip)" control is RE-LINED away,
+    not left doubled: content.css's terminal phone block hides
+    `.chq-content-files-download-all-wrap` wholesale
+    (`display: none;`), leaving the identical capability live only in
+    `.chq-phone-dock`'s primary `chq-btn-primary` "Download all" button —
+    matching the frame's own reservation of the control for the footer
+    dock alone (`docs/design/Chautauqua Content.dc.html:342` draws only
+    the file/size summary text at the header, `:360` draws the dock's
+    primary). Receipt: `app/src/pages/content/
+    ContentApp.download-all-flex.receipt.render.test.tsx`'s second
+    `describe` block (`"Files header 'Download all' is RE-LINED to the
+    footer dock alone, never doubled"`), which cites both frame lines
+    verbatim before asserting the CSS.
+
+- **`:373` Session · deliverable — CLOSED.** content.css's terminal
+  `@media (max-width: 700px)` block flattens `.chq-content-group-body`
+  into one ordered flex column, quoted verbatim:
+
+  ```
+  .chq-content-group-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-content-group-body > .chq-content-files-col,
+  .chq-content-group-body > .chq-content-comments-col,
+  .chq-content-group-body .chq-comment-thread {
+    display: contents;
+  }
+  ```
+
+  hoisting both DOM columns' real children (plus `CommentThread`'s own
+  children) into flex items of the shared parent, then placing each with
+  `order` in the frame's drawn sequence (deliverables label → chip strip →
+  version list → notes label → comment list → upload notice → upload zone
+  → comment composer). The desktop two-column DOM is untouched above this
+  block's own 700px ceiling (DEC-385, single-direction). Receipt:
+  `app/src/pages/content/content-phone-frames.test.ts`'s "Session ·
+  deliverable" describe block, which reads every `order:` declaration this
+  block carries for the promoted grandchildren and asserts the sequence
+  against a DEC-967 `verbatimLine` citation of the frame's own dashed
+  "Upload a file for the speaker" link (`docs/design/Chautauqua
+  Content.dc.html:417`).
+
+No open clause remains against any of Content's four `width:390px`
+frames.
