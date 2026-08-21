@@ -186,6 +186,15 @@ function baseFixture(): CampaignFile[] {
       path: "test/pack-declaration-vocabulary.scan.test.ts",
       content: "export const PACK_VOCABULARY_OFFENDERS_CEILING = 2;",
     },
+    // wave-146 (task w21-d, DEC-613/DEC-989 amendment): CSS_COMMENT_COPY_LEAK_CEILING
+    // (the css-comment product-copy leak lens) landed in scripts/exit-predicate.ts's
+    // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES without its fixture row --
+    // added on the same terms as its neighbours above, arbitrary value,
+    // faithful shape.
+    {
+      path: "test/css-comment-copy-leak.scan.test.ts",
+      content: "export const CSS_COMMENT_COPY_LEAK_CEILING = 6;",
+    },
   ];
 }
 
@@ -265,6 +274,9 @@ function allGreenFixture(): CampaignFile[] {
     }
     if (f.path === "test/pack-declaration-vocabulary.scan.test.ts") {
       return { ...f, content: "export const PACK_VOCABULARY_OFFENDERS_CEILING = 0;" };
+    }
+    if (f.path === "test/css-comment-copy-leak.scan.test.ts") {
+      return { ...f, content: "export const CSS_COMMENT_COPY_LEAK_CEILING = 0;" };
     }
     return f;
   });
@@ -346,7 +358,12 @@ describe("buildCampaignReport", () => {
     // this pin -- merge train added both. Re-derived by running
     // buildCampaignReport over baseFixture() at HEAD (28 rows), not by
     // self-comparing report.rows' own length: 27 -> 28.
-    expect(report.rows).toHaveLength(28);
+    // wave-146 (task w21-d, DEC-613/DEC-989 amendment): CSS_COMMENT_COPY_LEAK_CEILING
+    // (the css-comment product-copy leak lens) landed in scripts/exit-predicate.ts's
+    // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES without its fixture row or
+    // this pin -- added both above. Re-derived by running buildCampaignReport
+    // over baseFixture() at HEAD (29 rows): 28 -> 29.
+    expect(report.rows).toHaveLength(29);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
