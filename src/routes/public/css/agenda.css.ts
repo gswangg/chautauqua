@@ -337,7 +337,8 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   /* DEC-919: the 390 day strip's terminal "My schedule · N" pill
      (agenda-controls.tsx DaySwitcher) is phone-only -- the 1600 desktop
      frame never draws it (docs/design/Chautauqua Public and Portal.dc.html:132
-     "Agenda · 1600" has no such pill in its day-switcher row). Hidden by
+     \`<span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Agenda · 1600</span>\`
+     has no such pill in its day-switcher row). Hidden by
      default (wide-first); restored to flex only inside this sheet's
      terminal <=700px block below (DEC-385 single-direction). */
   .chq-pub-my-schedule-pill {

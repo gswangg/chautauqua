@@ -121,8 +121,9 @@ export function DaySwitcher(props: {
           </a>
         );
       })}
-      {/* docs/design/Chautauqua Public and Portal.dc.html:381 -- the 390 day
-          strip's terminal member, a fourth pill idle at every width (the
+      {/* docs/design/Chautauqua Public and Portal.dc.html:381
+          `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">My schedule · 4</span>`
+          -- the 390 day strip's terminal member, a fourth pill idle at every width (the
           active state belongs to the day filter above, never to this one).
           Phone-only: the 1600 desktop frame (:132 "Agenda · 1600") never
           draws it -- "My schedule" there is the header nav's own <a>

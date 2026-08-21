@@ -311,8 +311,6 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
     expect(phone).toMatch(/border-color:\s*var\(--chq-ink\)/);
   });
 
-  // docs/design/Chautauqua Public and Portal.dc.html:381
-  // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">My schedule · 4</span>`
   // DEC-919: the day strip's terminal "My schedule · N" pill.
   describe("the terminal 'My schedule · N' pill (DEC-919)", () => {
     const EVENT: PublicEvent = {
@@ -339,6 +337,8 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
     );
 
     it("is present, idle-state (never chq-pub-day-pill-active), and links to the SAME /schedule surfacePath the header nav renders (DEC-613: one path derivation)", () => {
+      // docs/design/Chautauqua Public and Portal.dc.html:381
+      // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">My schedule · 4</span>`
       expect(markup).toMatch(
         /<a class="chq-pub-day-pill chq-pub-my-schedule-pill" href="\/e\/conf\/schedule">/,
       );
