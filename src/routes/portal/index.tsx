@@ -557,7 +557,7 @@ function SubmissionDetailPage(props: {
       <div class="chq-portal-back-row">
         <PortalBackLink to="/portal/submissions" />
       </div>
-      <h1 class="chq-portal-hero">Your session</h1>
+      <h1 class="chq-portal-hero chq-portal-hero-drill">Your session</h1>
       <div class="chq-portal-status-row">
         <span class="chq-flag chq-portal-status-badge">
           {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
@@ -611,7 +611,7 @@ function SubmissionsListPage(props: {
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero">Your submissions</h1>
+      <h1 class="chq-portal-hero chq-portal-hero-drill">Your submissions</h1>
       {submissions.length === 0 ? (
         <PublicEmptyState
           variant="fresh"
