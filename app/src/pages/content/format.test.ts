@@ -6,11 +6,11 @@ describe('formatBytes', () => {
     expect(formatBytes(512)).toBe('512 B');
   });
 
-  it('formats KB sizes', () => {
-    expect(formatBytes(2048)).toBe('2.0 KB');
+  it('formats KB sizes with the trailing .0 trimmed', () => {
+    expect(formatBytes(2048)).toBe('2 KB');
   });
 
-  it('formats MB sizes', () => {
-    expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
+  it('formats MB sizes with the trailing .0 trimmed', () => {
+    expect(formatBytes(5 * 1024 * 1024)).toBe('5 MB');
   });
 });
