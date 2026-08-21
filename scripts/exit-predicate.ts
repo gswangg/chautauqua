@@ -757,6 +757,13 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "vacuously on a comment quoting the real declaration -- DEC-374). It is a fact about the " +
     "test corpus's own reliability, not about a v12 frame or 390-geometry conformance fact; a " +
     "newly non-zero row here would move the campaign's goalposts mid-convergence.",
+  EQUAL_SPECIFICITY_SHADOWED_CEILING:
+    "measures a DIFFERENT-SELECTOR cascade-order exposure (DEC-385 single-direction) -- how " +
+    "many max-width declarations are beaten by a different, equal-or-higher-specificity " +
+    "top-level selector, targeting the same component (a shared chq- class token), declared " +
+    "after the max-width block closes. It is a fidelity fact narrower than the identical-" +
+    "selector SHADOWED_CEILING measures, not a v12 frame citation or geometry fact; a newly " +
+    "non-zero row here would move the campaign's goalposts mid-convergence.",
   LOCAL_CSS_COMMENT_STRIPPER_CEILING:
     "measures VOCABULARY DUPLICATION (DEC-613) -- how many test files re-derive their own " +
     "comment-stripping function instead of importing test/helpers/strip-css-comments.ts's " +

@@ -46,6 +46,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { selectorMentionsToken } from '../app/src/phone-tap-target-scan/core';
 import { ssrCssSources } from './helpers/ssr-css-sources';
 import { stripCssComments as stripComments } from './helpers/strip-css-comments';
 
@@ -251,6 +252,105 @@ function allShadowedPairs(): string[] {
   return out.sort();
 }
 
+// -- second detector: equal-or-higher-specificity DIFFERENT selector -----
+//
+// DEC-385 amendment (wave 27): the identical-selector detector above is
+// evidence about identical selectors, not about the ruled exposure -- "a
+// stylesheet whose desktop rules are declared AFTER its max-width block
+// silently kills EQUAL-SPECIFICITY phone overrides". A different-but-
+// equal-specificity top-level selector, declared after the max-width block
+// closes, that (a) targets the same component (shares a `chq-` class token
+// with the phone selector, checked on a real class boundary via
+// `selectorMentionsToken` -- DEC-613, never a second copy of that check)
+// and (b) has specificity >= the phone selector's, wins the cascade just
+// as completely as an identical-selector re-declaration, and is invisible
+// to the first detector.
+
+/** Every distinct `chq-…` token appearing anywhere in a selector string. */
+function chqTokensIn(selector: string): string[] {
+  return [...new Set([...selector.matchAll(/chq-[a-z0-9-]+/g)].map((m) => m[0]))];
+}
+
+/** A simple (id, class-ish, element-ish) specificity tuple, computed over
+ * class/id/attribute/pseudo-class selectors and bare element/pseudo-element
+ * selectors -- adequate for this codebase's plain compound selectors
+ * (DEC-385 amendment: "computed over simple class/element/pseudo
+ * selectors", not a full CSS selector-grammar implementation). Summed
+ * across the WHOLE selector (all combinators), matching the CSS spec's own
+ * whole-chain summation rather than only the rightmost compound. */
+function specificity(selector: string): [number, number, number] {
+  let id = 0;
+  let cls = 0;
+  let elem = 0;
+  // Strip pseudo-element and pseudo-class/id/class/attribute tokens out as
+  // we count them, then whatever bare-word tokens remain are elements.
+  let rest = selector;
+  rest = rest.replace(/::[\w-]+/g, () => {
+    elem += 1;
+    return ' ';
+  });
+  rest = rest.replace(/#[\w-]+/g, () => {
+    id += 1;
+    return ' ';
+  });
+  rest = rest.replace(/\.[\w-]+/g, () => {
+    cls += 1;
+    return ' ';
+  });
+  rest = rest.replace(/\[[^\]]*\]/g, () => {
+    cls += 1;
+    return ' ';
+  });
+  rest = rest.replace(/:[\w-]+(?:\([^)]*\))?/g, () => {
+    cls += 1;
+    return ' ';
+  });
+  for (const token of rest.split(/[\s>+~]+/)) {
+    const t = token.trim();
+    if (!t || t === '*') continue;
+    elem += 1;
+  }
+  return [id, cls, elem];
+}
+
+function specificityGte(a: [number, number, number], b: [number, number, number]): boolean {
+  if (a[0] !== b[0]) return a[0] > b[0];
+  if (a[1] !== b[1]) return a[1] > b[1];
+  return a[2] >= b[2];
+}
+
+/** Every `<narrow selector> vs <wide selector> { <property> }` pair where a
+ * different, equal-or-higher-specificity top-level selector sharing a
+ * `chq-` class token wins the cascade after the narrow declaration's
+ * max-width block has closed. */
+function equalSpecificityShadowedPairs(sheet: Sheet): string[] {
+  const { mediaDecls, topDecls } = classify(sheet.text);
+  const found = new Set<string>();
+  for (const md of mediaDecls) {
+    const narrowTokens = chqTokensIn(md.selector);
+    if (narrowTokens.length === 0) continue;
+    const narrowSpec = specificity(md.selector);
+    for (const td of topDecls) {
+      if (td.selector === md.selector) continue; // identical selector: first detector's case
+      if (td.property !== md.property) continue;
+      if (td.offset <= md.mediaBlockEnd) continue;
+      if (!narrowTokens.some((tok) => selectorMentionsToken(td.selector, tok))) continue;
+      if (!specificityGte(specificity(td.selector), narrowSpec)) continue;
+      found.add(
+        `${sheet.label} — [${md.selector}] vs [${td.selector}] { ${md.property} }`,
+      );
+    }
+  }
+  return [...found];
+}
+
+function allEqualSpecificityShadowedPairs(): string[] {
+  const sheets = [...appSrcSheets(), ...ssrSheets()];
+  const out: string[] = [];
+  for (const sheet of sheets) out.push(...equalSpecificityShadowedPairs(sheet));
+  return out.sort();
+}
+
 // -- ratchet --------------------------------------------------------------
 
 // Seeded at the count measured on this branch (v12m-w4-j). If this rises,
@@ -275,6 +375,13 @@ function allShadowedPairs(): string[] {
 // phone blocks, which removed every remaining shadowed declaration in the
 // tree. One re-measurement for the whole batch.
 export const SHADOWED_CEILING = 0;
+
+// Seeded at the count MEASURED on this branch (v12m-w27-f): forced to -1
+// first, the run printed zero offenders, the ceiling was then written back
+// as 0. Two-sided, mirroring SHADOWED_CEILING's shape: fails on a rise
+// (names every pair) and fails on a drop without the ceiling itself being
+// lowered in the same merge-train step that fixed the sheet.
+export const EQUAL_SPECIFICITY_SHADOWED_CEILING = 0;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
   it('does not exceed the shadowed-declaration ceiling', () => {
@@ -319,5 +426,44 @@ describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating sca
     expect(sheets.length).toBeGreaterThan(20);
     expect(sheets.some((s) => s.label === 'app/src/pages/content/content.css')).toBe(true);
     expect(sheets.some((s) => s.label === 'app/src/pages/comms/comms.css')).toBe(true);
+  });
+});
+
+describe('phone cascade order — equal-specificity, different-selector exposure (DEC-385 wave-27 amendment)', () => {
+  it('does not exceed the equal-specificity shadowed ceiling', () => {
+    const pairs = allEqualSpecificityShadowedPairs();
+    if (pairs.length > EQUAL_SPECIFICITY_SHADOWED_CEILING) {
+      throw new Error(
+        `${pairs.length} equal-or-higher-specificity shadowed pairs exceed ` +
+          `EQUAL_SPECIFICITY_SHADOWED_CEILING=${EQUAL_SPECIFICITY_SHADOWED_CEILING}. A ` +
+          `different top-level selector sharing a chq- token with a max-width override, ` +
+          `declared after that block closes, with equal-or-higher specificity, silently ` +
+          `wins the cascade (DEC-385 is single-direction: narrow overrides wide). ` +
+          `Offending pairs:\n` +
+          pairs.map((p) => `  - ${p}`).join('\n'),
+      );
+    }
+    expect(pairs.length).toBeLessThanOrEqual(EQUAL_SPECIFICITY_SHADOWED_CEILING);
+  });
+
+  it('does not fall below the equal-specificity ceiling without a merge-train ceiling bump', () => {
+    const pairs = allEqualSpecificityShadowedPairs();
+    if (pairs.length < EQUAL_SPECIFICITY_SHADOWED_CEILING) {
+      throw new Error(
+        `${pairs.length} equal-specificity shadowed pairs measured, below ` +
+          `EQUAL_SPECIFICITY_SHADOWED_CEILING=${EQUAL_SPECIFICITY_SHADOWED_CEILING}. A ` +
+          `sheet's shadowing was fixed -- good -- but the ceiling licenses stagnation until ` +
+          `it moves too. Lower EQUAL_SPECIFICITY_SHADOWED_CEILING to exactly ${pairs.length} ` +
+          `as part of the SAME merge-train step that fixed the sheet. This is a merge-train ` +
+          `act, never a worker lane's mid-task edit.`,
+      );
+    }
+    expect(pairs.length).toBe(EQUAL_SPECIFICITY_SHADOWED_CEILING);
+  });
+
+  it('is not vacuous: chqTokensIn extracts tokens and specificity orders a bare-class selector below an id selector', () => {
+    expect(chqTokensIn('.chq-foo .chq-bar')).toEqual(['chq-foo', 'chq-bar']);
+    expect(specificityGte(specificity('#id'), specificity('.cls'))).toBe(true);
+    expect(specificityGte(specificity('.cls'), specificity('#id'))).toBe(false);
   });
 });
