@@ -148,7 +148,8 @@ a failure. Frame citations are verbatim literals from `docs/design/
 Chautauqua Public and Portal.dc.html`. The remaining ten of the fourteen
 Public-and-Portal SSR phone frames are part 2 of 2, a sibling task's file.
 
-## Frame :414 "Speaker portal" (GET /portal) — DIVERGES
+## Frame :414 "Speaker portal" (GET /portal) — DIVERGES (narrowed, task
+v12m-w21-l, DEC-976: ruled product surface, not an open gap)
 
 The frame's scroll body (:410-462) draws exactly three sections — "Waiting
 on you", "Your session", "Done" — and a footer band with the speaker's
@@ -160,11 +161,12 @@ declined alike, a section the frame never draws. The footer additionally
 links to `/portal/resources` (DEC-988 wave-74 amendment: reachable whenever
 any of the speaker's events permits resources) alongside "Profile", where
 the frame's footer band draws only the name/company clause and "Profile".
-Both are real, intentional product surface (DEC-729, DEC-988), not
-fixture noise — this is a frame that has not been updated to match a
-feature that shipped after it was drawn, not a bug.
+Both are RULED product surface, not an unresolved question: DEC-729 and
+DEC-988 record that the frame predates these features and is therefore
+stale, not the route — this row states that ruling, it does not seek one.
 
-## Frame :476 "Portal · Your tasks" (GET /portal/tasks) — DIVERGES
+## Frame :476 "Portal · Your tasks" (GET /portal/tasks) — DIVERGES (blessed,
+task v12m-w21-l, DEC-976)
 
 The frame (:473-497) matches on back link ('‹ Your portal'), H1 ("Your
 tasks"), and per-row anatomy (title / state flag / due / action). Its
@@ -172,13 +174,19 @@ docked footer draws TWO controls — a primary ("Mark the release signed")
 and a bordered secondary ("Later"). The route's dock
 (`tasksPageDockPrimary`, `src/routes/portal/tasks/views.tsx`) renders
 exactly ONE real control — the first incomplete task's own action (e.g.
-"Mark complete") — and no secondary at all, at any task-list state. The
-file's own DEC-576/DEC-967 amendment comment records why: the frame's
-"Later" has no verb behind it, so no button is manufactured just to fill
-the band. Not a new finding — DEVIATIONS.md already tracks this — but this
-is its first render-through-the-route confirmation.
+"Mark complete") — and no secondary at all, at any task-list state. This is
+a dock secondary the frame draws with no verb behind it, and it is already
+blessed in `docs/design/DEVIATIONS.md`'s "Portal task-list dock 'Later'"
+bullet, which records: "the portal task model exposes only
+complete-or-not: `src/routes/portal/**/*.tsx` and
+`src/server/repo/portal*` carry no snooze, defer, dismiss, or later
+capability anywhere in the tree. 'Later' persists nothing, returns on no
+schedule, and is visible to no organiser, so the second button's copy is
+not manufactured — it names a real gap in the domain." This is its first
+render-through-the-route confirmation of an already-blessed finding.
 
 ## Frame :531 "Portal · Your profile" (GET /portal/profile) — DIVERGES
+(blessed, task v12m-w21-l, DEC-976)
 
 The frame (:528-556) matches on back link, headshot section, and field
 anatomy. (1) CLOSED (wave 19, task w19-d): the H1 text clause is
@@ -190,11 +198,14 @@ this with `expect(html).toContain(">Your profile<");` and
 DEC-576 wave-16 amendment). No H1 divergence remains. (2) the docked
 footer: the frame draws a primary "Save" plus a bordered secondary
 "Cancel"; the route's `profileDock` renders only "Save profile", with no
-Cancel control — the same "never manufactured just to fill the band" rule
-as the tasks frame above, and already recorded in-file as a DEVIATIONS.md
-entry (this page has no distinct "leave without saving" destination from
-the existing back-link/sign-out). This clause remains open, tracked in
-DEVIATIONS.md.
+Cancel control. This is a dock secondary the frame draws with no verb
+behind it, and it is already blessed in `docs/design/DEVIATIONS.md`'s
+"Portal · Your profile dock has no Cancel" bullet, which records: "The
+profile form has no 'leave without saving' destination distinct from the
+header/footer sign-out and the existing '‹ Your portal' back-link already
+on screen ... so minting one here would be a control invented to fill the
+band — the exact thing DEC-576's wave-110 amendment forbids ('a second
+control is never manufactured just to fill the band')."
 
 ## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
 

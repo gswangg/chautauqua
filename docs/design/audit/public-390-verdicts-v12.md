@@ -45,27 +45,38 @@ counts client-side once `localStorage` is read (DEC-555: picks live in
 localStorage, never server state). This is a structural match, not a byte
 match, and is expected of any SSR render of a client-computed line.
 
-## 3. Submit a talk (:1017-1065) — DIVERGES (label wording, two items)
+## 3. Submit a talk (:1017-1065) — DIVERGES (label wording, one open item;
+one closed as already ruled, task v12m-w21-l, DEC-976)
 
 `GET /submit/:eventSlug` (`submit-views.tsx`'s `SubmitPage`). The phone-only
 two-step wizard chrome (:1022 `"Step 1 of 2 · your talk"`, the progress bar)
 matches exactly (w14-f, DEC-986); the Track fieldset (:1042) matches
 exactly.
 
-- **Format legend text.** :1051 draws the bare legend `"Format"`.
-  `FormatChoices` (`src/routes/public/submit-views.tsx`) renders
+- **Format legend text — OPEN, needs a ruling (narrowed, task v12m-w21-l,
+  DEC-976).** :1051 draws the bare legend `"Format"`. `FormatChoices`
+  (`src/routes/public/submit-views.tsx`) renders
   `<legend>{field.label}</legend>`, and the session-format field's stored
   label is `"Session format"` — the fixture value here matches the same
   seed data `test/submit-cfp-frame-copy.test.ts`'s `FIELD_ROWS` already
-  uses. The legend is never trimmed to the frame's shorter word.
-- **Dock's second control label.** :1063 draws the bordered control as
-  `"Draft"`. The tree's equivalent control (`.chq-cfp-save-draft`, the same
-  dock geometry per `cfp.css.ts`'s own `:428 "Draft"` comment) is labeled
-  `"Save draft"` — one word longer than the frame's literal.
+  uses. The legend text is a STORED FIELD LABEL, not page chrome — shortening
+  it to the frame's bare "Format" would rename a real form field, which is
+  a content decision, not a CSS/copy fix this task can make. Recorded as
+  needing a ruling; no ruling is invented here.
+- **Dock's second control label — CLOSED (task v12m-w21-l, DEC-976).**
+  :1063 draws the bordered control as `"Draft"`. The tree's equivalent
+  control (`.chq-cfp-save-draft`, the same dock geometry per `cfp.css.ts`'s
+  own `:428 "Draft"` comment) is labeled `"Save draft"` at every width —
+  not a mismatch to close but an already-ruled choice: `cfp.css.ts`'s own
+  comment at :351-354 records the DEC-613 wave-96 ruling directly: "the
+  step-1 dock's secondary 'Draft' control ... the accessible name stays
+  'Save draft' per DEC-613 wave-96 amendment (one control, one name at
+  every width — the frame's 'Draft' is a drawing abbreviation, not a label
+  to ship)."
 
-Both are copy-only mismatches; the surrounding anatomy (two controls in the
-dock, filled primary "Next: about you" first, Track/Format fieldsets in
-frame order) matches.
+The Format-legend item is the one surviving open question; the surrounding
+anatomy (two controls in the dock, filled primary "Next: about you" first,
+Track/Format fieldsets in frame order) matches.
 
 ## 4. Submitted (:1074-1093) — RESOLVED (both items, DEC-908 wave-16 amendment)
 

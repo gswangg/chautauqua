@@ -154,17 +154,23 @@ landing frame, then the real `"Roster ›"` trigger for the drill-in frame,
 never a sub-component mounted directly). jsdom applies no stylesheet, so
 both verdicts are DOM structure/order only.
 
-- **Frame :133 "Speakers" (OnboardingGrid landing) — DIVERGES.** The phone
-  head repeats the desktop H1/summary pair (frame :139 `<h1>Speakers</h1>`,
-  :140 `12 accepted · 3 overdue`) and swaps in a phone-only action row
-  (:142 `Remind outstanding`, :143 `Filter`) — that part matches. The
-  divergence: the rendered tree also carries a `"Roster ›"` trigger button
-  (`OnboardingGrid.tsx`'s own comment at :1059-1062) that the frame draws no
-  control for at all — only the drill-in's destination is drawn (:260), not
-  an entry point into it. Without this button the drill-in frame below
-  would be unreachable dead code, so it is deliberate, narrowest-possible
-  scaffolding, not an oversight — but it is still a control absent from the
-  frame.
+- **Frame :133 "Speakers" (OnboardingGrid landing) — DIVERGES (blessed,
+  task v12m-w21-l, DEC-976).** The phone head repeats the desktop
+  H1/summary pair (frame :139 `<h1>Speakers</h1>`, :140
+  `12 accepted · 3 overdue`) and swaps in a phone-only action row (:142
+  `Remind outstanding`, :143 `Filter`) — that part matches. The rendered
+  tree also carries a `"Roster ›"` trigger button (`OnboardingGrid.tsx`'s
+  own comment at :1059-1062) that the frame draws no control for at all —
+  only the drill-in's destination is drawn (:260), not an entry point into
+  it. This is already blessed in `docs/design/DEVIATIONS.md`, whose
+  "Speakers 390 landing's 'Roster ›' trigger" bullet records: "Without a
+  trigger that destination is unreachable dead code, so the app adds the
+  narrowest possible entry point:
+  app/src/pages/speakers/OnboardingGrid.tsx`chq-speakers-phone-roster-link`.
+  The component's own comment beside it already records this as
+  scaffolding, not a frame match." — the same disposition
+  `speakers-desktop-v12.md`'s DEC-936 row already uses for a blessed
+  divergence.
 - **Frame :260 "Roster · 390" (drill-in behind "Roster ›") — MATCHES.** Back
   link ("‹ Speakers") then H1 "Roster" (:263) then the "N accepted · N not
   claimed" summary (:264) render in that order; each roster row's identity

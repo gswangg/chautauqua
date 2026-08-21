@@ -114,7 +114,7 @@ afterEach(() => {
 
 describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb, DEC-976)', () => {
   // Frame :137-172 "Submissions".
-  it("frame :137 Submissions -- DIVERGES: head band (H1, summary, search, chip strip) matches the frame's order, but the active-status chip reads \"Pending\" not the frame's \"Needs triage\", and the worklist itself is a desktop <table> with columns interleaved between the frame's four card blocks (ref -> title -> speakers -> actions), not a standalone card list", async () => {
+  it("frame :137 Submissions -- DIVERGES (narrowed, task v12m-w21-l): head band (H1, summary, search, chip strip) matches the frame's order, and the active-status chip DOES render the frame's own \"Needs triage\" text (a sibling span alongside the pinned STATUS_LABELS.pending \"Pending\" accessible name, DEC-825 wave-16), but the worklist is still a <table> DOM element with columns interleaved between the frame's four card blocks (ref -> title -> speakers -> actions), not a standalone card list -- a DOM-shape fact, not a screen-shape one (submissions.css card-stacks it at 390, jsdom applies no stylesheet)", async () => {
     const EVENT_ID = 'evt-submissions-frame-137';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -172,10 +172,15 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // `          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Needs triage</span>`
     verbatimLine(149, L149);
     const pills = within(screen.getByRole('group', { name: 'Filter by status' }));
-    expect(pills.getByRole('button', { name: 'Pending' })).toBeInTheDocument();
-    // The frame's filled/active first chip reads 'Needs triage'; the real
-    // control's own vocabulary (STATUS_LABELS) reads 'Pending' -- diverges.
-    expect(pills.queryByText('Needs triage')).not.toBeInTheDocument();
+    const pending = pills.getByRole('button', { name: 'Pending' });
+    expect(pending).toBeInTheDocument();
+    // The pending chip's accessible name is pinned to STATUS_LABELS.pending
+    // ('Pending', DEC-825 wave-16 amendment), but the SAME control also
+    // draws the frame's own phone text 'Needs triage' as a sibling span --
+    // both are in the DOM at once (jsdom applies no stylesheet), matching
+    // the frame's drawn text, not diverging from it.
+    expect(pills.getByText('Needs triage')).toBeInTheDocument();
+    expect(pending).toHaveTextContent('Needs triage');
 
     // docs/design/Chautauqua Submissions.dc.html:165-167
     // `              <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Accept</span>`
@@ -326,7 +331,7 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
   });
 
   // Frame :468-486 "CFP form · 390".
-  it('frame :468 CFP form -- DIVERGES: back link, H1, and field-list rows (Edit pill + drag handle) render in the frame\'s own order, and the fixed footer carries Save the form + Preview, but the meta line spells out the close-date year ("16 Aug 2025" vs the frame\'s "16 Aug") and each field row also renders a Delete button the frame never draws', async () => {
+  it('frame :468 CFP form -- RESOLVED (task v12m-w21-l): back link, H1, field-list rows (Edit pill + drag handle), the year-less "16 Aug" meta line, and the fixed footer (Save the form + Preview) all render in the frame\'s own order and text; each field row\'s Delete button stays in the DOM (jsdom applies no stylesheet) but is CSS-hidden at 390, re-lined into FieldModal\'s own "Delete this question" action -- a DOM fact, not a screen divergence', async () => {
     const EVENT_ID = 'evt-forms-frame-468';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -375,10 +380,10 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // docs/design/Chautauqua Submissions.dc.html:472
     // `        <span style="font-size:13px; color:#565A4B">Closes 16 Aug · 47 received</span>`
     verbatimLine(472, L472);
-    const meta = await screen.findByText('Closes 16 Aug 2025 · 47 received');
+    const meta = await screen.findByText('Closes 16 Aug · 47 received');
     expect(h1.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The frame's date carries no year; the real page's formatDateOnly
-    // always includes one, so the rendered line diverges to "16 Aug 2025".
+    // formatDateOnlyNoYear composes this line -- it matches the frame's
+    // year-less date exactly, no divergence.
 
     // docs/design/Chautauqua Submissions.dc.html:476
     // `            <span style="font-size:16px; color:#8E8A7A">⋮⋮</span>`
@@ -389,9 +394,13 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Edit</span>`
     verbatimLine(481, L481);
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    // The frame's row draws ONE action pill ('Edit'); the real row also
-    // renders a 'Delete' button the frame never draws for this row.
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    // The row's own 'Delete' button stays in the DOM -- jsdom applies no
+    // stylesheet -- but forms.css's phone block hides it
+    // (.chq-forms-field-row-delete { display:none }), re-lined into
+    // FieldModal's own far-left 'Delete this question' action reached via
+    // this same visible Edit control. A DOM element, not a drawn control.
+    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    expect(deleteButton).toHaveClass('chq-forms-field-row-delete');
 
     // docs/design/Chautauqua Submissions.dc.html:484
     // `        <span style="display:flex; align-items:center; justify-content:center; margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Add a question</span></div>`
