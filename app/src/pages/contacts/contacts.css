@@ -1314,14 +1314,29 @@
      search-then-narrowing order; the panel tabs are re-lined below it,
      never removed.
 
-     CAPABILITY RECEIPT (src/decisions-data/DEC-919.md): the long `.chq-summary` line
-     (`N people · M speakers · R returning · across E events · K possible
-     duplicates`) is not deleted -- its clauses are re-lined: `N people` ->
-     the `of M` half of this head counter; `M speakers` -> the saved-segment
-     pill strip's `Speakers · N` pill (src/decisions-data/DEC-919.md); `K possible duplicates` ->
-     the `Duplicates · N` panel tab chip already on this page; the
-     returning/reach clauses remain on the desktop head, which is
-     unchanged. `.chq-contacts-filter-match-count` (`2 of 318 match`)
+     CAPABILITY RECEIPT (src/decisions-data/DEC-919.md, wave-16 r5 amendment): ContactsApp.tsx's
+     `summary` array literal builds the long `.chq-summary` line from FIVE
+     clauses. Every one of the five is classified below, RE-LINED or a
+     RECORDED DEVIATION -- never left to a bare "remains on desktop"
+     aside, since a receipt whose job is to certify a surviving path may
+     not also be the place a clause quietly loses one:
+       - `countOf(stats.total, 'person', 'people')` (`N people`) --
+         RE-LINED to the `of M` half of this head counter.
+       - `countOf(stats.speakerCount, 'speaker')` (`M speakers`) --
+         RE-LINED to the saved-segment pill strip's `Speakers · N` pill
+         (src/decisions-data/DEC-919.md).
+       - `stats.returningSpeakers > 0 ? countOf(stats.returningSpeakers,
+         'returning speaker') : null` (`R returning speaker(s)`) --
+         RECORDED DEVIATION: no 390 surface carries this reading, see
+         docs/design/DEVIATIONS.md #7, "returning speakers".
+       - `stats.eventCount > 1 ? \`across ${countOf(stats.eventCount,
+         'event')}\` : null` (`across E events`) -- RECORDED DEVIATION: no
+         390 surface carries this reading, see docs/design/DEVIATIONS.md
+         #7, "reach across events".
+       - `countOf(duplicateTotal, 'possible duplicate')` (`K possible
+         duplicates`) -- RE-LINED to the `Duplicates · N` panel tab chip
+         already on this page.
+     `.chq-contacts-filter-match-count` (`2 of 318 match`)
      states the same two numbers the head counter now carries, right-
      flushed where the frame puts them -- the hide below removes a
      duplicate reading, not a capability. `Save as a segment` beside it is
@@ -1361,23 +1376,29 @@
     order: -1;
   }
 
-  /* src/decisions-data/DEC-919.md: the DirectoryRail stands down at 390 -- the frame's phone body
-     (docs/design/Chautauqua Contacts.dc.html:201
+  /* src/decisions-data/DEC-919.md (wave-16 r5 amendment): the DirectoryRail stands down at 390 --
+     the frame's phone body (docs/design/Chautauqua Contacts.dc.html:201
      `flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px`, :203
      `padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex;
      align-items:center; gap:13px`) is the scrolling headerless card list
-     alone -- no rail beneath it. Legal under src/decisions-data/DEC-919.md's carve-out: every
-     rail section has a full-screen surviving path already on this page at
-     390. "Where they work" (top-companies drill on
-     {field:'company',op:'eq'}) -> the FilterRulesPanel "+ Rule" chip
-     composes the identical rule by hand; that is a loss of the rail's
-     one-tap shortcut, not a loss of the capability itself. "Saved
-     segments" -> the chipstrip's "Segments · N" tab opens SegmentsPanel,
-     which lists every segment in full, and the rule row's own "Save as a
-     segment" control is the surviving save path. "Possible duplicates" ->
-     the chipstrip's "Duplicates · N" tab opens DuplicatesView, the same
-     detection pass in full with the same Merge affordance. See
-     DirectoryRail.tsx's header comment for the same receipt. */
+     alone -- no rail beneath it. "Where they work" (top companies) SPLITS
+     in two: the DRILL-THROUGH ACTION on {field:'company',op:'eq'}
+     survives via the FilterRulesPanel "+ Rule" chip, which composes the
+     identical rule by hand -- a loss of the rail's one-tap shortcut, not
+     of the capability itself; the RANKED AGGREGATE reading -- which
+     companies rank highest, and by how much, over the FULL directory --
+     has NO surviving path: composing that rule by hand already requires
+     knowing the company names and their ranking, which is exactly what
+     the aggregate supplied, and the phone card list shows one
+     `company · role` per row with no ranked view anywhere. That reading
+     is a RECORDED DEVIATION, see docs/design/DEVIATIONS.md #7, "ranked
+     top-companies aggregate". "Saved segments" -> the chipstrip's
+     "Segments · N" tab opens SegmentsPanel, which lists every segment in
+     full, and the rule row's own "Save as a segment" control is the
+     surviving save path. "Possible duplicates" -> the chipstrip's
+     "Duplicates · N" tab opens DuplicatesView, the same detection pass in
+     full with the same Merge affordance. See DirectoryRail.tsx's header
+     comment for the same receipt. */
   .chq-contacts-rail {
     display: none;
   }

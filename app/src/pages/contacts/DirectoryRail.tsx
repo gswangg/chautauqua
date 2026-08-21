@@ -14,18 +14,27 @@ import { describeRules } from './segments';
 import type { DuplicateGroup, Segment } from './types';
 import { EmptyState } from '../../components/EmptyState';
 
-// src/decisions-data/DEC-919.md: this component does not render at 390 -- contacts.css's terminal
-// `@media (max-width: 700px)` block sets `.chq-contacts-rail { display: none
-// }`, so the phone body is the directory card list alone, per the frame.
-// The stand-down is legal under src/decisions-data/DEC-919.md because each section below has a
-// surviving full-screen path already on this page at 390: "Where they
-// work" via the FilterRulesPanel "+ Rule" chip (composes the same
-// {field:'company',op:'eq'} rule by hand); "Saved segments" via the
-// chipstrip's "Segments · N" tab (SegmentsPanel lists every segment in
-// full) and the rule row's own "Save as a segment" control; "Possible
-// duplicates" via the chipstrip's "Duplicates · N" tab (DuplicatesView,
-// same detection pass in full, same Merge affordance). This file's markup
-// is unchanged -- the stand-down lives entirely in contacts.css.
+// src/decisions-data/DEC-919.md (wave-16 r5 amendment): this component does not render at 390 --
+// contacts.css's terminal `@media (max-width: 700px)` block sets
+// `.chq-contacts-rail { display: none }`, so the phone body is the
+// directory card list alone, per the frame. "Where they work" (top
+// companies) SPLITS in two: the DRILL-THROUGH ACTION on
+// {field:'company',op:'eq'} survives via the FilterRulesPanel "+ Rule"
+// chip, which composes the identical rule by hand -- a loss of the rail's
+// one-tap shortcut, not of the capability itself; the RANKED AGGREGATE
+// reading -- which companies rank highest, and by how much, over the FULL
+// directory -- has NO surviving path: composing that rule by hand already
+// requires knowing the company names and their ranking, which is exactly
+// what the aggregate supplied, and the phone card list shows one
+// `company · role` per row with no ranked view anywhere. That reading is
+// a RECORDED DEVIATION, see docs/design/DEVIATIONS.md #7, "ranked
+// top-companies aggregate". "Saved segments" via the chipstrip's
+// "Segments · N" tab (SegmentsPanel lists every segment in full) and the
+// rule row's own "Save as a segment" control; "Possible
+// duplicates" via the chipstrip's "Duplicates · N" tab
+// (DuplicatesView, same detection pass in full, same Merge
+// affordance). This file's markup is unchanged -- the stand-down lives
+// entirely in contacts.css.
 
 // DEC-678: "an empty state is only reachable from a settled load". Each of
 // the rail's three lists is fed by its OWN request, so each carries its own
