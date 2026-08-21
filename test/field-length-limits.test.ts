@@ -113,6 +113,12 @@ async function expectInvalid(res: Response, field: string) {
 }
 
 describe("src/routes/api/submissions.ts", () => {
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 845.45ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 1991.11ms. Headroom
+  // target ~4x standalone (3382ms) is below the 15000ms floor, so the
+  // 15000ms floor applies.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("POST /events/:eventId/submissions rejects an over-cap title (DEC-417 reproduces the SQLITE_TOOBIG bug)", async () => {
     vi.doMock("../src/server/repo/submissions", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/submissions")>(
@@ -134,7 +140,7 @@ describe("src/routes/api/submissions.ts", () => {
       jsonPost("/api/v1/events/ev-1/submissions", { title: "x".repeat(MAX_NAME_LENGTH + 1) }),
     );
     await expectInvalid(res, "title");
-  });
+  }, 15000);
 });
 
 describe("src/routes/api/events.ts", () => {

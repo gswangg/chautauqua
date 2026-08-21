@@ -37,6 +37,12 @@ function runWrapper(args: string[], env: NodeJS.ProcessEnv): Promise<number> {
 }
 
 describe("scripts/with-test-lock.sh", () => {
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 2374.21ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 2473.03ms. Headroom
+  // target ~4x standalone (9497ms) is below the 15000ms floor, so the
+  // 15000ms floor applies.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("serializes two concurrent invocations so their critical sections never interleave", async () => {
     const dir = mkdtempSync(join(tmpdir(), "chq-test-lock-"));
     const markerFile = join(dir, "markers.log");
@@ -85,7 +91,7 @@ describe("scripts/with-test-lock.sh", () => {
       { kind: "start", label: secondLabel },
       { kind: "end", label: secondLabel },
     ]);
-  });
+  }, 15000);
 
   it("forwards a non-zero exit code verbatim", async () => {
     const dir = mkdtempSync(join(tmpdir(), "chq-test-lock-exit-"));

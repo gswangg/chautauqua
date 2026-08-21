@@ -390,6 +390,12 @@ describe("speaker-portal same-role wrong-owner IDOR probe -- REAL rows (DEC-550,
     expect(routes.map((r) => `${r.method} ${r.path}`)).toContain("GET /portal/submissions/:id");
   });
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 2833.63ms, sha 25cb7819 (worktree v12m-w23-a off main),
+  // under full-suite parallelism this same test measured 5004.56ms and timed
+  // out against vitest's 5000ms default. Headroom target ~4x standalone
+  // (11334ms) is below the 15000ms floor, so the floor applies.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("every /portal :param route refuses a wrong-owner request against REAL rows at its ledgered status (never 2xx, never 5xx), speaker A's rows untouched, ledger exact both directions", async () => {
     const { db, sqlite } = makeTestDb();
     seedFixture(sqlite);
@@ -441,5 +447,5 @@ describe("speaker-portal same-role wrong-owner IDOR probe -- REAL rows (DEC-550,
     expect(staleEntries).toEqual([]);
 
     sqlite.close();
-  });
+  }, 15000);
 });

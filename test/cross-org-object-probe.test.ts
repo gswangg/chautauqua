@@ -655,6 +655,12 @@ describe("cross-org object-rooted by-id probe (DEC-459/DEC-727, task-w37-b)", ()
     expect(routes.map((r) => `${r.method} ${r.path}`)).toContain("GET /api/v1/submissions/:id");
   });
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 1736.07ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 1675.83ms. Headroom
+  // target ~4x standalone (6944ms) is below the 15000ms floor, so the
+  // 15000ms floor applies.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("every enumerated route refuses org B's organizer at 403 or 404 (never 2xx, never 5xx), org A's rows untouched, ledger exact both directions", async () => {
     const { db, sqlite } = makeTestDb();
     seedFixture(sqlite);
@@ -715,5 +721,5 @@ describe("cross-org object-rooted by-id probe (DEC-459/DEC-727, task-w37-b)", ()
     expect(staleEntries).toEqual([]);
 
     sqlite.close();
-  });
+  }, 15000);
 });

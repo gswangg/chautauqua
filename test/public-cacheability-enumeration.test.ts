@@ -315,6 +315,14 @@ function cacheabilityViolations(res: Response, label: string): string[] {
 }
 
 describe("DEC-099 wave-35: public-surface cacheability is a closed Cache-Control/Vary rule", () => {
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 2108.37ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 1925.85ms. Headroom
+  // target ~4x standalone (8433ms) is below the 15000ms floor, so the floor
+  // would apply, but this test already carries an existing timeout above
+  // that floor (20000ms, see the DEC-727 wave-115 comment below) which is
+  // kept.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it(
     "enumerates at least the routes this claim's population is expected to cover (floor, DEC-550 technique)",
     async () => {

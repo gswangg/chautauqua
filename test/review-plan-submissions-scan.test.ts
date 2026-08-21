@@ -434,6 +434,13 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     expect(joinedCall!.limitN).toBe(MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN + 1);
   });
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 753.01ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 1996.37ms. Headroom
+  // target ~4x standalone (3012ms) is below the 15000ms floor, so the floor
+  // would apply, but this test already carries an existing timeout above
+  // that floor (30000ms, see the pre-existing comment below) which is kept.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("exactly-cap matched rows passes; cap+1 refuses loudly naming the cap, for both branches", async () => {
     const atCap = makeSubmissions(MAX_PLAN_SUBMISSION_SCAN);
     const { db: dbAtCap } = makeFakeDb({ events: [EVENT], submissions: atCap, tracks: [] });
@@ -512,6 +519,13 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     expect(result.every((r) => r.trackIds.length === 0)).toBe(true);
   });
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 1626.57ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 3361.25ms. Headroom
+  // target ~4x standalone (6506ms) is below the 15000ms floor, so the floor
+  // would apply, but this test already carries an existing timeout above
+  // that floor (30000ms) which is kept.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("joined row count over MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN refuses loudly naming the cap", async () => {
     // One submission with more joined submission_track rows than the cap --
     // exercises the raw-joined-row ceiling independently of the
