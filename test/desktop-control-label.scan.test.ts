@@ -383,7 +383,7 @@ const UNMATCHED_RAW: ControlLabel[] = ALL_LABELS.filter((l) => !labelIsMatched(l
 // -- Exclusions --------------------------------------------------------------
 // (a) FIXTURE -- the frame's own mock content or event-specific seed data
 // wearing control geometry, not a real UI word.
-const FIXTURE_EXCLUSIONS = [
+export const FIXTURE_EXCLUSIONS = [
   {
     fileName: 'Chautauqua Contacts.dc.html',
     line: 603,
@@ -411,7 +411,7 @@ const FIXTURE_EXCLUSIONS = [
 // the divergence is already BLESSED by a recorded ruling (DEVIATIONS.md,
 // cited by content -- never edited here). Reason quotes the composing
 // expression verbatim, or the blessing citation.
-const COMPOSED_EXCLUSIONS = [
+export const COMPOSED_EXCLUSIONS = [
   {
     fileName: 'Chautauqua Comms.dc.html',
     line: 578,
