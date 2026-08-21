@@ -268,9 +268,10 @@ describe("DEC-962: portal batched deliverable reads scope in the SQL, not the ca
   it("getLatestDeliverable: speaker B's own submissionId still resolves for speaker B", async () => {
     const db = makeDb(buildTwoOrgFixture());
     const result = await getLatestDeliverable(db, "contact-b", "org-b", "sub-b");
-    // The single-read form deliberately does not select version_no (its
-    // callers never need it), so versionNo is null here by construction --
-    // asserted rather than left implicit, so the two reads' differing
+    // getLatestDeliverable never selects version_no (see PortalDeliverable's
+    // versionNo doc comment) -- its resolved versionNo is null "not read",
+    // not the fixture's stored value, so that is what this pin asserts.
+    // Asserted rather than left implicit, so the two reads' differing
     // contracts stay visible side by side.
     expect(result).toMatchObject({ id: "file-b1", filename: "b-slides.pdf", versionNo: null });
   });
