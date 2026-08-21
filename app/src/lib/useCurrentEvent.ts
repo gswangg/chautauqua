@@ -77,17 +77,29 @@
 // dropped refCount to 0 and DELETED the frozen pair, so the second mount's
 // acquire found nothing captured and threw. The two concerns are now split:
 // the frozen (fromUrl, fromStorage) pair is DOCUMENT-scoped, keyed by
-// `search`, and is never deleted by a refcount reaching zero -- a real next
-// navigation is either a different `search` key (captured anew below) or a
-// full page reload (which resets the module), so keeping the pair alive
-// past liveCount 0 is exactly the D19 "prior stored id" semantics the
-// refcount was reaching for, not a leak. Only the LIVENESS count drops on
-// release, and acquireNavigationContext re-acquires the existing frozen
-// pair instead of throwing -- the fail-loud throw is reserved for a
-// `search` that was genuinely never captured at all (a real programmer
-// error: acquiring before rendering). The two test-only reset seams still
-// clear the whole map, so render-test isolation between `it()` blocks is
-// unchanged.
+// `search`, and is never deleted by a refcount reaching zero -- only the
+// LIVENESS count drops on release, and acquireNavigationContext re-acquires
+// the existing frozen pair instead of throwing -- the fail-loud throw is
+// reserved for a `search` that was genuinely never captured at all (a real
+// programmer error: acquiring before rendering). The two test-only reset
+// seams still clear the whole map, so render-test isolation between `it()`
+// blocks is unchanged.
+//
+// DEC-728 wave-158 amendment (USER RULING D19, part 6): a re-entered
+// location.search is a NEW navigation. The wave-150 sentence above claimed
+// "a real next navigation is either a different `search` key ... or a full
+// page reload" -- that disjunction was false. A client-side navigation A ->
+// B -> (back to) A is neither: it re-enters a `search` this document has
+// already captured, so the stale wave-150 entry survived and was replayed,
+// firing the D19 banner even though the URL eventId now equals the stored
+// context -- exactly what the user's pin forbids. The frozen pair's
+// identity is the NAVIGATION, not the search string. `lastCapturedSearch`
+// now tracks which search was captured most recently: a call to
+// captureNavigationContext with a DIFFERENT search is unconditionally a new
+// navigation, so any stale entry for that search is discarded and a fresh
+// pair is captured from window; a call with the SAME search as last time is
+// the same navigation continuing (another instance mounting, a re-render,
+// or a StrictMode double-invoke) and returns the existing pair unchanged.
 import { useEffect, useState } from 'react';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import { apiList, ApiError } from './api';
@@ -139,18 +151,29 @@ interface NavigationContextEntry {
 // deleting the frozen pair on refcount 0.
 const navigationContexts = new Map<string, NavigationContextEntry>();
 
+// DEC-728 wave-158: which `search` was most recently captured -- identifies
+// the CURRENT navigation. A capture call for a different search is always a
+// new navigation, even if that search string was seen before this document
+// load; see the file-header amendment.
+let lastCapturedSearch: string | null = null;
+
 function captureNavigationContext(search: string): NavigationContext {
-  let entry = navigationContexts.get(search);
-  if (!entry) {
-    entry = {
+  if (search !== lastCapturedSearch) {
+    // A re-entered search is a NEW navigation -- any prior entry for it is
+    // stale (it belongs to an earlier navigation, not this one) and must
+    // not be replayed. Discard it and capture fresh from window.
+    navigationContexts.delete(search);
+    navigationContexts.set(search, {
       context: {
         fromUrl: new URLSearchParams(search).get('eventId'),
         fromStorage: window.localStorage.getItem(STORAGE_KEY),
       },
       liveCount: 0,
-    };
-    navigationContexts.set(search, entry);
+    });
+    lastCapturedSearch = search;
   }
+  const entry = navigationContexts.get(search);
+  if (!entry) throw new Error('captureNavigationContext: invariant violated, entry must exist after capture');
   return entry.context;
 }
 
@@ -194,6 +217,7 @@ export function loadEventsOnce(): Promise<EventListItem[]> {
 export function resetEventsCacheForTests(): void {
   eventsPromise = null;
   navigationContexts.clear();
+  lastCapturedSearch = null;
 }
 
 /** Test-only seam, mirroring resetEventsCacheForTests() above: a render
@@ -202,6 +226,7 @@ export function resetEventsCacheForTests(): void {
  * instances for it are mounted. Never called from production code. */
 export function resetInitialStoredIdForTests(): void {
   navigationContexts.clear();
+  lastCapturedSearch = null;
 }
 
 /** Resolves the current location.search, reactively when a react-router

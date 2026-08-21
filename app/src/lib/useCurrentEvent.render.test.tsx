@@ -262,6 +262,62 @@ describe('DEC-728 (D19) capture is once-per-document, not once-per-instance', ()
   });
 });
 
+// DEC-728 wave-158 amendment (USER RULING D19, part 6): a re-entered
+// location.search is a NEW navigation, not a replay of the frozen pair
+// captured the first time this document visited that search. Reproduces
+// A -> B -> (no eventId) -> B in one `it()` so the stale-map bug (fixed by
+// keying capture on `lastCapturedSearch`, not merely "have we ever seen
+// this search before") cannot hide behind the reset seam between `it()`
+// blocks.
+describe('DEC-728 (D19 part 6) a re-entered search is a new navigation', () => {
+  it('the banner fires exactly once on first arrival at B, and not again on A -> B -> (no id) -> B', async () => {
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+
+    // Navigation 1: A -> B via URL eventId=ev-2 -- storage differs from the
+    // URL id, so the banner must fire exactly once.
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    const first = renderHook(() => useCurrentEvent());
+    await waitFor(() => {
+      expect(first.result.current.switchInfo).toEqual({
+        kind: 'switched',
+        fromEvent: { id: 'ev-1', name: 'Alpha Conf' },
+        toEvent: { id: 'ev-2', name: 'Beta Summit' },
+        restore: expect.any(Function),
+      });
+    });
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
+    first.unmount();
+
+    // Navigation 2: a client-side move to a search with no eventId. Storage
+    // stays 'ev-2' (nothing overwrites it) -- nothing to announce.
+    window.history.pushState({}, '', '/admin');
+    const second = renderHook(() => useCurrentEvent());
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+    expect(second.result.current.switchInfo).toBeNull();
+    second.unmount();
+
+    // Navigation 3: back to eventId=ev-2 -- the SAME `search` string as
+    // navigation 1, re-entered after an intervening navigation. The URL id
+    // now EQUALS the stored context (storage has read 'ev-2' since
+    // navigation 1). The RULED pin forbids a banner here. Pre-fix, the
+    // stale map entry from navigation 1 (frozen fromStorage: 'ev-1') would
+    // still be keyed under this exact search string and get replayed,
+    // firing the banner a second time and reverting the live context.
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    const third = renderHook(() => useCurrentEvent());
+    expect(third.result.current.eventId).toBe('ev-2');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(third.result.current.switchInfo).toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
+  });
+});
+
 describe('useCurrentEvent + EventSwitcher share the /events cache', () => {
   it('issues exactly one /events request when both are mounted on the same page', async () => {
     window.localStorage.setItem(STORAGE_KEY, 'ev-1');
