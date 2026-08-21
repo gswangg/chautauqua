@@ -4,6 +4,13 @@
 // scripts/perf-smoke-lib.ts.
 
 import type { RouteManifestEntry } from "../app/src/routeManifest";
+import { DEC_253 } from "../src/decisions";
+
+// DEC-253 wave-155 amendment: deriveInteractiveOffenders below, and its wiring
+// into evaluateMobileRoute, is this decision's implementation -- a compile-
+// checked reference so the dependency shows up outside the decisions
+// machinery itself (test/decisions-orphan-ratchet.test.ts).
+void DEC_253;
 
 export interface RouteResult {
   entry: RouteManifestEntry;
