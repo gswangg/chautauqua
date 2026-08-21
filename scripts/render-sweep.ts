@@ -42,6 +42,7 @@ import { chromium, type Browser, type BrowserContext, type ConsoleMessage, type 
 
 import { EVENT_SLUG, ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import {
+  ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
   ADMIN_MOBILE_PASS_BLOCKING,
   allFontFloorPassed,
   allInteractionStatesPassed,
@@ -80,6 +81,7 @@ import {
   type FontFloorResult,
   type InteractionStateEntry,
   type InteractionStateResult,
+  type InteractiveMeasurement,
   type MobileRouteEntry,
   type MobileRouteResult,
   type RouteResult,
@@ -1234,9 +1236,22 @@ async function visitMobileRoute(
     let minControlHeight: number | null = null;
     let minControlWidth: number | null = null;
     let minControlSelector: string | null = null;
+    // DEC-253/DEC-367/DEC-808 wave-155 amendment: every visible control's
+    // own structural box, over the exact same population as the minima
+    // below — handed to the pure deriveInteractiveOffenders in
+    // render-sweep-lib.ts so the gate can report every offender, not just
+    // the shortest control.
+    const measurements: InteractiveMeasurement[] = [];
     for (const el of controls) {
       if (el.offsetParent === null) continue; // visible only (not display:none)
       const rect = el.getBoundingClientRect();
+      measurements.push({
+        selector: describe(el),
+        tagName: el.tagName.toLowerCase(),
+        width: rect.width,
+        height: rect.height,
+        visible: true,
+      });
       // DEC-367: the 44px floor's second dimension. Tracked over the exact
       // same visible primary nav/filter/submit control population as
       // minControlHeight — no new selector, no new population — so a
@@ -1251,7 +1266,16 @@ async function visitMobileRoute(
       }
     }
 
-    return { scrollWidth, viewportWidth, minControlHeight, minControlWidth, maxElementRight, overflowOffenders, minControlSelector };
+    return {
+      scrollWidth,
+      viewportWidth,
+      minControlHeight,
+      minControlWidth,
+      maxElementRight,
+      overflowOffenders,
+      minControlSelector,
+      interactiveMeasurements: measurements,
+    };
   }, controlSelector);
 
   // DEC-421: advisory type-floor measurement at this route's viewport.
@@ -1492,7 +1516,29 @@ async function main(): Promise<void> {
     console.log("");
     console.log(formatMobileSummary(adminMobileResults));
 
+    // DEC-253/DEC-367/DEC-808 wave-155 amendment: print every interactive
+    // offender per route (not just the shortest control's reason string
+    // above), then wire the total count against
+    // ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING — the unfilled -1 sentinel
+    // fails loudly until a lane that actually runs this pass replaces it
+    // with a real measured total (see the constant's own comment).
+    console.log("");
+    console.log("render-sweep: admin mobile interactive offenders (DEC-253/DEC-367/DEC-808)...");
+    let totalInteractiveOffenders = 0;
+    for (const r of adminMobileResults) {
+      totalInteractiveOffenders += r.interactiveOffenders.length;
+      if (r.interactiveOffenders.length > 0) {
+        console.log(`  ${r.entry.path}: ${r.interactiveOffenders.length} offender(s): ${r.interactiveOffenders.join(" | ")}`);
+      }
+    }
+    console.log(
+      `render-sweep: admin mobile total interactive offenders: ${totalInteractiveOffenders} (ceiling ${ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING})`,
+    );
+
     if (!allMobilePassed(adminMobileResults) && ADMIN_MOBILE_PASS_BLOCKING) {
+      failed = true;
+    }
+    if (totalInteractiveOffenders > ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING && ADMIN_MOBILE_PASS_BLOCKING) {
       failed = true;
     }
 
