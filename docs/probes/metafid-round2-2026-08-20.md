@@ -59,30 +59,73 @@
   "Import CSV · 390", "Merge · 390".)
 
 ## WAVE B — tokens + localized layouts
-- Tap-floor tokens still under 44 (mechanical; sibling pattern at
-  settings.css:2087): .chq-submissions-clone 14px · .chq-check 18px ·
-  .chq-forms-strip-label 16px · .chq-forms-strip-datefield 28.4px (also
-  clipped: sw108>cw93) · contacts name links 25.6px · content file links
-  24px · .chq-color-swatch 22px · portal add-resource 34px ·
+- Tap-floor tokens originally reported under 44 (mechanical; sibling
+  pattern at settings.css:2087): .chq-submissions-clone 14px · .chq-check
+  18px · .chq-forms-strip-label 16px · .chq-forms-strip-datefield 28.4px
+  (also clipped: sw108>cw93) · contacts name links 25.6px · content file
+  links 24px · .chq-color-swatch 22px · portal add-resource 34px ·
   .chq-review-queue-footer-showall 30px.
-  SPOT-VERIFIED (wave-140/w15-ff, source read not a re-measure — full
-  pixel re-run is a separate scan task): every named selector now has a
-  dedicated terminal-phone-block rule in its own stylesheet — a
-  `.chq-submissions-clone` rule inside `app/src/pages/submissions/submissions.css`'s
-  phone block; a `.chq-forms-strip-datefield` rule and a `label.chq-forms-strip-label`
-  rule inside `app/src/pages/forms/forms.css`'s phone block; a
-  `.chq-settings-panel li .chq-color-swatch` rule inside
-  `app/src/pages/settings/settings.css`, under a comment naming
-  DEC-393/DESIGN-RULINGS:189; a `.chq-review-queue-footer-showall` rule
-  inside `app/src/pages/review/review.css`, under a comment naming the
-  same DEC-393/DESIGN-RULINGS:189 pairing; and a floor comment in
-  `app/src/pages/contacts/contacts.css` naming this exact probe row
-  ("round-2 WAVE B row \"contacts name links") next to its fix. Left OPEN
-  rather than CLOSED: this wave did not re-run the pixel scan to confirm
-  the computed height at 390, only that a floor rule now targets each
-  token — the owed re-measure is now the width-dimension `scripts/render-sweep-lib.ts`
-  instrument lane v12m-w19-f is building this wave (the existing sweep
-  records `minControlHeight` only), not a hand re-run.
+  CLOSED (task v12m-w20-g, DEC-989 wave-145 amendment: "a floor RULE is
+  not a MEASUREMENT... closes only on measured pixels, in both
+  dimensions"). Real Chromium measurement at 390x844 via
+  `scripts/render-sweep-lib.ts`'s landed `minControlWidth`/`widthFails`
+  shape (v12m-w19-f), a fresh browser session per persona, `npm run
+  db:migrate` + `npm run seed` fixture data, each token's own owning
+  route, `getBoundingClientRect()` over the visible (offsetParent !==
+  null) population. Every one of the nine now measures at or above the
+  44px floor in BOTH dimensions:
+  - `.chq-submissions-clone` (/admin/submissions, organizer, n=30):
+    min 48.1×44px.
+  - `label.chq-forms-strip-label` (/admin/submissions/forms, organizer,
+    n=2 — only the Opens/Closes `<label>` form, the Received `<span>` is
+    deliberately unfloored per forms.css's own comment): min 334×44px.
+  - `.chq-forms-strip-datefield` (/admin/submissions/forms, organizer,
+    n=2): min 326×44px. The reported clip (sw108>cw93) does not
+    reproduce: `.chq-forms-strip` now carries `grid-template-columns: 1fr`
+    inside its terminal phone block (forms.css, DEC-919 amendment,
+    "the frame removes GEOMETRY, not CAPABILITY... they just stack
+    instead of sitting in three 1fr columns"), so each cell — and its
+    datefield — gets the full 358px content width, not a narrow grid
+    track. Measured scrollWidth === clientWidth (324 === 324) on both
+    fields at rest and on focus; the clip clause closes on this same
+    measurement, separately from the height clause per this task's own
+    instruction.
+  - contacts name links, i.e. `.chq-contacts-record-value`
+    (/admin/contacts?openContact=seed_contact_0001, organizer): the class
+    renders as two different elements per DEC-380's readMode split — the
+    inert readonly `<span>` (phone READ mode, min observed height 23px,
+    deliberately exempt: DEC-991, it is text not a control) and the real
+    click-to-edit `<button>` (phone EDIT mode, reached by clicking the
+    drawer dock's "Edit" control). Measuring the button form only
+    (`:not(.chq-contacts-record-readonly)`, n=14): min 365×44px.
+  - content file links, i.e. `.chq-link-button` (/admin/content,
+    organizer, n=1 visible on the seeded library): min 49.8×44px.
+  - `.chq-color-swatch` (/admin/settings?section=tracks-rooms&edit=1,
+    organizer, the `.chq-settings-panel li .chq-color-swatch`
+    element-qualified rule, n=3): min 44×44px.
+  - portal add-resource, i.e. `.chq-settings-portal-add-resource`
+    (/admin/settings?section=portal&edit=1, organizer, n=1): min
+    112.4×44px.
+  - `.chq-review-queue-footer-showall` (/admin/review/plans/
+    seed_evaluation_plan_0001, reviewer persona — this class only renders
+    when a reviewer's queue exceeds 5 rows, true for the seeded plan at
+    11 rows; the organizer visit to the same path renders PlanEditor, not
+    ReviewerQueue, and has no match, DEC-409's viewport/persona split):
+    n=1, 72.9×44px.
+  - `.chq-check` (18×18px raw box, unchanged and correctly so): this
+    token is itself tap-floor-exempt by design (styles.css's own
+    `tap-floor-exempt` comment, DEC-393 wave-124 amendment — "the phone
+    tap floor is met by the LABEL wrapping the box, not by inflating the
+    box"). The real phone tap target is `.chq-check-hit`, the wrapping
+    label every bare table-cell checkbox now renders inside
+    (check-hit-receipt.scan.test.ts). Measured directly on
+    /admin/contacts (n=25) and /admin/submissions (n=30): every instance
+    44×44px exactly, zero under floor.
+  No stylesheet edit was needed — every rule floored in wave-140's
+  source-only spot-verification (DEC-393/DESIGN-RULINGS:189: min-height
+  44px plus centred flex plus horizontal padding, appended in each
+  sheet's terminal `max-width` phone block, DEC-385) reaches the floor on
+  a live pixel measurement too, in both dimensions, with zero clipping.
 - N2 MED: /login password↔button 0px gap AND email focus-ring overlaps the
   PASSWORD label by 4px on load (R1's "not reproducible" REFUTED — live
   measured). Add the gap.
