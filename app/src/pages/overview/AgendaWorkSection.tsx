@@ -122,12 +122,26 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           </div>
           <div>
             <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind, conflict.entries.length)}</div>
-            {conflict.entries.map((entry) => (
-              <div key={entry.submissionId}>
-                {entry.title}{' '}
-                <span className="chq-overview-row-meta">— {joinSegments([entry.speakerName, entry.ref])}</span>
-              </div>
-            ))}
+            <div className="chq-overview-clash-entries-desktop">
+              {conflict.entries.map((entry) => (
+                <div key={entry.submissionId}>
+                  {entry.title}{' '}
+                  <span className="chq-overview-row-meta">— {joinSegments([entry.speakerName, entry.ref])}</span>
+                </div>
+              ))}
+            </div>
+            {/* DEC-919 wave-32 amendment: 390 collapses the clash's per-entry
+                list into ONE joined sentence with a muted "share this slot"
+                tail (Chautauqua Overview.dc.html:275). Every entry's title is
+                joined with " and " -- never hard-coded to two, a conflict can
+                carry three or more entries (DEC-180). Two-node idiom: hidden
+                at top level, revealed only in overview.css's terminal
+                @media (max-width:700px) block; desktop's per-entry list above
+                stays byte-identical. */}
+            <span hidden className="chq-overview-clash-line-phone">
+              {conflict.entries.map((entry) => entry.title).join(' and ')}{' '}
+              <span className="chq-overview-row-meta">share this slot</span>
+            </span>
           </div>
           {conflict.resolution ? (
             <div className="chq-overview-row-actions-column">

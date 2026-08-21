@@ -861,4 +861,23 @@
   .chq-overview-section-label-phone {
     display: inline;
   }
+
+  /* DEC-919 wave-32 amendment: §04's clash row at 390 collapses the
+     per-entry list into ONE joined sentence with a muted "share this slot"
+     tail (Chautauqua Overview.dc.html:275
+     `font-size:15px; line-height:1.5`). Same two-node idiom as
+     .chq-overview-overflow/.chq-overview-overflow-link above: the desktop
+     per-entry wrapper (chq-overview-clash-entries-desktop,
+     AgendaWorkSection.tsx) hides here, the phone-only joined sentence
+     (chq-overview-clash-line-phone, rendered immediately above it in the
+     same section) reveals. */
+  .chq-overview-clash-entries-desktop {
+    display: none;
+  }
+
+  .chq-overview-clash-line-phone {
+    display: block;
+    font-size: 15px;
+    line-height: 1.5;
+  }
 }
