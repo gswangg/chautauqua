@@ -6,45 +6,55 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVES 65-127 HEAVILY COMPACTED (v12m mobile campaign start through desktop/phone ledgers converging): key recurring lessons — a `DEC_NNN` constant/registry entry is a mutable STRING not a receipt of build (DEC-967, sightings #7-#18+ across w90-w146); scan predicates lie in their PREDICATE not their count, always force ceiling to `-1` and read the offender list (DEC-808); branch-namespace collisions recurred nearly every wave, re-verify via `show-ref`+`for-each-ref`+`worktree list`+packed-refs before AND after planning; a hand-listed or tag-filtered population undercounts (DEC-180/393/613); frame-in-repo outranks a pixel measurement, and a frame's prose can assert behaviour the code forbids — goes to DEVIATIONS, never a worker (DEC-380/582); ratchet ceilings must be MEASURED not read from a snapshot; a green exit-predicate over a red suite is the campaign's costliest illusion, fixed by requiring a suite-verified ancestor sha (DEC-069); comment-stripping and entity-decoding must be string-aware or ledgers invent offenders (DEC-967); `git rev-list --count main..<branch>` is the only honest "did this land" test, not `--is-ancestor`.
 - WAVES 128-151 HEAVILY COMPACTED: registry laundering recurs, always grep the TREE for the ruled sentence; caption ledgers need boundary-anchored+normalized matching (DEC-976); measure in a DETACHED worktree pinned to a sha, never the shared checkout; StrictMode double-invoke breaks render-time registry writes (DEC-728); `--is-ancestor` answers reachable not landed, use `git rev-list --count` (DEC-903); CSS comments are page content and must be stripped or read verbatim per DEC-374's subject test; the pack draws control floors in TWO registers (44 phone / 46 desktop), split before draining (DEC-393); DEC-NNN namespace SATURATED, new rulings are amendments only.
 - WAVES 152-154 HEAVILY COMPACTED: fast tier oscillated red/green across waves as lanes landed mid-plan, ended fully green (1286 files/16405 tests/96s) — re-measure, never inherit a red set; every campaign exit-predicate ratchet reads 0 but a DRAINED LEDGER MEASURES CITATION NOT CONFORMANCE — four live review-lens defects (bare `<a>` tap targets, stale audit rows, half-applied DEC-124/DEC-517 amendments) hid behind green rows; `routeManifest.ts` has zero query sub-states so tabbed admin surfaces are only ever visited at their default tab (DEC-144/180); the mandate doc itself is a cited artefact whose citations rot (DEC-967); `render-sweep.ts`'s control selectors are class-token keyed and miss classless `<a>` floor violations (DEC-253).
-- WAVE 155 HEAVILY COMPACTED: two directories hold `DEC-NNN.md` and collide on all 77 shared ids, 35 with different subjects under one id — `DEC-991` a flat contradiction, cite the directory not the bare id (DEC-976); only 77/1077 decision docs have checked citations, `decisions/*.md` is bare-path-only (DEC-518); the 390 gate reported ONE control per route not a list (DEC-253, still open); wave RULED DEC-919's read-drill-renders-children fix but built nothing — a ruling is not a receipt of build, always check `git rev-list --count`.
+- WAVES 155-159 HEAVILY COMPACTED: two directories collided on `DEC-NNN.md` ids, cite the directory not the bare id (DEC-976); rulings are not receipts of build, always check `git rev-list --count` (four lanes committed 0 across w155-156); measure in a detached worktree, never shared `main`, but skip D1-backed tests there (no `.wrangler`); vitest rewrites `path:line` in error messages, replicate a scan's regex before trusting one; CLAIMED_FLOOR/claimed-ledger counts prove citation not conformance (44/53 phone frames ungraded despite 53/53 claimed); SSR "phone-frames" tests were source scans not requests, copy `test/portal-page-headings.test.ts`'s `vi.mock`+`buildApp` harness; branch prefixes burn almost every wave, re-check `show-ref`+`packed-refs`+`worktree list` before AND after planning (w11-w14 letters all pre-burned, moved to q/r/s-prefixes); `signOut()` discards `?signed-out=1` (DEC-154), `useCurrentEvent`'s search-keyed cache never evicts (DEC-728); the pack draws vocabulary in per-surface registers a flattened map can't express, un-adjudicable divergences stay unfixed.
+- WAVE 16 HEAVILY COMPACTED: branch letters pre-burned again, moved to `ua..ui`; a full-suite run against shared `main` can report a phantom red while the scribe writes mid-suite, re-run the single failing file; verdict ledgers rot faster than the code they grade, check the owning file's comment block before spending a lane on a row; the 390 verdict sweep is COMPLETE (53/53 phone + 4 desktop), remaining work is DIVERGES rows, DEVIATIONS, and the five DEC-069 verification slots; some lanes land committed-but-UNMERGED, read ledgers via `git show <branch>:<path>` until the train lands them.
+- WAVE 17 HEAVILY COMPACTED: namespace held clean for once; ledgers are the campaign's biggest liability not the code — a dozen DIVERGES rows advertised work already landed, verdict tests still asserting stale truth (DEC-976: row+test move in one commit, `git log -S` before planning); a "two registers" verdict can be a two-sample undercount, enumerate the WHOLE drawn population (DEC-613/DEC-180); a control-floor row can resolve to the WRONG element by text-match, fix the frame's actual control then correct the join (DEC-393); exit-predicate reality check: all 31 ceilings DECLARED ONLY, not measured, all five DEC-069 slots VOID.
+## Wave 18 (planner notes)
 
-- WAVE 156 HEAVILY COMPACTED: wave-155 plan was RULED but never BUILT, 4/8 lanes committed 0 (`git rev-list --count`, not the decision doc, proves landing); main was red at 108c5aa3 from a citation-grammar bug (tag-kind annotation inside `quoteAfter`'s window); vitest rewrites `path:line` in error messages, replicate a scan's regex before trusting one; measure in a detached worktree but not D1-backed tests (no `.wrangler`); campaign gate down to one row, `SPA_CLASSLESS_CONTROL_CEILING=4`; Settings 390 read drills 8/9 diverge (DEC-919); desktop drawn-floor JOIN is a label-TEXT search, corroborate before draining (DEC-393); branch namespace `v12m-w11-*`/`v12m-w12-a..j` BURNED, wave used `v12m-w12-qa..qj`.
+**THE FAST TIER IS RED ON MAIN AND HAS BEEN FOR AT LEAST TWO WAVES.**
+Measured, not inherited: `test:fast` fails 8 files / 8 tests at `6aa65834`,
+every one a fidelity or citation ratchet sitting at ceiling 0. The
+exit-predicate prints all 31 rows DECLARED 0 / TARGET 0 while at least four
+of those constants are provably wrong against the tree
+(`UNRECEIPTED_CLAIM_CEILING` declares 0, measures 6;
+`PHONE_HIDDEN_UNRECEIPTED_CEILING` declares 0, measures 2). A DECLARED
+ceiling is a STRING; run the owning test. Wave 18 spends 6 of 7 lanes
+draining that set so a verification wave can finally record a
+`--suite-verified-sha` — no worker task can flip the five DEC-069 slots.
 
-- WAVE 157 HEAVILY COMPACTED: tree moved 3x mid-plan, re-check `git log -1` before emitting; CLAIMED_FLOOR proves citation not conformance — 44/53 phone frames ungraded despite 53/53 claimed (DEC-976); a control-shaped corroboration can attach to the WRONG element, verify by nearest-enclosing-class read (DEC-393); `v12m-w13-a..f` burned, moved to `ra..rj`.
-- WAVE 158 HEAVILY COMPACTED: SSR "phone-frames" tests were source scans not requests (20/53 phone frames graded by grep, `app.request` count 0) — copy `test/portal-page-headings.test.ts`'s `vi.mock`+`buildApp` harness (DEC-976); a planner who skips the CONCURRENT wave's worktrees re-plans already-built lanes, check `git worktree list` for the other wave's prefix too; `signOut()` discards `?signed-out=1` (DEC-154) and `useCurrentEvent`'s search-keyed cache never evicts, replaying stale banners on A→B→A (DEC-728) — a scan's own PREMISE is a claim about the tree, not documentation; `v12m-w14-a/b/c/d/e/j` burned, moved to `sa..sj`.
+**THE TREE MOVED FOUR TIMES DURING PLANNING.** `main` went
+`4a74f3b6` -> `f4540923` -> `649155df` -> `6aa65834` while wave 17's lanes
+spawned, committed and merged around me, and for part of that window the
+SHARED checkout carried ten uncommitted modified files from another agent.
+Every offender list here was re-derived at `6aa65834` with a clean tree.
+Corollary: a red ratchet you measured 20 minutes ago may be someone else's
+lane by now — re-run the single test before writing the brief.
 
-- WAVE 159 HEAVILY COMPACTED: branch prefixes burn fast, re-check `show-ref`+`packed-refs`+`worktree list` before/after planning every wave; a scribed `## Amendment (wave N)` is the cheapest read on what a CONCURRENT wave already claimed; a verdict ledger row and an in-code comment both rot faster than the code they describe — re-derive against the tree, grep the predicate not the prose; the pack draws vocabulary in per-surface registers (label, byte format) that a single flattened map cannot express, un-adjudicable divergences stay unfixed; a desktop frame can license a desktop-affecting change under the freeze, cite the desktop line when spending it.
+**AN EXACT POPULATION PIN IS A MERGE-CONFLICT MAGNET.**
+`negative-margin-adjacency.scan.test.ts`'s `display:none` count read 169,
+then 174, then 186 within one hour — three legitimate merges, three red
+suites, on a file no lane owns. A tripwire that fires on legitimate growth
+is a tripwire nobody reads (DEC-808 wave-18: floors and superset checks,
+never equalities; the real subject keeps its exact-zero ratchet).
 
-- WAVE 16 HEAVILY COMPACTED: branch prefix `v12m-w16-a/b/c` pre-burned again, moved to `ua..ui` (fourth wave running, always check `for-each-ref` before/after); a full-suite run against shared `main` can report a phantom red while the scribe writes `src/decisions-data/*.md` mid-suite, re-run the single failing file before scheduling a repair; verdict ledgers rot faster than the code they grade, check the owning file's comment block before spending a lane on a row (w14-sf refiled an already-ruled CFP `Draft` divergence); the 390 verdict sweep is COMPLETE (53/53 phone + 4 desktop, all 31 exit-predicate ceilings DECLARED 0/TARGET 0), remaining work is building DIVERGES rows, filing DEVIATIONS, and the five DEC-069 verification slots; `w14-sb..sh` committed and UNMERGED, read ledgers via `git show v12m-w14-s<x>:<path>`, not from main, until the train lands them.
+**A PRODUCT SCAN THAT READS A VERDICT TEST READS THE WRONG DOCUMENT.**
+Two ceiling-0 ratchets are red on `Speakers.desktop-frame-verdicts.render.test.tsx`
+for quoting the frame VERBATIM — the one artefact that proves the
+divergence. Frame evidence is the subject of its sentence, not the
+product's vocabulary (DEC-374 wave-18); byte-identity against
+`docs/design/*.dc.html` is the unfakeable test.
 
-## Wave 17 (planner notes)
+**A SCAN'S PREMISE, NOT ITS COUNT, IS WHERE THE ESCALATION HIDES.** Both
+credential scans read green while four organizer routes mint 30-day
+`/claim/<token>` logins with no `requireCookieSession`, because
+`createClaimToken`/`applyMintedPortalLinks` are in neither marker list
+(DEC-027 wave-18). Two of the four mint INDIRECTLY — a marker list that
+only reads a route's own registration text can never see them.
 
-**Namespace held for once.** `v12m-w17-*` was free in `show-ref`,
-`packed-refs` AND `worktree list`, before and after planning. First wave in
-five not to find its reserved letters pre-spent.
-
-**THE LEDGERS ARE THE CAMPAIGN'S BIGGEST LIABILITY, not the code.**
-Re-derived every live DIVERGES verdict in the tree: Content, Review, Contacts
-rows, Docs' "Contents" trigger, both shell handoff findings and all five
-inherited review-lens findings were ALREADY FIXED on main — a dozen rows
-advertising work landed in waves 15-16, with verdict TESTS still titling and
-asserting the old truth, pinning repaired divergences in place. DEC-976 now
-rules a row and its verdict test move in ONE commit — `git log -S` the
-sentence, read the comment block, only then plan.
-
-**A "the pack draws two registers" verdict can be a two-sample undercount.**
-DEC-613 wave-159 left `formatBytes` unruled on two byte-size samples; the
-full drawn population is thirteen strings and none read `.0` — one register,
-trimmed, not two. Enumerate the WHOLE population before declaring frames
-silent (DEC-180's lesson, applied to vocabulary).
-
-**A control-floor ledger row can be a real gap under the WRONG name.**
-Contacts `:602`'s "Reviewer" row resolves by text-match to `chq-pill`; the
-real control is `chq-add-to-event-role-btn` in a `.chq-segmented` group.
-Both are genuinely unfloored — fix the control the FRAME draws, then correct
-the join, never the reverse (DEC-393).
-
-**Exit-predicate reality check (`--product-sha 4a74f3b6`):** all 31 campaign
-ceilings read DECLARED 0/TARGET 0 but print DECLARED ONLY — NOT MEASURED,
-all five DEC-069 slots VOID. Only a verification wave running `test:fast`
-with `--suite-verified-sha` can change that; no worker task can.
+**LENS FINDINGS I DISPROVED at `6aa65834`:** `signOut()` reads `res.url`;
+`captureNavigationContext` evicts on `lastCapturedSearch`; the
+`home.css.ts:49/:125` + `cfp.css.ts:116` frame citations are receipted;
+`DEC-576.md:388` and `DEC-029.md`'s `My Profile` quote resolve. The
+`send.ts`/`bulk-email.ts` half of the claim-token finding IS real, but via
+`applyMintedPortalLinks`, not the `resolvePortalLinks(..., false)` line the
+lens cited.
