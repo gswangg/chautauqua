@@ -69,8 +69,11 @@ describe('contacts.css 390 head band face (DEC-937, v12m-w16-ui-r2-d)', () => {
   it('all four appended rules live inside the terminal block', () => {
     const last = BLOCKS[0]!;
     expect(last.body).toMatch(/\.chq-contacts-title-row\s*\{\s*gap:\s*11px;\s*\}/);
+    // DEC-385 amendment (v12m-w16-ui-r4-b): border-bottom: none was added
+    // alongside border-top: none so no borrowed shell hairline (the
+    // `.chq-toolbar` shell token owns both) cuts through the band.
     expect(last.body).toMatch(
-      /\.chq-toolbar\.chq-contacts-tabstrip-row\s*\{\s*border-top:\s*none;\s*padding-block:\s*0;\s*gap:\s*11px;\s*\}/,
+      /\.chq-toolbar\.chq-contacts-tabstrip-row\s*\{\s*border-top:\s*none;\s*border-bottom:\s*none;\s*padding-block:\s*0;\s*gap:\s*11px;\s*\}/,
     );
     expect(last.body).toMatch(/\.chq-contacts-directory-main\s*\{\s*gap:\s*11px;\s*\}/);
     expect(last.body).toMatch(/\.chq-contacts-search\s*\{\s*font-size:\s*14px;\s*\}/);

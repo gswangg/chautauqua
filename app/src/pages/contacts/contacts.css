@@ -1569,16 +1569,21 @@
   }
 
   /* `.chq-toolbar` is a SHELL token owned by app/src/styles.css (border-top
-     hairline + 12px gap for a generic toolbar row) and is never redeclared
-     bare here; this selector is a COMPOUND with this page's own
-     `.chq-contacts-tabstrip-row` token so only the tab-filter row of this
-     frame is retargeted, the same discipline `.chq-contacts-title-row
-     .chq-summary` above already uses on this file. The head band's frame
-     line (cited two rules up) draws no hairline between the H1 and the
-     search box, so the shell's `border-top` is switched off and its
+     AND border-bottom hairlines + 12px gap for a generic toolbar row) and
+     is never redeclared bare here; this selector is a COMPOUND with this
+     page's own `.chq-contacts-tabstrip-row` token so only the tab-filter
+     row of this frame is retargeted, the same discipline
+     `.chq-contacts-title-row .chq-summary` above already uses on this
+     file. The head band's frame line (cited two rules up) draws the whole
+     band as ONE column with no internal rules, so BOTH shell hairlines are
+     switched off here -- `border-top` (no hairline between the H1 and the
+     search box) and `border-bottom` (DEC-385 amendment, v12m-w16-ui-r4-b:
+     without this the shell's border-bottom still cut a hairline through
+     the band, between the tablist and the rule-chip strip below it) -- and
      padding/gap are replaced with the frame's own 11px rhythm. */
   .chq-toolbar.chq-contacts-tabstrip-row {
     border-top: none;
+    border-bottom: none;
     padding-block: 0;
     gap: 11px;
   }
@@ -1598,5 +1603,31 @@
      (app/src/styles.css:791), so the frame's 14px is restated here. */
   .chq-contacts-search {
     font-size: 14px;
+  }
+
+  /* DEC-385 amendment (v12m-w16-ui-r4-b). docs/design/Chautauqua
+     Contacts.dc.html:180 draws the whole head band as ONE column with a
+     uniform `gap:11px` rhythm and no internal rules. r2-d tightened the
+     gap INSIDE each of the band's three top-level siblings --
+     `.chq-contacts-title-row`, `.chq-toolbar.chq-contacts-tabstrip-row`,
+     `.chq-contacts-directory-main` (first two rules above) -- to 11px, but
+     deliberately left `.chq-contacts-page`'s phone `gap: 16px`
+     (contacts.css :633) untouched, because that root is SHARED with the
+     Duplicates/Segments/Pipeline phone drills, each with its own 390 frame
+     and its own band (DEC-964). That left the SEAMS between the three
+     band siblings (title-row->toolbar, toolbar->directory-grid) at 16px,
+     breaking the frame's uniform 11px rhythm across exactly those two
+     seams. ContactsApp.tsx gates the landing head with
+     `!(isPhone && panel !== 'directory')`, so at phone
+     `.chq-contacts-title-row` renders ONLY on the directory landing --
+     `:has(> .chq-contacts-title-row)` is therefore exactly "the landing at
+     phone", and the drills (which never render that sibling) are
+     untouched. Specificity (0,2,0) beats the earlier bare
+     `.chq-contacts-page` (0,1,0) below it in source order, so this is a
+     narrow-overrides-wide addition -- DEC-385 single-direction responsive
+     holds, and the earlier `.chq-contacts-page { gap: 16px; }` rule is
+     left byte-unchanged for the drills. */
+  .chq-contacts-page:has(> .chq-contacts-title-row) {
+    gap: 11px;
   }
 }
