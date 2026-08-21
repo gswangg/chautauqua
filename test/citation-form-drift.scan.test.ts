@@ -193,7 +193,20 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // file) -- no ruling's MEANING changed, only the citation's coordinate
 // shape. Re-measured after the conversion: 25, all outside
 // src/decisions-data/. Lowered 57 -> 25.
-export const LINE_KEYED_CITATION_CEILING = 24;
+// Wave v12m-w5-bb: converted all 16 line-keyed citations owned by this
+// task (docs/design/audit/comms-drill-v12.md, desktop-frame-ledger-v12.md,
+// phone-dock-declaration-v12.md, phone-tap-floor-links.md,
+// review-tap-floor-v12.md and review-v12.md) to the drift-proof bare-path
+// shape -- each converted quote re-verified to still resolve verbatim in
+// its cited file. Measured on this branch (forced to -1, offender list
+// read row by row): 30 -> 14. Sibling lanes v12m-w5-ba
+// (src/decisions-data/*.md) and v12m-w5-bc (docs/probes/*,
+// docs/mobile-campaign.md) are draining the remaining 14 offenders
+// concurrently against their own bases, so 14 is THIS branch's figure,
+// not necessarily the merge train's -- per DEC-989 wave-146, the
+// integrated tree is the merge train's to re-measure once all three
+// lanes land.
+export const LINE_KEYED_CITATION_CEILING = 14;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

@@ -288,7 +288,7 @@ the 7 **public** desktop frames in `Chautauqua Public and Portal.dc.html`
   `src/views/theme.ts:109`) plus 44px of side padding doubled: 1180 + 88 =
   1268. Shipped, `main.chq-pub-main { padding: 26px var(--chq-pub-main-pad-x)
   34px; }` at `src/routes/public/css/chrome.css.ts:252`, and the token itself is
-  bound at `src/views/theme.ts:128` (`--chq-pub-main-pad-x: 34px;`), which
+  bound at `src/views/theme.ts` (`--chq-pub-main-pad-x: 34px;`), which
   gives 1180 + 68 = 1248, and a
   bottom padding of 34px rather than the frame's 40px. `--chq-pub-main-pad-x`
   carries its own explicit DEC-683 (wave 1, task w1-a) rationale computed

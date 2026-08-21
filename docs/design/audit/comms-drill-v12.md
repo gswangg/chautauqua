@@ -29,7 +29,7 @@
 
 - **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:196,369)** —
   Templates' dock (frame `:325-328`, the Save/Cancel pair). Re-derived
-  against main: `TemplatesTab.tsx:196` sets `data-chq-phone-dock` on the
+  against main: `app/src/pages/comms/TemplatesTab.tsx` sets `data-chq-phone-dock` on the
   page root while `editingId` is set, and the existing footer wrapper
   (`.chq-comms-editor-actions`, line 369) now also carries
   `.chq-phone-dock`, per DEC-621's wave-98 amendment comment nearby
@@ -47,7 +47,7 @@
   saved</span>` (line 227), directly under the `<h1>`, matching frame
   :290's `5 saved` line. Closed.
 - **RESOLVED (wave 106, app/src/pages/comms/HistoryTab.tsx:141-142,171)**
-  — History's count line. Re-derived against main: `HistoryTab.tsx:141-142`
+  — History's count line. Re-derived against main: `app/src/pages/comms/HistoryTab.tsx`
   now builds `countLine` as `` `${countOf(total, 'send')} · ${rhythm.sentLast7Days}
   in the last 7 days` `` when `rhythm` is available (falling back to the
   bare count otherwise), rendered at line 171 inside the
