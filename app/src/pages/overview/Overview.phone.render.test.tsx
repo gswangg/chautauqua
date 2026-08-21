@@ -202,6 +202,52 @@ describe('overview phone (390) DOM contract (task w2-g)', () => {
     expect(screen.getByText('Accept')).not.toHaveClass('chq-overview-btn-waitlist');
     expect(screen.getByText('Decline')).not.toHaveClass('chq-overview-btn-waitlist');
   });
+
+  // DEC-833 (wave-16 amendment): the 390 frame draws a shorter form of each
+  // §01-04 section label than the 1600 frame's long form the tree already
+  // ships (:74, :98, :117, :136) -- both live as sibling spans on every
+  // .chq-overview-section-label so jsdom (which applies no @media rule)
+  // sees both text nodes.
+  it('renders both a desktop and a phone span, byte-for-byte, for each of the four section labels', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
+
+    // .chq-overview-section-label also labels the always-present "No action
+    // needed" section (a single plain-text node, not part of DEC-833's four
+    // desktop/phone pairs), so scope to labels that carry the -desktop span.
+    const labels = document.querySelectorAll('.chq-overview-section-label:has(.chq-overview-section-label-desktop)');
+    expect(labels.length).toBe(4);
+
+    // The frame's short forms (Chautauqua Overview.dc.html, phone frame
+    // lines 211/235/253/270 -- receipted with their quotes at
+    // overview.css's own DEC-833 citations, which this scan also checks).
+    const expected: [string, string][] = [
+      ['01 — Overdue speaker tasks', '01 — Overdue tasks'],
+      ['02 — Submissions awaiting triage', '02 — Awaiting triage'],
+      ['03 — Session content awaiting approval', '03 — Content to decide'],
+      ['04 — Unplaced sessions and conflicts', '04 — Agenda'],
+    ];
+
+    expected.forEach(([desktopText, phoneText], i) => {
+      const label = labels[i]!;
+      const desktop = label.querySelector('.chq-overview-section-label-desktop');
+      const phone = label.querySelector('.chq-overview-section-label-phone');
+      expect(desktop).not.toBeNull();
+      expect(phone).not.toBeNull();
+      expect(desktop!.textContent).toBe(desktopText);
+      expect(phone!.textContent).toBe(phoneText);
+    });
+  });
 });
 
 // Chautauqua Overview.dc.html:190 (cited with its strict form, and
@@ -234,5 +280,17 @@ describe('overview phone (390) CSS contract (task w2-g)', () => {
     expect(match).not.toBeNull();
     expect(match![1]).toMatch(/width:\s*auto/);
     expect(match![1]).not.toMatch(/width:\s*100%/);
+  });
+
+  // DEC-833 (wave-16 amendment): the phone span is display:none in the
+  // sheet's normal cascade, and its reveal (with the desktop span's hide)
+  // lives ONLY inside the single terminal @media (max-width:700px) block --
+  // never a second phone block (DEC-385 single-direction).
+  it('§01-04 phone label span is hidden outside any max-width block and revealed only inside the terminal max-width:700px block', () => {
+    expect(withoutMedia).toMatch(/\.chq-overview-section-label-phone\s*\{[^}]*display:\s*none/);
+    expect(withoutMedia).not.toMatch(/\.chq-overview-section-label-desktop\s*\{/);
+
+    expect(phoneCss).toMatch(/\.chq-overview-section-label-desktop\s*\{[^}]*display:\s*none/);
+    expect(phoneCss).toMatch(/\.chq-overview-section-label-phone\s*\{[^}]*display:\s*inline/);
   });
 });

@@ -11,18 +11,21 @@
 // in the test file's own header rather than a near-empty
 // docs/design/audit/*.md) -- this comment IS that verdict:
 //
-// VERDICT -- frame :190 Overview -- DIVERGES: the frame's 390 body draws
-// FOUR shortened section labels ("01 — Overdue tasks" :211, "02 — Awaiting
-// triage" :235, "03 — Content to decide" :253, "04 — Agenda" :270) that
-// exist ONLY in the phone frame -- the desktop 1600 frame (:74/:98/:117/:136)
-// draws the longer forms. Overview.tsx (app/src/pages/Overview.tsx) is one
-// DOM tree with no phone-specific copy: it renders the desktop-length labels
-// ("01 — Overdue speaker tasks", "02 — Submissions awaiting triage", "03 —
-// Session content awaiting approval", "04 — Unplaced sessions and
-// conflicts") at every width, so the phone frame's shortened section labels
-// never render. The headline h1 (frame :207 "Four things need your
-// attention") DOES match structurally -- it is genuinely computed from the
-// payload (headlineText in overview/rows.ts), never a hardcoded frame
+// VERDICT -- frame :190 Overview -- CONFORMS (was DIVERGES until DEC-833
+// wave-16): the frame's 390 body draws FOUR shortened section labels
+// ("01 — Overdue tasks" :211, "02 — Awaiting triage" :235, "03 — Content to
+// decide" :253, "04 — Agenda" :270) that exist ONLY in the phone frame --
+// the desktop 1600 frame (:74/:98/:117/:136) draws the longer forms.
+// Overview.tsx and overview/AgendaWorkSection.tsx now render BOTH forms as
+// sibling spans (`.chq-overview-section-label-desktop` /
+// `-phone`) on the existing `.chq-overview-section-label`, with the phone
+// span hidden outside overview.css's terminal @media (max-width:700px)
+// block and revealed (desktop span hidden) inside it -- jsdom applies no
+// stylesheet, so this test sees both text nodes; the CSS-side reveal/hide
+// is pinned separately by overview/Overview.phone.render.test.tsx's CSS
+// contract describe block. The headline h1 (frame :207 "Four things need
+// your attention") DOES match structurally -- it is genuinely computed from
+// the payload (headlineText in overview/rows.ts), never a hardcoded frame
 // literal, so the differing count in this test's fixture is expected and is
 // not itself a divergence.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -171,7 +174,7 @@ afterEach(() => {
 });
 
 describe('v12 Overview 390 frame: per-frame render verdict receipt (w14-sc, DEC-976)', () => {
-  it('frame :190 Overview -- DIVERGES: computed headline matches, but the frame\'s four shortened phone-only section labels never render (the desktop-length labels render at every width)', async () => {
+  it('frame :190 Overview -- CONFORMS: computed headline matches, and the frame\'s four shortened phone-only section labels render alongside the desktop-length labels', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
       'GET /api/v1/events': eventsListEnvelope(),
@@ -205,20 +208,21 @@ describe('v12 Overview 390 frame: per-frame render verdict receipt (w14-sc, DEC-
 
     // docs/design/Chautauqua Overview.dc.html:211 `            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">01 — Overdue tasks</span>`
     verbatimLine(211, '            <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">01 — Overdue tasks</span>');
-    expect(screen.queryByText('01 — Overdue tasks')).not.toBeInTheDocument();
+    expect(screen.getByText('01 — Overdue tasks')).toBeInTheDocument();
     // docs/design/Chautauqua Overview.dc.html:235 `            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">02 — Awaiting triage</span>`
     verbatimLine(235, '            <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">02 — Awaiting triage</span>');
-    expect(screen.queryByText('02 — Awaiting triage')).not.toBeInTheDocument();
+    expect(screen.getByText('02 — Awaiting triage')).toBeInTheDocument();
     // docs/design/Chautauqua Overview.dc.html:253 `            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">03 — Content to decide</span>`
     verbatimLine(253, '            <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">03 — Content to decide</span>');
-    expect(screen.queryByText('03 — Content to decide')).not.toBeInTheDocument();
+    expect(screen.getByText('03 — Content to decide')).toBeInTheDocument();
     // docs/design/Chautauqua Overview.dc.html:270 `            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">04 — Agenda</span>`
     verbatimLine(270, '            <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">04 — Agenda</span>');
-    expect(screen.queryByText('04 — Agenda')).not.toBeInTheDocument();
+    expect(screen.getByText('04 — Agenda')).toBeInTheDocument();
 
-    // The desktop-length labels render instead, at this same 390-equivalent
-    // jsdom width (no @media applied), matching the desktop 1600 frame's
-    // own text (:74/:98/:117/:136).
+    // The desktop-length labels render alongside the phone-short forms as
+    // sibling spans (DEC-833), at this same 390-equivalent jsdom width (no
+    // @media applied), matching the desktop 1600 frame's own text
+    // (:74/:98/:117/:136).
     expect(screen.getByText('01 — Overdue speaker tasks')).toBeInTheDocument();
     expect(screen.getByText('02 — Submissions awaiting triage')).toBeInTheDocument();
     expect(screen.getByText('03 — Session content awaiting approval')).toBeInTheDocument();

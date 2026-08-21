@@ -7,6 +7,9 @@
 // shape. When the server found no free slot, the row keeps the existing
 // `Place it` link to /agenda — the UI never invents a time.
 import { Link } from 'react-router-dom';
+// DEC-833 (wave-16 amendment): the section label below carries both a
+// desktop and a phone form as sibling spans, matching the frame's 390 copy.
+import { DEC_833 } from '../../../../src/decisions';
 import { apiPut, ApiError } from '../../lib/api';
 import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../../lib/schedule-vocabulary';
@@ -25,6 +28,7 @@ import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 import { clockHHMM } from '../../lib/clock';
 import { DEC_919 } from '../../../../src/decisions';
 
+void DEC_833; // wave-16 amendment: §04's label carries desktop/phone sibling spans.
 void DEC_919; // wave-129 amendment (task w4-s): REVERSES the wave-128 label clause -- the
 // 390 link carries the frame's imperative ("Place the other <n> ›") because
 // the spelled-out count in an imperative is already this page's own §01
@@ -95,7 +99,10 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
   return (
     <section className="chq-overview-section">
       <div className="chq-overview-section-header">
-        <span className="chq-overview-section-label">04 — Unplaced sessions and conflicts</span>
+        <span className="chq-overview-section-label">
+          <span className="chq-overview-section-label-desktop">04 — Unplaced sessions and conflicts</span>
+          <span className="chq-overview-section-label-phone">04 — Agenda</span>
+        </span>
         <Link to="/agenda" className="chq-overview-section-action">
           Open the grid
         </Link>
