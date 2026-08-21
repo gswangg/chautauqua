@@ -336,4 +336,24 @@
 // on this branch: 14, entirely the loss of the Review.dc.html:598 row --
 // no other offender's fileName or text changed.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+// v12m-w4-aj (wave-148, task w4-aj, DEC-660/DEC-939): owned exactly the two
+// rows this task's own frame citations name. Chautauqua Comms.dc.html:757
+// ("Comms · Compose · step 3") is now BUILT -- ComposeWizard.tsx's
+// `wizardBreadcrumb` portals "Comms · Compose · step {currentIndex + 1}"
+// into #chq-header-slot, digit-skeleton-matching the frame's line. :769
+// moves to SUPERSEDED (see exclusions.ts's new v12m-w4-aj entry): the
+// frame's own consequence sentence is false for this app (renderTemplate
+// throws, preview.ts refuses the whole batch), so the app states the
+// refusal instead, on purpose, never that sentence. One implementation
+// note for the next lane composing a header-portal caption inside a
+// `{cond && (...)}` JSX conditional: this ledger's sourceDigitSkeleton
+// collapses `\{[^}]*\}` GREEDILY to the FIRST '}' after an opening '{' --
+// nesting the target text inside an outer `{!isPhone && ... && (<p>text
+// {expr}</p>)}` wrapper lets that outer brace's scan swallow everything up
+// to the INNER expr's own closing '}', erasing the text. Computing the
+// portal element as its own `const` (a plain JS statement, not itself
+// inside a JSX `{}`) and referencing it via a bare `{wizardBreadcrumb}`
+// avoids the trap -- the fix lives in ComposeWizard.tsx, not this ledger.
+// Forced to -1 and read back: 13, down from 15.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
 export const FRAME_CAPTION_UNMATCHED_CEILING = 13;

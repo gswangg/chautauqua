@@ -1476,6 +1476,20 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
  * other four classes share. Each entry's `reason` names the superseding
  * ruling and the pin that would break if the frame's words were built. */
 export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
+  // v12m-w4-aj (wave-148, DEC-660): the pre-emptive unresolvable-merge-field
+  // band (task w4-aj), placed on the compose/TEMPLATE step from state the
+  // wizard already holds (ComposeWizard.tsx's `usedSlotDependentFields`/
+  // `selectedNoSlotCount`), fills this slot with a DELIBERATELY different
+  // sentence -- the heading is built verbatim (digit-skeleton matches
+  // Comms.dc.html:769's own heading line, one file up), but this second
+  // sentence is not, on purpose.
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 769,
+    text: 'Your body uses {session_time}, and three of these speakers have no slot yet. They would receive the literal text “{session_time}”.',
+    reason:
+      'the frame\'s own consequence clause is FALSE for this app: src/mail/render.ts:163\'s renderTemplate throws MergeFieldError on a missing var, and src/routes/comms/preview.ts:66 turns that into a whole-batch ApiError, so a recipient with no slot is REFUSED, never sent the literal text "{session_time}" (DEC-793 already renders one named line per rejected person in the error banner, and the wave-28 partial-send path is how to proceed). Building the frame\'s sentence verbatim would ship a lie about what sending does. ComposeWizard.tsx\'s chq-comms-merge-warning band states the refusal instead ("Sending will refuse those recipients entirely, not send them the literal placeholder text") and names the partial-send path, per DEC-660 wave-148\'s own ruling to build the heading verbatim and write the consequence clause from the code.',
+  },
   {
     fileName: 'Chautauqua Submissions.dc.html',
     line: 298,
