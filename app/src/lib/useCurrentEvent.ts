@@ -93,13 +93,30 @@
 // already captured, so the stale wave-150 entry survived and was replayed,
 // firing the D19 banner even though the URL eventId now equals the stored
 // context -- exactly what the user's pin forbids. The frozen pair's
-// identity is the NAVIGATION, not the search string. `lastCapturedSearch`
-// now tracks which search was captured most recently: a call to
-// captureNavigationContext with a DIFFERENT search is unconditionally a new
-// navigation, so any stale entry for that search is discarded and a fresh
-// pair is captured from window; a call with the SAME search as last time is
+// identity is the NAVIGATION, not the search string. `lastCapturedKey`
+// now tracks which key was captured most recently: a call to
+// captureNavigationContext with a DIFFERENT key is unconditionally a new
+// navigation, so any stale entry for that key is discarded and a fresh
+// pair is captured from window; a call with the SAME key as last time is
 // the same navigation continuing (another instance mounting, a re-render,
 // or a StrictMode double-invoke) and returns the existing pair unchanged.
+//
+// DEC_728 wave-25 amendment (USER RULING D19, part 7, this file's two
+// defects): (1) the resolve effect cleared `error` at the start of the read
+// that can replace it but never `switchInfo` -- a later navigation with no
+// `eventId` in the URL takes the `!fromUrl && !fromStorage` branch, which
+// never calls setSwitchInfo, so a banner announced by an earlier navigation
+// stayed on screen for the rest of the session (EventSwitcher lives in the
+// persistent shell). `setSwitchInfo(null)` now sits beside `setError`,
+// cleared for the identical reason: it is stale until THIS read either
+// recomputes it or leaves it correctly empty. (2) navigation identity was
+// `location.search` alone, so `/speakers?eventId=B` and `/contacts?eventId=B`
+// keyed the SAME map entry -- a newly-mounted instance on the second page
+// read the frozen pair captured by the first and re-announced a switch that
+// did not happen on that page. Navigation identity is now `pathname +
+// search`: every function below that used to take `search` takes the
+// composite `key` instead, and `useLocationSearch` is renamed
+// `useLocationKey` to match.
 import { useEffect, useState } from 'react';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import { apiList, ApiError } from './api';
@@ -143,48 +160,49 @@ interface NavigationContextEntry {
   liveCount: number;
 }
 
-// DEC-728 wave-143/150: keyed by location.search (one entry per
-// navigation). The frozen `context` is document-scoped and outlives any
-// individual mount; `liveCount` tracks how many instances are currently
-// sharing it. See the file-header amendment above for why this replaced
-// the wave-138 "once per document" singleton, and why wave-150 stopped
-// deleting the frozen pair on refcount 0.
+// DEC-728 wave-143/150/25: keyed by `pathname + search` (one entry per
+// navigation -- wave-25 widened the key from `search` alone, see the
+// file-header amendment). The frozen `context` is document-scoped and
+// outlives any individual mount; `liveCount` tracks how many instances are
+// currently sharing it. See the file-header amendment above for why this
+// replaced the wave-138 "once per document" singleton, and why wave-150
+// stopped deleting the frozen pair on refcount 0.
 const navigationContexts = new Map<string, NavigationContextEntry>();
 
-// DEC-728 wave-158: which `search` was most recently captured -- identifies
-// the CURRENT navigation. A capture call for a different search is always a
-// new navigation, even if that search string was seen before this document
+// DEC-728 wave-158: which navigation key was most recently captured --
+// identifies the CURRENT navigation. A capture call for a different key is
+// always a new navigation, even if that key was seen before this document
 // load; see the file-header amendment.
-let lastCapturedSearch: string | null = null;
+let lastCapturedKey: string | null = null;
 
-function captureNavigationContext(search: string): NavigationContext {
-  if (search !== lastCapturedSearch) {
-    // A re-entered search is a NEW navigation -- any prior entry for it is
+function captureNavigationContext(key: string, search: string): NavigationContext {
+  if (key !== lastCapturedKey) {
+    // A re-entered key is a NEW navigation -- any prior entry for it is
     // stale (it belongs to an earlier navigation, not this one) and must
     // not be replayed. Discard it and capture fresh from window.
-    navigationContexts.delete(search);
-    navigationContexts.set(search, {
+    navigationContexts.delete(key);
+    navigationContexts.set(key, {
       context: {
         fromUrl: new URLSearchParams(search).get('eventId'),
         fromStorage: window.localStorage.getItem(STORAGE_KEY),
       },
       liveCount: 0,
     });
-    lastCapturedSearch = search;
+    lastCapturedKey = key;
   }
-  const entry = navigationContexts.get(search);
+  const entry = navigationContexts.get(key);
   if (!entry) throw new Error('captureNavigationContext: invariant violated, entry must exist after capture');
   return entry.context;
 }
 
-function acquireNavigationContext(search: string): void {
-  const entry = navigationContexts.get(search);
-  if (!entry) throw new Error('acquireNavigationContext: no captured context for this search');
+function acquireNavigationContext(key: string): void {
+  const entry = navigationContexts.get(key);
+  if (!entry) throw new Error('acquireNavigationContext: no captured context for this key');
   entry.liveCount += 1;
 }
 
-function releaseNavigationContext(search: string): void {
-  const entry = navigationContexts.get(search);
+function releaseNavigationContext(key: string): void {
+  const entry = navigationContexts.get(key);
   if (!entry) return;
   entry.liveCount -= 1;
   // DEC-728 wave-150: the frozen pair is intentionally NOT deleted here --
@@ -195,9 +213,12 @@ function releaseNavigationContext(search: string): void {
 /** The stored event id as it stood before ANY useCurrentEvent() instance
  * sharing this navigation overwrote it -- an alias onto the same captured
  * pair above (kept as its own named accessor, mirroring the pre-wave-143
- * shape) so the D19 restore/kept logic reads self-documenting call sites. */
-function getInitialStoredId(search: string): string | null {
-  return captureNavigationContext(search).fromStorage;
+ * shape) so the D19 restore/kept logic reads self-documenting call sites.
+ * `search` is only used the first time `key` is captured (see
+ * captureNavigationContext); every later call for the same `key` returns
+ * the already-frozen pair regardless of what `search` is passed. */
+function getInitialStoredId(key: string, search: string): string | null {
+  return captureNavigationContext(key, search).fromStorage;
 }
 
 /** Fetches GET /api/v1/events at most once per page load, sharing the
@@ -217,39 +238,47 @@ export function loadEventsOnce(): Promise<EventListItem[]> {
 export function resetEventsCacheForTests(): void {
   eventsPromise = null;
   navigationContexts.clear();
-  lastCapturedSearch = null;
+  lastCapturedKey = null;
 }
 
 /** Test-only seam, mirroring resetEventsCacheForTests() above: a render
  * test suite reuses the module across `it()` blocks in the same file, but
- * each real navigation only ever captures a given search once while
+ * each real navigation only ever captures a given key once while
  * instances for it are mounted. Never called from production code. */
 export function resetInitialStoredIdForTests(): void {
   navigationContexts.clear();
-  lastCapturedSearch = null;
+  lastCapturedKey = null;
 }
 
-/** Resolves the current location.search, reactively when a react-router
- * `<Router>` ancestor exists (so a client-side navigation -- pushState via
- * <Link>/navigate(), no full document reload -- re-runs the resolve effect
- * below with the new search) and falling back to a plain, non-reactive
- * `window.location.search` read otherwise (the render tests that call this
- * hook, or render EventSwitchBanner, with no MemoryRouter ancestor).
- * `useInRouterContext()` is fixed for the lifetime of a given component
- * instance -- a tree either has a Router ancestor or it doesn't, for as
- * long as that instance stays mounted -- so conditioning the useLocation()
- * call on it does not violate React's same-hooks-every-render invariant for
- * that instance. */
-function useLocationSearch(): string {
+/** DEC-728 wave-25: navigation identity, as `{ pathname, search }`,
+ * reactively when a react-router `<Router>` ancestor exists (so a
+ * client-side navigation -- pushState via <Link>/navigate(), no full
+ * document reload -- re-runs the resolve effect below with the new
+ * location) and falling back to a plain, non-reactive
+ * `window.location.pathname` + `window.location.search` read otherwise
+ * (the render tests that call this hook, or render EventSwitchBanner, with
+ * no MemoryRouter ancestor). `useInRouterContext()` is fixed for the
+ * lifetime of a given component instance -- a tree either has a Router
+ * ancestor or it doesn't, for as long as that instance stays mounted -- so
+ * conditioning the useLocation() call on it does not violate React's
+ * same-hooks-every-render invariant for that instance. */
+function useLocationKey(): { pathname: string; search: string } {
   const inRouterContext = useInRouterContext();
   // eslint-disable-next-line react-hooks/rules-of-hooks -- see comment above.
   const location = inRouterContext ? useLocation() : null;
-  return inRouterContext ? location!.search : window.location.search;
+  return inRouterContext
+    ? { pathname: location!.pathname, search: location!.search }
+    : { pathname: window.location.pathname, search: window.location.search };
 }
 
 export function useCurrentEvent(): UseCurrentEventResult {
-  const search = useLocationSearch();
-  const { fromUrl: initialFromUrl, fromStorage: initialFromStorage } = captureNavigationContext(search);
+  // DEC-728 wave-25: navigation identity is `pathname + search`, not
+  // `search` alone -- see the file-header amendment (defect 2). Two
+  // different pages carrying the same query string are two different
+  // navigations.
+  const { pathname, search } = useLocationKey();
+  const key = `${pathname}${search}`;
+  const { fromUrl: initialFromUrl, fromStorage: initialFromStorage } = captureNavigationContext(key, search);
   const idInPlay = initialFromUrl ?? initialFromStorage ?? null;
 
   const [eventId, setEventId] = useState<string | null>(idInPlay);
@@ -259,17 +288,27 @@ export function useCurrentEvent(): UseCurrentEventResult {
 
   useEffect(() => {
     // DEC-728 wave-143: this instance is now sharing the navigation keyed
-    // by `search` -- hold a reference for as long as it's mounted for that
-    // search, releasing (and possibly dropping the frozen snapshot) on
-    // unmount or on a search change, so the NEXT navigation captures fresh
+    // by `key` -- hold a reference for as long as it's mounted for that
+    // key, releasing (and possibly dropping the frozen snapshot) on
+    // unmount or on a key change, so the NEXT navigation captures fresh
     // rather than replaying this one's pre-overwrite pair.
-    acquireNavigationContext(search);
+    acquireNavigationContext(key);
     let cancelled = false;
 
     // DEC-856: clear at the start of the read that can replace it, matching
     // the discipline applied to the other page-level error banners.
+    //
+    // DEC_728 wave-25 amendment (defect 1): `switchInfo` is cleared here
+    // too, for the identical reason `error` is -- both are stale state from
+    // whatever navigation this instance previously resolved. Without this,
+    // a navigation to a URL with no `eventId` at all takes the
+    // `!fromUrl && !fromStorage` branch below, which never calls
+    // `setSwitchInfo`, so a banner announced by an earlier navigation
+    // (EventSwitcher lives in the persistent shell, so this state survives
+    // across every page the caller visits next) never gets cleared.
     setError(undefined);
-    const { fromUrl, fromStorage } = captureNavigationContext(search);
+    setSwitchInfo(null);
+    const { fromUrl, fromStorage } = captureNavigationContext(key, search);
     if (!fromUrl && !fromStorage) {
       setLoading(true);
       loadEventsOnce()
@@ -292,7 +331,7 @@ export function useCurrentEvent(): UseCurrentEventResult {
         });
       return () => {
         cancelled = true;
-        releaseNavigationContext(search);
+        releaseNavigationContext(key);
       };
     }
 
@@ -303,7 +342,7 @@ export function useCurrentEvent(): UseCurrentEventResult {
     // amendment above), not the per-instance `fromStorage` closed over at
     // render time: a sibling instance sharing this navigation may have
     // already overwritten storage by the time THIS instance's effect runs.
-    const priorStored = getInitialStoredId(search);
+    const priorStored = getInitialStoredId(key, search);
     const priorStoredId = fromUrl && priorStored && fromUrl !== priorStored ? priorStored : null;
 
     // An id is already in play (URL wins over storage) -- return it
@@ -370,14 +409,17 @@ export function useCurrentEvent(): UseCurrentEventResult {
       });
     return () => {
       cancelled = true;
-      releaseNavigationContext(search);
+      releaseNavigationContext(key);
     };
-    // Re-runs whenever the navigation's search changes -- a client-side
-    // react-router switch (RosterPanel's CSV-import link, AddToEventModal's
-    // "View in Speakers" link) carries a new eventId without a full page
-    // reload, and this instance must resolve it fresh rather than replaying
-    // whatever search it first mounted with.
-  }, [search]);
+    // Re-runs whenever the navigation's key (pathname + search) changes --
+    // a client-side react-router switch (RosterPanel's CSV-import link,
+    // AddToEventModal's "View in Speakers" link) carries a new eventId
+    // without a full page reload, and this instance must resolve it fresh
+    // rather than replaying whatever navigation it first mounted with.
+    // DEC_728 wave-25 (defect 2): keyed on `key`, not `search` alone -- two
+    // different pages carrying the same query string are two different
+    // navigations, so a pathname-only change must also re-run this effect.
+  }, [key, search]);
 
   return { eventId, loading, error, switchInfo };
 }
