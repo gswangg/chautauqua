@@ -20,13 +20,19 @@ import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
-import { DEC_781, DEC_896 } from '../../../../src/decisions';
+import { DEC_385, DEC_781, DEC_896, DEC_919 } from '../../../../src/decisions';
+import './settings-drill-rows.css';
 
 void DEC_781; // the frame's Public URL field hint, not the head consequence slot, carries the slug-breaks-links sentence
 
 // DEC-896 (wave-133 amendment): the Venue field's persistent hint below is
 // the field-scoped half of B10's consequence text.
 void DEC_896;
+void DEC_385; // settings-drill-rows.css: page-local sheet, terminal max-width block
+// DEC-919 wave-156: the read drill's own "Save" footer primary (:316) has
+// an edit surface -- pressing it enters ?section=event&edit=1 with the
+// edit already open, since a read view holds no form to submit.
+void DEC_919;
 
 const SECTION_KEY = 'event';
 
@@ -212,6 +218,20 @@ export function EventSettingsPanel() {
     });
   }
 
+  // DEC-919 wave-156: the read drill's own footer primary (:316 "Save")
+  // has an edit surface -- pressing it enters the edit drill with the act
+  // already open, mirroring SummarySection's own openEdit (which the head
+  // "Change" link uses). A read view has no form to submit, so this is a
+  // navigation, never a save.
+  function openEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', SECTION_KEY);
+      params.set('edit', '1');
+      return params;
+    });
+  }
+
   async function handleSave() {
     if (!eventId || !initial || !form) return;
     const patch = buildEventPatch(initial, form);
@@ -359,6 +379,16 @@ export function EventSettingsPanel() {
         rows={rows}
         actionLabel="Change"
         editing={editing}
+        // DEC-919 wave-156: Chautauqua Settings.dc.html:316 draws the READ
+        // drill's own footer primary reading "Save" -- but a read view
+        // holds no form to submit, so pressing it enters the edit drill
+        // with the edit already open (openEdit above) instead of saving
+        // nothing.
+        readFooterPrimary={
+          <button type="button" className="chq-settings-drillrow-footer-primary" onClick={openEdit}>
+            Save
+          </button>
+        }
       >
         {form ? (
         <>

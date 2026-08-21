@@ -56,9 +56,27 @@ export interface SummarySectionProps {
   actionLabel: string;
   editing: boolean;
   children: ReactNode;
+  // DEC-919 wave-156 amendment: a 390 read drill renders EVERY control its
+  // frame draws, including the frame's own filled full-width footer
+  // primary (Chautauqua Settings.dc.html:568 People's "Invite someone",
+  // :316 Event's "Save") -- a control the section-level head "Change"
+  // above does not stand in for. Rendered only in the READ (non-editing)
+  // branch, right after the rows, so it never coexists with `children`
+  // (DEC-919's "renders twice in the DOM, exactly once on screen" -- here
+  // there is only ever one render site live at a time). Optional: not
+  // every section has a frame-drawn footer primary.
+  readFooterPrimary?: ReactNode;
 }
 
-export function SummarySection({ sectionKey, label, rows, actionLabel, editing, children }: SummarySectionProps) {
+export function SummarySection({
+  sectionKey,
+  label,
+  rows,
+  actionLabel,
+  editing,
+  children,
+  readFooterPrimary,
+}: SummarySectionProps) {
   const [, setSearchParams] = useSearchParams();
 
   function openEdit() {
@@ -92,6 +110,7 @@ export function SummarySection({ sectionKey, label, rows, actionLabel, editing, 
               {row.hint != null ? <div className="chq-settings-row-hint">{row.hint}</div> : null}
             </div>
           ))}
+      {!editing && readFooterPrimary != null ? readFooterPrimary : null}
     </section>
   );
 }

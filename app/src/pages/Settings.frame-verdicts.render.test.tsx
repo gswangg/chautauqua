@@ -136,7 +136,7 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :316-337 "Settings · Event".
-  it('frame :316 Event -- DIVERGES: read view is head+Change-first (SummarySection), frame draws content+Save/Cancel-footer', async () => {
+  it('frame :316 Event -- DIVERGES (narrowed, DEC-919 wave-156): read view is head+Change-first (SummarySection); the frame\'s footer "Save" now renders too, entering the edit drill rather than saving', async () => {
     verbatimLine(313, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Event</span>");
     renderDrilled('event');
     const section = screen.getByRole('region', { name: 'Event' });
@@ -151,12 +151,16 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
     expect(drillTitle!.textContent).toBe('Event');
     expect(backBtn.compareDocumentPosition(drillTitle!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // DEC-728: the 'Change' action heads the section, ahead of every read
-    // row -- the frame instead puts its Save/Cancel pair in a footer AFTER
-    // every row. No Save/Cancel control renders at all in read mode.
+    // row -- the frame ALSO draws a Save/Cancel pair in a footer AFTER
+    // every row (:334). DEC-919 wave-156: the read view has no form to
+    // submit, so only the primary renders (as a navigation into the edit
+    // drill, never a save-nothing) -- Cancel has nothing to cancel here.
     const changeBtn = within(section).getByRole('button', { name: 'Change' });
     const firstRow = within(section).getByText('DevCon 2026');
     expect(changeBtn.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(section).queryByText('Save')).not.toBeInTheDocument();
+    const saveBtn = within(section).getByRole('button', { name: 'Save' });
+    expect(saveBtn).toHaveClass('chq-settings-drillrow-footer-primary');
+    expect(firstRow.compareDocumentPosition(saveBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(section).queryByText('Cancel')).not.toBeInTheDocument();
   });
 
@@ -236,18 +240,20 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :552-575 "Settings · People and roles".
-  it('frame :552 People and roles -- DIVERGES: no per-row Change action, no primary Invite-someone control in read mode', async () => {
+  it('frame :552 People and roles -- DIVERGES (narrowed, DEC-919 wave-156): no per-row Change action (DEVIATIONS §6, blessed); the primary Invite-someone control now renders in read mode', async () => {
     verbatimLine(549, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · People and roles</span>");
     renderDrilled('people');
     const section = screen.getByRole('region', { name: 'People and roles' });
     await waitFor(() => expect(within(section).getByText('self@example.com')).toBeInTheDocument());
-    // Frame :560 draws a per-row boxed 'Change' beside each person; :565
-    // draws a filled, always-present 'Invite someone' primary button. The
-    // read view has neither -- both live behind the section-level 'Change'
-    // drill (DEC-815).
+    // Frame :560 draws a per-row boxed 'Change' beside each person --
+    // DEVIATIONS.md §6 blesses its omission (users are org-scoped), never
+    // re-litigated here. Frame :565 draws a filled, always-present 'Invite
+    // someone' primary button, which DOES now render (DEC-919 wave-156),
+    // opening the existing invite dialog directly.
     const personRow = within(section).getByText('self@example.com').closest('div');
     expect(personRow).not.toBeNull();
-    expect(within(section).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
+    const invitePrimary = within(section).getByRole('button', { name: 'Invite someone' });
+    expect(invitePrimary).toHaveClass('chq-settings-drillrow-footer-primary');
   });
 
   // Frame :578-598 "Settings · Saved embeds" -- reachable only nested

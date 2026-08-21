@@ -35,10 +35,10 @@ function LocationSearchProbe() {
   return <div data-testid="location-search">{useLocation().search}</div>;
 }
 
-// DEC-919 wave-155 amendment: exposes the resulting `location.search` (the
-// read drill's "Invite someone" primary writes `?edit=1&intent=invite`,
-// the edit view then drops `intent` once consumed) without reaching into
-// MemoryRouter internals.
+// DEC-919 wave-156: exposes the resulting `location.search` without reaching
+// into MemoryRouter internals. Used to assert that the read drill's "Invite
+// someone" footer primary opens the dialog IN PLACE -- it navigates nowhere,
+// superseding wave-155's `?edit=1&intent=invite` round trip.
 export function renderPanelWithLocation(initialEntries?: string[]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>

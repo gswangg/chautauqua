@@ -39,18 +39,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, within, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ApiTokensPanel } from './ApiTokensPanel';
-import { PeopleRolesPanel } from './PeopleRolesPanel';
 import { SettingsPage } from '../Settings';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { installConsoleErrorGuard, mockPeople, renderPanel, OTHER } from './PeopleRolesPanel.test-helpers';
 
-// DEC-919 wave-155/156 amendment: the "reads the frame's ... action" it()s
-// below render the real read-drill primaries -- both the panel in isolation
-// (wave-155) and the whole SettingsPage read drill (wave-156). Everything
-// else in this file stays the pure source/CSS-scan style the header describes.
+// DEC-919 wave-155/156: the "reads the frame's ... action" it()s below render
+// the real read-drill primaries -- the panel in isolation (wave-155), the whole
+// SettingsPage read drill (wave-156, qb) and People-and-roles via the shared
+// test-helpers (wave-156, qc). Everything else here is a pure source/CSS scan.
+installConsoleErrorGuard();
 afterEach(() => cleanup());
 
 /** Exposes `location.search` for a `MemoryRouter`-wrapped render, without
@@ -370,7 +371,7 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     expect(row).toMatch(/flex-direction:\s*column/);
   });
 
-  it('renders the frame\'s 46px filled full-width "Invite someone" action in the read drill too, opening the edit drill with intent=invite', async () => {
+  it('renders the frame\'s 46px filled full-width "Invite someone" action in the READ drill, opening the existing invite dialog directly (DEC-919 wave-156)', async () => {
     const line = verbatimLine(
       DESIGN_FILE,
       568,
@@ -379,24 +380,23 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     expect(line).toMatch(/min-height:46px/);
     expect(line).toMatch(/background:#4E5C31/);
 
-    mockApi({
-      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
-      'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
+    // The receipt above proves the frame's geometry; this proves the tree
+    // beneath it actually renders that control in the READ drill (no
+    // ?edit=1) rather than only inside the edit drill's form.
+    mockPeople();
+    renderPanel(['/settings?section=people']);
+    // OTHER carries no `name`, so the read row's label falls back to its
+    // email (SELF's row instead shows its name -- personLabel's fallback).
+    await waitFor(() => {
+      expect(screen.getByText(OTHER.email)).toBeInTheDocument();
     });
-    render(createElement(MemoryRouter, null, createElement(PeopleRolesPanel), createElement(LocationSearchProbe)));
+    const footerPrimary = screen.getByRole('button', { name: 'Invite someone' });
+    expect(footerPrimary).toHaveClass('chq-settings-drillrow-footer-primary');
 
-    const buttons = await screen.findAllByRole('button', { name: 'Invite someone' });
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toHaveClass('chq-settings-phone-action');
-
-    fireEvent.click(buttons[0]!);
-
-    // The edit-view mount effect consumes `intent` in the same tick it
-    // appears (opening the dialog and dropping the param) -- end-to-end
-    // receipted, with the mid-flight `intent=invite` URL asserted too, in
-    // PeopleRolesPanel.summary.render.test.tsx / .invite.render.test.tsx.
-    await screen.findByRole('dialog');
-    expect(screen.getByTestId('location-search').textContent).toBe('?section=people&edit=1');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(footerPrimary);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Email')).toBeInTheDocument();
   });
 });
 

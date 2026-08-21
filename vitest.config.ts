@@ -72,13 +72,16 @@ export default defineConfig({
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
       ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
       // Needs a real DOM/window: this file mixes CSS/frame source-scan pins
-      // with real render receipts against the tree, added by two waves.
-      // v12m-w11-pa (DEC-919 wave-155 amendment) added the two
-      // read-drill-primary `it()`s rendering ApiTokensPanel/PeopleRolesPanel;
-      // v12m-w12-qb (DEC-919 wave-156, task qb-settings-yourdata-read-drill)
-      // added a further render receipt. Both use React.createElement (no JSX,
+      // with real render receipts against the tree, added by three waves.
+      // v12m-w11-pa (DEC-919 wave-155) added the two read-drill-primary
+      // `it()`s rendering ApiTokensPanel/PeopleRolesPanel; v12m-w12-qb
+      // (wave-156, qb-settings-yourdata-read-drill) added a full-SettingsPage
+      // read-drill receipt; v12m-w12-qc (wave-156,
+      // qc-settings-read-drill-primaries) renders PeopleRolesPanel for the
+      // "People and roles" :264 block. All use React.createElement (no JSX,
       // plain .test.ts name -- same idiom as planEditor-refusal-shapes.test.ts
-      // above) and need render + fireEvent / testing-library assertions.
+      // above) and need render + fireEvent / testing-library assertions. Every
+      // other `it()` here is a pure text/regex scan, unaffected by the env.
       ["app/src/pages/settings/settings-phone-390.frames.test.ts", "jsdom"],
     ],
     include: [
