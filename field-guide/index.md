@@ -8,47 +8,34 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVES 152-154 HEAVILY COMPACTED: fast tier oscillated red/green across waves as lanes landed mid-plan, ended fully green (1286 files/16405 tests/96s) — re-measure, never inherit a red set; every campaign exit-predicate ratchet reads 0 but a DRAINED LEDGER MEASURES CITATION NOT CONFORMANCE — four live review-lens defects (bare `<a>` tap targets, stale audit rows, half-applied DEC-124/DEC-517 amendments) hid behind green rows; `routeManifest.ts` has zero query sub-states so tabbed admin surfaces are only ever visited at their default tab (DEC-144/180); the mandate doc itself is a cited artefact whose citations rot (DEC-967); `render-sweep.ts`'s control selectors are class-token keyed and miss classless `<a>` floor violations (DEC-253).
 - WAVE 155 HEAVILY COMPACTED: two directories hold `DEC-NNN.md` and collide on all 77 shared ids, 35 with different subjects under one id — `DEC-991` a flat contradiction, cite the directory not the bare id (DEC-976); only 77/1077 decision docs have checked citations, `decisions/*.md` is bare-path-only (DEC-518); the 390 gate reported ONE control per route not a list (DEC-253, still open); wave RULED DEC-919's read-drill-renders-children fix but built nothing — a ruling is not a receipt of build, always check `git rev-list --count`.
 
-## Wave 156 — the wave-155 plan was RULED but never BUILT; and main is red
+- WAVE 156 HEAVILY COMPACTED: wave-155 plan was RULED but never BUILT, 4/8 lanes committed 0 (`git rev-list --count`, not the decision doc, proves landing); main was red at 108c5aa3 from a citation-grammar bug (tag-kind annotation inside `quoteAfter`'s window); vitest rewrites `path:line` in error messages, replicate a scan's regex before trusting one; measure in a detached worktree but not D1-backed tests (no `.wrangler`); campaign gate down to one row, `SPA_CLASSLESS_CONTROL_CEILING=4`; Settings 390 read drills 8/9 diverge (DEC-919); desktop drawn-floor JOIN is a label-TEXT search, corroborate before draining (DEC-393); branch namespace `v12m-w11-*`/`v12m-w12-a..j` BURNED, wave used `v12m-w12-qa..qj`.
 
-**Four of wave-155's eight lanes committed nothing.** `git rev-list --count
-main..v12m-w11-pa|-pc|-pd|-pe` = 0 for all four (only `-pb` carries a commit,
-still unmerged). But the SCRIBE landed their decisions: DEC-919/-393/-967/-253
-all carry `## Amendment (wave 155)` sections describing work that does not
-exist, and the field guide above says "DEC-919, closed this wave" for the
-Settings phone-primary gap that is still open. A wave-N amendment is a RULING,
-never a receipt of build — check `git rev-list --count`, then check the tree.
+## Wave 157 — 44 of 53 phone frames have never been RENDERED against their frame
 
-**MAIN IS RED at `108c5aa3`** (I ran `npm run test:fast`: 14 files / 16 tests
-failed). `decision-doc-citation` (19 widened violations), `code-comment-citation`
-(1), `cancelled-padding-face` (member band 31 > 30). Root cause of the citation
-reds is one grammar bug: a tag-kind annotation written in the receipt slot —
-`` `path:line` `<Link>` `` — falls inside `quoteAfter`'s 25-char window and is
-graded as a drift-proof receipt. The receipt slot is verbatim source ONLY.
+**The tree moved three times while I planned.** main went `64f5a979` ->
+`dca1969a` -> `fe079ffe` inside one planning session (merge-train heal, plus a
+meta lane editing the shared checkout uncommitted). Re-measure at the sha you
+are about to plan for, and re-check `git log -1` before you emit.
 
-**Vitest rewrites `path:line` tokens inside error MESSAGES.** A reported
-`pages/Agenda.tsx:352` was really `app/src/pages/Agenda.tsx:374` in the doc.
-Replicate a scan's own regex in a throwaway `node -e` before believing a
-coordinate you read out of a vitest failure.
+**A CLAIMED_FLOOR proves citation, not conformance.** phone CLAIMED_FLOOR reads
+53/53 and the exit gate prints 0 remaining; exactly ONE cluster (Settings) has a
+per-frame RENDER verdict, and when it was built it found 8 divergences where the
+open clause said 5. 44 phone frames are ungraded (DEC-976 w157).
 
-**Measure in a detached worktree, but not the D1-backed tests.** A worktree
-with symlinked `node_modules` has no `.wrangler`, so `files-library`,
-`portal-idor-real-rows-probe` and friends fail there and pass on main. Ledger
-and CSS scans are safe; anything touching local D1 is not.
+**A control-shaped corroboration is not enough — check WHICH ELEMENT.** Both
+survivors of the desktop drawn-floor ledger were mis-ATTRIBUTED, not mis-graded:
+"Back to sign in" resolved to its SIBLING's `chq-auth-tertiary` (the real element
+is `chq-btn chq-btn-primary`, already 48px >= the drawn 46 — a false positive),
+"Waitlist" resolved to Overview's queue button on a different surface. A
+nearest-enclosing-class read attaches a label to the wrong element (DEC-393 w157).
 
-**The campaign gate has exactly ONE non-zero row left:**
-`SPA_CLASSLESS_CONTROL_CEILING = 4` (`exit-predicate.ts --product-sha <sha>`),
-four shell-owned `<Link>`s in `app/src/styles.css`. Everything else reads 0.
+**Verified STALE, do not re-open:** the review lens's StrictMode `useCurrentEvent`
+crash, the non-finite `parseScale` poison pill, the "sign in as this speaker"
+tooltip, the NotYetOpenPage own-programme link, the `tautological-assertion`
+5000ms timeouts, and the `cancelled-padding-face` 31>30 band are ALL fixed in the
+tree. `deriveInteractiveOffenders` is wired and its ceiling is 79, not the `-1`
+sentinel two waves of docs still describe. Grep the tree, not the summary.
 
-**Settings' 390 read drills: EIGHT of nine diverge**, per-frame verdicts in
-`docs/design/audit/settings-v12.md` (commit 59cad3a5). One cause:
-`Settings.tsx:154` gates `editing` on `?edit=1`; `SummarySection.tsx` renders
-`children` only then, so every per-row action and footer primary a panel
-authors is unreachable from the read drill.
-
-**The desktop drawn-floor ledger's JOIN is a label-TEXT search.** 12 of its 23
-offenders resolve to typography registers (`chq-page-title`, `chq-section-label`,
-`chq-portal-field-label`). Draining "at the token the scan resolved" would put
-`min-height:46px` on desktop headings. Corroborate before draining.
-
-**Branch namespace:** `v12m-w11-a..j`, `v12m-w11-pa..pe`, `v12m-w12-a..j` are
-BURNED. This wave uses `v12m-w12-qa..qj`. ~75 branches sit committed-unmerged.
+**Branch namespace:** `v12m-w13-a..f` were BURNED by an earlier wave — the `w13`
+prefix was NOT free. This wave uses `v12m-w13-ra..rj`. 78 branches sit
+committed-unmerged, including wave-156's `v12m-w12-qa/qb/qc` (still 1-ahead).
