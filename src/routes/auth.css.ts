@@ -328,8 +328,11 @@ export const AUTH_CSS = `
 
 ${ERROR_STATES_CSS}
 ${BARE_PAGE_CSS}
-  /* Wave w1-h (task w1-h, docs/design/audit/account-docs-v12.md): "Sign in
-     · 390" and "Change password · 390" phone geometry. Appended AFTER the
+  /* Wave w1-h (task w1-h, docs/design/audit/account-docs-v12.md): the sign-in
+     panel's H1 (account.tsx's .chq-auth-title on /account/login) and the
+     password-change panel's H1 (account.tsx:92, same class, on
+     /account/password) phone geometry -- see the class token for the
+     literal copy rather than reproducing it here. Appended AFTER the
      ERROR_STATES_CSS/BARE_PAGE_CSS composition on purpose -- several of
      these selectors (.chq-bare-page .chq-auth-title, .chq-bare-page
      input[type=password], .chq-bare-page:has(.chq-auth-fields)) tie in
@@ -434,7 +437,8 @@ ${BARE_PAGE_CSS}
        which reaches these same links. */
 
     /* -----------------------------------------------------------------
-       w2-e: "Change password · 390" (docs/design/Chautauqua Account.dc.html:153
+       w2-e: the /account/password panel's phone frame (account.tsx's
+       .chq-auth-title H1, docs/design/Chautauqua Account.dc.html:153
        \`<div style="width:390px; height:844px;\`) -- head/body/dock
        band geometry layered onto the wave-13 action-bar structure this
        file already owns. Scoped to
@@ -455,9 +459,9 @@ ${BARE_PAGE_CSS}
       gap: 7px;
     }
     /* :156 \`font-size:25px; font-weight:700; letter-spacing:-0.04em;
-       line-height:1.05">Change your password\` -- the drill-in H1
-       register (back-linked, one size down from the 27px cluster-landing
-       register), already tokenised in theme.ts. */
+       line-height:1.05\` on account.tsx:92's .chq-auth-title H1 -- the
+       drill-in H1 register (back-linked, one size down from the 27px
+       cluster-landing register), already tokenised in theme.ts. */
     .chq-bare-page:has(.chq-auth-fields) .chq-auth-title {
       font-size: var(--chq-type-page-title-phone-drill);
       margin-top: 8px;
@@ -526,7 +530,8 @@ ${BARE_PAGE_CSS}
       font-size: 15px;
     }
 
-    /* Change password · 390 (docs/design/Chautauqua Account.dc.html:153
+    /* /account/password's 390 frame (account.tsx's .chq-auth-title H1,
+       docs/design/Chautauqua Account.dc.html:153
        \`width:390px; height:844px;\`) -- edge-to-edge header/body/footer
        bands replace the bare-page shell's ambient reading-column inset
        for this one page only. :has(.chq-auth-fields) scopes every rule

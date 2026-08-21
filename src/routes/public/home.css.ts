@@ -338,8 +338,9 @@ export const HOME_CSS = `
     .chq-home-footer-link-end { min-height: 44px; display: flex; align-items: center; padding: 0 4px; }
     /* :117-173 (Event hub), :232-261 (Between cycles), :303-318 (Fresh
        deploy) -- all three 390 footers end at "Chautauqua</a>" with no
-       trailing "· open-source speaker..." clause; the 900 desktop frames
-       (:101-104, :219-220, :291) all keep it. One phone-wide rule, never a
+       trailing root.tsx:294's .chq-home-footer-tagline clause; the 900
+       desktop frames (:101-104, :219-220, :291) all keep it. One
+       phone-wide rule, never a
        per-state branch (DEC-582 wave-84 amendment: "a footer that changes
        with content is a second footer"). */
     .chq-home-footer-tagline { display: none; }

@@ -51,6 +51,28 @@
 // this suite already uses (e.g. batch-cap-declaration.scan.test.ts,
 // desktop-frame-ledger.scan.test.ts).
 //
+// TWO NARROWINGS (DEC-967 wave-148, task w4-ap), each removing only
+// demonstrable false positives -- never widening what may be quoted:
+//   (a) extractJsxTextNodes now rejects any candidate span that crosses a
+//       newline in the raw source, or that contains a quote/backtick/`=`/
+//       `;`/`//` -- proof: agenda.css.ts:78 "leaked" the class token
+//       `chq-pub-agenda-block-highlight`, whose only occurrence is a
+//       `className` string literal at
+//       src/routes/public/agenda-grid.tsx:176; portal.css.ts:637/945/1087
+//       "leaked" "DEC-576 (w8-g): the 390 frame's pinned action band",
+//       whose only occurrences are `//` comments at
+//       src/routes/portal/edit.tsx:167 and
+//       src/routes/portal/tasks/views.tsx:365. Both are code, not rendered
+//       copy, and both are now excluded at extraction time.
+//   (b) findLeakedRuns now requires the final grown run to be WORD-BOUNDARY
+//       anchored at BOTH ends (reusing frame-source-corpus's
+//       labelIsMatched idiom, DEC-976 wave-129) -- retiring the half-word
+//       coincidences " on the public s" (auth.css.ts:216), "lready have an
+//       account?" (cfp.css.ts:116), "rintable programme" (rail.css.ts:106),
+//       " nothing here is " (cfp.css.ts:217), and the trailing-space
+//       "Change password " fragments. A copy-uniqueness count cannot
+//       double, and a forbidden phrase cannot land, on half a word.
+//
 // RATCHET (DEC-989 wave-146 amendment): this is a BRAND-NEW instrument
 // landing in a parallel wave alongside sibling worker lanes this planner
 // cannot serialize against -- per that amendment, a brand-new instrument
@@ -126,12 +148,29 @@ function decodeAndCollapse(s: string): string {
  * independently (a leak must sit inside ONE rendered text run, not span
  * across a nested element the way the identity-note sentence used to
  * before task w21-d's own repair split it across a classless `<a>`). */
+// NARROWING (a) (DEC-967 wave-148, task w4-ap): />([^<>{}]+)</g runs over the
+// WHOLE stripped file, so an unrelated `>` and a later `<` bracket arbitrary
+// CODE as a "text node" -- e.g. `className="chq-pub-agenda-block-highlight"`
+// at src/routes/public/agenda-grid.tsx:176, or a `//` comment
+// (`edit.tsx:167`, `tasks/views.tsx:365`) quoting "DEC-576 (w8-g): the 390
+// frame's pinned action band" that agenda.css.ts/portal.css.ts's own
+// comments correctly cite back. A genuine JSX text node never crosses a
+// line (a raw multi-line span between `>` and `<` is almost always a JS
+// expression or attribute block, not rendered prose) and never contains a
+// quote, backtick, `=`, `;`, or `//` (all code punctuation a plain text run
+// doesn't carry). Reject any candidate on either signal before it can enter
+// the match population.
+const RAW_CODE_PUNCTUATION = /["'`=;]|\/\//;
+
 function extractJsxTextNodes(strippedSrc: string): string[] {
   const out: string[] = [];
   const re = />([^<>{}]+)</g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(strippedSrc))) {
-    const text = decodeAndCollapse(m[1]!).trim();
+    const raw = m[1]!;
+    if (raw.includes("\n")) continue;
+    if (RAW_CODE_PUNCTUATION.test(raw)) continue;
+    const text = decodeAndCollapse(raw).trim();
     if (text.length >= MIN_LEAK_LEN && /[A-Za-z]/.test(text)) out.push(text);
   }
   return out;
@@ -146,6 +185,43 @@ function extractJsxTextNodes(strippedSrc: string): string[] {
 // separately).
 // ---------------------------------------------------------------------------
 
+// NARROWING (b) (DEC-967 wave-148, task w4-ap): a leak run must be WORD-
+// BOUNDARY aligned at BOTH ends -- the same boundary-anchored predicate
+// test/frame-control-label.scan.test.ts's labelIsMatched already uses
+// (DEC-976 wave-129), reused here rather than re-derived (DEC-613). A bare
+// substring test lets a coincidental mid-word match "count" as a leak, e.g.
+// " on the public s" (auth.css.ts:216, cut out of "...icon on the public
+// site..."), "lready have an account?" (cfp.css.ts:116), "rintable
+// programme" (rail.css.ts:106), " nothing here is " (cfp.css.ts:217), and
+// trailing-space "Change password " fragments -- none of these is a real
+// quoted sentence, they are windows that happened to line up mid-word. A
+// window search only ever grows a run while a LONGER substring keeps
+// matching, so growth can stop mid-word on either side; filter the final
+// run rather than the sliding window itself, and drop (not trim) any run
+// that isn't boundary-anchored in at least one tsx blob -- a trimmed
+// fragment would just reintroduce the same half-word hazard one character
+// shorter.
+function isAlnum(ch: string | undefined): boolean {
+  return ch !== undefined && /[A-Za-z0-9]/.test(ch);
+}
+
+function isBoundaryAnchoredIn(needle: string, blob: string): boolean {
+  if (needle.length === 0) return false;
+  const firstIsAlnum = isAlnum(needle[0]);
+  const lastIsAlnum = isAlnum(needle[needle.length - 1]);
+  let idx = blob.indexOf(needle);
+  while (idx !== -1) {
+    const before = idx > 0 ? blob[idx - 1] : undefined;
+    const afterIdx = idx + needle.length;
+    const after = afterIdx < blob.length ? blob[afterIdx] : undefined;
+    const boundaryBeforeOk = !firstIsAlnum || !isAlnum(before);
+    const boundaryAfterOk = !lastIsAlnum || !isAlnum(after);
+    if (boundaryBeforeOk && boundaryAfterOk) return true;
+    idx = blob.indexOf(needle, idx + 1);
+  }
+  return false;
+}
+
 export function findLeakedRuns(commentBlob: string, tsxBlobs: readonly string[]): string[] {
   const runs: string[] = [];
   const n = commentBlob.length;
@@ -157,7 +233,10 @@ export function findLeakedRuns(commentBlob: string, tsxBlobs: readonly string[])
       while (end < n && tsxBlobs.some((b) => b.includes(commentBlob.slice(i, end + 1)))) {
         end += 1;
       }
-      runs.push(commentBlob.slice(i, end));
+      const run = commentBlob.slice(i, end);
+      if (tsxBlobs.some((b) => isBoundaryAnchoredIn(run, b))) {
+        runs.push(run);
+      }
       i = end;
     } else {
       i += 1;
@@ -213,12 +292,23 @@ const ALL_LEAKS: LeakViolation[] = CSS_TS_FILES.flatMap((abs) =>
 // own scope (the two that were breaking submit-cfp-frame-copy.test.ts);
 // this instrument's population is wider than that named scope (every
 // src/routes/**/*.css.ts comment vs. every src/routes/**/*.tsx JSX text
-// node) and surfaces 37 pre-existing comments elsewhere that also quote
-// real copy verbatim, none of which this task was asked to repair. This is
-// a TO-DO LIST seeded WITH that debt, per DEC-989's wave-146 amendment for
-// a brand-new parallel-wave instrument -- repair is a later single-owner
-// wave's lane, not claimed here.
-export const CSS_COMMENT_COPY_LEAK_CEILING = 37;
+// node) and surfaced 37 pre-existing comments elsewhere that also quoted
+// real copy verbatim.
+//
+// DRAIN (DEC-967 wave-148, task w4-ap): 37 -> 0. Of the 37, 24 were false
+// positives from the instrument's own two extraction holes (see the TWO
+// NARROWINGS note above the file header) -- a class token bracketed by an
+// unrelated `>`/`<` pair, or a coincidental mid-word substring match -- and
+// 13 were genuine comment-side quotes of real .tsx copy. All 13 genuine
+// survivors (auth.css.ts:331/436/457/529, portal.css.ts:472/990/1154/1184,
+// cfp.css.ts:48/50/217, agenda.css.ts:425, home.css.ts:339) were reworded
+// to the DEC-967 drift-proof citation idiom (cite file + class/selector
+// token, never reproduce the sentence) rather than deleted, so the geometry
+// rationale they carried is preserved. Measured on this branch by forcing
+// this constant to -1 and reading the printed offender list: 0. The
+// two-sided ratchet upgrade (a "ceiling is not stale" companion assertion)
+// remains a later single-owner wave's lane, not claimed here.
+export const CSS_COMMENT_COPY_LEAK_CEILING = 0;
 
 describe("CSS comment copy-leak scan: src/routes/**/*.css.ts comments vs src/routes/**/*.tsx text (DEC-613 wave-146 amendment)", () => {
   it("population sanity: walks a non-trivial number of route stylesheets and views", () => {

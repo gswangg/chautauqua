@@ -422,7 +422,8 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     margin-right: 0.25rem;
   }
 
-  /* DEC-851 amendment (wave 5): the "Highlight a track" control is one of
+  /* DEC-851 amendment (wave 5): agenda-controls.tsx's
+     #chq-pub-highlight-track select is one of
      the highlight's three visible consequences -- it inverts dark (near-
      black fill, cream text) whenever a track is set, matching the same
      ink/on-brand pair the day-pill's active state already uses
