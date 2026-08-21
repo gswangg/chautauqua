@@ -198,3 +198,84 @@ route) — never a sub-component mounted directly.
 | `Chautauqua Contacts.dc.html` "Pipeline · 390" | MATCHES | Back link, H1, the "N people" caption, the five-stage chip strip, the per-row card ending in a "Move ›" control, and the "Add someone"/"Filter" dock all render exactly as drawn. |
 | `Chautauqua Contacts.dc.html` "Import CSV · 390" | RESOLVED (DEC-663 wave-17) → MATCHES | The frame draws a `‹ Contacts` back link in the head band (`:489`). This row previously read DIVERGES because `ImportWizard` passed `ModalFrame` no `backLink` prop; it now does (`app/src/pages/contacts/ImportWizard.tsx``backLink={{ label: '‹ Contacts', onClick: onClose }}`, landed by commit f2fd0c43), and the shared `Close` control it would have stacked beside is CSS-hidden at phone by the same `.chq-contacts-import .chq-modal-close-btn` rule cited on the Contact row above. The one-column-per-screen pager body (eyebrow, column name, samples, "Import it as" rule, radio targets) and its "Next column"/"Skip" dock match, per findings 1-2 (RESOLVED, DEC-663 wave-108) above. |
 | `Chautauqua Contacts.dc.html` "Merge · 390" | ADJUDICATED, frame-SILENT addition (DEC-663 wave-17) → MATCHES | The frame body goes straight from the head band into the field-by-field compare rows — no picker block. `MergePage` renders an additional `.chq-contacts-merge-picks` radio-list block (one radio per contact, with email/company/title) above the compare rows, with no frame counterpart. Per DEC-663's wave-17 ruling this is NOT an open divergence: the compare rows are drawn showing the result of a keep/drop choice already made, which a static frame cannot depict being made, so `.chq-contacts-merge-picks` seeds that choice rather than duplicating a peer of it — removing it would leave the 390 screen unable to express the merge's primary decision (a capability removal DEC-919 forbids), and hiding it at phone only would fork the merge's semantics by width. Same disposition `docs/design/audit/account-docs-v12.md`'s "Change password · 390" row already uses for the sign-in-persists hint: an addition the frame is silent on, not a MATCHES/DIVERGES call. The consequence box is RESOLVED (Finding 3 above, w2-c) — the per-field keep/drop pair and the "Merge them"/"Not a duplicate" footer both match as drawn. |
+
+## Finding 6 — the 390 head's two intrusions are a real, unowned residual (task v12m-w16-ui-r3-e, src/decisions-data/DEC-976.md amendment, src/decisions-data/DEC-180.md amendment)
+
+Five wave-16 lanes each pinned their OWN piece of the Contacts 390 head
+(`FilterRulesPanel.ruleChips.render.test.tsx`,
+`FilterRulesPanel.builderDisclosure.render.test.tsx`,
+`SegmentPillStrip.render.test.tsx`, `DirectoryRail.phone390.render.test.tsx`,
+`ContactsApp.headCounter.render.test.tsx`), but until this task nothing
+asserted how those pieces sit together in one document. `docs/design/Chautauqua
+Contacts.dc.html:180-198` draws the phone head as ONE uninterrupted column —
+counter (`:183`) directly above the H1 (`:185`), the H1 directly above the
+search box (`:186`), the search box directly above the "All of … + Rule"
+rule-chip strip (`:187`), and that strip directly above the All/Speakers ·
+41/Reviewers pill strip (`:194`) — ending in the scrolling card list
+(`:201`). `app/src/pages/contacts/ContactsApp.head390.render.test.tsx` is
+the new composition receipt: it asserts that six-node DOM order with
+`compareDocumentPosition` (order, not mere presence) and passes for the
+five pieces the frame actually draws.
+
+It also measures — and pins BY NAME, so the receipt fails loudly the day
+someone reshuffles it further — two intrusions the frame does not draw and
+that neither existing strip can absorb, because they live in different
+React parents from the strips they'd have to merge into:
+
+1. `.chq-contacts-title-actions` (Import CSV / Export CSV / New contact,
+   DEC-711 amendment wave 4) sits between the head counter and the search
+   box. The frame has no control cluster on this band at all — Import/
+   Export/New have no drawn home at 390.
+2. The Directory/Duplicates/Segments/Pipeline `role="tablist"` panel
+   switcher (DEC-710) sits between the search box and the rule-chip strip.
+   The frame draws no panel switcher on the Contacts landing at any width.
+
+Neither can be reordered into place: `.chq-contacts-title-actions` is a
+sibling of the H1 inside `.chq-contacts-title-row`, while the search box
+and rule strip live one component down in `.chq-contacts-tabstrip-row` /
+`FilterRulesPanel` — moving either intrusion between them would require
+relocating it into a different parent than the JSX that already owns it.
+Neither can be hidden either: `src/decisions-data/DEC-919.md`'s carve-out
+only permits a stand-down when "every capability it carried has a
+surviving full-screen path already on this page," and this landing has no
+phone dock (`.chq-phone-dock` / `data-chq-phone-dock`) the way Pipeline and
+Duplicates do — hiding the tablist would strand Duplicates/Segments/
+Pipeline with no way in, and hiding the title-actions cluster would strand
+Import/Export/New the same way DirectoryRail's stand-down would have
+stranded Segments/Duplicates without their tab-chip escape hatches
+(`DirectoryRail.phone390.render.test.tsx`). So this is a REAL residual,
+not a defect this lane can close by editing `ContactsApp.tsx` or
+`contacts.css` — doing so would be a Contacts-page lane silently deciding a
+shell-level design question `docs/design/DESIGN-RULINGS.md` has not
+adjudicated.
+
+**Named owners (DEC-180 wave-156: a finding names its owning sheet, not
+just the shell need):**
+
+- **`app/src/styles.css`** — a shell head band that carries the wordmark
+  row, the counter and the H1 as the frame draws them, so a page-level
+  action cluster (Import/Export/New) and a page-level panel switcher
+  (the tablist) would sit in shell chrome ABOVE this page's own head,
+  never inside the counter→H1→search→strip column the frame draws as one
+  piece. This is the same shell-vs-page register split
+  `docs/design/audit/contacts-v12.md`'s Finding 5 (above) already names for
+  the wordmark row itself.
+- **A Contacts-landing phone dock, built in `app/src/pages/contacts/`** —
+  using the established `.chq-phone-dock` / `data-chq-phone-dock`
+  mechanism `app/src/pages/contacts/PipelineBoard.tsx` already uses for its
+  own phone dock, which would give Import CSV / Export CSV / New contact a
+  surviving path off the head band, the way Pipeline's dock gives its own
+  actions one.
+
+Neither candidate resolves the panel-switcher tablist by itself — a shell
+head band absorbs the title-actions cluster but not a page-specific tab
+set, and a phone dock absorbs the title-actions cluster but not a
+navigation control that must stay reachable independent of any one panel's
+scroll state. Both may be needed; which (or both) is a design-authority
+call this finding does not make. Scheduled owner-lane: none yet — this
+residual is filed, not assigned; a future wave should open a dedicated
+lane against whichever of `app/src/styles.css` or a new Contacts phone-dock
+component `docs/design/DESIGN-RULINGS.md` adjudicates, and that lane's
+fix will need to update `ContactsApp.head390.render.test.tsx`'s two
+"recorded residual" assertions (they are written to fail once the
+intrusion moves) rather than leaving them as permanent truths.
