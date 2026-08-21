@@ -45,13 +45,13 @@ export const CFP_CSS = `
      the admin CFP builder's own (separate) container. */
   .chq-cfp-body { max-width: 732px; margin: 0 auto; padding: 28px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
   .chq-cfp-intro { display: flex; flex-direction: column; gap: 11px; max-width: 62ch; }
-  /* w5-c: the "Create an account" affordance line under the lede -- same
-     small/muted note treatment as the identity note it complements. */
+  /* w5-c: submit-views.tsx:598's account-creation affordance line under
+     the lede -- same small/muted note treatment as the identity note it
+     complements. */
   /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
-     idiom): submit-views.tsx renders "New speaker? <a>Create an
-     account</a> by submitting your talk below -- we'll ..." as one running
-     sentence inside this note; the classless <a> is a phrase, not a
-     standalone control. */
+     idiom): submit-views.tsx:598 renders the .chq-cfp-intro-cta note's
+     "New speaker? <a>...</a> by submitting..." line as one running
+     sentence; the classless <a> is a phrase, not a standalone control. */
   .chq-cfp-intro-cta { margin: 0; font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
   /* w5-c (frame 10--14): the YOU section sits ~54px below Your talk --
      document flow between the form's two top-level <section>s carried no
@@ -220,7 +220,7 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
      rules can never win a same-specificity fight against the phone rules
      below by sheer source order. Single-direction responsive: every rule
      in this block is a max-width override of a desktop rule declared
-     earlier in this same file; nothing here is read outside <=700px.
+     earlier in this same file; this block is never reached above 700px.
      Geometry cited against docs/design/Chautauqua Public and Portal.dc.html
      frames :1017-1070 (Submit a talk) / :1074-1100 (Submitted) /
      :1124-1143 (Submitted, email already known) / :1147-1166 (Submitted,

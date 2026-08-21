@@ -469,8 +469,9 @@ export const PORTAL_CSS = `
     min-width: 28px;
   }
 
-  /* DEC-729 (w1-c): "Your submissions" rows are <a> elements (whole row
-     navigates to the detail page) styled to read exactly like the existing
+  /* DEC-729 (w1-c): index.tsx:282's .chq-portal-submission-row rows are
+     <a> elements (whole row navigates to the detail page) styled to read
+     exactly like the existing
      .chq-portal-row cards, not an underlined inline link. The status badge
      on the detail page composes .chq-flag (never a new color token, per
      DEC-367) plus an uppercase/letter-spacing treatment matching the mock's
@@ -987,8 +988,9 @@ ${EMPTY_PHONE_CSS}
      :444), this only styles the note's own type inside it. */
   .chq-portal-resources-footer-note { display: block; }
 
-  /* Co-presenter rejected (dc.html:1312): the "Nobody was added" callout
-     -- a modifier alongside the frozen desktop .chq-error-summary class,
+  /* Co-presenter rejected (dc.html:1312): edit.tsx:335's empty-state <h2>
+     callout -- a modifier alongside the frozen desktop .chq-error-summary
+     class,
      never redefining that shared class itself. */
   .chq-portal-copresenter-notice {
     border-left: 4px solid var(--chq-ink);
@@ -1153,7 +1155,7 @@ ${EMPTY_PHONE_CSS}
 
   /* w14-ee (DEC-393 taxonomy): .chq-portal-row / .chq-portal-submission-row
      are whole-row links (a.chq-portal-submission-row composes both classes
-     on the "Your submissions" row, index.tsx:282) -- their existing padding
+     on index.tsx:282's submissions row) -- their existing padding
      (:200-206) and content already exceed 44px in the common case, but a
      scan can't infer a height from padding/content, so the DECLARED floor
      is needed on the token itself even though it is rarely the constraint
@@ -1181,10 +1183,11 @@ ${EMPTY_PHONE_CSS}
     min-width: 44px;
   }
 
-  /* DEC-393 wave-142 (task w17-e): classless standalone anchors -- "View all
-     tasks"/"View all submissions" (index.tsx), "Change password"
-     (profile.tsx), "‹ Back to settings" (preview.tsx) -- each the sole
-     content of its own <p>, not a phrase inside a sentence, so DEC-393's
+  /* DEC-393 wave-142 (task w17-e): classless standalone anchors --
+     index.tsx:372/392's .chq-portal-standalone-link "view all" links,
+     profile.tsx:177's password-change link, preview.tsx's back link --
+     each the sole content of its own <p>, not a phrase inside a sentence,
+     so DEC-393's
      standalone disposition applies: a real floor (min-height, centred flex,
      non-zero horizontal padding), not the inline-in-prose exemption.
      Appended as the LAST rules of this sheet's one terminal
