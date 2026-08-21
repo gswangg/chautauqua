@@ -123,7 +123,7 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
   });
 
   // Frame :407-437 "Contact · 390" -- caption at :403.
-  it('frame :407 Contact -- DIVERGES: reached as a role="dialog" portal (h2 title, an always-on "Close" control) not the frame\'s own full-screen route with only a "‹ Contacts" back link; the two-control dock itself matches', async () => {
+  it('frame :407 Contact -- DIVERGES (narrowed, DEC-663 wave-17): reached as a role="dialog" portal with an h2 title, not the frame\'s own full-screen route and its own H1; ModalFrame\'s shared "Close" control is now CSS-hidden at phone (contacts-panels.css) leaving the back link as the sole escape, matching the frame -- the two-control dock itself matches', async () => {
     verbatimLine(403, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Contact · 390</span>");
     stubPhoneMatchMedia();
     mockContactsBase({
@@ -159,8 +159,14 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     expect(within(dialog).queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(within(dialog).getByRole('heading', { level: 2, name: 'Priya Raman' })).toBeInTheDocument();
     // Frame :409 draws exactly one control in the head band, the "‹
-    // Contacts" back link -- no separate close/X. ModalFrame always adds
-    // its own "Close" button beside the back link.
+    // Contacts" back link -- no separate close/X. ModalFrame always emits
+    // its own "Close" button beside the back link unconditionally (it
+    // stays in the DOM here, and jsdom applies no stylesheet so this
+    // structural check can't see it); `contacts-panels.css`'s terminal
+    // `max-width:700px` block (`.chq-contacts-drawer .chq-modal-close-btn
+    // { display: none; }`) now blanks it at phone, so the back link is the
+    // drill's sole VISIBLE escape there, matching the frame -- retiring the
+    // divergence this row used to carry for it.
     expect(within(dialog).getByRole('button', { name: '‹ Contacts' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
 
@@ -232,7 +238,7 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
   });
 
   // Frame :487-512 "Import CSV · 390" -- caption at :483.
-  it('frame :487 Import CSV -- DIVERGES: no "‹ Contacts" back link (ModalFrame renders "Close" instead, no backLink prop wired) -- the one-column-per-screen pager body and its "Next column"/"Skip" dock otherwise match (findings 1-2 RESOLVED, contacts-v12.md)', async () => {
+  it('frame :487 Import CSV -- RESOLVED (DEC-663 wave-17) -> MATCHES: "‹ Contacts" back link now wired via ModalFrame\'s backLink prop -- the one-column-per-screen pager body and its "Next column"/"Skip" dock match (findings 1-2 RESOLVED, contacts-v12.md)', async () => {
     verbatimLine(483, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Import CSV · 390</span>");
     stubPhoneMatchMedia();
     mockContactsBase();
@@ -251,9 +257,13 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // Frame :490 H1 "Match the columns" -- renders as the dialog's shared
     // H2 title (same register as the Contact frame's Finding 4).
     await waitFor(() => expect(within(dialog).getByRole('heading', { level: 2, name: 'Match the columns' })).toBeInTheDocument());
-    // Frame :489's "‹ Contacts" back link has no counterpart here -- the
-    // wizard never passes ModalFrame a `backLink`, so only "Close" renders.
-    expect(within(dialog).queryByRole('button', { name: '‹ Contacts' })).not.toBeInTheDocument();
+    // Frame :489's "‹ Contacts" back link now renders -- ImportWizard wires
+    // ModalFrame's `backLink` prop (`ImportWizard.tsx:726`). ModalFrame's
+    // shared "Close" button still emits unconditionally alongside it (jsdom
+    // applies no stylesheet, so this structural check can't see
+    // `contacts-panels.css`'s phone rule that blanks it), matching the
+    // Contact drill's same resolved shape above.
+    expect(within(dialog).getByRole('button', { name: '‹ Contacts' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
 
     // Frame body :494-496 eyebrow/name/samples, :499 "Import it as" rule,
@@ -274,7 +284,7 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
   });
 
   // Frame :522-540 "Merge · 390" -- caption at :518.
-  it('frame :522 Merge -- DIVERGES: an extra "which record to keep" radio-pick list renders above the compare rows with no counterpart in the frame body, which goes straight from the head band into the field-by-field rows', async () => {
+  it('frame :522 Merge -- ADJUDICATED, frame-SILENT addition (DEC-663 wave-17) -> MATCHES: a "which record to keep" radio-pick list renders above the compare rows the frame draws no counterpart for, ruled as necessary (it seeds the choice the compare rows already show the result of) rather than an open divergence; the field-by-field rows and footer match', async () => {
     verbatimLine(518, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Merge · 390</span>");
     const group = {
       contactIds: ['ct1', 'ct2'],
@@ -306,7 +316,14 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
 
     // Frame body goes straight from the head band (:522-526) into the
     // field-by-field rows (:528-534) -- no picker block. The actual page
-    // renders `.chq-contacts-merge-picks`, one radio per contact.
+    // renders `.chq-contacts-merge-picks`, one radio per contact. Per
+    // DEC-663's wave-17 ruling this is ADJUDICATED as a frame-silent
+    // addition, not a divergence: the compare rows below are drawn showing
+    // the result of a keep/drop choice already made, which a static frame
+    // cannot depict being made, so this block seeds that choice rather
+    // than duplicating a peer of it (same disposition
+    // docs/design/audit/account-docs-v12.md's "Change password · 390" row
+    // uses for its sign-in-persists hint).
     const picks = document.querySelector('.chq-contacts-merge-picks');
     expect(picks).not.toBeNull();
     expect(within(picks as HTMLElement).getAllByRole('radio')).toHaveLength(2);
