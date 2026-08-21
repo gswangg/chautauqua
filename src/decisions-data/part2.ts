@@ -178,7 +178,7 @@ export const DEC_381 = "Amendment (wave 109): The phone tab bar's fourth slot is
 export const DEC_382 = "The three operator surfaces (/, /docs/api, /dev/mailbox) share one TOOLS_CSS module and the shell pattern; they are chrome, not designed screens";
 export const DEC_383 = "Amendment (wave-16 r5): a page-owned scroll container owes the house focus ring a place to land — an inset ring, never a removed one";
 export const DEC_384 = "The wave-3 render-sweep gate is log-only; its open items become wave-4 tasks, never in-lane patches";
-export const DEC_385 = "Amendment (wave-16 r4): a frame-drawn phone band answers EVERY edge of a borrowed shell token, and its inter-sibling seams are scoped by :has() so a shared page root does not drag the drills";
+export const DEC_385 = "Amendment (wave 27): single-direction responsive is defeated by any LATER equal-specificity rule, not only by an identical selector";
 export const DEC_386 = "Phone cards come from CSS on the same markup, and a phone card shows exactly the desktop row's cells";
 export const DEC_387 = "The render sweep gains an admin mobile pass, advisory in the wave that introduces it";
 export const DEC_388 = "D1 bind values are primitives: a timestamp comparison inside a raw sql template interpolates epoch milliseconds, never a Date";
@@ -186,7 +186,7 @@ export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
 export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
-export const DEC_393 = "Amendment (wave 25): the phone drawn-floor join resolves ambiguity by UNION over own-text-equal positions, not by declaring it -- and never by a cluster-ownership table";
+export const DEC_393 = "Amendment (wave 27): a drawn-control floor join that cannot resolve a data-composed label grades the WRONG element, so its ceiling counts join defects, not product defects";
 export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
 export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
 export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";
