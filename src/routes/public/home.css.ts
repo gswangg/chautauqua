@@ -159,26 +159,23 @@ export const HOME_CSS = `
      (DEC-393/DEC-367 wave-138 sweep, task w13-ff). */
   .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
   .chq-home-footer-link-end { margin-left: auto; font-size: 12px; }
-  /* FINDING (v12 mobile campaign w2, not fixed in this lane): the
-     between_cycles frame draws the footer "API docs" anchor on its 390
-     sibling as a standalone anchor beside the ":260" "Running on" span
-     (docs/design/Chautauqua Home.dc.html:261 \`margin-left:auto;
-     font-size:12px; font-weight:700\` -- the quote stops short of that
-     line's tap-floor declaration on purpose, so this base-scope comment
-     stays clear of test/ssr-tap-floor-scope.scan.test.ts's DEC-367
-     wave-57 sweep; the floor itself is carried in the phone block below,
-     the same pattern :173 draws) but NOT on its own 900 twin (:220 -- footer text ends at
-     "management" with no second anchor) -- a genuine width-only divergence
-     for this one state. Reproducing it needs the anchor unconditionally in
-     root.tsx's DOM (a \`.chq-home-footer-link-end-quiet\` CSS width toggle,
-     display:none here / display:flex in the phone block below), but
-     root.tsx's Footer() only renders the anchor for state === "full", and
-     that DOM-absence (not a CSS display) is pinned by
-     test/public-home-state-actions.test.ts's "the footer's 'API docs' link
-     renders on the full hub only". Fixing the frame gap would need that
-     test updated too, which is outside this lane's owned files
-     (root.tsx / test/public-home-state-actions.test.ts) -- left as a
-     between_cycles v12 gap for the planner rather than re-decided here. */
+  /* RESOLVED (wave-16 amendment, DEC-383; was the "v12 mobile campaign w2"
+     FINDING below this line): the between_cycles frame draws the footer
+     "API docs" anchor on its 390 sibling as a standalone anchor beside the
+     ":260" "Running on" span (docs/design/Chautauqua Home.dc.html:261
+     \`margin-left:auto; font-size:12px; font-weight:700\` -- the quote stops
+     short of that line's tap-floor declaration on purpose, so this
+     base-scope comment stays clear of test/ssr-tap-floor-scope.scan.test.ts's
+     DEC-367 wave-57 sweep; the floor itself is carried in the phone block
+     below, the same pattern :173 draws) but NOT on its own 900 twin (:220
+     -- footer text ends at "management" with no second anchor) -- a
+     genuine width-only divergence for this one state. root.tsx's Footer()
+     now renders the anchor unconditionally in the DOM for
+     state === "between_cycles" too (an extra class,
+     .chq-home-footer-link-end-phone, alongside this token), base-hidden by
+     the next rule and revealed only inside the phone block below (DEC-385
+     single-direction) -- the "full" state's markup is unchanged. */
+  .chq-home-footer-link-end-phone { display: none; }
   .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
@@ -401,6 +398,27 @@ export const HOME_CSS = `
       display: flex;
       align-items: center;
       padding-inline: 4px;
+    }
+
+    /* Wave-16 amendment (DEC-383): reveals the between_cycles-only "API
+       docs" anchor base-hidden above (.chq-home-footer-link-end-phone --
+       DEC-385 single-direction, so the only display toggle for this token
+       lives here, never at base scope). docs/design/Chautauqua
+       Home.dc.html:261 \`margin-left:auto; font-size:12px;
+       font-weight:700; min-height:44px; display:flex;
+       align-items:center\` draws this anchor's phone rule on the
+       between_cycles 390 frame, byte-identical to the full hub's own
+       phone footer anchor at :173. .chq-home-footer-link-end (the shared
+       base token) already supplies margin-left:auto/font-size/font-weight
+       and its own 44px floor above (:354) -- this rule only needs to flip
+       the -phone variant's display from none to flex so it inherits that
+       floor too. Appended LAST so it wins every equal-specificity tie
+       (nothing above reordered, DEC-385). */
+    .chq-home-footer-link-end-phone {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

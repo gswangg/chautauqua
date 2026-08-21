@@ -21,11 +21,12 @@
 // selector, applied to a hide-at-phone (not a phone-only-show) case.
 // CSS-rule-shape coverage for the rest of the phone anatomy (header/body/row
 // geometry) already lives in test/home-phone-frames.test.ts; this file only
-// covers what changed here: the footer's tagline drop. The between_cycles
-// frame's footer "API docs" link (present at 390, absent at 900 for that
-// one state) is a known v12 gap this lane leaves open -- see the
-// "full carries the API docs anchor..." test below and the FINDING comment
-// in home.css.ts.
+// covers what changed here: the footer's tagline drop, and (wave-16
+// amendment, DEC-383) the between_cycles frame's footer "API docs" link,
+// which the 390 frame draws (present at 390, absent at 900 for that one
+// state) and which now renders unconditionally in the DOM, base-hidden by
+// a phone-only CSS reveal -- see the "full carries the API docs anchor..."
+// test below and the RESOLVED comment in home.css.ts.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -154,23 +155,35 @@ describe("DEC-582 (wave 84): the hub head is declared once, identical across all
   });
 });
 
-describe("DEC-582 (wave 84): the hub footer is declared once -- never a fourth footer per state", () => {
-  // NOTE (v12 mobile campaign w2, flagged not fixed here): the between_cycles
-  // frame draws the footer's "API docs" anchor on its 390 sibling but not on
-  // its own 900 twin (:220) -- a genuine width-only divergence this lane's
-  // frozen-desktop constraint cannot close without touching root.tsx's
-  // Footer() render branch AND test/public-home-state-actions.test.ts's
-  // DOM-count pin ("the footer's 'API docs' link renders on the full hub
-  // only"), neither of which is an owned file here. This test pins the
-  // PRE-EXISTING (unchanged) contract instead; see home.css.ts's phone-block
-  // comment for the gap itself.
-  it("full carries the API docs anchor; between_cycles and fresh do not (unchanged root.tsx contract) -- docs/design/Chautauqua Home.dc.html:261 `<a href=\"#\" style=\"margin-left:auto; font-size:12px; font-weight:700; min-height:44px; display:flex; align-items:center\">API docs</a>` draws this anchor on the 390 sibling only", async () => {
+describe("DEC-582 (wave 84)/DEC-383 (wave-16 amendment): the hub footer is declared once -- never a fourth footer per state", () => {
+  // Wave-16 amendment: root.tsx's Footer() now renders the "API docs"
+  // anchor unconditionally in the DOM for `between_cycles` too, carrying
+  // an extra base-hidden class (.chq-home-footer-link-end-phone) that
+  // home.css.ts's phone block alone reveals -- this SSR-HTML test (jsdom
+  // applies no stylesheet) therefore sees the anchor in the DOM for both
+  // `full` and `between_cycles`, and distinguishes them by that extra
+  // class. `fresh` still renders none. See the per-assertion citations
+  // below for the frame lines this reproduces.
+  it("full and between_cycles both carry the API docs anchor in the DOM; fresh does not -- between_cycles carries the extra base-hidden phone class, full does not", async () => {
     const full = footerOf(await renderState("full"));
     const between = footerOf(await renderState("between_cycles"));
     const fresh = footerOf(await renderState("fresh"));
 
     expect(full).toContain('href="/docs/api"');
-    expect(between).not.toContain('href="/docs/api"');
+    expect(full).toMatch(/class="chq-home-footer-link chq-home-footer-link-end"/);
+    expect(full).not.toContain("chq-home-footer-link-end-phone");
+
+    // docs/design/Chautauqua Home.dc.html:261 `<a href="#" style="margin-left:auto;
+    // font-size:12px; font-weight:700; min-height:44px; display:flex;
+    // align-items:center">API docs</a>` -- the between_cycles 390 sibling
+    // draws this anchor, byte-identical to the full hub's phone footer.
+    expect(between).toContain('href="/docs/api"');
+    expect(between).toMatch(/class="chq-home-footer-link chq-home-footer-link-end chq-home-footer-link-end-phone"/);
+
+    // docs/design/Chautauqua Home.dc.html:220 `open-source speaker and
+    // event-content management</span>` -- the between_cycles 900 twin's
+    // footer text ends there with no trailing anchor, so the DOM-level
+    // anchor above must stay CSS-hidden (not DOM-absent) at that width.
     expect(fresh).not.toContain('href="/docs/api"');
     expect(fresh).not.toContain(">API docs<");
   });
@@ -256,5 +269,19 @@ describe("DEC-582/DEC-385: the phone width rules for the footer live in HOME_CSS
     expect(rule).toMatch(/display:\s*flex/);
     expect(rule).toMatch(/align-items:\s*center/);
     expect(rule).toMatch(/padding:\s*0 \d+px/);
+  });
+
+  // Wave-16 amendment (DEC-383): the between_cycles-only "API docs" anchor
+  // token (.chq-home-footer-link-end-phone) is base-hidden and revealed
+  // ONLY inside this file's one @media (max-width: 700px) block -- the
+  // DEC-385 single-direction shape ("narrow overrides wide via max-width
+  // media queries ONLY"). Mirrors the tagline test above's
+  // hidden-at-base/shown-at-phone pair, inverted (this token is shown-at-
+  // phone/hidden-at-base).
+  it("the between_cycles-only API-docs anchor is base-hidden, revealed only inside the phone block", () => {
+    const layer = phoneLayer(CLEAN);
+    const withoutPhoneLayer = CLEAN.replace(layer, "");
+    expect(withoutPhoneLayer).toMatch(/\.chq-home-footer-link-end-phone\s*\{[^}]*display\s*:\s*none/);
+    expect(ruleFor(layer, ".chq-home-footer-link-end-phone")).toMatch(/display:\s*flex/);
   });
 });

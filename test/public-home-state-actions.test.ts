@@ -217,10 +217,16 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
     expect(body).not.toMatch(/class="chq-home-row-published"/);
   });
 
-  // G13 lane-D fix (12-home--02/--04): the frames draw the footer's API
-  // docs link on the FULL hub only -- between-cycles leaves the right edge
-  // empty, and the fresh deploy carries the affordance once, in the hero.
-  it("the footer's 'API docs' link renders on the full hub only", async () => {
+  // Wave-16 amendment (DEC-383): the prior "G13 lane-D fix" rule pinned
+  // here (API docs on the FULL hub only) left a v12/390 gap on
+  // between_cycles. root.tsx now renders the anchor unconditionally in
+  // the DOM for `between_cycles` too (an extra class,
+  // .chq-home-footer-link-end-phone, base-hidden by home.css.ts and
+  // revealed only under max-width:700px -- DEC-385), so the DOM-level
+  // count moves from 0 to 1 for that state. `full`'s render is unchanged;
+  // `fresh` still renders none. See the citation beside the assertion
+  // below for the frame line this reproduces.
+  it("the footer's 'API docs' link renders on the full hub and (DOM-only, base-hidden) on between_cycles; still absent on fresh", async () => {
     const scenarios: { name: string; queue: unknown[][] }[] = [
       {
         name: "full",
@@ -262,7 +268,14 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
       const body = await res.text();
       const footer = body.split("<footer")[1]?.split("</footer>")[0] ?? "";
       const footerApiLinks = [...footer.matchAll(/href="\/docs\/api"[^>]*>\s*API docs\s*<\/a>/g)];
-      expect(footerApiLinks.length, `${scenario.name} footer API docs link`).toBe(scenario.name === "full" ? 1 : 0);
+      expect(footerApiLinks.length, `${scenario.name} footer API docs link`).toBe(scenario.name === "fresh" ? 0 : 1);
+      // docs/design/Chautauqua Home.dc.html:261 `<a href="#" style="margin-left:auto; font-size:12px; font-weight:700; min-height:44px; display:flex; align-items:center">API docs</a>` -- between_cycles carries the extra base-hidden class; full does not.
+      if (scenario.name === "between_cycles") {
+        expect(footer).toMatch(/class="chq-home-footer-link chq-home-footer-link-end chq-home-footer-link-end-phone"/);
+      } else if (scenario.name === "full") {
+        expect(footer).toMatch(/class="chq-home-footer-link chq-home-footer-link-end"/);
+        expect(footer).not.toContain("chq-home-footer-link-end-phone");
+      }
     }
   });
 });
