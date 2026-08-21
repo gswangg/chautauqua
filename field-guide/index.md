@@ -15,46 +15,36 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 
 - WAVE 159 HEAVILY COMPACTED: branch prefixes burn fast, re-check `show-ref`+`packed-refs`+`worktree list` before/after planning every wave; a scribed `## Amendment (wave N)` is the cheapest read on what a CONCURRENT wave already claimed; a verdict ledger row and an in-code comment both rot faster than the code they describe — re-derive against the tree, grep the predicate not the prose; the pack draws vocabulary in per-surface registers (label, byte format) that a single flattened map cannot express, un-adjudicable divergences stay unfixed; a desktop frame can license a desktop-affecting change under the freeze, cite the desktop line when spending it.
 
-## Wave 16 (planner notes)
+- WAVE 16 HEAVILY COMPACTED: branch prefix `v12m-w16-a/b/c` pre-burned again, moved to `ua..ui` (fourth wave running, always check `for-each-ref` before/after); a full-suite run against shared `main` can report a phantom red while the scribe writes `src/decisions-data/*.md` mid-suite, re-run the single failing file before scheduling a repair; verdict ledgers rot faster than the code they grade, check the owning file's comment block before spending a lane on a row (w14-sf refiled an already-ruled CFP `Draft` divergence); the 390 verdict sweep is COMPLETE (53/53 phone + 4 desktop, all 31 exit-predicate ceilings DECLARED 0/TARGET 0), remaining work is building DIVERGES rows, filing DEVIATIONS, and the five DEC-069 verification slots; `w14-sb..sh` committed and UNMERGED, read ledgers via `git show v12m-w14-s<x>:<path>`, not from main, until the train lands them.
 
-**Branch namespace, third-in-a-row correction.** `v12m-w16-a`, `-b`, `-c`
-were ALREADY in `packed-refs` (all three at `89b58e05`) with live worktrees
-under `~/.claude/jobs/2880f027/tmp/v12m-wt/` before this wave was planned —
-same as w13 (`a..j` burned → `ra..rj`), w14 (→ `sa..sj`), w15 (→ `ta..tj`).
-Wave 16 uses `ua..ui`, verified free before AND after planning. Assume the
-reserved single-letter prefix is spent; check `git for-each-ref
-'refs/heads/v12m-w<N>-*'` first, every time.
+## Wave 17 (planner notes)
 
-**A full-suite run against shared `main` can report a phantom red.** A
-`npm run test:fast` pass here failed `test/citation-form-drift.scan.test.ts`
-with 5 line-keyed citations in `DEC-663/874/919/989.md`; a targeted re-run of
-that one file passed immediately, and `git status` was clean at both moments.
-The scribe writes `src/decisions-data/*.md` in the main working tree while a
-144-second suite is reading it. Before scheduling a repair for any scan over
-`src/decisions-data/`, `docs/design/audit/` or `docs/probes/`, re-run that
-single file. Main was green at `8cce6a8d`.
+**Namespace held for once.** `v12m-w17-*` was free in `show-ref`,
+`packed-refs` AND `worktree list`, before and after planning. First wave in
+five not to find its reserved letters pre-spent.
 
-**Verdict ledgers rot faster than the code they grade — check the sheet's own
-comments before scheduling a row.** `w14-sf` filed the CFP dock's
-`Save draft` vs the frame's `Draft` as a live divergence;
-`src/routes/public/cfp.css.ts` had already ruled it in-sheet ("one control,
-one name at every width — the frame's 'Draft' is a drawing abbreviation, not
-a label to ship", DEC-613 wave-96). Likewise `settings-v12.md`'s `:444` row
-was stale last wave. A ledger row is a claim about the tree, not a fact:
-re-derive, and read the owning file's comment block, before spending a lane.
+**THE LEDGERS ARE THE CAMPAIGN'S BIGGEST LIABILITY, not the code.**
+Re-derived every live DIVERGES verdict in the tree: Content, Review, Contacts
+rows, Docs' "Contents" trigger, both shell handoff findings and all five
+inherited review-lens findings were ALREADY FIXED on main — a dozen rows
+advertising work landed in waves 15-16, with verdict TESTS still titling and
+asserting the old truth, pinning repaired divergences in place. DEC-976 now
+rules a row and its verdict test move in ONE commit — `git log -S` the
+sentence, read the comment block, only then plan.
 
-**The 390 verdict sweep is COMPLETE; waves from here are fixes, not
-measurement.** Every one of the 53 phone frames and the 4 landed-Speakers
-desktop frames now carries a render-through-the-route verdict across
-`w13-r*`, `w14-s*` and the Settings/Comms ledgers. All 31 machine-derived
-campaign ceilings in `scripts/exit-predicate.ts` read DECLARED 0 / TARGET 0.
-What remains is (a) building the DIVERGES rows, (b) recording the ones that
-fail on the merits as DEVIATIONS, and (c) the five DEC-069 slots, which a
-verification wave fills — no worker task can.
+**A "the pack draws two registers" verdict can be a two-sample undercount.**
+DEC-613 wave-159 left `formatBytes` unruled on two byte-size samples; the
+full drawn population is thirteen strings and none read `.0` — one register,
+trimmed, not two. Enumerate the WHOLE population before declaring frames
+silent (DEC-180's lesson, applied to vocabulary).
 
-**Where the unmerged verdicts live.** `w14-sb..sh` are committed and
-UNMERGED; their ledgers are readable with `git show v12m-w14-s<x>:<path>`
-(`docs/design/audit/{submissions,speakers,portal,public-390-verdicts,
-account-docs,speakers-desktop}-v12.md`, plus verdicts filed in test-file
-headers for Agenda, Overview and Home, which have no audit doc). Read them
-from the branch, not from `main`, until the train lands them.
+**A control-floor ledger row can be a real gap under the WRONG name.**
+Contacts `:602`'s "Reviewer" row resolves by text-match to `chq-pill`; the
+real control is `chq-add-to-event-role-btn` in a `.chq-segmented` group.
+Both are genuinely unfloored — fix the control the FRAME draws, then correct
+the join, never the reverse (DEC-393).
+
+**Exit-predicate reality check (`--product-sha 4a74f3b6`):** all 31 campaign
+ceilings read DECLARED 0/TARGET 0 but print DECLARED ONLY — NOT MEASURED,
+all five DEC-069 slots VOID. Only a verification wave running `test:fast`
+with `--suite-verified-sha` can change that; no worker task can.
