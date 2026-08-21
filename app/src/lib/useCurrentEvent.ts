@@ -68,11 +68,26 @@
 // hook instances currently mounted for that search: while at least one
 // instance for a given search is alive, every instance -- regardless of
 // mount order, preserving the wave-138 guarantee verbatim -- reads the same
-// frozen pair; once the last one unmounts (a real navigation away, or a
-// render test's cleanup() between `it()` blocks reusing this module) the
-// entry is dropped, so the next mount for that same search string (a fresh
-// navigation, or a fresh test) captures anew instead of replaying stale
-// state.
+// frozen pair.
+//
+// DEC-728 wave-150 amendment (USER RULING D19, part 5): tying the frozen
+// pair's LIFETIME to the liveness refcount was a 100%-reproducible dev
+// crash. React StrictMode double-invokes every effect as
+// mount -> cleanup -> mount with NO intervening render: the first cleanup
+// dropped refCount to 0 and DELETED the frozen pair, so the second mount's
+// acquire found nothing captured and threw. The two concerns are now split:
+// the frozen (fromUrl, fromStorage) pair is DOCUMENT-scoped, keyed by
+// `search`, and is never deleted by a refcount reaching zero -- a real next
+// navigation is either a different `search` key (captured anew below) or a
+// full page reload (which resets the module), so keeping the pair alive
+// past liveCount 0 is exactly the D19 "prior stored id" semantics the
+// refcount was reaching for, not a leak. Only the LIVENESS count drops on
+// release, and acquireNavigationContext re-acquires the existing frozen
+// pair instead of throwing -- the fail-loud throw is reserved for a
+// `search` that was genuinely never captured at all (a real programmer
+// error: acquiring before rendering). The two test-only reset seams still
+// clear the whole map, so render-test isolation between `it()` blocks is
+// unchanged.
 import { useEffect, useState } from 'react';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import { apiList, ApiError } from './api';
@@ -109,13 +124,19 @@ interface NavigationContext {
 
 interface NavigationContextEntry {
   context: NavigationContext;
-  refCount: number;
+  /** DEC-728 wave-150: liveness only -- how many mounted hook instances are
+   * currently sharing this navigation's frozen pair. Reaching zero does NOT
+   * delete `context`; see the file-header amendment for why the pair itself
+   * is document-scoped, not refcount-scoped. */
+  liveCount: number;
 }
 
-// DEC-728 wave-143: keyed by location.search (one entry per navigation),
-// reference-counted by the hook instances currently mounted for that
-// search. See the file-header amendment above for why this replaced the
-// wave-138 "once per document" singleton.
+// DEC-728 wave-143/150: keyed by location.search (one entry per
+// navigation). The frozen `context` is document-scoped and outlives any
+// individual mount; `liveCount` tracks how many instances are currently
+// sharing it. See the file-header amendment above for why this replaced
+// the wave-138 "once per document" singleton, and why wave-150 stopped
+// deleting the frozen pair on refcount 0.
 const navigationContexts = new Map<string, NavigationContextEntry>();
 
 function captureNavigationContext(search: string): NavigationContext {
@@ -126,7 +147,7 @@ function captureNavigationContext(search: string): NavigationContext {
         fromUrl: new URLSearchParams(search).get('eventId'),
         fromStorage: window.localStorage.getItem(STORAGE_KEY),
       },
-      refCount: 0,
+      liveCount: 0,
     };
     navigationContexts.set(search, entry);
   }
@@ -136,14 +157,16 @@ function captureNavigationContext(search: string): NavigationContext {
 function acquireNavigationContext(search: string): void {
   const entry = navigationContexts.get(search);
   if (!entry) throw new Error('acquireNavigationContext: no captured context for this search');
-  entry.refCount += 1;
+  entry.liveCount += 1;
 }
 
 function releaseNavigationContext(search: string): void {
   const entry = navigationContexts.get(search);
   if (!entry) return;
-  entry.refCount -= 1;
-  if (entry.refCount <= 0) navigationContexts.delete(search);
+  entry.liveCount -= 1;
+  // DEC-728 wave-150: the frozen pair is intentionally NOT deleted here --
+  // see the file-header amendment. A StrictMode mount -> cleanup -> mount
+  // (no intervening render) must re-acquire the SAME pair, not throw.
 }
 
 /** The stored event id as it stood before ANY useCurrentEvent() instance
