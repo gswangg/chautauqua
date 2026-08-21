@@ -268,10 +268,11 @@ export const SSR_UNFLOORED_TOKENS_CEILING = 0;
 // ceiling in this file.
 
 /** Seeded at the count measured when this population was first scanned
- * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised. There is
- * deliberately no companion "ceiling is not stale" test -- the engine work
- * that would drive this to zero is not this change's job, and a two-sided
- * ratchet would force it to be. */
+ * (mandate item 5). Two-sided as of task w7-dc (DEC-808 wave-85 amendment):
+ * the "deliberately one-sided" note this constant used to carry predates
+ * DEC-808's blanket requirement and was itself the exact shape DEC-808
+ * exists to close -- see phone-tap-target-ssr.scan.test.ts's companion
+ * "never falls below the SSR declared-sub-floor ceiling" `it`. */
 export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
 
 // Wave v12m-w17 task w17-c (DEC-808): SSR_UNFLOORED_TOKENS_CEILING above
