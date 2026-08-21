@@ -306,8 +306,9 @@ const ALL_LEAKS: LeakViolation[] = CSS_TS_FILES.flatMap((abs) =>
 // token, never reproduce the sentence) rather than deleted, so the geometry
 // rationale they carried is preserved. Measured on this branch by forcing
 // this constant to -1 and reading the printed offender list: 0. The
-// two-sided ratchet upgrade (a "ceiling is not stale" companion assertion)
-// remains a later single-owner wave's lane, not claimed here.
+// two-sided ratchet upgrade (a "ceiling is not stale" companion assertion,
+// DEC-808 wave-85 amendment) landed in task w7-dc, appended at the end of
+// the describe block below.
 export const CSS_COMMENT_COPY_LEAK_CEILING = 0;
 
 describe("CSS comment copy-leak scan: src/routes/**/*.css.ts comments vs src/routes/**/*.tsx text (DEC-613 wave-146 amendment)", () => {
@@ -331,6 +332,25 @@ describe("CSS comment copy-leak scan: src/routes/**/*.css.ts comments vs src/rou
       expect(ALL_LEAKS.length).toBeLessThanOrEqual(CSS_COMMENT_COPY_LEAK_CEILING);
     },
   );
+
+  // Two-sided ratchet companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts): the ceiling-only `it`
+  // above only ever lets CSS_COMMENT_COPY_LEAK_CEILING fall; nothing caught
+  // it drifting stale once the count fell below it. This mirrors
+  // control-font.scan.test.ts's companion (app/src/control-font.scan.test.ts:250).
+  it("the ceiling is not stale: the measured leak count does not fall below CSS_COMMENT_COPY_LEAK_CEILING (two-sided ratchet, DEC-808)", () => {
+    if (ALL_LEAKS.length < CSS_COMMENT_COPY_LEAK_CEILING) {
+      throw new Error(
+        `${ALL_LEAKS.length} leaks measured, below CSS_COMMENT_COPY_LEAK_CEILING=` +
+          `${CSS_COMMENT_COPY_LEAK_CEILING}. A leak was fixed -- good -- but the ceiling ` +
+          `licenses stagnation until it moves too (the mirror failure of a floor that never ` +
+          `rises). Lower CSS_COMMENT_COPY_LEAK_CEILING to exactly ${ALL_LEAKS.length} as part ` +
+          `of the SAME batch that landed the fix: ` +
+          `export const CSS_COMMENT_COPY_LEAK_CEILING = ${ALL_LEAKS.length};`,
+      );
+    }
+    expect(ALL_LEAKS.length).toBe(CSS_COMMENT_COPY_LEAK_CEILING);
+  });
 });
 
 // ---------------------------------------------------------------------------

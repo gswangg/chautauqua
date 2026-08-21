@@ -193,4 +193,30 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
     }
     expect(offenders.length).toBeGreaterThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
   });
+
+  // Two-sided ratchet companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts). This file's own header
+  // comment pointed at "the companion ... test for the other half of the
+  // ratchet this file's own test name always claimed to have" without ever
+  // landing one for SSR_TAP_FLOOR_OFFENDERS_CEILING specifically -- mirrors
+  // phone-tap-target-anchor-floor.scan.test.ts's ANCHOR_FLOOR_OFFENDERS_CEILING
+  // companion and this same describe block's own SSR_UNFLOORED_TOKENS_CEILING
+  // companion directly above.
+  it(`never falls below the SSR declared-sub-floor ceiling (${SSR_TAP_FLOOR_OFFENDERS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
+    const offenders = findSsrOffenders(SSR_CSS_MODULES, tokens, REPO_ROOT);
+    if (offenders.length < SSR_TAP_FLOOR_OFFENDERS_CEILING) {
+      throw new Error(
+        `SSR sub-44px tap targets with no phone-width override and no tap-floor-exempt comment ` +
+          `(${offenders.length}) fell below the SSR_TAP_FLOOR_OFFENDERS_CEILING of ` +
+          `${SSR_TAP_FLOOR_OFFENDERS_CEILING}. This is the ratchet working: offenders got fixed. Lower ` +
+          `the ceiling now (DEC-989 wave-123 protocol): the lane that drains offenders re-measures on its ` +
+          `own branch (force this constant to -1, read the printed offender list) and writes its own ` +
+          `branch's truth; the merge train re-measures the integrated tree and writes the combined truth. ` +
+          `Replace the line in phone-tap-target-scan/ceilings.ts:\n` +
+          `  export const SSR_TAP_FLOOR_OFFENDERS_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(SSR_TAP_FLOOR_OFFENDERS_CEILING);
+  });
 });

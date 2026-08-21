@@ -620,4 +620,24 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
       expect(basename(o.file).endsWith('.test.ts') || basename(o.file).endsWith('.test.tsx')).toBe(true);
     }
   });
+
+  // Two-sided ratchet companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts): the ceiling-only `it`
+  // above only ever lets FRAME_RECEIPT_OFFENDER_CEILING fall; nothing
+  // caught it drifting stale once the count fell below it. This mirrors
+  // control-font.scan.test.ts's companion (app/src/control-font.scan.test.ts:250).
+  it('the ceiling is not stale: the measured offender count does not fall below FRAME_RECEIPT_OFFENDER_CEILING (two-sided ratchet, DEC-808)', () => {
+    const { offenders } = scanResult;
+    if (offenders.length < FRAME_RECEIPT_OFFENDER_CEILING) {
+      throw new Error(
+        `${offenders.length} offenders measured, below FRAME_RECEIPT_OFFENDER_CEILING=` +
+          `${FRAME_RECEIPT_OFFENDER_CEILING}. An offender was fixed -- good -- but the ` +
+          `ceiling licenses stagnation until it moves too (the mirror failure of a floor ` +
+          `that never rises). Lower FRAME_RECEIPT_OFFENDER_CEILING to exactly ` +
+          `${offenders.length} as part of the SAME batch that landed the fix: ` +
+          `export const FRAME_RECEIPT_OFFENDER_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBe(FRAME_RECEIPT_OFFENDER_CEILING);
+  });
 });

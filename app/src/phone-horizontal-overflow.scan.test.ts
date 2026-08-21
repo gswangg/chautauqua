@@ -177,9 +177,10 @@ for (const source of SOURCES) {
 }
 
 // --- cross-bundle receipt tripwire (DEC-976) ---------------------------
-// One-sided ratchet, seeded at 0 (verified 0 on main today): the five
-// existing `app/src/` mentions inside `src/` are prose parity notes, none
-// sitting inside an exempt-comment receipt.
+// Seeded at 0 (verified 0 on main today): the five existing `app/src/`
+// mentions inside `src/` are prose parity notes, none sitting inside an
+// exempt-comment receipt. Two-sided as of task w7-dc (DEC-808 wave-85
+// amendment) -- see this describe block's companion `it` below.
 const CROSS_BUNDLE_OFFENDERS: CrossBundleOffender[] = [];
 for (const source of SOURCES) {
   if (!source.label.startsWith('src/')) continue; // only SSR sheets, never the app/src SPA bundle itself
@@ -653,6 +654,24 @@ describe('SSR sheet exemption receipts never cite the unloaded SPA bundle (DEC-9
       CROSS_BUNDLE_OFFENDERS.length,
       CROSS_BUNDLE_OFFENDERS.map((o) => `${o.file} -- cites "${o.citation}"`).join('\n'),
     ).toBeLessThanOrEqual(CROSS_BUNDLE_CITATION_CEILING);
+  });
+
+  // Two-sided ratchet companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts). The "one-sided ratchet"
+  // label above and on CROSS_BUNDLE_CITATION_CEILING's own declaration
+  // predates DEC-808's blanket requirement; this closes it.
+  it(`never falls below CROSS_BUNDLE_CITATION_CEILING (${CROSS_BUNDLE_CITATION_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    if (CROSS_BUNDLE_OFFENDERS.length < CROSS_BUNDLE_CITATION_CEILING) {
+      throw new Error(
+        `${CROSS_BUNDLE_OFFENDERS.length} cross-bundle citation offenders measured, below ` +
+          `CROSS_BUNDLE_CITATION_CEILING=${CROSS_BUNDLE_CITATION_CEILING}. An offender was fixed -- good ` +
+          `-- but the ceiling licenses stagnation until it moves too (the mirror failure of a floor that ` +
+          `never rises). Lower CROSS_BUNDLE_CITATION_CEILING to exactly ${CROSS_BUNDLE_OFFENDERS.length} ` +
+          `as part of the SAME batch that landed the fix: ` +
+          `export const CROSS_BUNDLE_CITATION_CEILING = ${CROSS_BUNDLE_OFFENDERS.length};`,
+      );
+    }
+    expect(CROSS_BUNDLE_OFFENDERS.length).toBeGreaterThanOrEqual(CROSS_BUNDLE_CITATION_CEILING);
   });
 });
 

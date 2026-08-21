@@ -617,8 +617,14 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   "STARVED_FLEX_TRACK_CEILING",
 ];
 
-/** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
-const TIER2_CEILING_NAMES: readonly string[] = [
+/**
+ * Tier-2 ceiling constant names: campaign is done only once every one reads
+ * 0. Exported (DEC-808, task w7-dc) so test/campaign-ratchet-two-sided.scan
+ * .test.ts can derive its graded population from the same three lists this
+ * module already treats as the campaign's total accounting, rather than
+ * hand-listing a fourth copy.
+ */
+export const TIER2_CEILING_NAMES: readonly string[] = [
   "CEILING",
   "ANCHOR_FLOOR_OFFENDERS_CEILING",
   "SSR_TAP_FLOOR_OFFENDERS_CEILING",
