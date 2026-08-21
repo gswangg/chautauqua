@@ -1599,4 +1599,40 @@
   .chq-contacts-search {
     font-size: 14px;
   }
+
+  /* task v12m-w16-ui-r4-d / src/decisions-data/DEC-919.md (Amendment
+     wave-16 r4-d): the segment name in `.chq-contacts-segment-pills`
+     comes straight from user input with no bound anywhere, and
+     `.chq-contacts-segment-pills > *` (above) is `flex-shrink: 0`, so one
+     long-named segment renders a pill wider than the 390 viewport and
+     pushes every other pill -- including the `All` reset -- out of the
+     strip's visible run. docs/design/Chautauqua Contacts.dc.html:196
+     draws the pill at a bounded register (`border:1px solid #BAB6A6;
+     border-radius:99px; min-height:44px; display:flex;
+     align-items:center; padding:0 14px; font-size:13px;
+     font-weight:500`, label `Speakers · 41`). Bound at max-width:46vw,
+     matching the sibling rule-chip-edit bound (v12m-w16-ui-r3-c) so the
+     two head strips share ONE truncation register rather than minting a
+     second. Scoped through
+     `.chq-contacts-segment-pills` -- the shared `.chq-pill` token is
+     never redeclared bare in this sheet.
+
+     CAPABILITY RECEIPT (src/decisions-data/DEC-919.md): the full segment
+     name is not lost -- the chipstrip's `Segments · N` tab opens
+     SegmentsPanel, which lists every segment in full; truncation is
+     substitution, never removal, and no JS truncation is introduced that
+     would fork the accessible name from the visible one.
+
+     `display: block` is deliberately NOT used here: the earlier
+     `.chq-contacts-segment-pills .chq-pill` rule (above) makes the pill a
+     centred flex box for the frame's `align-items:center` line: an
+     overflow/min-width pair ellipsises inside a flex box just as well,
+     without dropping the flex formatting context. */
+  .chq-contacts-segment-pills .chq-pill {
+    max-width: 46vw;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
