@@ -145,3 +145,30 @@ letter-spacing) to match the frame verbatim; weight was already correct
   tab (DEC-730), and the export/foot copy — matched the frames verbatim; no
   further divergence found. Updated `TaskView.render.test.tsx` to assert
   the answered name is a `<span>`, never a link.
+
+## 4. Phone 390 per-frame render verdicts (w14-sc, DEC-976 wave-157)
+
+Render receipts live in `app/src/pages/Speakers.frame-verdicts.render.test.tsx`
+(entered through `SpeakersPage`'s real mount — `OnboardingGrid` for the
+landing frame, then the real `"Roster ›"` trigger for the drill-in frame,
+never a sub-component mounted directly). jsdom applies no stylesheet, so
+both verdicts are DOM structure/order only.
+
+- **Frame :133 "Speakers" (OnboardingGrid landing) — DIVERGES.** The phone
+  head repeats the desktop H1/summary pair (frame :139 `<h1>Speakers</h1>`,
+  :140 `12 accepted · 3 overdue`) and swaps in a phone-only action row
+  (:142 `Remind outstanding`, :143 `Filter`) — that part matches. The
+  divergence: the rendered tree also carries a `"Roster ›"` trigger button
+  (`OnboardingGrid.tsx`'s own comment at :1059-1062) that the frame draws no
+  control for at all — only the drill-in's destination is drawn (:260), not
+  an entry point into it. Without this button the drill-in frame below
+  would be unreachable dead code, so it is deliberate, narrowest-possible
+  scaffolding, not an oversight — but it is still a control absent from the
+  frame.
+- **Frame :260 "Roster · 390" (drill-in behind "Roster ›") — MATCHES.** Back
+  link ("‹ Speakers") then H1 "Roster" (:263) then the "N accepted · N not
+  claimed" summary (:264) render in that order; each roster row's identity
+  block (name link + company meta + invite-status control) precedes its
+  trailing "Open" action, matching the frame's row shape (:267-274); the
+  footer dock renders a primary "Add a speaker" (:279) before a secondary
+  "Import CSV" link, matching the frame's dock order. No divergence found.
