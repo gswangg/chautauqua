@@ -279,3 +279,27 @@ component `docs/design/DESIGN-RULINGS.md` adjudicates, and that lane's
 fix will need to update `ContactsApp.head390.render.test.tsx`'s two
 "recorded residual" assertions (they are written to fail once the
 intrusion moves) rather than leaving them as permanent truths.
+
+## Finding 7 — the shared `.chq-chipstrip` token carries the same clipped-ring defect this page's own strips had (task v12m-w16-ui-r5-a, src/decisions-data/DEC-383.md wave-16-r5 amendment)
+
+This page's two page-owned head strips (`.chq-contacts-filter-chipstrip`,
+`.chq-contacts-segment-pills`) were `overflow-x: auto` scroll containers
+clipping the house `:focus-visible` ring (a standing outward
+`outline-offset: 2px` in `app/src/styles.css`) on every 44px-tall
+focusable child, top and bottom, plus the first child's leading edge at
+scrollLeft 0 — fixed for those two by scoping an inset
+`outline-offset: -2px` under each strip's own class inside contacts.css's
+terminal `@media (max-width: 700px)` block.
+
+**Named owner (DEC-180 wave-156: a finding names its owning sheet, not
+just the shell need):** the SAME defect lives one level up, in
+`app/src/styles.css`'s shared `.chq-chipstrip` token — the identical
+`overflow-x: auto` scroll-container shape used by this page's own
+Directory/Duplicates/Segments/Pipeline `role="tablist"` strip, and by
+every other `.chq-chipstrip` consumer across the product. Because that
+token is declared once and shared, the fix landed here (page-scoped,
+inside `contacts.css`) cannot reach it — a page-local override can only
+correct the two strips this page owns outright, not the shared token
+every other page also draws its ring through. Scheduled owner-lane: none
+yet — this is the shell lane's fix (`app/src/styles.css`), not this
+page's; filed here per DEC-180, not assigned.
