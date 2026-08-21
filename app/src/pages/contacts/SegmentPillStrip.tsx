@@ -1,0 +1,49 @@
+// DEC-919 (Amendment wave 16): the Contacts 390 landing narrows with the
+// frame's two chip strips, not with the desktop rule builder and rail --
+// this is the SECOND strip (docs/design/Chautauqua Contacts.dc.html:194-198,
+// "All" / "Speakers · 41" / "Reviewers"), re-lining the existing
+// `.chq-contacts-tab-filters` saved-segment <select> as pills rather than
+// minting a second filter surface. Counts are NOT recomputed here --
+// Segment.count already arrives from GET /segments computed with the SAME
+// where clause the directory list uses (DEC-710).
+import { DEC_919 } from '../../../../src/decisions';
+import type { Segment } from './types';
+
+void DEC_919;
+
+interface Props {
+  segments: Segment[];
+  segmentsLoaded: boolean;
+  segmentId: string;
+  onApplySegment: (segmentId: string) => void;
+}
+
+export function SegmentPillStrip({ segments, segmentsLoaded, segmentId, onApplySegment }: Props) {
+  return (
+    <div className="chq-chipstrip chq-contacts-segment-pills">
+      <button
+        type="button"
+        className={segmentId === '' ? 'chq-pill is-active' : 'chq-pill'}
+        aria-pressed={segmentId === ''}
+        onClick={() => onApplySegment('')}
+      >
+        All
+      </button>
+      {/* DEC-678: an absence is only asserted from a settled load -- before
+          `segmentsLoaded`, only the always-present All pill renders, never
+          a momentarily-empty strip that reads as "no segments exist". */}
+      {segmentsLoaded &&
+        segments.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={segmentId === s.id ? 'chq-pill is-active' : 'chq-pill'}
+            aria-pressed={segmentId === s.id}
+            onClick={() => onApplySegment(s.id)}
+          >
+            {s.name} · {s.count}
+          </button>
+        ))}
+    </div>
+  );
+}

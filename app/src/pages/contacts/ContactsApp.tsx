@@ -16,6 +16,7 @@ import { NewContactModal } from './NewContactModal';
 import { PipelineBoard } from './PipelineBoard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
 import { activeRules } from './segments';
+import { SegmentPillStrip } from './SegmentPillStrip';
 import { SegmentsPanel } from './SegmentsPanel';
 import type { ContactListItem, ContactStats, DuplicateGroup, Segment, SegmentRule } from './types';
 import { DEC_710, DEC_711 } from '../../../../src/decisions';
@@ -498,6 +499,16 @@ export function ContactsApp() {
               matchCount={total}
               totalCount={stats?.total ?? null}
               onSaveAsSegment={() => setPanel('segments')}
+            />
+
+            <SegmentPillStrip
+              segments={segments}
+              segmentsLoaded={segmentsLoaded}
+              segmentId={segmentId}
+              onApplySegment={(next) => {
+                setSegmentId(next);
+                setPage(1);
+              }}
             />
 
             <ContactsTable
