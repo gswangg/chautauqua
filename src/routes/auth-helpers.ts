@@ -22,10 +22,24 @@ export const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes."
  * than a bare string, so a headline never carries a detail line that was
  * written for a DIFFERENT headline (a rate limit is not a credential
  * mismatch, and the frame's two lines are ONLY correct under a rejected
- * credential). */
+ * credential).
+ *
+ * DEC-124 amendment (wave 153): the wave-6 split only moved the WORDS --
+ * the invalid-field treatment (`chq-field-invalid` on the inputs, plus the
+ * "Fix the field(s) below" instruction on ClaimPage/ForgotPasswordPage/
+ * ResetPasswordPage) stayed keyed on the band's mere PRESENCE
+ * (`props.error` truthy), so a throttled user with a CORRECT credential
+ * still got the rejected-credential visual treatment on both fields.
+ * `kind` makes the field treatment key on what the band actually asserts:
+ * "credential" means the submitted value was wrong and the field(s) should
+ * say so; "throttle" means the request was refused for volume reasons and
+ * says nothing about the value's correctness, so the band still renders
+ * (a throttle is a real refusal and must stay legible) but the field
+ * decoration and the "fix it" instruction do not. */
 export interface AuthBandCopy {
   headline: string;
   detail?: string;
+  kind: "credential" | "throttle";
 }
 
 // Frame copy: docs/design/Chautauqua Account.dc.html:303
@@ -34,13 +48,14 @@ export interface AuthBandCopy {
 export const LOGIN_REJECTED: AuthBandCopy = {
   headline: "That email and password do not match",
   detail: "Check both, or reset your password.",
+  kind: "credential",
 };
 
 // The rate-limit band has no second line -- RATE_LIMIT_ERROR already states
 // the whole situation, and inventing a detail line for it would be the same
 // mistake (a line written for one headline, false under another) this
 // amendment removes.
-export const RATE_LIMIT_BAND: AuthBandCopy = { headline: RATE_LIMIT_ERROR };
+export const RATE_LIMIT_BAND: AuthBandCopy = { headline: RATE_LIMIT_ERROR, kind: "throttle" };
 
 // DEC-072 wave-66 amendment, superseded in behavior by the wave-38
 // amendment: the account-wide login budget, keyed on the bare normalised
