@@ -1,7 +1,10 @@
 // DEC-889 (wave-159 amendment): the Overall block's 390 anatomy.
 //
-// docs/design/Chautauqua Review.dc.html:322-328 draws Overall as a flex
-// ROW inside the 390 "Reviewer scorecard" card (:280-350): a left column
+// The frame draws Overall as a flex ROW inside the 390 "Reviewer
+// scorecard" card (docs/design/Chautauqua Review.dc.html, lines 322-328;
+// each of those lines is cited and receipted individually at its own
+// case below, per DEC-976 wave-87's test-file receipt rule -- no expect(
+// can ever sit beneath a file-header comment): a left column
 // carrying the uppercase `Overall` eyebrow (:324), then the weighted-mean
 // denominator sentence (:325), then a SEPARATE smaller plain-average
 // reconciliation sentence (:326), with the 34px display value (:328) as
@@ -127,7 +130,7 @@ afterEach(() => {
 });
 
 describe('DEC-889 (wave-159): Overall block DOM structure -- two sibling caption nodes', () => {
-  it('docs/design/Chautauqua Review.dc.html:325/:326 draw the denominator and reconciliation as two separate spans, not one merged sentence -- render splits them into two sibling <p> nodes', async () => {
+  it('the denominator and reconciliation draw as two separate spans (frame :325/:326), not one merged sentence -- render splits them into two sibling <p> nodes', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
@@ -157,6 +160,7 @@ describe('DEC-889 (wave-159): Overall block DOM structure -- two sibling caption
 
     const overall = document.querySelector('.chq-review-overall') as HTMLElement;
     const denominator = overall.querySelector('.chq-review-overall-caption');
+    // docs/design/Chautauqua Review.dc.html:325 `<span style="font-size:13px; color:#565A4B; line-height:1.5">Weighted mean of the two scored criteria · Fit is recorded, not averaged</span>`
     verbatimLine(
       325,
       '            <span style="font-size:13px; color:#565A4B; line-height:1.5">Weighted mean of the two scored criteria · Fit is recorded, not averaged</span>',
@@ -165,6 +169,7 @@ describe('DEC-889 (wave-159): Overall block DOM structure -- two sibling caption
     expect(denominator!.textContent).toBe('Averaged by weight, not editable');
 
     const reconciliation = overall.querySelector('.chq-review-overall-reconciliation');
+    // docs/design/Chautauqua Review.dc.html:326 `<span style="font-size:12px; color:#565A4B; line-height:1.5">A plain average of 5, 4, 4 would be 4.33</span>`
     verbatimLine(326, '            <span style="font-size:12px; color:#565A4B; line-height:1.5">A plain average of 5, 4, 4 would be 4.33</span>');
     expect(reconciliation).not.toBeNull();
     expect(reconciliation!.textContent).toBe('A plain average of 5, 4 would be 4.5');
@@ -221,13 +226,14 @@ describe('DEC-889 (wave-159): Overall block 390 grid CSS -- scorecard.css termin
     expect(rule).toMatch(/display:\s*contents/);
   });
 
-  it('docs/design/Chautauqua Review.dc.html:328 `<span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>` -- the value registers at 34px and spans every row of the right column at 390', () => {
+  it('the value registers at 34px and spans every row of the right column at 390 (frame :328)', () => {
     verbatimLine(
       328,
       '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>',
     );
 
     const rule = phoneRule(SCORECARD_CSS, '.chq-review-overall-line .chq-review-overall-value');
+    // docs/design/Chautauqua Review.dc.html:328 `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>`
     expect(rule).toMatch(/font-size:\s*34px/);
     expect(rule).toMatch(/grid-column:\s*2/);
     expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
