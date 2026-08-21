@@ -18,7 +18,7 @@
 //
 // This file owns ONLY this new coverage -- Comms.phone.render.test.tsx
 // (another lane) keeps the rest of the phone-landing suite.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -65,13 +65,28 @@ function landing(): HTMLElement {
   return el;
 }
 
+// w15-ti (DEC-919 wave-159) fallout fix: this whole file is about the
+// landing's PHONE-only entry behaviour, so it needs isPhone true to see
+// the landing at all now that Comms.tsx gates the block's MOUNT on
+// isPhone (previously only the `-show` class was gated, so the block
+// was in the DOM unconditionally and this file never needed to stub
+// anything). Same FakeMediaQueryList pattern as
+// PipelineBoard.render.test.tsx / Comms.frame-verdicts.render.test.tsx.
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
 beforeEach(() => {
   window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
 });
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 describe('CommsPage phone entry (DEC-621 wave-109 amendment, task w5-q): ?tab= reachability', () => {
@@ -120,10 +135,14 @@ describe('CommsPage phone entry (DEC-621 wave-109 amendment, task w5-q): ?tab= r
         <CommsPage />
       </MemoryRouter>,
     );
-    await screen.findByRole('heading', { name: 'Comms' });
+    // w15-ti (DEC-919 wave-159) fallout: this file now runs under isPhone
+    // true (see the beforeEach stub above), so the page-level tablist AND
+    // its "Comms" h1 are replaced by Templates' own phone drill head
+    // (Comms.tsx:323, w13-h precedent) -- there is no "Comms" heading to
+    // wait for once isPhone is genuinely true and the tab is templates.
+    const head = await screen.findByRole('heading', { name: 'Templates' });
+    expect(head.closest('.chq-comms-templates-head')).not.toBeNull();
     expect(landing()).not.toHaveClass('chq-comms-phone-landing-show');
-    const templatesTab = screen.getByRole('tab', { name: 'Templates' });
-    expect(templatesTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('?tab=templates skips the landing with a draft stored too', async () => {
@@ -134,7 +153,7 @@ describe('CommsPage phone entry (DEC-621 wave-109 amendment, task w5-q): ?tab= r
         <CommsPage />
       </MemoryRouter>,
     );
-    await screen.findByRole('heading', { name: 'Comms' });
+    await screen.findByRole('heading', { name: 'Templates' });
     expect(landing()).not.toHaveClass('chq-comms-phone-landing-show');
   });
 
@@ -145,10 +164,12 @@ describe('CommsPage phone entry (DEC-621 wave-109 amendment, task w5-q): ?tab= r
         <CommsPage />
       </MemoryRouter>,
     );
-    await screen.findByRole('heading', { name: 'Comms' });
+    // w15-ti (DEC-919 wave-159) fallout: see the Templates case above --
+    // History has the same phone drill head (Comms.tsx:323), so there is
+    // no "Comms" heading here either.
+    const head = await screen.findByRole('heading', { name: 'History' });
+    expect(head.closest('.chq-comms-history-head')).not.toBeNull();
     expect(landing()).not.toHaveClass('chq-comms-phone-landing-show');
-    const historyTab = screen.getByRole('tab', { name: 'History' });
-    expect(historyTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('?tab=history skips the landing with a draft stored too', async () => {
@@ -159,7 +180,7 @@ describe('CommsPage phone entry (DEC-621 wave-109 amendment, task w5-q): ?tab= r
         <CommsPage />
       </MemoryRouter>,
     );
-    await screen.findByRole('heading', { name: 'Comms' });
+    await screen.findByRole('heading', { name: 'History' });
     expect(landing()).not.toHaveClass('chq-comms-phone-landing-show');
   });
 
@@ -229,8 +250,11 @@ describe('CommsPage phone landing: always exposes a route into all three tabs (t
     const historyLink = within(head as HTMLElement).getByRole('button', { name: 'History' });
 
     fireEvent.click(historyLink);
-    const historyTab = await screen.findByRole('tab', { name: 'History' });
-    expect(historyTab).toHaveAttribute('aria-selected', 'true');
+    // w15-ti (DEC-919 wave-159) fallout: see the ?tab=history case above --
+    // History's own phone drill head replaces the tablist, so there is no
+    // role="tab" to query here once isPhone is genuinely true.
+    const historyHead = await screen.findByRole('heading', { name: 'History' });
+    expect(historyHead.closest('.chq-comms-history-head')).not.toBeNull();
     expect(landing()).not.toHaveClass('chq-comms-phone-landing-show');
 
     // Re-mount fresh for the Templates route so each assertion starts from
@@ -245,8 +269,10 @@ describe('CommsPage phone landing: always exposes a route into all three tabs (t
     await screen.findByRole('heading', { name: 'Comms' });
     const head2 = landing().querySelector('.chq-comms-phone-recent-head') as HTMLElement;
     fireEvent.click(within(head2).getByRole('button', { name: 'Templates' }));
-    const templatesTab = await screen.findByRole('tab', { name: 'Templates' });
-    expect(templatesTab).toHaveAttribute('aria-selected', 'true');
+    // w15-ti (DEC-919 wave-159) fallout: same drill-head substitution as
+    // the History branch above.
+    const templatesHead = await screen.findByRole('heading', { name: 'Templates' });
+    expect(templatesHead.closest('.chq-comms-templates-head')).not.toBeNull();
     expect(templatesLink).toBeDefined();
   });
 });

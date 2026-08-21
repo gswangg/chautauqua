@@ -21,6 +21,20 @@ import { PhoneDraftCard } from './PhoneDraftCard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import type { EmailBatchRow, EmailTemplate } from './types';
 
+// w15-ti (DEC-919 wave-159) fallout: the landing block's MOUNT is now
+// gated on isPhone itself (Comms.tsx), not just its `-show` class, so
+// seeing it in a render test requires stubbing phone matchMedia --
+// PipelineBoard.render.test.tsx's FakeMediaQueryList pattern.
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
+
 const EVENT_ID = 'evt-comms-phone';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, 'comms.css'), 'utf-8');
@@ -103,6 +117,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 describe('comms.css: phone landing hidden at desktop width', () => {
@@ -126,6 +141,9 @@ describe('comms.css: phone landing hidden at desktop width', () => {
 // assertion).
 describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
   it('renders the frame\'s title/subtitle and recent-sends list, hidden by default (JS-state class, not width check)', async () => {
+    // w15-ti (DEC-919 wave-159): the landing's MOUNT is gated on isPhone
+    // (Comms.tsx), so seeing it here requires stubbing phone matchMedia.
+    stubPhoneMatchMedia();
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -173,8 +191,11 @@ describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
     expect(emptyDraftCard).not.toBeNull();
     expect(emptyDraftCard!.querySelector('.chq-comms-phone-draft-read')?.textContent).toBe('Compose');
 
-    // Regular head+tab content is present too (always rendered; CSS -- not
-    // JS -- decides which one is visible at a given width).
+    // Regular head+tab content is present too (always rendered regardless
+    // of the landing -- unlike the landing itself, which as of w15-ti
+    // (DEC-919 wave-159) mounts only when isPhone is true, `.chq-comms-
+    // main`'s own mount was never gated; CSS still decides which of the
+    // two is VISIBLE at a given width via `.chq-comms-main-landing`).
     const main = document.querySelector('.chq-comms-main');
     expect(main).not.toBeNull();
     expect(main).toHaveClass('chq-comms-main-landing');
@@ -252,6 +273,8 @@ describe('PhoneDraftCard (DEC-621 wave-109 amendment): the draft slot is an entr
 
 describe('CommsPage phone landing: the draft card is wired to a real localStorage record (DEC-621 wave-87 amendment)', () => {
   it('renders the draft card when composeDraft.ts holds a record for this event', async () => {
+    // w15-ti (DEC-919 wave-159): see the note in the describe block above.
+    stubPhoneMatchMedia();
     window.localStorage.setItem(
       `chq.composeDraft.${EVENT_ID}`,
       JSON.stringify({
@@ -282,6 +305,8 @@ describe('CommsPage phone landing: the draft card is wired to a real localStorag
   });
 
   it('renders the empty-state entrance card, and does not throw, when no record is stored', async () => {
+    // w15-ti (DEC-919 wave-159): see the note above.
+    stubPhoneMatchMedia();
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
