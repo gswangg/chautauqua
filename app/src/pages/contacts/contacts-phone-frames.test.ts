@@ -326,7 +326,6 @@ describe('v12 phone frame "Pipeline · 390"', () => {
     );
   });
 
-  // docs/design/Chautauqua Contacts.dc.html:473 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
   // Two `.chq-contacts-pipeline-head > .chq-btn` rules land in this phone
   // layer (the pre-existing full-width/48px styling, then this task's
   // later display:none) -- `phoneRuleGroup` joins every rule mentioning
@@ -334,6 +333,7 @@ describe('v12 phone frame "Pipeline · 390"', () => {
   // declaration, same specificity, wins), rather than `phoneRule`'s
   // first-match-only read.
   it('hides the head\'s own action at phone width, superseded by the shared .chq-phone-dock band (task w19-a)', () => {
+    // docs/design/Chautauqua Contacts.dc.html:473 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
     expect(phoneRuleGroup(PANELS_CSS, '.chq-contacts-pipeline-head > .chq-btn')).toMatch(/display:\s*none/);
   });
 

@@ -1,14 +1,11 @@
 // w19-b (DEC-576): the second missing dock in the pack -- the shared
 // Settings edit-view footer (SettingsEditForm.tsx, all seven panels' own
-// `footer` slots) docks at 390. Frame authority: docs/design/Chautauqua
-// Settings.dc.html:334-336 draws the band
-// `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
-// padding:12px 16px 16px; display:flex; gap:8px`, holding "Save"
-// (`flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px;
-// min-height:46px; display:flex; align-items:center; justify-content:center;
-// font-size:14px; font-weight:700`) and "Cancel" (`border:1px solid
-// #BAB6A6; border-radius:6px; min-height:46px; display:flex;
-// align-items:center; padding:0 16px; font-size:13px; font-weight:600`).
+// `footer` slots) docks at 390, holding "Save" (`flex:1; background:#4E5C31;
+// color:#F7F9F0; border-radius:6px; min-height:46px; display:flex;
+// align-items:center; justify-content:center; font-size:14px;
+// font-weight:700`) and "Cancel" (`border:1px solid #BAB6A6; border-radius:6px;
+// min-height:46px; display:flex; align-items:center; padding:0 16px;
+// font-size:13px; font-weight:600`).
 // 46px, not the Speakers scaffold's 48px -- DESIGN-RULINGS.md:B10 rules
 // the desktop footer frozen as a right-flushed row, which the CSS half of
 // this file never touches (jsdom does not evaluate @media, so the CSS half
@@ -70,7 +67,8 @@ describe('SettingsEditForm phone footer dock (DEC-576, frame Chautauqua Settings
     const body = phoneRuleBodies(CSS, '.chq-settings-edit-footer');
     expect(body).toMatch(/position:\s*sticky/);
     expect(body).toMatch(/bottom:\s*0/);
-    // Frame: `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+    // docs/design/Chautauqua Settings.dc.html:334-336 draws the band
+    // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
     expect(body).toMatch(/flex-shrink:\s*0/);
     expect(body).toMatch(/border-top:\s*1px solid var\(--chq-ink\)/);
     expect(body).toMatch(/background:\s*var\(--chq-surface-sunk\)/);
