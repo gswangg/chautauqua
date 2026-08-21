@@ -153,7 +153,7 @@
   chq-btn-tertiary chq-settings-back">` BEFORE `<h1 className="chq-page-title
   chq-settings-drill-title">` in source order (back above H1, per
   DESIGN-RULINGS:247). The frame-count clause ("five of nine frames never
-  rendering as drawn") was NOT re-measured this wave and stays open.
+  rendering as drawn") -- superseded by the per-frame table below.
   CLOSED (wave 154, w10-ne, DEC-976 amendment — re-measured by actually
   rendering all nine 390 READ frames through Settings.tsx's real panel
   routing; the original "five of nine" undercounted, per-frame verdicts in
@@ -163,6 +163,23 @@
   footer anatomy, per-row actions absent, Saved embeds never its own
   screen), none a phone-CSS/markup-order fix. Render receipts:
   app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)`
+  UPDATED (wave 155, v12m-w11-pa, DEC-919 amendment): nine-row per-frame
+  verdict, superseding the narrative summary above with one row per frame.
+  "Rendering surface" names the real component this drill mounts;
+  CLOSED-with-receipt means nothing further is owed for that frame,
+  OPEN-with-date names a still-real, dated gap.
+
+  | Frame | Rendering surface | Verdict |
+  | --- | --- | --- |
+  | `:275` Settings (landing) | `Settings.tsx` index list | CLOSED-with-receipt — app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :275 Settings landing -- MATCHES: index row order is the frame` |
+  | `:316` Settings · Event | `EventSettingsPanel.tsx` via `SummarySection` | OPEN-2026-08-21 — head+Change-first read view vs. the frame's content+Save/Cancel-footer anatomy; app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :316 Event -- DIVERGES: read view is head+Change-first (SummarySection), frame draws content+Save/Cancel-footer` |
+  | `:347` Settings · Tracks and rooms | `TracksRoomsPanel.tsx` via `SummarySection` | OPEN-2026-08-21 — no per-row boxed Edit, no dashed Add-a-track/Add-a-room row; app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :347 Tracks and rooms -- DIVERGES: no per-row Edit action, no dashed Add-a-track/Add-a-room row in read mode` |
+  | `:393` Settings · Your data | `YourDataPanel.tsx` (`ApiTokensPanel` readOnly) via `SummarySection` | OPEN-2026-08-21 — no per-row Download/Revoke action in read mode still stands; the frame's OTHER phone-only primary drawn here, the filled "New token" button (`:426`), is now CLOSED-with-receipt this wave — app/src/pages/settings/ApiTokensPanel.tsx`New token` renders in the `readOnly` branch too, opening the edit drill with `intent=new`; receipted end to end in app/src/pages/settings/ApiTokensPanel.render.test.tsx`ApiTokensPanel read-drill "New token" primary (DEC-919 wave-155 amendment)` and app/src/pages/settings/settings-phone-390.frames.test.ts`46px filled full-width "New token" action in the read drill too, opening the edit drill with intent=new` |
+  | `:444` Settings · Call for papers | `CallForPapersPanel.tsx` via `SummarySection` | OPEN-2026-08-21 — per-question list collapsed to one summary row (form-builder delegation); app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :444 Call for papers -- DIVERGES: per-question list collapsed to one summary row (previously documented, DEC-815)` |
+  | `:481` Settings · Public pages | `PublicPagesPanel.tsx` (no head-first gate, DEC-896 B10) | CLOSED-with-receipt — app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :481 Public pages -- MATCHES: row order (name, path, state, actions) with only the DEVIATIONS-blessed toggle omitted` |
+  | `:510` Settings · Speaker portal | `PortalSettingsPanel.tsx` via `SummarySection` | OPEN-2026-08-21 — Welcome note collapsed to a computed summary line; app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :510 Speaker portal -- DIVERGES: Welcome note collapsed to a computed summary line (previously documented, DEC-815)` |
+  | `:552` Settings · People and roles | `PeopleRolesPanel.tsx` via `SummarySection` | OPEN-2026-08-21 — no per-row boxed Change action in read mode still stands; the frame's OTHER phone-only primary drawn here, the filled "Invite someone" button (`:568`), is now CLOSED-with-receipt this wave — app/src/pages/settings/PeopleRolesPanel.tsx`Invite someone` renders on the read path too, opening the edit drill with `intent=invite`; receipted end to end in app/src/pages/settings/PeopleRolesPanel.summary.render.test.tsx`PeopleRolesPanel read-drill "Invite someone" primary (DEC-919 wave-155 amendment)` and app/src/pages/settings/settings-phone-390.frames.test.ts`46px filled full-width "Invite someone" action in the read drill too, opening the edit drill with intent=invite` |
+  | `:578` Settings · Saved embeds | `SavedEmbedsPanel` nested inside `PublicPagesPanel.tsx` | OPEN-2026-08-21 — never renders as its own screen (no own back-link/H1/on-off summary); app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)` |
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
   CLOSED (re-verified wave 154): the wave-6 task w6-f ruling (superseding

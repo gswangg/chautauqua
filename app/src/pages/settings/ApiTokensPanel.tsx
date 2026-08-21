@@ -19,16 +19,18 @@
 // the full edit-view table grows a Created column -- the readOnly summary
 // stays name + last-used per the ruling above.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
-import { DEC_896 } from '../../../../src/decisions';
+import { DEC_896, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
 
 void DEC_896; // the section's own closing footer (Settings.dc.html:1164) is a SECTION register, distinct from YourDataPanel's head consequence
+void DEC_919; // wave-155 amendment: the read drill gets its own "New token" render site (below), which opens the edit drill with intent=new already set
 
 interface ApiTokenItem {
   id: string;
@@ -43,7 +45,14 @@ function formatDate(ms: number | null): string {
   return formatDateTime(ms);
 }
 
+// DEC-919 wave-155 amendment: the read drill's own section key, matching
+// YourDataPanel's SECTION_KEY -- this component has no access to that
+// module-private constant, and the two must agree since the read-site
+// button below writes the URL the edit-site mount reads.
+const YOUR_DATA_SECTION_KEY = 'your-data';
+
 export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tokens, setTokens] = useState<ApiTokenItem[]>([]);
   // DEC-027 wave-51 amendment: the org-scoped bound on the bearer-token
   // population, rendered beside the create control. null until the list
@@ -56,6 +65,11 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
+  // DEC-919 wave-155 amendment: the read-drill "New token" button (below)
+  // opens the edit drill with `intent=new`; the edit-view mount below
+  // reads that param once and focuses this field instead of leaving the
+  // organiser to find it themselves.
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
   // DEC-941: token revocation is unrecoverable (the plaintext is never shown
   // again), so it's gated behind the shared ConfirmDialog rather than firing
   // straight from the row's Revoke link.
@@ -77,6 +91,26 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   useEffect(() => {
     load();
   }, []);
+
+  // DEC-919 wave-155 amendment: the read drill's "New token" button sets
+  // `intent=new` before entering the edit drill (this component only
+  // mounts un-readOnly once editing is true); consume it once by focusing
+  // the name field, then drop the param so returning to this URL later
+  // (e.g. via Back) doesn't re-steal focus.
+  useEffect(() => {
+    if (readOnly) return;
+    if (searchParams.get('intent') !== 'new') return;
+    nameInputRef.current?.focus();
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('intent');
+        return params;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly]);
 
   async function handleCreate(e?: FormEvent) {
     e?.preventDefault();
@@ -143,6 +177,27 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
             {tokens.length === 0 ? <li className="chq-settings-summary-empty">No API tokens yet.</li> : null}
           </ul>
         )}
+        {/* DEC-919 wave-155 amendment: the frame draws this 46px filled
+            primary inside the 390 "Your data" read drill too
+            (docs/design/Chautauqua Settings.dc.html:426) -- a read view has
+            no create form to submit, so this opens the edit drill with the
+            act already armed (`intent=new`, consumed by the mount-time
+            effect above) rather than duplicating the create form here. */}
+        <button
+          type="button"
+          className="chq-settings-phone-action"
+          onClick={() =>
+            setSearchParams((prev) => {
+              const params = new URLSearchParams(prev);
+              params.set('section', YOUR_DATA_SECTION_KEY);
+              params.set('edit', '1');
+              params.set('intent', 'new');
+              return params;
+            })
+          }
+        >
+          New token
+        </button>
       </>
     );
   }
@@ -194,6 +249,7 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
         <label htmlFor="api-token-name">Token name</label>
         <input
           id="api-token-name"
+          ref={nameInputRef}
           className="chq-input"
           type="text"
           value={newName}

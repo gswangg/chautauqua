@@ -37,7 +37,26 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { ApiTokensPanel } from './ApiTokensPanel';
+import { PeopleRolesPanel } from './PeopleRolesPanel';
+import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+
+// DEC-919 wave-155 amendment: the two "reads the frame's ... action" it()s
+// below render the real read-drill primaries -- everything else in this
+// file stays the pure source/CSS-scan style the header above describes.
+afterEach(() => cleanup());
+
+/** Exposes `location.search` for a `MemoryRouter`-wrapped render, without
+ * reaching into router internals -- same idiom as
+ * ApiTokensPanel.render.test.tsx / PeopleRolesPanel.test-helpers.tsx. */
+function LocationSearchProbe() {
+  return createElement('div', { 'data-testid': 'location-search' }, useLocation().search);
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -236,7 +255,7 @@ describe('v12 phone frame "Settings · Your data" (390)', () => {
     expect(pill).toMatch(/background:\s*var\(--chq-surface-sunk\)/);
   });
 
-  it('reads the frame\'s 46px filled full-width "New token" action (gap: read-drilled view does not yet render it)', () => {
+  it('renders the frame\'s 46px filled full-width "New token" action in the read drill too, opening the edit drill with intent=new', async () => {
     const line = verbatimLine(
       DESIGN_FILE,
       426,
@@ -244,6 +263,24 @@ describe('v12 phone frame "Settings · Your data" (390)', () => {
     );
     expect(line).toMatch(/min-height:46px/);
     expect(line).toMatch(/background:#4E5C31/);
+
+    mockApi({ 'GET /api/v1/tokens': listEnvelope([]) });
+    render(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(ApiTokensPanel, { readOnly: true }),
+        createElement(LocationSearchProbe),
+      ),
+    );
+
+    const buttons = await screen.findAllByRole('button', { name: 'New token' });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveClass('chq-settings-phone-action');
+
+    fireEvent.click(buttons[0]!);
+
+    expect(screen.getByTestId('location-search').textContent).toBe('?section=your-data&edit=1&intent=new');
   });
 });
 
@@ -261,7 +298,7 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     expect(row).toMatch(/flex-direction:\s*column/);
   });
 
-  it('reads the frame\'s 46px filled full-width "Invite someone" action (gap: read-drilled view does not yet render it)', () => {
+  it('renders the frame\'s 46px filled full-width "Invite someone" action in the read drill too, opening the edit drill with intent=invite', async () => {
     const line = verbatimLine(
       DESIGN_FILE,
       568,
@@ -269,6 +306,25 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     );
     expect(line).toMatch(/min-height:46px/);
     expect(line).toMatch(/background:#4E5C31/);
+
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+      'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
+    });
+    render(createElement(MemoryRouter, null, createElement(PeopleRolesPanel), createElement(LocationSearchProbe)));
+
+    const buttons = await screen.findAllByRole('button', { name: 'Invite someone' });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveClass('chq-settings-phone-action');
+
+    fireEvent.click(buttons[0]!);
+
+    // The edit-view mount effect consumes `intent` in the same tick it
+    // appears (opening the dialog and dropping the param) -- end-to-end
+    // receipted, with the mid-flight `intent=invite` URL asserted too, in
+    // PeopleRolesPanel.summary.render.test.tsx / .invite.render.test.tsx.
+    await screen.findByRole('dialog');
+    expect(screen.getByTestId('location-search').textContent).toBe('?section=people&edit=1');
   });
 });
 

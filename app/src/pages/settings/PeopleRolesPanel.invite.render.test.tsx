@@ -8,7 +8,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { errorEnvelope } from '../../test-utils/mockApi';
-import { OTHER, SELF, installConsoleErrorGuard, mockPeople, renderPanel } from './PeopleRolesPanel.test-helpers';
+import {
+  OTHER,
+  SELF,
+  installConsoleErrorGuard,
+  mockPeople,
+  renderPanel,
+  renderPanelWithLocation,
+} from './PeopleRolesPanel.test-helpers';
 
 installConsoleErrorGuard();
 
@@ -428,5 +435,19 @@ describe('PeopleRolesPanel invite dialog', () => {
     expect(within(dialog).getByLabelText('Email')).toHaveValue('');
     expect(screen.queryByText('ab12-cd34-ef56')).not.toBeInTheDocument();
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('opens the invite dialog immediately when the edit view mounts with intent=invite, and drops the param afterward (DEC-919 wave-155 amendment)', async () => {
+    mockPeople();
+    renderPanelWithLocation(['/settings?section=people&edit=1&intent=invite']);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'Invite someone' })).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search').textContent).toBe('?section=people&edit=1'),
+    );
   });
 });
