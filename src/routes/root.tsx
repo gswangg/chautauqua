@@ -268,14 +268,22 @@ function heroSummary(sections: HubSections): string {
     .join(" ");
 }
 
-// G13 lane-D fix (12-home--02/--04): the frames draw the footer's
-// right-hand 'API docs' link ONLY on the full hub -- between-cycles leaves
-// the right edge empty, and the fresh deploy already carries the affordance
-// once, as the hero's tertiary beside [Sign in]. Pinned as a strict DOM
-// count (not a CSS display) by test/public-home-state-actions.test.ts's
-// "the footer's 'API docs' link renders on the full hub only", so this stays
-// exactly as it was -- see home.css.ts's phone-block comment for the
-// resulting v12/390 gap this leaves open (flagged, not fixed here).
+// Wave-16 amendment (DEC-383): the prior "G13 lane-D fix" rule (API docs on
+// the full hub ONLY) left a v12/390 gap on between_cycles, flagged but not
+// fixed in home.css.ts's phone-block comment. The between-cycles PHONE
+// frame draws the same right-flushed 'API docs' anchor the full hub's
+// phone footer draws, byte-identical: docs/design/Chautauqua Home.dc.html:261
+// `<a href="#" style="margin-left:auto; font-size:12px; font-weight:700;
+// min-height:44px; display:flex; align-items:center">API docs</a>`. The
+// between-cycles DESKTOP frame's footer omits it -- docs/design/Chautauqua
+// Home.dc.html:220 `open-source speaker and event-content
+// management</span>`, the footer text ending there with no trailing anchor.
+// So the anchor renders unconditionally in the DOM for `between_cycles`
+// (fresh still renders none -- untouched) and is base-hidden by an extra
+// class, .chq-home-footer-link-end-phone, revealed only inside home.css.ts's
+// existing @media (max-width: 700px) block (DEC-385 single-direction). The
+// `full` state's markup is UNCHANGED. See test/public-home-state-
+// actions.test.ts and test/public-home-phone.test.ts for the updated pins.
 function Footer(props: { state: HubState }) {
   return (
     <footer class="chq-home-footer">
@@ -295,6 +303,10 @@ function Footer(props: { state: HubState }) {
       </span>
       {props.state === "full" ? (
         <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
+          API docs
+        </a>
+      ) : props.state === "between_cycles" ? (
+        <a class="chq-home-footer-link chq-home-footer-link-end chq-home-footer-link-end-phone" href="/docs/api">
           API docs
         </a>
       ) : null}
