@@ -27,7 +27,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
-import { DEC_012, DEC_382, DEC_518, DEC_613 } from "../decisions";
+import { DEC_012, DEC_382, DEC_385, DEC_518, DEC_613 } from "../decisions";
 import { ThemeStyles } from "../views/theme";
 import { DocsSiteStyles } from "./docs-site.css";
 import {
@@ -51,6 +51,7 @@ export const docsSiteRoutes = new Hono<AppEnv>();
 
 void DEC_012;
 void DEC_382;
+void DEC_385;
 void DEC_518;
 void DEC_613;
 
@@ -252,6 +253,22 @@ function DocsBlockView(props: { block: DocsBlock }) {
     <figure class="chq-docs-figure">
       <div class="chq-docs-figure-frame">
         <span class="chq-docs-figure-placeholder">screenshot &middot; {block.shotId}</span>
+        {/* task w30-b: docs/design/Chautauqua Docs.dc.html:185
+            `screenshot · 390 · tap to zoom` -- the 390-phone twin of this
+            same placeholder box names the shot's own width and a
+            tap-to-zoom affordance instead of its route/shotId. No
+            equivalent existed anywhere in src/ or app/src/ before this
+            task. `hidden` gives it a native, stylesheet-free default-off
+            state (this task's docs-site.css.ts edit is scoped to the
+            terminal @media(max-width:700px) block only, DEC-385 wave-30
+            amendment -- see src/decisions-data/part2.ts's DEC_385 -- so no
+            base rule outside that block may be added); the terminal block
+            below overrides `hidden` with a plain `display` declaration,
+            which always beats the `[hidden]` UA default regardless of
+            specificity (author origin outranks user-agent origin). */}
+        <span class="chq-docs-figure-phone-affordance" hidden aria-hidden="true">
+          screenshot &middot; 390 &middot; tap to zoom
+        </span>
       </div>
       <figcaption class="chq-docs-figure-caption">
         <DocsInline text={block.caption} />

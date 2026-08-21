@@ -26,11 +26,12 @@
 // while its caption stays legible prose.
 
 import { jsx } from "hono/jsx";
-import { DEC_373, DEC_374, DEC_382, DEC_650 } from "../decisions";
+import { DEC_373, DEC_374, DEC_382, DEC_385, DEC_650 } from "../decisions";
 
 void DEC_373;
 void DEC_374;
 void DEC_382;
+void DEC_385;
 void DEC_650;
 
 export const DOCS_SITE_CSS = `
@@ -378,6 +379,28 @@ export const DOCS_SITE_CSS = `
        survive edge-to-edge, left/right are dropped (the frame draws none). */
     .chq-docs-figure-frame { border-left: none; border-right: none; border-radius: 0; }
     .chq-docs-figure-caption { padding-inline: 16px; }
+
+    /* task w30-b: docs/design/Chautauqua Docs.dc.html:185
+       \`screenshot · 390 · tap to zoom\` -- the 390-phone twin of the figure
+       placeholder names its own width and a tap-to-zoom affordance in
+       place of the desktop route/shotId label at :75/:92/:300. Additive
+       inside this ALREADY-PRESENT terminal phone block only (this task's
+       docs-site.css.ts edit is scoped there -- another lane owns the rest
+       of this file this wave, DEC-385 wave-30 amendment,
+       src/decisions-data/part2.ts's DEC_385); no desktop rule above is
+       touched. The phone affordance's default-off state comes from the
+       \`hidden\` HTML attribute in docs-site.tsx, not a base CSS rule --
+       \`display: block\` here always outranks the \`[hidden]\` UA default
+       (author origin beats user-agent origin regardless of specificity). */
+    .chq-docs-figure-placeholder { display: none; }
+    .chq-docs-figure-phone-affordance {
+      display: block;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--chq-muted);
+      padding: 0 16px;
+      text-align: center;
+    }
 
     /* Prev/next pager (:200 \`border-top:1px solid #1B1D17;
        background:#EFEBDF; padding:12px 16px 16px; display:flex;
