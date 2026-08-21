@@ -855,7 +855,9 @@
   /* The row's one action, right-flushed across the card's full height and
      never shrunk below its label (frame: flex-shrink:0, min-height:44px,
      padding 0 14px). styles.css floors .chq-btn-tertiary at 44px on phone;
-     the padding is what makes the hit box wider than the word "Open". */
+     the padding is what makes the hit box wider than the word "Email"
+     (Chautauqua Contacts.dc.html:209 -- the row action reads Email at 390,
+     Open stays the desktop verb). */
   .chq-contacts-table tbody td:nth-child(5) {
     grid-column: 3;
     grid-row: 1 / 4;
