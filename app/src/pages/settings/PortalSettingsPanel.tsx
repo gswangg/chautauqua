@@ -38,12 +38,17 @@ import {
   type PortalSettingsFormErrors,
 } from './formState';
 import { MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
-import { DEC_896 } from '../../../../src/decisions';
+import { DEC_896, DEC_919 } from '../../../../src/decisions';
+import './settings-drill-rows.css';
 
 // DEC-896 (wave-133 amendment): the Welcome note field's persistent hint
 // and the 'What speakers may edit' closing line below are the
 // section/field-scoped half of B10's consequence text.
 void DEC_896;
+// DEC-919 wave-157 clause (a): the read drill renders the STORED welcome
+// text verbatim inside the boxed readout the frame draws, not a computed
+// summary of it.
+void DEC_919;
 
 const SECTION_KEY = 'portal';
 
@@ -108,6 +113,26 @@ function paragraphCount(text: string | null): number {
   const trimmed = (text ?? '').trim();
   if (trimmed.length === 0) return 0;
   return trimmed.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
+}
+
+// docs/design/Chautauqua Settings.dc.html:518 ('Settings · Speaker portal',
+// phone drill): the Welcome note row draws a boxed ~88px readout of the
+// actual welcome text -- padding:12px, line-height:1.55, the frame's own
+// overflow treatment (the box clips, it does not paginate or truncate the
+// string itself). DEC-919 wave-157 clause (a): render the STORED value
+// verbatim here, never a computed count -- an empty value renders the
+// frame's empty state instead of a fabricated summary.
+//
+// Desktop is frozen (a different, wider frame the row's existing computed
+// "Shown above the task list · N paragraph(s)" line already serves): both
+// representations render unconditionally in the DOM (DEC-919 wave-99
+// precedent -- the capability renders twice, once on screen) and CSS
+// (settings-drill-rows.css's terminal max-width block) is the only thing
+// that decides which one is visible at which width.
+function WelcomeNoteReadout({ text }: { text: string | null }) {
+  const trimmed = (text ?? '').trim();
+  const content = trimmed.length === 0 ? 'No welcome note set.' : text;
+  return <div className="chq-settings-portal-welcome-readout">{content}</div>;
 }
 
 export function PortalSettingsPanel() {
@@ -210,7 +235,16 @@ export function PortalSettingsPanel() {
       value: !welcomeLoaded ? (
         <DelayedLoading />
       ) : (
-        `Shown above the task list · ${countOf(paragraphs, 'paragraph')}`
+        <>
+          {/* Desktop's existing computed line (a different, wider frame's
+              register) -- CSS-hidden at phone (DEC-919 wave-157 clause (a)
+              forbids a fabricated summary standing in for the 390 frame's
+              boxed verbatim readout). */}
+          <span className="chq-settings-portal-welcome-summary">
+            {`Shown above the task list · ${countOf(paragraphs, 'paragraph')}`}
+          </span>
+          <WelcomeNoteReadout text={welcomeMessage} />
+        </>
       ),
       rowClassName: 'chq-settings-drill-field-row',
     },
