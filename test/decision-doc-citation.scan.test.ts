@@ -35,13 +35,19 @@
 // (DIRECTION 1), never guessed at for DIRECTION 2.
 //
 // This file is DISTINCT from test/decision-path-references.scan.test.ts,
-// which scans the OLDER, unrelated `decisions/` directory (1000 files,
-// disjoint DEC numbering from src/decisions-data/'s ~35) for bare path
-// existence only, with no line-number or quote check -- different
-// population, different directory, different assertion depth. Reusing its
-// name or its regex here would be the DEC-613 trap in the other direction
-// (silently believing an unrelated scan already covers this ground); it
-// does not.
+// which scans the OLDER `decisions/` directory (999 DEC-NNN.md files plus
+// README.md) for bare path existence only, with no line-number or quote
+// check -- different population, different directory, different assertion
+// depth. The numbering is NOT disjoint: every one of src/decisions-data/'s
+// 77 ids also exists in decisions/, and 35 of those 77 pairs carry a
+// DIFFERENT H1 title under the same id (a genuine collision, not two
+// separate id spaces) -- see
+// docs/design/audit/decision-registry-collision-v12.md and
+// test/decision-registry-collision.scan.test.ts (DEC-976 wave-155, task
+// w11-pd) for the measured counts and the campaign-governing subset's
+// registry notes. Reusing decision-path-references.scan.test.ts's name or
+// its regex here would be the DEC-613 trap in the other direction (silently
+// believing an unrelated scan already covers this ground); it does not.
 //
 // PROSE-ONLY CLAIMS ARE NOT CHECKED HERE (task-required note): a false
 // claim written as plain prose with no `path:line` citation attached is
