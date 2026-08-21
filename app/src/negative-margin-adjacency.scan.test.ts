@@ -366,24 +366,28 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
     expect(SOURCES.length).toBe(43);
   });
 
-  // 160 -> 161 (DEC-919 wave-156, task qb-settings-yourdata-read-drill): the
-  // read drill's per-row boxed action is phone-only, so
-  // `.chq-settings-summary-row-action` carries a desktop `display: none` in
-  // settings-lists.css -- a real new declaration, not a sweep regression.
-  // 169 -> 174 (wave-16 megabatch): phone-only reveals landed in
-  // settings.css (DESKTOP_FLOOR_DIVERGENCE work) and overview.css (DEC-833's
-  // four phone-only section labels), each pairing its phone rule with a
-  // desktop `display: none`. Real new declarations, not a sweep regression.
-  it('the swept population carries exactly 174 comment-stripped `display: none` declarations', () => {
+  // Floor, not an equality (DEC-808 wave-18 amendment): this count moved
+  // 169 -> 174 -> 186 within one hour of legitimate merges (wave-16
+  // megabatch's settings.css/overview.css phone-only reveals, each pairing
+  // its phone rule with a desktop `display: none`, then further wave-17/18
+  // landings). Pinning it to an exact number turns every future legitimate
+  // `display: none` declaration anywhere in the swept tree into a merge
+  // conflict on a file no lane owns. What this assertion still catches:
+  // the derivation silently narrowing -- sweeping the wrong root, a wrong
+  // suffix filter, or a broken template-literal split that drops sources
+  // out of SOURCES -- any of which would make `total` fall BELOW this
+  // floor, never rise. Floor measured at this task's base
+  // (v12m-w18-c, main 8489dfef): 186.
+  it('the swept population carries at least 186 comment-stripped `display: none` declarations (floor, not an exact count)', () => {
     let total = 0;
     for (const s of SOURCES) {
       const stripped = stripCssComments(extractCssText(s));
       total += (stripped.match(/display\s*:\s*none\b/g) ?? []).length;
     }
-    expect(total).toBe(174);
+    expect(total).toBeGreaterThanOrEqual(186);
   });
 
-  it('finds exactly the 17 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {
+  it('finds at least the 17 negative margin/margin-top/margin-block-start declarations named in the task brief (subset, not exact set)', () => {
     const found = ALL_CANDIDATES.map((c) => `${c.fileRel} :: ${c.selector}`).sort();
     const expected = [
       'app/src/components/error-states.css :: .chq-error-summary a.chq-error-summary-link',
@@ -408,7 +412,17 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
       'src/routes/public/css/chrome.css.ts :: .chq-visually-hidden',
       'src/routes/public/css/chrome.css.ts :: .chq-pub-activefilters',
     ].sort();
-    expect(found).toEqual(expected);
+    // Subset check, not set equality (DEC-808 wave-18 amendment): a named
+    // member disappearing (wrong root, wrong suffix filter, a broken
+    // template-literal split dropping it out of ALL_CANDIDATES) is the
+    // narrowing failure worth catching. A NEW candidate appearing
+    // alongside these 17 -- another lane authoring its own receipted
+    // negative-margin rule -- is legitimate growth, not a regression, and
+    // must not turn into a merge conflict on a file no lane owns.
+    const missing = expected.filter((e) => !found.includes(e));
+    expect(missing, `named candidates missing from ALL_CANDIDATES:\n${missing.join('\n')}`).toEqual(
+      [],
+    );
   });
 });
 

@@ -2006,6 +2006,9 @@
      never ModalFrame.tsx itself, which stays shared/unedited). Desktop is
      unaffected -- this rule lives only inside this file's ONE terminal
      max-width:700px block (DEC-385). */
+  /* phone-hidden: the drill's back link fires the same onClose handler the
+     Close button called, so every exit survives under the back link's
+     label */
   .chq-contacts-drawer .chq-modal-close-btn,
   .chq-contacts-import .chq-modal-close-btn {
     display: none;

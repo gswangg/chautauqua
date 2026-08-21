@@ -2821,6 +2821,9 @@
      action-only band; every other section's head becomes an
      action-only band too (unchanged by this rule, already true before it
      since only the h2 rule above touches them). */
+  /* phone-hidden: the Event section's footer Save primary
+     (.chq-settings-drillrow-footer-primary) already carries the head
+     Change's route into ?section=event&edit=1 */
   .chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action {
     display: none;
   }
