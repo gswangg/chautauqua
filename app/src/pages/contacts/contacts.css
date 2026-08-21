@@ -149,6 +149,14 @@
   display: none;
 }
 
+/* v12m-w16-ui-r2-a (DEC-919): the rule builder disclosure's close control
+   has nothing to close at desktop, where the rule groups are never
+   collapsed -- hidden here by default, turned on in the terminal phone
+   block below. */
+.chq-contacts-filter-builder-done {
+  display: none;
+}
+
 /* DEC-992: the rule strip (`.chq-contacts-filter-chipstrip`, sibling of
    `.chq-contacts-filter-rules-row` -- see FilterRulesPanel.tsx) is a 390
    head only, docs/design/Chautauqua Contacts.dc.html:187
@@ -1558,6 +1566,11 @@
     color: inherit;
   }
 
+  /* docs/design/Chautauqua Contacts.dc.html:192 `border:1px dashed
+     #A9AE94; border-radius:4px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:13px; font-weight:700;
+     color:#4E5C31` -- the builder's own close control, sharing the same
+     tertiary-button treatment as its desktop sibling. */
   .chq-contacts-filter-builder-done {
     display: flex;
     align-items: center;

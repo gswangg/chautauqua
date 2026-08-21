@@ -254,14 +254,20 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           </span>
         )
       )}
+      {/* DEC-919: while the builder is CLOSED this control's job is
+          disclosure, so it is never inert here -- otherwise a user who
+          fills the cap with blank rules (which render no chip) and closes
+          the builder has no path back in. Only inert once the builder is
+          open AND the cap is reached, matching the desktop
+          `.chq-contacts-filter-add-full` button's own disabled state. */}
       <button
         type="button"
         className="chq-contacts-filter-add-chip"
         onClick={() => {
-          addRule();
+          if (rules.length < MAX_SEGMENT_RULES) addRule();
           setBuilderOpen(true);
         }}
-        disabled={rules.length >= MAX_SEGMENT_RULES}
+        disabled={builderOpen && rules.length >= MAX_SEGMENT_RULES}
       >
         + Rule
       </button>
