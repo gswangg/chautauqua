@@ -738,6 +738,11 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "citation is currently true) is already an exit gate under UNRESOLVED_CITATION_CEILING " +
     "and WIDENED_UNRESOLVED_CITATION_CEILING; this constant is a distinct, non-overlapping " +
     "concern from the same population, not a v12 frame or 390-geometry conformance fact.",
+  UNNOTED_REGISTRY_COLLISION_CEILING:
+    "measures how many decisions/DEC-NNN.md / src/decisions-data/DEC-NNN.md id pairs carry a " +
+    "different H1 title (a genuine subject collision under one id) with no registry note " +
+    "resolving which document governs -- a fact about the decision-registry ledger's own " +
+    "internal consistency and citability, not a v12 frame or 390-geometry conformance fact.",
   FRAME_FLOOR_DIVERGENCE_CEILING:
     "measures fidelity of a control's DECLARED min-height against the height its OWN phone " +
     "frame draws (which may exceed the ruled 44px minimum), a finer-grained fact than the " +

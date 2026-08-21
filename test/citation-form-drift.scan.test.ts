@@ -284,8 +284,13 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // Re-measured against the integrated tree (forced to -1, offender list read
 // back): 1 -- the sole survivor is DEC-967's own cfp.css.ts:118-122
 // self-quoting paragraph. Lowered 4 -> 1.
-// RATCHET: LINE_KEYED_CITATION_CEILING=1
-export const LINE_KEYED_CITATION_CEILING = 1;
+// Wave v12m-w11-pd: the last surviving offender,
+// src/decisions-data/DEC-967.md's self-quoted `cfp.css.ts:118-122,443-447`
+// illustrative idiom, was itself an example of the fragile shape it was
+// describing -- converted to the bare-path + whole-file-quote form
+// (`src/routes/public/cfp.css.ts` `.chq-cfp-identity-note`). Measured 1 -> 0.
+// RATCHET: LINE_KEYED_CITATION_CEILING=0
+export const LINE_KEYED_CITATION_CEILING = 0;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

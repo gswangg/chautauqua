@@ -565,6 +565,10 @@ describe("OUT_OF_CAMPAIGN_SCOPE", () => {
   it("UNCLAIMED_CEILING is excused (tsconfig coverage, not a v12 frame/DEC-069 ratchet)", () => {
     expect(OUT_OF_CAMPAIGN_SCOPE).toHaveProperty("UNCLAIMED_CEILING");
   });
+
+  it("UNNOTED_REGISTRY_COLLISION_CEILING is excused (registry-integrity fact, not a v12 frame/390-geometry ratchet)", () => {
+    expect(OUT_OF_CAMPAIGN_SCOPE).toHaveProperty("UNNOTED_REGISTRY_COLLISION_CEILING");
+  });
 });
 
 describe("assertEveryGradedCeilingIsGated", () => {
