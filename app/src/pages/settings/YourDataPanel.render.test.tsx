@@ -71,7 +71,10 @@ describe('YourDataPanel', () => {
 
     expect(await within(section).findByText('CI pipeline')).toBeInTheDocument();
     expect(within(section).getByText('Last used: Never')).toBeInTheDocument();
-    expect(within(section).queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    // DEC-919 wave-155 amendment: the read drill DOES render "New token"
+    // now (it opens the edit drill with intent=new, receipted end to end
+    // in ApiTokensPanel.render.test.tsx) -- only the create/revoke SURFACE
+    // stays behind Change.
     expect(within(section).queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
 
     expect(

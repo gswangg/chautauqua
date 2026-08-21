@@ -6,7 +6,7 @@
 // mocked wire shapes.
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PeopleRolesPanel } from './PeopleRolesPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -27,6 +27,23 @@ export function renderPanel(initialEntries?: string[]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <PeopleRolesPanel />
+    </MemoryRouter>,
+  );
+}
+
+function LocationSearchProbe() {
+  return <div data-testid="location-search">{useLocation().search}</div>;
+}
+
+// DEC-919 wave-155 amendment: exposes the resulting `location.search` (the
+// read drill's "Invite someone" primary writes `?edit=1&intent=invite`,
+// the edit view then drops `intent` once consumed) without reaching into
+// MemoryRouter internals.
+export function renderPanelWithLocation(initialEntries?: string[]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <PeopleRolesPanel />
+      <LocationSearchProbe />
     </MemoryRouter>,
   );
 }

@@ -10,7 +10,14 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { OTHER, SELF, installConsoleErrorGuard, mockPeople, renderPanel } from './PeopleRolesPanel.test-helpers';
+import {
+  OTHER,
+  SELF,
+  installConsoleErrorGuard,
+  mockPeople,
+  renderPanel,
+  renderPanelWithLocation,
+} from './PeopleRolesPanel.test-helpers';
 import { listEnvelope } from '../../test-utils/mockApi';
 
 installConsoleErrorGuard();
@@ -101,5 +108,31 @@ describe('PeopleRolesPanel summary/drill-in', () => {
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
     expect(within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` })).not.toBeDisabled();
+  });
+});
+
+describe('PeopleRolesPanel read-drill "Invite someone" primary (DEC-919 wave-155 amendment)', () => {
+  it('renders exactly one phone-action button at rest, and pressing it opens the edit drill with intent=invite', async () => {
+    mockPeople();
+    renderPanelWithLocation();
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.name)).toBeInTheDocument();
+    });
+
+    const buttons = screen.getAllByRole('button', { name: 'Invite someone' });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveClass('chq-settings-phone-action');
+
+    fireEvent.click(buttons[0]!);
+
+    // The edit-view mount effect (asserted end to end in
+    // PeopleRolesPanel.invite.render.test.tsx) consumes `intent` in the
+    // same tick it appears, opening the dialog and dropping the param --
+    // so by the time this click settles the URL already reads without it.
+    await waitFor(() => {
+      expect(screen.getByTestId('location-search').textContent).toBe('?section=people&edit=1');
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

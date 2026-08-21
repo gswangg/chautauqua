@@ -55,11 +55,12 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
-import { DEC_747, DEC_781 } from '../../../../src/decisions';
+import { DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
 
 void DEC_747; // the invite/reset flows below implement wave-58's amendment (verb-matches-act, reveal-once shape, honest email gap) and wave-67's amendment (invite dialog form factor)
 void DEC_781; // the frame's two consequence sentences for this edit view have two different homes
+void DEC_919; // wave-155 amendment: the read drill gets its own "Invite someone" render site (below), which opens the edit drill with intent=invite already set
 
 const SECTION_KEY = 'people';
 
@@ -239,6 +240,21 @@ export function PeopleRolesPanel() {
     });
   }
 
+  // DEC-919 wave-155 amendment: the read drill's own "Invite someone"
+  // primary (below) -- a read view has no dialog to open, so it enters the
+  // edit drill with the act already armed (`intent=invite`, consumed by
+  // the mount-time effect below) instead of duplicating the invite dialog
+  // here.
+  function openInviteFromRead() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', SECTION_KEY);
+      params.set('edit', '1');
+      params.set('intent', 'invite');
+      return params;
+    });
+  }
+
   // DEC-747 amendment (wave 67): the ONE way the invite dialog closes,
   // whichever control triggers it (Cancel, the frame's Close, Escape, a
   // scrim click, or Done on the reveal step) -- and per DEC-238/DEC-747
@@ -279,6 +295,24 @@ export function PeopleRolesPanel() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // DEC-919 wave-155 amendment: consume `intent=invite` once the edit
+  // drill mounts (opening the invite dialog immediately), then drop the
+  // param so returning to this URL later (e.g. via Back) doesn't reopen it.
+  useEffect(() => {
+    if (!editing) return;
+    if (searchParams.get('intent') !== 'invite') return;
+    setInviting(true);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('intent');
+        return params;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   async function handleInvite(e?: FormEvent) {
     e?.preventDefault();
@@ -415,6 +449,7 @@ export function PeopleRolesPanel() {
         }));
 
   return (
+    <>
     <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>
       <SettingsEditForm
         onSubmit={(e) => e.preventDefault()}
@@ -774,5 +809,18 @@ export function PeopleRolesPanel() {
       </button>
       </SettingsEditForm>
     </SummarySection>
+    {/* DEC-919 wave-155 amendment: the read drill's own render site for the
+        frame's second "Invite someone" primary (docs/design/Chautauqua
+        Settings.dc.html:568) -- SummarySection renders `rows`, never
+        `children`, outside `editing`, so this mounts as this component's
+        own sibling rather than inside the drill above. Mutually exclusive
+        with the edit-site button in SettingsEditForm above: `editing`
+        gates both, so exactly one is ever in the DOM at a time. */}
+    {!editing ? (
+      <button type="button" className="chq-settings-phone-action" onClick={openInviteFromRead}>
+        Invite someone
+      </button>
+    ) : null}
+    </>
   );
 }
