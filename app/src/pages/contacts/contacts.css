@@ -1565,4 +1565,38 @@
     min-height: 44px;
     padding-inline: 16px;
   }
+
+  /* v12m-w16-ui-r2-b (DEC-393/src/decisions-data/DEC-393.md,
+     src/decisions-data/DEC-919.md): the 44px floor's WIDTH half was
+     unmet -- the earlier `.chq-contacts-filter-rule-chip-dismiss` rule
+     above gives the dismiss control only 4px of padding on each side of
+     the bare `✕` glyph, a ~17px-wide hit box, even though its
+     `min-height: 44px` clears the height half. docs/design/DESIGN-
+     RULINGS.md:189 rules horizontal padding is required in addition to
+     min-height for the floor to be met. Single-compound selector on
+     purpose (matches the earlier rule's own rationale above) -- NOT
+     `.chq-contacts-filter-rule-chip button` -- a descendant combinator
+     would pull this into cancelled-padding-gap.scan.test.ts's population
+     and force the frame-drawn 9px gap wider.
+     docs/design/Chautauqua Contacts.dc.html:190 `gap:9px; padding:0
+     12px` draws the chip's trailing inset at 12px, with the `✕` glyph
+     exactly 12px inside the chip's trailing border. Cancelling that same
+     12px of the CHIP's own trailing padding through the dismiss button
+     (`padding-inline-end: 12px` offset by `margin-inline-end: -12px`)
+     grows the hit box outward into padding that already exists, reaching
+     44px total width without moving the glyph off the frame's drawn
+     position -- centring inside a flat 44px box would instead drag the
+     `✕` roughly 30px away from where the frame puts it. The face stays
+     unpainted (`border: none; background: none`, untouched on the
+     earlier rule above), so this remains legal under DEC-937's wave-121
+     amendment reserving the cancelled-padding idiom for controls whose
+     resolved face carries no border and no background. */
+  .chq-contacts-filter-rule-chip-dismiss {
+    min-width: 44px;
+    justify-content: flex-end;
+    padding-inline-start: 4px;
+    padding-inline-end: 12px;
+    margin-inline-start: -4px;
+    margin-inline-end: -12px;
+  }
 }
