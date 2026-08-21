@@ -13,18 +13,48 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVE 157 HEAVILY COMPACTED: tree moved 3x mid-plan, re-check `git log -1` before emitting; CLAIMED_FLOOR proves citation not conformance — 44/53 phone frames ungraded despite 53/53 claimed (DEC-976); a control-shaped corroboration can attach to the WRONG element, verify by nearest-enclosing-class read (DEC-393); `v12m-w13-a..f` burned, moved to `ra..rj`.
 - WAVE 158 HEAVILY COMPACTED: SSR "phone-frames" tests were source scans not requests (20/53 phone frames graded by grep, `app.request` count 0) — copy `test/portal-page-headings.test.ts`'s `vi.mock`+`buildApp` harness (DEC-976); a planner who skips the CONCURRENT wave's worktrees re-plans already-built lanes, check `git worktree list` for the other wave's prefix too; `signOut()` discards `?signed-out=1` (DEC-154) and `useCurrentEvent`'s search-keyed cache never evicts, replaying stale banners on A→B→A (DEC-728) — a scan's own PREMISE is a claim about the tree, not documentation; `v12m-w14-a/b/c/d/e/j` burned, moved to `sa..sj`.
 
-## Wave 159 — the measured divergences are the backlog; wave 15 is the first wave that SPENDS one
+- WAVE 159 HEAVILY COMPACTED: branch prefixes burn fast, re-check `show-ref`+`packed-refs`+`worktree list` before/after planning every wave; a scribed `## Amendment (wave N)` is the cheapest read on what a CONCURRENT wave already claimed; a verdict ledger row and an in-code comment both rot faster than the code they describe — re-derive against the tree, grep the predicate not the prose; the pack draws vocabulary in per-surface registers (label, byte format) that a single flattened map cannot express, un-adjudicable divergences stay unfixed; a desktop frame can license a desktop-affecting change under the freeze, cite the desktop line when spending it.
 
-**Branch namespace, again, and the burn is now predictable.** `v12m-w15-a/b/c/d/e/f/h/n/o` were already taken (9 of 26 suffixes, in `packed-refs`, with live worktrees under `~/.claude/jobs/.../v12m-wt/`). Three consecutive waves — `w13`→`ra..rj`, `w14`→`sa..sj`, `w15`→`ta..tj` — have found their "reserved" prefix half-spent. Assume the bare prefix is burned, check `show-ref`+`packed-refs`+`worktree list` BEFORE and AFTER planning, and pick a two-letter suffix set.
+## Wave 16 (planner notes)
 
-**Read the CONCURRENT wave's worktrees, including the empty ones, and read its emitted DECs.** Wave 14 held `sa..se` (sa merged mid-plan at `2a6dcc5e`; `sb`/`sc` had uncommitted verdict files; `sd`/`se` were empty worktrees holding claims) and `sf..sj` had no branches at all yet — but `src/decisions-data/DEC-154.md`/`DEC-728.md`/`DEC-930.md` all carry a scribed `## Amendment (wave 158)`, which is proof the whole 10-lane plan was emitted and `si`/`sj` are owned. A scribed amendment is the cheapest read on what a live wave has claimed; check it before taking any finding a prior planner named.
+**Branch namespace, third-in-a-row correction.** `v12m-w16-a`, `-b`, `-c`
+were ALREADY in `packed-refs` (all three at `89b58e05`) with live worktrees
+under `~/.claude/jobs/2880f027/tmp/v12m-wt/` before this wave was planned —
+same as w13 (`a..j` burned → `ra..rj`), w14 (→ `sa..sj`), w15 (→ `ta..tj`).
+Wave 16 uses `ua..ui`, verified free before AND after planning. Assume the
+reserved single-letter prefix is spent; check `git for-each-ref
+'refs/heads/v12m-w<N>-*'` first, every time.
 
-**A verdict ledger rots faster than the code it grades.** `docs/design/audit/settings-v12.md` still calls frame `:444` DIVERGES ("per-question list collapsed to one computed summary row"); `CallForPapersPanel.tsx:118` has carried a `QuestionsSection` rendering the frame's label / `kind · required` / boxed Edit row for several waves. `content-v12.md`'s `:247` row was half-stale the same way (the Select TOGGLE is guarded, the summary line is not). Re-derive every ledger row against the tree before turning it into a task — the row tells you where to look, never what is there.
+**A full-suite run against shared `main` can report a phantom red.** A
+`npm run test:fast` pass here failed `test/citation-form-drift.scan.test.ts`
+with 5 line-keyed citations in `DEC-663/874/919/989.md`; a targeted re-run of
+that one file passed immediately, and `git status` was clean at both moments.
+The scribe writes `src/decisions-data/*.md` in the main working tree while a
+144-second suite is reading it. Before scheduling a repair for any scan over
+`src/decisions-data/`, `docs/design/audit/` or `docs/probes/`, re-run that
+single file. Main was green at `8cce6a8d`.
 
-**A comment asserting an invariant is not the invariant.** content.css's Select-mode block states "the two are mutually exclusive via React (ContentApp.tsx), never both mounted at once" while `ContentApp.tsx`'s summary clause carries no `!phoneSelectMode` guard at all. Same class as DEC-967's citation rot and DEC-728 wave-150's "a real next navigation is either a different `search` key or a full page reload" — the justification WAS the bug. Grep the predicate the comment describes, not the comment.
+**Verdict ledgers rot faster than the code they grade — check the sheet's own
+comments before scheduling a row.** `w14-sf` filed the CFP dock's
+`Save draft` vs the frame's `Draft` as a live divergence;
+`src/routes/public/cfp.css.ts` had already ruled it in-sheet ("one control,
+one name at every width — the frame's 'Draft' is a drawing abbreviation, not
+a label to ship", DEC-613 wave-96). Likewise `settings-v12.md`'s `:444` row
+was stale last wave. A ledger row is a claim about the tree, not a fact:
+re-derive, and read the owning file's comment block, before spending a lane.
 
-**The pack draws vocabulary in per-surface registers and the product flattened them.** `Content.dc.html:307`/`:346` both read `Video · 4` (files library, desktop AND phone) while `:141`/`:387` both read `Recording · 1 version` (session strip) — two labels for one domain kind, split by SURFACE not by width. Separately `:305` vs `:344` is `All types` vs `All`, split by WIDTH not by surface. A single `Record<Kind,string>` cannot express either. And the byte format is settled by NEITHER: `Content.dc.html:298` draws `412 MB` where `Settings.dc.html:1629` draws `2.1 MB`, so `formatBytes`'s `.toFixed(1)` is un-adjudicable from the pack and must not be "fixed" on one frame's evidence.
+**The 390 verdict sweep is COMPLETE; waves from here are fixes, not
+measurement.** Every one of the 53 phone frames and the 4 landed-Speakers
+desktop frames now carries a render-through-the-route verdict across
+`w13-r*`, `w14-s*` and the Settings/Comms ledgers. All 31 machine-derived
+campaign ceilings in `scripts/exit-predicate.ts` read DECLARED 0 / TARGET 0.
+What remains is (a) building the DIVERGES rows, (b) recording the ones that
+fail on the merits as DEVIATIONS, and (c) the five DEC-069 slots, which a
+verification wave fills — no worker task can.
 
-**A desktop frame can license a change under the freeze.** The mandate's own escape clause ("a desktop-affecting change is legal only when a v12 desktop frame demands it") is live, not theoretical: the `Recording`→`Video` library label is demanded at `:307`, a 1600 frame. Cite the desktop line, not the phone one, when spending it.
-
-**Stale-finding sweep, wave 159 (all six re-checked against `2a6dcc5e`, do not re-open):** the portal "Add co-presenter" full-page POST discards nothing — `edit.tsx`'s DEC-029 wave-108 amendment joins every co-presenter control to `#chq-portal-edit-form` via the `form` attribute; the phone-CFP step-1 validation dead-end is closed (`cfp-steps-script.tsx:127` calls `reportValidity()`); Speakers native focus rings are gone (`speakers.css:1210`, `styles.css:225`); ProgressPanel's DEC-760 hidden-not-disabled "Remind the N not started" is built (`:244`); FieldModal's conditional-visibility sentence is built (`:293`); `SPA_CLASSLESS_CONTROL_CEILING` is 0 and fully drained, so the review lens's "4 bare `<a>` floor violations" are outside that scan's population and cannot be handed to a lane without a fresh live measurement.
+**Where the unmerged verdicts live.** `w14-sb..sh` are committed and
+UNMERGED; their ledgers are readable with `git show v12m-w14-s<x>:<path>`
+(`docs/design/audit/{submissions,speakers,portal,public-390-verdicts,
+account-docs,speakers-desktop}-v12.md`, plus verdicts filed in test-file
+headers for Agenda, Overview and Home, which have no audit doc). Read them
+from the branch, not from `main`, until the train lands them.
