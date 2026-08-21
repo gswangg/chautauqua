@@ -185,6 +185,7 @@ describe("GET /portal/submissions/:id — DEC-777 detail rebuild", () => {
       offeredTrackIds: [],
       allTracks: [],
       selectedTrackIds: [],
+      formatLabel: null,
     });
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");

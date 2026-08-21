@@ -18,6 +18,7 @@ const BASE_DATA: EditableSubmissionData = {
   offeredTrackIds: [],
   allTracks: [],
   selectedTrackIds: [],
+  formatLabel: null,
 };
 
 const CLOSED_DATA: EditableSubmissionData = {

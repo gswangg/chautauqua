@@ -309,4 +309,19 @@
 // in that file, out of this task's file ownership, documented on the
 // exclusion entry). Lowered from 15 to 14.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
-export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
+// v12m-w4-ai (wave-148, task w4-ai, DEC-777/DEC-908): built the portal
+// edit page's read-only "Session length" row (src/routes/portal/edit.tsx),
+// closing Chautauqua Public and Portal.dc.html:620/:1405. Neither exits
+// via a plain-substring or digit-skeleton match -- the whole "Talk, 30
+// min" clause is dynamic (sessionFormatLabel over the submission's own
+// session_format-role answer), not just its digits -- so both were added
+// to COMPOSED_EXCLUSIONS citing the composing expression. Forced to -1 and
+// read back on this branch: 13.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
+// Merge train (wave-148 megabatch): w4-ak measured 14 and w4-ai measured 13,
+// each against a tree WITHOUT the other's build and exclusions. Both lanes'
+// dispositions are additive once integrated, so neither figure is the truth
+// here; the constant below is re-seeded to what the two-sided ratchet
+// actually prints against the integrated tree at the end of this train,
+// never a lane's pre-merge figure (this file's own standing rule).
+export const FRAME_CAPTION_UNMATCHED_CEILING = 13;

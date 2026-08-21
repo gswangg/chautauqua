@@ -37,7 +37,8 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_029, DEC_041, DEC_074, DEC_109, DEC_121, DEC_604 } from "../../decisions";
+import { DEC_029, DEC_041, DEC_074, DEC_109, DEC_121, DEC_604, DEC_777 } from "../../decisions";
+import { sessionFormatLabel } from "../../lib/session-vocabulary";
 import { validateTrackChoice, readSingleFormValue, REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { CO_PRESENTER_ROLE_VALUES, PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
 // DEC-598 (wave-10 amendment): trackIds dedupe has ONE owner (public
@@ -54,6 +55,7 @@ void DEC_074;
 void DEC_109;
 void DEC_121;
 void DEC_604;
+void DEC_777;
 
 portalEditRoutes.use("*", speakerGate);
 
@@ -268,6 +270,29 @@ export function EditPage(props: {
           ))}
       </form>
       <FieldRulesScript fields={data.fields} />
+      {/* DEC-777 (wave-148 amendment): docs/design/Chautauqua Public and
+          Portal.dc.html:620 (390) / :1405 (desktop) draw a read-only
+          "Session length" row between the Session/Speaker fields and the
+          participants list -- "Talk, 30 min · set by the organisers". The
+          format answer comes through data.formatLabel
+          (loadEditableSubmission's answerFieldRoleCondition('session_format')
+          read, review/submissions.ts:908's own predicate) and the SAME
+          sessionFormatLabel vocabulary (DEC-908) every other reader uses --
+          never a second '(N min)' parser. When there is no session_format
+          answer, or its stored label carries no parseable duration (so
+          sessionFormatLabel would hand back the raw label unchanged), the
+          whole row is omitted -- never an empty box, never a fabricated
+          default (DEC-895). Reuses this page's own established read-only-
+          field idiom (chq-section-label + chq-portal-sub, the same pair the
+          tracks-closed and email-readonly rows above already use) --
+          portal.css.ts (the frame's bordered/tinted box) is owned by
+          another lane this batch (w4-ap). */}
+      {data.formatLabel !== null && sessionFormatLabel(data.formatLabel) !== data.formatLabel ? (
+        <>
+          <div class="chq-section-label">Session length</div>
+          <p class="chq-portal-sub">{sessionFormatLabel(data.formatLabel)} · set by the organisers</p>
+        </>
+      ) : null}
       <ParticipantsSection
         submissionId={props.submissionId}
         participants={participants}

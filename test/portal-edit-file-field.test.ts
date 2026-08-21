@@ -127,6 +127,7 @@ const ROUTE_FIELDS_DATA: EditableSubmissionData = {
   offeredTrackIds: [],
   allTracks: [],
   selectedTrackIds: [],
+  formatLabel: null,
 };
 
 const routeLoadEditableSubmissionMock = vi.fn(async () => ROUTE_FIELDS_DATA);

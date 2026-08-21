@@ -20,6 +20,7 @@ import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
 import { parseSubmissionAnswerValue } from "../../forms/answer-json";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
+import { answerFieldRoleCondition, roleAnswerLabel } from "./form-roles";
 import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
 import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
@@ -27,12 +28,13 @@ import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { MAX_NAME_LENGTH } from "../../forms/validate";
 import { overCapFieldMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
-import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
+import { DEC_604, DEC_656, DEC_777, DEC_842, DEC_866, DEC_997 } from "../../decisions";
 import { touchSubmissions, touchSubmissionsForContacts } from "./submissions/touch";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
 void DEC_656;
+void DEC_777;
 void DEC_842;
 void DEC_866;
 void DEC_997;
@@ -63,6 +65,12 @@ export interface EditableSubmissionData {
   offeredTrackIds: string[];
   allTracks: EditableTrack[];
   selectedTrackIds: string[];
+  /** DEC-777: the session_format-role answer's stored label (verbatim, not
+   * yet passed through sessionFormatLabel), or null when the event's form
+   * has no session_format-role field or the submission carries no such
+   * answer. Null renders no "Session length" row at all — never a
+   * fabricated default (DEC-895). */
+  formatLabel: string | null;
 }
 
 /**
@@ -174,6 +182,21 @@ export async function loadEditableSubmission(
   answers[LOCKED_SPEAKER_FIELDS[4]] = contact.company ?? "";
   answers[LOCKED_SPEAKER_FIELDS[5]] = contact.bio ?? "";
 
+  // DEC-777: the same answerFieldRoleCondition('session_format') predicate
+  // review/submissions.ts:908 uses — never a second query shape for the
+  // role-tagged format answer.
+  const formatRows = await db
+    .select({ valueJson: schema.submissionAnswer.valueJson })
+    .from(schema.submissionAnswer)
+    .where(
+      and(
+        eq(schema.submissionAnswer.submissionId, submissionId),
+        answerFieldRoleCondition("session_format"),
+      ),
+    )
+    .limit(1);
+  const formatLabel = formatRows[0] ? roleAnswerLabel(formatRows[0].valueJson) : null;
+
   const allTrackRows = await db
     .select({ id: schema.track.id, name: schema.track.name })
     .from(schema.track)
@@ -202,6 +225,7 @@ export async function loadEditableSubmission(
     offeredTrackIds,
     allTracks: allTrackRows,
     selectedTrackIds: selectedTrackRows.map((t) => t.trackId),
+    formatLabel,
   };
 }
 

@@ -1428,6 +1428,26 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/overview/AgendaWorkSection.tsx's agendaOverflowLine composes `${extraUnplaced} more unplaced · all need ${remainderDurationMin} minutes` from the server's own unplacedRemainderDurationMin (src/server/repo/overview.ts, DEC-895 amendment wave-148/w4-ak) -- a real batched read over the unplaced set minus the capped detail rows, non-null only when every remainder row shares one parseable session_format duration (DEC-936). match.ts's sourceDigitSkeleton pass (collapseSourcePlaceholders) is not scoped to one template literal -- its plain `\\{[^}]*\\}` regex spans from the first unrelated `{` anywhere earlier in this ~200-line component file to the first `}` anywhere after it, swallowing this template's own text into the collapse before the digit-skeleton comparison ever sees it, so the otherwise-correct second pass never gets a chance to match. A ledger-machinery fix (scoping the placeholder collapse to balanced braces) is out of this caption-residue task's file ownership (test/frame-caption-ledger/match.ts is not among its owned files) -- filed as a COMPOSED exclusion per this task's own instructions, not as evidence the clause is unbuilt.",
   },
+  // v12m-w4-ai (wave-148, DEC-777/DEC-908 amendment): the portal edit
+  // page's read-only "Session length" row, built this task
+  // (src/routes/portal/edit.tsx). No plain-substring or digit-skeleton
+  // pass can rejoin it -- the whole "Talk, 30 min" clause is dynamic
+  // (session-vocabulary.ts's sessionFormatLabel over the submission's own
+  // session_format-role answer), not just its digits.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 620,
+    text: 'Talk, 30 min · set by the organisers',
+    reason:
+      "src/routes/portal/edit.tsx composes `{sessionFormatLabel(data.formatLabel)} · set by the organisers`, and sessionFormatLabel (src/lib/session-vocabulary.ts, DEC-908) renders the submission's own session_format-role answer (loadEditableSubmission's answerFieldRoleCondition('session_format') read, src/server/repo/portal-edit.ts) as `<name>, <N> min` -- 'Talk, 30 min' for this pack's own fixture data, but the format name and duration are both live fields, not literal text a substring pass can match.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1405,
+    text: 'Talk, 30 min · set by the organisers',
+    reason:
+      "the SAME composing expression as :620 above -- edit.tsx renders one Session length row shared by both the 390 and desktop frames (DEC-385 single-direction responsive, no separate desktop markup).",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

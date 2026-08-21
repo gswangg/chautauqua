@@ -25,6 +25,7 @@ const BASE_DATA: EditableSubmissionData = {
     { id: "t2", name: "Track Two" },
   ],
   selectedTrackIds: ["t1"], // DB value: only Track One
+  formatLabel: null,
 };
 
 // closeDate far enough past that canEditTracks reports the track window as
