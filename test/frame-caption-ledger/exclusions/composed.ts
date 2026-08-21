@@ -36,6 +36,15 @@ import type { Exclusion } from './types';
  *         already settled that as scope, not a defect. The reason quotes
  *         the deferring bullet's own words. DEVIATIONS.md is never edited
  *         by an entry here -- this table only cites it.
+ *   (iv) SPLIT (DEC-976 wave-21) -- the frame's caption is one sentence
+ *        (or, here, two adjoining sentences) that the app draws in FULL,
+ *        every word, but a ruled phone stand-down forced the source markup
+ *        to carry it across sibling elements rather than as one static
+ *        string -- so no single source substring can ever satisfy this
+ *        ledger's plain-substring MATCH, even though nothing is missing
+ *        from the screen. The reason quotes EACH sibling span's source
+ *        text verbatim (so a reader can re-grep every fragment) and names
+ *        the ruling that forced the split into separate elements.
  *
  * Every entry below is shape (i) or (iii); each entry's composing
  * expression (or deferring bullet) was verified to exist on the branch that

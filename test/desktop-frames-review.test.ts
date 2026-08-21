@@ -102,17 +102,13 @@ describe("desktop frame claims: Review cluster (docs/design/Chautauqua Review.dc
     // the phone frame's split two-region version of the same two sentences.
     const src = readSrc("app/src/pages/review/ReviewerQueue.tsx");
     expect(src).toContain("With one open plan this page is skipped — you land straight in its queue.");
+    expect(src).toContain("Scores stay hidden from other reviewers.");
+    expect(src).toContain("chq-reviewer-plans-footnote");
+    expect(src).toContain("chq-reviewer-plans-footnote-repeat");
     // DEC-874 wave-19 amendment: the app splits this into two sibling
     // <span>s (desktop rendered text stays byte-identical, reading order
     // unchanged) so the second sentence alone can be hidden at 390 -- the
     // source literal is now two separate strings, not one contiguous run.
-    // The note sits BELOW the first assertion on purpose: app/src/
-    // frame-citation.scan.test.ts requires a real expect( within
-    // EXPECT_PROXIMITY_LINES of the citation in the it() title above, so a
-    // growing preamble would unreceipt the claim it explains.
-    expect(src).toContain("Scores stay hidden from other reviewers.");
-    expect(src).toContain("chq-reviewer-plans-footnote");
-    expect(src).toContain("chq-reviewer-plans-footnote-repeat");
   });
 
   it("Plan editor save-rejected state names both blockers with the frame's combined sentence (docs/design/Chautauqua Review.dc.html:889)", () => {
