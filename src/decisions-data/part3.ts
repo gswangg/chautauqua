@@ -205,7 +205,7 @@ export const DEC_617 = "The hardened embed element is one file its own test exec
 export const DEC_618 = "AUDIT.md's claims are enumerated by a test, not maintained by hand";
 export const DEC_619 = "Scale is a named profile threaded through the seeder, not a second seeder";
 export const DEC_620 = "Vertical clipping is a measured gate: content taller than its own box, with nothing able to scroll, is a failure";
-export const DEC_621 = "Amendment (wave 125): a Comms `?tab=` drill stands the landing head and tab strip down at 390 through the Contacts MARKUP gate, not a second CSS suppression";
+export const DEC_621 = "Amendment (wave 25): the compose-draft record is session-scoped -- sign-out clears it, because a frame element that renders another person's data is worse than one wired to null";
 export const DEC_622 = "Reviewer identity resolves in ONE place, and every surface that can name a reviewer ends in it";
 export const DEC_623 = "A ref the product prints is a ref the API accepts";
 export const DEC_624 = "Anonymity is a ratchet: it can be granted, never revoked once evaluations exist under it";
