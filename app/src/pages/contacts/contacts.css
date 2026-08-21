@@ -1219,4 +1219,32 @@
     align-items: center;
     padding: 0 12px;
   }
+
+  /* DEC-996: the DirectoryRail stands down at 390 -- the frame's phone body
+     (docs/design/Chautauqua Contacts.dc.html:201
+     `flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px`, :203
+     `padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex;
+     align-items:center; gap:13px`) is the scrolling headerless card list
+     alone -- no rail beneath it. Legal under DEC-919's carve-out: every
+     rail section has a full-screen surviving path already on this page at
+     390. "Where they work" (top-companies drill on
+     {field:'company',op:'eq'}) -> the FilterRulesPanel "+ Rule" chip
+     composes the identical rule by hand; that is a loss of the rail's
+     one-tap shortcut, not a loss of the capability itself. "Saved
+     segments" -> the chipstrip's "Segments · N" tab opens SegmentsPanel,
+     which lists every segment in full, and the rule row's own "Save as a
+     segment" control is the surviving save path. "Possible duplicates" ->
+     the chipstrip's "Duplicates · N" tab opens DuplicatesView, the same
+     detection pass in full with the same Merge affordance. See
+     DirectoryRail.tsx's header comment for the same receipt. */
+  .chq-contacts-rail {
+    display: none;
+  }
+
+  /* With the rail gone, the earlier phone `.chq-contacts-directory-grid`
+     rule's 20px gap (above, single-column stack) is a trailing void below
+     the last card -- there is no second grid row left to space from. */
+  .chq-contacts-directory-grid {
+    gap: 0;
+  }
 }

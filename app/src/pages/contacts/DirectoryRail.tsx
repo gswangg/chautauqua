@@ -14,6 +14,19 @@ import { describeRules } from './segments';
 import type { DuplicateGroup, Segment } from './types';
 import { EmptyState } from '../../components/EmptyState';
 
+// DEC-996: this component does not render at 390 -- contacts.css's terminal
+// `@media (max-width: 700px)` block sets `.chq-contacts-rail { display: none
+// }`, so the phone body is the directory card list alone, per the frame.
+// The stand-down is legal under DEC-919 because each section below has a
+// surviving full-screen path already on this page at 390: "Where they
+// work" via the FilterRulesPanel "+ Rule" chip (composes the same
+// {field:'company',op:'eq'} rule by hand); "Saved segments" via the
+// chipstrip's "Segments · N" tab (SegmentsPanel lists every segment in
+// full) and the rule row's own "Save as a segment" control; "Possible
+// duplicates" via the chipstrip's "Duplicates · N" tab (DuplicatesView,
+// same detection pass in full, same Merge affordance). This file's markup
+// is unchanged -- the stand-down lives entirely in contacts.css.
+
 // DEC-678: "an empty state is only reachable from a settled load". Each of
 // the rail's three lists is fed by its OWN request, so each carries its own
 // settled flag -- an empty ARRAY alone cannot tell "no companies" apart from
