@@ -581,8 +581,14 @@ describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
     // an offender's FACE never changes rule COUNT (it changes whether the
     // rule keeps padding-inline/margin-inline at all, or the face), so
     // this is a coarse sanity band, not the ratchet itself.
+    // Re-measured wave 154 (merge of task w10-na): 31. w10-na's SPA
+    // classless-control widening added `.chq-settings-portal-preview-link`
+    // (app/src/pages/settings/settings.css terminal phone block), a new
+    // BORDERLESS cancelled-padding member -- a legitimate new member of
+    // this population, not a face regression, so the band's upper edge
+    // moves with the measurement.
     expect(MEMBER_COUNT.rules).toBeGreaterThanOrEqual(20);
-    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(30);
+    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(32);
   });
 
   describe('cancelledPaddingN', () => {

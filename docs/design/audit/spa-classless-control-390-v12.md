@@ -45,21 +45,21 @@ never a number copied from the task text.
 
 | # | Site | Enclosing token | Disposition |
 |---|------|------|-------------|
-| 1 | `pages/Agenda.tsx:352` `<Link>` | `chq-agenda-held-back` (also `chq-attention-frame`) | **Floored** — `agenda.css` terminal `@media (max-width:700px)`, `.chq-agenda-held-back a` |
-| 2 | `pages/NotFound.tsx:54` `<Link>` | `chq-notfound-links` | **Floored** — new terminal `@media (max-width:700px)` block added to `not-found.css` (none existed before), `.chq-notfound-links a` |
-| 3 | `pages/NotFound.tsx:55` `<Link>` | `chq-notfound-links` | **Floored** — same rule as #2 |
-| 4 | `pages/settings/EventSettingsPanel.tsx:353` `<Link>` | `chq-event-unscheduled-notice` | **Floored** — `settings.css` terminal block, `.chq-event-unscheduled-notice a` |
-| 5 | `pages/settings/PortalSettingsPanel.tsx:245` `<a>` | *(no enclosing chq- token — ungradeable by construction)* | **Floored** — given its own `className="chq-settings-portal-preview-link"` directly on the tag (the only way to make a token-with-no-ancestor site gradeable at all), then floored in `settings.css`'s terminal block |
-| 6 | `pages/speakers/RosterPanel.tsx:352` `<Link>` | `chq-speakers-roster-duplicate-hint` | **Floored** — `speakers.css` terminal block, `.chq-speakers-roster-duplicate-hint a` |
-| 7 | `pages/speakers/SpeakerDetailPage.tsx:510` `<a>` | `chq-speaker-detail-portal-bio-links` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-portal-bio-links a` |
-| 8 | `pages/speakers/SpeakerDetailPage.tsx:571` `<Link>` | `chq-speaker-detail-sessions-row` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-sessions-row a` |
-| 9 | `pages/contacts/ContactDrawer.tsx:756` `<Link>` (delete-confirm body) | `chq-contacts-record-label` (nearest still-open ancestor per the walk) | **Floored** — `contacts.css` terminal block, `.chq-contacts-record-label a` |
-| 10 | `pages/submissions/SubmissionDetailPage.tsx:1232` `<Link>` (scheduled placement) | `chq-detail-placement` | **Floored** — `detail.css` terminal block, `.chq-detail-placement a` |
-| 11 | `pages/submissions/SubmissionDetailPage.tsx:1350` `<a>` (answer file download) | `chq-answer-row` | **Floored** — `detail.css` terminal block, `.chq-answer-row a` |
-| 12 | `pages/contacts/AddToEventModal.tsx:216` `<Link>` | `chq-add-to-event-result` | **Shell finding, left in the ceiling** — token declared in `app/src/styles.css`; task's HARD SCOPE forbids editing the shell sheet from a page lane |
-| 13 | `pages/contacts/BulkEmailModal.tsx:435` `<Link>` | `chq-bulk-email-result` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
-| 14 | `pages/contacts/DuplicateEmailNotice.tsx:87` `<Link>` | `chq-contacts-duplicate-email-notice` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
-| 15 | `pages/contacts/NewContactModal.tsx:205` `<Link>` | `chq-contacts-new-contact-duplicate-hint` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
+| 1 | app/src/pages/Agenda.tsx`<p>Held back — content not approved:</p>` `<Link>` | `chq-agenda-held-back` (also `chq-attention-frame`) | **Floored** — `agenda.css` terminal `@media (max-width:700px)`, `.chq-agenda-held-back a` |
+| 2 | app/src/pages/NotFound.tsx`<Link to="/overview">Overview &rsaquo;</Link>` | `chq-notfound-links` | **Floored** — new terminal `@media (max-width:700px)` block added to `not-found.css` (none existed before), `.chq-notfound-links a` |
+| 3 | app/src/pages/NotFound.tsx`<Link to="/submissions">Submissions &rsaquo;</Link>` | `chq-notfound-links` | **Floored** — same rule as #2 |
+| 4 | app/src/pages/settings/EventSettingsPanel.tsx`<Link to="/agenda">View agenda</Link>` | `chq-event-unscheduled-notice` | **Floored** — `settings.css` terminal block, `.chq-event-unscheduled-notice a` |
+| 5 | app/src/pages/settings/PortalSettingsPanel.tsx`className="chq-settings-portal-preview-link"` | *(no enclosing chq- token — ungradeable by construction)* | **Floored** — given its own `className="chq-settings-portal-preview-link"` directly on the tag (the only way to make a token-with-no-ancestor site gradeable at all), then floored in `settings.css`'s terminal block |
+| 6 | app/src/pages/speakers/RosterPanel.tsx`<p className="chq-speakers-roster-duplicate-hint" role="status">` | `chq-speakers-roster-duplicate-hint` | **Floored** — `speakers.css` terminal block, `.chq-speakers-roster-duplicate-hint a` |
+| 7 | app/src/pages/speakers/SpeakerDetailPage.tsx`<p className="chq-speaker-detail-portal-bio-links">` | `chq-speaker-detail-portal-bio-links` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-portal-bio-links a` |
+| 8 | app/src/pages/speakers/SpeakerDetailPage.tsx`<div className="chq-speaker-detail-sessions-row" role="row"` | `chq-speaker-detail-sessions-row` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-sessions-row a` |
+| 9 | app/src/pages/contacts/ContactDrawer.tsx`<Link to="/contacts?tab=duplicates">Go to the Duplicates tab</Link>` (delete-confirm body) | `chq-contacts-record-label` (nearest still-open ancestor per the walk) | **Floored** — `contacts.css` terminal block, `.chq-contacts-record-label a` |
+| 10 | app/src/pages/submissions/SubmissionDetailPage.tsx`<Link to="/agenda">{formatSubmissionScheduleLine(detail.slot)}</Link>` (scheduled placement) | `chq-detail-placement` | **Floored** — `detail.css` terminal block, `.chq-detail-placement a` |
+| 11 | app/src/pages/submissions/SubmissionDetailPage.tsx`<a href={row.file.href}>{row.file.filename}</a>` (answer file download) | `chq-answer-row` | **Floored** — `detail.css` terminal block, `.chq-answer-row a` |
+| 12 | app/src/pages/contacts/AddToEventModal.tsx`>View in Speakers</Link>` | `chq-add-to-event-result` | **Shell finding, left in the ceiling** — token declared in `app/src/styles.css`; task's HARD SCOPE forbids editing the shell sheet from a page lane |
+| 13 | app/src/pages/contacts/BulkEmailModal.tsx`<Link to="/comms?tab=history">View in Comms history</Link>` | `chq-bulk-email-result` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
+| 14 | app/src/pages/contacts/DuplicateEmailNotice.tsx`>Open this contact</Link>` | `chq-contacts-duplicate-email-notice` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
+| 15 | app/src/pages/contacts/NewContactModal.tsx`<p className="chq-contacts-new-contact-duplicate-hint" role="status">` | `chq-contacts-new-contact-duplicate-hint` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
 
 11 of 15 drained this lane. The 4 remaining are the shell-owned rows the
 task explicitly carves out ("A shell-owned token stays in the ceiling and

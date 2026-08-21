@@ -332,7 +332,8 @@ export const SSR_CLASSLESS_ANCHOR_CEILING = 0;
 // -v12.md` for the full offender ledger.
 //
 // Forced to -1 and read the printed offender list on this branch: raw
-// population 15 (PortalSettingsPanel.tsx:245's bare `<a>` had no enclosing
+// population 15 (the bare anchor in
+// app/src/pages/settings/PortalSettingsPanel.tsx had no enclosing
 // chq- token at all -- given its own `chq-settings-portal-preview-link`
 // class directly so it could carry a floor, dropping raw population to 14
 // and offenders to 4 in the same pass). Drained 11 of 15 -- Agenda.tsx,

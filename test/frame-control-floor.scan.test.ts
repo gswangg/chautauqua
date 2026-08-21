@@ -526,7 +526,15 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 7;
 // pack or the corpus changes -- it is a tripwire, not a two-sided ratchet,
 // because "resolved but conformant" and "unresolved" are not the same
 // finding and neither direction of this count is inherently a regression.
-export const UNRESOLVED_COUNT_TRIPWIRE = 153;
+// Re-measured wave 154 (merge of task w10-na, the SPA classless-control
+// tap-floor widening): 153 -> 152. w10-na gave previously classless page
+// anchors real CSS rules (.chq-notfound-links a, .chq-agenda-held-back a,
+// .chq-event-unscheduled-notice a, .chq-settings-portal-preview-link,
+// .chq-speakers-*/.chq-detail-* terminal-block rules), so one drawn control
+// that previously resolved to NO CSS rule now resolves to one and leaves
+// this bucket. The population did not shrink -- a member moved from
+// UNRESOLVED to resolved, which is the direction this campaign wants.
+export const UNRESOLVED_COUNT_TRIPWIRE = 152;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

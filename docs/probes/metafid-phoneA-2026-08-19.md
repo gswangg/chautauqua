@@ -45,7 +45,7 @@
   population walk covers both app/src/pages/settings/settings.css and
   app/src/pages/submissions/detail.css (DEC-808, every app/src/**/*.css) --
   predicate verified by reading the file, not cited blind. People/Event/CFP:
-  app/src/pages/settings/settings.css`the Person column collapses to zero width, Change password and Remove overlap, and the panel overflows by roughly 240px`
+  app/src/pages/settings/settings.css`Change password and Remove overlap`
   (same terminal `@media (max-width: 700px)` comment names Event-edit
   "overflows 390 by 86px" and CFP-edit "by 46px", both closed by the
   `.chq-settings-field-date,` sibling group two rules below going
@@ -58,7 +58,7 @@
   three-cell strip (`.chq-forms-strip`, not the Settings CFP-edit panel --
   the CFP FORM's own stat strip) reflows to one column at phone, DEC-919
   wave-11-o amendment --
-  app/src/pages/forms/forms.css`the frame removes GEOMETRY, not CAPABILITY: Opens/Closes stay the only CFP-window editor anywhere in the app, they just stack instead of sitting in three 1fr columns`
+  app/src/pages/forms/forms.css`they just stack instead of sitting in three 1fr columns`
   (`.chq-forms-strip { grid-template-columns: 1fr; }` immediately below), and
   the datefield gained its own 44px floor (task w13-n /
   v12m-w10-jj) with no `overflow`/`nowrap` clipping declared anywhere in the
@@ -100,7 +100,7 @@
   drills) — frames are one-screen-at-a-time.
   CLOSED (re-verified wave 154): DEC-964 stands the parent head down whenever
   a phone drill is showing --
-  app/src/pages/contacts/ContactsApp.tsx`Pipeline and Duplicates are one-screen-at-a-time phone drills with their OWN head band (their .chq-phone-head-drill), not this landing head -- stand this head down whenever a phone drill is showing so its band doesn't double up above the drill's own`
+  app/src/pages/contacts/ContactsApp.tsx`Pipeline and Duplicates are one-screen-at-a-time phone`
   -- and every named drill carries its own `chq-phone-head-drill` band:
   app/src/pages/contacts/PipelineBoard.tsx`chq-contacts-pipeline-head chq-phone-head chq-phone-head-drill`,
   plus `app/src/pages/contacts/MergePage.tsx`, `app/src/pages/contacts/DuplicatesView.tsx`,
@@ -136,7 +136,7 @@
   The 2x2/Save-primary bar and the save-scope note are now edit-mode only
   (both densities), and the scope line already sits on its own line above
   that bar per the DEC-616 wave-70 amendment
-  (app/src/pages/contacts/ContactDrawer.tsx`the scope sentence moved onto its own line above the action bar`) --
+  (app/src/pages/contacts/ContactDrawer.tsx`own line above the action bar`) --
   not a phone-specific misplacement.
 - Import CSV phone wizard (frame :487 one-column-per-screen + Next/Skip
   dock) not built; desktop modal overflows at 390.
