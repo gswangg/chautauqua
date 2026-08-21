@@ -99,3 +99,53 @@ phone) in a bottom sheet or full-screen overlay.
   phone-only override: the frame's filled, edge-to-edge Previous/Next
   button bar (:200-202) replaces the desktop's bare `--chq-rule` divider +
   plain links, which previously had no phone treatment at all.
+
+## w14-sg per-frame 390 RENDER verdicts (DEC-976 wave-158 SSR clause)
+
+Every row below is a real Hono request through the mounted route, asserted
+against the returned HTML string, in
+`test/home-account-docs-390-frame-verdicts.test.ts` — additive to, and
+never replacing, `test/account-docs-phone-frames.test.ts`'s existing
+stylesheet-source-scan coverage (that file never calls `app.request`, so
+these rows are the first live-request receipt these two frames have had).
+Home's three states have no `docs/design/audit/home-v12.md` to file into
+(per DEC-976 wave-105's note that a cluster with no audit doc files its
+verdicts in the test file's own header instead) — see
+`test/home-account-docs-390-frame-verdicts.test.ts`'s top-of-file comment
+for those three rows.
+
+- **"Sign in · 390" (Chautauqua Account.dc.html:121)** — MATCHES on
+  wordmark, the single-event-scoped subtitle ("Sign in to
+  {event.name}"), Email/Password, Sign in, and both "No account?" links
+  (Submit a talk / Browse the sessions). DIVERGES on the "Forgot your
+  password?" tertiary link: :121's drawn card carries no such link
+  anywhere in its submit row (confirmed against the file — the only
+  "Forgot your password?" text on Chautauqua Account.dc.html sits at :50
+  and :317, both desktop/error-state blocks, never inside the 390 card),
+  while `src/routes/auth-views.tsx:125-127` renders it unconditionally.
+  This divergence is the SAME one this file's own earlier finding above
+  ("Sign in · 390 omits 'Forgot your password?' from the phone submit
+  row") already tracked and DEC-919 already RULED BLESSED (re-line, never
+  remove) — restated here only because this is the first LIVE-REQUEST
+  receipt of it, not a new finding.
+- **"Change password · 390" (Chautauqua Account.dc.html:153)** — MATCHES
+  on the "‹ Back" link, the "Change your password" H1, all three fields
+  (Current password / New password, placeholder "At least 12 characters",
+  matching `MIN_PASSWORD_LENGTH = 12` / New password again), and the sunk
+  dock's two buttons ("Change it" primary, "Cancel" secondary). One
+  addition the frame is silent on rather than a divergence from it: the
+  dock also carries a "You stay signed in on this device" hint span that
+  :153's dock does not draw at all — the frame neither confirms nor
+  forbids it (no equivalent element exists to contradict), so this is
+  filed as an addition, not a MATCHES/DIVERGES call.
+- **"Docs · an article" (Chautauqua Docs.dc.html:166, GET
+  /docs/reviewing-start-to-finish)** — MATCHES on the phone toolbar ("‹
+  Docs" back link + "Contents" disclosure toggle, already built per
+  DEC-990 wave-128 and cited at `src/routes/docs-site.tsx:488-508`), the
+  article-head anatomy (eyebrow span, H1, standfirst paragraph), and a
+  rendered `<h2 class="chq-docs-h2">` heading block. The frame's own H1
+  text ("Triaging submissions") and body copy are illustrative mockup
+  prose with no matching slug in `DOCS_ARTICLES` — graded on the
+  STRUCTURE the frame draws (eyebrow/H1/standfirst/heading), not on a
+  verbatim content match, since no real article's copy is a candidate for
+  verbatim comparison against invented mockup text.
