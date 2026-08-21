@@ -279,3 +279,52 @@ component `docs/design/DESIGN-RULINGS.md` adjudicates, and that lane's
 fix will need to update `ContactsApp.head390.render.test.tsx`'s two
 "recorded residual" assertions (they are written to fail once the
 intrusion moves) rather than leaving them as permanent truths.
+
+## Merge · 390 — render verdict (task w29-a, DEC-976 wave-29)
+
+Before this task the "Merge · 390" frame (`docs/design/Chautauqua
+Contacts.dc.html:522-546`) had no dedicated markup-level verdict — only
+`MergePage.phoneFrame.test.ts` (a source-text scan over `MergePage.tsx`'s
+JSX and `contacts-panels.css`'s CSS text) and
+`Contacts.frame-verdicts.render.test.tsx`'s single shallow `it()` (renders
+the route, checks the H1/picks/footer buttons exist, no dock-scoped
+control-order or 44px-floor receipt). `MergePage.frame390.render.test.tsx`
+is the new markup-level receipt: it mounts the real `/contacts/merge`
+route (the same harness `MergePage.render.test.tsx` uses, `mockApi` +
+`MemoryRouter`), and asserts:
+
+- Exactly one `<h1>` reading `Merge two records` (:525).
+- Exactly one back anchor whose accessible text ends in `Duplicates`
+  (:524) — asserted on the anchor's own trailing text, not innerText
+  equality, since the phone rule blanks the `Contacts · ` prefix span via
+  CSS only (jsdom renders it regardless).
+- The pair counter (:526) matching `/^\d+ of \d+ pairs · /`, shape-graded
+  per DEC-967 wave-29 rather than pinned to the frame's own sample
+  ("1 of 6 pairs · Marcus Okafor").
+- At least one compare row (:530-:532) carrying a label span plus a keep
+  span and a drop/blank/combine span.
+- The consequence line (:535) rendering in exactly ONE
+  `.chq-contacts-merge-rule-box-rule` element containing "Labels combine,
+  notes are appended".
+- The dock's two controls (:537-:538), scoped to `.chq-contacts-merge-footer`
+  and read in DOM order — `dockButtons[0]` carries the `Merge them`
+  phone-label span, `dockButtons[1]` reads `Not a duplicate` — using a
+  3+-record duplicate group fixture so DEC-992's "Swap which is kept"
+  control (which only mounts for a two-record pair) never intervenes as a
+  third button between them.
+- A static 44px-floor receipt (DEC-393): both `.chq-contacts-merge-footer
+  .chq-btn` and `.chq-contacts-merge-not-duplicate` floor at >=44px inside
+  `contacts-panels.css`'s one terminal `@media (max-width: 700px)` block
+  (comment-stripped via `test/helpers/strip-css-comments`), read to be 48px
+  for both — well clear of the floor, no CSS change needed.
+- `.chq-contacts-merge-picks` is present and recorded here, per the table
+  above, as the DEC-663 wave-17 blessed frame-silent addition (the compare
+  rows show the result of a keep/drop choice a static frame cannot depict
+  being made) — not a divergence this task reopens.
+
+**Verdict: MATCHES.** No DIVERGES row and no `contacts-panels.css` change
+were needed — every dock control this task's DEC-385 terminal-phone-block
+scope covers already floors at 48px, and every frame body line above
+renders through the real route. This confirms, at the markup level for the
+first time, the disposition the table's existing "Merge · 390" row already
+claimed on weaker (source-scan) evidence.
