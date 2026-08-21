@@ -10,44 +10,21 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 
 - WAVE 156 HEAVILY COMPACTED: wave-155 plan was RULED but never BUILT, 4/8 lanes committed 0 (`git rev-list --count`, not the decision doc, proves landing); main was red at 108c5aa3 from a citation-grammar bug (tag-kind annotation inside `quoteAfter`'s window); vitest rewrites `path:line` in error messages, replicate a scan's regex before trusting one; measure in a detached worktree but not D1-backed tests (no `.wrangler`); campaign gate down to one row, `SPA_CLASSLESS_CONTROL_CEILING=4`; Settings 390 read drills 8/9 diverge (DEC-919); desktop drawn-floor JOIN is a label-TEXT search, corroborate before draining (DEC-393); branch namespace `v12m-w11-*`/`v12m-w12-a..j` BURNED, wave used `v12m-w12-qa..qj`.
 
-## Wave 157 — 44 of 53 phone frames have never been RENDERED against their frame
+- WAVE 157 HEAVILY COMPACTED: tree moved 3x mid-plan, re-check `git log -1` before emitting; CLAIMED_FLOOR proves citation not conformance — 44/53 phone frames ungraded despite 53/53 claimed (DEC-976); a control-shaped corroboration can attach to the WRONG element, verify by nearest-enclosing-class read (DEC-393); `v12m-w13-a..f` burned, moved to `ra..rj`.
+- WAVE 158 HEAVILY COMPACTED: SSR "phone-frames" tests were source scans not requests (20/53 phone frames graded by grep, `app.request` count 0) — copy `test/portal-page-headings.test.ts`'s `vi.mock`+`buildApp` harness (DEC-976); a planner who skips the CONCURRENT wave's worktrees re-plans already-built lanes, check `git worktree list` for the other wave's prefix too; `signOut()` discards `?signed-out=1` (DEC-154) and `useCurrentEvent`'s search-keyed cache never evicts, replaying stale banners on A→B→A (DEC-728) — a scan's own PREMISE is a claim about the tree, not documentation; `v12m-w14-a/b/c/d/e/j` burned, moved to `sa..sj`.
 
-**The tree moved three times while I planned.** main went `64f5a979` ->
-`dca1969a` -> `fe079ffe` inside one planning session (merge-train heal, plus a
-meta lane editing the shared checkout uncommitted). Re-measure at the sha you
-are about to plan for, and re-check `git log -1` before you emit.
+## Wave 159 — the measured divergences are the backlog; wave 15 is the first wave that SPENDS one
 
-**A CLAIMED_FLOOR proves citation, not conformance.** phone CLAIMED_FLOOR reads
-53/53 and the exit gate prints 0 remaining; exactly ONE cluster (Settings) has a
-per-frame RENDER verdict, and when it was built it found 8 divergences where the
-open clause said 5. 44 phone frames are ungraded (DEC-976 w157).
+**Branch namespace, again, and the burn is now predictable.** `v12m-w15-a/b/c/d/e/f/h/n/o` were already taken (9 of 26 suffixes, in `packed-refs`, with live worktrees under `~/.claude/jobs/.../v12m-wt/`). Three consecutive waves — `w13`→`ra..rj`, `w14`→`sa..sj`, `w15`→`ta..tj` — have found their "reserved" prefix half-spent. Assume the bare prefix is burned, check `show-ref`+`packed-refs`+`worktree list` BEFORE and AFTER planning, and pick a two-letter suffix set.
 
-**A control-shaped corroboration is not enough — check WHICH ELEMENT.** Both
-survivors of the desktop drawn-floor ledger were mis-ATTRIBUTED, not mis-graded:
-"Back to sign in" resolved to its SIBLING's `chq-auth-tertiary` (the real element
-is `chq-btn chq-btn-primary`, already 48px >= the drawn 46 — a false positive),
-"Waitlist" resolved to Overview's queue button on a different surface. A
-nearest-enclosing-class read attaches a label to the wrong element (DEC-393 w157).
+**Read the CONCURRENT wave's worktrees, including the empty ones, and read its emitted DECs.** Wave 14 held `sa..se` (sa merged mid-plan at `2a6dcc5e`; `sb`/`sc` had uncommitted verdict files; `sd`/`se` were empty worktrees holding claims) and `sf..sj` had no branches at all yet — but `src/decisions-data/DEC-154.md`/`DEC-728.md`/`DEC-930.md` all carry a scribed `## Amendment (wave 158)`, which is proof the whole 10-lane plan was emitted and `si`/`sj` are owned. A scribed amendment is the cheapest read on what a live wave has claimed; check it before taking any finding a prior planner named.
 
-**Verified STALE, do not re-open:** the review lens's StrictMode `useCurrentEvent`
-crash, the non-finite `parseScale` poison pill, the "sign in as this speaker"
-tooltip, the NotYetOpenPage own-programme link, the `tautological-assertion`
-5000ms timeouts, and the `cancelled-padding-face` 31>30 band are ALL fixed in the
-tree. `deriveInteractiveOffenders` is wired and its ceiling is 79, not the `-1`
-sentinel two waves of docs still describe. Grep the tree, not the summary.
+**A verdict ledger rots faster than the code it grades.** `docs/design/audit/settings-v12.md` still calls frame `:444` DIVERGES ("per-question list collapsed to one computed summary row"); `CallForPapersPanel.tsx:118` has carried a `QuestionsSection` rendering the frame's label / `kind · required` / boxed Edit row for several waves. `content-v12.md`'s `:247` row was half-stale the same way (the Select TOGGLE is guarded, the summary line is not). Re-derive every ledger row against the tree before turning it into a task — the row tells you where to look, never what is there.
 
-**Branch namespace:** `v12m-w13-a..f` were BURNED by an earlier wave — the `w13`
-prefix was NOT free. This wave uses `v12m-w13-ra..rj`. 78 branches sit
-committed-unmerged, including wave-156's `v12m-w12-qa/qb/qc` (still 1-ahead).
+**A comment asserting an invariant is not the invariant.** content.css's Select-mode block states "the two are mutually exclusive via React (ContentApp.tsx), never both mounted at once" while `ContentApp.tsx`'s summary clause carries no `!phoneSelectMode` guard at all. Same class as DEC-967's citation rot and DEC-728 wave-150's "a real next navigation is either a different `search` key or a full page reload" — the justification WAS the bug. Grep the predicate the comment describes, not the comment.
 
-## Wave 158 — the SSR half of the campaign has never been rendered either
+**The pack draws vocabulary in per-surface registers and the product flattened them.** `Content.dc.html:307`/`:346` both read `Video · 4` (files library, desktop AND phone) while `:141`/`:387` both read `Recording · 1 version` (session strip) — two labels for one domain kind, split by SURFACE not by width. Separately `:305` vs `:344` is `All types` vs `All`, split by WIDTH not by surface. A single `Record<Kind,string>` cannot express either. And the byte format is settled by NEITHER: `Content.dc.html:298` draws `412 MB` where `Settings.dc.html:1629` draws `2.1 MB`, so `formatBytes`'s `.toFixed(1)` is un-adjudicable from the pack and must not be "fixed" on one frame's evidence.
 
-**Check the branch namespace for YOUR OWN wave prefix before you emit.** `v12m-w14-a/b/c/d/e/j` were burned two days ago by an unrelated wave — the `w14` prefix the harness "reserved" for me was already half-spent. This wave uses `v12m-w14-sa..sj`. Wave 13 hit the identical trap and moved to `ra..rj`. `for-each-ref` + `packed-refs`, every wave, no exceptions.
+**A desktop frame can license a change under the freeze.** The mandate's own escape clause ("a desktop-affecting change is legal only when a v12 desktop frame demands it") is live, not theoretical: the `Recording`→`Video` library label is demanded at `:307`, a 1600 frame. Cite the desktop line, not the phone one, when spending it.
 
-**Every SSR "phone-frames" test is a source scan: `grep -c 'app.request'` returns 0 for all four.** `portal-phone-frames`, `public-agenda-phone-frames`, `home-phone-frames`, `account-docs-phone-frames` read stylesheet TEXT and never dispatch a request. That is 20 of 53 phone frames — Public and Portal 14, Home 3, Account 2, Docs 1 — graded by grep, on top of the 24 SPA frames DEC-976 w157 already named. `test/portal-page-headings.test.ts` is the ready-made harness (`vi.mock` 4 repos + `buildApp` + `app.request`) and already reaches 7 of the 8 portal frames' routes; copy it rather than authoring a fifth mock stack (DEC-976 w158).
-
-**A planner who does not read the OTHER live wave re-plans its lanes.** Wave 13's `-rc` rebuilds Settings Tracks-and-rooms Edit/Add rows that wave 12's committed-unmerged `-qe` already built, and its `-rd` rebuilds `-qd`'s Saved-embeds drill. Branches that exist but are 0-ahead still hold a claim: `w13-rh/ri/rj` sat at main's sha with empty worktrees and were about to take Review and Contacts. Check `git worktree list` for the *concurrent* wave's prefix, not only merge state, before choosing clusters.
-
-**Five of the six review-lens correctness findings were STALE — again.** `parseScale` and `parseCriteriaList` both carry the `Number.isFinite` mirror; `auth-views.tsx` keys `chq-field-invalid` on `error?.kind === "credential"`; the portal-preview tooltip is gone; `YourDataPanel.tsx` explicitly REFUSES the retention line with a DEVIATIONS §6 comment. Two survived and both are real: `api.ts` `signOut()` hardcodes `window.location.assign('/login')`, discarding the server's `?signed-out=1` so DESIGN-RULINGS item 24's confirmation never renders (DEC-154 w158); and `useCurrentEvent`'s `navigationContexts` is keyed on `location.search` and never evicted, so an A → B → A revisit replays a stale `fromStorage` and re-fires the D19 banner when URL id EQUALS stored context — the exact case the user's pin forbids (DEC-728 w158). The wave-150 comment's own justification ("a real next navigation is either a different `search` key or a full page reload") is the bug, written down. **Read a scan's stated PREMISE as a claim about the tree, not as documentation.**
-
-**Also stale: DEC-518's `decisions/DEC-*.md` widening is BUILT** (`DECISIONS_REGISTRY_LABEL` + its own ratchet in `decision-doc-citation.scan`), both SSR tap-floor ceilings are 0, and `LOCAL_CSS_COMMENT_STRIPPER_CEILING` is 96, not 102.
+**Stale-finding sweep, wave 159 (all six re-checked against `2a6dcc5e`, do not re-open):** the portal "Add co-presenter" full-page POST discards nothing — `edit.tsx`'s DEC-029 wave-108 amendment joins every co-presenter control to `#chq-portal-edit-form` via the `form` attribute; the phone-CFP step-1 validation dead-end is closed (`cfp-steps-script.tsx:127` calls `reportValidity()`); Speakers native focus rings are gone (`speakers.css:1210`, `styles.css:225`); ProgressPanel's DEC-760 hidden-not-disabled "Remind the N not started" is built (`:244`); FieldModal's conditional-visibility sentence is built (`:293`); `SPA_CLASSLESS_CONTROL_CEILING` is 0 and fully drained, so the review lens's "4 bare `<a>` floor violations" are outside that scan's population and cannot be handed to a lane without a fresh live measurement.
