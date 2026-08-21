@@ -349,6 +349,22 @@ Two real items for the next waves, in priority order:
    its recipient list per-submission, so a speaker with N submissions appears
    N times as recipient rows. Dedupe by contact_id at the recipient-list
    query; the visible count and the send must agree with the deduped list.
+   CLOSED (DEC-936 wave-19, commit `f15d99c3`): `src/domain/compose.ts`'s
+   `expandRecipients` already collapses by contactId whenever the composed
+   subject+body spends none of `PER_SUBMISSION_MERGE_VARS`, keeping the
+   first occurrence and returning the rest as `withheld` so nothing vanishes
+   silently; both `src/routes/comms/preview.ts` and `send.ts` compute
+   `perSubmissionVarsSpent` from the SAME `spendsPerSubmissionContent` and
+   feed it to the same `buildRenderTargets`, so the visible preview count and
+   the actual send agree by construction. That logic was already unit-pinned
+   (`test/compose-recipient-dedup.test.ts`), but had no real-SQLite proof
+   that the production query (`loadComposeSubmissions`, `src/server/repo/
+   comms.ts`) feeds it correctly — added this pass, meta lane 2026-08-21:
+   `test/compose-recipient-dedup-sqlite.test.ts` (node:sqlite + drizzle
+   sqlite-proxy, same harness as `test/contacts-import-merge-keeps-email
+   .test.ts`) seeds one contact on two submissions, runs the real query, and
+   asserts the collapse to exactly 1 recipient for a generic message (both
+   rows kept when the message spends `{talk_title}`).
 2. **Import completion honesty (speaker-crm minor).** CSV import's DEC-663
    policy (never overwrite a non-blank email) is right, but the completion
    screen does not disclose declined email updates. Extend the Cut-2
@@ -372,6 +388,25 @@ Two real items for the next waves, in priority order:
    ${conflict.line}`}> Line {conflict.line}: kept {conflict.kept} —
    {conflict.offered} was not written. Pick a side in the directory's
    Duplicates view. </li> ))}`. No declined-email path is missing.
+   COVERAGE GAP CLOSED this pass (meta lane, 2026-08-21): the wave-19
+   verification above was read-only (no test proved the receipt actually
+   renders). Added two cases to `app/src/pages/contacts/ImportWizard.render
+   .test.tsx` — the completion screen shows the "kept ... was not written ...
+   Duplicates view" line when the commit response carries an
+   `emailConflicts` entry, and shows nothing when it doesn't.
 
 Also still open from round 3: the Contacts Pipeline dock (top of the red set,
 no commits yet — treat as the highest-priority build item).
+
+CORRECTION (meta lane, 2026-08-21): the line above is stale and wrong — it
+restates round 3's item 1 as open when this file's own "Meta-fidelity round
+3" section (above) already records it CLOSED at wave 149/commit `44275c3f`
+("contacts: build the Pipeline · 390 phone dock (task w19-a)"). Re-verified
+live this pass in an isolated `wrangler dev --persist-to` sandbox (390x844
++ 1440x900, sbek-organizer persona): `[data-chq-phone-dock]` renders exactly
+once at 390 (`position: sticky; bottom: 0px`, rect bottom 828 of an 844
+viewport), its two buttons measure 48px tall (`Add someone` 285.6x48,
+`Filter` 64.4x48), `.chq-tabbar` computes `display: none`, and the head's
+own "Add to the pipeline" button is hidden at 390 and visible unchanged at
+1440 (desktop byte-identical, no dock mounted). Nothing to build; this
+correction only retires the contradiction.
