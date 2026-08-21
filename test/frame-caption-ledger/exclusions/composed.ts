@@ -25,6 +25,15 @@ import type { Exclusion } from './types';
  *         already settled that as scope, not a defect. The reason quotes
  *         the deferring bullet's own words. DEVIATIONS.md is never edited
  *         by an entry here -- this table only cites it.
+ *   (iv) SPLIT (DEC-976 wave-21) -- the frame's caption is one sentence
+ *        (or, here, two adjoining sentences) that the app draws in FULL,
+ *        every word, but a ruled phone stand-down forced the source markup
+ *        to carry it across sibling elements rather than as one static
+ *        string -- so no single source substring can ever satisfy this
+ *        ledger's plain-substring MATCH, even though nothing is missing
+ *        from the screen. The reason quotes EACH sibling span's source
+ *        text verbatim (so a reader can re-grep every fragment) and names
+ *        the ruling that forced the split into separate elements.
  *
  * Every entry below is shape (i) or (iii); each entry's composing
  * expression (or deferring bullet) was verified to exist on the branch that
@@ -917,5 +926,18 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'Panel, 45 min · AI Engineering',
     reason:
       "the same submit-post.tsx `metaParts` composing expression, this sample's track-only clause (no audience level answered) -- 'AI Engineering' is this fixture's own sample track name.",
+  },
+  // v12m-w21-j (DEC-976 wave-21, shape (iv) SPLIT): 13c3a025 (DEC-874
+  // wave-19) split ReviewerQueue.tsx's hub footnote paragraph into two
+  // sibling spans so the second sentence's class alone can stand down at
+  // 390 -- the ledger's plain-substring matcher cannot cross that element
+  // boundary even though the app still draws both sentences, in the
+  // frame's own order, every render.
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 866,
+    text: 'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
+    reason:
+      "app/src/pages/review/ReviewerQueue.tsx's hub footnote (DEC-874 wave-19 amendment) draws the frame's two sentences as sibling spans -- `<span>With one open plan this page is skipped — you land straight in its queue.</span>` and `<span className=\"chq-reviewer-plans-footnote-repeat\">Scores stay hidden from other reviewers.</span>` -- so no single static substring carries both; the second span's class is stood down at 390 by app/src/pages/review/review.css's phone-hidden: receipt because the dock note below already restates that sentence at that width (one sentence, one place, per width).",
   },
 ];
