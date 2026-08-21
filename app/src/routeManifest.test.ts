@@ -287,3 +287,107 @@ describe("routeManifest public-pages nested `view` sub-state parity (DEC-144/DEC
     expect(missing, `PublicPagesView values with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
   });
 });
+
+// DEC-144 (wave-28 amendment): every SPA screen that reads the `edit=1`
+// query param must have a matching ROUTE_MANIFEST row -- source-scanned from
+// app/src/pages/** for the literal `searchParams.get('edit')` (never a
+// hand-listed file set, DEC-180/DEC-808) so a new edit-reading screen lands
+// with a gate, not a gap.
+describe("routeManifest edit-screen sub-state parity (DEC-144 wave-28)", () => {
+  /** Recursively lists every .ts/.tsx file under `dir` (both extensions --
+   * some readers, like tracksRooms/useTracksRoomsPanel.ts, live in a plain
+   * .ts hook file, not a .tsx component). */
+  function walkSourceFiles(dir: string): string[] {
+    const out: string[] = [];
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        out.push(...walkSourceFiles(full));
+      } else if (name.endsWith(".ts") || name.endsWith(".tsx")) {
+        if (name.endsWith(".test.ts") || name.endsWith(".test.tsx")) continue;
+        out.push(full);
+      }
+    }
+    return out;
+  }
+
+  const PAGES_DIR = join(APP_SRC, "pages");
+  const EDIT_READ_RE = /searchParams\.get\(\s*['"]edit['"]\s*\)/;
+  const SECTION_KEY_DECL_RE = /const SECTION_KEY = '([a-zA-Z0-9_-]+)';/;
+
+  /** Readers whose `edit=1` read is not itself a single section's edit
+   * screen, so resolving a SECTION_KEY from the SAME file correctly finds
+   * none. Each entry's `reason` states the invariant that makes the
+   * exclusion correct, not a pointer to when/who reviewed it (scanned by
+   * test/exemption-reason-is-a-principle.scan.test.ts). */
+  const NO_OWN_SECTION_KEY_EXEMPT: { fileSuffix: string; reason: string }[] = [
+    {
+      fileSuffix: "pages/Settings.tsx",
+      reason:
+        "this file renders every section's summary row in one screen and reads `edit` only to pick which single section to drill into -- it has no SECTION_KEY of its own because it is not itself one section's edit view.",
+    },
+    {
+      fileSuffix: "pages/submissions/SubmissionDetailPage.tsx",
+      reason:
+        "this reader's screen is addressed by a submission id, not a settings section key -- it already has its own id-parametrized ROUTE_MANIFEST row, so no section-keyed row applies to it.",
+    },
+  ];
+
+  it("source-scan found at least 6 `edit=1` readers and resolved at least 6 section keys (sanity check the regexes aren't silently matching nothing)", () => {
+    const files = walkSourceFiles(PAGES_DIR);
+    const readers = files.filter((f) => EDIT_READ_RE.test(readFileSync(f, "utf-8")));
+    expect(readers.length, "found zero `searchParams.get('edit')` readers under app/src/pages").toBeGreaterThanOrEqual(6);
+
+    const manifestPaths = new Set(ROUTE_MANIFEST.map((e) => e.path));
+    const missing: string[] = [];
+    let resolvedCount = 0;
+
+    for (const file of readers) {
+      const relative = file.split("app/src/").pop()!;
+      const source = readFileSync(file, "utf-8");
+      const ownMatch = SECTION_KEY_DECL_RE.exec(source);
+
+      let key: string | null = null;
+      if (ownMatch) {
+        key = ownMatch[1]!;
+      } else if (relative.endsWith("tracksRooms/useTracksRoomsPanel.ts")) {
+        // This hook's own file has no SECTION_KEY -- its caller,
+        // TracksRoomsPanel.tsx, declares one and passes it in
+        // (`useTracksRoomsPanel(SECTION_KEY)`), so resolve from there.
+        const callerSource = readFileSync(join(PAGES_DIR, "settings", "TracksRoomsPanel.tsx"), "utf-8");
+        if (!/useTracksRoomsPanel\(SECTION_KEY\)/.test(callerSource)) {
+          throw new Error("TracksRoomsPanel.tsx no longer calls useTracksRoomsPanel(SECTION_KEY) -- resolution moved");
+        }
+        const callerMatch = SECTION_KEY_DECL_RE.exec(callerSource);
+        if (!callerMatch) throw new Error("TracksRoomsPanel.tsx declares no SECTION_KEY to resolve its hook's reader against");
+        key = callerMatch[1]!;
+      } else if (NO_OWN_SECTION_KEY_EXEMPT.some((ex) => relative.endsWith(ex.fileSuffix))) {
+        continue; // exempt: no section-keyed row applies to this reader
+      } else {
+        throw new Error(
+          `${relative} reads searchParams.get('edit') but declares no SECTION_KEY and is not in NO_OWN_SECTION_KEY_EXEMPT -- resolve or exempt it`,
+        );
+      }
+
+      resolvedCount++;
+      const expectedPath = `/admin/settings?section=${key}&edit=1`;
+      if (!manifestPaths.has(expectedPath)) {
+        missing.push(`${relative} (section "${key}"): expected ROUTE_MANIFEST row { path: "${expectedPath}" }`);
+      }
+    }
+
+    expect(resolvedCount, "resolved zero readers to a section key").toBeGreaterThanOrEqual(6);
+    expect(missing, `edit-screen readers with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
+  });
+
+  it("every exemption's own file still reads searchParams.get('edit') (a stale exemption is a silent exclusion)", () => {
+    for (const exemption of NO_OWN_SECTION_KEY_EXEMPT) {
+      const full = join(APP_SRC, exemption.fileSuffix);
+      const source = readFileSync(full, "utf-8");
+      expect(EDIT_READ_RE.test(source), `${exemption.fileSuffix} no longer reads searchParams.get('edit') -- exemption is stale`).toBe(
+        true,
+      );
+    }
+  });
+});
