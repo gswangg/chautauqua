@@ -148,16 +148,24 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/settings", role: "organizer" },
   // DEC-144 (wave-154 amendment): Settings.tsx's `SECTIONS` panel keys --
   // the mandate counts NINE Settings width:390 frames (Chautauqua
-  // Settings.dc.html hub + seven sections + saved embeds, the last folded
-  // into the public-pages panel per DEC-822) and the gate rendered at most
-  // one of them (the bare /admin/settings hub row above -- `active` is
-  // seeded from the URL's `?section=` param and is null, not a default
+  // Settings.dc.html hub + seven sections + saved embeds, the last a
+  // NESTED drill under public-pages, `?section=public-pages&view=embeds`,
+  // per DEC-728 wave-156 -- see the row below) and the gate rendered at
+  // most one of them (the bare /admin/settings hub row above -- `active`
+  // is seeded from the URL's `?section=` param and is null, not a default
   // section, when the param is absent, so the phone pass without these
   // rows never drilled into a single section) before these rows existed.
   { path: "/admin/settings?section=event", role: "organizer" },
   { path: "/admin/settings?section=cfp", role: "organizer" },
   { path: "/admin/settings?section=tracks-rooms", role: "organizer" },
   { path: "/admin/settings?section=public-pages", role: "organizer" },
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): "Saved
+  // embeds" now renders as its own 390 screen, reached as a NESTED drill
+  // under Public pages rather than the fold-in the comment above still
+  // describes for the row above -- Settings.tsx's `PublicPagesView` union
+  // is this row's own source of truth, source-scanned by
+  // routeManifest.test.ts.
+  { path: "/admin/settings?section=public-pages&view=embeds", role: "organizer" },
   { path: "/admin/settings?section=portal", role: "organizer" },
   { path: "/admin/settings?section=your-data", role: "organizer" },
   { path: "/admin/settings?section=people", role: "organizer" },

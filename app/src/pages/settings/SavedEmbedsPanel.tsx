@@ -47,6 +47,15 @@ import { formatEmbedRecipe } from './embedRecipe';
 import { EmbedCodeReadout } from './EmbedCodeReadout';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
+import { DEC_728, DEC_919 } from '../../../../src/decisions';
+
+// DEC-728: "Saved embeds" is a NESTED drill under Public pages, addressed
+// `?section=public-pages&view=embeds` -- `screenMode` below.
+// DEC-919: a 390 read drill renders EVERY control its frame draws -- the
+// screen's Turn on/off + Get code pair are the same `editing`-gated
+// controls this panel already rendered inline, unchanged by `screenMode`.
+void DEC_728;
+void DEC_919;
 
 // DEC-839: the wire contract — `options` is the PARSED object a saved-embed
 // row carries over the wire, never the stored JSON string.
@@ -185,23 +194,51 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const onCount = embeds?.filter((e) => e.enabled).length ?? 0;
   const offCount = embeds?.filter((e) => !e.enabled).length ?? 0;
 
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds
+  // renders as its own 390 screen at `?section=public-pages&view=embeds`.
+  // `screenMode` is this panel's only awareness of that -- it drives two
+  // phone-only CSS hooks (`data-screen` on the section below, and the
+  // `chq-settings-saved-embeds-open` entry link) via settings.css's
+  // terminal @media block, and is otherwise inert: at desktop this panel
+  // renders identically regardless (DEC-385, frozen).
+  const screenMode = searchParams.get('view') === 'embeds';
+
+  function openScreenHref(): string {
+    const params = new URLSearchParams(searchParams);
+    params.set('view', 'embeds');
+    return `?${params.toString()}`;
+  }
+
   return (
-    <section className="chq-settings-panel" aria-label="Saved embeds">
+    <section className="chq-settings-panel" data-screen={screenMode ? 'true' : 'false'} aria-label="Saved embeds">
       {/* w41-h/DEC-785: the eyebrow row -- title + "N on · M off" (computed
           from the rows already loaded, DEC-785 amendment (5)) on the left,
           the "Turning one off..." caption right-flushed on the SAME row
-          rather than tucked under Build an embed. */}
+          rather than tucked under Build an embed.
+          DEC-728 wave-156: at phone width, while NOT already the
+          Saved-embeds screen, this eyebrow is the only thing visible here
+          -- the "Open" link (phone-only, settings.css) is this section's
+          sole way into its own screen; while already the screen, the H1
+          living one level up (Settings.tsx's phoneDrillTitle) makes this
+          <h2> redundant, so settings.css hides it there and keeps only the
+          count line as the frame's own under-H1 summary (:582). */}
       <div className="chq-settings-saved-embed-eyebrow">
         <div className="chq-settings-saved-embed-eyebrow-title">
-          <h2>Saved embeds</h2>
+          <h2 className="chq-settings-saved-embed-heading">Saved embeds</h2>
           {embeds && embeds.length > 0 ? (
             <p className="chq-settings-count">{`${onCount} on · ${offCount} off`}</p>
           ) : null}
         </div>
+        {screenMode ? null : (
+          <Link className="chq-link-button chq-settings-saved-embeds-open" to={openScreenHref()}>
+            Open
+          </Link>
+        )}
         <p className="chq-settings-note chq-settings-saved-embed-caption">
           Turning one off breaks it wherever it is pasted
         </p>
       </div>
+      <div className="chq-settings-saved-embed-body">
       {error ? <p role="alert">{error}</p> : null}
 
       {embeds === null ? (
@@ -361,6 +398,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
           onCancel={() => setPendingToggleOff(null)}
         />
       ) : null}
+      </div>
     </section>
   );
 }

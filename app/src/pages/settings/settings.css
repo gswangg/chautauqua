@@ -757,6 +757,15 @@
   white-space: nowrap;
 }
 
+/* DEC-728 wave-156: the phone-only entry point into the Saved-embeds own
+   screen (`?section=public-pages&view=embeds`) -- desktop is frozen
+   (DEC-385), so this stays out of desktop's document flow entirely rather
+   than existing invisibly-but-reachable; the terminal @media block below
+   is the only place that turns it on. */
+.chq-settings-saved-embeds-open {
+  display: none;
+}
+
 .chq-settings-saved-embed-build-row {
   display: flex;
   align-items: baseline;
@@ -2176,6 +2185,73 @@
   .chq-settings-saved-embed-caption {
     text-align: left;
     white-space: normal;
+  }
+
+  /* DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): "Saved
+     embeds" renders as its own 390 screen at
+     `?section=public-pages&view=embeds`, not a second always-open section
+     nested inside Public pages. `data-screen` (SavedEmbedsPanel.tsx) is
+     'false' at rest and 'true' once that screen is open --
+
+     - at rest: this section shows only its title, "N on · N off" count,
+       and the `Open` link into the screen; its full body (the row list,
+       laptop hint, Build row, dialogs) stays off.
+     - on the screen: the redundant in-panel <h2> steps aside for the
+       page-level H1 the screen already carries (Settings.tsx's
+       phoneDrillTitle), the count stays as the frame's own under-H1
+       summary (:582), the `Open` link has nothing left to open so it's
+       gone, and the full body takes over.
+
+     Desktop is untouched -- this whole block lives inside the terminal
+     max-width:700px query, so both states render there exactly as before
+     this task (DEC-385). */
+  .chq-settings-saved-embed-body {
+    display: none;
+  }
+
+  [data-screen='true'] .chq-settings-saved-embed-body {
+    display: block;
+  }
+
+  [data-screen='true'] .chq-settings-saved-embed-heading {
+    display: none;
+  }
+
+  [data-screen='true'] .chq-settings-saved-embeds-open {
+    display: none;
+  }
+
+  [data-screen='true'] .chq-settings-saved-embed-caption {
+    display: none;
+  }
+
+  /* :161's flex:1 44px boxed-pill register, the same shape the row's own
+     Turn on/off + Get code pair already uses (chq-settings-saved-embed-
+     actions above), applied to the section-level entry link instead of a
+     row action. */
+  .chq-settings-saved-embeds-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface-sunk);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--chq-ink);
+    text-decoration: none;
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Public pages' own six rows step aside while the Saved-embeds screen
+     they nest is open (see .chq-settings-saved-embed-body above) -- both
+     halves of this section share the same phone scroll otherwise. */
+  .chq-settings-public-pages-own-hidden {
+    display: none;
   }
 
 /* task w8-f/DEC-393 wave-90 amendment, DEC-989 wave-90 amendment: Settings

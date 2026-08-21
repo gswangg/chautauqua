@@ -90,6 +90,10 @@ function mockAllSections() {
     },
     [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
     [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 3, speakers: 2, scheduled: 1 },
+    [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+      { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      { id: 'emb2', name: 'Old widget', surface: 'speakers', format: 'iframe', options: {}, enabled: false },
+    ]),
     [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [], rows: [], total: 0, page: 1, perPage: 1, counts: {} },
     'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
     'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
@@ -227,6 +231,20 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
     // The 09--07 Publish/Unpublish toggle (:495, `{{ p.toggle }}`) is a
     // named DEVIATIONS.md §6 deferral -- never rendered, not even disabled.
     expect(within(row!).queryByText(/^(Turn off|Turn on|Unpublish|Publish)$/)).not.toBeInTheDocument();
+    // DEC-728 wave-156: the section also carries the Saved-embeds nested
+    // screen's own entry point, addressed to the same `view=embeds` URL
+    // the screen itself reads (frame :578, below). Scoped to the
+    // "Saved embeds" region -- CallForPapersPanel (another always-mounted
+    // section) has its own unrelated "Open" link to the same public submit
+    // URL Public pages' CFP row also links.
+    await waitFor(() => {
+      expect(screen.getByText('1 on · 1 off')).toBeInTheDocument();
+    });
+    const embedsSection = screen.getByRole('region', { name: 'Saved embeds' });
+    expect(within(embedsSection).getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      '/settings?section=public-pages&view=embeds',
+    );
   });
 
   // Frame :510-548 "Settings · Speaker portal".
@@ -259,18 +277,34 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
     expect(invitePrimary).toHaveClass('chq-settings-drillrow-footer-primary');
   });
 
-  // Frame :578-598 "Settings · Saved embeds" -- reachable only nested
-  // inside the Public pages section, never as its own screen.
-  it('frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)', async () => {
+  // Frame :578-598 "Settings · Saved embeds" -- reached as a NESTED drill
+  // under Public pages (`?section=public-pages&view=embeds`, DEC-728
+  // wave-156), not an eighth SECTIONS entry.
+  it('frame :578 Saved embeds -- MATCHES (nested): its own screen carries an own back-link, own H1, and the on-off summary under it', async () => {
     verbatimLine(575, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Saved embeds</span>");
-    renderDrilled('public-pages');
-    // The frame draws Saved embeds as its own full screen: back '‹
-    // Settings', its own H1 'Saved embeds', and an 'N on · N off' summary
-    // line under the H1 (:579). None of those exist when Public pages is
-    // drilled -- SavedEmbedsPanel renders as a second section INSIDE the
-    // Public pages screen, whose own H1 stays 'Public pages'.
-    expect(screen.queryByRole('heading', { name: 'Saved embeds' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Public pages' }).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/^\d+ on · \d+ off$/)).not.toBeInTheDocument();
+    mockAllSections();
+    render(
+      <MemoryRouter initialEntries={['/settings?section=public-pages&view=embeds']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    // The frame draws Saved embeds as its own full screen: its own H1
+    // 'Saved embeds' (this file's phoneDrillTitle machinery, Settings.tsx),
+    // and an 'N on · N off' summary line under it (:582), computed from the
+    // embeds SavedEmbedsPanel already loads. Two h1s carry the text in this
+    // harness (the fixed top-level one AND its phone-only twin, `.chq-
+    // settings-drill-title` -- settings.css shows exactly one of them per
+    // width, jsdom applies no stylesheet so both render, same convention as
+    // every other test in this file, see the header comment) -- the twin
+    // itself is asserted directly.
+    expect(screen.getAllByRole('heading', { name: 'Saved embeds', level: 1 }).length).toBeGreaterThan(0);
+    expect(document.querySelector('.chq-settings-drill-title')?.textContent).toBe('Saved embeds');
+    await waitFor(() => {
+      expect(screen.getByText('1 on · 1 off')).toBeInTheDocument();
+    });
+    // Back leaves this nested screen for the Public pages read drill it
+    // nests under (DESIGN-RULINGS:247), not the section index.
+    expect(screen.getByRole('button', { name: '‹ Public pages' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '‹ Settings' })).not.toBeInTheDocument();
   });
 });
