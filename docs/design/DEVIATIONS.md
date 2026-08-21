@@ -666,3 +666,52 @@ instead of re-flagging.
   carries the row-by-row receipts): `Chautauqua Contacts.dc.html:601/602`,
   `:824/828/839`; `Chautauqua Public and Portal.dc.html:1435/1439`;
   `Chautauqua Settings.dc.html:1287/1291/1302`; `Chautauqua Speakers.dc.html:209`.
+
+## 7. Settled frame divergences (wave 16 amendment, DEC-663)
+
+Five measured divergences, re-derived against main and closed here so no
+future wave spends a lane re-deriving them. `src/decisions-data/DEC-663.md`
+carries this section's ruling in full; these five entries are its record.
+
+- **Contacts Merge · 390 picker block.** The frame's 390 drill goes straight
+  from the head band into the field-by-field compare rows: `docs/design/Chautauqua Contacts.dc.html:528` `mergeRows` opens the
+  compare loop immediately after the head's subtitle line, drawing no
+  intervening control. `MergePage` renders an additional radio list above
+  those rows: app/src/pages/contacts/MergePage.tsx`chq-contacts-merge-picks`.
+  It selects WHICH pair is being merged — a capability the frame's
+  already-chosen-pair mock (its subtitle names one fixed pair, "Marcus
+  Okafor") silently assumes — so removing it would strand a 3+-member
+  duplicate group's route to a usable merge. `src/decisions-data/DEC-663.md`
+  already deferred this decision here; this entry closes that deferral.
+- **Speaker portal landing's fourth section and its Resources footer link.**
+  `docs/design/Chautauqua Public and Portal.dc.html:414` opens the "Two
+  things to do" 390 landing frame and draws no further section past its
+  task list. `GET /portal` renders a fourth section between "Waiting on
+  you" and "Your session": src/routes/portal/index.tsx`Your submissions`,
+  and a footer link the frame also omits: src/routes/portal/index.tsx`chq-portal-footer-resources`. Both are shipped
+  product ruled real by DEC-729 and DEC-988: the frame predates the
+  features, so the frame is stale, not the route.
+- **Speakers 390 landing's "Roster ›" trigger.** No Speakers 390 frame draws
+  an entry point into the roster drill — the landing cut's own action row
+  ends with Filter and nothing after it — but the drill's own destination
+  frame IS drawn: `docs/design/Chautauqua Speakers.dc.html:260` `Roster ·
+  390` (line begins the 390 card). Without a trigger that destination is
+  unreachable dead code, so the app adds the narrowest possible entry point:
+  app/src/pages/speakers/OnboardingGrid.tsx`chq-speakers-phone-roster-link`.
+  The component's own comment beside it already records this as scaffolding,
+  not a frame match.
+- **Submit-a-talk's `Format` legend.** The frame draws the bare word
+  `Format`: `docs/design/Chautauqua Public and Portal.dc.html:1051` `Format`
+  labels the 390 submit form's format-choice group. `FormatChoices` renders
+  `<legend>{field.label}</legend>` (src/routes/public/submit-views.tsx`<legend>{field.label}</legend>`), and the seeded
+  fixture's stored label is "Session format", not the frame's bare word. The
+  label is ORGANIZER-AUTHORED content — the frame is sampling one fixture's
+  value, not specifying a product string — so hardcoding the frame's word
+  would overwrite what an organizer typed into their own CFP form.
+- **CFP wizard dock's `Save draft` vs the frame's `Draft` — ALREADY RULED,
+  recorded here only so the ledger stops re-filing it.**
+  `src/routes/public/cfp.css.ts` states the disposition in the sheet itself:
+  the accessible name stays "Save draft" per DEC-613's wave-96 amendment,
+  one control with one name at every width, and the frame's `Draft` is a
+  drawing abbreviation rather than a label to ship. Cite the sheet, not a
+  line number: src/routes/public/cfp.css.ts`the accessible name stays "Save draft" per DEC-613 wave-96 amendment`.
