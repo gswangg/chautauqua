@@ -107,15 +107,20 @@ describe('FormsPage phone drill head + dock (frame 03--06, task w2-h)', () => {
     // Reorder handle: the ONE reorder affordance stays a real button (DEC-715).
     expect(screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' })).toBeInTheDocument();
 
-    // DEC-650 wave-16 amendment: the row's Edit/Delete PAIR is desktop
-    // markup (forms.css's phone block stands Delete down via
-    // `.chq-forms-field-actions .chq-btn:last-child { display: none }`,
-    // a CSS-only fold that jsdom does not apply) -- so BOTH controls stay
-    // in the DOM at every width, and this is the render-side half of the
+    // DEC-650 wave-16 amendment, DEC-919 amendment (wave 19): the row's
+    // Edit/Delete PAIR is desktop markup (forms.css's phone block stands
+    // Delete down via `.chq-forms-field-row-delete { display: none }`, a
+    // CSS-only fold that jsdom does not apply) -- so BOTH controls stay in
+    // the DOM at every width, and this is the render-side half of the
     // desktop-frozen assertion (the CSS scan owns the phone-only fold).
+    // The Delete pill carries its own class token, never a positional
+    // `:last-child` match (DEC-989) -- asserted directly here so the two
+    // controls can never again be told apart only by DOM order.
     const titleRow = screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' }).closest('.chq-forms-field-row') as HTMLElement;
     expect(within(titleRow).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(within(titleRow).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    const titleDelete = within(titleRow).getByRole('button', { name: 'Delete' });
+    expect(titleDelete).toBeInTheDocument();
+    expect(titleDelete).toHaveClass('chq-forms-field-row-delete');
   });
 
   it('shows a "no date set" fallback and "—" received count while the submissions total has not loaded, never a fabricated number', async () => {
