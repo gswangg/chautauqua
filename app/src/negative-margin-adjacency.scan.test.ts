@@ -366,31 +366,39 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
     expect(SOURCES.length).toBe(43);
   });
 
-  // 160 -> 161 (DEC-919 wave-156, task qb-settings-yourdata-read-drill): the
-  // read drill's per-row boxed action is phone-only, so
-  // `.chq-settings-summary-row-action` carries a desktop `display: none` in
-  // settings-lists.css -- a real new declaration, not a sweep regression.
-  // 169 -> 174 (wave-16 megabatch): phone-only reveals landed in
-  // settings.css (DESKTOP_FLOOR_DIVERGENCE work) and overview.css (DEC-833's
-  // four phone-only section labels), each pairing its phone rule with a
-  // desktop `display: none`. Real new declarations, not a sweep regression.
-  // 174 -> 186 (wave-17 Thunderdome megabatch): twelve phone-only stand-downs
-  // landed together -- contacts.css +7 (DEC-995's head-band `.chq-summary` /
+  // Floor, not an equality (DEC-808 wave-18 amendment): this count moved
+  // 160 -> 161 -> 169 -> 174 -> 186 across a handful of legitimate merges,
+  // three of them inside one hour. The provenance of each step, kept because
+  // it is the evidence FOR the floor: 160 -> 161 (DEC-919 wave-156, task
+  // qb-settings-yourdata-read-drill) -- the read drill's per-row boxed action
+  // is phone-only, so `.chq-settings-summary-row-action` carries a desktop
+  // `display: none` in settings-lists.css. 169 -> 174 (wave-16 megabatch) --
+  // phone-only reveals in settings.css (DESKTOP_FLOOR_DIVERGENCE work) and
+  // overview.css (DEC-833's four phone-only section labels). 174 -> 186
+  // (wave-17 Thunderdome megabatch) -- twelve phone-only stand-downs landed
+  // together: contacts.css +7 (DEC-995's head-band `.chq-summary` /
   // `.chq-contacts-filter-match-count` hides, DEC-996's `.chq-contacts-rail`,
   // DEC-994's `.chq-contacts-segment-summary`), settings.css +2 (DEC-919's
   // SummarySection h2 + Event head-action de-duplication), submissions.css +2
-  // and home.css.ts +1. Each is a real new declaration paired with a
-  // surviving path, not a sweep regression.
-  it('the swept population carries exactly 186 comment-stripped `display: none` declarations', () => {
+  // and home.css.ts +1. Every one of those is a real new declaration paired
+  // with a surviving path, not a sweep regression -- which is precisely why
+  // pinning an exact number turns each future legitimate `display: none`
+  // anywhere in the swept tree into a merge conflict on a file no lane owns.
+  // What this assertion still catches: the derivation silently narrowing --
+  // sweeping the wrong root, a wrong suffix filter, or a broken
+  // template-literal split that drops sources out of SOURCES -- any of which
+  // would make `total` fall BELOW this floor, never rise. Floor measured at
+  // v12m-w18-c's base (main 8489dfef): 186.
+  it('the swept population carries at least 186 comment-stripped `display: none` declarations (floor, not an exact count)', () => {
     let total = 0;
     for (const s of SOURCES) {
       const stripped = stripCssComments(extractCssText(s));
       total += (stripped.match(/display\s*:\s*none\b/g) ?? []).length;
     }
-    expect(total).toBe(186);
+    expect(total).toBeGreaterThanOrEqual(186);
   });
 
-  it('finds exactly the 17 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {
+  it('finds at least the 17 negative margin/margin-top/margin-block-start declarations named in the task brief (subset, not exact set)', () => {
     const found = ALL_CANDIDATES.map((c) => `${c.fileRel} :: ${c.selector}`).sort();
     const expected = [
       'app/src/components/error-states.css :: .chq-error-summary a.chq-error-summary-link',
@@ -415,7 +423,17 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
       'src/routes/public/css/chrome.css.ts :: .chq-visually-hidden',
       'src/routes/public/css/chrome.css.ts :: .chq-pub-activefilters',
     ].sort();
-    expect(found).toEqual(expected);
+    // Subset check, not set equality (DEC-808 wave-18 amendment): a named
+    // member disappearing (wrong root, wrong suffix filter, a broken
+    // template-literal split dropping it out of ALL_CANDIDATES) is the
+    // narrowing failure worth catching. A NEW candidate appearing
+    // alongside these 17 -- another lane authoring its own receipted
+    // negative-margin rule -- is legitimate growth, not a regression, and
+    // must not turn into a merge conflict on a file no lane owns.
+    const missing = expected.filter((e) => !found.includes(e));
+    expect(missing, `named candidates missing from ALL_CANDIDATES:\n${missing.join('\n')}`).toEqual(
+      [],
+    );
   });
 });
 
