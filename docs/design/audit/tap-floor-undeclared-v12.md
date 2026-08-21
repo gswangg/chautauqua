@@ -71,7 +71,20 @@ and read the offender list the failure message prints — never trust a
 previously recorded number or this doc's own table. Do this in a
 throwaway edit (revert the `-1` afterwards); do not commit it.
 
-## Measured truth: 23 offenders, 13 sheets (wave 120, task w9-l)
+## CLOSED (wave 19, task w19-d)
+
+Re-ran `npx vitest run --config vitest.fast.config.ts
+app/src/phone-tap-target-undeclared.scan.test.ts`: 7/7 green, all 23 rows
+below fixed. `app/src/phone-tap-target-undeclared.scan.test.ts`'s
+`export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;` and its "stays at
+or under the undeclared-height offender ceiling" test both pass, meaning
+`findUndeclaredHeightOffenders()` now measures ZERO offenders against the
+live tree. Per DEC-069 wave-140 this table is annotated CLOSED, not
+deleted, so a future regression (ceiling raised back above 0, or a new
+undeclared-height token appearing) reads as a regression against this
+row, not a blank page.
+
+## Measured truth: 23 offenders, 13 sheets (wave 120, task w9-l) -- HISTORICAL, superseded by the CLOSED note above
 
 | Sheet | Selector | Token |
 | --- | --- | --- |

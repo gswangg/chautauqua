@@ -325,6 +325,24 @@ Two real items for the next waves, in priority order:
    screen does not disclose declined email updates. Extend the Cut-2
    emailConflicts receipt so every declined-update path (including
    email-conflict-on-merge) is enumerated on the completion screen.
+   CLOSED (wave 19, task w19-d): verified every declined-email path is
+   enumerated. `src/server/repo/contacts/import.ts`'s merge branch is the
+   ONLY path that can decline an email overwrite — the file's own comment
+   states "import patches never touch email — resolveImportUpsert never
+   puts `email` in an update patch" for the plain (non-merge) update path,
+   so a plain update can never decline an offered address; only a merge
+   line, where `storedEmail !== key`, does that, and it pushes
+   `emailConflicts.push({ line, contactId: mergeTargetId, kept:
+   storedEmail, offered: key });`. `src/routes/api/contacts/import.ts`'s
+   `emailConflictsField(result)` (`return result.emailConflicts.length > 0
+   ? { emailConflicts: result.emailConflicts } : {};`) is spread onto BOTH
+   response shapes (with and without `eventId`), so the receipt reaches
+   the client on every commit path. `app/src/pages/contacts/
+   ImportWizard.tsx`'s completion screen already enumerates it: `{(result
+   .emailConflicts ?? []).map((conflict) => ( <li key={`email-conflict-
+   ${conflict.line}`}> Line {conflict.line}: kept {conflict.kept} —
+   {conflict.offered} was not written. Pick a side in the directory's
+   Duplicates view. </li> ))}`. No declined-email path is missing.
 
 Also still open from round 3: the Contacts Pipeline dock (top of the red set,
 no commits yet — treat as the highest-priority build item).
