@@ -1612,4 +1612,48 @@
     margin-inline-start: -4px;
     margin-inline-end: -12px;
   }
+
+  /* task v12m-w16-ui-r2-d / DEC-937 (src/decisions-data/DEC-937.md): the
+     390 head band's face is the frame's own, not the page's generic
+     desktop chrome. docs/design/Chautauqua Contacts.dc.html:180 draws the
+     whole band as one column with an 11px rhythm and no internal rules:
+     `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
+     display:flex; flex-direction:column; gap:11px`. The desktop
+     `.chq-contacts-title-row` (no gap) and `.chq-contacts-directory-main`
+     (gap:14px, contacts.css:68-73) both need the frame's 11px on phone. */
+  .chq-contacts-title-row {
+    gap: 11px;
+  }
+
+  /* `.chq-toolbar` is a SHELL token owned by app/src/styles.css (border-top
+     hairline + 12px gap for a generic toolbar row) and is never redeclared
+     bare here; this selector is a COMPOUND with this page's own
+     `.chq-contacts-tabstrip-row` token so only the tab-filter row of this
+     frame is retargeted, the same discipline `.chq-contacts-title-row
+     .chq-summary` above already uses on this file. The head band's frame
+     line (cited two rules up) draws no hairline between the H1 and the
+     search box, so the shell's `border-top` is switched off and its
+     padding/gap are replaced with the frame's own 11px rhythm. */
+  .chq-toolbar.chq-contacts-tabstrip-row {
+    border-top: none;
+    padding-block: 0;
+    gap: 11px;
+  }
+
+  /* Note: `.chq-contacts-page`'s existing phone `gap: 16px` (~contacts.css
+     :678) is left untouched -- that selector is the page root shared by
+     the Duplicates/Segments/Pipeline drills, each with its own 390 frame
+     and its own band (DEC-964), and retightening it here would reach
+     outside this frame's authority. */
+  .chq-contacts-directory-main {
+    gap: 11px;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:186 draws the search box at
+     `padding:0 13px; font-size:14px; color:#565A4B; background:#FAF8F2`;
+     the shared `.chq-input` token resolves to font-size:15px
+     (app/src/styles.css:791), so the frame's 14px is restated here. */
+  .chq-contacts-search {
+    font-size: 14px;
+  }
 }
