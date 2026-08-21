@@ -149,3 +149,73 @@ for those three rows.
   STRUCTURE the frame draws (eyebrow/H1/standfirst/heading), not on a
   verbatim content match, since no real article's copy is a candidate for
   verbatim comparison against invented mockup text.
+
+## Request verdicts (wave 28)
+
+**Finding first, before the rows below: this population is already
+covered.** `test/home-account-docs-390-frame-verdicts.test.ts` (landed
+w14-sg, DEC-976 wave-158) already issues real requests and asserts
+returned-HTML markup for all six of these same frames — Home's three
+states plus both rows this section adds request coverage for. This task's
+own brief ("VERIFIED: both existing files issue zero requests") is true of
+`test/home-phone-frames.test.ts` / `test/account-docs-phone-frames.test.ts`
+(the CSS-text pins, still true, still zero `app.request` calls) but stale
+about the CLUSTER as a whole — a companion file closing exactly this gap
+already exists and predates this task by several waves. The two new files
+below are still real, passing, citation-contract-compliant additions (finer
+per-`expect()` granularity tied to exact body lines, one assertion per
+frame anatomy piece rather than one broad per-frame verdict) and do not
+conflict with w14-sg's rows, but a planner auditing "which 390 frames still
+lack a request verdict" should grep
+`test/home-account-docs-390-frame-verdicts.test.ts` before scheduling
+another lane here — this is the same ledger-rot pattern the field guide
+names almost every wave (a claimed gap that was already closed upstream).
+
+Covers both clusters named in this section's own citation contract: Home's
+three 390 states (no dedicated `home-v12.md`, filed here per this doc's own
+existing w14-sg precedent above) and this doc's own two Account rows plus
+the one Docs row.
+
+- **"Event hub · phone" (Chautauqua Home.dc.html:113, GET / full state)**
+  — MATCHES. `test/home-phone-frames.render.test.ts`: exactly one `<h1>`
+  reading "Events"; header "Sign in" present with no back link and no
+  `data-chq-phone-dock` band (the anonymous hub mounts no shell tab-bar to
+  stand down); "Submit a talk" and the footer's "API docs" (→
+  `/docs/api`) both present.
+- **"Between cycles · phone" (Chautauqua Home.dc.html:228, GET / with only
+  a past event)** — MATCHES. `test/home-phone-frames.render.test.ts`:
+  `<h1>` reads "No open calls right now"; archive row's "Sessions ›"
+  present; footer "API docs" present (the between-cycles-only
+  `.chq-home-footer-link-end-phone` anchor test/public-home-phone.test.ts
+  already pins at the CSS level).
+- **"Fresh deploy · phone" (Chautauqua Home.dc.html:299, GET / with no
+  org)** — MATCHES. `test/home-phone-frames.render.test.ts`: `<h1>` reads
+  "Nothing here yet"; body "Sign in" CTA present (a second occurrence
+  beside the header's own); "API docs ›" present and — this frame's own
+  footer draws no trailing "API docs" anchor (unlike the other two states)
+  — `/docs/api` appears exactly once in the body, from the body CTA alone.
+- **"Sign in · 390" (Chautauqua Account.dc.html:121, GET /login)** —
+  MATCHES on the wordmark-as-H1 ("chautauqua"), no back link / no dock
+  band, the submit control's own "Sign in" label, and both "No account?"
+  links ("Submit a talk", "Browse the sessions") for a single visible
+  event. `test/account-docs-phone-frames.render.test.ts`. (The "Forgot
+  your password?" divergence this doc already tracks above is a DIFFERENT
+  frame region — the submit row, not the H1/footer-link membership this
+  file asserts — and is not re-checked here.)
+- **"Change password · 390" (Chautauqua Account.dc.html:153, GET
+  /account/password)** — MATCHES on the `<h1>` "Change your password",
+  the drawn "‹ Back" link, and both footer controls ("Change it", "Cancel"
+  → the organizer's `/admin` back-href). `test/account-docs-phone-
+  frames.render.test.ts`.
+- **"Docs · an article · 390" (Chautauqua Docs.dc.html:166, GET
+  /docs/call-for-papers-and-submissions)** — MATCHES (structural). Exactly
+  one `<h1>`; the drawn "‹ Docs" back link and "Contents" toggle present,
+  no dock band; the figure block renders (`class="chq-docs-figure"`); the
+  pager's prev/next controls render. As this doc's own w14-sg section
+  already notes for this same frame, the H1 text ("Triaging submissions")
+  and the pager's "‹ Previous"/"Next ›" literals are illustrative mockup
+  copy with no real-content equivalent — this file asserts the requested
+  article's OWN real title and its real neighbours' titles (Start here /
+  Speakers, tasks and content) render in the corresponding slots, rather
+  than a verbatim match against invented placeholder text.
+  `test/account-docs-phone-frames.render.test.ts`.
