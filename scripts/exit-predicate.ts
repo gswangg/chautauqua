@@ -696,6 +696,17 @@ const TIER2_CEILING_NAMES: readonly string[] = [
  * accounted for; anything else is an ungraded ratchet and throws.
  */
 export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
+  DESKTOP_FLOOR_DIVERGENCE_CEILING:
+    "measures whether a desktop control's declared min-height reaches the height its OWN " +
+    "v12 frame draws for it (a control-geometry fidelity fact, distinct from whether a " +
+    "frame is CITED or whether a control's WORDS match) -- a new non-zero row in the exit " +
+    "gate would move the campaign's goalposts mid-convergence; it measures fidelity now and " +
+    "is promoted once its measurement technique is proven complete enough to gate on.",
+  DESKTOP_FLOOR_UNRESOLVED_CEILING:
+    "measures how many desktop drawn-control rows the floor-divergence join could not " +
+    "resolve to a source-code label match, a class token, or a CSS rule -- an instrument- " +
+    "completeness fact about the ledger's own join technique, not itself a v12 frame or " +
+    "390-geometry conformance fact.",
   UNCLAIMED_CEILING:
     "measures tsconfig project-include coverage (every .ts/.tsx file typechecked by " +
     "some tsconfig project or a named exclusion) -- a build/typecheck-tooling health " +
