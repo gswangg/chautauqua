@@ -3,14 +3,18 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
   ADMIN_MOBILE_PASS_BLOCKING,
   EMPTY_MOBILE_OBSERVATION,
   FONT_FLOOR_BLOCKING,
+  INTERACTIVE_CONTROL_SELECTOR,
   MIN_FONT_PX,
+  MIN_TAP_TARGET_PX,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
   allFontFloorPassed,
   allMobilePassed,
   allPassed,
+  deriveInteractiveOffenders,
   evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
@@ -30,6 +34,7 @@ import {
   selectClipOffenders,
   type ClipCandidate,
   type FontFloorRouteEntry,
+  type InteractiveMeasurement,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
 import { ADMIN_MOBILE_ROUTE_MANIFEST, KNOWN_CLIP_EXCEPTIONS, MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
@@ -1341,5 +1346,100 @@ describe("dead gallery-tile/name rules removed (DEC-991)", () => {
       expect(markup).not.toMatch(/chq-pub-gallery-tile/);
       expect(markup).not.toMatch(/chq-pub-gallery-name/);
     }
+  });
+});
+
+describe("INTERACTIVE_CONTROL_SELECTOR (DEC-367/DEC-808 w7-dd)", () => {
+  // DEC-180/DEC-808: a hand-listed population is not a population — applies
+  // to a selector list exactly as it applies to a file list. Asserts the
+  // derived selector actually contains every interactive tag/role it
+  // claims to, rather than trusting the constant's own prose.
+  const EXPECTED_TOKENS = [
+    "a[href]",
+    "button",
+    "input:not([type=hidden])",
+    "select",
+    "textarea",
+    "summary",
+    '[role="button"]',
+    '[role="link"]',
+    '[role="menuitem"]',
+    '[role="tab"]',
+    '[role="switch"]',
+    '[role="checkbox"]',
+    '[tabindex]:not([tabindex="-1"])',
+  ];
+
+  it("is a comma-joined selector list containing every DOM-native interactive tag/role", () => {
+    const parts = INTERACTIVE_CONTROL_SELECTOR.split(",").map((s) => s.trim());
+    for (const token of EXPECTED_TOKENS) {
+      expect(parts).toContain(token);
+    }
+  });
+
+  it("does not repeat any token", () => {
+    const parts = INTERACTIVE_CONTROL_SELECTOR.split(",").map((s) => s.trim());
+    expect(new Set(parts).size).toBe(parts.length);
+  });
+
+  it("includes summary — DEC-393 wave-144 already widened the tap-target tag vocabulary to include it, so the live gate and the static scans speak one vocabulary (DEC-613)", () => {
+    expect(INTERACTIVE_CONTROL_SELECTOR).toContain("summary");
+  });
+});
+
+describe("deriveInteractiveOffenders (DEC-367/DEC-808 w7-dd)", () => {
+  const visible = (over: Partial<InteractiveMeasurement>): InteractiveMeasurement => ({
+    selector: "button.chq-x",
+    tagName: "button",
+    width: 100,
+    height: 100,
+    visible: true,
+    ...over,
+  });
+
+  it("positive control: a 95x19 box below the floor is reported", () => {
+    const m = visible({ selector: "button.chq-participation-menu-trigger", width: 95, height: 19 });
+    expect(deriveInteractiveOffenders([m], MIN_TAP_TARGET_PX)).toEqual([m]);
+  });
+
+  it("negative control: a 44x120 box is not reported", () => {
+    const m = visible({ width: 120, height: 44 });
+    expect(deriveInteractiveOffenders([m], MIN_TAP_TARGET_PX)).toEqual([]);
+  });
+
+  it("visibility control: an invisible box below the floor is skipped", () => {
+    const m = visible({ width: 10, height: 10, visible: false });
+    expect(deriveInteractiveOffenders([m], MIN_TAP_TARGET_PX)).toEqual([]);
+  });
+
+  it("DEC-367: a box tall enough but narrower than the floor is still an offender (width alone can fail it)", () => {
+    const m = visible({ width: 20, height: 60 });
+    expect(deriveInteractiveOffenders([m], MIN_TAP_TARGET_PX)).toEqual([m]);
+  });
+
+  it("filters a mixed population down to only the offenders, preserving order", () => {
+    const ok = visible({ selector: "a.chq-ok", width: 200, height: 44 });
+    const badHeight = visible({ selector: "button.chq-bad-h", width: 200, height: 20 });
+    const hidden = visible({ selector: "a.chq-hidden", width: 5, height: 5, visible: false });
+    const badWidth = visible({ selector: "select.chq-bad-w", width: 10, height: 44 });
+    expect(deriveInteractiveOffenders([ok, badHeight, hidden, badWidth], MIN_TAP_TARGET_PX)).toEqual([badHeight, badWidth]);
+  });
+});
+
+describe("ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (DEC-367/DEC-808/DEC-976 w7-dd)", () => {
+  // This task is explicitly forbidden from booting a browser or running
+  // `npm run gate:render-sweep`, so there is no live offender count to seed
+  // this ratchet from — inventing one would be a fabricated measurement
+  // (DEC-967: a citation is not an assertion). Seeded at -1, the same
+  // sentinel DEC-393 wave-147's own amendment uses, which can satisfy
+  // neither side of a real two-sided ratchet and so fails loudly instead of
+  // silently passing as an unearned 0.
+  it("is seeded at the unmeasured sentinel -1, not an invented count", () => {
+    expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBe(-1);
+  });
+
+  it("the sentinel's history/handoff comment stays documented in the lib source", () => {
+    const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
+    expect(source).toContain("MUST replace -1 with the printed live");
   });
 });

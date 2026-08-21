@@ -407,6 +407,92 @@ export function formatMobileSummary(results: readonly MobileRouteResult[]): stri
 export const ADMIN_MOBILE_PASS_BLOCKING = true;
 
 // ---------------------------------------------------------------------------
+// DEC-367/DEC-808 w7-dd: the admin mobile pass's control population used to
+// be ADMIN_MOBILE_CONTROL_SELECTOR, a hand-listed six-selector list
+// (.chq-tabbar a/button, .chq-btn, .chq-input, .chq-select, header nav a) —
+// exactly the DEC-180/DEC-808 shape ("a hand-listed population is not a
+// population") applied to a selector list instead of a file list. That is
+// how a live 95x19px .chq-participation-menu-trigger renders on an admin
+// page while every static tap-floor ratchet reads 0: the static scans are
+// token-keyed, and the one instrument that measures real geometry was
+// pointed at a named handful. INTERACTIVE_CONTROL_SELECTOR replaces it with
+// every element the DOM itself calls interactive, so the live gate speaks
+// the same vocabulary as the tap-target tag list DEC-393 wave-144 widened
+// with <summary> (DEC-613: a second copy of a vocabulary is a trap with a
+// delay fuse).
+// ---------------------------------------------------------------------------
+export const INTERACTIVE_CONTROL_SELECTOR = [
+  "a[href]",
+  "button",
+  "input:not([type=hidden])",
+  "select",
+  "textarea",
+  "summary",
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="tab"]',
+  '[role="switch"]',
+  '[role="checkbox"]',
+  "[tabindex]:not([tabindex=\"-1\"])",
+].join(", ");
+
+/** A single already-measured box, in the shape the live sweep collects with
+ * `getBoundingClientRect()` inside `page.evaluate` — kept separate from any
+ * DOM/Playwright type so `deriveInteractiveOffenders` below stays pure and
+ * plain-vitest-testable (this file's whole contract: no node:/playwright
+ * imports). `visible` carries the caller's own `offsetParent !== null` check
+ * (DEC-393: visible only, not display:none) rather than this function
+ * re-implementing a DOM query the caller already ran. */
+export interface InteractiveMeasurement {
+  selector: string;
+  tagName: string;
+  width: number;
+  height: number;
+  visible: boolean;
+}
+
+/** Pure decision logic for the widened admin mobile control population:
+ * every visible measurement whose height or width falls under `floorPx`
+ * (DEC-367's two-dimension floor — a control can clear the height floor on
+ * padding alone but still be no wider than its own text, DEC-393's
+ * evasion). Invisible measurements are skipped, never re-measured. */
+export function deriveInteractiveOffenders(
+  measurements: readonly InteractiveMeasurement[],
+  floorPx: number,
+): InteractiveMeasurement[] {
+  return measurements.filter((m) => m.visible && (m.height < floorPx || m.width < floorPx));
+}
+
+/** DEC-367/DEC-808/DEC-976 w7-dd: two-sided ratchet for the admin mobile
+ * pass's offender count once its control population widens from the
+ * hand-listed six-selector ADMIN_MOBILE_CONTROL_SELECTOR to the full
+ * INTERACTIVE_CONTROL_SELECTOR above. A widening re-seeds where it widens
+ * in the repairing commit rather than flipping a blocking gate red on
+ * landing (DEC-976 wave-138, DEC-393 wave-139's own precedent for exactly
+ * this move: "the widening lands as a parameter, and the population is
+ * re-measured on the tree, not carried forward from the ruling's own
+ * estimate").
+ *
+ * This task is explicitly forbidden from booting a browser or running
+ * `npm run gate:render-sweep` — there is no live Playwright pass in this
+ * commit to read a real offender count from, and inventing one would be a
+ * fabricated measurement (a citation is not an assertion, DEC-967).
+ * Seeded at -1 instead, the same sentinel DEC-393 wave-147's own amendment
+ * uses ("seeded two-sided by forcing its constant to -1 and reading the
+ * offender list"): -1 can satisfy neither side of a real two-sided ratchet
+ * (never `<=` a non-negative measured count, never `>=` one either), so it
+ * fails loudly rather than silently passing as an unearned 0. The next lane
+ * that actually runs the live admin mobile pass against
+ * INTERACTIVE_CONTROL_SELECTOR MUST replace -1 with the printed live
+ * offender count (deriveInteractiveOffenders over every measured control on
+ * every ADMIN_MOBILE_ROUTE_MANIFEST route, floor MIN_TAP_TARGET_PX) in the
+ * same commit that wires this ceiling into ADMIN_MOBILE_PASS_BLOCKING's
+ * decision — this commit does not wire it in, so it introduces no new
+ * blocking behavior on its own. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = -1;
+
+// ---------------------------------------------------------------------------
 // DEC-411: page.evaluate keepNames shim. tsx runs esbuild with keepNames,
 // which rewrites named function/closure declarations to
 // `__name(fn, "name")` calls. When such a rewritten closure's source text is
