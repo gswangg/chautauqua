@@ -27,21 +27,46 @@ dock geometry to the shell?
    ledger's graded population.
 
 3. **Claim** -- an action dock is claimed when some single non-test file
-   under `app/src/**` or `src/**` both (a) declares a docked band (the
-   `chq-phone-dock` / `data-chq-phone-dock` tokens, or -- for a `.css` file
-   -- a rule inside a `max-width: 700px` block carrying
-   `position: sticky|fixed` + `bottom: 0` + `border-top`) and (b) renders,
-   normalized and boundary-anchored, every one of that band's drawn labels.
+   under `app/src/**` or `src/**` both (a) declares a docked band, one of
+   three ways -- (i) the `chq-phone-dock` / `data-chq-phone-dock` tokens
+   anywhere in the file; (ii) for a stylesheet file (`.css` **or** `.css.ts`
+   -- every SSR stylesheet in this repo is CSS-in-JS shipped as `.css.ts`,
+   and the geometry check is worthless if it only ever looks at `.css`), a
+   rule inside a `max-width: 700px` block carrying
+   `position: sticky|fixed` + `bottom: 0` + `border-top`; (iii) renders an
+   element carrying a class the derived `DOCK_CLASS_VOCAB` (every selector
+   in either stylesheet root whose rule body carries `border-top`) names,
+   either directly or through ONE level of indirection -- a `dock=` /
+   `footerExtra=` slot prop, itself derived from real markup, passed to a
+   component that declares the band under (iii) directly (`PortalLayout`'s
+   `.chq-portal-footer`) -- and (b) renders, normalized and
+   boundary-anchored, every one of that band's drawn (non-excluded) labels.
    Unlike the word-anywhere-in-corpus ledger, the match here is scoped to
    ONE candidate file for every label in a band -- a dock whose geometry is
    declared in a CSS file and whose copy is rendered in a separate `.tsx`
-   file is a real membership gap, not a pass.
+   file is a real membership gap, not a pass. The SSR/SPA split puts
+   geometry in a stylesheet and copy in a component BY DESIGN (public
+   agenda dock: `src/routes/public/agenda.tsx` against
+   `src/routes/public/css/agenda.css.ts`; account password dock:
+   `src/routes/account.tsx` against `src/routes/auth.css.ts`; content
+   bulk-select dock: `app/src/pages/content/SessionList.tsx` against
+   `app/src/pages/content/content.css`; home footer:
+   `src/routes/root.tsx` against `src/routes/public/home.css.ts`) -- the
+   indirection widening exists precisely so that split does not read as a
+   membership gap on its own.
 
 ## Exclusions
 
+Three tables. FIXTURE and COMPOSED were ported from
+`test/frame-control-label.scan.test.ts`'s own tables at w19-c; NON_BUILD is
+new at w21-b (DEC-976 wave-146, task w21-b, change (3)) -- distinct from
+COMPOSED because a NON_BUILD row is not "the app spells this differently
+at render time", it is "a standing ruling forbids building this control at
+all". Conflating the two hid the fact that "Save draft" has zero renderer
+anywhere to point at, ever.
+
 **FIXTURE** (a band's own mock content wearing control geometry, not a real
-UI word) -- ported from `test/frame-control-label.scan.test.ts`'s own
-table, re-verified against this ledger's own extraction:
+UI word):
 
 | file | line | label | reason |
 |---|---|---|---|
@@ -51,8 +76,8 @@ table, re-verified against this ledger's own extraction:
 | Chautauqua Public and Portal.dc.html | 464 | Priya Raman · Latticework Systems | mock speaker-identity fixture |
 
 **COMPOSED** (the app assembles the label from parts at render time, or the
-divergence is BLESSED by a recorded ruling) -- also ported from the same
-table:
+divergence is already BLESSED by a recorded ruling that still expects the
+control to exist in some form):
 
 | file | line | label | reason |
 |---|---|---|---|
@@ -60,18 +85,31 @@ table:
 | Chautauqua Public and Portal.dc.html | 494 | Later | BLESSED DEVIATIONS.md §6, DEC-967 wave-106 |
 | Chautauqua Public and Portal.dc.html | 588 | Upload slides | `taskActionLabel(t)` (src/routes/portal/index.tsx:128-132) |
 | Chautauqua Review.dc.html | 666 | Save the plan | BLESSED DEVIATIONS.md §3, DEC-745 wave-98 |
+| Chautauqua Content.dc.html | 279 | Approve 2 | digit fixture: `SessionList.tsx` renders `Approve {selectedIds.size}` |
 
-These four exclusions each fully clear one dock band's requirement
-(`Portal · Your tasks`), or reduce another to a single remaining label the
-app does render alongside a `data-chq-phone-dock` declaration in the same
-file (`Portal · Your session`'s `Edit`, `Public/Portal`'s speaker-identity
-card's `Profile`, `Plan editor · 390`'s `Cancel` in `PlanEditor.tsx`) --
-those three bands are CLAIMED and do not appear in the offender list below.
+**NON_BUILD** (a standing ruling explicitly forbids building this control;
+quoted by file:line so the exclusion rots loudly if that ruling reverses):
+
+| file | line | label | reason |
+|---|---|---|---|
+| Chautauqua Public and Portal.dc.html | 520 | Save draft | `src/decisions-data/DEC-576.md:59` (wave-128 amendment): "The frame's secondary 'Save draft' is NOT built..."; DEVIATIONS.md §6 independently lists "Hotel-form save-draft" under deferred post-deadline scope. |
+
+These exclusions each fully clear one dock band's requirement
+(`Portal · Your tasks`, `Portal · Hotel stay form`), or reduce another to a
+single remaining label the app does render alongside its band's declaring
+class in the same file (`Portal · Your session`'s `Edit`, `Public/Portal`'s
+speaker-identity card's `Profile`, `Plan editor · 390`'s `Cancel` in
+`PlanEditor.tsx`, `Content · selecting`'s bulk bar) -- those bands are
+CLAIMED and do not appear in the offender table below.
 
 ## Ratchet
 
-`PHONE_DOCK_UNCLAIMED_CEILING`, measured on this branch by forcing the
-constant to `-1` and reading the printed offender list: **13**.
+`PHONE_DOCK_UNCLAIMED_CEILING`, measured at w19-c by forcing the constant to
+`-1` and reading the printed offender list: **13**. See the two Disposition
+sections below for the w20-c and w21-b re-measurements; current value is
+**0** (docs/design/audit history retained below as the wave-by-wave
+docket -- do not delete the w19-c table, it is what w20-c's disposition is
+a disposition OF).
 
 ## Current offenders (measured, by owning cluster)
 
@@ -129,3 +167,38 @@ directly). All 12 resolve; `PHONE_DOCK_UNCLAIMED_CEILING` moves 13 -> 0.
 
 No dock survives the widening unclaimed; there is no residue for a
 following wave in this population.
+
+## Disposition (DEC-976 wave-146, task w21-b)
+
+Re-measured on this branch with all three code changes landed: `.css.ts`
+admitted alongside `.css` in the stylesheet-geometry arm (change 1, dead
+code repaired -- see the test file's `isStylesheetFile`); the indirection
+widening re-verified unchanged (change 2, already landed at w20-c); and
+`Save draft` reclassified from COMPOSED_EXCLUSIONS into a new
+NON_BUILD_EXCLUSIONS table quoting `src/decisions-data/DEC-576.md:59` and
+DEVIATIONS.md §6 by name (change 3).
+
+Forcing `PHONE_DOCK_UNCLAIMED_CEILING` to `-1` and reading the printed
+offender list: **0 offenders** -- unchanged from w20-c's measurement.
+`DOCK_CLASS_VOCAB` is sourced from `ssrCssSources()` (src/'s `.css.ts`
+modules) and a plain walk of app/src/'s `.css` files, so every dock the
+`.css.ts` geometry arm can now see was already reachable through the
+derived-class-vocabulary path (iii); the dead-code repair closes a latent
+gap (a future band that relies on the literal `position:sticky` +
+`bottom:0` + `border-top` geometry directly, with no vocabulary class the
+walk can key on, would previously have been invisible to this ledger for
+any `src/**` stylesheet) without changing today's measured count.
+
+Every surviving CLAIMED band that this wave's changes touch, per-row:
+
+| cluster | frame | band | renders the labels | declares the geometry | what changed this wave |
+|---|---|---|---|---|---|
+| Account | Change password · 390 | Account.dc.html:172 | `src/routes/account.tsx` renders `Change it`/`Cancel` verbatim | `src/routes/auth.css.ts`'s `.chq-auth-actions` carries `border-top` -- now ALSO reachable via the repaired `.css.ts` geometry arm directly, not only via `DOCK_CLASS_VOCAB` | nothing missing; claim mechanism is now doubly-reachable (vocabulary class AND, since change 1, the literal geometry rule in the same `.css.ts` file) |
+| Public/Portal | Portal · Hotel stay form | Public and Portal.dc.html:518 | `src/routes/portal/tasks/views.tsx` renders `TASK_FORM_SUBMIT_LABEL = "Send this in"` verbatim | `src/routes/portal/portal.css.ts`'s `.chq-portal-footer` carries `border-top`, reached via `dock={taskFormDock}` indirection | `Save draft` moved from COMPOSED_EXCLUSIONS to NON_BUILD_EXCLUSIONS (change 3); nothing missing -- the band's one required label (`Send this in`) already resolves |
+
+No row in this wave's population has anything missing: the 0-offender
+measurement from w20-c holds. This disposition exists so a future wave
+that widens the population (a new frame, a new dock band) inherits a
+correctly-shaped instrument rather than one whose SSR geometry arm is
+silently dead and whose non-build exclusions are indistinguishable from
+composed ones.
