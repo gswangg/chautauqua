@@ -591,6 +591,7 @@ describe("cross-org file-bytes probe (DEC-459/DEC-550, task w37-d)", () => {
       sqlite.close();
     });
 
+    // DEC-069 wave-25: measured 2707ms at 48f126b8306144d0afbd2f52dc9cc210d6fadcb2 (default 5000). Per-test timeout, never a global testTimeout -- see the amendment.
     it("every ledgered byte route refuses the wrong-org request at its exact status, body never carries file bytes, and the store is never asked for an org-A key", async () => {
       const before = snapshotOrgA(sqlite);
       const failures: string[] = [];
@@ -649,6 +650,6 @@ describe("cross-org file-bytes probe (DEC-459/DEC-550, task w37-d)", () => {
       // refusal path silently mutated a foreign-owned row.
       const after = snapshotOrgA(sqlite);
       expect(after).toEqual(before);
-    });
+    }, 30000);
   });
 });

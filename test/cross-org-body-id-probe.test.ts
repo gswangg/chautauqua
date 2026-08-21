@@ -697,6 +697,7 @@ describe("cross-org body/query-id probe (DEC-459 wave-40 amendment)", () => {
     expect(stale).toEqual([]);
   });
 
+  // DEC-069 wave-25: measured 2422ms at 48f126b8306144d0afbd2f52dc9cc210d6fadcb2 (default 5000). Per-test timeout, never a global testTimeout -- see the amendment.
   it("every exercised route refuses org B's organizer at 400/403/404 (never 2xx, never 5xx), org A's rows untouched", async () => {
     const { db, sqlite } = makeTestDb();
     seedFixture(sqlite);
@@ -760,5 +761,5 @@ describe("cross-org body/query-id probe (DEC-459 wave-40 amendment)", () => {
     expect(after).toBe(before);
 
     sqlite.close();
-  });
+  }, 30000);
 });
