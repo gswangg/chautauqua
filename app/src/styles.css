@@ -2868,4 +2868,28 @@ select:focus-visible,
     top: 6px;
     right: 6px;
   }
+
+  /* v12m-w12-qa (task qa-shell-classless-floor, DEC-180 wave-156): the last
+     four SPA_CLASSLESS_CONTROL_CEILING offenders (spa-classless-control-390
+     -v12.md rows 12-15), all keyed on shell-owned tokens the w10-na lane
+     could not touch (app/src/styles.css / app/src/App.tsx were its hard
+     scope, see this token's top-level declaration ~:1473/:1495/:1518-1519
+     above). Each is a bare `<Link>` -- ungradeable by class-token alone --
+     inside a shell-owned result/notice block, so the element-qualified `a`
+     descendant selector is the only reach that keys a rule to it without
+     touching any other anchor these tokens' ancestors might someday hold.
+     Literal `display: flex` restated (not `inline-flex`) because the
+     scan's narrow-rules-only lens matches the exact literal -- see
+     SPA_CLASSLESS_CONTROL_CEILING's history in ceilings.ts for the same
+     trap costing three prior lanes. Desktop bytes (the top-level rules)
+     unchanged. */
+  .chq-add-to-event-result a,
+  .chq-bulk-email-result a,
+  .chq-contacts-duplicate-email-notice a,
+  .chq-contacts-new-contact-duplicate-hint a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
 }

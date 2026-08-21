@@ -345,8 +345,17 @@ export const SSR_CLASSLESS_ANCHOR_CEILING = 0;
 // (append-only, DEC-385, desktop byte-identical). The remaining 4 --
 // AddToEventModal.tsx, BulkEmailModal.tsx, DuplicateEmailNotice.tsx,
 // NewContactModal.tsx, all keyed on tokens declared in app/src/styles.css
-// -- are SHELL-owned (this task's HARD SCOPE forbids editing
-// app/src/styles.css / app/src/App.tsx) and stay in the ceiling; recorded
-// as a shell finding in the audit doc, not silently exempted. RATCHET:
-// SPA_CLASSLESS_CONTROL_CEILING=4
-export const SPA_CLASSLESS_CONTROL_CEILING = 4;
+// -- were SHELL-owned (that task's HARD SCOPE forbade editing
+// app/src/styles.css / app/src/App.tsx) and stayed in the ceiling;
+// recorded as a shell finding in the audit doc, not silently exempted.
+//
+// v12m-w12-qa (task qa-shell-classless-floor, DEC-180 wave-156, shell
+// lane): drained the remaining 4. Each of the four shell-owned tokens
+// (.chq-add-to-event-result, .chq-bulk-email-result,
+// .chq-contacts-duplicate-email-notice,
+// .chq-contacts-new-contact-duplicate-hint) got an element-qualified `a`
+// descendant rule (literal `display: flex`, not `inline-flex`) appended to
+// app/src/styles.css's terminal `@media (max-width: 700px)` block. Forced
+// to -1 and read the printed offender list: 0. RATCHET:
+// SPA_CLASSLESS_CONTROL_CEILING=0
+export const SPA_CLASSLESS_CONTROL_CEILING = 0;

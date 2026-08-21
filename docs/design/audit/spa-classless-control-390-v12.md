@@ -56,23 +56,25 @@ never a number copied from the task text.
 | 9 | app/src/pages/contacts/ContactDrawer.tsx`<Link to="/contacts?tab=duplicates">Go to the Duplicates tab</Link>` (delete-confirm body) | `chq-contacts-record-label` (nearest still-open ancestor per the walk) | **Floored** — `contacts.css` terminal block, `.chq-contacts-record-label a` |
 | 10 | app/src/pages/submissions/SubmissionDetailPage.tsx`<Link to="/agenda">{formatSubmissionScheduleLine(detail.slot)}</Link>` (scheduled placement) | `chq-detail-placement` | **Floored** — `detail.css` terminal block, `.chq-detail-placement a` |
 | 11 | app/src/pages/submissions/SubmissionDetailPage.tsx`<a href={row.file.href}>{row.file.filename}</a>` (answer file download) | `chq-answer-row` | **Floored** — `detail.css` terminal block, `.chq-answer-row a` |
-| 12 | app/src/pages/contacts/AddToEventModal.tsx`>View in Speakers</Link>` | `chq-add-to-event-result` | **Shell finding, left in the ceiling** — token declared in `app/src/styles.css`; task's HARD SCOPE forbids editing the shell sheet from a page lane |
-| 13 | app/src/pages/contacts/BulkEmailModal.tsx`<Link to="/comms?tab=history">View in Comms history</Link>` | `chq-bulk-email-result` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
-| 14 | app/src/pages/contacts/DuplicateEmailNotice.tsx`>Open this contact</Link>` | `chq-contacts-duplicate-email-notice` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
-| 15 | app/src/pages/contacts/NewContactModal.tsx`<p className="chq-contacts-new-contact-duplicate-hint" role="status">` | `chq-contacts-new-contact-duplicate-hint` | **Shell finding, left in the ceiling** — same reason, `app/src/styles.css` |
+| 12 | app/src/pages/contacts/AddToEventModal.tsx`>View in Speakers</Link>` | `chq-add-to-event-result` | **Floored** — `app/src/styles.css` terminal `@media (max-width:700px)` block, `.chq-add-to-event-result a` (wave-156, task qa-shell-classless-floor) |
+| 13 | app/src/pages/contacts/BulkEmailModal.tsx`<Link to="/comms?tab=history">View in Comms history</Link>` | `chq-bulk-email-result` | **Floored** — same block, `.chq-bulk-email-result a` (wave-156, task qa-shell-classless-floor) |
+| 14 | app/src/pages/contacts/DuplicateEmailNotice.tsx`>Open this contact</Link>` | `chq-contacts-duplicate-email-notice` | **Floored** — same block, `.chq-contacts-duplicate-email-notice a` (wave-156, task qa-shell-classless-floor) |
+| 15 | app/src/pages/contacts/NewContactModal.tsx`<p className="chq-contacts-new-contact-duplicate-hint" role="status">` | `chq-contacts-new-contact-duplicate-hint` | **Floored** — same block, `.chq-contacts-new-contact-duplicate-hint a` (wave-156, task qa-shell-classless-floor) |
 
-11 of 15 drained this lane. The 4 remaining are the shell-owned rows the
-task explicitly carves out ("A shell-owned token stays in the ceiling and
-gets a finding row in the audit doc instead") — every one keys on a token
-declared in `app/src/styles.css`, which this task's HARD SCOPE forbids
-editing. `SPA_CLASSLESS_CONTROL_CEILING = 4` reflects exactly this
-remainder; a future shell-owned lane can drain rows 12-15 by adding an
-element-qualified `.chq-add-to-event-result a` / `.chq-bulk-email-result
-a` / `.chq-contacts-duplicate-email-notice a` /
-`.chq-contacts-new-contact-duplicate-hint a` rule to `styles.css`'s
-terminal `@media (max-width: 700px)` block (or a `tap-floor-exempt`
-comment, if a design review finds these are decoration rather than a real
-tap target) and re-measuring by forcing the ceiling to `-1`.
+All 15 drained. Rows 1-11 by task `v12m-w10-na`; rows 12-15 were left as
+shell findings by that task ("A shell-owned token stays in the ceiling
+and gets a finding row in the audit doc instead" — every one keys on a
+token declared in `app/src/styles.css`, which `v12m-w10-na`'s HARD SCOPE
+forbade editing from a page lane) and were drained by the shell lane
+`v12m-w12-qa` (task qa-shell-classless-floor, DEC-180 wave-156 amendment)
+in the same commit that lowered the ceiling: an element-qualified
+`.chq-add-to-event-result a` / `.chq-bulk-email-result a` /
+`.chq-contacts-duplicate-email-notice a` /
+`.chq-contacts-new-contact-duplicate-hint a` rule (each with `min-height:
+44px`, literal `display: flex`, `align-items: center`, non-zero
+horizontal padding) was appended to `styles.css`'s terminal `@media
+(max-width: 700px)` block. Re-measured by forcing the ceiling to `-1`:
+0 live offenders. `SPA_CLASSLESS_CONTROL_CEILING = 0`.
 
 ## Notes
 
