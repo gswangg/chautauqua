@@ -1631,46 +1631,6 @@
     border-top: 1px solid var(--chq-ink);
   }
 
-  /* v12m-w16-ui-r3-c / DEC-919 amendment: THE RULE CHIP STATES ITS RULE
-     SHORT. docs/design/Chautauqua Contacts.dc.html:190 draws one rule chip
-     per active rule with content `{{ r.short }}` -- `border:1px solid
-     #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
-     min-height:44px; display:flex; align-items:center; gap:9px;
-     padding:0 12px; font-size:13px; font-weight:600` -- a short token, and
-     docs/design/Chautauqua Contacts.dc.html:187 draws the STRIP that
-     scrolls, not one oversized chip: `display:flex; gap:7px;
-     overflow-x:auto; -webkit-overflow-scrolling:touch`. MEASURED DEFECT:
-     FilterRulesPanel.tsx's `ruleChipLabel()` returns the unbounded string
-     `${field} ${op} ${value}`, so a long value renders one chip wider than
-     several screens and the strip scrolls one chip, pushing the `+ Rule`
-     chip and every other active rule past the horizon. Bounded here in CSS
-     only, declared AFTER the earlier phone
-     `.chq-contacts-filter-rule-chip-edit` rule above (min-height:44px, the
-     cancelled 4px inline padding pair, the 13px/600 type register) --
-     DEC-385 single-direction, that rule is left untouched and this one
-     supersedes only the sizing/overflow behaviour on the cascade. The full
-     text is not lost: `.chq-contacts-filter-rule-chip-edit`'s own
-     `aria-label={`Edit ${ruleChipLabel(rule)}`}` (FilterRulesPanel.tsx)
-     already carries the complete, untruncated rule text -- capability
-     substitution, never removal, and no JS truncation that would fork the
-     accessible name from the visible one.
-
-     `display: block` is deliberately NOT restated here: the earlier rule
-     makes this control a flex container (`display:flex; align-items:
-     center`) so its single text node is vertically centred inside the
-     44px-tall box; switching to `display: block` would drop that flex
-     formatting context and the text would sit at the block's top instead
-     of centred, breaking the frame's `align-items:center` line. An
-     inline/flex box with `min-width:0` and `overflow:hidden` ellipsises
-     its own text content exactly like a block one, so the flex display is
-     kept and only the overflow/size properties are added. */
-  .chq-contacts-filter-rule-chip-edit {
-    max-width: 46vw;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 
   /* DEC-383 amendment (v12m-w16-ui-r3-b): B8 interaction states for the
      three phone-only chip controls in the rule strip. MEASURED DEFECT on
@@ -1742,6 +1702,47 @@
   .chq-contacts-filter-rule-chip-edit:active {
     color: var(--chq-brand-active);
     text-decoration: underline;
+  }
+
+  /* v12m-w16-ui-r3-c / src/decisions-data/DEC-919.md amendment: THE RULE CHIP STATES ITS RULE
+     SHORT. docs/design/Chautauqua Contacts.dc.html:190 draws one rule chip
+     per active rule with content `{{ r.short }}` -- `border:1px solid
+     #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
+     min-height:44px; display:flex; align-items:center; gap:9px;
+     padding:0 12px; font-size:13px; font-weight:600` -- a short token, and
+     docs/design/Chautauqua Contacts.dc.html:187 draws the STRIP that
+     scrolls, not one oversized chip: `display:flex; gap:7px;
+     overflow-x:auto; -webkit-overflow-scrolling:touch`. MEASURED DEFECT:
+     FilterRulesPanel.tsx's `ruleChipLabel()` returns the unbounded string
+     `${field} ${op} ${value}`, so a long value renders one chip wider than
+     several screens and the strip scrolls one chip, pushing the `+ Rule`
+     chip and every other active rule past the horizon. Bounded here in CSS
+     only, declared AFTER the earlier phone
+     `.chq-contacts-filter-rule-chip-edit` rule above (min-height:44px, the
+     cancelled 4px inline padding pair, the 13px/600 type register) --
+     DEC-385 single-direction, that rule is left untouched and this one
+     supersedes only the sizing/overflow behaviour on the cascade. The full
+     text is not lost: `.chq-contacts-filter-rule-chip-edit`'s own
+     `aria-label={`Edit ${ruleChipLabel(rule)}`}` (FilterRulesPanel.tsx)
+     already carries the complete, untruncated rule text -- capability
+     substitution, never removal, and no JS truncation that would fork the
+     accessible name from the visible one.
+
+     `display: block` is deliberately NOT restated here: the earlier rule
+     makes this control a flex container (`display:flex; align-items:
+     center`) so its single text node is vertically centred inside the
+     44px-tall box; switching to `display: block` would drop that flex
+     formatting context and the text would sit at the block's top instead
+     of centred, breaking the frame's `align-items:center` line. An
+     inline/flex box with `min-width:0` and `overflow:hidden` ellipsises
+     its own text content exactly like a block one, so the flex display is
+     kept and only the overflow/size properties are added. */
+  .chq-contacts-filter-rule-chip-edit {
+    max-width: 46vw;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* docs/design/Chautauqua Contacts.dc.html:190 `border:1px solid

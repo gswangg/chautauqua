@@ -1,4 +1,4 @@
-// task v12m-w16-ui-r3-c (DEC-919 amendment: "THE RULE CHIP STATES ITS RULE
+// task v12m-w16-ui-r3-c (src/decisions-data/DEC-919.md amendment: "THE RULE CHIP STATES ITS RULE
 // SHORT"): contacts.css text scan bounding `.chq-contacts-filter-rule-chip-
 // edit`'s label width at 390 so a long unbounded `ruleChipLabel()` string
 // cannot push the `+ Rule` chip and every other active rule past the
@@ -53,7 +53,7 @@ function maxWidth700Blocks(css: string): Array<{ start: number; end: number; bod
 const STRIPPED = stripCssComments(CSS);
 const BLOCKS = maxWidth700Blocks(STRIPPED);
 
-describe('contacts.css rule-chip label bound at 390 (DEC-919 amendment, v12m-w16-ui-r3-c)', () => {
+describe('contacts.css rule-chip label bound at 390 (src/decisions-data/DEC-919.md amendment, v12m-w16-ui-r3-c)', () => {
   it('the whole file has exactly one @media (max-width: 700px) block, and the bound rule lives inside it', () => {
     expect(BLOCKS.length).toBe(1);
     const last = BLOCKS[0]!;
