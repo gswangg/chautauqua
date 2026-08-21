@@ -25,15 +25,19 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 
 /** Strips block comments before any brace scanning, mirroring
  * contacts-phone-frames.test.ts's `read` -- a literal `{`/`}` inside a long
- * explanatory comment must never desynchronise the depth counter. */
+ * explanatory comment must never desynchronise the depth counter. Routed
+ * through the shared, string-aware stripper (DEC-374/DEC-613) rather than a
+ * local regex -- a naive `/\*[\s\S]*?\*\//` pass is comment-blind to a
+ * comment that quotes a frame line verbatim above the rule it decorates. */
 function read(path: string): string {
-  return readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(path, 'utf-8'));
 }
 
 const REVIEW_CSS = read(join(HERE, 'review.css'));

@@ -23,13 +23,17 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 import { unscoredBannerCopy } from './scorecardLogic';
 import type { EvaluationCriterion } from './types';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/** Routed through the shared, string-aware stripper (DEC-374/DEC-613)
+ * rather than a local regex -- a naive pass is comment-blind to a comment
+ * quoting a frame line verbatim above the rule it decorates. */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const SCORECARD_CSS = read('scorecard.css');

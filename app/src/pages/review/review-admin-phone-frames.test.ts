@@ -30,15 +30,19 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Comments are stripped before any brace scanning: review.css carries long
  * explanatory comments, and a literal `{`/`}` inside one (a class-name
  * example, a `var(--x, #hex)` reference) would desynchronise the depth
- * counter and silently truncate a block. */
+ * counter and silently truncate a block. Routed through the shared,
+ * string-aware stripper (DEC-374/DEC-613) rather than a local regex -- a
+ * naive pass is comment-blind to a comment quoting a frame line verbatim
+ * above the rule it decorates. */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const REVIEW_CSS = read('review.css');
@@ -81,7 +85,6 @@ function phoneRule(css: string, selector: string): string {
   let found: string | null = null;
   while ((m = rule.exec(layer)) !== null) {
     const selectors = m[1]!
-      .replace(/\/\*[\s\S]*?\*\//g, '')
       .split(',')
       .map((s) => s.trim().replace(/\s+/g, ' '))
       .filter(Boolean);
