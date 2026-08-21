@@ -134,3 +134,73 @@ tasks" / "Resources", both back-linked but neither is one of this task's
 three named frames). `src/routes/portal/index.tsx:326` (the portal
 dashboard's own "N things to do" H1) is the one genuine cluster-landing
 page and correctly keeps the 27px base rule untouched.
+
+---
+
+# Portal SSR 390 per-frame render verdicts, part 1 of 2 (w14-sd, DEC-976 wave-158 amendment)
+
+MEASUREMENT ONLY — fixes nothing, touches no route module and no
+`*.css.ts`. Each row below is entered by a real `app.request()` through the
+mounted `/portal/*` route sub-apps (never a hand-built-props view call) and
+graded by `test/portal-390-frame-verdicts.test.ts`, per the DEC-976
+wave-158 amendment's SSR verdict contract. A DIVERGES row is a finding, not
+a failure. Frame citations are verbatim literals from `docs/design/
+Chautauqua Public and Portal.dc.html`. The remaining ten of the fourteen
+Public-and-Portal SSR phone frames are part 2 of 2, a sibling task's file.
+
+## Frame :414 "Speaker portal" (GET /portal) — DIVERGES
+
+The frame's scroll body (:410-462) draws exactly three sections — "Waiting
+on you", "Your session", "Done" — and a footer band with the speaker's
+name/company and a "Profile" link only. The route (`PortalPage`,
+`src/routes/portal/index.tsx`) renders a FOURTH section, "Your submissions"
+(`aria-label="Your submissions"`, DEC-729), between "Waiting on you" and
+"Your session" — every submission the speaker owns, pending/accepted/
+declined alike, a section the frame never draws. The footer additionally
+links to `/portal/resources` (DEC-988 wave-74 amendment: reachable whenever
+any of the speaker's events permits resources) alongside "Profile", where
+the frame's footer band draws only the name/company clause and "Profile".
+Both are real, intentional product surface (DEC-729, DEC-988), not
+fixture noise — this is a frame that has not been updated to match a
+feature that shipped after it was drawn, not a bug.
+
+## Frame :476 "Portal · Your tasks" (GET /portal/tasks) — DIVERGES
+
+The frame (:473-497) matches on back link ('‹ Your portal'), H1 ("Your
+tasks"), and per-row anatomy (title / state flag / due / action). Its
+docked footer draws TWO controls — a primary ("Mark the release signed")
+and a bordered secondary ("Later"). The route's dock
+(`tasksPageDockPrimary`, `src/routes/portal/tasks/views.tsx`) renders
+exactly ONE real control — the first incomplete task's own action (e.g.
+"Mark complete") — and no secondary at all, at any task-list state. The
+file's own DEC-576/DEC-967 amendment comment records why: the frame's
+"Later" has no verb behind it, so no button is manufactured just to fill
+the band. Not a new finding — DEVIATIONS.md already tracks this — but this
+is its first render-through-the-route confirmation.
+
+## Frame :531 "Portal · Your profile" (GET /portal/profile) — DIVERGES
+
+The frame (:528-556) matches on back link, headshot section, and field
+anatomy. Two real divergences: (1) the H1 text itself — the route
+(`ProfilePage`, `src/routes/portal/profile.tsx`) renders `<h1
+class="chq-portal-hero">My Profile</h1>`, where the frame draws `<h1
+...>Your profile</h1>` (:534) — a different string, not a casing quirk (the
+rest of the page correctly uses "Profile" nowhere else as a page name). (2)
+the docked footer: the frame draws a primary "Save" plus a bordered
+secondary "Cancel"; the route's `profileDock` renders only "Save profile",
+with no Cancel control — the same "never manufactured just to fill the
+band" rule as the tasks frame above, and already recorded in-file as a
+DEVIATIONS.md entry (this page has no distinct "leave without saving"
+destination from the existing back-link/sign-out). The H1 text mismatch is
+NOT previously recorded anywhere in this audit file and is a real,
+unscheduled finding.
+
+## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
+
+The frame (:1554-1580) draws: back link, H1 "Resources", subtitle "The same
+for every speaker · nothing here is about your session", per-resource rows,
+and a footer note ("Questions? Reply to any of our emails.") with no docked
+control. `ResourcesPage` (`src/routes/portal/tasks/resources.tsx` +
+`src/routes/portal/tasks/views.tsx`) renders every element in that exact
+order, including the deliberate absence of a dock — the only one of this
+task's four frames with a clean render-through-the-route MATCH.
