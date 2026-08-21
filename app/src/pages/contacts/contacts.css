@@ -1247,8 +1247,17 @@
      #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
      min-height:44px; display:flex; align-items:center; gap:9px;
      padding:0 12px; font-size:13px; font-weight:600` -- #4E5C31 ->
-     --chq-brand exactly, #EFF1E4 -> --chq-surface-sunk, #2E3A16 ->
-     --chq-brand-hover, radius 4px -> --chq-r-ctl exactly. */
+     --chq-brand exactly, radius 4px -> --chq-r-ctl exactly. #EFF1E4 is an
+     approximation resolved to --chq-surface-sunk (#efebdf), the palette's
+     nearest sunk surface, not a byte match. #2E3A16 is the frame's
+     one-step-darker label ink; the palette carries no third olive, and a
+     control's REST ink is never a state token (DEC-367 amendment, wave-16
+     r5) -- spending --chq-brand-hover here would make the label's own
+     hover a no-op against the identical B8 hover rule below. So #2E3A16
+     resolves to --chq-brand instead, the same rest token the border
+     already draws, restoring a monotone rest -> hover -> active ladder:
+     --chq-brand #4e5c31 -> --chq-brand-hover #3c471f -> --chq-brand-active
+     #33401a (see docs/design/DEVIATIONS.md §3). */
   .chq-contacts-filter-rule-chip {
     min-height: 44px;
     display: flex;
@@ -1258,7 +1267,7 @@
     border: 1px solid var(--chq-brand);
     border-radius: var(--chq-r-ctl);
     background: var(--chq-surface-sunk);
-    color: var(--chq-brand-hover);
+    color: var(--chq-brand);
     font-size: 13px;
     font-weight: 600;
   }
@@ -1266,7 +1275,10 @@
   /* Single-compound selector on purpose -- NOT `.chq-contacts-filter-rule-chip
      button` -- a combinator would pull this into
      cancelled-padding-gap.scan.test.ts's population and force a widened
-     container gap away from the frame's 9px. #5E6B47 -> --chq-muted. */
+     container gap away from the frame's 9px. #5E6B47 is an approximation
+     resolved to --chq-muted (#565a4b), not a byte match -- the palette
+     carries no separate dismiss-glyph ink (see
+     docs/design/DEVIATIONS.md §3). */
   .chq-contacts-filter-rule-chip-dismiss {
     min-height: 44px;
     display: flex;
