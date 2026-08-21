@@ -1949,4 +1949,112 @@
   .chq-content-worklist > .chq-bulkbar {
     order: 1;
   }
+
+  /* w15-tc (DEC-989 wave-159): docs/design/Chautauqua Content.dc.html's
+     "Session · deliverable" frame draws the body below the header/status
+     band as ONE scrolling column, not the desktop two-column grid --
+     version rows (:393-403), then the 2px-ruled label reading verbatim
+     "Notes on the slides" (:405-407), then the comment rows (:408-416),
+     then the dashed link reading verbatim "Upload a file for the speaker"
+     (:417), then the note textbox (:418). DESKTOP IS FROZEN: the grid stays
+     grid at every width above this block's own 700px ceiling (DEC-385
+     single-direction), and neither column's markup is forked -- instead
+     both column wrappers, plus CommentThread's own root (which otherwise
+     bundles the comment list AND the composer AND the phone dock behind
+     one undifferentiated box, one level deeper than the columns
+     themselves), turn `display:contents` so their real children become
+     flex items of .chq-content-group-body directly, and `order` below
+     places each grandchild in the frame's sequence. Nothing here reaches
+     into a component this lane doesn't own -- every selector is a plain
+     descendant/child match against markup DeliverableDetail.tsx,
+     VersionList.tsx, UploadZone.tsx and CommentThread.tsx already emit. */
+  .chq-content-group-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-content-group-body > .chq-content-files-col,
+  .chq-content-group-body > .chq-content-comments-col,
+  .chq-content-group-body .chq-comment-thread {
+    display: contents;
+  }
+
+  /* Deliverable picker chrome (not drawn by this frame at all -- it lives
+     in the frame's HEADER band, :380-383 -- but real product chrome this
+     lane isn't scoped to relocate) stays first, ahead of the frame's own
+     five pieces below. */
+  .chq-content-group-body .chq-content-deliverables-label {
+    order: 1;
+  }
+
+  .chq-content-group-body .chq-content-files-col > .chq-chipstrip {
+    order: 2;
+  }
+
+  .chq-content-group-body .chq-content-files-col > .chq-content-chip-caption {
+    order: 3;
+  }
+
+  /* Frame :393-403, version rows. VersionList.tsx's root is a Fragment (its
+     own delete-error span and empty state are its literal siblings, not
+     nested inside the list), so both are pinned alongside the list itself. */
+  .chq-content-group-body .chq-content-files-col > .chq-content-version-list,
+  .chq-content-group-body .chq-content-files-col > .chq-error,
+  .chq-content-group-body .chq-content-files-col .chq-empty-block {
+    order: 4;
+  }
+
+  /* Frame :405-407, the 2px-ruled "Notes on the slides" label -- already
+     the border-bottom:2px rule above (.chq-content-notes-label), this only
+     places it in sequence. */
+  .chq-content-group-body .chq-content-notes-label {
+    order: 5;
+  }
+
+  /* Frame :408-416, comment rows. */
+  .chq-content-group-body .chq-content-comments-col .chq-content-comment-list,
+  .chq-content-group-body .chq-content-comments-col .chq-empty-block {
+    order: 6;
+  }
+
+  /* Real product disclosure (DEC-020 wave-58 amendment) the frame doesn't
+     draw at all -- kept adjacent to the upload action it reports on rather
+     than stranded up with the version list. */
+  .chq-content-group-body .chq-content-upload-reopened-notice {
+    order: 7;
+  }
+
+  /* Frame :417, the dashed link -- UploadZone.tsx's own phone-only prompt
+     span already reads this string verbatim ("Upload a file for the
+     speaker", .chq-content-upload-prompt-phone), this only moves the whole
+     zone into sequence. */
+  .chq-content-group-body .chq-content-upload-zone {
+    order: 8;
+  }
+
+  /* Frame :418, the note textbox -- CommentThread's composer (textarea +
+     char-limit caption; its own Ask-for-changes/Send-note-only pair is
+     already `display:none` here, above, so only the textbox itself is
+     newly visible in this slot). */
+  .chq-content-group-body .chq-comment-composer {
+    order: 9;
+  }
+
+  /* Composer send failure (not drawn by the frame) stays with the composer
+     it belongs to rather than jumping after the dock below. */
+  .chq-content-group-body .chq-comment-thread > .chq-error {
+    order: 10;
+  }
+
+  /* The docked Ask-for-changes/Send-note-only footer (:421-426) already
+     matches and is not this lane's -- pinned last so this reorder never
+     moves it off the bottom it already renders at. */
+  .chq-content-group-body .chq-phone-dock {
+    order: 11;
+  }
+
+  /* Post-send disclosure line, after the dock in source order already. */
+  .chq-content-group-body .chq-content-comment-sent {
+    order: 12;
+  }
 }
