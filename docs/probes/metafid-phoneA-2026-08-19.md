@@ -89,6 +89,15 @@
   chq-settings-drill-title">` in source order (back above H1, per
   DESIGN-RULINGS:247). The frame-count clause ("five of nine frames never
   rendering as drawn") was NOT re-measured this wave and stays open.
+  CLOSED (wave 154, w10-ne, DEC-976 amendment — re-measured by actually
+  rendering all nine 390 READ frames through Settings.tsx's real panel
+  routing; the original "five of nine" undercounted, per-frame verdicts in
+  docs/design/audit/settings-v12.md): eight of nine diverge from the frame
+  (only Public pages matches); every divergence is a missing control or a
+  missing screen (DEC-728's read/edit split vs. the frame's field-list+
+  footer anatomy, per-row actions absent, Saved embeds never its own
+  screen), none a phone-CSS/markup-order fix. Render receipts:
+  app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)`
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;

@@ -146,3 +146,52 @@ geometry"; flagging rather than guessing at scope)
   DEVIATIONS.md §6 names 09--07's toggle explicitly as deferred
   post-deadline, no backing data. Not rendered at all (never as a disabled
   control), per that ruling.
+
+---
+
+<!-- w10-ne (DEC-976 amendment wave 154) -->
+
+## task-w10-ne: per-frame verdict, all nine 390 READ frames — closing the
+phoneA "frame-count" open clause
+
+`docs/probes/metafid-phoneA-2026-08-19.md` carried one self-declared open
+clause since wave 118: "the frame-count clause ('five of nine frames never
+rendering as drawn') was NOT re-measured this wave and stays open." This
+task actually rendered all nine, entered through `Settings.tsx`'s real
+panel routing (`<MemoryRouter initialEntries={['/settings?section=<key>']}>
+<SettingsPage /></MemoryRouter>`, never a panel mounted directly), and
+recorded a verdict per frame below. Render receipts:
+`app/src/pages/Settings.frame-verdicts.render.test.tsx` (9 passing tests,
+one per frame, each opening with a DEC-967 `verbatimLine` citation of the
+frame's own caption line).
+
+The original "five of nine" undercounted: **eight of nine diverge**, only
+Public pages matches. No divergence found is a phone-CSS or markup-ORDER
+fix (DEC-385) — every one is a genuine content/control gap, most already
+catalogued above by earlier lanes, in the app's deliberate DEC-728
+read/edit split (a `SummarySection` head-first "Change" drill in front of
+plain read rows, converged wave 15, adopted identically by every panel in
+this cluster) versus the frame's per-screen field-list-then-Save/Cancel-
+footer anatomy. Rebuilding that split is a cross-cutting architectural
+change spanning every panel in the cluster, well outside a page-scoped
+task — flagged, not attempted, consistent with every prior lane's
+disposition of the same family of gap.
+
+| Frame | Verdict | What diverges |
+| --- | --- | --- |
+| `:275` Settings (landing) | MATCHES | Index row order (label + "Open" + detail) equals the frame's `mobileGroups` order; DEC-691/DEC-747 rail order. |
+| `:316` Settings · Event | DIVERGES | Read view is `SummarySection`'s head-first "Change" (button precedes every row); frame draws content rows then a Save/Cancel footer. No Save/Cancel renders in read mode. |
+| `:347` Settings · Tracks and rooms | DIVERGES | No per-row boxed "Edit", no dashed "Add a track"/"Add a room" row (frame `:364,367,409,423`) — only the section-level "Add" drill. Already documented above ("no per-row Edit/Download/Revoke affordance"). |
+| `:393` Settings · Your data | DIVERGES | No per-row "Download"/"Revoke" action in read mode — only the section-level "Change" drill. Masked-tokens/Revoke/New-token clause is separately CLOSED (wave 118); this per-row-action clause is the still-open remainder of that same finding. |
+| `:444` Settings · Call for papers | DIVERGES | Per-question list (`:467-475`, one row + boxed "Edit" per question) collapsed to one computed summary row — form-builder delegation, already documented above. |
+| `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
+| `:510` Settings · Speaker portal | DIVERGES | Welcome note (`:518`, full boxed readout) collapsed to a computed one-line summary ("Shown above the task list · N paragraph(s)") — already documented above (DEC-815). |
+| `:552` Settings · People and roles | DIVERGES | No per-row boxed "Change" (`:560`), no always-on primary "Invite someone" (`:565`) — both live behind the section-level "Change" drill (DEC-815). Not previously receipted in this doc; newly found by this task's render. |
+| `:578` Settings · Saved embeds | DIVERGES | Never renders as its own screen: no own back-link, no own H1 ("Saved embeds"), no "N on · N off" summary line (`:579`) under the H1. `SavedEmbedsPanel` instead mounts as a second, always-visible section nested *inside* the Public pages screen (`PublicPagesPanel.tsx`) whose own H1 stays "Public pages". Row-shape differences (Turn on/off + Get code pair vs. "four flush buttons") already documented in `docs/probes/metafid-phoneA-2026-08-19.md`. |
+
+**Nothing in this list is a phone-block-CSS or markup-order fix** — every
+row is a missing control or a missing screen, each requiring new markup/
+wiring (per-row action buttons, a standalone Saved-embeds screen with its
+own route state, full-text readouts) rather than a reflow of what already
+renders. Left as findings for whoever owns the next architectural pass on
+this cluster, per this task's design-gap instruction.
