@@ -355,5 +355,14 @@
 // inside a JSX `{}`) and referencing it via a bare `{wizardBreadcrumb}`
 // avoids the trap -- the fix lives in ComposeWizard.tsx, not this ledger.
 // Forced to -1 and read back: 13, down from 15.
+// v12m-w4-am (wave-148, DEC-613/DEC-829): disposed the two rows this task
+// owns as COMPOSED -- Chautauqua Settings.dc.html:1515 ('Step 2 of 3 ·
+// what we found', SessionboardImportPanel.tsx's `step` scalar) and
+// Chautauqua Speakers.dc.html:499 ('3 speakers · nothing has been sent
+// yet', RemindPreviewModal.tsx's `subtitle` prop) -- neither is found by
+// the plain-substring or digit-skeleton pass because the phase/noun word
+// is chosen inside a `${...}` template placeholder that
+// collapseSourcePlaceholders collapses whole, together with the literal
+// text nested in it. Forced to -1 and read back: 13.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
 export const FRAME_CAPTION_UNMATCHED_CEILING = 13;

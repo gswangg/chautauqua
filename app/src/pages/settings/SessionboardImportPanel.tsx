@@ -218,6 +218,11 @@ export function SessionboardImportPanel() {
       <div className="chq-settings-section-head">
         <h2>Import from Sessionboard</h2>
       </div>
+      <p className="chq-settings-section-caption">
+        {`Step ${step} of 3 · ${
+          step === 1 ? 'choose file' : step === 2 ? 'what we found' : 'done'
+        }`}
+      </p>
 
       <p className="chq-settings-sessionboard-layer2-note">
         This build only supports importing your CSV/XLSX export from Sessionboard, below. Connecting a
