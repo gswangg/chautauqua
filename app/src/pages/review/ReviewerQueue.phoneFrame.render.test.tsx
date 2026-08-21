@@ -241,8 +241,12 @@ describe('ReviewerQueue phone frame (Chautauqua Review.dc.html:413)', () => {
     const signOutButton = await screen.findByRole('button', { name: 'Sign out' });
     signOutButton.click();
 
+    // v12m-w14-si (DEC-154): signOut() navigates to the server-named redirect
+    // target, keeping ?signed-out=1 rather than the bare '/login' it used to
+    // hardcode. The mocked /logout Response carries no url, so the fallback
+    // literal applies.
     await vi.waitFor(() => {
-      expect(assignSpy).toHaveBeenCalledWith('/login');
+      expect(assignSpy).toHaveBeenCalledWith('/login?signed-out=1');
     });
     expect(fetchMock).toHaveBeenCalledWith(
       '/logout',

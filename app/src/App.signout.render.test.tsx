@@ -90,7 +90,7 @@ describe('signOut() (DEC-154 wave 14 amendment)', () => {
     expect(assignSpy).not.toHaveBeenCalled();
   });
 
-  it('navigates to /login when the /logout response is ok', async () => {
+  it('navigates to /login?signed-out=1 when the /logout response is ok', async () => {
     stubFetch({ ok: true, status: 200 });
     const assignSpy = stubLocationAssign();
 
@@ -99,8 +99,12 @@ describe('signOut() (DEC-154 wave 14 amendment)', () => {
     const signOutButton = await screen.findByRole('button', { name: 'Sign out' });
     signOutButton.click();
 
+    // v12m-w14-si (DEC-154): signOut() no longer hardcodes '/login' -- it keeps
+    // the server-named ?signed-out=1 query that loginStatusLine needs to render
+    // the DESIGN-RULINGS.md item 24 confirmation line. stubFetch's Response
+    // carries no url, so signOut() falls back to the agreed literal.
     await vi.waitFor(() => {
-      expect(assignSpy).toHaveBeenCalledWith('/login');
+      expect(assignSpy).toHaveBeenCalledWith('/login?signed-out=1');
     });
   });
 });
