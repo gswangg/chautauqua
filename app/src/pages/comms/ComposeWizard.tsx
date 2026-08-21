@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
@@ -15,7 +16,7 @@ import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { SendFailures } from '../../components/SendFailures';
 import { FormRow } from '../../components/ModalFrame';
-import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
+import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, templateUsesMergeField, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf, capitalizeFirst, plural, spellCount } from '../../lib/plural';
 import { isoToMs, formatDayLabel } from '../../lib/dates';
@@ -24,8 +25,9 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { writeComposeDraft, clearComposeDraft } from './composeDraft';
 import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_317, DEC_752, DEC_793, DEC_825, DEC_967, DEC_993 } from '../../../../src/decisions';
+import { DEC_317, DEC_660, DEC_752, DEC_793, DEC_825, DEC_939, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
+import { useIsPhone } from '../../lib/useIsPhone';
 
 void DEC_317;
 // DEC-752/DEC-825 back the always-mounted bulk bar contract (DEC-967
@@ -37,6 +39,18 @@ void DEC_793;
 void DEC_825;
 void DEC_967;
 void DEC_993;
+void DEC_660;
+void DEC_939;
+
+// DEC-660 (wave-148): the only merge field COMPOSE_MERGE_FIELDS carries
+// whose value depends on a submission's slot assignment (buildMergeVars,
+// src/domain/compose.ts) -- session_time is undefined for an unscheduled
+// recipient, so renderTemplate (src/mail/render.ts) throws MergeFieldError
+// for exactly those recipients and preview.ts turns that into a whole-batch
+// refusal. Kept as an array (not a single constant) so a second
+// slot-dependent field grown into COMPOSE_MERGE_FIELDS later pluralizes the
+// band's heading correctly rather than requiring a second warning.
+const SLOT_DEPENDENT_MERGE_FIELDS: readonly MergeField[] = ['session_time'];
 
 // DEC-967 amendment (wave 18): the picker defaults to Accepted alone -- the
 // shortest path (arrive, Next, Next) must compose against the talks that
@@ -734,6 +748,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   const currentIndex = STEP_ORDER.indexOf(step);
   const pageIds = submissions.map((s) => s.id);
+  const isPhone = useIsPhone();
 
   // DEC-954: `ics` is only populated when the server actually ran the ICS
   // preflight for THIS preview call -- after a rejected attachIcs toggle the
@@ -751,6 +766,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     const known = knownSubmissions.get(id);
     return known ? known.slot === null : false;
   }).length;
+  // DEC-660 (wave-148, frame :769): pre-emptive advisory on the template
+  // step -- which slot-dependent merge fields the composer's OWN subject/
+  // body text actually references. Empty whenever the organizer hasn't
+  // typed a slot-dependent token, so the band stays silent for the common
+  // case (session_time never mentioned).
+  const usedSlotDependentFields = SLOT_DEPENDENT_MERGE_FIELDS.filter(
+    (field) => templateUsesMergeField(subject, field) || templateUsesMergeField(bodyText, field),
+  );
   // DEC-793 amendment (wave 28): the partial-send count named on the
   // blocked banner's secondary action — always preview.length minus the
   // named-blocked ids, never a client-side guess at who's scheduled.
@@ -780,8 +803,24 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // /compose/send's own toSend.length + skipped.length runs internally.
   const sentTotal = sendResult ? sendResult.sent + sentFailedCount + skippedRecipients.length : 0;
 
+  // Frame :757 (DEC-939, wave-148): the desktop 1600 header's own
+  // "Comms · Compose · step N" breadcrumb -- portalled into the admin
+  // shell's header identity slot exactly like Scorecard's queue counter
+  // (Scorecard.tsx:583-605), never a second step counter: `n` is
+  // `currentIndex + 1`, the same index stepMeta/the stepper strip below
+  // already derive from `step`. Desktop-only (the 390 Comms frames draw no
+  // header breadcrumb); computed as its own variable (not inline inside a
+  // `{cond && (...)}` JSX conditional) rather than nested JSX conditional
+  // — null, and thus renders nothing, when the slot node isn't mounted (a
+  // wizard rendered alone in a test).
+  const headerSlotNode = !isPhone && typeof document !== 'undefined' ? document.getElementById('chq-header-slot') : null;
+  const wizardBreadcrumb = headerSlotNode
+    ? createPortal(<p className="chq-comms-wizard-breadcrumb">Comms · Compose · step {currentIndex + 1}</p>, headerSlotNode)
+    : null;
+
   return (
     <div className="chq-compose-wizard" onKeyDown={handleStepEnterKeyDown}>
+      {wizardBreadcrumb}
       {error && (
         <div className="chq-error-banner" role="alert">
           {error}
@@ -1251,6 +1290,39 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 ))}
               </select>
             </label>
+          )}
+
+          {/* Frame :769 (DEC-660, wave-148): pre-emptive, advisory --
+              rendered from state the wizard already holds (no round-trip
+              to /compose/preview) the moment the composed subject/body use
+              a slot-dependent merge field AND the current selection has
+              recipients with no slot yet. The frame's own consequence
+              sentence ("They would receive the literal text
+              '{session_time}'") is false for this app -- renderTemplate
+              (src/mail/render.ts) throws MergeFieldError for a missing var
+              and preview.ts turns that into a whole-batch refusal, so this
+              band states the refusal instead, and names the partial-send
+              path (the "Send to the N who have a slot" secondary action
+              that already exists on the ics-unscheduled refusal banner
+              above) as how to proceed. This is also what makes step 1's own
+              "they can still be emailed" note true only when it's true: a
+              body that never uses a slot-dependent field really does still
+              email an unscheduled recipient; a body that does, doesn't. */}
+          {usedSlotDependentFields.length > 0 && selectedNoSlotCount > 0 && (
+            <div className="chq-comms-merge-warning" role="status">
+              <p className="chq-comms-merge-warning-title">
+                {capitalizeFirst(spellCount(usedSlotDependentFields.length))}{' '}
+                {plural(usedSlotDependentFields.length, 'merge field')} will not resolve for{' '}
+                {selectedNoSlotCount} of {selection.selectedIds.size}
+              </p>
+              <p className="chq-comms-merge-warning-body">
+                Your message uses {usedSlotDependentFields.map((f) => `{${f}}`).join(', ')}, and{' '}
+                {countOf(selectedNoSlotCount, 'speaker has', 'speakers have')} no slot yet. Sending will refuse{' '}
+                {plural(selectedNoSlotCount, 'that recipient', 'those recipients')} entirely, not send them the
+                literal placeholder text &mdash; place them on the agenda first, or send only to the recipients who
+                already have a slot.
+              </p>
+            </div>
           )}
 
           {/* Gate-8 P0: the wizard's one error banner renders at the very

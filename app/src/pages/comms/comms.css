@@ -331,6 +331,48 @@
   line-height: 1.5;
 }
 
+/* DEC-660 (frame :769): the pre-emptive unresolvable-merge-field band on
+   the template step. Geometry copied verbatim from the frame (border +
+   left-accent ink rule, surface-sunk fill, 5px radius) -- the same
+   advisory-band vocabulary .chq-token-reveal already uses in styles.css,
+   reused here rather than minting a second look. */
+.chq-comms-merge-warning {
+  border: 1px solid var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  border-radius: 5px;
+  background: var(--chq-surface-sunk);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-comms-merge-warning-title {
+  margin: 0;
+  font-family: 'Familjen Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.chq-comms-merge-warning-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+  max-width: 64ch;
+}
+
+/* DEC-939: the frame's "Comms · Compose · step N" breadcrumb, portalled
+   into the admin shell's #chq-header-slot -- same shape as review.css's
+   .chq-review-scoped-progress-caption. */
+.chq-comms-wizard-breadcrumb {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
 /* Ruling A18: the evaluation-plan select is "Include reviewer feedback"'s
    own parameter, not a peer field -- indented under the checkbox that
    reveals it, with a left rule tying the two together visually. */
