@@ -35,14 +35,17 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Comments are stripped before any brace scanning, mirroring
  * contacts-phone-frames.test.ts's `read` — a literal `{`/`}` inside a long
- * explanatory comment here would desynchronise the depth counter. */
+ * explanatory comment here would desynchronise the depth counter. Routed
+ * through the shared, string-aware stripper (DEC-374/DEC-613) rather than a
+ * local regex. */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const CONTENT_CSS = read('content.css');

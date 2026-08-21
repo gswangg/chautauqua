@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert";
+import { stripCssComments } from "../../../../test/helpers/strip-css-comments";
 
 const CONTACTS_CSS = readFileSync(join(__dirname, "contacts.css"), "utf8");
 const PANELS_CSS = readFileSync(join(__dirname, "contacts-panels.css"), "utf8");
@@ -211,12 +212,8 @@ describe("contacts.css / contacts-panels.css phone floor + overflow (DEC-393 / D
 // CASCADE (last-declared-value-wins for a given property, same selector,
 // same specificity) across every rule in the terminal phone block.
 describe("DEC-937 DRAIN (task w10-n): painted `.chq-contacts-title-actions a` de-cancelled, borderless rail link untouched", () => {
-  function stripComments(text: string): string {
-    return text.replace(/\/\*[\s\S]*?\*\//g, "");
-  }
-
   function rulesForSelector(block: string, target: string): string[] {
-    const clean = stripComments(block);
+    const clean = stripCssComments(block);
     const re = /([^{}]+)\{([^{}]*)\}/g;
     const bodies: string[] = [];
     let m: RegExpExecArray | null;

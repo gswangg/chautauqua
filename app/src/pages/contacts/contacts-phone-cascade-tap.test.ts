@@ -36,18 +36,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { RAIL_CSS, RAIL_PHONE_CSS } from '../../../../src/routes/public/css/rail.css';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Comments stripped before any scanning -- mirrors contacts-phone-frames
  * .test.ts's `read`, so a `{`/`}` inside a long explanatory comment can
- * never desynchronise the brace-matching below. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
+ * never desynchronise the brace-matching below. Routed through the shared,
+ * string-aware stripper (DEC-374/DEC-613) rather than a local regex. */
 function read(file: string): string {
-  return stripComments(readFileSync(join(HERE, file), 'utf-8'));
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const CONTACTS_CSS = read('contacts.css');
@@ -57,7 +55,7 @@ const PANELS_CSS = read('contacts-panels.css');
 // PUBLIC_CSS's tail rather than staying inline (see rail.css.ts /
 // public.css.ts) -- concatenated here so this shadow-detection case still
 // sees both the desktop rule and the phone-scoped rule that shadows it.
-const RAIL_CSS_STRIPPED = stripComments(RAIL_CSS + RAIL_PHONE_CSS);
+const RAIL_CSS_STRIPPED = stripCssComments(RAIL_CSS + RAIL_PHONE_CSS);
 
 /** Every top-level-or-nested rule `{selector list, body}` in `css`, in
  * source order, whose selector list (split on `,`, exact-trimmed member

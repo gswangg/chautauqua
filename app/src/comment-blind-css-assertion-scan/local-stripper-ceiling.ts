@@ -23,4 +23,16 @@
 // for the full 103-file list. This wave ships the INSTRUMENT only --
 // migrating the named files onto the shared helper is explicitly a later,
 // separately-ruled wave.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 102;
+// v12m-w11-pg (wave 155, task w11-pg, DEC-374 phone-frame drain): 6 of the
+// 102 offenders were the campaign's own phone-frame receipts
+// (app/src/pages/contacts/contacts-phone-cascade-tap.test.ts,
+// app/src/pages/contacts/contacts-phone-floor.test.ts,
+// app/src/pages/settings/settings-phone-floor.test.ts,
+// test/home-phone-frames.test.ts, test/portal-phone-frames.test.ts,
+// test/public-agenda-phone-frames.test.ts) -- each declared its own local
+// `stripComments`-shaped function (DEC-613) instead of importing
+// test/helpers/strip-css-comments.ts. All six local copies were deleted and
+// replaced with the shared import; every assertion in every touched file
+// still passed once routed through the real stripper -- no false receipt
+// was found in this batch. Ceiling lowered by exactly 6, 102 -> 96.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 96;

@@ -23,15 +23,14 @@
 //     token may author a `min-height` below 44px.
 import { describe, expect, it } from "vitest";
 import { PORTAL_CSS } from "../src/routes/portal/portal.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 /** Comments are stripped before any brace scanning: this sheet carries long
  * frame-citation comments, and a literal `{`/`}` inside one would
- * desynchronise the depth counter and silently truncate a block. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
-
-const CLEAN = stripComments(PORTAL_CSS);
+ * desynchronise the depth counter and silently truncate a block. Routed
+ * through the shared, string-aware stripper (DEC-374/DEC-613) rather than a
+ * local regex. */
+const CLEAN = stripCssComments(PORTAL_CSS);
 
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`,
  * brace-matched rather than regex-bounded so a nested rule can never end

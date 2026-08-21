@@ -41,15 +41,14 @@
 //     box is only as wide as the text.
 import { describe, expect, it } from "vitest";
 import { HOME_CSS } from "../src/routes/public/home.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 /** Comments are stripped before any brace scanning: this sheet carries long
  * frame-citation comments, and a literal `{`/`}` inside a jsdoc-style block
- * would desynchronise the depth counter and silently truncate a block. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
-
-const CLEAN = stripComments(HOME_CSS);
+ * would desynchronise the depth counter and silently truncate a block.
+ * Routed through the shared, string-aware stripper (DEC-374/DEC-613) rather
+ * than a local regex. */
+const CLEAN = stripCssComments(HOME_CSS);
 
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`.
  * Brace-matched rather than regex-bounded, so a nested rule can never end

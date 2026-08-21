@@ -25,4 +25,18 @@
 // changes no product byte and repairs none of the offenders it finds (that
 // migration is explicitly a later, separately-ruled wave per this task's
 // own description).
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 38;
+// v12m-w11-pg (wave 155, task w11-pg, DEC-374 phone-frame drain): 5 of the
+// 38 offenders were the campaign's own phone-frame receipts
+// (app/src/pages/agenda/agenda-phone-frame.test.ts,
+// app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts,
+// app/src/pages/content/content-phone-frames.test.ts,
+// app/src/pages/forms/forms-phone-frames.test.ts,
+// test/portal-session-phone-frames.test.ts) -- each was routing its CSS
+// source through a naive inline `.replace(/\/\*[\s\S]*?\*\//g, '')` (never
+// a call named `strip...comments(`, so the instrument still counted them
+// blind) rather than the shared, string-aware helper. All were migrated to
+// import test/helpers/strip-css-comments.ts; every assertion in every
+// touched file still passed once routed through the real stripper -- no
+// false receipt (a comment-satisfied assertion) was found in this batch.
+// Ceiling lowered by exactly 5, 38 -> 33.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 33;
