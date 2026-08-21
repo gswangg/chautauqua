@@ -276,7 +276,9 @@ function distributeSummaryText(talks: number, reviewsPerTalk: number, reviewers:
 // vocabulary. Every clause is dropped individually when its input is null
 // (an untracked plan says nothing about scope rather than claiming "All
 // tracks"), joined through this file's own " · " separator grammar
-// (distributeSummaryText above).
+// (distributeSummaryText above). DEC-709's wave-159 amendment extends the
+// same decision to the Criteria eyebrow (:1608 below) and the "Cap each"
+// label (:2275 below) -- one compile-checked import covers both uses.
 void DEC_709;
 function planHeadSubtitle(
   trackIds: string[],
@@ -1607,7 +1609,14 @@ export function PlanEditor() {
 
         <section className="chq-section" id="plan-criteria">
           <div className="chq-section-head">
-            <h2 className="chq-section-label">Scoring criteria</h2>
+            {/* w15-tj/DEC-709: Chautauqua Review.dc.html:601 ("Plan editor ·
+                390") draws the eyebrow as the bare word "Criteria" -- the
+                desktop frame (:451 "Plan editor · /review/plans/:id" at
+                :489, and its :675/:875 siblings) all draw "Scoring
+                criteria" and desktop is frozen, so the two widths need two
+                strings through the existing useIsPhone seam rather than
+                one shared label. */}
+            <h2 className="chq-section-label">{isPhone ? 'Criteria' : 'Scoring criteria'}</h2>
             {/* w41-f/DEC-882 amendment: a locked round names its constraint
                 right in the section rule, not just below the rows -- the
                 same evaluationCountsByRound-derived count the lock card
@@ -2276,7 +2285,12 @@ export function PlanEditor() {
               {/* DEC-824: the cap is a parameter of THIS RUN -- typed here,
                   repeated byte-identically on the preview and the apply. */}
               <label className="chq-review-cap-input">
-                Cap per reviewer
+                {/* w15-tj/DEC-709: Chautauqua Review.dc.html:657 ("Plan
+                    editor · 390") labels this "Cap each"; the desktop frame
+                    (:451 at :544) draws "Cap per reviewer" and desktop is
+                    frozen, so the label splits on useIsPhone same as the
+                    Criteria eyebrow above. */}
+                {isPhone ? 'Cap each' : 'Cap per reviewer'}
                 <input
                   type="number"
                   className="chq-input"
