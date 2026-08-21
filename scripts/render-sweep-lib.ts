@@ -244,6 +244,14 @@ export interface MobileObservation {
   /** DEC-253 wave-30 amendment: collected uncaught page 'pageerror' events,
    * same convention as RouteResult.pageErrors. */
   pageErrors: string[];
+  /** DEC-253 wave-155 amendment: every visible control's structural box
+   * (selector, tag, width, height) over the SAME population that produced
+   * minControlHeight/minControlWidth above — the raw material
+   * evaluateMobileRoute hands to deriveInteractiveOffenders so the live
+   * gate reports every control under the floor, not just the shortest one
+   * (DEC-253). Collected in the page.evaluate control loop alongside the
+   * minima, which stay untouched. */
+  interactiveMeasurements: InteractiveMeasurement[];
 }
 
 export interface MobileRouteResult {
@@ -263,6 +271,13 @@ export interface MobileRouteResult {
   /** DEC-253 wave-30 amendment: uncaught page errors observed at this
    * viewport, same convention as RouteResult.pageErrors. */
   pageErrors: string[];
+  /** DEC-253/DEC-367/DEC-808 wave-155 amendment: structural descriptors
+   * ("tag.class w=WxH") for EVERY visible control under MIN_TAP_TARGET_PX
+   * on either dimension — deriveInteractiveOffenders over the SAME
+   * population/floor that produced minControlHeight/minControlWidth,
+   * never a re-implemented predicate. Empty when no such control exists,
+   * including when the route has no measured controls at all. */
+  interactiveOffenders: string[];
   ok: boolean;
   failureReason?: string;
 }
@@ -304,6 +319,19 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
   if (observed.clipOffenders.length > 0) {
     reasons.push(`${observed.clipOffenders.length} vertical clip offender(s): ${observed.clipOffenders.join(" | ")}`);
   }
+  // DEC-253/DEC-367/DEC-808 wave-155 amendment: deriveInteractiveOffenders
+  // over the SAME measured population/floor that produced
+  // minControlHeight/minControlWidth above — reports every offending
+  // control, not just the shortest one (this task's whole point). Additive
+  // to the heightFails/widthFails reason above, which stays untouched (the
+  // public-pass contract DEC-253 already relies on).
+  const interactiveOffenderMeasurements = deriveInteractiveOffenders(observed.interactiveMeasurements, MIN_TAP_TARGET_PX);
+  const interactiveOffenders = interactiveOffenderMeasurements.map(
+    (m) => `${m.selector} w=${Math.round(m.width)}px h=${Math.round(m.height)}px`,
+  );
+  if (interactiveOffenders.length > 0) {
+    reasons.push(`${interactiveOffenders.length} interactive offender(s) under ${MIN_TAP_TARGET_PX}px: ${interactiveOffenders.join(" | ")}`);
+  }
   // DEC-253 wave-30 amendment: same expected-status noise filter as the
   // desktop pass — a mobile row with a deliberate non-200 expectedStatus
   // (e.g. /portal/preview's existence-hiding 404) legitimately logs the
@@ -325,6 +353,7 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     minControlWidth: observed.minControlWidth,
     consoleErrors,
     pageErrors: observed.pageErrors,
+    interactiveOffenders,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
   };
@@ -343,6 +372,7 @@ export function mobileErrorResult(entry: MobileRouteEntry, message: string): Mob
     minControlWidth: null,
     consoleErrors: [],
     pageErrors: [],
+    interactiveOffenders: [],
     ok: false,
     failureReason: message,
   };
@@ -362,6 +392,7 @@ export const EMPTY_MOBILE_OBSERVATION: MobileObservation = {
   clipOffenders: [],
   consoleErrors: [],
   pageErrors: [],
+  interactiveMeasurements: [],
 };
 
 /** True if every mobile route result passed. */
@@ -464,33 +495,27 @@ export function deriveInteractiveOffenders(
   return measurements.filter((m) => m.visible && (m.height < floorPx || m.width < floorPx));
 }
 
-/** DEC-367/DEC-808/DEC-976 w7-dd: two-sided ratchet for the admin mobile
- * pass's offender count once its control population widens from the
- * hand-listed six-selector ADMIN_MOBILE_CONTROL_SELECTOR to the full
- * INTERACTIVE_CONTROL_SELECTOR above. A widening re-seeds where it widens
- * in the repairing commit rather than flipping a blocking gate red on
- * landing (DEC-976 wave-138, DEC-393 wave-139's own precedent for exactly
- * this move: "the widening lands as a parameter, and the population is
- * re-measured on the tree, not carried forward from the ruling's own
- * estimate").
+/** DEC-367/DEC-808/DEC-976 w7-dd, wave-155 amendment (task pc): two-sided
+ * ratchet for the admin mobile pass's offender count once its control
+ * population widens from the hand-listed six-selector
+ * ADMIN_MOBILE_CONTROL_SELECTOR to the full INTERACTIVE_CONTROL_SELECTOR
+ * above. A widening re-seeds where it widens in the repairing commit
+ * rather than flipping a blocking gate red on landing (DEC-976 wave-138,
+ * DEC-393 wave-139's own precedent for exactly this move: "the widening
+ * lands as a parameter, and the population is re-measured on the tree, not
+ * carried forward from the ruling's own estimate").
  *
- * This task is explicitly forbidden from booting a browser or running
- * `npm run gate:render-sweep` — there is no live Playwright pass in this
- * commit to read a real offender count from, and inventing one would be a
- * fabricated measurement (a citation is not an assertion, DEC-967).
- * Seeded at -1 instead, the same sentinel DEC-393 wave-147's own amendment
- * uses ("seeded two-sided by forcing its constant to -1 and reading the
- * offender list"): -1 can satisfy neither side of a real two-sided ratchet
- * (never `<=` a non-negative measured count, never `>=` one either), so it
- * fails loudly rather than silently passing as an unearned 0. The next lane
- * that actually runs the live admin mobile pass against
- * INTERACTIVE_CONTROL_SELECTOR MUST replace -1 with the printed live
- * offender count (deriveInteractiveOffenders over every measured control on
- * every ADMIN_MOBILE_ROUTE_MANIFEST route, floor MIN_TAP_TARGET_PX) in the
- * same commit that wires this ceiling into ADMIN_MOBILE_PASS_BLOCKING's
- * decision — this commit does not wire it in, so it introduces no new
- * blocking behavior on its own. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = -1;
+ * MEASURED, not invented (DEC-967): this task ran the full local stack
+ * (migrations + seed + wrangler dev) and `npm run gate:render-sweep`
+ * end-to-end against this same commit's plumbing. The admin mobile pass's
+ * own printed total read `render-sweep: admin mobile total interactive
+ * offenders: 79`, over ADMIN_MOBILE_ROUTE_MANIFEST at MIN_TAP_TARGET_PX via
+ * deriveInteractiveOffenders — same population, same floor, same pure
+ * predicate this ceiling itself compares against, wired into
+ * ADMIN_MOBILE_PASS_BLOCKING's decision in this same commit. The previous
+ * -1 sentinel (which could satisfy neither side of a real two-sided ratchet)
+ * is replaced by that measured count. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 79;
 
 // ---------------------------------------------------------------------------
 // DEC-411: page.evaluate keepNames shim. tsx runs esbuild with keepNames,

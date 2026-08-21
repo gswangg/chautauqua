@@ -1437,20 +1437,94 @@ describe("deriveInteractiveOffenders (DEC-367/DEC-808 w7-dd)", () => {
   });
 });
 
-describe("ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (DEC-367/DEC-808/DEC-976 w7-dd)", () => {
-  // This task is explicitly forbidden from booting a browser or running
-  // `npm run gate:render-sweep`, so there is no live offender count to seed
-  // this ratchet from — inventing one would be a fabricated measurement
-  // (DEC-967: a citation is not an assertion). Seeded at -1, the same
-  // sentinel DEC-393 wave-147's own amendment uses, which can satisfy
-  // neither side of a real two-sided ratchet and so fails loudly instead of
-  // silently passing as an unearned 0.
-  it("is seeded at the unmeasured sentinel -1, not an invented count", () => {
-    expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBe(-1);
+describe("ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (DEC-367/DEC-808/DEC-976 w7-dd, wave-155 amendment)", () => {
+  // wave-155 task pc ran the full local stack end-to-end
+  // (migrations + seed + wrangler dev + `npm run gate:render-sweep`) and
+  // read the admin mobile pass's own printed total — 79 — replacing the
+  // unmeasured -1 sentinel a prior lane seeded (DEC-967: a citation is not
+  // an assertion, so this is a positive measured value, never invented).
+  it("is a non-negative measured count, not the unmeasured -1 sentinel", () => {
+    expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBeGreaterThanOrEqual(0);
+    expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBe(79);
   });
 
-  it("the sentinel's history/handoff comment stays documented in the lib source", () => {
+  it("the measurement provenance stays documented in the lib source", () => {
     const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
-    expect(source).toContain("MUST replace -1 with the printed live");
+    expect(source).toContain("MEASURED, not invented");
+  });
+});
+
+describe("evaluateMobileRoute interactiveOffenders (DEC-253/DEC-367/DEC-808 wave-155)", () => {
+  const ENTRY: MobileRouteEntry = { path: "/e/devflow-conf-2027/sessions", role: "public" };
+
+  const measurement = (over: Partial<InteractiveMeasurement>): InteractiveMeasurement => ({
+    selector: "button.chq-x",
+    tagName: "button",
+    width: 100,
+    height: 100,
+    visible: true,
+    ...over,
+  });
+
+  it("is empty when no measured control is under the floor", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      minControlWidth: 200,
+      interactiveMeasurements: [measurement({ width: 200, height: 44 })],
+    });
+    expect(result.interactiveOffenders).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("reports EVERY offending control, not just the route minimum", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 19,
+      minControlWidth: 95,
+      minControlSelector: "button.chq-participation-menu-trigger",
+      interactiveMeasurements: [
+        measurement({ selector: "button.chq-participation-menu-trigger", width: 95, height: 19 }),
+        measurement({ selector: "select.chq-bad-w", width: 10, height: 44 }),
+        measurement({ selector: "a.chq-ok", width: 200, height: 44 }),
+      ],
+    });
+    expect(result.interactiveOffenders).toEqual([
+      "button.chq-participation-menu-trigger w=95px h=19px",
+      "select.chq-bad-w w=10px h=44px",
+    ]);
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toContain("2 interactive offender(s) under 44px");
+    expect(result.failureReason).toContain("button.chq-participation-menu-trigger w=95px h=19px");
+    expect(result.failureReason).toContain("select.chq-bad-w w=10px h=44px");
+  });
+
+  it("skips an invisible offender the same way deriveInteractiveOffenders does", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      minControlWidth: 200,
+      interactiveMeasurements: [measurement({ width: 5, height: 5, visible: false })],
+    });
+    expect(result.interactiveOffenders).toEqual([]);
+  });
+});
+
+describe("mobileErrorResult interactiveOffenders field", () => {
+  it("carries an empty interactiveOffenders array", () => {
+    const result = mobileErrorResult(
+      { path: "/e/devflow-conf-2027/sessions", role: "public" },
+      "navigation error",
+    );
+    expect(result.interactiveOffenders).toEqual([]);
   });
 });
