@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiPatch, apiPost, ApiError, peekCachedRead } from '../../lib/api';
 import { useCachedGet } from '../../lib/useCachedRead';
 import { DEC_678, DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -618,6 +618,34 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const visibleTasks = filters.taskId ? grid?.tasks.filter((t) => t.id === filters.taskId) ?? [] : grid?.tasks ?? [];
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
+  // DEC-265 amendment (wave 25): whether every cell/participation the
+  // override still carries already matches what the server just returned.
+  // Compared by id (assignmentId / participantId), not by array position --
+  // the override and the fresh grid can differ in row order/membership if a
+  // filter or page changed underneath a still-in-flight write, and an id a
+  // fresh grid no longer carries is treated as "matches" (there is nothing
+  // left to reconcile it against) rather than pinning the override open
+  // forever for a row that scrolled out of view.
+  function gridMatchesFresh(override: OnboardingGridResponse, fresh: OnboardingGridResponse): boolean {
+    const freshCells = new Map(fresh.rows.flatMap((row) => row.cells).map((cell) => [cell.assignmentId, cell]));
+    const freshParticipations = new Map(
+      fresh.rows.flatMap((row) => row.contact.participations).map((p) => [p.participantId, p]),
+    );
+    const cellsMatch = override.rows
+      .flatMap((row) => row.cells)
+      .every((cell) => {
+        const f = freshCells.get(cell.assignmentId);
+        return !f || (f.status === cell.status && f.completedAt === cell.completedAt);
+      });
+    const participationsMatch = override.rows
+      .flatMap((row) => row.contact.participations)
+      .every((p) => {
+        const f = freshParticipations.get(p.participantId);
+        return !f || f.inviteStatus === p.inviteStatus;
+      });
+    return cellsMatch && participationsMatch;
+  }
+
   // DEC-265 amendment: the shared cell-status write both toggleCell (below)
   // and its Try again retry issue -- exactly the same PATCH, exactly the
   // same optimistic flip/rollback, so a retry can never drift from the
@@ -647,15 +675,35 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-      // DEC-265 wave-138 amendment: the override is cleared by the write
-      // that SUCCEEDS, not only by the write that fails -- refetch first,
-      // then clear, so the column-head "N of M done" and the counts panel
-      // pick up the server's post-mutation totals instead of staying
-      // permanently masked by the optimistic snapshot. React 18 batches
-      // both state writes in the same await continuation, so this renders
-      // once, on fresh data.
+      // DEC-265 amendment (wave 25): the write that SUCCEEDS retires ONLY
+      // its own cell from the override -- refetch first, then rewrite this
+      // one cell to whatever the fresh grid says (picking up the server's
+      // post-mutation completedAt/status), and drop the override entirely
+      // only once nothing left in it still differs from the fresh grid.
+      // A whole-grid clear here would discard every OTHER cell's
+      // still-in-flight optimistic flip (a second click while this PATCH
+      // was pending would visibly snap back to its pre-click status until
+      // its own request resolved) -- the same clobber DEC-265 wave-110
+      // already ruled out for the failure branch below, now applied to the
+      // success branch too.
       await gridRead.refetch();
-      setOptimisticOverride(null);
+      setOptimisticOverride((current) => {
+        if (!current) return current;
+        const fresh = gridPath ? peekCachedRead<OnboardingGridResponse>(gridPath) : undefined;
+        const freshCell = fresh?.rows.flatMap((row) => row.cells).find((cell) => cell.assignmentId === assignmentId);
+        const retired: OnboardingGridResponse = {
+          ...current,
+          rows: current.rows.map((row) => ({
+            ...row,
+            cells: row.cells.map((cell) =>
+              cell.assignmentId === assignmentId && freshCell
+                ? { ...cell, status: freshCell.status, completedAt: freshCell.completedAt }
+                : cell,
+            ),
+          })),
+        };
+        return fresh && gridMatchesFresh(retired, fresh) ? null : retired;
+      });
     } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed assignment's
       // cell back to its pre-flip status -- a whole-grid snapshot would
@@ -670,6 +718,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       // -- which is exactly where the optimistic flip lives, so the
       // "rewrite one cell, keep concurrent successes" guarantee is
       // preserved verbatim.
+      //
+      // DEC-265 amendment (wave 25): `current` above is no longer nulled
+      // by every concurrent success (see applyCellStatus's success branch),
+      // only by a success that leaves nothing in the override still
+      // differing from the fresh grid -- so this per-cell rewrite is no
+      // longer a no-op the moment any OTHER cell's write resolves first.
       setOptimisticOverride((current) =>
         current
           ? {
@@ -756,11 +810,39 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
       setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
-      // DEC-265 wave-138 amendment: see applyCellStatus above -- refetch
-      // first, then clear the override, so a successful write is not
-      // permanently masked by its own optimistic snapshot.
+      // DEC-265 amendment (wave 25): see applyCellStatus's success branch
+      // above -- refetch, then retire only THIS participation from the
+      // override (rewritten to whatever the fresh grid says), clearing the
+      // override entirely only once nothing left in it still differs from
+      // the fresh grid. Nulling the whole override here would clobber any
+      // OTHER cell/participation write still in flight.
       await gridRead.refetch();
-      setOptimisticOverride(null);
+      setOptimisticOverride((current) => {
+        if (!current) return current;
+        const fresh = gridPath ? peekCachedRead<OnboardingGridResponse>(gridPath) : undefined;
+        const freshParticipation = fresh?.rows
+          .flatMap((row) => row.contact.participations)
+          .find((p) => p.participantId === participantId);
+        const retired: OnboardingGridResponse = {
+          ...current,
+          rows: current.rows.map((row) =>
+            row.contact.id === contactId
+              ? {
+                  ...row,
+                  contact: {
+                    ...row.contact,
+                    participations: row.contact.participations.map((p) =>
+                      p.participantId === participantId && freshParticipation
+                        ? { ...p, inviteStatus: freshParticipation.inviteStatus }
+                        : p,
+                    ),
+                  },
+                }
+              : row,
+          ),
+        };
+        return fresh && gridMatchesFresh(retired, fresh) ? null : retired;
+      });
     } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed participant's
       // inviteStatus back to its pre-flip value -- a whole-grid snapshot
@@ -769,6 +851,13 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       // Merge note: same `setGrid` -> `setOptimisticOverride` re-siting as
       // applyCellStatus above (v12m-w4-t-r1-c moved the grid onto the
       // cached-read hook); the per-participant rewrite is unchanged.
+      //
+      // DEC-265 amendment (wave 25): `current` above is no longer nulled
+      // by every concurrent success (see applyInviteStatus's success
+      // branch), only by a success that leaves nothing in the override
+      // still differing from the fresh grid -- so this rewrite is no
+      // longer a no-op the moment any OTHER cell/participation's write
+      // resolves first.
       setOptimisticOverride((current) =>
         current
           ? {
