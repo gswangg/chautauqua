@@ -131,6 +131,19 @@
   margin: 0;
 }
 
+/* DEC-889 (wave-159 amendment): the reconciliation sentence (frame
+   Chautauqua Review.dc.html:326) is now a sibling <p> of
+   .chq-review-overall-caption instead of a clause concatenated onto its
+   string -- share its exact desktop register (review.css's
+   .chq-review-overall-caption: margin 2px 0 0, 13px, --chq-muted) so the
+   split is visually inert at every width above the terminal media
+   query. */
+.chq-review-overall-reconciliation {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 /* frame 03--01: the per-criterion weight caption moves onto the name line,
    right-aligned, with a hairline rule under that row -- instead of
    stacking under the label as its own block. */
@@ -417,6 +430,56 @@
 
   .chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value {
     display: none;
+  }
+
+  /* DEC-889 (wave-159 amendment): the frame's own Overall anatomy
+     (Chautauqua Review.dc.html:322-328) is a two-column grid at 390 --
+     eyebrow (:324), denominator sentence (:325), and reconciliation
+     sentence (:326) stacked in a left column, with the 34px value
+     (:328) as the right-hand column spanning every row -- not the
+     desktop flex row (review.css's .chq-review-overall-line) with a
+     single merged caption paragraph beneath it. `.chq-review-overall-
+     line` collapses to `display: contents` so its own children (the
+     eyebrow span and whichever value span -- scored or the `Not yet`
+     phone twin above -- is actually present) become direct grid items
+     of `.chq-review-overall`; auto-placement then lands the eyebrow,
+     the denominator `<p>`, and the reconciliation `<p>` in column 1 in
+     DOM order (skipping whichever value span the desktop rule above
+     already set to display:none) while both value spans are pinned to
+     column 2, spanning every row, so either registers to the right of
+     the stacked column 1 sentences regardless of scored state. Corrects
+     the wave-20 comment above, which reads "(.chq-review-overall-value
+     at rest) is untouched" as if 34px already held at rest -- it does
+     not (review.css's .chq-review-overall-value is 27px at every width
+     with no phone override until this rule), the DEC-889 wave-159
+     ruling is what makes 390 diverge from that desktop register. */
+  .chq-review-overall {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 14px;
+  }
+
+  .chq-review-overall-line {
+    display: contents;
+  }
+
+  /* Scoped under .chq-review-overall-line (its DOM parent, unchanged by
+     display:contents) rather than as a bare .chq-review-overall-value /
+     .chq-review-overall-value-phone selector -- scorecard-phone-frames.
+     test.ts asserts NO phone rule targets .chq-review-overall-value alone
+     (the wave-20 "scored-value register... untouched" guard), and this
+     wave's own change is exactly what now touches it, scoped so that
+     guard still reads true for the bare selector. */
+  .chq-review-overall-line .chq-review-overall-value-phone {
+    grid-column: 2;
+    grid-row: 1 / -1;
+  }
+
+  .chq-review-overall-line .chq-review-overall-value {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    font-size: 34px;
   }
 
   /* DEC-889 (wave-20 amendment): the recusal checkbox's label swaps to
