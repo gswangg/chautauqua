@@ -43,7 +43,7 @@ import {
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
-import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
@@ -54,6 +54,12 @@ void DEC_884;
 // scheduledSubline below.
 void DEC_936;
 void DEC_576; // wave-110 amendment: SubmissionDetailPage's primary+secondary move into PortalLayout's dock
+// wave 150 (w6-cd): SessionCard prints the format-first meta clause and the
+// deliverable's version + review-status clause, both through the ONE
+// vocabulary the rest of the portal already established -- never a
+// fabricated default when the answer/version is absent.
+void DEC_908;
+void DEC_895;
 import {
   parseCookies,
   newCsrfToken,
@@ -222,13 +228,34 @@ function scheduledSubline(fallbackEventName: string, sessions: PortalSession[]):
   return `${lead}you speak ${countOf(placed.length, "time")} — ${slots.join("; ")}`;
 }
 
+/** DEC-908: SessionCard's deliverable always comes from listLatestDeliverables
+ * (the portal-home batched read), which fails loudly at the repo layer on a
+ * null stored version_no -- so versionNo is never null here in practice.
+ * Fails loudly rather than defaulting (`?? 1`) if that invariant is ever
+ * violated, matching files-library-list.ts's identical rule; never called
+ * with a getLatestDeliverable (single-read, versionNo always null) result. */
+function deliverableVersionOrThrow(d: PortalDeliverable): number {
+  if (d.versionNo === null) {
+    throw new Error(`SessionCard: deliverable ${d.id} has no version number`);
+  }
+  return d.versionNo;
+}
+
 function SessionCard(props: {
   session: PortalSession;
   deliverable: PortalDeliverable | null;
   showResources: boolean;
 }) {
   const { session: s, deliverable, showResources } = props;
+  // DEC-908: format clause FIRST, through the one session-shape vocabulary
+  // (sessionFormatLabel) -- never a second '(N min)' parser. Omitted when
+  // there is no session_format answer, or when the stored label carries no
+  // parseable duration (sessionFormatLabel would hand it back unchanged),
+  // the exact rule portal/edit.tsx:290 already applies -- never a
+  // fabricated default (DEC-895).
+  const formatLabel = s.format !== null && sessionFormatLabel(s.format) !== s.format ? sessionFormatLabel(s.format) : null;
   const metaParts = [
+    formatLabel,
     s.trackName,
     s.acceptedAt !== null ? `accepted ${formatEventDate(s.acceptedAt, s.timezone)}` : null,
   ].filter((p): p is string => p !== null);
@@ -238,7 +265,17 @@ function SessionCard(props: {
       {metaParts.length > 0 ? <span class="chq-portal-due">{metaParts.join(" · ")}</span> : null}
       {deliverable ? (
         <span class="chq-portal-detail">
-          {deliverable.filename} · uploaded {formatEventDate(deliverable.uploadedAt, s.timezone)}
+          {/* DEC-908 (wave-150 amendment): version + review-status clause,
+              docs/design/Chautauqua Public and Portal.dc.html:445 draws
+              "Slides v3 · with the organisers" -- composed here exactly as
+              the ruling states, from the SAME vocabulary the submission
+              detail page's own "v{n} · ... · Shared with the organisers"
+              clause (index.tsx:544) already established, never a second
+              phrase. Fails loudly rather than defaulting when versionNo is
+              null (listLatestDeliverables's own data-corruption rule
+              already guarantees it is set whenever deliverable is
+              non-null here). */}
+          {deliverable.filename} v{deliverableVersionOrThrow(deliverable)} · with the organisers
         </span>
       ) : null}
       {/* DEC-777 (wave 44 amendment): advisory-only inline flag — the

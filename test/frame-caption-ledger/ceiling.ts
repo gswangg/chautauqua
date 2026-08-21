@@ -412,15 +412,35 @@
 // current tree (see docs/design/audit/frame-caption-residue-v12.md for the
 // re-derived blocker text of each). Lowered from 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+// and never a guess.
+// v12m-w6-cd (wave 150, task w6-cd, DEC-908 amendment): closed the last two
+// unclaimed rows of the campaign's frame-caption ledger --
+// Chautauqua Public and Portal.dc.html:444/:445, the portal home
+// SessionCard's format-first meta clause and version + review-status
+// deliverable clause (src/routes/portal/index.tsx, src/server/repo/portal/
+// sessions.ts). Both closed via new COMPOSED_EXCLUSIONS entries (neither is
+// a plain-substring or digit-skeleton match -- both are assembled from live
+// per-submission/per-file data), not by a build any digit-skeleton pass can
+// see. Main was RED on this ledger in both directions before this task
+// (declared 14, measuring 6 on 6426c8d9 in the field guide's own detached-
+// worktree reading); the other four rows the field guide named
+// (P&P:1080/:1130/:1153, Settings:1422) live on unmerged branches
+// v12m-w4-ao/v12m-w4-aq, not present on this branch's own base, so they are
+// NOT reflected in this branch's own measurement. Forced to -1 and read
+// back directly off THIS branch's own offender list (never a guess, never a
+// pre-measurement figure): 4. Lowered from the stale 14 to the measured 4 --
+// this branch's own re-seed, to be reconciled against the other three
+// unmerged lanes' figures at the next merge-train act, per this file's own
+// standing "never a lane's pre-merge figure" rule for the INTEGRATED tree.
 //
-// THUNDERDOME MEGABATCH (wave-150, 19 lanes): every lane above measured
-// this ratchet against a tree carrying only its own build and its own
-// dispositions, so no lane's figure is the truth for the integrated tree
-// -- the lanes' builds and exclusions are additive and the union subtracts
-// more than any one of them could see. Per this file's own standing rule
-// the constant below is re-seeded ONCE, at the end of the megabatch, to
-// what the two-sided ratchet actually PRINTS against the fully integrated
-// tree (ceiling forced to -1, offender count read back) -- never a
-// lane's pre-merge figure and never a guess.
+// THUNDERDOME MEGABATCH (wave-150, 19-branch batch): each lane above
+// measured this ratchet against a tree carrying only its OWN work, so no
+// lane's figure is the truth for the integrated tree -- the lanes' repairs
+// and dispositions are additive and their union moves the count further
+// than any single lane could see. Per the two-sided ratchet's own failure
+// message the constant below is re-seeded ONCE, at the end of the batch,
+// to what the ratchet actually PRINTS against the fully integrated tree
+// (ceiling forced to -1, offender list read back) -- never a lane's
+// pre-merge figure and never a guess.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=__MEGABATCH_PENDING__
 export const FRAME_CAPTION_UNMATCHED_CEILING = 14;

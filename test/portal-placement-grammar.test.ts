@@ -115,6 +115,7 @@ const placedSession: PortalSession = {
   endMin: 660,
   roomName: "Room 2A",
   trackName: null,
+  format: null,
   acceptedAt: null,
   eventId: "evt-1",
   eventName: "Arbitrary Con",

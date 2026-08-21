@@ -1448,6 +1448,26 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "the SAME composing expression as :620 above -- edit.tsx renders one Session length row shared by both the 390 and desktop frames (DEC-385 single-direction responsive, no separate desktop markup).",
   },
+  // v12m-w6-cd (wave 150, DEC-908 amendment): the portal home SessionCard's
+  // meta clause and deliverable clause, both built this task
+  // (src/routes/portal/index.tsx). Neither is a plain-substring or
+  // digit-skeleton match -- both are assembled from a live session_format
+  // answer and a live stored file version, per the same ruling that
+  // exempted the edit.tsx Session-length row above.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 444,
+    text: 'Talk, 30 min · Platform &amp; Infra · accepted 14 Mar',
+    reason:
+      "src/routes/portal/index.tsx's SessionCard composes `metaParts = [formatLabel, s.trackName, accepted <date>].filter(...).join(' · ')`, where formatLabel is `sessionFormatLabel(s.format)` (src/lib/session-vocabulary.ts, DEC-908) over PortalSession.format -- a live session_format-role answer read via listFormatLabelsBySubmission (src/server/repo/review/submissions.ts, reused rather than re-implemented) -- and the track name and accepted date are likewise per-submission live fields. 'Talk, 30 min · Platform & Infra · accepted 14 Mar' matches this pack's own fixture data, but every clause is dynamic, not literal text a substring pass can match.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 445,
+    text: 'Slides v3 · with the organisers',
+    reason:
+      "the SAME SessionCard composes `{deliverable.filename} v{deliverableVersionOrThrow(deliverable)} · with the organisers` from PortalDeliverable.versionNo -- the file table's own stored version_no column (src/db/schema/content.ts), now selected by listLatestDeliverables (src/server/repo/portal/sessions.ts) alongside the existing filename/size/uploadedAt fields, per DEC-908's ruling to reuse the submission-detail page's own v{n}-clause vocabulary rather than a second phrase. The filename and version are both live per-file data, not literal text.",
+  },
   // v12m-w4-al (wave-148, DEC-709 amendment): the phone plan-editor head
   // subtitle, composed at PlanEditor.tsx's planHeadSubtitle from
   // draft.trackIds (resolved against the loaded tracks list), draft.closeAt

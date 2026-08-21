@@ -69,6 +69,7 @@ vi.mock("../src/server/repo/portal", async () => {
           endMin: null,
           roomName: null,
           trackName: null,
+          format: null,
           acceptedAt: null,
           eventId: "evt-1",
           eventName: "Arbitrary Con",
