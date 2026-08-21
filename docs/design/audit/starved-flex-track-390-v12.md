@@ -67,28 +67,29 @@ starve against, so `checkStarvedFlexTrack`'s "≥2 tracks, at least one fixed
 and one flexible" grammar gate excludes it) — it demonstrates the mechanism,
 not a listed offender below.
 
-## Part B: the two live starved-flex-track offenders, measured
+## Part B: the two starved-flex-track offenders, repaired and drained (DEC-808)
 
-Forcing `STARVED_FLEX_TRACK_CEILING` to `-1` and reading the printed
-offender list back against this branch's tree:
+At landing, forcing `STARVED_FLEX_TRACK_CEILING` to `-1` and reading the
+printed offender list back against the tree measured exactly two offenders:
 
-| File | Selector | `grid-template-columns` | Arithmetic | Owning lane |
+| File | Selector | `grid-template-columns` | Arithmetic | Repairing lane |
 |---|---|---|---|---|
 | `app/src/pages/settings/settings.css` | `.chq-settings-track-edit-row` | `minmax(0, 1fr) 150px 200px` | budget 358px − fixed (150+200=350px) − gaps 0px = 8px ÷ 1 flexible track = **8.0px** per flexible track, against a 200px widest fixed track | v12m-w5-bg |
 | `app/src/pages/forms/forms.css` | `.chq-forms-rule-row` | `1fr 120px 1fr` | budget 358px − fixed (120px) − gaps (2 × 10px = 20px) = 218px ÷ 2 flexible tracks = **109.0px** per flexible track, against a 120px fixed middle track | v12m-w5-bg |
 
-Both figures match the wave-149 meta-fidelity probe's own hand-measurement
+Both figures matched the wave-149 meta-fidelity probe's own hand-measurement
 verbatim (DEC-919's own amendment text). `.chq-settings-track-edit-row`'s
 sibling `.chq-settings-room-edit-row` (same co-classed base, a fourth,
 wider fixed track) was already re-lined to a single column at
-`settings.css:2314` in an earlier wave — this row is the missed twin.
+`settings.css:2314` in an earlier wave — this row was the missed twin.
 
-**Sibling lane `v12m-w5-bg` repairs both offenders concurrently** (re-lining
-each into its sheet's terminal `<=700px` phone block); this task owns only
-the instrument, landing it with the ceiling at the currently-measured `2`
-per DEC-069 wave-141/143's "a new ceiling lands with its exit-predicate row
-and fixture in the same commit". The merge train re-measures the integrated
-tree once both lanes land, per DEC-989 wave-146's standing rule.
+Sibling lane `v12m-w5-bg` repaired both offenders (DEC-919), re-lining each
+into its sheet's terminal `<=700px` phone block, landing in the
+thunderdome megabatch (wave-150) alongside this instrument's own first
+landing. Task `v12m-w8-eb` (DEC-808) then re-measured the integrated tree
+with the ceiling forced to `-1`, confirmed zero starved-track offenders
+remain, and lowered `STARVED_FLEX_TRACK_CEILING` from `2` to `0` to match:
+the ledger above is a settled, drained record, not an open item.
 
 ## The gap-attribution conservatism
 
