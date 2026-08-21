@@ -184,6 +184,23 @@
    ("Reviewer scorecard") for the added counter/eyebrow/meta row. DEC-385
    single-direction: this whole block is additive under one max-width
    query; nothing here is read above 700px. */
+
+/* DEC-889 (wave-20 amendment) / DEC-919 wave-109 amendment, merge-train
+   repair: both phone-only copies below are ALSO hidden at top level in CSS,
+   not by the native `hidden` attribute alone. The `hidden` attribute is what
+   keeps the phone copy out of accessible-name computation with no stylesheet
+   applied (that reasoning is unchanged and the attribute stays on both spans
+   in Scorecard.tsx); this pair of rules is the stylesheet half the
+   markup-mounted phone-class scan requires -- a phone-named class mounted in
+   TSX must resolve to a top-level display:none, so that a stylesheet-applied
+   desktop render can never leak the phone copy. Purely additive: the terminal
+   max-width:700px block below already re-reveals each one with a
+   higher-specificity display declaration, so phone behaviour is unchanged. */
+.chq-review-overall-value-phone,
+.chq-review-recusal-label-phone {
+  display: none;
+}
+
 @media (max-width: 700px) {
   /* :936 `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
      display:flex; flex-direction:column; gap:7px` -- sticky so the band
@@ -382,7 +399,7 @@
   }
 
   /* DEC-889 (wave-20 amendment), frame :966-970 ("a criterion unscored"):
-     the Overall value prints `Not yet` at 14px/600/#565A4B rather than
+     the Overall value prints `Not yet` at 14px/600/--chq-muted (#565A4B) rather than
      the desktop em dash. Scorecard.tsx renders this span with the native
      `hidden` attribute (a real hide at top level, ahead of this block,
      that the accname algorithm honours with no stylesheet applied) only
@@ -395,7 +412,7 @@
     display: inline;
     font-size: 14px;
     font-weight: 600;
-    color: #565A4B;
+    color: var(--chq-muted);
   }
 
   .chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value {

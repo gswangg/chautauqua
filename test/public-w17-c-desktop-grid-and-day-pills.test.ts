@@ -165,7 +165,16 @@ describe("DEC-885: agenda/schedule day pills say which day is showing", () => {
 
   it("the default (unfiltered) AgendaContent view emits ?day= hrefs, not bare #anchors", () => {
     const html = String(AgendaContent({ event: EVENT, items, total: 2, activeDay: null }));
-    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill[^"]*" href="([^"]*)"/g)].map((m) => m[1]!);
+    // merge-train scoping (DEC-919, wave-146): the day strip's terminal
+    // "My schedule · N" pill (agenda-controls.tsx's DaySwitcher) composes the
+    // visual .chq-pub-day-pill class but is NOT a day out-link -- it is a
+    // second entry point to the /schedule SURFACE, so it carries no ?day= and
+    // forwards no day-filter state. The day-navigation contract asserted here
+    // is about DAY pills, so the schedule pill is excluded by its own
+    // self-describing class rather than by weakening the assertions below.
+    const pillHrefs = [...html.matchAll(/class="(chq-pub-day-pill[^"]*)" href="([^"]*)"/g)]
+      .filter((m) => !m[1]!.includes("chq-pub-my-schedule-pill"))
+      .map((m) => m[2]!);
     expect(pillHrefs.length).toBe(2);
     for (const href of pillHrefs) {
       expect(href.startsWith("#")).toBe(false);

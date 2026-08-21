@@ -232,7 +232,16 @@ describe("DEC-851 (wave 64 amendment): /agenda and /schedule highlight a track, 
 
     const res = await app.request("/e/conf/agenda?trackId=trk-a&q=keynote", {}, TEST_ENV);
     const html = await res.text();
-    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill[^"]*" href="([^"]*)"/g)].map((m) => m[1]!);
+    // merge-train scoping (DEC-919, wave-146): the day strip's terminal
+    // "My schedule · N" pill (agenda-controls.tsx's DaySwitcher) composes the
+    // visual .chq-pub-day-pill class but is NOT a day out-link -- it points at
+    // the /schedule SURFACE, which does not even read ?trackId= (see the
+    // task-w1-d note above), so forwarding the highlight state onto it would
+    // be wrong, not missing. Excluded by its own self-describing class so the
+    // carry-forward contract below stays absolute for real day jumps.
+    const pillHrefs = [...html.matchAll(/class="(chq-pub-day-pill[^"]*)" href="([^"]*)"/g)]
+      .filter((m) => !m[1]!.includes("chq-pub-my-schedule-pill"))
+      .map((m) => m[2]!);
     expect(pillHrefs.length).toBeGreaterThan(0);
     for (const href of pillHrefs) {
       expect(href).toContain("trackId=trk-a");

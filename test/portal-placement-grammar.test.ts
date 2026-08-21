@@ -141,6 +141,19 @@ const placedDetail: PortalSubmissionDetail = {
   roomName: "Room 2A",
 };
 
+// merge-train helper (wave-146): these pages inline the whole SSR stylesheet
+// into a <style> element, comments and all, and this repo's stylesheet
+// comments cite probe/design documents by filename -- several of which carry
+// an ISO date (docs/probes/metafid-phoneB-ssr-2026-08-19-medium.md, cited by
+// src/routes/public/css/empty.css.ts). A citation inside a CSS comment is not
+// "the raw YYYY-MM-DD column" this grammar forbids: the guard is about the
+// COPY the speaker reads. Strip <style> before asserting so the guard keeps
+// grading rendered text and cannot be tripped -- or silenced -- by an
+// unrelated stylesheet citation.
+function renderedCopy(html: string): string {
+  return html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/g, "");
+}
+
 describe("w13-d: portal home + submission detail share ONE placement grammar", () => {
   it("the home subline reads 'you speak Tue 12 May, 10:00' — never the raw YYYY-MM-DD column", async () => {
     mockTasks = [];
@@ -151,7 +164,7 @@ describe("w13-d: portal home + submission detail share ONE placement grammar", (
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("you speak Tue 12 May, 10:00");
-    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(renderedCopy(html)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
   it("the submission detail page's placement line carries the same day+time text as the home subline", async () => {
@@ -163,7 +176,7 @@ describe("w13-d: portal home + submission detail share ONE placement grammar", (
     expect(detailRes.status).toBe(200);
     const detailHtml = await detailRes.text();
     expect(detailHtml).toContain("Tue 12 May, 10:00");
-    expect(detailHtml).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(renderedCopy(detailHtml)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
   // DEC-936 (amendment, wave 115): a two-session speaker's home subline names
@@ -194,7 +207,7 @@ describe("w13-d: portal home + submission detail share ONE placement grammar", (
     expect(html).toContain("Wed 13 May, 11:30 · Main Stage");
     // The single shared event still leads the line exactly once (DEC-988).
     expect(html).toContain("Arbitrary Con · you speak 2 times");
-    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(renderedCopy(html)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
   // DEC-988 (wave 74) survives the enumeration: two events cannot share one

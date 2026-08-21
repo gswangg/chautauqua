@@ -268,7 +268,7 @@ the 7 **public** desktop frames in `Chautauqua Public and Portal.dc.html`
 - **Gallery grid gap: 18px drawn vs 16px shipped.** `Chautauqua Public and
   Portal.dc.html:760` draws the grid gallery as
   `grid-template-columns:repeat(6, 1fr); gap:18px`. Shipped
-  (`src/routes/public/css/agenda.css.ts:390`,
+  (`src/routes/public/css/agenda.css.ts:399`,
   `.chq-pub-gallery-grid { grid-template-columns: repeat(6, 1fr); gap: 16px; }`)
   carries `gap: 16px`, with an in-code rationale attached (DEC-990 amendment,
   wave 40): "repeat(6, 1fr) + 16px gaps is ~1180, matching the 'wide' measure

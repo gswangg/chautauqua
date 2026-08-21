@@ -241,7 +241,12 @@ describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/des
     expect(rule).toMatch(/display:\s*inline/);
     expect(rule).toMatch(/font-size:\s*14px/);
     expect(rule).toMatch(/font-weight:\s*600/);
-    expect(rule).toMatch(/color:\s*#565A4B/);
+    // merge-train repair: the frame's #565A4B is the palette's --chq-muted
+    // (app/src/styles.css:29 `--chq-muted: #565a4b;`). DEC-383's palette
+    // closure guard (test/palette-conformance.test.ts) forbids a literal hex
+    // in any page sheet, so the frame value is asserted through its token --
+    // the same colour, spelled the one way this repo allows.
+    expect(rule).toMatch(/color:\s*var\(--chq-muted\)/);
     const hideRule = phoneRule(SCORECARD_CSS, '.chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value');
     expect(hideRule).toMatch(/display:\s*none/);
     // the scored-value register (frame 03--01) stays untouched: no phone
@@ -262,10 +267,18 @@ describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/des
     expect(desktopRule).toMatch(/display:\s*none/);
     const phoneRuleBody = phoneRule(SCORECARD_CSS, '.chq-review-recusal-label-phone');
     expect(phoneRuleBody).toMatch(/display:\s*inline/);
-    // single-direction (DEC-385): neither selector has a top-level rule
-    // outside the media query -- the desktop wording is the default,
-    // unauthored state, not an explicit rule this file could un-terminal.
+    // single-direction (DEC-385): the DESKTOP wording is the default,
+    // unauthored state -- no top-level rule, nothing this file could
+    // un-terminal.
     expect(() => topLevelRuleBody(SCORECARD_CSS, '.chq-review-recusal-label-desktop')).toThrow();
-    expect(() => topLevelRuleBody(SCORECARD_CSS, '.chq-review-recusal-label-phone')).toThrow();
+    // merge-train repair: the PHONE copy, by contrast, MUST carry a
+    // top-level display:none. DEC-919's wave-109 amendment
+    // (app/src/phone-block-visibility.test.ts) requires every phone-named
+    // class mounted in TSX to resolve to a top-level display:none, so a
+    // stylesheet-applied desktop render can never leak the phone copy; the
+    // native `hidden` attribute alone does not satisfy it. This is still
+    // single-direction -- the top-level rule HIDES, and only the terminal
+    // max-width:700px block above reveals.
+    expect(topLevelRuleBody(SCORECARD_CSS, '.chq-review-recusal-label-phone')).toMatch(/display:\s*none/);
   });
 });

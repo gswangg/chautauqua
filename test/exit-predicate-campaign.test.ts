@@ -177,6 +177,15 @@ function baseFixture(): CampaignFile[] {
       path: "test/phone-dock-ledger.scan.test.ts",
       content: "export const PHONE_DOCK_UNCLAIMED_CEILING = 3;",
     },
+    // wave-146 (task w20-a, DEC-937): pack declaration vocabulary ratchet,
+    // added on the same terms -- arbitrary value, faithful shape. Registered
+    // in CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES by the same lane;
+    // without a fixture row here every buildCampaignReport case throws
+    // resolveSingle's "no declaration was found" error.
+    {
+      path: "test/pack-declaration-vocabulary.scan.test.ts",
+      content: "export const PACK_VOCABULARY_OFFENDERS_CEILING = 2;",
+    },
   ];
 }
 
@@ -254,6 +263,9 @@ function allGreenFixture(): CampaignFile[] {
     if (f.path === "test/phone-dock-ledger.scan.test.ts") {
       return { ...f, content: "export const PHONE_DOCK_UNCLAIMED_CEILING = 0;" };
     }
+    if (f.path === "test/pack-declaration-vocabulary.scan.test.ts") {
+      return { ...f, content: "export const PACK_VOCABULARY_OFFENDERS_CEILING = 0;" };
+    }
     return f;
   });
 }
@@ -328,7 +340,13 @@ describe("buildCampaignReport", () => {
     // (the phone dock membership ledger) landed in
     // scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
     // and in this file's baseFixture/allGreenFixture in the same commit: 26 -> 27.
-    expect(report.rows).toHaveLength(27);
+    // wave-146 (task w20-a, DEC-937): PACK_VOCABULARY_OFFENDERS_CEILING (the
+    // pack declaration vocabulary ratchet) landed in scripts/exit-predicate.ts's
+    // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES without its fixture row or
+    // this pin -- merge train added both. Re-derived by running
+    // buildCampaignReport over baseFixture() at HEAD (28 rows), not by
+    // self-comparing report.rows' own length: 27 -> 28.
+    expect(report.rows).toHaveLength(28);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
