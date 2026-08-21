@@ -20,13 +20,14 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
-import { DEC_888, DEC_731, DEC_941 } from '../../../../src/decisions';
+import { DEC_888, DEC_731, DEC_941, DEC_919 } from '../../../../src/decisions';
 import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 import { kindLabel, type FormFieldKind } from '../forms/types';
 
 void DEC_888;
 void DEC_731;
 void DEC_941;
+void DEC_919;
 
 const SECTION_KEY = 'cfp';
 
@@ -111,10 +112,14 @@ function customQuestionsSummary(fields: CfpField[] | undefined): string {
 // full-width row (chq-settings-row-full) alongside the existing 'Custom
 // questions' summary line -- kept, not replaced, so the pre-existing count
 // summary stays intact for its own read (DEC-781) while this adds the
-// frame's per-question listing. 'Edit' opens the same form builder the
-// panel's own 'Open the form builder' link already reaches -- there is no
-// per-field deep link in the builder route, so every row's Edit lands on
-// the same destination rather than inventing field-level routing.
+// frame's per-question listing.
+//
+// DEC-919 wave-157 clause (b): delegation decides the DESTINATION, never
+// whether the control exists -- the per-question list and its boxed Edit
+// pill draw exactly as the frame does, field editing itself still stays in
+// the form builder (this panel never reimplements it), but each row's Edit
+// now carries THAT question's id in the URL so the builder can land on the
+// field that was tapped rather than always opening at its own index.
 function QuestionsSection({ fields }: { fields: CfpField[] | undefined }) {
   const list = (fields ?? []).filter((f) => !f.locked);
   return (
@@ -134,7 +139,10 @@ function QuestionsSection({ fields }: { fields: CfpField[] | undefined }) {
                   {`${kindLabel(field.kind)} · ${field.required ? 'Required' : 'Optional'}`}
                 </span>
               </div>
-              <Link to="/submissions/forms" className="chq-link-button chq-settings-inline-action">
+              <Link
+                to={`/submissions/forms?fieldId=${encodeURIComponent(field.id)}`}
+                className="chq-link-button chq-settings-inline-action"
+              >
                 Edit
               </Link>
             </li>

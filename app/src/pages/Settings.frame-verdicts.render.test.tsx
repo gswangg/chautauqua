@@ -204,14 +204,23 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :444-477 "Settings · Call for papers".
-  it('frame :444 Call for papers -- DIVERGES: per-question list collapsed to one summary row (previously documented, DEC-815)', async () => {
+  it('frame :444 Call for papers -- MATCHES: per-question list with a boxed Edit link per row, carrying the question id (DEC-919 wave-157)', async () => {
     verbatimLine(441, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Call for papers</span>");
     renderDrilled('cfp');
     const section = screen.getByRole('region', { name: 'Call for papers' });
     await waitFor(() => expect(within(section).getByText('1 — Format')).toBeInTheDocument());
-    // Frame :467-475 draws one boxed 'Edit' pill per question; the read
-    // view instead renders a single summary row (form-builder delegation).
-    expect(within(section).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    // Frame :467-475 draws one row per custom question (label + kind/
+    // required) with a boxed 'Edit' pill; QuestionsSection now renders that
+    // list unconditionally (CSS gates it to phone), and delegation to the
+    // form builder carries the tapped question's own id in the URL rather
+    // than always landing on the builder's index (DEC-919 wave-157 clause
+    // (b)) -- the locked 'Title' field never gets a row (only 'Format', the
+    // one non-locked field in this fixture, does).
+    expect(within(section).queryByText('Title')).not.toBeInTheDocument();
+    const row = within(section).getByText('Format').closest('li');
+    expect(row).not.toBeNull();
+    const editLink = within(row!).getByRole('link', { name: 'Edit' });
+    expect(editLink).toHaveAttribute('href', '/submissions/forms?fieldId=f2');
   });
 
   // Frame :481-501 "Settings · Public pages".
@@ -248,16 +257,17 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :510-548 "Settings · Speaker portal".
-  it('frame :510 Speaker portal -- DIVERGES: Welcome note collapsed to a computed summary line (previously documented, DEC-815)', async () => {
+  it('frame :510 Speaker portal -- MATCHES: Welcome note renders the stored text verbatim in the drawn readout box (DEC-919 wave-157)', async () => {
     verbatimLine(507, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Speaker portal</span>");
     renderDrilled('portal');
     const section = screen.getByRole('region', { name: 'Speaker portal' });
-    await waitFor(() =>
-      expect(within(section).getByText(/Shown above the task list/)).toBeInTheDocument(),
-    );
-    // Frame :518 draws a full boxed readout of the welcome text; the read
-    // view instead renders a computed one-line summary.
-    expect(within(section).queryByText('Welcome, speakers!')).not.toBeInTheDocument();
+    // Frame :518 draws a full boxed readout of the actual welcome text --
+    // the fixture's stored value ('Welcome, speakers!') now renders
+    // verbatim inside it (CSS gates the box itself to phone; desktop's
+    // pre-existing computed summary line stays mounted alongside it,
+    // frozen, and CSS is the only thing deciding which one is visible).
+    await waitFor(() => expect(within(section).getByText('Welcome, speakers!')).toBeInTheDocument());
+    expect(within(section).getByText(/Shown above the task list/)).toBeInTheDocument();
   });
 
   // Frame :552-575 "Settings · People and roles".

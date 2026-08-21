@@ -105,7 +105,14 @@ describe('CallForPapersPanel', () => {
     expect(within(section).getByText('Format')).toBeInTheDocument();
     expect(within(section).getAllByText('Single choice · Optional')).toHaveLength(2);
     expect(within(section).getByText('Audience level')).toBeInTheDocument();
-    expect(within(section).getAllByRole('link', { name: 'Edit' })).toHaveLength(2);
+    const editLinks = within(section).getAllByRole('link', { name: 'Edit' });
+    expect(editLinks).toHaveLength(2);
+    // DEC-919 wave-157 clause (b): each row's Edit carries THAT question's
+    // own id, so a tap lands on the field that was tapped -- not on the
+    // builder's own index, and not the same href for every row.
+    const hrefs = editLinks.map((link) => link.getAttribute('href'));
+    expect(new Set(hrefs).size).toBe(2);
+    expect(hrefs.every((href) => href?.startsWith('/submissions/forms?fieldId='))).toBe(true);
   });
 
   it('drills into the existing intro/open/close/tracks form via the Edit the form action, and Save returns to the summary', async () => {
