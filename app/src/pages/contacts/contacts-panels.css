@@ -1273,6 +1273,17 @@
   display: none;
 }
 
+/* v12m-w15-th (DEC-663 wave-159): same swap technique, one more pair --
+   the Import wizard's match-columns head-band subtitle. Desktop's copy
+   (Chautauqua Contacts.dc.html:285-286, "speakers.csv · 214 rows") carries
+   no column position; the phone copy (:491, "speakers.csv · 214 rows · 2
+   of 5") appends one. Both spans render always (ImportWizard.tsx); the
+   phone span defaults hidden here, at top level, then is un-hidden inside
+   the max-width block below alongside its desktop sibling going hidden. */
+.chq-contacts-import-subtitle-phone {
+  display: none;
+}
+
 @media (max-width: 700px) {
   /* -- from the former "Pipeline · 390" block ------------------------- */
   /* DEC-989 wave-w12-q: the Pipeline 390 frame draws ONE stage at a time,
@@ -1829,9 +1840,18 @@
          ImportWizard.phoneColumns.render.test.tsx).
        - "Cancel" (secondary)      -> ModalFrame's header Close control
          (`.chq-modal-close-btn`, ModalFrame.tsx ~132), which lives in
-         `.chq-modal-head`, not `.chq-modal-actions`, and is never hidden at
-         any width (modal-frame.css has no rule hiding it below 700px) --
-         verified before writing this receipt. */
+         `.chq-modal-head`, not `.chq-modal-actions`.
+         UPDATE (v12m-w15-th, DEC-663 wave-159): Close itself is now ALSO
+         hidden at this width for this drill (`.chq-contacts-import
+         .chq-modal-close-btn` below, this file's terminal block) once the
+         wizard gained its own head-band back link -- so as of this wave
+         "Cancel" survives one hop further, via that `‹ Contacts` back
+         link (ModalFrame.tsx's `backLink`, same onClose handler Close and
+         Cancel both already called), not via Close. The pre-w15-th text
+         above ("never hidden at any width") was accurate when written and
+         is now stale; left in place with this amendment rather than
+         rewritten, per the wave-99 "an amendment that reverses says so"
+         convention (DEC-099). */
   .chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
     display: none;
   }
@@ -1943,5 +1963,43 @@
     font-size: 12px;
     font-weight: 700;
     color: var(--chq-muted);
+  }
+
+  /* v12m-w15-th (DEC-663 wave-159): the Import wizard's match-columns head
+     band subtitle swap (top-level default above) -- desktop's "<file> ·
+     <rows>" span goes hidden, the phone "<file> · <rows> · <col> of
+     <total>" span (Chautauqua Contacts.dc.html:491) takes over. */
+  .chq-contacts-import-subtitle-desktop {
+    display: none;
+  }
+
+  .chq-contacts-import-subtitle-phone {
+    display: inline;
+  }
+
+  /* v12m-w15-th (DEC-663 wave-159, task w15-th-contacts-drill-heads-390):
+     both Contacts drills' phone frames (Chautauqua Contacts.dc.html:407
+     "Contact · 390" and :487 "Import CSV · 390") draw exactly ONE escape
+     in the head band -- the `‹ Contacts` back link at :409/:489. Now that
+     ContactDrawer (`backLink` since an earlier wave) AND ImportWizard
+     (`backLink` added this wave) both supply that link, ModalFrame's own
+     header `Close` button (`.chq-modal-close-btn`, always rendered by the
+     shared, never-edited-here ModalFrame.tsx regardless of `backLink`)
+     becomes a SECOND escape stacked beside the first -- not drawn by
+     either frame. Standing it down here is a SUBSTITUTION, not a
+     capability removal: the back link's onClick is the exact same
+     onClose handler the Close button already called
+     (ContactDrawer.tsx/ImportWizard.tsx both pass `onClick: onClose`), so
+     every way to leave the drill that Close offered is still on screen,
+     just under the back link's label instead of a second control. Scoped
+     to each drill's own contacts- wrapper class (never a bare
+     `.chq-modal-close-btn`, which would blank Close on every OTHER
+     ModalFrame dialog in the app that has no back link to replace it, and
+     never ModalFrame.tsx itself, which stays shared/unedited). Desktop is
+     unaffected -- this rule lives only inside this file's ONE terminal
+     max-width:700px block (DEC-385). */
+  .chq-contacts-drawer .chq-modal-close-btn,
+  .chq-contacts-import .chq-modal-close-btn {
+    display: none;
   }
 }

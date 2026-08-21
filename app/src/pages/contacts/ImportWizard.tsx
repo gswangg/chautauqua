@@ -5,7 +5,7 @@ import { toCsv } from '../../../../src/domain/csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
-import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/decisions';
+import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856, DEC_663 } from '../../../../src/decisions';
 // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
 // instruction -- the wizard's session-title requirement, request keys and
 // blocker hint below all hang off the 'Also add these people to <event> as
@@ -48,6 +48,12 @@ void DEC_478;
 // wizard doesn't recognize renders labelled in one top-of-form
 // ErrorSummary instead of being silently dropped.
 void DEC_856;
+// DEC-663 (wave 159): this wizard's phone head band draws exactly the
+// frame's controls -- the `‹ Contacts` back link (Chautauqua Contacts.dc.
+// html:489) and the drill's own H1/subtitle -- and never a second escape
+// stacked beside it. See backLink below and the .chq-contacts-import
+// .chq-modal-close-btn stand-down rule in contacts-panels.css.
+void DEC_663;
 
 interface Props {
   onClose: () => void;
@@ -397,6 +403,37 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           ? 'Match the columns'
           : 'Choose a file';
 
+  // w15-th (DEC-663 wave-159): the phone match-columns frame
+  // (Chautauqua Contacts.dc.html:487, head band :489-491) draws the
+  // subtitle as `<file name> · <row count> · <column position> of <column
+  // count>` -- e.g. `speakers.csv · 214 rows · 2 of 5`. Desktop's own copy
+  // of this step (:285-286) draws the same file name + row count WITHOUT a
+  // column position (its column-mapping UI has no single-column stepper to
+  // report a position for), so this is two sibling spans -- the desktop
+  // register always rendered, the phone register with the column count
+  // hidden by default and un-hidden only inside contacts-panels.css's
+  // terminal max-width:700px block (DEC-385), same swap-technique as this
+  // file's other phone-only spans (e.g. .chq-contacts-merge-primary-phone-
+  // label). Every other step keeps the static "Import contacts from CSV"
+  // subtitle unchanged.
+  const importMatchSubtitle = (
+    <>
+      <span className="chq-contacts-import-subtitle-desktop">
+        {(fileName ?? 'Pasted CSV') + ' · ' + countOf(dataRows.length, 'row')}
+      </span>
+      <span className="chq-contacts-import-subtitle-phone">
+        {(fileName ?? 'Pasted CSV') +
+          ' · ' +
+          countOf(dataRows.length, 'row') +
+          ' · ' +
+          (phoneColumnIndex + 1) +
+          ' of ' +
+          header.length}
+      </span>
+    </>
+  );
+  const modalSubtitle = step === 2 ? importMatchSubtitle : 'Import contacts from CSV';
+
   // DEC-856: one entry point for both preview and commit refusals. A
   // fields map routes the wizard back to the step/control that produced the
   // offending key (see MATCHED_FIELD_KEYS above) instead of leaving the
@@ -679,13 +716,14 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   return (
     <ModalFrame
       title={stepTitle}
-      subtitle="Import contacts from CSV"
+      subtitle={modalSubtitle}
       ariaLabel="Import contacts"
       onClose={onClose}
       closeDisabled={busy}
       modalClassName="chq-contacts-import"
       size="wide"
       actions={actions}
+      backLink={{ label: '‹ Contacts', onClick: onClose }}
     >
       <ol className="chq-steps" aria-label="Import steps">
         <li className={`chq-step${step > 1 ? ' is-done' : step === 1 ? ' is-current' : ''}`}>Choose file</li>
