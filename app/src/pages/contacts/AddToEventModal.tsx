@@ -8,7 +8,7 @@ import type { ContactDetail, ContactListItem } from './types';
 // control that lies about two of its options ('reviewer' is an account
 // role, 'guest' has no representation in the data model).
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
-import { DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
+import { DEC_393, DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { plural } from '../../lib/plural';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
@@ -22,6 +22,7 @@ import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 void DEC_764;
 void DEC_765;
 void DEC_795;
+void DEC_393; // wave-17: the "As" role buttons (chq-btn chq-add-to-event-role-btn, below) reach `Chautauqua Contacts.dc.html`:602's own 46px desktop floor via contacts-panels.css
 
 interface EventOption {
   id: string;
