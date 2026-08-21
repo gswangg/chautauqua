@@ -25,6 +25,7 @@ const BASE_DATA: EditableSubmissionData = {
   offeredTrackIds: ["t1"],
   allTracks: [{ id: "t1", name: "Track One" }],
   selectedTrackIds: ["t1"],
+  formatLabel: null,
 };
 
 const saveSubmissionEditsMock = vi.fn(async (..._args: unknown[]) => {});

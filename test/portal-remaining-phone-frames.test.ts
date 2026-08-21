@@ -148,6 +148,7 @@ describe('"Portal · co-presenter rejected" 390 frame (docs/design/Chautauqua Pu
     offeredTrackIds: [],
     allTracks: [],
     selectedTrackIds: [],
+    formatLabel: null,
   };
   const html = EditPage({
     branding: BRANDING,

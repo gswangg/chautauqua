@@ -139,6 +139,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
       offeredTrackIds: [],
       allTracks: [],
       selectedTrackIds: [],
+      formatLabel: null,
     })),
     getPortalParticipants: vi.fn(async () => []),
   };

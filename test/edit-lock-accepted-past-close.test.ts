@@ -23,6 +23,7 @@ const ACCEPTED_DATA: EditableSubmissionData = {
   offeredTrackIds: [],
   allTracks: [],
   selectedTrackIds: [],
+  formatLabel: null,
 };
 
 vi.mock("../src/server/repo/portal-edit", async () => {

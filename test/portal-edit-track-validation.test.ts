@@ -23,6 +23,7 @@ const BASE_DATA: EditableSubmissionData = {
     { id: "t2", name: "Track Two" },
   ],
   selectedTrackIds: ["t1"],
+  formatLabel: null,
 };
 
 const saveSubmissionEdits = vi.fn(async (..._args: unknown[]) => {});

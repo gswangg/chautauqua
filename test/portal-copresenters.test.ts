@@ -107,6 +107,7 @@ describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
     offeredTrackIds: [],
     allTracks: [],
     selectedTrackIds: [],
+    formatLabel: null,
   };
   const branding = { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null };
   const participants: PortalParticipant[] = [
@@ -194,6 +195,7 @@ describe("EditPage co-presenter field-fill contract (DEC-604 wave-60 amendment)"
     offeredTrackIds: [],
     allTracks: [],
     selectedTrackIds: [],
+    formatLabel: null,
   };
   const branding = { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null };
 

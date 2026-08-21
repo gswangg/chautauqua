@@ -1418,6 +1418,26 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
   },
+  // v12m-w4-ai (wave-148, DEC-777/DEC-908 amendment): the portal edit
+  // page's read-only "Session length" row, built this task
+  // (src/routes/portal/edit.tsx). No plain-substring or digit-skeleton
+  // pass can rejoin it -- the whole "Talk, 30 min" clause is dynamic
+  // (session-vocabulary.ts's sessionFormatLabel over the submission's own
+  // session_format-role answer), not just its digits.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 620,
+    text: 'Talk, 30 min · set by the organisers',
+    reason:
+      "src/routes/portal/edit.tsx composes `{sessionFormatLabel(data.formatLabel)} · set by the organisers`, and sessionFormatLabel (src/lib/session-vocabulary.ts, DEC-908) renders the submission's own session_format-role answer (loadEditableSubmission's answerFieldRoleCondition('session_format') read, src/server/repo/portal-edit.ts) as `<name>, <N> min` -- 'Talk, 30 min' for this pack's own fixture data, but the format name and duration are both live fields, not literal text a substring pass can match.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1405,
+    text: 'Talk, 30 min · set by the organisers',
+    reason:
+      "the SAME composing expression as :620 above -- edit.tsx renders one Session length row shared by both the 390 and desktop frames (DEC-385 single-direction responsive, no separate desktop markup).",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

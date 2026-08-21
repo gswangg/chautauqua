@@ -167,6 +167,7 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     offeredTrackIds: [],
     allTracks: [],
     selectedTrackIds: [],
+    formatLabel: null,
   };
   const html = EditPage({
     branding: { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null },

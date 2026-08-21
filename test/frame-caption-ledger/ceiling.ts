@@ -299,4 +299,13 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-ai (wave-148, task w4-ai, DEC-777/DEC-908): built the portal
+// edit page's read-only "Session length" row (src/routes/portal/edit.tsx),
+// closing Chautauqua Public and Portal.dc.html:620/:1405. Neither exits
+// via a plain-substring or digit-skeleton match -- the whole "Talk, 30
+// min" clause is dynamic (sessionFormatLabel over the submission's own
+// session_format-role answer), not just its digits -- so both were added
+// to COMPOSED_EXCLUSIONS citing the composing expression. Forced to -1 and
+// read back on this branch: 13.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
+export const FRAME_CAPTION_UNMATCHED_CEILING = 13;
