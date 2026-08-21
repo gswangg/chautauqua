@@ -38,6 +38,12 @@ import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 // counts through this ONE word list -- declaring a second spelled-number
 // array anywhere else fails test/count-grammar.scan.test.ts.
 import { spellCount, plural } from '../../../../src/domain/count-copy';
+import { DEC_874 } from '../../../../src/decisions';
+
+// DEC-874 wave-19 amendment: the footnote paragraph below states both
+// frame sentences as sibling spans, with only the phone-repeat span hidden
+// at 390 (review.css's terminal max-width:700px block carries the receipt).
+void DEC_874;
 
 // DEC-831/w42-h: 'closes in N days' while the window is still open; a plan
 // whose close date has already passed reads in the past tense ('closed N
@@ -827,9 +833,18 @@ export function ReviewerQueue() {
                 is skipped (the single-plan-list branch above handles the
                 truly-one-plan-total case), and scores stay hidden from
                 other reviewers even while more than one plan is open. */}
+            {/* DEC-874 wave-19 amendment: the paragraph carries both frame
+                sentences (:817 body close / :821 dock) as two sibling
+                spans, byte-identical in reading order for the frozen 1600
+                frame (:775). Only the second span is hidden at 390 --
+                review.css's terminal max-width:700px block hides
+                .chq-reviewer-plans-footnote-repeat with a phone-hidden
+                receipt, since the dock note below already restates that
+                exact sentence at that width (one sentence, one place, per
+                width). */}
             <p className="chq-reviewer-plans-footnote">
-              With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other
-              reviewers.
+              <span>With one open plan this page is skipped — you land straight in its queue.</span>{' '}
+              <span className="chq-reviewer-plans-footnote-repeat">Scores stay hidden from other reviewers.</span>
             </p>
             {/* docs/design/Chautauqua Review.dc.html:820-821 (frame extent
                 793-830): the hub's own docked footer band -- hidden at

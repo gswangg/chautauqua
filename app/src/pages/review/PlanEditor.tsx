@@ -1381,6 +1381,16 @@ export function PlanEditor() {
           >
             &lsaquo; Review
           </Link>
+          {/* DEC-745 wave-19 amendment: the v4 title-row shell is blessed
+              (DEVIATIONS.md) as superseding the frame's separate-H1
+              (`:597`) + footer-Save/Cancel (`:665-668`) anatomy, but the
+              screen still needs exactly one level-1 heading naming the
+              plan -- this is that heading, not a second editable copy of
+              the name (DEC-613). It carries the same string the input
+              already shows, so it is not a desktop geometry change
+              (DEC-385); review.css keeps it visually hidden at every
+              width via the standard sr-only clip pattern. */}
+          <h1 className="chq-review-editor-title-h1">{draft.name || 'New evaluation plan'}</h1>
           <input
             id="plan-name"
             className={
