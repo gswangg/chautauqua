@@ -1560,6 +1560,13 @@ export const UNBACKED_EXCLUSIONS: Exclusion[] = [
     reason:
       "DEVIATIONS.md §1 rules the frame's 'Keeping and deleting' block (docs/design/Chautauqua Settings.dc.html:1161-1180) a deliberate non-build, quoting verbatim: \"no retention column, no endpoint, and no deletion job backs any of the three controls — building them alone would declare a setting nothing reads.\" app/src/pages/settings/ExportsPanel.tsx already records the same non-build in its own header comment: `Deliberately does NOT build the frame's 'Keeping and deleting' retention block (docs/design/Chautauqua Settings.dc.html: 1161-1180) -- no column, no endpoint, no rubric backs it; recorded as a deliberate non-build on DEC-032.`",
   },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1422,
+    text: 'Downloaded 18 times by 12 speakers',
+    reason:
+      "DEVIATIONS.md §6's 'Unbuilt features' bullet extends the Public-pages/saved-embed non-build to this same line, quoting verbatim: \"carries no download-count column and no read-tracking endpoint exists anywhere in the repo, so the count is absent by design\" (DEC-032, task w4-aq). app/src/pages/settings/ResourcesPanel.tsx already records the same non-build in its own comment: `Deliberately does NOT build the frame's delete-modal download-count line (docs/design/Chautauqua Settings.dc.html:1422, \"Downloaded 18 times by 12 speakers\") -- the resource table (src/db/schema/content.ts) has no download-count column and no read-tracking endpoint exists anywhere in the repo; recorded as a deliberate non-build on DEC-032 (task w4-aq).`",
+  },
 ];
 
 export function isExcluded(c: Caption, table: Exclusion[]): boolean {

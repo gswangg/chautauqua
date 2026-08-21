@@ -299,4 +299,14 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-aq (wave-148): caption-ledger custodian task -- disposed Chautauqua
+// Settings.dc.html:1422 ("Downloaded 18 times by 12 speakers") into the
+// UNBACKED table (DEC-032, DEVIATIONS.md §6): `resource` (src/db/schema/
+// content.ts) has no download-count column and no read-tracking endpoint
+// exists anywhere in the repo -- a declared knob with no reader
+// (DEC-851/DEC-988). This branch owns no other row. Forced to -1 and read
+// back on this branch: 14, all pre-existing gaps re-verified against the
+// current tree (see docs/design/audit/frame-caption-residue-v12.md for the
+// re-derived blocker text of each). Lowered from 15.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;

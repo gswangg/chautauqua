@@ -424,7 +424,14 @@ instead of re-flagging.
   `docs/design/Chautauqua Settings.dc.html:1111` (`Settings · editing your data`).
 - Tracks/rooms drag-handle reordering — no server-side order field (09--12).
 - Public-pages Publish/Unpublish control (09--07) and saved-embed "in use on"
-  host column (09--09) — no backing data.
+  host column (09--09) — no backing data. Same disposition for the Settings
+  resource-delete modal's download-count line
+  (`docs/design/Chautauqua Settings.dc.html:1422`, "Downloaded 18 times by 12
+  speakers"): the `resource` table (`src/db/schema/content.ts`) carries no
+  download-count column and no read-tracking endpoint exists anywhere in the
+  repo, so the count is absent by design — building a counter over a column
+  nobody writes would be exactly DEC-851/DEC-988's declared knob with no
+  reader (DEC-032, task w4-aq).
 - Per-person scope column and per-row Change on people-and-roles read view —
   users are org-scoped (09--02/--14).
 - Hotel-form save-draft, per-recipient reminder triage rows, speaker-detail
