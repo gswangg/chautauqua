@@ -200,6 +200,29 @@ function extractSpecifiers(source: string): string[] {
   return specs;
 }
 
+/** A CSS `@import './x.css'` (bare or `url(...)`-wrapped) is a REAL bundle
+ * edge: Vite inlines it at build time, so a submodule stylesheet attached
+ * that way is genuinely shipped, not an orphan. The walker used to skip
+ * `.css` files outright ("CSS has no JS import statements to parse"), which
+ * was true only while no stylesheet imported another; the first CSS->CSS
+ * edge in the tree (contacts.css -> contacts-modals.css, the contention
+ * custodian's Modals submodule split) made that blind spot report a shipped
+ * file as unreachable. Comments are stripped first so a decision note
+ * quoting an `@import` line is never mistaken for a real edge. */
+const CSS_IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']/g;
+
+function extractCssImportSpecifiers(source: string): string[] {
+  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  const specs: string[] = [];
+  CSS_IMPORT_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = CSS_IMPORT_RE.exec(withoutComments))) {
+    const spec = m[1];
+    if (spec) specs.push(spec);
+  }
+  return specs;
+}
+
 // ---------------------------------------------------------------------------
 // Relative-specifier resolution
 // ---------------------------------------------------------------------------
@@ -233,10 +256,10 @@ function walkReachable(entries: string[]): Set<string> {
     if (seen.has(file)) continue;
     seen.add(file);
     if (isTestFile(file)) continue; // test files' imports don't confer reachability
-    if (!existsSync(file)) continue; // e.g. a .css leaf -- no further edges
-    if (file.endsWith(".css")) continue; // CSS has no JS import statements to parse
+    if (!existsSync(file)) continue; // e.g. an asset leaf -- no further edges
     const source = readFileSync(file, "utf-8");
-    for (const spec of extractSpecifiers(source)) {
+    const specs = file.endsWith(".css") ? extractCssImportSpecifiers(source) : extractSpecifiers(source);
+    for (const spec of specs) {
       const resolved = resolveSpecifier(file, spec);
       if (resolved) stack.push(resolved);
     }

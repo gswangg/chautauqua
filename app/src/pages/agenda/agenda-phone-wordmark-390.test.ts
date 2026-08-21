@@ -67,12 +67,23 @@ function phoneLayer(css: string): string {
   return out.join('\n');
 }
 
+/** The `.chq-phone-agenda-wordmark` rule body as agenda.css's own terminal
+ * phone layer ships it. Resolved at module scope so the citation block below
+ * can assert about the TREE in the same breath as it quotes the frame
+ * (DEC-967 wave-99: a frame receipt whose every expect() subject is a
+ * design-file read asserts nothing about this codebase). */
+const PHONE_WORDMARK_RULE = /\.chq-phone-agenda-wordmark\s*\{([^{}]*)\}/.exec(phoneLayer(AGENDA_CSS))?.[1] ?? '';
+
 describe('v12 frame: Agenda 390 head-band wordmark line', () => {
-  it('docs/design/Chautauqua Agenda.dc.html:130 is quoted verbatim', () => {
+  it('docs/design/Chautauqua Agenda.dc.html:130 is quoted verbatim, and agenda.css ships that same register', () => {
+    expect(PHONE_WORDMARK_RULE).toMatch(/font-size:\s*20px/);
     verbatimLine(
       130,
       `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>`,
     );
+    expect(PHONE_WORDMARK_RULE).toMatch(/font-weight:\s*700/);
+    expect(PHONE_WORDMARK_RULE).toMatch(/letter-spacing:\s*-0\.03em/);
+    expect(PHONE_WORDMARK_RULE).toMatch(/top:\s*-2\.5px/);
   });
 });
 

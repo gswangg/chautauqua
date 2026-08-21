@@ -93,6 +93,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { flattenMediaRules, splitMediaBlocks } from '../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLES_PATH = join(HERE, 'styles.css');
@@ -113,9 +114,12 @@ function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-/** Strips every @media block (top-level-only parsing, per house idiom). */
+/** Strips every @media block, brace-matched so a NESTED at-rule (contacts.css
+ * nests `@media (hover: hover)` inside its terminal `@media (max-width:
+ * 700px)`) cannot defeat the strip and leave a whole media block's phone
+ * rules to be misread as top-level ones. */
 function stripMedia(css: string): string {
-  return stripComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
+  return splitMediaBlocks(stripComments(css)).outside;
 }
 
 /** Every top-level `selector { body }` rule, with @media blocks stripped. */
@@ -309,25 +313,7 @@ function allTsAndTsxFiles(root: string): string[] {
  * blocks entirely) — a rule that only exists inside a phone-width query is
  * still a rule that must be reachable from markup, per invariant (D). */
 function allRulesIncludingMedia(css: string): Array<{ selector: string; body: string }> {
-  const withoutComments = stripComments(css);
-  const rules: Array<{ selector: string; body: string }> = [];
-  const topLevel = withoutComments.replace(
-    /@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g,
-    (_full, inner: string) => {
-      const re = /([^{}]+)\{([^{}]*)\}/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(inner)) !== null) {
-        rules.push({ selector: (m[1] ?? '').trim(), body: m[2] ?? '' });
-      }
-      return '';
-    },
-  );
-  const re = /([^{}]+)\{([^{}]*)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(topLevel)) !== null) {
-    rules.push({ selector: (m[1] ?? '').trim(), body: m[2] ?? '' });
-  }
-  return rules;
+  return flattenMediaRules(stripComments(css));
 }
 
 /** Every distinct `chq-…` class token appearing in a class selector — a

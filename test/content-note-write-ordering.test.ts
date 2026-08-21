@@ -2,11 +2,16 @@
 // resolve pure env/config reads on its send path BEFORE the first durable
 // write (insertFileComment / updateContentStatus), so an unconfigured
 // deployment refuses loudly with nothing committed instead of writing the
-// note/status move first and only then 500ing. resolvePortalLinks (a KV
+// note/status move first and only then 500ing. mintPortalLinks (a KV
 // call) stays AFTER the write, but a failure there must land inside the
 // {sent, failed, recipients} 200 envelope rather than surfacing as a 500 --
 // the write already happened and cannot be undone (DEC-547). Mocking
 // pattern mirrors test/content-note.test.ts.
+//
+// Mock the export the ROUTE imports. Since DEC-027 wave-20 that is
+// mintPortalLinks, not resolvePortalLinks: mintPortalLinks delegates to
+// resolvePortalLinks through an intra-module binding, which no module mock
+// can intercept, so mocking resolvePortalLinks here is silently dead.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -85,12 +90,12 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
-const resolvePortalLinksMock = vi.fn();
+const mintPortalLinksMock = vi.fn();
 vi.mock("../src/server/repo/portal-link", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal-link")>("../src/server/repo/portal-link");
   return {
     ...actual,
-    resolvePortalLinks: resolvePortalLinksMock,
+    mintPortalLinks: mintPortalLinksMock,
   };
 });
 
@@ -156,12 +161,12 @@ describe("POST /api/v1/submissions/:id/content-note write ordering (DEC-547 wave
     expect(res.status).toBe(500);
     expect(insertFileCommentCalls).toHaveLength(0);
     expect(updateContentStatusCalls).toHaveLength(0);
-    expect(resolvePortalLinksMock).not.toHaveBeenCalled();
+    expect(mintPortalLinksMock).not.toHaveBeenCalled();
     expect(mailerSend).not.toHaveBeenCalled();
   });
 
-  it("commits the write and reports 200 with every participant in `failed` when resolvePortalLinks throws (KV failure)", async () => {
-    resolvePortalLinksMock.mockRejectedValueOnce(new Error("KV unavailable"));
+  it("commits the write and reports 200 with every participant in `failed` when mintPortalLinks throws (KV failure)", async () => {
+    mintPortalLinksMock.mockRejectedValueOnce(new Error("KV unavailable"));
     const app = await buildApp(ORGANIZER, { PUBLIC_BASE_URL: "https://events.example.com" });
     const res = await postNote(app, "sub-1", { fileId: "file-1", body: "Please fix the font size.", requestChanges: true });
 

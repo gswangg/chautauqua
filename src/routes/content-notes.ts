@@ -162,7 +162,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requir
       origin!,
     );
   } catch (err) {
-    console.error("content-note resolvePortalLinks failed", err);
+    console.error("content-note mintPortalLinks failed", err);
     return c.json({
       sent: 0,
       failed: participants.map((p) => ({

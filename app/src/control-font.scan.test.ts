@@ -37,6 +37,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_808, DEC_989 } from '../../src/decisions';
+import { splitMediaBlocks } from '../../test/helpers/css-media-blocks';
 
 void DEC_989; // this file's whole reason to exist: the ceiling, its companion and its controls
 void DEC_808; // population-by-source-content, never a hand-listed manifest or a filename convention
@@ -98,10 +99,11 @@ function controlClassTokens(src: string): Set<string> {
 /** Every top-level (not inside @media) `selector { body }` rule in a CSS text. */
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const withoutMedia = withoutComments.replace(
-    /@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g,
-    '',
-  );
+  // Brace-matched, not regex-bounded: a NESTED at-rule (contacts.css nests
+  // `@media (hover: hover)` inside its terminal `@media (max-width: 700px)`)
+  // defeats the one-level-deep regex idiom, leaving the whole media block
+  // unstripped and its phone rules misread as top-level ones.
+  const withoutMedia = splitMediaBlocks(withoutComments).outside;
   const rules: Array<{ selector: string; body: string }> = [];
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;

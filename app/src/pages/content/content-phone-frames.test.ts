@@ -68,11 +68,12 @@ const STYLES_CSS = read('../../styles.css');
 // than trusting a copied string to stay in sync with it.
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Content.dc.html');
-function verbatimLine(lineNo: number, literal: string): void {
+function verbatimLine(lineNo: number, literal: string): string {
   const lines = readFileSync(DESIGN_FILE, 'utf-8').split('\n');
   const line = lines[lineNo - 1];
   if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
   expect(line).toBe(literal);
+  return line;
 }
 
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`,
@@ -400,11 +401,7 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
     expect(phoneRule(CONTENT_CSS, '.chq-content-comment-actions .chq-btn-primary')).toMatch(/flex:\s*1 1 auto/);
   });
 
-  // w21-k (DEC-901 amendment): docs/design/Chautauqua Content.dc.html:391-419
-  // draws the phone body as ONE scrolling column -- version rows, then the
-  // 2px-ruled "Notes on the <kind>" label, then comment rows, then the
-  // dashed "Upload a file for the speaker" link, then the note textbox --
-  // in that DOM-source order. The real tree keeps the desktop two-column
+  // w21-k (DEC-901 amendment). The real tree keeps the desktop two-column
   // split (`.chq-content-files-col` / `.chq-content-comments-col`, DEC-385:
   // never forked, never reordered in the DOM itself); this block's own
   // `display: contents` + `order` construct is what reaches the frame's
@@ -412,11 +409,18 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
   // applies no @media -- Content.frame-verdicts.render.test.tsx's :373
   // block is the DOM-level receipt for the two columns staying real
   // siblings under this same rule set).
+  //
+  // docs/design/Chautauqua Content.dc.html:391-419 draws the phone body as
+  // ONE scrolling column -- version rows, then the 2px-ruled "Notes on the
+  // <kind>" label, then comment rows, then the dashed `Upload a file for the
+  // speaker` link, then the note textbox -- in that DOM-source order.
   it('unwraps both columns (plus CommentThread\'s own root) to `display: contents` and orders every promoted child in the frame\'s sequence', () => {
-    verbatimLine(
-      417,
-      '        <a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>',
-    );
+    expect(
+      verbatimLine(
+        417,
+        '        <a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>',
+      ),
+    ).toContain('Upload a file for the speaker');
 
     // The two column DIVs plus CommentThread's own `.chq-comment-thread`
     // root all unwrap -- their real children become flex items of
