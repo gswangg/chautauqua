@@ -63,6 +63,7 @@ vi.mock("../src/server/repo/review", async () => {
     ),
     getPlanById: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? plan : null)),
     listPlansForEvent: vi.fn(async () => [plan]),
+    countPlansForEvent: vi.fn(async () => 1),
     createPlan: vi.fn(async (_db: unknown, eventId: string, input: Record<string, unknown>) => ({
       ...makePlan(),
       eventId,
@@ -409,6 +410,97 @@ describe("DEC-509: PATCH /api/v1/plans/:id numeric field validation", () => {
       expect(body[key]).toBeNull();
     });
   }
+});
+
+describe("DEC-517 amendment: the plan write door refuses everything its read door refuses (non-finite numbers)", () => {
+  it("scale.max=1e999 (Infinity) -> 400 under fields.scale, nothing persisted", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/events/${plan.eventId}/plans`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify(basePlanBody({ scale: { min: 1, max: 1e999 } })),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.scale).toBeTruthy();
+
+    const { createPlan } = await import("../src/server/repo/review");
+    expect(createPlan).not.toHaveBeenCalled();
+
+    const getRes = await app.request(`/api/v1/events/${plan.eventId}/plans`);
+    expect(getRes.status).toBe(200);
+  });
+
+  it("scale.min=-1e999 (-Infinity) -> 400 under fields.scale, nothing persisted", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/events/${plan.eventId}/plans`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify(basePlanBody({ scale: { min: -1e999, max: 5 } })),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.scale).toBeTruthy();
+
+    const { createPlan } = await import("../src/server/repo/review");
+    expect(createPlan).not.toHaveBeenCalled();
+
+    const getRes = await app.request(`/api/v1/events/${plan.eventId}/plans`);
+    expect(getRes.status).toBe(200);
+  });
+
+  it("rating criterion weight=1e999 (Infinity) -> 400 under fields.criteria, nothing persisted", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/events/${plan.eventId}/plans`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify(
+        basePlanBody({ criteria: [{ id: "c1", label: "Quality", kind: "rating", weight: 1e999 }] }),
+      ),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.criteria).toBeTruthy();
+
+    const { createPlan } = await import("../src/server/repo/review");
+    expect(createPlan).not.toHaveBeenCalled();
+
+    const getRes = await app.request(`/api/v1/events/${plan.eventId}/plans`);
+    expect(getRes.status).toBe(200);
+  });
+
+  it("keeps a normal finite scale accepted (no regression)", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/events/${plan.eventId}/plans`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify(basePlanBody()),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("unit: parseScale refuses NaN min/max (unreachable over JSON, reachable in-process)", async () => {
+    const { parseScale } = await import("../src/routes/review/shared");
+    const errors: Record<string, string> = {};
+    expect(parseScale({ scale: { min: NaN, max: 5 } }, errors)).toBeUndefined();
+    expect(errors.scale).toBeTruthy();
+
+    const errors2: Record<string, string> = {};
+    expect(parseScale({ scale: { min: 1, max: NaN } }, errors2)).toBeUndefined();
+    expect(errors2.scale).toBeTruthy();
+  });
+
+  it("unit: parseCriteriaList refuses a NaN rating weight (unreachable over JSON, reachable in-process)", async () => {
+    const { parseCriteriaList } = await import("../src/routes/review/shared");
+    const errors: Record<string, string> = {};
+    const out = parseCriteriaList(
+      [{ id: "c1", label: "Quality", kind: "rating", weight: NaN }],
+      errors,
+      "criteria",
+    );
+    expect(out).toBeUndefined();
+    expect(errors.criteria).toBeTruthy();
+  });
 });
 
 describe("DEC-509: maxEvaluations=2 still caps a reviewer's queue (no regression in reviewer.ts:109)", () => {
