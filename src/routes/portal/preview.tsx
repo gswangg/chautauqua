@@ -60,8 +60,16 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
             G13 (frame 10--24, MAJOR) + DEVIATIONS §2: a disabled link-shaped
             control keeps NO surface -- muted text, no box, right-flushed on
             the title's own line -- never a full-column filled secondary
-            (full-column buttons are phone anatomy). */}
-        <button type="button" class="chq-portal-preview-download" disabled aria-disabled="true" title="Preview only — sign in as this speaker to download">
+            (full-column buttons are phone anatomy).
+            DEC-747 amendment (wave-153): the tooltip is copy too, and it used
+            to name a capability the product has no path for ("sign in as
+            this speaker") -- directly contradicting the read-only-
+            impersonation sentence this same page renders below and the
+            control's own name on the settings frame ("Open as a speaker").
+            The tooltip now states the real, narrower reason the control is
+            inert: this preview has no speaker session to download as,
+            because it never impersonates one. */}
+        <button type="button" class="chq-portal-preview-download" disabled aria-disabled="true" title="Preview only — no speaker session to download as">
           Download
         </button>
       </div>
