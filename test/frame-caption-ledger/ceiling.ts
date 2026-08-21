@@ -299,4 +299,17 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-ao (wave-148, task w4-ao, DEC-908 amendment): disposed the three
+// CFP-confirmation-card rows the prior note (v12m-w18-a) had left UNMATCHED
+// on the grounds that they were order-pinned by
+// test/cfp-confirmation-email-honesty.test.ts's own assertion -- that pin
+// is re-pointed by this same task to the frame's own clause order
+// (format, track, audience level; DEC-908 wave-148 amendment), and
+// submit-post.tsx now composes all three clauses via
+// src/lib/session-vocabulary.ts. All three (:1080/:1130/:1153) remain
+// unmatched by the plain-substring pass -- each interpolates this fixture
+// pack's own sample track name -- and are filed as new COMPOSED rows
+// (exclusions.ts, tagged v12m-w4-ao) rather than left in the residue.
+// Forced to -1 and read back: 12.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=12
+export const FRAME_CAPTION_UNMATCHED_CEILING = 12;

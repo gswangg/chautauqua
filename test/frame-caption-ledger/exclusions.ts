@@ -1418,6 +1418,37 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
   },
+  // v12m-w4-ao (wave-148, DEC-908 amendment): the CFP confirmation card's
+  // three meta lines -- built, in the frame's own clause order
+  // (format, track, audience level), by src/routes/public/submit-post.tsx's
+  // `metaParts` composing `[formatLabel, selectedTrackNames.join(' · '),
+  // audienceLevelClause]`. The plain-substring matcher cannot see any of
+  // these three lines because each interpolates this fixture pack's own
+  // sample submission's live track name, format label and audience level --
+  // "Platform & Infra", "Developer Experience" and "AI Engineering" are
+  // this pack's own invented track data, not a string this app's source
+  // ever contains verbatim.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1080,
+    text: 'Talk, 30 min · Platform &amp; Infra · intermediate',
+    reason:
+      "src/routes/public/submit-post.tsx composes `metaParts.join(' · ')` from `sessionFormatLabel(formatAnswer)`, `selectedTrackNames.join(' · ')` and `audienceLevelLabel(audienceLevelAnswer)` (src/lib/session-vocabulary.ts, DEC-908) -- the frame's 'Platform & Infra' track name and 'intermediate' level are this fixture's own sample data, composed at request time from the submitted answers, not a literal this app's source ever contains.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1130,
+    text: 'Lightning talk, 10 min · Developer Experience',
+    reason:
+      "the same submit-post.tsx `metaParts` composing expression, this sample's track-only clause (no audience level answered) -- 'Developer Experience' is this fixture's own sample track name.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1153,
+    text: 'Panel, 45 min · AI Engineering',
+    reason:
+      "the same submit-post.tsx `metaParts` composing expression, this sample's track-only clause (no audience level answered) -- 'AI Engineering' is this fixture's own sample track name.",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

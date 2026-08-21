@@ -66,6 +66,9 @@ const FIELD_ROWS = [
 // with the role-tagged session-format field added, so the confirmation
 // card's track/format meta line can be exercised end to end -- role, not the
 // id, is what submit-post.tsx matches on.
+// DEC-908 (wave-148 amendment): the audience-level field is added the same
+// way as the session-format field above -- role-tagged, not a literal id --
+// so the confirmation card's third meta clause can be exercised end to end.
 const FIELD_ROWS_WITH_FORMAT = [
   ...FIELD_ROWS,
   {
@@ -79,6 +82,18 @@ const FIELD_ROWS_WITH_FORMAT = [
     optionsJson: JSON.stringify(["Talk (45 min)", "Workshop (90 min)"]),
     ruleJson: null,
     role: "session_format",
+  },
+  {
+    id: "field_audience_level",
+    section: "session",
+    kind: "dropdown",
+    label: "Audience level",
+    helpText: null,
+    required: false,
+    position: 6,
+    optionsJson: JSON.stringify(["Beginner", "Intermediate", "Advanced"]),
+    ruleJson: null,
+    role: "audience_level",
   },
 ];
 
@@ -158,7 +173,7 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 
 const CSRF_TOKEN = "test-csrf-token";
 
-function submitForm(opts?: { trackIds?: string[]; format?: string }) {
+function submitForm(opts?: { trackIds?: string[]; format?: string; audienceLevel?: string }) {
   const form = new FormData();
   form.set(CSRF_COOKIE_NAME, CSRF_TOKEN);
   form.set("field__title", "My great talk");
@@ -170,6 +185,9 @@ function submitForm(opts?: { trackIds?: string[]; format?: string }) {
   }
   if (opts?.format !== undefined) {
     form.set("field__field_session_format", opts.format);
+  }
+  if (opts?.audienceLevel !== undefined) {
+    form.set("field__field_audience_level", opts.audienceLevel);
   }
   return new Request("http://local/submit/test-conf", {
     method: "POST",
@@ -295,15 +313,17 @@ describe("CFP confirmation page renders the check-spam hint only when mail was a
   });
 });
 
-// DEC-098 (wave 8 amendment): the confirmation card states the talk's track
-// and format, not just its title.
-describe("CFP confirmation card states track and format (DEC-098 wave 8 amendment)", () => {
-  it("submission with both a track and a format renders 'Track · Format (N min)' in the card", async () => {
+// DEC-098 (wave 8 amendment) / DEC-908 (wave-148 amendment): the
+// confirmation card states the talk's format, track(s) and audience level,
+// in the frame's clause order (Chautauqua Public and
+// Portal.dc.html:1080/:1130/:1153), not just its title.
+describe("CFP confirmation card states format, track and audience level in frame order (DEC-908 wave-148 amendment)", () => {
+  it("submission with a format, a track and an audience level renders 'Format, N min · Track · level' in the card", async () => {
     const { db } = fakeDb(selectQueueForWithFormat());
     const app = appWithDb(db);
 
     const res = await app.request(
-      submitForm({ trackIds: ["track-1"], format: "Talk (45 min)" }),
+      submitForm({ trackIds: ["track-1"], format: "Talk (45 min)", audienceLevel: "Intermediate" }),
       undefined,
       {
         KV: fakeKv(),
@@ -315,7 +335,7 @@ describe("CFP confirmation card states track and format (DEC-098 wave 8 amendmen
 
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Main Track · Talk (45 min)</span>');
+    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Talk, 45 min · Main Track · intermediate</span>');
   });
 
   it("submission with neither a track nor a format renders the card with the title only and no meta element", async () => {
@@ -375,6 +395,6 @@ describe("CFP confirmation card states track and format (DEC-098 wave 8 amendmen
 
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Workshop (90 min)</span>');
+    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Workshop, 90 min</span>');
   });
 });
