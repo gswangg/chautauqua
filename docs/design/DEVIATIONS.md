@@ -331,6 +331,37 @@ survives contact with state:
   (`src/server/repo/tasks/reminders.ts:214`), not any generic email send.
   The app's word stands across all 11 consumers of the shared vocabulary
   module; the frame's word is superseded.
+- **Agenda 390 phone head band omits the frame's `line-height:1` on the
+  wordmark and the `<h1>`; the declaration is BAND geometry, not a glyph
+  metric (DEC-991 wave-156 supersession)** — the 390 card's head band in
+  docs/design/Chautauqua Agenda.dc.html draws two display-face lines with
+  the literal declaration, quoted verbatim: docs/design/Chautauqua
+  Agenda.dc.html`font-size:20px; font-weight:700; letter-spacing:-0.03em;
+  line-height:1; position:relative; top:-2.5px` on the phone wordmark span,
+  and docs/design/Chautauqua Agenda.dc.html`font-size:27px;
+  font-weight:700; letter-spacing:-0.04em; line-height:1` on the phone
+  `<h1>` immediately below it. app/src/pages/agenda/agenda.css
+  `.chq-phone-agenda-wordmark` and app/src/pages/agenda/agenda.css
+  `.chq-phone-agenda-h1` both OMIT `line-height`, letting the font's own
+  `normal` line box govern instead. This is a deliberate, blessed
+  divergence, not an unnoticed miss: two colliding `DEC-991` documents once
+  disagreed on this exact point (decisions/DEC-991.md's wave-27 amendment
+  bans a display-face `line-height <= 1` outright, citing a measured clip
+  receipt — docs/verification-log.md`clip=3px, a genuine clip` on
+  `div.chq-forms-header-titles h1`, app/src/pages/forms/forms.css — while
+  src/decisions-data/DEC-991.md originally carved out a frame-cited
+  exemption for these two selectors). `src/decisions-data/DEC-991.md`'s
+  wave-156 amendment resolves the collision: the ban governs, because a
+  `normal` line box is by definition the font's own line box and therefore
+  cannot clip, while a bare `line-height:1` is not guaranteed to contain
+  the glyphs at every size/weight. A frame drawing `line-height:1` on a
+  26–27px display-face `<h1>` inside a fixed 390×844 card is read as
+  declaring the HEAD BAND's tightness — geometry the app already satisfies
+  through the band's own drawn `padding:14px 16px` and `gap:8px` — not a
+  per-glyph metric the app must reproduce literally. The frame-cited
+  exemption mechanism this entry once implied for
+  `test/display-heading-line-height.scan.test.ts` is retired unbuilt; see
+  `src/decisions-data/DEC-991.md`'s own head note.
 
 ## 4. Voice
 

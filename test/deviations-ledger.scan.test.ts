@@ -390,6 +390,18 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/speakers/remind-skip-vocabulary.scan.test.ts",
     },
   },
+  {
+    key: "agenda-390-phone-head-band-omits-the-frames-line-height-1-on-the-wordmark-and-the-h1-the-declaration-is-band-geometry-not-a-glyph-metric-dec-991-wave-156-supersession",
+    status: "honored",
+    reason:
+      "DEC-991 wave-156 supersession: the display-face line-height<=1 ban governs, and the frame's line-height:1 on the phone wordmark/h1 declares head-band tightness, not a glyph metric the app must reproduce literally. agenda.css's .chq-phone-agenda-wordmark and .chq-phone-agenda-h1 both omit line-height, and each rule carries its own comment recording the omission under this ruling.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/agenda/agenda.css",
+      literal: "DEC-991 wave-27 amendment bans line-height:1 on the display face",
+      testFile: "app/src/pages/agenda/agenda-phone-frame.test.ts",
+    },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -750,9 +762,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(14);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(43);
+    expect(derived.length).toBe(44);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
