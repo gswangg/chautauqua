@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_989 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_393; // this file's tap-floor half
 void DEC_989; // this file's overflow half
@@ -24,10 +25,6 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'settings.css');
 const CSS = readFileSync(CSS_PATH, 'utf-8');
 
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 /** Every top-level `selector { body }` (outside any @media block). */
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
   const withoutMedia = stripMedia(css);
@@ -35,9 +32,9 @@ function topLevelRules(css: string): Array<{ selector: string; body: string }> {
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(withoutMedia)) !== null) {
-    const selector = stripComments(m[1] ?? '').trim();
+    const selector = stripCssComments(m[1] ?? '').trim();
     if (!selector) continue;
-    out.push({ selector, body: stripComments(m[2] ?? '') });
+    out.push({ selector, body: stripCssComments(m[2] ?? '') });
   }
   return out;
 }
@@ -93,7 +90,7 @@ function phoneBlocks(css: string): Array<{ body: string; start: number; end: num
 
 /** Rules inside a single block body, in source order. */
 function rulesIn(body: string): Array<{ selector: string; body: string }> {
-  const stripped = stripComments(body);
+  const stripped = stripCssComments(body);
   const out: Array<{ selector: string; body: string }> = [];
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
@@ -380,7 +377,7 @@ describe('v12m-w9-j: DEC-393 wave-120 tap-floor receipts', () => {
   });
 
   it('.chq-settings-drillrow-export-download takes shape 1: a pixel-neutral phone-scoped restatement of its always-on top-level box', () => {
-    const drillRowsCss = stripComments(readFileSync(join(HERE, 'settings-drill-rows.css'), 'utf-8'));
+    const drillRowsCss = stripCssComments(readFileSync(join(HERE, 'settings-drill-rows.css'), 'utf-8'));
     const mediaStart = drillRowsCss.indexOf('@media');
     expect(mediaStart).toBeGreaterThan(0);
     const beforeMedia = drillRowsCss.slice(0, mediaStart);
