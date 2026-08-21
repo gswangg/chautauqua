@@ -92,7 +92,7 @@ function mockContactsBase(overrides: Record<string, unknown> = {}) {
 
 describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DEC-976)', () => {
   // Frame :179-223 "Contacts" -- caption at :175.
-  it('frame :179 Contacts landing -- DIVERGES: desktop table (checkbox column, header row, per-row "Open") and the full rule-builder render unchanged, not the frame\'s headerless card list with a per-row "Email" action', async () => {
+  it('frame :179 Contacts landing -- RESOLVED (DEC-967 wave-20) -> MATCHES: the SAME table markup renders at every width (DEC-386 -- CSS transforms it into the frame\'s card list, thead hidden, at phone widths jsdom does not apply), but the per-row action becomes the frame\'s "Email" verb, not desktop\'s "Open"', async () => {
     verbatimLine(175, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Contacts</span>");
     stubPhoneMatchMedia();
     mockContactsBase();
@@ -108,17 +108,24 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // Frame :186-198 draws a search box + "All of ... + Rule" chip row +
     // an All/Speakers/Reviewers pill row, then a headerless per-row list
     // (name / company·role / tags, a single boxed "Email" action, :209)
-    // ending in a footer tab strip (:214-221) -- none of that is what
-    // mounts here. The actual read is the SAME desktop
-    // `<table class="chq-table chq-contacts-table">` (checkbox column,
-    // "Name and email"/"Company"/"Labels" headers) every width renders.
+    // ending in a footer tab strip (:214-221). The SAME `<table
+    // class="chq-table chq-contacts-table">` markup mounts at every width
+    // (DEC-386, `app/src/pages/contacts/contacts.css`'s terminal
+    // `max-width: 700px` block hides `.chq-contacts-table thead` and
+    // reflows `tbody tr` into the frame's card grid -- jsdom applies no
+    // CSS, so the header row is still structurally queryable here; the
+    // CSS-level conformance is pinned by contacts-phone-frames.test.ts's
+    // source scan instead). What IS width-dependent as pure JS/DOM, and
+    // what this receipt exists to pin, is the per-row action verb.
     const headerCells = within(table).getAllByRole('columnheader');
     expect(headerCells.map((c) => c.textContent)).toEqual(['', 'Name and email', 'Company', 'Labels', '']);
     await waitFor(() => expect(within(table).getByText('Priya Raman')).toBeInTheDocument());
-    // Frame :209's per-row action is a boxed "Email"; the actual row's
-    // action button reads "Open" instead.
-    expect(within(table).queryByRole('button', { name: 'Email' })).not.toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: 'Open' })).toBeInTheDocument();
+    // Frame :209's per-row action is a boxed "Email" (w15-tg, DEC-385) --
+    // `ContactsTable`'s `isPhone` branch renders it instead of desktop's
+    // "Open" once `useIsPhone` reads true.
+    expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+    const emailButton = within(table).getByRole('button', { name: 'Email Priya Raman' });
+    expect(emailButton).toHaveTextContent('Email');
     expect(within(table).getByRole('checkbox', { name: 'Select all on page' })).toBeInTheDocument();
   });
 
