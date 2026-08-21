@@ -111,3 +111,31 @@ land outside this task's scope.
 None of the above blocked landing the DEC-621 chooser deletion or the
 frame's title/subtitle/recent-sends geometry, which are built and tested
 against the frame per the task's Tier 0 scope.
+
+---
+
+<!-- w14-sa (DEC-976 wave-157/158) -->
+
+## task-w14-sa: per-frame verdict, all three 390 frames — Comms was closed on grep, never rendered
+
+Comms is a Tier-0 wave-1 cluster whose phone rows were previously closed on
+source-scan evidence (a `comms-phone-frames`-style test that reads
+stylesheet text and never dispatches a request — the same shape wave-158's
+field guide entry names for Portal/Public/Home/Account/Docs). Its three 390
+frames had never been rendered against the tree. This task actually
+rendered all three, entered through `CommsPage`'s real route
+(`<MemoryRouter initialEntries={['/comms?tab=<tab>']}><CommsPage /></MemoryRouter>`,
+never a tab component mounted directly). Render receipts:
+`app/src/pages/Comms.frame-verdicts.render.test.tsx` (3 passing tests, one
+per frame, each opening with a DEC-967 `verbatimLine` citation of the
+frame's own 390-card opening line).
+
+| Frame | Verdict | What diverges |
+| --- | --- | --- |
+| `:177` Comms (landing) | DIVERGES | Structurally matches the frame's own composition (title, draft-card slot, "Recent sends" band) — the empty-state "Compose" card (finding 2 above) and the "Recent sends" band's Templates/History links (also finding 2) both render as built. The divergence is a jsdom artefact, not a content gap: `.chq-comms-phone-landing` stays mounted (CSS `display:none`, never unmounted) whichever tab is active, so jsdom — which evaluates no `@media` rule — renders the landing dashboard SIMULTANEOUSLY with the page-level tab head (`role="tablist"`) and whichever tab body is showing, something the frame itself never draws side-by-side. Any assertion against this frame must scope to `.chq-comms-phone-landing` (or its own text is ambiguous against the compose-tab RecentSends mount, which repeats the same batch subject elsewhere in the DOM). |
+| `:286` Templates · 390 | DIVERGES | Head (back `‹ Comms`, H1 `Templates`, count line), row-then-editor composition, and the Save/"Use in a send" footer render as drawn, and the editor auto-selects the first template (DEC-890 amendment-4) — matching the frame's own assumption that the editor is already open. One real content gap: frame `:311-315` draws "Insert a field · open", a merge-field panel rendered permanently open with every field row visible; DEC-993 replaced that shape app-wide with a single closed `Insert a field ▾` trigger (`InsertFieldMenu.tsx`) whose panel only mounts after a click (`aria-expanded="false"`, no `role="menu"` in the DOM at rest). A deliberate, already-ruled product change (DEC-993), not an unbuilt gap. |
+| `:335` Send history · 390 | MATCHES | Head (back `‹ Comms`, H1 `History`, count line), and per-row order (when·short, subject, template, toggle) match. The frame's `See the recipients` copy (`:350`) is present verbatim: `RecentSends`' `columnHeads` mount (History's own) renders two sibling spans — `.chq-comms-batch-toggle-label-desktop` "Open" and `.chq-comms-batch-toggle-label-phone` "See the recipients" (DEC-833) — both live in the DOM at once since jsdom applies no `@media` rule to hide either; the button's accessible name stays pinned to "Open" via an explicit `aria-label` (same DEC-833 comment), which is the one caveat a screen-reader-shaped query needs to know, not a content gap. |
+
+No CSS or component file was touched by this task (measurement only, per
+its own scope). The Templates divergence above is the DEC-993 dropdown
+replacement, already a ruled product decision, not a new finding.
