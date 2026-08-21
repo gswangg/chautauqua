@@ -141,6 +141,18 @@
   display: none;
 }
 
+/* uf-submissions-phone-chips (DEC-825 wave-16 amendment): the `pending`
+   pill's phone-only label span (docs/design/Chautauqua Submissions.dc.
+   html:149 `Needs triage`) -- same DEC-833 idiom as .chq-comms-batch-
+   toggle-label-phone (app/src/pages/comms/comms.css:1416): this
+   unconditional default sits BEFORE the terminal phone block below
+   (DEC-385 single-direction) so the phone label starts hidden and only
+   that block's override reveals it; the desktop span needs no matching
+   default-show rule since a bare <span> is inline by default. */
+.chq-submissions-status-pending-phone {
+  display: none;
+}
+
 .chq-submissions-columnpicker-panel {
   position: absolute;
   z-index: 5;
@@ -1045,11 +1057,14 @@
      remains reachable on desktop -- this narrows the phone strip only.
      Narrowest CSS-only mapping onto the app's real status literals
      (`pending` / `accepted`, the closest textual/semantic match to the
-     frame's two named pills); the frame's third chip ('All 47', a
+     frame's two named pills). The frame's third chip ('All 47', a
      no-filter/show-all affordance) has no corresponding status literal in
-     SUBMISSION_STATUSES and is deliberately NOT reproduced here -- a
-     design gap flagged for a lane that can touch FilterBar.tsx/ViewTabs.tsx
-     markup, not silently dropped. */
+     SUBMISSION_STATUSES, so it is deliberately excluded from THIS
+     [data-status] selector -- it is built as .chq-submissions-status-all,
+     a sibling control with its own class (never a fake data-status
+     literal), styled and revealed further down this same terminal block
+     (uf-submissions-phone-chips, DEC-825 wave-16 amendment closes the gap
+     this comment used to flag). */
   .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
     display: none;
   }
@@ -1146,6 +1161,23 @@
     align-items: center;
     justify-content: center;
     padding: 0 14px;
+  }
+
+  /* uf-submissions-phone-chips (DEC-825 wave-16 amendment): reveals the
+     'pending' pill's phone-only label span so the strip's first chip reads
+     'Needs triage' (docs/design/Chautauqua Submissions.dc.html:149
+     `Needs triage`) while STATUS_LABELS.pending ('Pending') stays the
+     desktop label -- FilterBar.tsx pins the button's accessible name via
+     aria-label so it never changes across breakpoints. Appended at the
+     true end of this file's one terminal phone block (DEC-385) so it wins
+     every specificity tie with the earlier .chq-submissions-status-
+     pending-desktop default-show rule at top level. */
+  .chq-submissions-status-pending-desktop {
+    display: none;
+  }
+
+  .chq-submissions-status-pending-phone {
+    display: inline;
   }
 }
 

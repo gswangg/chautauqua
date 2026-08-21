@@ -11,10 +11,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsTable } from './SubmissionsTable';
+import { STATUS_LABELS } from './types';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 // This file is a plain .test.ts (not .render.test.tsx): the render section
@@ -261,5 +262,78 @@ describe('SubmissionsTable renders the head-actions band and the sort control un
     render(createElement(MemoryRouter, null, createElement(SubmissionsTable)));
     const sortSelect = await screen.findByRole('combobox', { name: 'Sort' });
     expect(sortSelect).toHaveClass('chq-submissions-filterbar-sort-select');
+  });
+});
+
+// uf-submissions-phone-chips (DEC-825 wave-16 amendment): the frame's phone
+// strip (see the 'Needs triage' citation on the it() below, DEC-976's
+// per-claim rule -- a bare prose mention here carries no expect() so it
+// stays unquoted) draws exactly three chips in order. jsdom never applies
+// the CSS @media narrowing
+// narrowing (this file's own header note), so "reachable at 390" is proven
+// in two halves: this describe block renders the real DOM and checks the
+// three chips' labels and relative order, while submissions-css.test.ts
+// proves the other four status pills are display:none and these three are
+// display:flex/inline inside the terminal phone block.
+describe('uf-submissions-phone-chips (DEC-825 wave-16 amendment): the phone chip strip', () => {
+  beforeEach(() => {
+    window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+  });
+
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the pending pill with the frame\'s phone label "Needs triage", keeping STATUS_LABELS.pending as its pinned accessible name', async () => {
+    mockApi(baseRoutes());
+    render(createElement(MemoryRouter, null, createElement(SubmissionsTable)));
+    // docs/design/Chautauqua Submissions.dc.html:149 `Needs triage`
+    const pending = await screen.findByRole('button', { name: STATUS_LABELS.pending });
+    expect(pending).toHaveTextContent('Needs triage');
+    expect(pending).toHaveTextContent(STATUS_LABELS.pending);
+  });
+
+  it('renders the frame\'s three chips in order (Needs triage, Accepted, All N) with the accepted pill and the All chip at the end of the group', async () => {
+    mockApi(baseRoutes());
+    render(createElement(MemoryRouter, null, createElement(SubmissionsTable)));
+    const group = await screen.findByRole('group', { name: 'Filter by status' });
+    const buttons = within(group).getAllByRole('button');
+    const pendingIndex = buttons.findIndex((b) => b.textContent?.includes('Needs triage'));
+    const acceptedIndex = buttons.findIndex((b) => b.getAttribute('data-status') === 'accepted');
+    const allIndex = buttons.findIndex((b) => b.classList.contains('chq-submissions-status-all'));
+    expect(pendingIndex).toBeGreaterThanOrEqual(0);
+    expect(acceptedIndex).toBeGreaterThan(pendingIndex);
+    // docs/design/Chautauqua Submissions.dc.html:151 `All 47`
+    expect(allIndex).toBe(buttons.length - 1);
+    expect(allIndex).toBeGreaterThan(acceptedIndex);
+    // baseRoutes' one FRAME_ROW gives listEnvelope's default total (items.length) = 1.
+    expect(buttons[allIndex]).toHaveTextContent('All 1');
+  });
+
+  it('pressing the All-N chip clears the status filter (reuses the existing clear-status path, no new filter concept)', async () => {
+    mockApi(baseRoutes());
+    render(createElement(MemoryRouter, null, createElement(SubmissionsTable)));
+    const pending = await screen.findByRole('button', { name: STATUS_LABELS.pending });
+    fireEvent.click(pending);
+    expect(pending).toHaveAttribute('aria-pressed', 'true');
+    const all = screen.getByRole('button', { name: /^All \d+$/ });
+    fireEvent.click(all);
+    expect(pending).toHaveAttribute('aria-pressed', 'false');
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('DESKTOP PRESERVED: the full SUBMISSION_STATUSES pill set stays reachable, pending keeps its own STATUS_LABELS text node', async () => {
+    mockApi(baseRoutes());
+    render(createElement(MemoryRouter, null, createElement(SubmissionsTable)));
+    const group = await screen.findByRole('group', { name: 'Filter by status' });
+    for (const label of ['Accept queue', 'Decline queue', 'Accepted', 'Declined', 'Waitlisted']) {
+      expect(within(group).getByRole('button', { name: label })).toBeInTheDocument();
+    }
+    const pending = within(group).getByRole('button', { name: STATUS_LABELS.pending });
+    expect(pending.querySelector('.chq-submissions-status-pending-desktop')).toHaveTextContent(
+      STATUS_LABELS.pending,
+    );
   });
 });

@@ -96,11 +96,34 @@ describe('submissions.css phone head re-lining (DEC-919 wave-110 amendment)', ()
   // this test previously pinned: the frame's chip strip is a NARROWED
   // population, not the full six-status vocabulary. (The frame's third
   // chip, 'All 47', has no corresponding status literal in
-  // SUBMISSION_STATUSES and is a known gap, not reproduced by this
-  // CSS-only narrowing -- see the rule's own comment.)
+  // SUBMISSION_STATUSES, so it is a sibling control -- .chq-submissions-
+  // status-all, built and revealed below -- never a data-status literal.)
   // docs/design/Chautauqua Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto` names exactly three chips ('Needs triage' / 'Accepted' / 'All 47').
   it('narrows the status-pill population by data-status to the two status literals the frame names', () => {
     expect(PHONE).toMatch(/\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/);
+  });
+
+  // uf-submissions-phone-chips (DEC-825 wave-16 amendment): the frame's
+  // third chip closes the gap the comment above used to flag -- built as
+  // its own class (never a fake data-status literal), hidden by default
+  // and revealed only inside this terminal phone block.
+  // docs/design/Chautauqua Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto` names exactly three chips ('Needs triage' / 'Accepted' / 'All 47').
+  it('reveals the All-N chip at 390 with the frame\'s 44px pill geometry, hidden by default outside the phone block', () => {
+    expect(CSS).toMatch(/\.chq-submissions-status-all\s*\{[^}]*display:\s*none/);
+    expect(PHONE).toMatch(/\.chq-submissions-status-all\s*\{[^}]*display:\s*flex[^}]*min-height:\s*44px[^}]*border-radius:\s*99px/);
+  });
+
+  // uf-submissions-phone-chips (DEC-825 wave-16 amendment): the strip's
+  // first chip swaps its VISUAL label to the frame's 'Needs triage' at
+  // phone width; STATUS_LABELS.pending ('Pending') stays the desktop label
+  // -- the accessible name never changes (FilterBar.tsx pins it), so this
+  // is a pure CSS display swap between two sibling spans, same idiom as
+  // .chq-comms-batch-toggle-label-desktop/-phone (DEC-833).
+  // docs/design/Chautauqua Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto` names exactly three chips ('Needs triage' / 'Accepted' / 'All 47').
+  it('swaps the pending pill to the frame\'s "Needs triage" phone label, hidden by default outside the phone block', () => {
+    expect(CSS).toMatch(/\.chq-submissions-status-pending-phone\s*\{[^}]*display:\s*none/);
+    expect(PHONE).toMatch(/\.chq-submissions-status-pending-desktop\s*\{[^}]*display:\s*none/);
+    expect(PHONE).toMatch(/\.chq-submissions-status-pending-phone\s*\{[^}]*display:\s*inline/);
   });
 
   // docs/design/Chautauqua Submissions.dc.html:148
