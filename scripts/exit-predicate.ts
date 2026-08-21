@@ -757,6 +757,15 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "comment-stripping function instead of importing test/helpers/strip-css-comments.ts's " +
     "shared one. A fact about the test corpus's maintainability, not a v12 frame or " +
     "390-geometry conformance fact.",
+  DECISIONS_REGISTRY_CITATION_CEILING:
+    "measures citation resolvability (a path:line resolving to a real file/line, and an " +
+    "immediately-following backtick quote matching verbatim) across the OLDER, disjoint " +
+    "decisions/ registry (1000 files) that this campaign never previously checked beyond bare " +
+    "path existence -- a registry-hygiene fact about whether that directory's own citations " +
+    "are internally trustworthy, not a v12 frame or 390-geometry conformance fact. A newly " +
+    "measured, previously-uncounted population must not move the campaign's goalposts " +
+    "mid-convergence; it is promoted once its measurement technique is proven complete enough " +
+    "to gate on, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
   NEGATIVE_MARGIN_ADJACENCY_CEILING:
     "measures a STATIC, authoring-time property of every CSS rule in the tracked tree -- " +
     "whether a negative top/all-sides margin's preceding-comment receipt names an external " +
