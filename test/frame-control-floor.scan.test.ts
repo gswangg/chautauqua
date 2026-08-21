@@ -416,7 +416,16 @@ const SOURCE_FILE_PATHS = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSo
 const CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*"|`[^`]*`)/;
 const FLAT_TAG_TEXT_RE = /<([a-zA-Z][a-zA-Z0-9-]*)\b([^>]*)>([^<>{}]*)<\/\1>/g;
 
-const LABEL_TO_TOKENS = new Map<string, string[]>();
+// wave-22 (DEC-995 / DEC-976 amendment): first-occurrence-wins undercounts
+// ambiguity -- 82/720 labels carry more than one DISTINCT `chq-` token set
+// across the corpus (measured on this branch). Every site is now collected
+// per label, keyed by a SIGNATURE (its sorted, joined token list; a site
+// with NO chq- token is itself a distinct signature, the empty string). A
+// label whose sites carry more than one distinct signature can never be
+// resolved to a single owning rule here -- it grades `ambiguous-source-match`
+// (falls into the existing UNRESOLVED bucket, never an offender) rather than
+// silently crediting whichever file happened to sort first.
+const LABEL_SITES = new Map<string, Map<string, string[]>>(); // label -> signature -> tokens (first tokens seen for that signature)
 for (const filePath of SOURCE_FILE_PATHS) {
   const raw = readFileSync(filePath, 'utf-8');
   const processed = decodeEntitiesKeepingStructure(stripComments(raw));
@@ -426,10 +435,25 @@ for (const filePath of SOURCE_FILE_PATHS) {
     const attrs = m[2]!;
     const text = m[3]!.replace(/\s+/g, ' ').trim();
     if (text.length === 0) continue;
-    if (LABEL_TO_TOKENS.has(text)) continue; // first occurrence wins, deterministic file order
     const classMatch = attrs.match(CLASS_ATTR_RE);
     const tokens = classMatch ? [...classMatch[1]!.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]) : [];
-    LABEL_TO_TOKENS.set(text, tokens);
+    const signature = [...tokens].sort().join(',');
+    let sites = LABEL_SITES.get(text);
+    if (!sites) {
+      sites = new Map();
+      LABEL_SITES.set(text, sites);
+    }
+    if (!sites.has(signature)) sites.set(signature, tokens); // first tokens seen for this signature, deterministic file order
+  }
+}
+
+const LABEL_TO_TOKENS = new Map<string, string[]>();
+const AMBIGUOUS_LABELS = new Set<string>();
+for (const [label, sites] of LABEL_SITES) {
+  if (sites.size > 1) {
+    AMBIGUOUS_LABELS.add(label);
+  } else {
+    LABEL_TO_TOKENS.set(label, [...sites.values()][0]!);
   }
 }
 
@@ -488,10 +512,13 @@ function resolveTokenMinHeight(token: string): number | undefined {
 interface Graded {
   control: DrawnControl;
   resolvedHeight: number | undefined;
-  reason: 'no-source-match' | 'no-class-token' | 'no-css-rule' | 'resolved';
+  reason: 'no-source-match' | 'no-class-token' | 'no-css-rule' | 'ambiguous-source-match' | 'resolved';
 }
 
 const GRADED: Graded[] = ALL_CONTROLS.map((control) => {
+  if (AMBIGUOUS_LABELS.has(control.label)) {
+    return { control, resolvedHeight: undefined, reason: 'ambiguous-source-match' };
+  }
   const tokens = LABEL_TO_TOKENS.get(control.label);
   if (tokens === undefined) return { control, resolvedHeight: undefined, reason: 'no-source-match' };
   const chqTokens = tokens.filter((t) => t.startsWith('chq-'));
@@ -507,6 +534,7 @@ const GRADED: Graded[] = ALL_CONTROLS.map((control) => {
 
 const OFFENDERS: Graded[] = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! < g.control.drawnFloor);
 const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved');
+const AMBIGUOUS: Graded[] = GRADED.filter((g) => g.reason === 'ambiguous-source-match');
 
 // -- Ratchets ------------------------------------------------------------
 // Wave-155 pb (DEC-393): the 7 offenders measured on v12m-w7-da -- "Sign in"
@@ -550,7 +578,29 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // real CSS rule behind it, so it leaves this bucket. Same direction as
 // w10-na above: the population did not shrink, a member moved from
 // UNRESOLVED to resolved.
-export const UNRESOLVED_COUNT_TRIPWIRE = 151;
+//
+// Re-measured wave-22 (DEC-995): the ambiguity-honest join (see LABEL_SITES
+// above) moves every drawn control whose label previously "resolved" (or
+// graded `no-class-token`/`no-css-rule` off a first-file-wins pick) via an
+// arbitrary first-file-wins pick, but whose label actually carries more than
+// one distinct `chq-` token set elsewhere in the corpus, into this bucket as
+// `ambiguous-source-match`. Seeded by forcing this constant to -1, running
+// the file, and reading the printed count back: 151 -> 202 (+51 net -- of
+// the 60 drawn controls now graded ambiguous (AMBIGUOUS_COUNT_TRIPWIRE
+// below), 51 previously graded `resolved` and 9 were already in this bucket
+// under a different reason, so the population did not shrink, it became
+// honest about which of its members a first-hit pick was mis-crediting). See
+// docs/design/audit/frame-control-floor-390-v12.md for the corrected
+// DRAINED section.
+export const UNRESOLVED_COUNT_TRIPWIRE = 202;
+
+// Non-vacuity tripwire for the AMBIGUOUS_COUNT (DEC-180/808/995): the subset
+// of UNRESOLVED_COUNT_TRIPWIRE whose reason is specifically
+// `ambiguous-source-match` -- a label whose sites carry more than one
+// distinct `chq-` token set. Seeded the same way this file seeds every
+// constant: forced to -1, run, read the printed number back. Measured on
+// this branch: 60.
+export const AMBIGUOUS_COUNT_TRIPWIRE = 60;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
@@ -708,7 +758,7 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
     expect(OFFENDERS.length).toBeGreaterThanOrEqual(FRAME_FLOOR_DIVERGENCE_CEILING);
   });
 
-  it(`UNRESOLVED bucket tripwire: exactly UNRESOLVED_COUNT_TRIPWIRE (${UNRESOLVED_COUNT_TRIPWIRE}) drawn controls resolve to no source match, no class token, or no CSS rule`, () => {
+  it(`UNRESOLVED bucket tripwire: exactly UNRESOLVED_COUNT_TRIPWIRE (${UNRESOLVED_COUNT_TRIPWIRE}) drawn controls resolve to no source match, no class token, no CSS rule, or an ambiguous source match`, () => {
     if (UNRESOLVED.length !== UNRESOLVED_COUNT_TRIPWIRE) {
       throw new Error(
         `measured ${UNRESOLVED.length} unresolved drawn controls, expected the tripwire value ` +
@@ -718,5 +768,88 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
       );
     }
     expect(UNRESOLVED.length).toBe(UNRESOLVED_COUNT_TRIPWIRE);
+  });
+
+  it(`AMBIGUOUS bucket tripwire: exactly AMBIGUOUS_COUNT_TRIPWIRE (${AMBIGUOUS_COUNT_TRIPWIRE}) drawn controls carry a label whose sites resolve to more than one distinct chq- token set (DEC-995)`, () => {
+    if (AMBIGUOUS.length !== AMBIGUOUS_COUNT_TRIPWIRE) {
+      throw new Error(
+        `measured ${AMBIGUOUS.length} ambiguous-source-match drawn controls, expected the tripwire value ` +
+          `${AMBIGUOUS_COUNT_TRIPWIRE}. Re-measure and replace the line:\n` +
+          `  export const AMBIGUOUS_COUNT_TRIPWIRE = ${AMBIGUOUS.length};`,
+      );
+    }
+    expect(AMBIGUOUS.length).toBe(AMBIGUOUS_COUNT_TRIPWIRE);
+  });
+
+  it('ambiguity join, wave-22 (DEC-995): a label with two distinct chq- token sets across sites grades ambiguous-source-match; a label with two sites sharing the SAME token set still resolves', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'frame-control-floor-ambiguity-synth-'));
+    try {
+      writeFileSync(
+        join(dir, 'FixtureA.tsx'),
+        [
+          'export const FixtureA = () => (',
+          '  <span className="chq-zzy-ambiguous-a">Zzy Ambiguous Present</span>',
+          ');',
+        ].join('\n'),
+      );
+      writeFileSync(
+        join(dir, 'FixtureB.tsx'),
+        [
+          'export const FixtureB = () => (',
+          '  <span className="chq-zzy-ambiguous-b">Zzy Ambiguous Present</span>',
+          ');',
+        ].join('\n'),
+      );
+      writeFileSync(
+        join(dir, 'FixtureC.tsx'),
+        [
+          'export const FixtureC = () => (',
+          '  <span className="chq-zzy-same">Zzy Unambiguous Present</span>',
+          ');',
+        ].join('\n'),
+      );
+      writeFileSync(
+        join(dir, 'FixtureD.tsx'),
+        [
+          'export const FixtureD = () => (',
+          '  <span className="chq-zzy-same">Zzy Unambiguous Present</span>',
+          ');',
+        ].join('\n'),
+      );
+
+      function collectSites(filePaths: string[]): Map<string, Map<string, string[]>> {
+        const sites = new Map<string, Map<string, string[]>>();
+        for (const filePath of filePaths) {
+          const raw = readFileSync(filePath, 'utf-8');
+          const processed = decodeEntitiesKeepingStructure(stripComments(raw));
+          FLAT_TAG_TEXT_RE.lastIndex = 0;
+          let mm: RegExpExecArray | null;
+          while ((mm = FLAT_TAG_TEXT_RE.exec(processed))) {
+            const text = mm[3]!.replace(/\s+/g, ' ').trim();
+            const classMatch = mm[2]!.match(CLASS_ATTR_RE);
+            const tokens = classMatch ? [...classMatch[1]!.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]) : [];
+            const signature = [...tokens].sort().join(',');
+            let bucket = sites.get(text);
+            if (!bucket) {
+              bucket = new Map();
+              sites.set(text, bucket);
+            }
+            if (!bucket.has(signature)) bucket.set(signature, tokens);
+          }
+        }
+        return sites;
+      }
+
+      // POSITIVE: two distinct token sets for the same label -> ambiguous.
+      const ambiguousSites = collectSites([join(dir, 'FixtureA.tsx'), join(dir, 'FixtureB.tsx')]);
+      expect(ambiguousSites.get('Zzy Ambiguous Present')?.size).toBe(2);
+
+      // NEGATIVE: two sites, same token set -> still a single distinct
+      // signature, resolves rather than grading ambiguous.
+      const unambiguousSites = collectSites([join(dir, 'FixtureC.tsx'), join(dir, 'FixtureD.tsx')]);
+      expect(unambiguousSites.get('Zzy Unambiguous Present')?.size).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
