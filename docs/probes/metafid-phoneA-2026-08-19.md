@@ -39,7 +39,30 @@
   Change-password/Remove overlap. Event-edit +86px, CFP-edit +46px
   (.chq-settings-field fixed 420px/200px at 390). Submission detail +91px
   (.chq-participant-email-cell 210px).
+  CLOSED (re-verified wave 154, DEC-069 amendment -- landed wave 109 per the
+  in-tree comment, never CLOSED here until now): `OVERFLOW_OFFENDERS_CEILING`
+  (app/src/phone-horizontal-overflow.scan.test.ts) reads 0 and its
+  population walk covers both app/src/pages/settings/settings.css and
+  app/src/pages/submissions/detail.css (DEC-808, every app/src/**/*.css) --
+  predicate verified by reading the file, not cited blind. People/Event/CFP:
+  app/src/pages/settings/settings.css`the Person column collapses to zero width, Change password and Remove overlap, and the panel overflows by roughly 240px`
+  (same terminal `@media (max-width: 700px)` comment names Event-edit
+  "overflows 390 by 86px" and CFP-edit "by 46px", both closed by the
+  `.chq-settings-field-date,` sibling group two rules below going
+  `width: 100%`). Submission detail: `.chq-participant-email-cell` carries no
+  fixed width in the current tree --
+  app/src/pages/submissions/detail.css`word-break: break-all;` is its only
+  non-typographic declaration.
 - CFP form stat strip clips values mid-string ("5 Aug 202").
+  CLOSED (re-verified wave 154): the CFP form builder's Opens/Closes/Received
+  three-cell strip (`.chq-forms-strip`, not the Settings CFP-edit panel --
+  the CFP FORM's own stat strip) reflows to one column at phone, DEC-919
+  wave-11-o amendment --
+  app/src/pages/forms/forms.css`the frame removes GEOMETRY, not CAPABILITY: Opens/Closes stay the only CFP-window editor anywhere in the app, they just stack instead of sitting in three 1fr columns`
+  (`.chq-forms-strip { grid-template-columns: 1fr; }` immediately below), and
+  the datefield gained its own 44px floor (task w13-n /
+  v12m-w10-jj) with no `overflow`/`nowrap` clipping declared anywhere in the
+  rule.
 - Submission detail back link renders a bare ‹ with no label (frame: ‹ Triage).
   CLOSED (wave 115): app/src/pages/submissions/SubmissionDetailPage.tsx`'‹ Triage' label; desktop keeps '‹ All submissions' byte-`
 - Header-label leakage into cards: Contacts rows print COMPANY:/LABELS:
@@ -47,6 +70,13 @@
   CLOSED (wave 118): app/src/pages/contacts/contacts.css`.chq-contacts-table tbody td[data-label]::before {`
   CLOSED (wave 118): app/src/pages/comms/comms.css`.chq-comms-templates-table td[data-label='Name']::before {`
 - Portal/Tracks rows stranded in half-width columns (left ~62%).
+  CLOSED (re-verified wave 154): both reflow to a single column inside
+  settings.css's terminal phone block --
+  app/src/pages/settings/settings.css`.chq-settings-tracks-rooms-grid {`
+  (`grid-template-columns: 1fr; gap: 20px 0;`) and
+  app/src/pages/settings/settings.css`.chq-settings-portal-resource-row {`
+  (`flex-direction: column; align-items: stretch;`), both inside the same
+  `@media (max-width: 700px)` block as the other Settings phone fixes.
 
 ## S2 structure vs frames
 - Tab bar slot 4 must be CONTEXTUAL (Contacts on Contacts frames, Comms on
@@ -68,11 +98,46 @@
   app/src/pages/Comms.tsx`const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));`
 - Drill-ins keep the parent page head (Contacts pipeline/dupes/merge, Comms
   drills) — frames are one-screen-at-a-time.
+  CLOSED (re-verified wave 154): DEC-964 stands the parent head down whenever
+  a phone drill is showing --
+  app/src/pages/contacts/ContactsApp.tsx`Pipeline and Duplicates are one-screen-at-a-time phone drills with their OWN head band (their .chq-phone-head-drill), not this landing head -- stand this head down whenever a phone drill is showing so its band doesn't double up above the drill's own`
+  -- and every named drill carries its own `chq-phone-head-drill` band:
+  app/src/pages/contacts/PipelineBoard.tsx`chq-contacts-pipeline-head chq-phone-head chq-phone-head-drill`,
+  plus `app/src/pages/contacts/MergePage.tsx`, `app/src/pages/contacts/DuplicatesView.tsx`,
+  `app/src/pages/comms/HistoryTab.tsx` and `app/src/pages/comms/TemplatesTab.tsx`
+  all reference `chq-phone-head-drill` (grep-verified, DEC-964).
 - Pinned docks missing on 12 of 14 framed screens (Contact detail, Pipeline,
   Merge, Templates, Files, Session deliverable, Settings Event...); Content
   select-mode dock renders at TOP not bottom (frame :247).
+  CLOSED (re-verified wave 154, DEC-069 amendment): `PHONE_DOCK_UNCLAIMED_CEILING`
+  (test/phone-dock-ledger.scan.test.ts) reads 0 across the full 34-dock
+  population derived from all 53 phone frames (predicate read, not cited
+  blind: it requires the SAME file to both declare a dock band and render
+  EVERY one of its labels, scoped per-file, no membership shortcut) --
+  test/phone-dock-ledger.scan.test.ts`frame-enumeration grammar and the balanced` and
+  docs/design/audit/phone-dock-membership-v12.md`41 of the 53 phone frames carry such a band`
+  name Contact detail/Pipeline/Merge/Templates/Files/Settings by their own
+  call sites explicitly, not by a hand-list. Content select-mode dock's
+  bottom placement:
+  app/src/pages/content/SessionList.tsx`const dockBulkbarLast = isPhone && phoneSelectMode;`
+  moves the bar to mount after the pager (DOM-last) only at phone in
+  select mode, matched by
+  app/src/pages/content/content.css`.chq-content-worklist-selecting .chq-bulkbar {` (`position: sticky; bottom: 0;`).
 - Contact detail inverts hierarchy: frame's wide-primary "Email Priya" +
   Edit vs live 2x2 secondaries with Save primary; save-scope line misplaced.
+  CLOSED (re-verified wave 154): DEC-959 replaces the five-control edit
+  action bar with the frame's own two-control read-mode dock whenever
+  `isPhone && !phoneEditing` --
+  app/src/pages/contacts/ContactDrawer.tsx`DEC-959: Contact · 390's read mode replaces the five-control`
+  rendering a first-name-templated "Email {name}" primary
+  (app/src/pages/contacts/ContactDrawer.tsx`{firstName.trim() ? `) as
+  the wide primary and `Edit` as the secondary
+  (app/src/pages/contacts/ContactDrawer.tsx`onClick={() => setPhoneEditing(true)}`).
+  The 2x2/Save-primary bar and the save-scope note are now edit-mode only
+  (both densities), and the scope line already sits on its own line above
+  that bar per the DEC-616 wave-70 amendment
+  (app/src/pages/contacts/ContactDrawer.tsx`the scope sentence moved onto its own line above the action bar`) --
+  not a phone-specific misplacement.
 - Import CSV phone wizard (frame :487 one-column-per-screen + Next/Skip
   dock) not built; desktop modal overflows at 390.
   CLOSED (wave 115): app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx`v12m-w2-b: the phone-only "one column per screen" pager added for the`
@@ -100,14 +165,62 @@
   app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)`
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
+  CLOSED (re-verified wave 154): the wave-6 task w6-f ruling (superseding
+  wave-2's DEC-919 reading) re-lines the head into search-on-its-own-line +
+  a horizontally-scrolling chip strip instead of clipping --
+  app/src/pages/submissions/submissions.css`keep every chip reachable by scrolling instead of wrapping/clipping`
+  applies `flex-wrap: nowrap; overflow-x: auto;` to
+  `.chq-submissions-filterbar`, `.chq-submissions-filterbar .chq-status-pills`
+  AND `.chq-submissions-viewtabs` alike (all three strips the row names),
+  each child `flex-shrink: 0` so nothing clips mid-string; search/select
+  floored at 44px by
+  app/src/pages/submissions/submissions.css`.chq-submissions-filterbar-search,` (`min-height: 44px;`).
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;
   ON/OFF misplaced; host line + footnote gone.
+  CLOSED (re-verified wave 154): the flush-button clause was already
+  CLOSED above (root fix #1, wave 115, same cancelled-padding repair
+  covers "four flush-joined Saved-embeds buttons"). Action order is fixed
+  to the frame's own Edit / Get code / Turn on-off sequence by the DEC-785
+  wave-63 amendment --
+  app/src/pages/settings/SavedEmbedsPanel.tsx`w63-d/DEC-785 amendment (wave 63): action cluster order` --
+  which also documents Delete as a genuine pack disagreement (a real,
+  reachable endpoint the frame's own editor footer never draws a control
+  for), appended after rather than invented into the frame's order. The
+  "host line" clause is the SAME field as the row's own DEVIATIONS
+  candidate one section up (`{{ e.used }}`, no referrer/host tracking in
+  the data model) --
+  app/src/pages/settings/SavedEmbedsPanel.tsx`grep src/server/repo/embeds.ts and the schema turns up no referrer/host`
+  -- restated here rather than duplicated as a second open row; a
+  "footnote" distinct from that field was not found anywhere in the
+  frame's saved-embed row markup and is not independently verified.
 
 ## S3 44px floor (all buttons/links below; see probe for counts)
 .chq-settings-section-action 15px · .chq-submissions-clone 14px · .chq-check
 18px · .chq-forms-strip-label 16px · contacts name links 25.6px · content
 file links 22-24px · .chq-submissions-viewtab 29px · strip datefield 28.4px
 · .chq-color-swatch 22px · portal add-resource 34px.
+
+CLOSED (re-verified wave 154, DEC-069 amendment, all ten tokens): every
+named token carries a phone-block 44px floor (min-height PLUS centred flex
+PLUS horizontal padding, per DESIGN-RULINGS:189) in the current tree.
+`.chq-settings-section-action` and `.chq-forms-strip-label` were already
+CLOSED above (root fix #2 / the CFP stat-strip row). The remaining eight:
+`.chq-submissions-clone` and `.chq-submissions-viewtab` --
+app/src/pages/submissions/submissions.css`w13-m (DEC-989/DESIGN-RULINGS:189): four undeclared-height offenders` ·
+`.chq-check` (the table select-all/row-select usage the probe measured) via
+its `.chq-check-hit` label wrapper --
+app/src/styles.css`.chq-check-hit is the label wrapper added around every table-cell` ·
+`.chq-color-swatch` (portal/tracks colour-cycle usage) --
+app/src/pages/settings/settings.css`Tracks & rooms colour-cycle swatch (probe: 22px` ·
+`.chq-settings-portal-add-resource` --
+app/src/pages/settings/settings.css`Portal 'Add resource' (probe: 34px` ·
+the CFP strip datefield --
+app/src/pages/forms/forms.css`.chq-forms-strip-datefield {` (`min-height: 44px;`) ·
+and contacts/content name-and-file links, both rendered on the shared
+`.chq-link-button` class (ContactsTable.tsx`chq-link-button chq-contacts-name`,
+FilesLibrary.tsx uses the same bare class), floored globally at phone by
+app/src/styles.css`.chq-link-button is the house's bare-text Link register`
+(`min-height: 44px;` two rules below).
 
 Positive: zero horizontal document overflow on all 24; CFP form dock is the
 model implementation; dock-suppression mechanism works; Merge is strongest.
