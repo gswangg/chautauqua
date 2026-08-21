@@ -139,3 +139,27 @@ frame's own 390-card opening line).
 No CSS or component file was touched by this task (measurement only, per
 its own scope). The Templates divergence above is the DEC-993 dropdown
 replacement, already a ruled product decision, not a new finding.
+
+## Amendment (wave 159, task w15-ti, DEC-919)
+
+**`:177` Comms (landing) — jsdom-artefact caveat CLOSED.** The row above
+records the divergence as "a jsdom artefact, not a content gap" because
+`.chq-comms-phone-landing` used to stay MOUNTED at every width (only its
+`-show` class was gated by `phoneEntered`/CSS) — DEC-919's rule is that a
+hidden control with no offset is still on the screen, and the same holds
+for an unconditionally *mounted* one: at real DESKTOP widths the landing
+dashboard sat in the DOM duplicating the compose tab's own `RecentSends`
+mount (same batch subjects, twice), not merely a test-harness illusion.
+`Comms.tsx` now gates the landing block's MOUNT itself on `useIsPhone()`
+(the same seam the page already trusted to gate the tab head at line
+`:323`) — desktop (`isPhone` false) no longer mounts the block at all,
+byte-identical otherwise. `Comms.frame-verdicts.render.test.tsx` carries
+the receipt: a desktop case asserting `.chq-comms-phone-landing` is
+`null` with no matchMedia stub (jsdom's real default), and a phone case
+(matchMedia stubbed, the `PipelineBoard.render.test.tsx` pattern)
+asserting the frame's composition (title, draft-card slot, "Recent
+sends" band) as before. The *within-landing scoping* the old row called
+out is still correct and still needed in the phone-stubbed case — the
+tab body underneath is CSS-hidden by width, not mount-gated, so it still
+coexists with the landing in a jsdom render where `isPhone` is stubbed
+true; that seam is unchanged and out of this task's scope.

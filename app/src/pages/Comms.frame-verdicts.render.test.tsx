@@ -24,6 +24,22 @@ import { CommsPage } from './Comms';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
 import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../lib/useCurrentEvent';
 
+// w15-ti (DEC-919 wave-159): the phone landing's MOUNT is now gated on
+// isPhone (Comms.tsx), not just CSS-hidden -- jsdom implements no
+// matchMedia at all, so seeing the landing at all now requires stubbing
+// it, exactly the FakeMediaQueryList pattern
+// PipelineBoard.render.test.tsx / SubmissionDetailPage.phone-dock.render
+// .test.tsx already use to force useIsPhone's split in jsdom.
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Comms.dc.html');
@@ -95,11 +111,26 @@ function renderTab(tab?: string) {
 describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-976)', () => {
   // Frame :177-215 "Comms" -- the phone landing (DEC-621), entered with no
   // ?tab= (phoneEntered stays false, isTab(null) === false).
-  it('frame :177 Comms landing -- DIVERGES: draft card and Recent sends render, but jsdom mounts the landing block ALONGSIDE the tab head/body (no @media), never in place of it', async () => {
+  //
+  // w15-ti (DEC-919 wave-159): CLOSED the jsdom-artefact caveat this case
+  // used to document. Comms.tsx used to mount `.chq-comms-phone-landing`
+  // unconditionally at every width (only its `-show` class was gated),
+  // so jsdom -- which evaluates no `@media` rule -- rendered the landing
+  // dashboard SIMULTANEOUSLY with the page-level tab head/body at
+  // DESKTOP widths too, a duplicate of the compose tab's own RecentSends
+  // mount. DEC-919's rule (a hidden control with no offset is still on
+  // the screen) applies just as much to an unconditionally MOUNTED block
+  // as to a hidden one. The block's mount is now gated on `isPhone`
+  // itself, so seeing it in a render test requires stubbing phone
+  // matchMedia the same way PipelineBoard.render.test.tsx does -- see
+  // the desktop-non-mount case directly below, which is the receipt that
+  // the duplicate is actually gone.
+  it('frame :177 Comms landing (phone) -- MATCHES the frame\'s own composition: title, draft-card slot, "Recent sends" band', async () => {
     verbatimLine(
       177,
       '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
     );
+    stubPhoneMatchMedia();
     renderTab();
     // Frame :183 draws the landing's own H1 "Comms"; the app renders it as
     // a styled <p>, not a second <h1> (Comms.tsx's own doc comment at the
@@ -117,10 +148,12 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     expect(within(draftCard as HTMLElement).getByRole('button', { name: 'Compose' })).toBeInTheDocument();
     // Frame :196-197 "Recent sends" band -- present, plus (w5-q amendment)
     // routes into Templates and History the frame's own dashboard has no
-    // other way to reach. Scoped to the landing block itself: the compose
-    // tab's own RecentSends mount renders the SAME batch subject
-    // elsewhere in the DOM (both are present in jsdom -- no @media rule
-    // hides either), so an unscoped query would be ambiguous.
+    // other way to reach. Scoped to the landing block itself: with
+    // isPhone stubbed true the tab body underneath still mounts (only
+    // ITS visibility, not the landing's mount, is CSS-gated on width --
+    // that is a separate, un-changed seam from the one this task closes),
+    // and it renders the SAME batch subject, so an unscoped query would
+    // still be ambiguous.
     const landing = document.querySelector('.chq-comms-phone-landing') as HTMLElement;
     await waitFor(() => expect(within(landing).getByText(RECENT_BATCH.subject)).toBeInTheDocument());
     const recentHead = document.querySelector('.chq-comms-phone-recent-head');
@@ -128,12 +161,18 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     expect(within(recentHead as HTMLElement).getByText('Recent sends')).toBeInTheDocument();
     expect(within(recentHead as HTMLElement).getByRole('button', { name: 'Templates' })).toBeInTheDocument();
     expect(within(recentHead as HTMLElement).getByRole('button', { name: 'History' })).toBeInTheDocument();
-    // The landing's own DOM node stays mounted whichever tab is showing
-    // (comms.css hides it via a top-level display:none, never unmounted) --
-    // jsdom evaluates no @media rule, so the page-level tab head (Compose/
-    // Templates/History pills) is ALSO present at the same time, which the
-    // frame itself never draws alongside its landing dashboard.
-    expect(screen.getByRole('tablist')).toBeInTheDocument();
+  });
+
+  // w15-ti (DEC-919 wave-159) receipt: at desktop (jsdom default, no
+  // matchMedia stub -- useIsPhone falls back to false, see useIsPhone.ts)
+  // the landing block does not mount AT ALL anymore -- the duplicate
+  // `.chq-comms-phone-landing` dashboard that used to sit in the DOM
+  // beside the tablist and the compose tab's own RecentSends mount at
+  // every width is gone.
+  it('frame :177 Comms landing does not mount at desktop -- DEC-919 duplicate-mount gate', async () => {
+    renderTab();
+    await waitFor(() => expect(screen.getByRole('tablist')).toBeInTheDocument());
+    expect(document.querySelector('.chq-comms-phone-landing')).toBeNull();
   });
 
   // Frame :286-326 "Templates · 390" -- entered via ?tab=templates.

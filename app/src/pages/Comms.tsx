@@ -399,10 +399,18 @@ export function CommsPage() {
 
       {/* v12 mobile campaign w1 (DEC-621 amendment; planner's ruling):
           phone-only landing, frame docs/design/Chautauqua Comms.dc.html:177
-          ('Comms', 390). Hidden by default (top-level display:none in
-          comms.css); shown inside the 700px media query only while
-          chq-comms-phone-landing-show is present, i.e. before the visitor
-          has entered via the draft card below. */}
+          ('Comms', 390).
+          w15-ti (DEC-919 wave-159): MOUNT is gated on isPhone, not just
+          hidden by CSS -- an unconditionally mounted landing duplicates the
+          compose tab's own RecentSends band and the page-level tablist at
+          every width, and DEC-919's rule is that a hidden control with no
+          offset is still on the screen. desktop (isPhone false) renders
+          byte-identically minus this block, since desktop never showed it
+          anyway. The chq-comms-phone-landing-show class keeps its existing
+          entry-state job (shown inside the 700px media query only before
+          the visitor has entered via the draft card below); this gate is
+          in addition to, not instead of, that class. */}
+      {isPhone && (
       <div
         className={
           phoneEntered ? 'chq-comms-phone-landing' : 'chq-comms-phone-landing chq-comms-phone-landing-show'
@@ -483,6 +491,7 @@ export function CommsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
