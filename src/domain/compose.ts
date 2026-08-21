@@ -53,7 +53,22 @@ export interface ComposeRecipient {
 }
 
 export type ExpandRecipientsResult =
-  | { ok: true; recipients: ComposeRecipient[] }
+  | {
+      ok: true;
+      recipients: ComposeRecipient[];
+      /**
+       * DEC-936 (wave-21 amendment): the rows the contact-collapse WITHHELD —
+       * every (contactId, submissionId) expansion after the first for a
+       * contact, dropped because the composed text spends no per-submission
+       * merge var. Empty whenever `perSubmissionVarsSpent` is true (nothing
+       * collapses). Returned rather than discarded because "a contact-collapse
+       * must NAME whom it collapsed": a suppression the organizer cannot see is
+       * indistinguishable from a lost email, so both production call sites fold
+       * these into the same `skipped` array the dedupe planner fills, with the
+       * same `duplicate_in_batch` reason literal and no `retryAtIso`.
+       */
+      withheld: ComposeRecipient[];
+    }
   | { ok: false; error: "invalid"; message: string };
 
 /**
@@ -107,6 +122,9 @@ export function spendsPerSubmissionVars(text: string): boolean {
  * caller that doesn't pass `opts` keeps today's per-(contact, submission)
  * shape unchanged.
  *
+ * DEC-936 (wave-21 amendment): every collapsed row is returned in `withheld`
+ * rather than discarded, so the callers can name whom the collapse held back.
+ *
  * Rejects the whole batch as 'invalid' when the FINAL (post-collapse) count
  * exceeds MAX_COMPOSE_RECIPIENTS (DEC-019: the producer must narrow the
  * batch, no silent truncation).
@@ -128,13 +146,19 @@ export function expandRecipients(
   }
 
   let recipients: ComposeRecipient[];
+  // DEC-936 (wave-21 amendment): the collapsed rows are KEPT, not dropped on
+  // the floor — see ExpandRecipientsResult.withheld above.
+  const withheld: ComposeRecipient[] = [];
   if (opts.perSubmissionVarsSpent) {
     recipients = expanded;
   } else {
     const seenContacts = new Set<string>();
     recipients = [];
     for (const r of expanded) {
-      if (seenContacts.has(r.contactId)) continue;
+      if (seenContacts.has(r.contactId)) {
+        withheld.push(r);
+        continue;
+      }
       seenContacts.add(r.contactId);
       recipients.push(r);
     }
@@ -147,7 +171,7 @@ export function expandRecipients(
       message: `${recipients.length} recipients exceeds the ${MAX_COMPOSE_RECIPIENTS}-recipient cap; narrow the batch.`,
     };
   }
-  return { ok: true, recipients };
+  return { ok: true, recipients, withheld };
 }
 
 /**

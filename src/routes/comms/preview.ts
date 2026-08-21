@@ -65,7 +65,7 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   // same list by construction.
   const perSubmissionVarsSpent =
     spendsPerSubmissionVars(input.subjectTemplate) || spendsPerSubmissionVars(input.bodyTemplate);
-  const { targets } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
+  const { targets, withheld } = await buildRenderTargets(c, event, submissions, input.feedback, perSubmissionVarsSpent);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
@@ -95,7 +95,13 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
     result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(Date.now()),
   );
-  const { toSend, skipped } = planComposeSends(result.rendered, recentlySent);
+  const { toSend, skipped: plannedSkips } = planComposeSends(result.rendered, recentlySent);
+  // DEC-936 (wave-21 amendment): the contact-collapse held its rows back
+  // BEFORE this render, so they are absent from `result.rendered` and the
+  // planner never saw them. They are still recipients this batch withheld, so
+  // they join the same named list — collapse skips first, then the planner's
+  // own two stages, mirroring the order the decisions were actually made in.
+  const skipped = [...collapsedRecipientSkips(withheld), ...plannedSkips];
   const toSendSet = new Set(toSend);
   const skipByKey = new Map(skipped.map((s) => [`${s.submissionId}:${s.email.trim().toLowerCase()}`, s]));
 

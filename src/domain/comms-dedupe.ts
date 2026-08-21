@@ -44,6 +44,27 @@ export interface ComposeDedupeSkip {
   retryAtIso?: string;
 }
 
+/** DEC-936 (wave-21 amendment): expandRecipients' contact-collapse runs
+ * UPSTREAM of planComposeSends, so the rows it withholds never reach either
+ * dedupe stage and would otherwise vanish from the response entirely — a
+ * suppression the organizer cannot see is indistinguishable from a lost
+ * email. This is the ONE place that turns a withheld row into the same
+ * ComposeDedupeSkip shape the planner emits: the same 'duplicate_in_batch'
+ * reason literal (it IS an intra-batch collapse, just one stage earlier) and
+ * no `retryAtIso` (there is no window to wait out). Both /compose/preview and
+ * /compose/send call it, so the plan and the send can never disagree about
+ * who was held back. */
+export function collapsedRecipientSkips(
+  withheld: readonly { email: string; name: string; submissionId: string }[],
+): ComposeDedupeSkip[] {
+  return withheld.map((r) => ({
+    email: r.email,
+    name: r.name,
+    submissionId: r.submissionId,
+    reason: "duplicate_in_batch",
+  }));
+}
+
 /** wave-60 amendment (DEC-238, P1 cluster 4): the two-stage dedupe extracted
  * from src/routes/comms/send.ts into a pure planner so
  * src/routes/comms/preview.ts can run the EXACT SAME decision before any

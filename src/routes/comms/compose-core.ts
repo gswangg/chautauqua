@@ -375,7 +375,11 @@ export async function buildRenderTargets(
       vars,
     });
   }
-  return { targets, recipients: recipientAccounts };
+  // DEC-936 (wave-21 amendment): `withheld` rides out alongside the targets so
+  // both production call sites can name the recipients the contact-collapse
+  // held back in the SAME `skipped` array the dedupe planner fills. It is
+  // empty whenever perSubmissionVarsSpent is true (nothing collapses).
+  return { targets, recipients: recipientAccounts, withheld: expanded.withheld };
 }
 
 /** DEC-037 amendment: the single source of the mail-shell options both
