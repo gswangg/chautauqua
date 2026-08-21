@@ -2190,4 +2190,30 @@ button.chq-speakers-status-overdue:hover {
     display: flex;
     align-items: center;
   }
+
+  /* Wave v12m-w10 task w10-na (DEC-180): three SPA classless-control
+     widening offenders, none carrying a `className` of their own --
+     RosterPanel's duplicate-contact `<Link>`, SpeakerDetailPage's portal
+     bio `<a>` list and its Sessions-row title `<Link>`. Each floored on
+     its own enclosing token. */
+  .chq-speakers-roster-duplicate-hint a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .chq-speaker-detail-portal-bio-links a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .chq-speaker-detail-sessions-row a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
 }

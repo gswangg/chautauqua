@@ -2630,4 +2630,28 @@
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* Wave v12m-w10 task w10-na (DEC-180): two SPA classless-control
+     widening offenders --
+     (1) EventSettingsPanel's "View agenda" `<Link>` had no `className` of
+     its own, keyed on its enclosing `.chq-event-unscheduled-notice`
+     token;
+     (2) PortalSettingsPanel's "Open as a speaker" `<a>` had no `className`
+     AND no enclosing chq- token anywhere in the file (ungradeable by
+     construction) -- given its own `chq-settings-portal-preview-link`
+     class directly on the tag so it can carry a floor at all. */
+  .chq-event-unscheduled-notice a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .chq-settings-portal-preview-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
 }

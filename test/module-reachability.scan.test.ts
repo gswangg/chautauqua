@@ -349,6 +349,11 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "scans, extracted in wave v12m-w12 so lanes lowering different ceilings stop colliding on the same lines " +
     "-- imported only by phone-tap-target.scan.test.ts and its two siblings, and test-file imports don't " +
     "confer reachability (DEC-518).",
+  "app/src/phone-tap-target-scan/spa-classless.ts":
+    "SPA classless-control population (wave v12m-w10, task w10-na, DEC-180 wave-154 amendment) -- imported " +
+    "only by app/src/phone-tap-target-spa-classless-control.scan.test.ts, and test-file imports don't confer " +
+    "reachability (DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / " +
+    "anchor-floor.ts / ssr.ts / undeclared.ts siblings above.",
   "app/src/phone-tap-target-scan/undeclared.ts":
     "Undeclared-height half of the same phone-tap-target scan decomposition (DEC-367 PREDICATE REPAIR: a " +
     "control that declares NO height at all took the base scan's same `continue` as one already at 44px) -- " +

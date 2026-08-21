@@ -1358,5 +1358,23 @@
   .chq-detail-page .chq-participants-table tbody tr {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* Wave v12m-w10 task w10-na (DEC-180): two SPA classless-control
+     widening offenders -- the scheduled-placement `<Link to="/agenda">`
+     and the answer-row file-download `<a>`, neither carrying a
+     `className` of its own. Each floored on its enclosing token. */
+  .chq-detail-placement a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .chq-answer-row a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
 }
 

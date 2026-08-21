@@ -305,3 +305,88 @@ export function hasExemptionForToken(raw: string, token: string): boolean {
   );
   return re.test(raw);
 }
+
+// --- Classless-tag population walk (wave v12m-w10, task w10-na) ----------
+//
+// `ssr.ts`'s `classlessAnchorSites` (wave v12m-w17, task w17-c) was the
+// first instrument built to see a control with no class token at all --
+// hardcoded to a single tag (`a`) and a single attribute grammar
+// (`SSR_CLASS_ATTR_RE`). `spa-classless.ts` (wave v12m-w10, task w10-na)
+// needs the SAME depth-only tag-stack walk over a WIDER tag set
+// ({a, Link, NavLink, button, select, textarea, input}) and the SPA's own
+// `className=`-only attribute grammar. Rather than fork the walk a second
+// time (DEC-613: a second copy of a vocabulary is a trap with a delay
+// fuse), the walk itself moves here, parameterised on the tag set and the
+// class-attribute grammar; `ssr.ts`'s `classlessAnchorSites` now delegates
+// to this function with `['a']` and keeps its own byte-identical "has a
+// class attribute at all" presence test (`hasClassAttrRe`, independent of
+// `classAttrRe`'s stricter value-shape grammar, exactly as it always was).
+
+export interface ClasslessTagSite {
+  readonly line: number;
+  readonly tag: string;
+  /** The nearest enclosing element's chq- tokens, walking outward through
+   * the tag stack until one carries at least one. Empty when no ancestor
+   * (all the way to the file's top level) carries any chq- token. */
+  readonly tokens: readonly string[];
+}
+
+/** Every opening JSX tag in `src` (self-closing or not), matched in source
+ * order, mirroring `ssr.ts`'s original inline `ANY_TAG_RE`. Comments must
+ * already be stripped by the caller (`stripTsxComments`). */
+const ANY_TAG_RE = /<(\/)?([A-Za-z][\w.]*)([^>]*)>/g;
+
+/** Every distinct `chq-…` token found in a class position in `attrs`,
+ * matched via `classAttrRe` (`SPA_CLASS_ATTR_RE` or `SSR_CLASS_ATTR_RE`). */
+export function chqTokensFromAttrs(attrs: string, classAttrRe: RegExp): string[] {
+  const classMatch = attrs.match(classAttrRe);
+  if (!classMatch) return [];
+  const classText = classMatch[1] ?? '';
+  return [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
+}
+
+/** Every opening tag in `tagNames` (self-closing or not) in `src` (already
+ * comment-stripped) declaring no class attribute matching `hasClassAttrRe`,
+ * keyed on its nearest enclosing element's chq- token via a depth-only
+ * tag-stack walk forward through the file (DEC-808: walked, never a
+ * hand-listed file/line set). `classAttrRe` is used only to extract chq-
+ * tokens off an ANCESTOR tag that does carry a class attribute --
+ * `hasClassAttrRe` alone decides whether the SUBJECT tag itself is
+ * classless, matching `ssr.ts`'s original `!/\bclass(?:Name)?\s*=/`
+ * presence-only check byte-for-byte. */
+export function classlessTagSites(
+  src: string,
+  tagNames: readonly string[],
+  hasClassAttrRe: RegExp,
+  classAttrRe: RegExp,
+): ClasslessTagSite[] {
+  const tagSet = new Set(tagNames);
+  const out: ClasslessTagSite[] = [];
+  const stack: string[][] = [];
+  ANY_TAG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = ANY_TAG_RE.exec(src)) !== null) {
+    const closing = m[1] === '/';
+    const tagName = m[2] as string;
+    const attrs = m[3] ?? '';
+    if (closing) {
+      stack.pop();
+      continue;
+    }
+    const selfClosing = /\/\s*$/.test(attrs);
+    if (tagSet.has(tagName) && !hasClassAttrRe.test(attrs)) {
+      let tokens: string[] = [];
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const frame = stack[i];
+        if (frame && frame.length > 0) {
+          tokens = frame;
+          break;
+        }
+      }
+      const line = src.slice(0, m.index).split('\n').length;
+      out.push({ line, tag: tagName, tokens });
+    }
+    if (!selfClosing) stack.push(chqTokensFromAttrs(attrs, classAttrRe));
+  }
+  return out;
+}

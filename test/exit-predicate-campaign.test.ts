@@ -75,6 +75,13 @@ function baseFixture(): CampaignFile[] {
         "export const SSR_CLASSLESS_ANCHOR_CEILING = 3;",
       ].join("\n"),
     },
+    // wave-154 (task w10-na, DEC-180 amendment): SPA mirror of
+    // SSR_CLASSLESS_ANCHOR_CEILING above, added on the same terms --
+    // arbitrary value, faithful shape.
+    {
+      path: "app/src/phone-tap-target-spa-classless-control.scan.test.ts",
+      content: "export const SPA_CLASSLESS_CONTROL_CEILING = 4;",
+    },
     {
       path: "app/src/phone-horizontal-overflow.scan.test.ts",
       content: [
@@ -235,6 +242,9 @@ function allGreenFixture(): CampaignFile[] {
         ].join("\n"),
       };
     }
+    if (f.path === "app/src/phone-tap-target-spa-classless-control.scan.test.ts") {
+      return { ...f, content: "export const SPA_CLASSLESS_CONTROL_CEILING = 0;" };
+    }
     if (f.path === "app/src/phone-horizontal-overflow.scan.test.ts") {
       return {
         ...f,
@@ -379,7 +389,12 @@ describe("buildCampaignReport", () => {
     // TIER2_CEILING_NAMES and given its fixture row and this pin in the same
     // commit -- re-derived by running buildCampaignReport over baseFixture()
     // at HEAD (30 rows): 29 -> 30.
-    expect(report.rows).toHaveLength(30);
+    // wave-154 (task w10-na, DEC-180 amendment): SPA_CLASSLESS_CONTROL_CEILING
+    // (the SPA classless-control ratchet) declared in CAMPAIGN_CONSTANT_NAMES/
+    // TIER2_CEILING_NAMES and given its fixture row and this pin in the same
+    // commit -- re-derived by running buildCampaignReport over baseFixture()
+    // at HEAD (31 rows): 30 -> 31.
+    expect(report.rows).toHaveLength(31);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
