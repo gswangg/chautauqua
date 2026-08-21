@@ -231,9 +231,9 @@ describe('Scorecard render smoke', () => {
     expect(fitRow.querySelector('.chq-review-criterion-weight-caption')).toBeNull();
 
     // Overall renders an em dash before every rating criterion is scored;
-    // frame 03--01: caption + reconciliation merge into one sentence, and
-    // before every rating criterion is scored that sentence is just the
-    // caption (no reconciliation clause to append yet).
+    // DEC-889 (wave-159 amendment): caption and reconciliation are sibling
+    // nodes now, and before every rating criterion is scored the
+    // reconciliation node is not rendered at all (no clause to show yet).
     expect(screen.getByText('Overall')).toBeInTheDocument();
     // DEC-939 (wave-82 amendment): 'Fit' is a Choice criterion, so the
     // caption states its denominator -- the N rating criteria it means to
@@ -742,9 +742,9 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
-    // frame 03--01: the caption and the reconciliation clause are one
-    // merged sentence now -- unscored means the caption alone, with no
-    // reconciliation clause appended.
+    // DEC-889 (wave-159 amendment): caption and reconciliation are sibling
+    // nodes -- unscored means only the caption renders, no reconciliation
+    // node at all.
     expect(document.querySelector('.chq-review-overall-caption')!.textContent).toBe('Averaged by weight, not editable');
   });
 
@@ -775,13 +775,19 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Originality (c2)' })).getByRole('radio', { name: 'Originality (c2): 4 of 5' }));
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Delivery (c3)' })).getByRole('radio', { name: 'Delivery (c3): 4 of 5' }));
 
+    // DEC-889 (wave-159 amendment): the denominator sentence and the
+    // plain-average reconciliation sentence are now sibling nodes (frame
+    // Chautauqua Review.dc.html:322-328 draws them as two separate lines
+    // in the 390 Overall block), not one string concatenated onto the
+    // desktop caption.
     await waitFor(() =>
-      expect(document.querySelector('.chq-review-overall-caption')?.textContent).toBe(
-        // DEC-147 amendment (w62-d): the caption's plain-average hint now
-        // goes through formatScore too (one decimal, same grammar as the
-        // Overall value above it), not a bare .toFixed(2).
-        'Averaged by weight, not editable — a plain average of 5, 4, 4 would be 4.3',
-      ),
+      expect(document.querySelector('.chq-review-overall-caption')?.textContent).toBe('Averaged by weight, not editable'),
+    );
+    expect(document.querySelector('.chq-review-overall-reconciliation')?.textContent).toBe(
+      // DEC-147 amendment (w62-d): the caption's plain-average hint now
+      // goes through formatScore too (one decimal, same grammar as the
+      // Overall value above it), not a bare .toFixed(2).
+      'A plain average of 5, 4, 4 would be 4.3',
     );
   });
 });

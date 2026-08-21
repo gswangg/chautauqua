@@ -903,13 +903,23 @@ export function Scorecard() {
             </fieldset>
           ))}
 
-          {/* frame 03--01: Overall prints its label and value on ONE line --
-              the same computeWeightedScore the server and plan editor use,
-              printed to one decimal, or an em dash until every rating
-              criterion is scored -- with the caption and the plain-average
-              reconciliation merged into a single sentence beneath it
-              (same numbers, same computeWeightedScore/plainAverage calls,
-              fewer elements). */}
+          {/* DEC-889 (wave-159 amendment): the 390 frame
+              (Chautauqua Review.dc.html:322-328) draws Overall as a flex
+              ROW -- a left column carrying the uppercase eyebrow (:324),
+              the weighted-mean denominator sentence (:325), and a
+              SEPARATE smaller plain-average reconciliation sentence
+              (:326), with the 34px value as the row's right-hand
+              sibling -- not the desktop reading (frame 03--01) of one
+              label+value line above a single merged caption paragraph.
+              The two sentences below are now sibling nodes (denominator;
+              reconciliation) instead of one string concatenation, so
+              scorecard.css's terminal max-width:700px block can grid
+              them into that anatomy; stacked at desktop they read as the
+              same two lines the merged paragraph used to wrap onto, so
+              this split is visually inert there (verified: no desktop
+              style targets .chq-review-overall or its caption beyond the
+              existing .chq-review-overall-caption rule, which both
+              paragraphs share). */}
           <section className="chq-review-overall">
             <p className="chq-review-overall-line">
               <span className="chq-section-label">Overall</span>
@@ -932,7 +942,8 @@ export function Scorecard() {
                   edit.tsx's `editDock` comment states verbatim. NEVER
                   matchMedia/useIsPhone here (DEC-385 single-direction;
                   cfp-steps-script.tsx's ungated setStep is the
-                  cautionary case). */}
+                  cautionary case). This wave-159 amendment does not touch
+                  this idiom -- no second hide/show mechanism added. */}
               {overallScore === null && (
                 <span hidden className="chq-review-overall-value-phone">
                   Not yet
@@ -940,12 +951,15 @@ export function Scorecard() {
               )}
             </p>
             <p className="chq-review-overall-caption">
-              {(overallScore !== null && ratingCriteria.length > 0
-                ? `Averaged by weight, not editable — a plain average of ${ratingCriteria
-                    .map((c) => scores[c.id] as number)
-                    .join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`
-                : 'Averaged by weight, not editable') + overallDenominatorClause}
+              {'Averaged by weight, not editable' + overallDenominatorClause}
             </p>
+            {overallScore !== null && ratingCriteria.length > 0 && (
+              <p className="chq-review-overall-reconciliation">
+                {`A plain average of ${ratingCriteria
+                  .map((c) => scores[c.id] as number)
+                  .join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`}
+              </p>
+            )}
           </section>
 
           <label className="chq-review-field">
