@@ -50,14 +50,15 @@
 //      sections (Submit a talk / Browse sessions), the archive section's
 //      "Sessions ›" link, and the footer's "API docs" link all render.
 //   2. "Between cycles · phone" (Chautauqua Home.dc.html:228, GET / with
-//      only a past event) -- DIVERGES, and the divergence is ALREADY
-//      FLAGGED in root.tsx's own Footer() comment (:271-278): the frame's
-//      between-cycles footer draws the same right-hand "API docs" link
-//      the full-hub frame draws (:261 quotes the identical anchor markup),
-//      but root.tsx's `Footer` only renders `.chq-home-footer-link-end`
-//      when `state === "full"` -- pinned by
-//      test/public-home-state-actions.test.ts's "renders on the full hub
-//      only" test, so this is a known, sourced gap, not a new finding.
+//      only a past event) -- MATCHES (wave-19 retest). The frame's
+//      between-cycles footer draws the same right-hand "API docs" link the
+//      full-hub frame draws (:261 quotes the identical anchor markup), and
+//      root.tsx's `Footer` (as of commit a30f7422) now renders that anchor
+//      unconditionally in the DOM for `state === "between_cycles"` too,
+//      tagged `.chq-home-footer-link-end-phone` and base-hidden by
+//      home.css.ts, revealed only inside its existing @media (max-width:
+//      700px) block (DEC-385 single-direction) -- so on a phone render the
+//      anchor is present and visible. No divergence remains.
 //   3. "Fresh deploy · phone" (Chautauqua Home.dc.html:299, GET / with no
 //      events) -- MATCHES. "Nothing here yet" hero, primary Sign in +
 //      tertiary "API docs ›" action row, and (per the SAME state-gated
@@ -193,8 +194,8 @@ describe("Home — GET / (SSR, three states)", () => {
 
   it(
     // Chautauqua Home.dc.html:239 `<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:29px; font-weight:700; letter-spacing:-0.042em; line-height:1.07">No open calls right now</h1>` --
-    // 'Between cycles · phone' (:228). DIVERGES, already flagged (root.tsx :271-278) -- footer API docs link is frame-drawn but code-omitted for this state.
-    "'Between cycles · phone' (:228) DIVERGES on the footer -- frame draws the API docs link, code omits it for this state (already flagged, root.tsx:271-278)",
+    // 'Between cycles · phone' (:228). MATCHES (wave-19 retest) -- frame draws the API docs link and root.tsx now renders it (a30f7422), phone-revealed via .chq-home-footer-link-end-phone.
+    "'Between cycles · phone' (:228) MATCHES -- frame draws the API docs link, code now renders it for this state too (root.tsx:271-286, a30f7422)",
     async () => {
       const events = [
         eventRow({
@@ -211,7 +212,8 @@ describe("Home — GET / (SSR, three states)", () => {
       expect(body).toContain("<h1>No open calls right now</h1>");
       // Chautauqua Home.dc.html:261 `<a href="#" style="margin-left:auto; font-size:12px; font-weight:700; min-height:44px; display:flex; align-items:center">API docs</a>` -- the frame draws this SAME anchor on the between-cycles footer as on the full-hub footer.
       const footer = body.split("<footer")[1]?.split("</footer>")[0] ?? "";
-      expect(footer).not.toMatch(/href="\/docs\/api"/); // real render omits it -- the divergence.
+      expect(footer).toMatch(/href="\/docs\/api"/);
+      expect(footer).toContain("API docs");
     },
   );
 

@@ -181,19 +181,20 @@ is its first render-through-the-route confirmation.
 ## Frame :531 "Portal · Your profile" (GET /portal/profile) — DIVERGES
 
 The frame (:528-556) matches on back link, headshot section, and field
-anatomy. Two real divergences: (1) the H1 text itself — the route
-(`ProfilePage`, `src/routes/portal/profile.tsx`) renders `<h1
-class="chq-portal-hero">My Profile</h1>`, where the frame draws `<h1
-...>Your profile</h1>` (:534) — a different string, not a casing quirk (the
-rest of the page correctly uses "Profile" nowhere else as a page name). (2)
-the docked footer: the frame draws a primary "Save" plus a bordered
-secondary "Cancel"; the route's `profileDock` renders only "Save profile",
-with no Cancel control — the same "never manufactured just to fill the
-band" rule as the tasks frame above, and already recorded in-file as a
-DEVIATIONS.md entry (this page has no distinct "leave without saving"
-destination from the existing back-link/sign-out). The H1 text mismatch is
-NOT previously recorded anywhere in this audit file and is a real,
-unscheduled finding.
+anatomy. (1) CLOSED (wave 19, task w19-d): the H1 text clause is
+resolved — `src/routes/portal/profile.tsx` renders `<h1 class="chq-portal-hero
+chq-portal-hero-drill">Your profile</h1>`, the frame's own literal (:534),
+not `My Profile`; `test/portal-390-frame-verdicts.test.ts` already pins
+this with `expect(html).toContain(">Your profile<");` and
+`expect(html).not.toContain("My Profile");` (its :297 `it()` per the
+DEC-576 wave-16 amendment). No H1 divergence remains. (2) the docked
+footer: the frame draws a primary "Save" plus a bordered secondary
+"Cancel"; the route's `profileDock` renders only "Save profile", with no
+Cancel control — the same "never manufactured just to fill the band" rule
+as the tasks frame above, and already recorded in-file as a DEVIATIONS.md
+entry (this page has no distinct "leave without saving" destination from
+the existing back-link/sign-out). This clause remains open, tracked in
+DEVIATIONS.md.
 
 ## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
 
