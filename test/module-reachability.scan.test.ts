@@ -366,6 +366,20 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Spawned by scripts/walkthrough.ts via a runtime-computed `scripts/walkthrough/${area}.ts` path over " +
     "WALKTHROUGH_AREAS -- same shape as producer.ts, never a static import (scripts/walkthrough/stress.ts is a " +
     "sibling module but is instead a direct package.json entry, `gate:scale`, so it needs no ledger entry).",
+  "app/src/phone-overflow-scan/starved-track-ceiling.ts":
+    "Ratchet ceiling constant module -- its only importer is app/src/phone-horizontal-overflow.scan.test.ts, " +
+    "and test-file imports don't confer reachability (DEC-518). Pre-existing gap in this ledger (wave v12m-w8 " +
+    "task w8-ef found it missing); isolated into its own file so a worker re-measuring the ratchet touches " +
+    "only this constant, never the scan's population/check machinery.",
+  "app/src/comment-blind-css-assertion-scan/ceiling.ts":
+    "Ratchet ceiling constant module (DEC-374 amendment, wave v12m-w8 task w8-ef) -- its only importer is " +
+    "test/comment-blind-css-assertion.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +
+    "Same shape as starved-track-ceiling.ts above: isolated into its own file so a worker re-measuring the " +
+    "ratchet touches only this constant, never the scan's detection machinery.",
+  "app/src/comment-blind-css-assertion-scan/local-stripper-ceiling.ts":
+    "Ratchet ceiling constant module (DEC-374/DEC-613, wave v12m-w8 task w8-ef) for the same scan's second " +
+    "offender class -- its only importer is test/comment-blind-css-assertion.scan.test.ts, and test-file " +
+    "imports don't confer reachability (DEC-518). Same shape as its ceiling.ts sibling above.",
 };
 
 const orphans = NON_TEST_MODULES.filter((f) => !reachable.has(f)).map((f) => relative(REPO_ROOT, f));

@@ -707,6 +707,18 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "citation is currently true) is already an exit gate under UNRESOLVED_CITATION_CEILING " +
     "and WIDENED_UNRESOLVED_CITATION_CEILING; this constant is a distinct, non-overlapping " +
     "concern from the same population, not a v12 frame or 390-geometry conformance fact.",
+  COMMENT_BLIND_CSS_ASSERTION_CEILING:
+    "measures TEST-INSTRUMENT SOUNDNESS -- whether a test file applies a raw-text match " +
+    "assertion to an un-stripped CSS source, which can make a negative assertion fail on a " +
+    "defect that doesn't exist in the tree (or, undetected, make a positive assertion pass " +
+    "vacuously on a comment quoting the real declaration -- DEC-374). It is a fact about the " +
+    "test corpus's own reliability, not about a v12 frame or 390-geometry conformance fact; a " +
+    "newly non-zero row here would move the campaign's goalposts mid-convergence.",
+  LOCAL_CSS_COMMENT_STRIPPER_CEILING:
+    "measures VOCABULARY DUPLICATION (DEC-613) -- how many test files re-derive their own " +
+    "comment-stripping function instead of importing test/helpers/strip-css-comments.ts's " +
+    "shared one. A fact about the test corpus's maintainability, not a v12 frame or " +
+    "390-geometry conformance fact.",
 };
 
 /**
