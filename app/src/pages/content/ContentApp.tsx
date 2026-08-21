@@ -358,8 +358,13 @@ export function ContentApp() {
           {/* w1-f (DEC-733/eval 60/37): decision-framing copy, matching the
               mock's header text ('N need a decision · M re-uploaded') —
               withheld (not '0 · 0') until both aggregate reads resolve, per
-              DEC-665's "never assert a fact not yet measured". */}
-          {!submissionId && view === 'worklist' && counts.needs_decision !== null && reUploadedCount !== null && (
+              DEC-665's "never assert a fact not yet measured". w15-ta
+              (DEC-825 wave-159): guarded on !phoneSelectMode — frame
+              docs/design/Chautauqua Content.dc.html:247's phone "selecting"
+              head draws ONLY the `N selected` / `All N` / `Done` meta row
+              below, no summary line, so this and that row must be mutually
+              exclusive, not just visually replaced. */}
+          {!submissionId && view === 'worklist' && !phoneSelectMode && counts.needs_decision !== null && reUploadedCount !== null && (
             <span className="chq-summary">
               {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
             </span>
@@ -381,10 +386,10 @@ export function ContentApp() {
             </button>
           )}
           {/* w1-e: phone-only "selecting" meta row — frame :255-257
-              `2 selected` / `All 5` / `Done`. Replaces the summary line +
-              Select toggle above (never both — exclusivity is the ruling
-              this task implements) and is itself invisible until
-              phoneSelectMode is on. "All N" selects/deselects every row on
+              `2 selected` / `All 5` / `Done`. Renders in place of the
+              summary line + Select toggle above: both of those carry an
+              explicit `!phoneSelectMode` guard (w15-ta, DEC-825 wave-159),
+              so this row and they never mount together. "All N" selects/deselects every row on
               the current page, reusing the SAME selectedIds Set the
               desktop select-all-on-page checkbox (SessionList's togglePage)
               already writes to — no second selection model. */}
