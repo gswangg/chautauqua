@@ -233,11 +233,20 @@ interface SupersededCite {
   literal: string;
 }
 
+/** A single row's citation. Reused, never re-invented (DEC-613): a row
+ * whose claim has two halves -- something asserted BUILT and something
+ * else asserted explicitly NOT built (the shape DEC-967 wave-145 flags,
+ * where a "present" citation of unrelated code let a blessed non-build
+ * claim silently go stale once the "not built" half got built) -- carries
+ * an array of Cite so both halves resolve against the tree, instead of a
+ * single citation standing in for a claim it only half-covers. */
+type Cite = PresentCite | AbsentCite;
+
 interface LedgerEntry {
   key: string;
   status: "honored" | "superseded" | "gap";
   reason: string;
-  honored?: PresentCite | AbsentCite;
+  honored?: Cite | Cite[];
   superseded?: SupersededCite;
 }
 
@@ -496,15 +505,25 @@ const LEDGER: LedgerEntry[] = [
   },
   {
     key: "contacts-pipeline-keeps-its-landed-head-action-no-phone-dock-is-minted-dec-576-wave-120-124",
+    status: "superseded",
+    reason:
+      "DEC-967 wave-145: a build landed a Pipeline · 390 phone dock (app/src/pages/contacts/PipelineBoard.tsx renders both Add someone and Filter inside a docked .chq-phone-dock band), reversing this bullet's own 'no phone dock is minted' ruling now that 'Filter' has a wired referent -- the same-screen five-stage facet strip. The reversal is recorded, on its merits, in section 6's Adjudications as 'Contacts Pipeline · 390 dock IS minted; THIS REVERSES DEC-576 wave-120/124'.",
+    superseded: { literal: "Contacts Pipeline · 390 dock IS minted" },
+  },
+  {
+    key: "contacts-pipeline-390-dock-is-minted",
     status: "honored",
     reason:
-      "DEC-576 wave-120/124: Pipeline · 390 draws Add someone + Filter, the app has no Filter referent, and Filter names the same-screen five-stage scroller directly above the list -- so no phone dock is minted and the single action keeps its landed full-width 48px head placement.",
-    honored: {
-      kind: "present",
-      file: "app/src/pages/contacts/contacts-panels.css",
-      literal: ".chq-contacts-pipeline-head > .chq-btn {",
-      testFile: "app/src/pages/contacts/contacts-phone-frames.test.ts",
-    },
+      'DEC-967 wave-145: the reversal\'s two halves, both checked against the tree. Positive -- the dock is real: PipelineBoard.tsx renders a data-chq-phone-dock band with both Add someone and Filter. Negative -- the reversal invents no new domain capability: "Filter" re-slices entries the page already fetched (the same PIPELINE_STAGES the chq-contacts-pipeline-phone-stages strip draws above the list), never a new server query -- src/routes/api/pipeline.ts\'s GET /pipeline reads only page/perPage, no stage query param, so "Filter" cannot be quietly backed by a route this ledger never graded.',
+    honored: [
+      {
+        kind: "present",
+        file: "app/src/pages/contacts/PipelineBoard.tsx",
+        literal: "data-chq-phone-dock",
+        testFile: "app/src/pages/contacts/PipelineBoard.render.test.tsx",
+      },
+      { kind: "absent", term: 'query("stage")' },
+    ],
   },
   {
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
@@ -571,6 +590,18 @@ function literalAppearsInDeviations(literal: string): boolean {
   return DEVIATIONS_TEXT.includes(literal);
 }
 
+/** Derived, not hand-classified (DEC-967 wave-145): true when a bullet's
+ * lead-in phrase itself asserts, in the exact grammatical shape this
+ * document's own bullets use for a blessed non-build, that something is
+ * explicitly NOT built -- "no <noun phrase> is minted/built/sent/reachable"
+ * or "must not appear". A bullet matching this pattern makes a claim with a
+ * negative half, and that half needs its own citation (see check 3b) --
+ * not just a positive citation of some other, always-true fact standing in
+ * for it. */
+function bulletAssertsNonBuild(leadIn: string): boolean {
+  return /\bno\b[^.]*\b(?:is|are)\s+(?:minted|built|sent|reachable)\b/i.test(leadIn) || /\bmust not appear\b/i.test(leadIn);
+}
+
 /** Pure classifier: given the derived population and the ledger, returns the
  * list of problems found -- named by key, never just a count. Exported so
  * negative-control tests can feed it synthetic violations directly. */
@@ -612,28 +643,56 @@ export function findDeviationsProblems(
     if (!derivedKeySet.has(entry.key)) problems.push(`stale ledger row citing a non-existent key: ${entry.key}`);
   }
 
-  // (3) honored rows
+  // (3) honored rows. `honored` may be a single Cite or an array of Cite
+  // (DEC-967 wave-145): a row whose claim mixes a positive half ("built")
+  // with a negative half ("not built") must resolve BOTH against the
+  // tree, so every element of the array is checked, not just the first.
   for (const entry of ledger) {
     if (entry.status !== "honored") continue;
     if (!entry.honored) {
       problems.push(`honored row ${entry.key} has no honored citation`);
       continue;
     }
-    if (entry.honored.kind === "present") {
-      const cite = entry.honored;
-      if (!resolvers.fileExists(cite.file)) {
-        problems.push(`honored row ${entry.key} cites a nonexistent file: ${cite.file}`);
-      } else if (!resolvers.fileContains(cite.file, cite.literal)) {
-        problems.push(`honored row ${entry.key} cites ${cite.file} but it does not contain "${cite.literal}"`);
+    const cites = Array.isArray(entry.honored) ? entry.honored : [entry.honored];
+    if (cites.length === 0) {
+      problems.push(`honored row ${entry.key} has an empty citation array`);
+      continue;
+    }
+    for (const cite of cites) {
+      if (cite.kind === "present") {
+        if (!resolvers.fileExists(cite.file)) {
+          problems.push(`honored row ${entry.key} cites a nonexistent file: ${cite.file}`);
+        } else if (!resolvers.fileContains(cite.file, cite.literal)) {
+          problems.push(`honored row ${entry.key} cites ${cite.file} but it does not contain "${cite.literal}"`);
+        }
+        if (!resolvers.fileExists(cite.testFile)) {
+          problems.push(`honored row ${entry.key} cites a nonexistent test file: ${cite.testFile}`);
+        }
+      } else {
+        if (resolvers.termInTree(cite.term)) {
+          problems.push(`honored (absent) row ${entry.key} claims absence of "${cite.term}" but it appears in the tree`);
+        }
       }
-      if (!resolvers.fileExists(cite.testFile)) {
-        problems.push(`honored row ${entry.key} cites a nonexistent test file: ${cite.testFile}`);
-      }
-    } else {
-      const absentCite = entry.honored;
-      if (resolvers.termInTree(absentCite.term)) {
-        problems.push(`honored (absent) row ${entry.key} claims absence of "${absentCite.term}" but it appears in the tree`);
-      }
+    }
+  }
+
+  // (3b) generalised non-build check (DEC-967 wave-145): any derived
+  // bullet whose own text asserts something is explicitly NOT built (the
+  // exact phrasing this ledger's bullets use for a blessed non-build --
+  // "no ... is minted/built/sent/reachable", or "must not appear") must
+  // have an absent-kind Cite among its row's citations if that row is
+  // "honored" -- a present-only citation of unrelated code is exactly the
+  // hole that let the Contacts Pipeline bullet's "no phone dock is
+  // minted" half go unverified while the dock got built underneath it.
+  for (const d of derived) {
+    if (!bulletAssertsNonBuild(d.leadIn)) continue;
+    const entry = ledger.find((e) => e.key === d.key);
+    if (!entry || entry.status !== "honored" || !entry.honored) continue;
+    const cites = Array.isArray(entry.honored) ? entry.honored : [entry.honored];
+    if (!cites.some((c) => c.kind === "absent")) {
+      problems.push(
+        `honored row ${entry.key} asserts a non-build ("${d.leadIn}") but carries no absent-kind citation for it`,
+      );
     }
   }
 
@@ -685,8 +744,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(19);
-    expect(derived.length).toBe(41);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(20);
+    expect(derived.length).toBe(42);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
@@ -809,5 +868,79 @@ describe("findDeviationsProblems negative controls (DEC-099: every scan ships on
   it("a clean gap row with no citation is accepted", () => {
     const cleanGap: LedgerEntry[] = [{ key: "zzz-01", status: "gap", reason: "x" }];
     expect(findDeviationsProblems(baseDerived, cleanGap, fakeResolvers)).toEqual([]);
+  });
+
+  // DEC-967 wave-145: array-of-Cite support and the generalised non-build
+  // check, both proved on synthetic fixtures this test OWNS -- never on a
+  // real product offender's identity (a sentinel anchored to a live row
+  // dies the moment that row is fixed; DEC-967 waves 100/123/143).
+  it("an honored row's citation array requires EVERY element to resolve -- one bad element among good ones IS reported", () => {
+    const mixedArray: LedgerEntry[] = [
+      {
+        key: "zzz-01",
+        status: "honored",
+        reason: "x",
+        honored: [
+          { kind: "present", file: "src/decisions.ts", literal: "export", testFile: "test/deviations-ledger.scan.test.ts" },
+          { kind: "absent", term: "present-term" },
+        ],
+      },
+    ];
+    const problems = findDeviationsProblems(baseDerived, mixedArray, fakeResolvers);
+    expect(problems.some((p) => p.includes("present-term"))).toBe(true);
+  });
+
+  it("an honored row's citation array where every element resolves is accepted", () => {
+    const goodArray: LedgerEntry[] = [
+      {
+        key: "zzz-01",
+        status: "honored",
+        reason: "x",
+        honored: [
+          { kind: "present", file: "src/decisions.ts", literal: "export", testFile: "test/deviations-ledger.scan.test.ts" },
+          { kind: "absent", term: "totally-absent-term" },
+        ],
+      },
+    ];
+    expect(findDeviationsProblems(baseDerived, goodArray, fakeResolvers)).toEqual([]);
+  });
+
+  it("bulletAssertsNonBuild: matches the document's own non-build phrasing, not arbitrary prose", () => {
+    expect(bulletAssertsNonBuild("no phone dock is minted")).toBe(true);
+    expect(bulletAssertsNonBuild("Contacts Pipeline keeps its landed head action; no phone dock is minted (DEC-576 wave-120/124)")).toBe(true);
+    expect(bulletAssertsNonBuild('"Archive this event" must not appear anywhere')).toBe(true);
+    expect(bulletAssertsNonBuild("Contacts Pipeline · 390 dock IS minted")).toBe(false);
+    expect(bulletAssertsNonBuild("Tracks/rooms drag-handle reordering")).toBe(false);
+  });
+
+  it("a non-build bullet whose honored row carries ONLY a present citation IS reported (the exact hole DEC-967 wave-145 closes)", () => {
+    const nonBuildDerived: DerivedBullet[] = [{ key: "zzz-nb", leadIn: "no synthetic widget is minted", heading: "## 1. Ruled omissions" }];
+    const presentOnly: LedgerEntry[] = [
+      { key: "zzz-nb", status: "honored", reason: "x", honored: { kind: "present", file: "src/decisions.ts", literal: "export", testFile: "test/deviations-ledger.scan.test.ts" } },
+    ];
+    const problems = findDeviationsProblems(nonBuildDerived, presentOnly, fakeResolvers);
+    expect(problems.some((p) => p.includes("zzz-nb") && p.includes("no absent-kind citation"))).toBe(true);
+  });
+
+  it("a non-build bullet whose honored row also carries an absent citation is accepted", () => {
+    const nonBuildDerived: DerivedBullet[] = [{ key: "zzz-nb", leadIn: "no synthetic widget is minted", heading: "## 1. Ruled omissions" }];
+    const both: LedgerEntry[] = [
+      {
+        key: "zzz-nb",
+        status: "honored",
+        reason: "x",
+        honored: [
+          { kind: "present", file: "src/decisions.ts", literal: "export", testFile: "test/deviations-ledger.scan.test.ts" },
+          { kind: "absent", term: "totally-absent-term" },
+        ],
+      },
+    ];
+    expect(findDeviationsProblems(nonBuildDerived, both, fakeResolvers)).toEqual([]);
+  });
+
+  it("a non-build bullet whose row is 'superseded' (not 'honored') is exempt from the absent-clause requirement -- supersession, not a live non-build claim, resolves it", () => {
+    const nonBuildDerived: DerivedBullet[] = [{ key: "zzz-nb", leadIn: "no synthetic widget is minted", heading: "## 1. Ruled omissions" }];
+    const superseded: LedgerEntry[] = [{ key: "zzz-nb", status: "superseded", reason: "x", superseded: { literal: "real-doc-literal" } }];
+    expect(findDeviationsProblems(nonBuildDerived, superseded, fakeResolvers)).toEqual([]);
   });
 });
