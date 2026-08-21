@@ -1,6 +1,6 @@
 # Meta-fidelity probe round 3 — 2026-08-20 (~18:45), main @ f7432267, server :8891
 
-Four parallel probes: Content cluster, Wave-A docks, Wave-B small surfaces, regression smoke over the six DONE clusters. Detail reports: probe3-content.md, probe3-docks.md, probe3-waveb.md, probe3-regression.md (this dir); evidence in probe3-shots/ and probe3-waveb-evidence/.
+Four parallel probes: Content cluster, Wave-A docks, Wave-B small surfaces, regression smoke over the six DONE clusters. Detail reports (probe3-content.md, probe3-docks.md, probe3-waveb.md, probe3-regression.md) and evidence dirs (probe3-shots/, probe3-waveb-evidence/) were NOT committed — docs/probes/ holds no such files or subdirectories (DEC-967 wave-154 amendment, verified by listing). The verdicts below are the only surviving record of that run.
 
 ## Verdicts
 

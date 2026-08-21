@@ -87,8 +87,45 @@
   `<div style="padding:12px 0 0; font-size:13px; color:#565A4B; line-height:1.5">The swatch is how a track reads on the agenda and the public pages · a track in use cannot be removed — retire it instead and it stops appearing on the form</div>`).
 
 ## Register minors worth taking
-"reminded in the last hour" vs task-view "emailed" self-inconsistency;
-speaker-detail drops reminder counts TaskView derives from the same log;
-"Was due"/"Due" tense lost; sessions row bordered chip vs frame's bare
-olive caps + session code printed twice; bulk-bar primary 35px vs 36px
-uniform; not-chasing caption italic (style appears nowhere in the frames).
+(a) CLOSED: "reminded in the last hour" vs task-view "emailed"
+self-inconsistency. Both surfaces now use the same phrase --
+app/src/pages/speakers/RemindPreviewModal.tsx`reminded in the last hour`
+(zero-state and skipped lines) and
+app/src/pages/speakers/TaskView.tsx`skips anyone reminded in the last hour`.
+"emailed" survives only at
+app/src/pages/speakers/TaskView.tsx`nothing is emailed to the speakers`, the
+export caption, where it is correct (exporting is not sending mail).
+
+(b) CLOSED: speaker-detail drops reminder counts TaskView derives from the
+same log. Both readers share ONE derivation, not two: DEC-930 wave-118 --
+src/server/repo/tasks/task-view.ts`ONE grouped query, correlated in SQL`
+(countRemindSends, the roster-of-a-task shape) and
+src/server/repo/tasks/speaker-detail.ts`from the ONE shared reader task-view.ts`
+(the per-speaker shape) both match `email_log` on the same
+REMINDER_SUBJECT_PREFIX rule and the same per-assignment window; no second
+copy of the matching rule exists.
+
+(c) CLOSED: "Was due"/"Due" tense lost. Present at
+app/src/pages/speakers/SpeakerDetailPage.tsx`const verb = dueDate < Date.now() ? 'Was due' : 'Due';`.
+
+(d) CLOSED: sessions row bordered chip vs frame's bare olive caps + session
+code printed twice. Both fixed by DEC-829 w20-d --
+app/src/pages/speakers/speakers.css`.chq-speaker-detail-sessions-row span.chq-speakers-status-neutral {`
+sets `background: none; border: none;` (bare caps, no chip), and
+app/src/pages/speakers/SpeakerDetailPage.tsx`the code (session.ref)
+                              stays on the ParticipationMenu's` records the
+code's removal from the title cell.
+
+(e) STILL OPEN, unmeasured: bulk-bar primary 35px vs 36px uniform. The bulk
+bar (app/src/styles.css`.chq-bulkbar-actions {`) renders plain
+`.chq-btn`/`.chq-btn-primary`/`.chq-btn-secondary` (app/src/styles.css`.chq-btn {`)
+with no explicit height on any of the three rules -- height is auto, driven
+by padding/line-height/border, so primary (no border) and secondary (1px
+border) can differ by up to 2px in a real render. Confirming the claimed
+35px/36px split needs an actual rendered measurement (e.g. render-sweep),
+not a source-level read; not done in this pass.
+
+(f) CLOSED: not-chasing caption italic (style claimed to appear nowhere in
+the frames). Verified zero instances of `font-style: italic` in app/src or
+src (excluding decisions-data citation prose) and zero in
+docs/design/*.dc.html.
