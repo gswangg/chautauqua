@@ -735,7 +735,16 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // no decisions/*.md body. Seeded by forcing this to -1 and reading the
 // printed count off this tree (see docs/design/audit/decisions-registry-
 // citation-v12.md for the measured shape).
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1290;
+// Lowered 1290 -> 1277 (wave-19, task w19-c, DEC-967 amendment): re-measured
+// by forcing this to -1 first, which found the true count had RISEN to 1294
+// (drift, not a stale ceiling) -- so the repair was the citations, never a
+// raise of the constant. 17 offenders repaired in decisions/DEC-004.md,
+// DEC-005.md, DEC-006.md, DEC-011.md, DEC-013.md and DEC-018.md, each
+// rewritten to the repo-relative-path-plus-backtick-quoted-content shape
+// with NO :line suffix (mandatory per this task) so the citation resolves
+// by content and cannot rot from line drift again. Re-measured 1277 by
+// re-running this scan on the repaired tree.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1277;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
