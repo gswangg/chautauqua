@@ -61,6 +61,20 @@ export async function resolvePortalLinks(
   return result;
 }
 
+/** DEC-027 wave-20 amendment: the ONE named mint entry point. A thin
+ * delegate to resolvePortalLinks(..., true) — never a second copy of the
+ * body (DEC-613) — so a route that always mints (never previews) reads as
+ * a mint at its call site instead of a bare `true` a reviewer (or a scan's
+ * CREDENTIAL_PRIMITIVES substring match) has to interpret. */
+export async function mintPortalLinks(
+  kv: KVStore,
+  recipients: { contactId: string; userId: string | null }[],
+  eventId: string,
+  origin: string,
+): Promise<Map<string, string>> {
+  return resolvePortalLinks(kv, recipients, eventId, origin, true);
+}
+
 /** DEC-397 wave-50 amendment (MINT LATE): overwrites vars.portal_link on
  * already-built render targets with REAL minted links, in place, after
  * preflightRender has already accepted the batch built with

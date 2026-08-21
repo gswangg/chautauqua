@@ -8,7 +8,7 @@ import { ApiError, parseBoundedIdArray } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { markParticipantsInvited } from "../../server/repo/participants";
 import type { KVStore } from "../../auth/claim";
-import { resolvePortalLinks } from "../../server/repo/portal-link";
+import { mintPortalLinks } from "../../server/repo/portal-link";
 import { renderEmailHtml } from "../../mail/shell";
 import {
   MAX_PORTAL_INVITE_RECIPIENTS,
@@ -26,10 +26,10 @@ void DEC_027;
 
 export const portalInvitesRoutes = new Hono<AppEnv>();
 
-// DEC-027 wave-18 amendment: this route mints real claim tokens
-// (resolvePortalLinks(..., true) below) — a claim-token mint is a
-// credential mint, so requireCookieSession goes immediately after the
-// role guard.
+// DEC-027 wave-18/wave-20 amendments: this route mints real claim tokens
+// (mintPortalLinks below, DEC-027 wave-20's named entry point over
+// resolvePortalLinks(..., true)) — a claim-token mint is a credential
+// mint, so requireCookieSession goes immediately after the role guard.
 portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
@@ -67,12 +67,11 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
   // portal_link built with the SAME batched helper the compose path uses
   // (DEC-530 wave-42 amendment); a portal invite always mints real claim
   // tokens (never a preview).
-  const portalLinkByContactId = await resolvePortalLinks(
+  const portalLinkByContactId = await mintPortalLinks(
     kv,
     participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
     eventId,
     origin,
-    true,
   );
 
   const recipients: PortalInviteRecipient[] = participants.map((p) => ({

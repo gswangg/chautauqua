@@ -21,7 +21,7 @@ import { renderEmailHtml } from "../mail/shell";
 import { getEventForOrg } from "../server/repo/events";
 import { newId } from "../domain/ids";
 import type { KVStore } from "../auth/claim";
-import { resolvePortalLinks } from "../server/repo/portal-link";
+import { mintPortalLinks } from "../server/repo/portal-link";
 import { getFileScope, getSubmissionScope, insertFileComment, updateContentStatus } from "../server/repo/files";
 import { findAccountUserIds, loadComposeSubmissions } from "../server/repo/comms";
 import { DEC_009, DEC_027, DEC_317, DEC_573, DEC_720, DEC_741 } from "../decisions";
@@ -51,10 +51,10 @@ interface ContentNoteBody {
 // -----------------------------------------------------------------------
 // POST /api/v1/submissions/:id/content-note — organizer-only (DEC-741)
 // -----------------------------------------------------------------------
-// DEC-027 wave-18 amendment: this route mints real claim tokens
-// (resolvePortalLinks(..., true) below) — a claim-token mint is a
-// credential mint, so requireCookieSession goes immediately after the
-// role guard.
+// DEC-027 wave-18/wave-20 amendments: this route mints real claim tokens
+// (mintPortalLinks below, DEC-027 wave-20's named entry point over
+// resolvePortalLinks(..., true)) — a claim-token mint is a credential
+// mint, so requireCookieSession goes immediately after the role guard.
 contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const submissionId = c.req.param("id");
@@ -155,12 +155,11 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requir
   // a send that can't proceed, so nothing here needs to be undone).
   let portalLinkMap: Map<string, string>;
   try {
-    portalLinkMap = await resolvePortalLinks(
+    portalLinkMap = await mintPortalLinks(
       kv,
       participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
       scope.eventId,
       origin!,
-      true,
     );
   } catch (err) {
     console.error("content-note resolvePortalLinks failed", err);
