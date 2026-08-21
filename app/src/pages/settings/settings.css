@@ -2664,4 +2664,52 @@
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* DEC-728 wave-157 (task rd): Saved embeds :578 as its own 390 screen.
+     `?section=public-pages&view=embeds` stamps `data-embeds-view='true'`
+     on the section wrapper (Settings.tsx) -- PHONE-ONLY per DEC_728,
+     which is exactly why every rule below lives inside this single
+     terminal max-width block (DEC-385) and touches nothing outside it.
+     At any wider viewport the attribute is present but inert: none of
+     these selectors exist outside this block, so Public pages renders in
+     full with SavedEmbedsPanel nested exactly as it does today. */
+
+  /* The surface-list read-drill (PublicPagesPanel's own <section
+     aria-label="Public pages">) has no home on this screen -- the frame
+     draws only the saved-embed rows. */
+  #chq-settings-section-public-pages[data-embeds-view='true'] > section[aria-label='Public pages'] {
+    display: none;
+  }
+
+  /* SavedEmbedsPanel's own h2 'Saved embeds' would double the page's own
+     H1 (rendered by Settings.tsx's existing drill-title machinery) --
+     hidden here, leaving its sibling 'N on · M off' count line (:579)
+     as the only eyebrow content, directly under the real H1. */
+  #chq-settings-section-public-pages[data-embeds-view='true'] .chq-settings-saved-embed-eyebrow-title h2 {
+    display: none;
+  }
+
+  /* Neither the 'Turning one off...' caption nor the 'New embed' build
+     row is drawn on this frame (:576-598) -- both live on the nested
+     Public-pages rendering only. */
+  #chq-settings-section-public-pages[data-embeds-view='true'] .chq-settings-saved-embed-caption,
+  #chq-settings-section-public-pages[data-embeds-view='true'] .chq-settings-saved-embed-build-row {
+    display: none;
+  }
+
+  /* Per-row action cluster on this screen is exactly the toggle / 'Get
+     code' 44px pair the frame draws (:594-595) -- Edit and Delete stay
+     part of the nested Public-pages rendering's fuller row only. */
+  #chq-settings-section-public-pages[data-embeds-view='true'] .chq-settings-saved-embed-edit-action,
+  #chq-settings-section-public-pages[data-embeds-view='true'] .chq-settings-saved-embed-delete-action {
+    display: none;
+  }
+
+  /* The embed-code builder (EmbedsPanel, opened via 'New embed'/'Embed
+     code') has no reachable trigger on this screen once New-embed is
+     hidden above -- kept hidden here too so a stray `?embed=<id>` deep
+     link can't strand its builder half-visible under the wrong title. */
+  #chq-settings-section-public-pages[data-embeds-view='true'] > .chq-settings-public-pages-embed {
+    display: none;
+  }
 }

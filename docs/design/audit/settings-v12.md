@@ -187,11 +187,26 @@ disposition of the same family of gap.
 | `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
 | `:510` Settings · Speaker portal | DIVERGES | Welcome note (`:518`, full boxed readout) collapsed to a computed one-line summary ("Shown above the task list · N paragraph(s)") — already documented above (DEC-815). |
 | `:552` Settings · People and roles | DIVERGES | No per-row boxed "Change" (`:560`), no always-on primary "Invite someone" (`:565`) — both live behind the section-level "Change" drill (DEC-815). Not previously receipted in this doc; newly found by this task's render. |
-| `:578` Settings · Saved embeds | DIVERGES | Never renders as its own screen: no own back-link, no own H1 ("Saved embeds"), no "N on · N off" summary line (`:579`) under the H1. `SavedEmbedsPanel` instead mounts as a second, always-visible section nested *inside* the Public pages screen (`PublicPagesPanel.tsx`) whose own H1 stays "Public pages". Row-shape differences (Turn on/off + Get code pair vs. "four flush buttons") already documented in `docs/probes/metafid-phoneA-2026-08-19.md`. |
+| `:578` Settings · Saved embeds | MATCHES | Wave-157 (task rd): built as its own 390 screen at `?section=public-pages&view=embeds` (DEC-728, ruled address, phone-only). Own back link "‹ Public pages" (returns to the Public pages read-drill, DESIGN-RULINGS.md:247 — a drill's back link names the screen it drilled FROM, not the frame's literal "‹ Settings"), own H1 "Saved embeds" via Settings.tsx's existing phone drill-title machinery, "N on · M off" summary line, per-row toggle/"Get code" 44px pair (Edit and Delete are CSS-hidden on this screen only, `settings.css`'s terminal `@media (max-width: 700px)` block, `data-embeds-view='true'`), and the closing "Editing an embed's filters is easier on a laptop" note. DEC_728: the `view=` sub-state is phone-only by construction — every rule keying on it lives inside the single terminal max-width block, so the desktop rail/rendering is untouched (SavedEmbedsPanel still nests inside Public pages there, exactly as before). |
 
-**Nothing in this list is a phone-block-CSS or markup-order fix** — every
-row is a missing control or a missing screen, each requiring new markup/
-wiring (per-row action buttons, a standalone Saved-embeds screen with its
-own route state, full-text readouts) rather than a reflow of what already
-renders. Left as findings for whoever owns the next architectural pass on
-this cluster, per this task's design-gap instruction.
+**Nothing else in this list is a phone-block-CSS or markup-order fix** —
+every remaining DIVERGES row is a missing control, each requiring new
+markup/wiring (per-row action buttons, full-text readouts) rather than a
+reflow of what already renders. `:578` (above) is the one row now built:
+own route state (`?section=public-pages&view=embeds`) plus a phone-only
+CSS reflow of markup that already existed (SavedEmbedsPanel). Left as
+findings for whoever owns the next architectural pass on this cluster, per
+this task's design-gap instruction.
+
+**DEC-144 finding (task rd):** `app/src/routeManifest.ts`'s DEC-144 scan
+(`routeManifest.test.ts`) source-scans specific named unions/arrays per
+page (Comms.tsx's `type Tab`, ContactsApp.tsx's `type Panel`, Settings.tsx's
+own `SECTIONS` keys, ContentApp.tsx's `type ContentView`,
+`WORKLIST_TABS`) — it has no union for Settings.tsx's new `view=` phone
+sub-state (SECTIONS itself is correctly UNTOUCHED, DEC-747/DEC-691 pin it
+to the pack's seven, and `view` is not a section key). So the scan does
+not pick up `?section=public-pages&view=embeds` as a new manifest row, and
+per this task's own instruction a row is NOT hand-added here (a
+hand-listed population is not a population, DEC-180) — recorded as an open
+gap for whoever next extends `routeManifest.ts`'s DEC-144 scan to also
+cover a page's phone-only `view=` sub-states.

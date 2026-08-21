@@ -28,6 +28,7 @@
 // highlight that follows the reader's scroll must never write history.
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DEC_728 } from '../../../src/decisions';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
 import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
@@ -144,6 +145,19 @@ export function SettingsPage() {
 
   const [active, setActive] = useState<string | null>(urlSection);
 
+  // DEC-728 wave-157 (Saved embeds :578): a THIRD phone drill state, layered
+  // on top of the plain public-pages read-drill -- `?section=public-pages
+  // &view=embeds` swaps the drilled screen's content from the surface-list
+  // read-drill to just SavedEmbedsPanel, with its own H1/back/summary. The
+  // `view=` param is PHONE-ONLY (DEC_728): this file's own header states
+  // the desktop rail never hides sections, so nothing here filters
+  // `sectionsToRender` for it -- only settings.css's terminal phone block
+  // (guarded by a data attribute below) ever hides anything because of it,
+  // exactly the same DEC-385 narrow-overrides-wide idiom `data-editing`
+  // already uses for the edit drill.
+  void DEC_728;
+  const embedsView = urlSection === 'public-pages' && searchParams.get('view') === 'embeds';
+
   // DEC-728 amendment (wave 49): a settings section URL carrying `edit=1`
   // (SummarySection's openEdit) is a SCREEN, not a scroll target -- only
   // that one panel mounts inside .chq-settings-content, the page's own
@@ -170,7 +184,14 @@ export function SettingsPage() {
   // (editTitle), not the section -- the section name moves to the back
   // control below. A plain read-drill (active, not editing) still titles
   // the page with the section label; the index keeps 'Settings'.
-  const pageTitle = editingSection ? editingSection.editTitle : (activeSection?.label ?? 'Settings');
+  // DEC-728 wave-157 amendment: the embeds-view screen's H1 is 'Saved
+  // embeds' -- reusing this SAME pageTitle/phoneDrillTitle machinery (not a
+  // second title mechanism) is exactly what the ruling requires.
+  const pageTitle = embedsView
+    ? 'Saved embeds'
+    : editingSection
+      ? editingSection.editTitle
+      : (activeSection?.label ?? 'Settings');
   // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill case needs
   // this same phone-only twin too -- the ORIGINAL top-level h1 (pageTitle,
   // above) sits BEFORE .chq-settings-layout in the DOM, so it always paints
@@ -224,6 +245,19 @@ export function SettingsPage() {
     const el = document.getElementById(`chq-settings-section-${key}`);
     // jsdom (test env) doesn't implement scrollIntoView; real browsers do.
     el?.scrollIntoView?.({ block: 'start' });
+  }
+
+  // DEC-728 wave-157 amendment: the embeds-view screen's back control names
+  // the section it drilled FROM (DESIGN-RULINGS.md:247), '‹ Public pages',
+  // and returns to that section's plain read-drill -- drop `view` only,
+  // `section` stays `public-pages` so the surface-list screen is what
+  // renders next, exactly the edit-drill's own drop-one-param shape below.
+  function clearEmbedsView() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('view');
+      return params;
+    });
   }
 
   function clearSection() {
@@ -345,10 +379,12 @@ export function SettingsPage() {
                       params.delete('edit');
                       return params;
                     })
-                : clearSection
+                : embedsView
+                  ? clearEmbedsView
+                  : clearSection
             }
           >
-            &lsaquo; {editingSection ? editingSection.label : 'Settings'}
+            &lsaquo; {editingSection ? editingSection.label : embedsView ? 'Public pages' : 'Settings'}
           </button>
           {phoneDrillTitle ? (
             // w4-e/DEC-375: phone-only twin of the page h1 (settings.css
@@ -368,6 +404,12 @@ export function SettingsPage() {
                     ? 'chq-settings-section chq-settings-section-active'
                     : 'chq-settings-section'
                 }
+                // DEC-728 wave-157 amendment: only public-pages ever carries
+                // this attribute (embedsView can only be true when
+                // urlSection === 'public-pages') -- settings.css's terminal
+                // phone block reads it to swap the drilled screen's content;
+                // every other section's wrapper is untouched.
+                {...(section.key === 'public-pages' ? { 'data-embeds-view': embedsView } : {})}
               >
                 <Panel />
               </div>

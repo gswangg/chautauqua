@@ -244,18 +244,101 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
     expect(within(section).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
   });
 
-  // Frame :578-598 "Settings · Saved embeds" -- reachable only nested
-  // inside the Public pages section, never as its own screen.
-  it('frame :578 Saved embeds -- DIVERGES: never renders as its own screen (no own back-link/H1/on-off summary, nested in Public pages)', async () => {
+  // Frame :578-598 "Settings · Saved embeds" -- reached at
+  // ?section=public-pages&view=embeds (DEC-728 wave-157), its own phone
+  // drill layered on top of the Public pages read-drill.
+  it('frame :578 Saved embeds -- MATCHES: own back-link/H1/on-off summary, toggle+Get code row pair, closing note', async () => {
     verbatimLine(575, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Saved embeds</span>");
-    renderDrilled('public-pages');
-    // The frame draws Saved embeds as its own full screen: back '‹
-    // Settings', its own H1 'Saved embeds', and an 'N on · N off' summary
-    // line under the H1 (:579). None of those exist when Public pages is
-    // drilled -- SavedEmbedsPanel renders as a second section INSIDE the
-    // Public pages screen, whose own H1 stays 'Public pages'.
-    expect(screen.queryByRole('heading', { name: 'Saved embeds' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Public pages' }).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/^\d+ on · \d+ off$/)).not.toBeInTheDocument();
+    // mockAllSections() covers every endpoint every section (all seven
+    // still mount -- only editingSection filters sectionsToRender, and
+    // this drill doesn't set edit=1) needs; DEC-785's own embeds list
+    // endpoint is the one addition, layered on top with a second mockApi
+    // call rather than editing that shared fixture (every other it() in
+    // this file must stay byte-identical, including mockAllSections()).
+    mockAllSections();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        slug: 'devcon-2026',
+        name: 'DevCon 2026',
+        startDate: '2026-09-01',
+        endDate: '2026-09-03',
+        location: 'Austin, TX',
+        timezone: 'America/Chicago',
+        recordPrefix: 'DC26',
+        branding: { logoUrl: '', accentColor: '' },
+      },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
+      [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([{ id: 'rm1', name: 'Main Hall', capacity: 500 }]),
+      [`GET /api/v1/events/${EVENT_ID}/portal-settings`]: {
+        logoUrl: null,
+        accentColor: null,
+        welcomeMessage: 'Welcome, speakers!',
+        showResources: true,
+      },
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([
+        { id: 'res1', kind: 'wiki', title: 'Travel info', content: 'Fly into AUS.', fileId: null, position: 0 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form1',
+        eventId: EVENT_ID,
+        intro: 'Tell us about your talk.',
+        openDate: null,
+        closeDate: null,
+        tracks: [],
+        fields: [
+          { id: 'f1', label: 'Title', locked: true },
+          { id: 'f2', label: 'Format', locked: false },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 3, speakers: 2, scheduled: 1 },
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [], rows: [], total: 0, page: 1, perPage: 1, counts: {} },
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+      'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
+      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Sessions widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+        { id: 'emb2', name: 'Agenda widget', surface: 'agenda', format: 'iframe', options: {}, enabled: false },
+      ]),
+    });
+    render(
+      <MemoryRouter initialEntries={['/settings?section=public-pages&view=embeds']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    // Own H1 -- Settings.tsx's existing phone drill-title machinery
+    // (`.chq-settings-drill-title`, the SAME twin every other drilled
+    // section uses, not a second title mechanism), reading 'Saved embeds'
+    // instead of 'Public pages'.
+    await waitFor(() => expect(screen.getByText('1 on · 1 off')).toBeInTheDocument());
+    const drillTitle = document.querySelector('.chq-settings-drill-title');
+    expect(drillTitle).not.toBeNull();
+    expect(drillTitle!.textContent).toBe('Saved embeds');
+    // Own back link, naming the screen it drilled FROM, not 'Settings'
+    // (DESIGN-RULINGS.md:247) -- and it sits above the H1 twin in DOM
+    // order, the same back-above-H1 register every other drill uses.
+    const backBtn = screen.getByRole('button', { name: '‹ Public pages' });
+    expect(backBtn.compareDocumentPosition(drillTitle!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The section wrapper carries the DEC-728 phone-only hook
+    // settings.css's terminal max-width block reads to swap the drilled
+    // screen's content -- jsdom applies no stylesheet, so this attribute
+    // (not computed visibility) is what this render receipt can assert.
+    const sectionEl = document.getElementById('chq-settings-section-public-pages');
+    expect(sectionEl).not.toBeNull();
+    expect(sectionEl!.getAttribute('data-embeds-view')).toBe('true');
+    // Per-embed toggle / 'Get code' pair (:594-595), and each control the
+    // CSS hook above hides on this screen (Edit, Delete) still carries
+    // its own dedicated class so that CSS rule has something to target.
+    const row = screen.getByText('Sessions widget').closest('li');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByRole('button', { name: 'Turn off' })).toBeInTheDocument();
+    expect(within(row!).getByRole('button', { name: 'Get code' })).toBeInTheDocument();
+    expect(within(row!).getByRole('link', { name: 'Edit' })).toHaveClass('chq-settings-saved-embed-edit-action');
+    expect(within(row!).getByRole('button', { name: 'Delete' })).toHaveClass(
+      'chq-settings-saved-embed-delete-action',
+    );
+    // Closing note (:599).
+    expect(screen.getByText("Editing an embed's filters is easier on a laptop")).toBeInTheDocument();
   });
 });

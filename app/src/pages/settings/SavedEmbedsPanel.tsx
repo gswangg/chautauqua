@@ -265,7 +265,10 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                     order. */}
                 <span className="chq-settings-saved-embed-actions">
                   {editing ? (
-                    <Link className="chq-link-button" to={editHref(embed.id)}>
+                    <Link
+                      className="chq-link-button chq-settings-saved-embed-edit-action"
+                      to={editHref(embed.id)}
+                    >
                       Edit
                     </Link>
                   ) : null}
@@ -287,7 +290,11 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                       >
                         {embed.enabled ? 'Turn off' : 'Turn on'}
                       </button>
-                      <button type="button" className="chq-link-button" onClick={() => setPendingDelete(embed)}>
+                      <button
+                        type="button"
+                        className="chq-link-button chq-settings-saved-embed-delete-action"
+                        onClick={() => setPendingDelete(embed)}
+                      >
                         Delete
                       </button>
                     </>
