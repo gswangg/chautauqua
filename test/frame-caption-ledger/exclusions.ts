@@ -1462,6 +1462,17 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/review/PlanEditor.tsx's planHeadSubtitle composes `[trackNames, closesClause, reviewsClause].filter(...).join(' · ')` from `draft.trackIds.map((id) => tracks.find((t) => t.id === id)?.name ?? id).join(', ')`, `` `closes ${formatDateOnly(draft.closeAt)}` `` and `` `${countOf(draft.maxEvaluationsPerSubmission, 'review')} per talk` `` -- every input already lives in this component's own state, rendered phone-only (isPhone) as `.chq-review-editor-head-subtitle`, matching the frame's 'AI Engineering · closes 30 Aug · 2 reviews per talk' for a single-track plan closing 30 Aug with 2 reviews per talk. formatDateOnly renders the UTC calendar day with its year (DEC-153 bans toLocaleDateString/local-timezone reads for date-only fields), so the exact digits/year the ledger's digit-skeleton pass sees vary by plan, not the frame's fixture year -- the grammar and separators are the live match this exclusion records.",
   },
+  // v12m-w4-an (wave-148, DEC-555): /schedule overlaps panel, one sentence
+  // per covering session naming its live clock range and every title it
+  // covers -- necessarily COMPOSED, since the range and titles come from
+  // whichever sessions the reader actually saved.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 847,
+    text: 'Evaluating Agents runs 10:00–12:00, over both Taming 40-Minute CI and Your AI Pair Programmer.',
+    reason:
+      "src/routes/public/agenda-itinerary-script.tsx's applyScheduleView composes, per saved item with at least one clash, `item.title + ' runs ' + __chqClock(item.startMin) + '–' + __chqClock(item.endMin) + ', over ' + joined + '.'` where __chqClock is clockHMM (src/domain/clock.ts, embedded via .toString() exactly like the file's other pure helpers) and joined is src/lib/overlap-lanes.ts's joinOverlapTitles(overlap.clashesById[item.id]) -- the frame's exact session title, clock range and covered-title list are all live saved-item data read off the rendered .chq-pub-schedule-row's own data-start-min/-end-min attributes, so no static substring of this sentence exists anywhere in source for a plain-substring or digit-skeleton pass to find.",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

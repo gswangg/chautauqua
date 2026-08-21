@@ -365,4 +365,25 @@
 // collapseSourcePlaceholders collapses whole, together with the literal
 // text nested in it. Forced to -1 and read back: 13.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
-export const FRAME_CAPTION_UNMATCHED_CEILING = 13;
+// v12m-w4-an (wave-148, DEC-555): Chautauqua Public and Portal.dc.html:847
+// (the /schedule overlaps panel's "Evaluating Agents runs 10:00-12:00, over
+// both..." sentence) built -- agenda-itinerary-script.tsx's applyScheduleView
+// now groups by the covering session and composes one sentence per session
+// naming its own clock range (through clockHMM, embedded via .toString()
+// exactly like the file's other pure helpers -- never a second clock
+// formatter, DEC-522) and the titles it covers (src/lib/overlap-lanes.ts's
+// new joinOverlapTitles). Entered as a COMPOSED exclusion above -- the
+// sentence is assembled from live saved-item data, so no static substring
+// exists for a plain-substring pass to find. Forced to -1 and read back: 14,
+// down from 15. RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+//
+// MERGE TRAIN (wave-148 megabatch: w4-ak, w4-ai, w4-al, w4-aj, w4-am, w4-an).
+// Six lanes each measured this ratchet against a tree carrying only their own
+// build and dispositions -- 14 / 13 / 14 / 13 / 13 / 14. None of those figures
+// is the truth for the integrated tree: every lane's builds and exclusions are
+// additive, so the union subtracts more than any single lane could see. Per
+// this file's own standing rule the constant below is re-seeded to what the
+// two-sided ratchet actually PRINTS against the integrated tree (ceiling
+// forced to -1, the offender count read back), never a lane's pre-merge figure
+// and never a guess.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;

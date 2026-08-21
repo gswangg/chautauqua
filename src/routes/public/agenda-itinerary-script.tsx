@@ -3,7 +3,10 @@
 // (contention decomposition, wave 66) — no behavior change.
 
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
-import { computeSavedOverlaps } from "../../lib/overlap-lanes";
+import { computeSavedOverlaps, joinOverlapTitles } from "../../lib/overlap-lanes";
+import { clockHMM } from "../../domain/clock";
+import { DEC_555 } from "../../decisions";
+void DEC_555;
 
 /** Itinerary picker inline vanilla JS (DEC-022): reads/writes
  * localStorage chq_itinerary_<slug>, keeps the .ics download link's ?ids=
@@ -24,6 +27,13 @@ export function ItineraryScript(props: { eventSlug: string }) {
   var __chqMerge = (${mergeItinerarySelection.toString()});
   var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
   var __chqOverlaps = (${computeSavedOverlaps.toString()});
+  var __chqJoinOverlapTitles = (${joinOverlapTitles.toString()});
+  // DEC-555 (wave 148 amendment): the overlaps panel's sentence range prints
+  // through the SAME clock formatter (src/domain/clock.ts's clockHMM, the
+  // DEC-900 ONE owner of clock formatting) every other public surface uses --
+  // embedded via .toString() exactly like __chqMerge/__chqMirror/__chqOverlaps
+  // above, never a second hand-rolled formatter (DEC-522's day-label hazard).
+  var __chqClock = (${clockHMM.toString()});
   var key = ${JSON.stringify(storageKey)};
   var slug = ${JSON.stringify(props.eventSlug)};
   var stored = [];
@@ -92,12 +102,20 @@ export function ItineraryScript(props: { eventSlug: string }) {
       if (clashEl) { clashEl.hidden = true; clashEl.textContent = ''; }
       if (isSaved) {
         var titleEl = row.querySelector('.chq-pub-schedule-row-title');
+        // DEC-555: rawStartMin/rawEndMin capture whether the attribute is
+        // genuinely present BEFORE parseInt's '0' fallback collapses a
+        // missing attribute and a legitimate midnight (0) into the same
+        // value -- the overlaps sentence below needs to tell "no range
+        // clause" apart from "range starts at 0:00".
+        var rawStartMin = row.getAttribute('data-start-min');
+        var rawEndMin = row.getAttribute('data-end-min');
         saved.push({
           id: id,
           title: titleEl ? titleEl.textContent : '',
           day: row.getAttribute('data-day') || '',
-          startMin: parseInt(row.getAttribute('data-start-min') || '0', 10),
-          endMin: parseInt(row.getAttribute('data-end-min') || '0', 10),
+          startMin: parseInt(rawStartMin || '0', 10),
+          endMin: parseInt(rawEndMin || '0', 10),
+          hasRange: rawStartMin !== null && rawStartMin !== '' && rawEndMin !== null && rawEndMin !== '',
         });
       }
     });
@@ -130,21 +148,24 @@ export function ItineraryScript(props: { eventSlug: string }) {
     }
     if (overlapsBodyEl) {
       while (overlapsBodyEl.firstChild) { overlapsBodyEl.removeChild(overlapsBodyEl.firstChild); }
-      var seenPairs = {};
+      // DEC-555 (wave 148 amendment): one sentence per COVERING session
+      // (not one line per pair) -- every saved item with at least one clash
+      // gets its own sentence naming its own clock range and every title it
+      // covers. The heading above still counts PAIRS (overlap.pairCount);
+      // this sentence count is allowed to differ and is never asserted
+      // against it.
       for (var s = 0; s < saved.length; s += 1) {
         var item = saved[s];
         var titles = overlap.clashesById[item.id];
-        if (!titles) continue;
-        for (var t = 0; t < titles.length; t += 1) {
-          var otherTitle = titles[t];
-          var pairKey = [item.title, otherTitle].sort().join('|') + '|' + item.day;
-          if (seenPairs[pairKey]) continue;
-          seenPairs[pairKey] = true;
-          var line = document.createElement('span');
-          line.className = 'chq-pub-rail-caption';
-          line.textContent = item.title + ' overlaps ' + otherTitle + '.';
-          overlapsBodyEl.appendChild(line);
-        }
+        if (!titles || titles.length === 0) continue;
+        var joined = __chqJoinOverlapTitles(titles);
+        var sentence = item.hasRange
+          ? (item.title + ' runs ' + __chqClock(item.startMin) + '–' + __chqClock(item.endMin) + ', over ' + joined + '.')
+          : (item.title + ' overlaps ' + joined + '.');
+        var line = document.createElement('span');
+        line.className = 'chq-pub-rail-caption';
+        line.textContent = sentence;
+        overlapsBodyEl.appendChild(line);
       }
     }
   }
