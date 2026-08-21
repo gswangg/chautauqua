@@ -440,6 +440,23 @@ Related: item 24's `/logout` fix and this flow share the login card's single mut
 
 Ruled and framed: the hub is **the same list at the reading measure (820)** on desktop and stacked cards at 390. A plan list is not a different design at width, so the desktop frame is the authority and the phone one derives from it. With one open plan the page is skipped entirely and the reviewer lands in that queue.
 
+## Speaker detail — due-date and schedule columns right-align before status ink
+
+User-filed (speaker-detail tasks screenshot review, 2026-08-21): a fresh screenshot of the Cut-3 candidate's Tasks section diagnosed what an earlier pass on this same section had missed — the app **matched the frame exactly** (painted-ink alignment on the status column measured 0.00px against `Chautauqua Speakers.dc.html:377`, per the aaa6e184 fix), and the frame was still wrong. `Chautauqua Speakers.dc.html:379` left-aligns the due-date column (`{{ t.due }}`), so "Was due 16 Aug 2026" leaves a thin gap before the status ink and "Due 29 Aug 2026" leaves a much larger one — the ragged right edge reads as a misaligned status column even though the status column itself is pinned to its own cell edge. The defect was never in the status ink; it was in the column feeding it.
+
+**USER RULING, supersedes the frame here:** the due-date column right-aligns. Every date's glyph **right** edge ends at a constant gap — the row's own `18px` grid gap — before the status ink, for every copy variant (`Was due …` and `Due …` both keep their existing wording; only the alignment changes). `text-align: right`, not a hand-tuned margin or `justify-self` — the cell stays a full-width grid item, so the constant gap falls out of the row's existing `gap` for free rather than being asserted per copy-length.
+
+**Same defect, two more places it was found** (same component/CSS family, scanned per this ruling rather than assumed):
+
+- **Sessions section**, same page (`Chautauqua Speakers.dc.html:366`, `app/src/pages/speakers/speakers.css` `.chq-speaker-detail-sessions-row`): the schedule column ("Tue 10:00, Room 2A") is the due-date column with different copy — fixed-width, left-aligned, immediately before the same status-ink family. Live measurement across the seed's session rows swung the pre-status gap 20px–87px depending on schedule-string length ("Not placed" through "Wed 12 May 09:30–10:00, Room 2A"); right-aligned to close it to a constant 18px.
+- **Task drill, "Still waiting" tab** (`Chautauqua Speakers.dc.html:717`, `app/src/pages/speakers/task-view.css` `.chq-taskview-waiting .chq-taskview-row`): the "Last reminded" column (`Never` through `3 sends · last 4 Aug`) sits immediately before the same status token. Fixed the same way, scoped to the waiting tab only — `.chq-taskview-emph`/`.chq-taskview-quiet` are shared with the **answered** tab's "Answered" date column, which sits before an action *link* (`Open`/`Download`), not a status token, and is a different pattern this ruling does not reach.
+
+**Where the pattern does *not* apply, and why it was left alone:**
+
+- **Task drill, "Answered" tab** — its date column precedes an action link, not status ink. No vertical "status column" register is at risk there.
+- **Speaker portal task list** (`src/routes/portal/tasks/views.tsx`) — the due date (`.chq-portal-due`) renders on its **own line** below the task's title/flag row, never in a same-row column beside a status token. Different layout (stacked card, per B6), no adjacency, no defect.
+- **Onboarding grid (dense matrix)** — the due date lives in the **column header** (B8: "name · due · '7 of 12 done'"), not in a per-row cell beside the status token. No adjacent-column pair to misalign.
+
 ## Superseded — frames formerly owed
 
 Ruled RESTYLE, spec'd above, but not yet drawn. In leverage order:

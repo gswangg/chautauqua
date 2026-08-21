@@ -182,6 +182,22 @@
   padding: 14px 0;
 }
 
+/* User-filed (speaker-detail tasks screenshot review, 2026-08-21) traced the
+   same defect here: "Last reminded" ("Never" through "3 sends · last 4 Aug",
+   remindedLabel() in TaskView.tsx) is a fixed-width, left-aligned column
+   immediately before the status cell, whose ink already lands on its own
+   cell edge (shared .chq-speakers-status-roomy family, same rule the
+   speaker-detail tasks row uses). Scoped to the waiting tab only --
+   .chq-taskview-emph/-quiet are shared with the answered tab's "Answered"
+   date column (:624), which sits before an action LINK, not a status
+   token, and is a different pattern the ruling does not cover.
+   DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
+   right-align before status ink". */
+.chq-taskview-waiting .chq-taskview-row > :nth-child(4) {
+  text-align: right;
+  white-space: nowrap;
+}
+
 .chq-taskview-row:hover {
   background: var(--chq-surface-sunk);
 }
@@ -306,6 +322,15 @@
   .chq-taskview-answers .chq-taskview-row > [role='cell']:not(:first-child),
   .chq-taskview-waiting .chq-taskview-row > [role='cell']:not(:first-child) {
     grid-column: 2;
+  }
+
+  /* Same reset as the speaker-detail tasks/sessions rows (DESIGN-RULINGS.md,
+     "Speaker detail -- due-date and schedule columns right-align before
+     status ink"): the desktop right-align closes a gap between two
+     side-by-side columns that no longer sit side by side once the row
+     above stacks everything into one wide column. */
+  .chq-taskview-waiting .chq-taskview-row > :nth-child(4) {
+    text-align: left;
   }
 
   .chq-taskview-back,

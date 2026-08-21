@@ -1385,6 +1385,22 @@ button.chq-speakers-status-overdue:hover {
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* Same defect, same fix, one section down (User-filed, speaker-detail tasks
+   screenshot review, 2026-08-21): the schedule column ("Tue 10:00, Room 2A")
+   is exactly the tasks row's due-date column with a different string --
+   fixed-width, left-aligned, immediately before the status cell whose ink
+   already lands on ITS OWN cell edge (:1433 below cancels the same -6px
+   ring margin this family uses everywhere). Live measurement across every
+   session row in the seed: "Not placed" through "Wed 12 May 09:30-10:00,
+   Room 2A" swung the pre-status gap 20px-87px before this rule; right-
+   aligning closes it to a constant 18px (the row's own `gap`) for all of
+   them. DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
+   right-align before status ink". */
+.chq-speaker-detail-sessions-row > :nth-child(2) {
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* User-filed (speaker detail, Elliot Ekström): each row is its OWN grid, so
    the frame's trailing `auto` action track (:371) resolved per row -- 0px on
    a completed row (which renders no "Remind this task" link, DEC-829 w61-e)
@@ -1444,9 +1460,23 @@ button.chq-speakers-status-overdue:hover {
 /* Frame :376/:378: the due date never wraps, and the action cell is flushed
    to the row's right edge inside its own fixed track. Addressed on the row's
    CHILDREN, not on the link -- the grid items here are the role="cell"
-   wrappers, so justify-self on the inner button would do nothing. */
+   wrappers, so justify-self on the inner button would do nothing.
+
+   User-filed (speaker-detail tasks screenshot review, 2026-08-21): the frame
+   itself (:379, left-aligned) is what's wrong here -- "Was due 16 Aug 2026"
+   left only a thin gap before the status ink while "Due 29 Aug 2026" left a
+   much larger one, so the boxed/bare status column (fixed at :0.00px against
+   ITS OWN cell edge, see the painted-ink fix above) still read as ragged,
+   because the column feeding it moved. USER RULING supersedes the frame
+   here: the due-date column right-aligns, so its glyph's RIGHT edge sits a
+   constant `gap` (18px) before the status track, for every copy variant
+   ("Was due …" and "Due …" both). Text-align, not justify-self -- the cell
+   stays a full-width grid item so the 18px gap comes from the row's own
+   `gap`, never a hand-tuned margin. DESIGN-RULINGS.md, "Speaker detail --
+   due-date and schedule columns right-align before status ink". */
 .chq-speaker-detail-tasks-row > :nth-child(2) {
   white-space: nowrap;
+  text-align: right;
 }
 
 .chq-speaker-detail-tasks-row > :nth-child(4) {
@@ -1832,6 +1862,20 @@ button.chq-speakers-status-overdue:hover {
     gap: 4px;
   }
 
+  /* The 2026-08-21 right-align ruling (DESIGN-RULINGS.md, "Speaker detail --
+     due-date and schedule columns right-align before status ink") is a
+     DESKTOP fix: it closes a gap between two side-by-side columns, which
+     only exist once the row above collapses to one stacked column. Reset
+     back to left here so the schedule line doesn't float against the phone
+     card's right edge once it's stacked above (not beside) its status chip.
+     The tasks row's own due-date cell gets the same reset below, folded
+     into its existing ellipsis rule rather than a second selector block
+     (test/../speakers-phone-floor.test.ts reads that selector's rule body
+     as a single unit). */
+  .chq-speaker-detail-sessions-row > :nth-child(2) {
+    text-align: left;
+  }
+
   /* -- from the former phone-head/roster-drillin block (v12m wave 2-c) -- */
 
   /* docs/design/Chautauqua Speakers.dc.html:130 `Matrix becomes one card
@@ -1960,6 +2004,18 @@ button.chq-speakers-status-overdue:hover {
      instead. Base rules are untouched; desktop stays frozen. Kept inside
      this SAME terminal block (not a second one) so it stays the LAST
      top-level construct in the file, appended rather than inserted. */
+  /* `text-align: left` below resets `.chq-speaker-detail-tasks-row >
+     :nth-child(2)`'s desktop `text-align: right` (2026-08-21 right-align
+     ruling, DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule
+     columns right-align before status ink"): the row above collapses to
+     one stacked column at this width, so the right-align has no adjacent
+     status track to gap against anymore. Landed in THIS shared rule
+     (rather than a second selector block, which speakers-phone-floor.
+     test.ts's single-occurrence reader would not see past) because these
+     four selectors already share every other declaration here; the other
+     three are link-shaped controls already left-aligned by
+     `.chq-link-button`/UA default in this context, so the reset is inert
+     for them, not a behaviour change. */
   .chq-speaker-detail-task-remind,
   .chq-speaker-detail-tasks-row > :nth-child(2),
   .chq-speakers-task-edit,
@@ -1967,6 +2023,7 @@ button.chq-speakers-status-overdue:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    text-align: left;
   }
 
   /* docs/design/Chautauqua Speakers.dc.html:295-317 `Northwind Data · no

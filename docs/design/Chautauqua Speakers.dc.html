@@ -363,7 +363,7 @@
               </div>
               <div style="display:grid; grid-template-columns:1fr 150px 130px; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
                 <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; line-height:1.3; color:#1B1D17">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</a>
-                <span style="font-size:13px; color:#565A4B">Tue 10:00, Room 2A</span>
+                <span style="font-size:13px; color:#565A4B; white-space:nowrap; text-align:right">Tue 10:00, Room 2A</span>
                 <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#4E5C31">Accepted</span>
               </div>
             </section>
@@ -376,7 +376,7 @@
               <sc-for list="{{ speakerTasks }}" as="t" hint-placeholder-count="6">
                 <div style="display:grid; grid-template-columns:1fr 132px 96px 150px; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
                   <span style="font-size:15px">{{ t.title }}</span>
-                  <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ t.due }}</span>
+                  <span style="font-size:13px; color:#565A4B; white-space:nowrap; text-align:right">{{ t.due }}</span>
                   <span style="{{ t.styleM }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ t.state }}</span>
                   <a href="#" style="font-size:12px; font-weight:700; color:#565A4B; white-space:nowrap; justify-self:end">{{ t.remind }}</a>
                 </div>
@@ -714,7 +714,7 @@
                 <span style="font-size:12px; color:#565A4B">{{ w.company }}</span>
               </div>
               <span style="font-size:14px; line-height:1.55; color:#3F4237">{{ w.note }}</span>
-              <span style="{{ w.remindStyle }}">{{ w.reminded }}</span>
+              <span style="text-align:right; display:block; white-space:nowrap"><span style="{{ w.remindStyle }}">{{ w.reminded }}</span></span>
               <span style="{{ w.style }}">{{ w.state }}</span>
             </div>
           </sc-for>

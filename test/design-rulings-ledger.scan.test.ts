@@ -384,6 +384,17 @@ const LEDGER: LedgerEntry[] = [
     },
   },
   {
+    key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink",
+    status: "honored",
+    reason:
+      "the tasks row's due-date cell right-aligns so its glyph sits a constant 18px gap before the status track, for both the \"Was due\" and \"Due\" copy variants.",
+    honored: {
+      file: "app/src/pages/speakers/speakers.css",
+      literal: ".chq-speaker-detail-tasks-row > :nth-child(2) {\n  white-space: nowrap;\n  text-align: right;\n}",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
+  },
+  {
     key: "superseded-frames-formerly-owed",
     status: "gap",
     reason:
