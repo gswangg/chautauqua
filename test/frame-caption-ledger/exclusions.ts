@@ -521,6 +521,28 @@ export const FIXTURE_EXCLUSIONS: Exclusion[] = [
     reason:
       "invented sample second-event identity/status in the Add-to-event picker, used as mock card content (the frame's other option beside the selected 'DevFlow Conf 2027'), not a real UI caption. (fixture token: 'DevFlow Conf 2028')",
   },
+  // v12m-w21-c (wave-146, DEC-380/DEC-989 residue docket).
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 194,
+    text: 'DFC-033 · lightning talk, 10 min',
+    reason:
+      "the Agenda frame's own mock submission code, used as sample task-card content, not a real UI caption -- aligning this ledger's disposition with test/phone-dock-ledger.scan.test.ts's own FIXTURE exclusion for the identical file:line:text (DEC-967: two ledgers disagreeing about one row). (fixture token: 'DFC-033')",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 235,
+    text: 'Priya Raman · sent 2 Apr',
+    reason:
+      "the 'Task response' modal exhibit's sample recipient identity/send-date, used as mock modal-header content -- the same invented 'Priya Raman' fixture identity the pack reuses throughout (already the fixture token behind several rows above). (fixture token: 'Priya Raman')",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 521,
+    text: '12–14 May 2027 · Moscone West, San Francisco',
+    reason:
+      "the 'Review these reminders' modal's own 'What Marcus will read' email-preview exhibit, the same invented 'DevFlow Conf 2027' event dates/venue fixture already excluded at the identical text on Chautauqua Comms.dc.html:713 above (a second render of the same mail-preview mock). (fixture token: 'Moscone West')",
+  },
 ];
 
 /** (c) EXEMPLAR ARTICLE -- the Docs frame's own sample article, 'Triaging
@@ -1386,6 +1408,16 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       'PARTIAL (shape ii), a deliberate divergence recorded in src/routes/public/sessions.tsx\'s own comment: the frame\'s reason sentence names a CFP close DATE, but this app has no per-event CFP-close-date-as-headline copy path (a day label derived from a stored instant is a timezone bomb, DEC-522) and B7 rule 2 only earns a reason when it is actionable, which a bare close date is not -- so sessions.tsx renders `Sessions appear here once the schedule is published.` verbatim instead, "named here as a deliberate divergence rather than force-fit" per the file\'s own header comment above the PublicEmptyState call.',
   },
+  // v12m-w21-c (wave-146, DEC-380/DEC-989 residue docket): Contacts pipeline
+  // head band caption -- built, the plain-substring matcher cannot see it
+  // because v12m-w19-a split the literal across a conditional.
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 321,
+    text: '20 people · drag between columns',
+    reason:
+      "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,
@@ -1497,6 +1529,15 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     text: 'Fix them in the file and upload again, or import the 205 rows that are complete and leave these out.',
     reason:
       "the same standalone modal exhibit as Chautauqua Contacts.dc.html:778 above -- the app's real showFileWarning block offers the identical way out (Import the N good rows / Upload a different file / Download the N rows, DEC-745 wave-108 amendment) through its own DIFFERENT sentences (`{badRows.length} of {allDataRows.length} rows have no email address`, `Nothing was lost — the file is still loaded.`), inline rather than in a standalone modal, never this exact frame sentence.",
+  },
+  // v12m-w21-c (wave-146, DEC-380/DEC-989 residue docket): the Settings
+  // resource-delete confirm dialog's body sentence.
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1427,
+    text: 'This cannot be undone. Speakers linking to it will get a 404.',
+    reason:
+      "app/src/pages/settings/ResourcesPanel.tsx's delete-confirm dialog already renders a live consequence sentence at this exact slot -- `Speakers lose the download from their portal. \"${pendingDelete.title}\" cannot be recovered.` -- naming the human consequence a speaker actually experiences rather than the HTTP status code the frame's words describe, which no speaker ever sees. Building the frame's literal '404' sentence would ship a technically-accurate-but-user-hostile message over the app's own deliberately different, tested copy.",
   },
 ];
 

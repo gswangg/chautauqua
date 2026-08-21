@@ -266,4 +266,37 @@
 // own header breadcrumb, sharing the identical gap. 130 - 28 disposed = 102,
 // forced -1 and read directly off this branch's own offender list.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=102
-export const FRAME_CAPTION_UNMATCHED_CEILING = 101;
+// v12m-w21-c (wave-146, task w21-c, DEC-380/DEC-989): main measured RED at
+// this ceiling's stale 101 against a tree measuring 20 -- the twenty rows
+// the planner listed were v12m-w18-b's own pre-integration figure, additive
+// and all landed. Disposed all twenty: 1 COMPOSED (Contacts.dc.html:321,
+// the pipeline head band -- v12m-w19-a's desktop/phone conditional split
+// the frame's one literal string across two JSX expressions, invisible to
+// a plain-substring or digit-skeleton pass), 3 FIXTURE (Agenda.dc.html:194
+// -- aligned with test/phone-dock-ledger.scan.test.ts's own identical
+// file:line:text exclusion, previously two ledgers disagreeing about one
+// row; Speakers.dc.html:235 and :521, both the pack's recurring invented
+// 'Priya Raman'/'Moscone West' mock identities, :521 the same fixture text
+// already excluded once at Chautauqua Comms.dc.html:713), and 1 SUPERSEDED
+// (Settings.dc.html:1427 -- app/src/pages/settings/ResourcesPanel.tsx's
+// delete-confirm dialog already fills this exact slot with a different,
+// deliberate consequence sentence naming what a speaker experiences,
+// never the HTTP status code the frame's words describe). The remaining
+// fifteen are genuine gaps, each with a named blocker recorded in
+// docs/design/audit/frame-caption-residue-v12.md (one row per row: no
+// composing site, no schema column, or a pinned test forbidding the
+// frame's exact wording) -- none excluded, all left in the graded
+// population per this file's own established "could not be verified"
+// precedent (v12m-w15-ee, v12m-w18-a/b/c/d). One correction to the
+// planner's own citation along the way: Comms.dc.html:769's blocker is NOT
+// "no session_time merge field exists" as briefed -- DEC-660's wave-142
+// amendment already landed session_time in MERGE_FIELDS/MERGE_FIELD_SAMPLES/
+// COMPOSE_MERGE_FIELDS and src/routes/comms/compose-core.ts already
+// resolves it per-recipient; the still-missing piece is the compose-time
+// warning BANNER naming {session_time} usage for an unscheduled recipient,
+// which DEC-660's own text calls "a follow-on once the field exists" and
+// which grepping ComposeWizard.tsx confirms has no render site (the
+// sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
+// match). Forced to -1 and read back on this branch: 15.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
+export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
