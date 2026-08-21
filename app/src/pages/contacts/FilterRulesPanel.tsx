@@ -15,12 +15,12 @@
 // of what the server accepts. custom.<key> fields are addressed by typing
 // the key: no server-side enumeration of a org's contact custom-field keys
 // exists to populate a dropdown from.
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { activeRules } from './segments';
 import type { SegmentRule } from './types';
 import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
 import { MAX_SEGMENT_RULES } from '../../lib/domain-caps';
-import { DEC_868, DEC_919, DEC_937 } from '../../../../src/decisions';
+import { DEC_868, DEC_919, DEC_930, DEC_937 } from '../../../../src/decisions';
 
 // NOTE (integration): the delegating task minted a fresh three-digit id for
 // this disclosure behaviour. The id space has been CLOSED since wave 37
@@ -33,6 +33,7 @@ import { DEC_868, DEC_919, DEC_937 } from '../../../../src/decisions';
 // enforces this directory-wide.
 void DEC_868;
 void DEC_919;
+void DEC_930;
 void DEC_937;
 
 export const FILTER_RULE_FIELDS: string[] = [...SEGMENT_STANDARD_FIELDS];
@@ -90,6 +91,10 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
   // width, never by a useIsPhone branch here -- so desktop markup (which
   // has no CSS rule keyed to `.is-builder-open`) stays byte-identical.
   const [builderOpen, setBuilderOpen] = useState(false);
+  // src/decisions-data/DEC-930.md (amendment): the chip strip's caption IS
+  // the group's accessible name via aria-labelledby -- never a duplicated
+  // aria-label string, which would fork the name from the visible ink.
+  const chipstripCaptionId = useId();
 
   function updateRule(index: number, next: SegmentRule) {
     onChange(rules.map((r, i) => (i === index ? next : r)));
@@ -229,8 +234,12 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       </button>
     </div>
 
-    <div className="chq-contacts-filter-chipstrip">
-      <span className="chq-contacts-filter-chipstrip-caption">All of</span>
+    {/* src/decisions-data/DEC-930.md (amendment): this narrowing strip is a
+        named group -- its visible caption ("All of") IS the group's
+        accessible name via aria-labelledby, never a duplicated aria-label
+        string that would fork the name from the ink. */}
+    <div className="chq-contacts-filter-chipstrip" role="group" aria-labelledby={chipstripCaptionId}>
+      <span className="chq-contacts-filter-chipstrip-caption" id={chipstripCaptionId}>All of</span>
       {rules.map((rule, i) =>
         activeRules([rule]).length === 0 ? null : (
           <span className="chq-contacts-filter-rule-chip" key={i}>
