@@ -102,7 +102,7 @@ export function LoginPage(props: {
             <label>
               <span className="chq-auth-label">Email</span>
               <input
-                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}
                 type="email"
                 name="email"
                 placeholder="you@example.com"
@@ -115,7 +115,7 @@ export function LoginPage(props: {
             <label>
               <span className="chq-auth-label">Password</span>
               <input
-                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}
                 type="password"
                 name="password"
                 required
@@ -173,7 +173,7 @@ export function LoginPage(props: {
   );
 }
 
-export function ClaimPage(props: { csrfToken: string; error?: string }) {
+export function ClaimPage(props: { csrfToken: string; error?: AuthBandCopy }) {
   return (
     <html lang="en">
       <AuthHead title="Create your password - Chautauqua" />
@@ -185,8 +185,8 @@ export function ClaimPage(props: { csrfToken: string; error?: string }) {
           </div>
           {props.error ? (
             <div className="chq-error-summary" role="alert">
-              <h2>{props.error}</h2>
-              <p>Fix the password below, then try again.</p>
+              <h2>{props.error.headline}</h2>
+              {props.error.kind === "credential" ? <p>Fix the password below, then try again.</p> : null}
             </div>
           ) : null}
           <form className="chq-auth-fields" method="post">
@@ -194,7 +194,7 @@ export function ClaimPage(props: { csrfToken: string; error?: string }) {
             <label>
               <span className="chq-auth-label">Password</span>
               <input
-                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}
                 type="password"
                 name="password"
                 minlength={MIN_PASSWORD_LENGTH}
@@ -244,7 +244,7 @@ export function ExpiredClaimPage() {
 // one" / "Reset · link no longer valid").
 // -----------------------------------------------------------------------
 
-export function ForgotPasswordPage(props: { csrfToken: string; email?: string; error?: string }) {
+export function ForgotPasswordPage(props: { csrfToken: string; email?: string; error?: AuthBandCopy }) {
   return (
     <html lang="en">
       <AuthHead title="Reset your password - Chautauqua" />
@@ -256,7 +256,7 @@ export function ForgotPasswordPage(props: { csrfToken: string; email?: string; e
           </div>
           {props.error ? (
             <div className="chq-error-summary" role="alert">
-              <h2>{props.error}</h2>
+              <h2>{props.error.headline}</h2>
               <p>Try again in a few minutes.</p>
             </div>
           ) : null}
@@ -323,7 +323,7 @@ export function CheckEmailPage() {
   );
 }
 
-export function ResetPasswordPage(props: { csrfToken: string; email: string; error?: string }) {
+export function ResetPasswordPage(props: { csrfToken: string; email: string; error?: AuthBandCopy }) {
   return (
     <html lang="en">
       <AuthHead title="Choose a new password - Chautauqua" />
@@ -335,8 +335,8 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
           </div>
           {props.error ? (
             <div className="chq-error-summary" role="alert">
-              <h2>{props.error}</h2>
-              <p>Fix the password fields below, then try again.</p>
+              <h2>{props.error.headline}</h2>
+              {props.error.kind === "credential" ? <p>Fix the password fields below, then try again.</p> : null}
             </div>
           ) : null}
           <form className="chq-auth-fields" method="post">
@@ -344,7 +344,7 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
             <label>
               <span className="chq-auth-label">New password</span>
               <input
-                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}
                 type="password"
                 name="next"
                 minlength={MIN_PASSWORD_LENGTH}
@@ -357,7 +357,7 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
             <label>
               <span className="chq-auth-label">New password again</span>
               <input
-                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}
                 type="password"
                 name="confirm"
                 minlength={MIN_PASSWORD_LENGTH}

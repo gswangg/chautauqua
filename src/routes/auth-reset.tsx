@@ -36,7 +36,7 @@ import {
   resetEmailText,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
   AUTH_RATE_LIMIT_MAX,
-  RATE_LIMIT_ERROR,
+  RATE_LIMIT_BAND,
 } from "./auth-helpers";
 import { DEC_994, DEC_014, DEC_180, DEC_004 } from "../decisions";
 import { executionCtxOf } from "../server/execution-ctx";
@@ -80,7 +80,7 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   });
   if (!ipLimit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
+    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_BAND} />, 429);
   }
 
   // DEC-948 / DEC-180 (wave-29 amendment): the SAME atomic consume shape as
@@ -101,7 +101,7 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   });
   if (!forgotLimit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
+    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_BAND} />, 429);
   }
 
   // DEC-014 (wave-25 amendment) / DEC-004 (wave-27 amendment): everything
@@ -287,7 +287,7 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
       <ResetPasswordPage
         csrfToken={csrfToken}
         email={user.email}
-        error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+        error={{ headline: `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`, kind: "credential" }}
       />,
       400,
     );
@@ -299,7 +299,7 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
       <ResetPasswordPage
         csrfToken={csrfToken}
         email={user.email}
-        error={`New password must be at most ${MAX_PASSWORD_LENGTH} characters.`}
+        error={{ headline: `New password must be at most ${MAX_PASSWORD_LENGTH} characters.`, kind: "credential" }}
       />,
       400,
     );
@@ -308,7 +308,11 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
     return c.html(
-      <ResetPasswordPage csrfToken={csrfToken} email={user.email} error="New password and confirmation do not match." />,
+      <ResetPasswordPage
+        csrfToken={csrfToken}
+        email={user.email}
+        error={{ headline: "New password and confirmation do not match.", kind: "credential" }}
+      />,
       400,
     );
   }

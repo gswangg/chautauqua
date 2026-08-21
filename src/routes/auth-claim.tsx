@@ -18,7 +18,7 @@ import { requestIpFromHeaders } from "../lib/rate-limit";
 import { checkAndIncrementScopedLimit, refundScopedLimit } from "../server/repo/rate-limit";
 import { isUniqueViolation } from "../server/repo/constraints";
 import { ClaimPage, ExpiredClaimPage, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "./auth-views";
-import { ensureCsrfCookie, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth-helpers";
+import { ensureCsrfCookie, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_BAND } from "./auth-helpers";
 import { DEC_949, DEC_014, DEC_064 } from "../decisions";
 
 void DEC_949;
@@ -74,7 +74,7 @@ claimRoutes.post("/claim/:token", csrfForm, async (c) => {
   if (!record) {
     if (!limit.ok) {
       const { token: csrfToken } = ensureCsrfCookie(c);
-      return c.html(<ClaimPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
+      return c.html(<ClaimPage csrfToken={csrfToken} error={RATE_LIMIT_BAND} />, 429);
     }
     throw new ApiError("not_found", "This link is invalid or has expired.");
   }
