@@ -8,11 +8,27 @@
 // The regex requires a letter immediately before "(s)" -- `.map((s) =>`
 // does NOT match, since the character before "(s)" there is "(", not a
 // letter.
+//
+// DEC-374 (wave-152 amendment): this scan's subject is USER-FACING COPY,
+// not the comment prose that documents it -- exactly this file's own
+// header, above, says "so new copy is forced through plural()/countOf()".
+// Grading a comment sentence as if it were rendered copy is the mirror of
+// the CSS-comment bug the same amendment fixed elsewhere. Every file is
+// now comment-stripped (string/template-literal aware, `//` and `/* */`,
+// via the ONE shared test/comment-strip.ts helper -- DEC-613, no private
+// second copy) before PATTERN is applied, so a `(s)` sitting only in a
+// comment (e.g. src/routes/public/submit-post.tsx:573's "track(s)")
+// legitimately never trips this guard again.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEC_374, DEC_957 } from "../src/decisions";
 import { capitalizeFirst, countOf, overBudgetBy, plural } from "../src/domain/count-copy";
+import { stripComments } from "./comment-strip";
+
+void DEC_957; // this scan's whole reason to exist: one count grammar, no hand-copied `(s)`
+void DEC_374; // comments are stripped before matching -- this scan's subject is copy, not prose about copy
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -52,7 +68,10 @@ const PATTERN = /[A-Za-z]\(s\)/;
 
 function scanFile(file: string): Violation[] {
   const violations: Violation[] = [];
-  const lines = readFileSync(file, "utf8").split("\n");
+  // Comment-stripped (DEC-374): line numbers stay correct because
+  // stripComments preserves every physical newline, including ones
+  // swallowed inside a multi-line block comment.
+  const lines = stripComments(readFileSync(file, "utf8")).split("\n");
   lines.forEach((line, i) => {
     if (PATTERN.test(line)) {
       violations.push({ file, line: i + 1, text: line.trim() });
@@ -78,6 +97,34 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
 
   it(".map((s) => ...) never trips the guard (preceding char is '(', not a letter)", () => {
     expect(PATTERN.test(".map((s) => s.trim())")).toBe(false);
+  });
+
+  // DEC-374 (wave-152 amendment): the two controls this ruling requires --
+  // a real violation in a string literal / JSX text still trips the guard
+  // after comment-stripping (positive), and the same token sitting only
+  // inside a `//` or `/* */` comment does not (negative).
+  it("[DEC-374 positive control] a raw '(s)' in a string literal is still caught after comment-stripping", () => {
+    const fixture = 'const label = "confirm the talk\'s format, track(s) and audience";';
+    const stripped = stripComments(fixture);
+    expect(PATTERN.test(stripped)).toBe(true);
+  });
+
+  it("[DEC-374 positive control] a raw '(s)' in JSX text is still caught after comment-stripping", () => {
+    const fixture = "const el = <p>Pick your track(s) below.</p>;";
+    const stripped = stripComments(fixture);
+    expect(PATTERN.test(stripped)).toBe(true);
+  });
+
+  it("[DEC-374 negative control] a raw '(s)' inside a // comment is not flagged once comments are stripped", () => {
+    const fixture = "// confirmation card states the talk's format, track(s) and audience\nconst x = 1;";
+    const stripped = stripComments(fixture);
+    expect(stripped.split("\n").some((line) => PATTERN.test(line))).toBe(false);
+  });
+
+  it("[DEC-374 negative control] a raw '(s)' inside a /* */ block comment is not flagged once comments are stripped", () => {
+    const fixture = "/* track(s) must never starve -- see DEC-919 */\nconst y = 2;";
+    const stripped = stripComments(fixture);
+    expect(stripped.split("\n").some((line) => PATTERN.test(line))).toBe(false);
   });
 
   it("countOf/plural produce the correct singular/plural noun", () => {

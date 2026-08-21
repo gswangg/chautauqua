@@ -4,6 +4,7 @@
 // `checkGridTemplateColumns` take `budgetPx` explicitly (rather than
 // closing over a module-level constant) so this module has no import-order
 // dependency on how the caller derives its budget.
+import { countOf } from '../lib/plural';
 import type { Rule } from './rules';
 
 export function checkWidthProps(body: string, budgetPx: number): string[] {
@@ -117,8 +118,13 @@ export function checkStarvedFlexTrack(body: string, budgetPx: number): string[] 
   const perFlexTrackPx = (budgetPx - fixedSum - gapPx) / flexTrackCount;
   if (perFlexTrackPx < widestFixedTrackPx) {
     return [
+      // DEC-374/DEC-987: routed through the one count-phrase vocabulary
+      // (app/src/lib/plural.ts's countOf, DEC-957) instead of a raw
+      // '(s)' parenthetical -- the last genuine offender the ratchet
+      // found, reworded rather than exempted; the diagnostic still names
+      // the budget, the fixed sum, the gaps, and the track count.
       `grid-template-columns yields ${perFlexTrackPx.toFixed(1)}px per flexible track ` +
-        `((budget ${budgetPx}px - fixed ${fixedSum}px - gaps ${gapPx}px) / ${flexTrackCount} track(s)), ` +
+        `((budget ${budgetPx}px - fixed ${fixedSum}px - gaps ${gapPx}px) / ${countOf(flexTrackCount, 'track')}), ` +
         `below its own widest fixed track ${widestFixedTrackPx}px -- a starved re-line`,
     ];
   }
