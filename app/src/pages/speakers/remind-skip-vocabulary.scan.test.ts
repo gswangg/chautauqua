@@ -15,14 +15,16 @@
 // lands, without anyone having to remember to update a hand-written list.
 //
 // DEC-374 (wave-18 amendment: FRAME EVIDENCE IS NOT PRODUCT COPY). The
-// design pack's OWN prose (docs/design/Chautauqua Speakers.dc.html:697)
-// still spells the deliberately-superseded "emailed" wording, and a test
-// file that quotes that frame line VERBATIM inside a string/backtick
-// literal (a `verbatimLine(...)` receipt) is receipting the frame, not
+// design pack's OWN prose still spells the deliberately-superseded
+// "emailed" wording, and a test file that quotes such a frame line
+// VERBATIM inside a string/backtick literal is receipting the frame, not
 // authoring product copy -- this scan's subject is product copy, so any
 // occurrence whose enclosing literal resolves to a verbatim frame quote
 // via test/helpers/frame-evidence.ts's isFrameEvidence() is excluded from
-// the offender population before it is built.
+// the offender population before it is built. The frame line that makes
+// this concrete is cited, quoted and asserted together at the bottom of
+// this file (DEC-976 wave-86: a claim is a citation, a verbatim quote and
+// a real assertion IN ONE PLACE), not carried loose in this header.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -152,5 +154,19 @@ describe('the reminder-skip-rule caption is one vocabulary (DEC-613 wave-114)', 
     const good = findOccurrences('fake.tsx', "const s = 'Skips anyone reminded in the last hour';");
     expect(good.length).toBe(1);
     expect(good[0]?.verb).toBe('reminded');
+  });
+
+  // DEC-374 wave-18 amendment (FRAME EVIDENCE IS NOT PRODUCT COPY), receipted
+  // in ONE place per DEC-976 wave-86 -- citation, verbatim quote and the
+  // assertion that pins what the literal declares -- rather than carried
+  // loose in this file's header where nothing executes it. The pack's own
+  // superseded prose, quoted verbatim by a test file, is frame evidence and
+  // must never reach the offender population:
+  // docs/design/Chautauqua Speakers.dc.html:697 `skips anyone emailed in the last hour`
+  it('DEC-374: the pack\'s own superseded "emailed" prose, quoted verbatim by a test file, is frame evidence and never an offender', () => {
+    const packLine = '<span style="font-size:12px; color:#565A4B">A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header</span>';
+    expect(findOccurrences('quoting.render.test.tsx', `const frame = '${packLine}';`)).toEqual([]);
+    // The SAME literal in product source is product copy, and still an offender.
+    expect(findOccurrences('Page.tsx', `const caption = '${packLine}';`).map((o) => o.verb)).toEqual(['emailed']);
   });
 });

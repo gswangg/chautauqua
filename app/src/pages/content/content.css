@@ -1327,8 +1327,11 @@
     gap: 8px;
   }
 
-  /* docs/design/Chautauqua Content.dc.html:342-367 reserves "Download all"
-     for the sticky footer dock ALONE -- w17-c (DEC-825). FilesLibrary.tsx
+  /* docs/design/Chautauqua Content.dc.html:342-367 `31 files · 412 MB` --
+     the frame's header band ends at that stat line, and the range reserves
+     "Download all" for the sticky footer dock ALONE (the frame draws it at
+     :359 as the dock's primary button, never in the header) -- w17-c
+     (DEC-825). FilesLibrary.tsx
      also mounts this wrap inside the header row (.chq-content-files-
      header-row), which the phone block above gives the full measure, so at
      390 the SAME capability drew twice on one screen. phone-hidden:
