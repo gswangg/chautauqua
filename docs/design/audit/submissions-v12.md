@@ -63,18 +63,32 @@ Submissions.dc.html`, receipts at
    itself — Accept/Decline/Read (:165-167) — is present in the frame's
    exact order.
 
-5. **Frame :355 "Submission detail" — DIVERGES.** Ref/eyebrow → title
-   (:362) → byline (:363) → abstract (:367) → form answers → reviews
-   (:375) render in the frame's own block order, with real content
-   (`DFC-033`, `Dana Whitmore · Fieldnote Docs`, the abstract paragraph)
-   present exactly where the frame draws it. Two divergences: (a) the back
-   link (:358) keeps its full desktop text ("All submissions") as one span
-   on the SAME anchor, with a second short span ("Triage") alongside it —
-   never the frame's own bare "‹ Triage" text (DEC-919 wave-98's
-   deliberate one-anchor-two-spans shape). (b) both the Abstract and Form
-   answers sections gain an `<h2>` the frame never draws for either block
-   — the frame's :367 paragraph and its `sc-for` answer rows sit directly
-   under the title/byline with no heading at all.
+5. **Frame :355 "Submission detail" — DIVERGES (clause (a) live; clause (b)
+   CLOSED).** Ref/eyebrow → title (:362) → byline (:363) → abstract (:367)
+   → form answers → reviews (:375) render in the frame's own block order,
+   with real content (`DFC-033`, `Dana Whitmore · Fieldnote Docs`, the
+   abstract paragraph) present exactly where the frame draws it. (a) LIVE:
+   the back link (:358) keeps its full desktop text ("All submissions") as
+   one span on the SAME anchor, with a second short span ("Triage")
+   alongside it — never the frame's own bare "‹ Triage" text (DEC-919
+   wave-98's deliberate one-anchor-two-spans shape). This half is not this
+   task's to fix or to close. (b) **CLOSED (commit 023e1257, DEC-878 wave-16
+   amendment).** Both the Abstract and Form answers `<h2>` elements keep
+   `chq-detail-section-title` and additionally carry
+   `chq-detail-section-title-frameless`, whose rule — inside
+   `app/src/pages/submissions/detail.css`'s ONE terminal
+   `max-width:700px` block (the file's only phone layer) — applies the
+   house visually-hidden clip recipe (`position:absolute; left:-9999px;
+   width:1px; height:1px; clip:rect(0,0,0,0)`), never `display:none`. At
+   390 this now matches the frame's drawn anatomy exactly: the abstract
+   paragraph and answer rows sit directly under the title/byline with no
+   heading visually drawn above either. Desktop is byte-identical — the
+   class only exists inside the phone block, so `.chq-detail-section-title`
+   itself is untouched above 700px. The heading keeps its DOM position,
+   text, and `<h2>` level and stays in the accessibility tree, so no
+   capability is removed (visual-only stand-down, DEC-919 wave-98's
+   capability-removal receipt is satisfied by construction — see
+   `app/src/pages/submissions/detail-390-headings.test.ts`).
 
 6. **Frame :468 "CFP form · 390" — DIVERGES (route: the admin form
    BUILDER, `app/src/pages/forms/FormsPage.tsx`, per this task's

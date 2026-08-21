@@ -193,7 +193,7 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
   });
 
   // Frame :355-390 "Submission detail".
-  it('frame :355 Submission detail -- DIVERGES: real content is present in the frame\'s own block order (ref/eyebrow -> title -> byline -> abstract -> answers -> reviews), but the back link keeps its full desktop text (\'All submissions\') alongside a same-anchor short span, never the frame\'s bare \'‹ Triage\', and both content sections gain an H2 the frame never draws', async () => {
+  it('frame :355 Submission detail -- DIVERGES (clause (a) live; clause (b) CLOSED commit 023e1257, DEC-878): real content is present in the frame\'s own block order (ref/eyebrow -> title -> byline -> abstract -> answers -> reviews); the back link still keeps its full desktop text (\'All submissions\') alongside a same-anchor short span, never the frame\'s bare \'‹ Triage\' -- but the Abstract/Form answers H2s are now screen-reader-only (chq-detail-section-title-frameless) inside detail.css\'s terminal phone block, matching the frame\'s drawn anatomy at 390 with desktop byte-identical', async () => {
     const SUB_ID = 'sub-frame-355';
 
     mockApi({
@@ -279,10 +279,43 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // `        <p style="margin:0; font-size:15px; line-height:1.65; color:#3F4237">A 10-minute tour of turning a static docs site into one that answers questions with citations, stays honest when it doesn't know, and costs under $50 a month to run.</p>`
     verbatimLine(367, L367);
     const abstract = screen.getByText(/A 10-minute tour of turning a static docs site/);
-    expect(screen.getByRole('heading', { name: 'Abstract' })).toBeInTheDocument();
     expect(byline.compareDocumentPosition(abstract) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The frame draws the abstract paragraph with NO preceding heading; the
-    // real page adds an 'Abstract' H2 the frame never draws.
+    // CLOSED (commit 023e1257, DEC-878 wave-16 amendment): the frame draws
+    // the abstract paragraph with NO visible preceding heading. The real
+    // page's 'Abstract' H2 stays in the DOM/accessibility tree (jsdom
+    // applies no @media, so getByRole still finds it) but now also carries
+    // chq-detail-section-title-frameless -- a VISUAL-ONLY stand-down, not a
+    // capability removal (DEC-919 wave-98's receipt is satisfied by
+    // construction: the heading keeps its text, level, and DOM order).
+    const abstractHeading = screen.getByRole('heading', { name: 'Abstract' });
+    expect(abstractHeading).toBeInTheDocument();
+    expect(abstractHeading.className).toContain('chq-detail-section-title-frameless');
+
+    // Source-scan pin (phoneRule idiom, copied from
+    // app/src/pages/submissions/detail-390-headings.test.ts): the frameless
+    // class rule lives ONLY inside detail.css's terminal max-width:700px
+    // block, and its body is the house visually-hidden clip recipe, never
+    // display:none -- so desktop stays byte-identical outside that block.
+    const detailCssPath = join(REPO_ROOT, 'app', 'src', 'pages', 'submissions', 'detail.css');
+    const detailCss = readFileSync(detailCssPath, 'utf-8');
+    const phoneOpener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+    let phoneBody = '';
+    let opener: RegExpExecArray | null;
+    while ((opener = phoneOpener.exec(detailCss)) !== null) {
+      let depth = 1;
+      let i = opener.index + opener[0].length;
+      const start = i;
+      while (i < detailCss.length && depth > 0) {
+        if (detailCss[i] === '{') depth += 1;
+        else if (detailCss[i] === '}') depth -= 1;
+        i += 1;
+      }
+      phoneBody += detailCss.slice(start, i - 1);
+    }
+    const framelessRule = phoneBody.match(/\.chq-detail-section-title-frameless\s*\{([^}]*)\}/);
+    expect(framelessRule).not.toBeNull();
+    expect(framelessRule![1]).toMatch(/clip:\s*rect\(0,\s*0,\s*0,\s*0\)/);
+    expect(framelessRule![1]).not.toMatch(/display:\s*none/);
 
     // docs/design/Chautauqua Submissions.dc.html:375
     // `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Reviews · 3 of 3 in</span>`
