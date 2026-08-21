@@ -4,7 +4,6 @@
 // `checkGridTemplateColumns` take `budgetPx` explicitly (rather than
 // closing over a module-level constant) so this module has no import-order
 // dependency on how the caller derives its budget.
-import { countOf } from '../lib/plural';
 import type { Rule } from './rules';
 // DEC-957/DEC-987: the diagnostic below is a count phrase, so it goes
 // through the ONE count vocabulary like every other one, never a

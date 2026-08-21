@@ -261,11 +261,6 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "importer is app/src/negative-margin-adjacency.scan.test.ts, and test-file imports don't confer " +
     "reachability (DEC-518). Isolated so every re-measure of the ratchet touches only this constant and its " +
     "history comment (mirrors app/src/phone-overflow-scan/starved-track-ceiling.ts's precedent).",
-  "app/src/phone-overflow-scan/starved-track-ceiling.ts":
-    "Ratchet-constant module for a custodian-split scan suite -- its only importer is " +
-    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
-    "(DEC-518). Pre-existing gap (wave-149 landing never added this entry) closed here as an append-only " +
-    "fix so this task's targeted module-reachability run is green; not otherwise part of task w8-eg's scope.",
   "app/src/phone-overflow-scan/budget.ts":
     "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
     "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
@@ -384,11 +379,6 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Spawned by scripts/walkthrough.ts via a runtime-computed `scripts/walkthrough/${area}.ts` path over " +
     "WALKTHROUGH_AREAS -- same shape as producer.ts, never a static import (scripts/walkthrough/stress.ts is a " +
     "sibling module but is instead a direct package.json entry, `gate:scale`, so it needs no ledger entry).",
-  "app/src/phone-overflow-scan/starved-track-ceiling.ts":
-    "Ratchet ceiling constant module -- its only importer is app/src/phone-horizontal-overflow.scan.test.ts, " +
-    "and test-file imports don't confer reachability (DEC-518). Pre-existing gap in this ledger (wave v12m-w8 " +
-    "task w8-ef found it missing); isolated into its own file so a worker re-measuring the ratchet touches " +
-    "only this constant, never the scan's population/check machinery.",
   "app/src/comment-blind-css-assertion-scan/ceiling.ts":
     "Ratchet ceiling constant module (DEC-374 amendment, wave v12m-w8 task w8-ef) -- its only importer is " +
     "test/comment-blind-css-assertion.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +

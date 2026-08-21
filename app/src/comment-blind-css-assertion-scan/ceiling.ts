@@ -25,4 +25,4 @@
 // changes no product byte and repairs none of the offenders it finds (that
 // migration is explicitly a later, separately-ruled wave per this task's
 // own description).
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 39;
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 38;

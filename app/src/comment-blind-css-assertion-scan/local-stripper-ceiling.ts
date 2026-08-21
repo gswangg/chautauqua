@@ -23,4 +23,4 @@
 // for the full 103-file list. This wave ships the INSTRUMENT only --
 // migrating the named files onto the shared helper is explicitly a later,
 // separately-ruled wave.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 103;
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 102;

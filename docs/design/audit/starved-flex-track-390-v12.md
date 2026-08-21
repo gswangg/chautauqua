@@ -83,17 +83,16 @@ sibling `.chq-settings-room-edit-row` (same co-classed base, a fourth,
 wider fixed track) was already re-lined to a single column at
 `settings.css:2314` in an earlier wave — this row was the missed twin.
 
-**Both offenders are repaired and the ledger is drained.** Sibling lane
-`v12m-w5-bg` re-lined each row into its own sheet's terminal `<=700px` phone
-block (DEC-919), landing in the thunderdome megabatch (wave-150) alongside
-this instrument's own first landing. The ceiling was seeded at the
-then-measured `2`, per DEC-069 wave-141/143's "a new ceiling lands with its
-exit-predicate row and fixture in the same commit". Task `v12m-w8-eb`
-(DEC-808) then re-measured the integrated tree with the ceiling forced to
-`-1`, confirmed zero starved-track offenders remain, and lowered
-`STARVED_FLEX_TRACK_CEILING` from `2` to `0` per DEC-989 wave-146's standing
-rule. The two rows above are therefore a record of what was fixed, not of
-work owed.
+**Both offenders are repaired and the ledger is drained.** Each row was
+re-lined into its own sheet's terminal `<=700px` phone block (DEC-919), and
+the instrument that names them landed in the same batch. The ceiling was
+seeded at the then-measured `2`, per DEC-069 wave-141/143's "a new ceiling
+lands with its exit-predicate row and fixture in the same commit". The
+integrated tree was then re-measured with the ceiling forced to `-1`
+(DEC-808), confirming zero starved-track offenders remain, and
+`STARVED_FLEX_TRACK_CEILING` was lowered from `2` to `0` per DEC-989
+wave-146's standing rule. The two rows above are therefore a record of what
+was fixed, not of work owed.
 
 ## The gap-attribution conservatism
 
