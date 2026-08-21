@@ -149,6 +149,21 @@
   display: none;
 }
 
+/* src/decisions-data/DEC-919.md (wave-16 amendment): the chip strip's own
+   cap caption -- the strip's member of the same capability as the desktop
+   `.chq-contacts-filter-rules-cap` span, substituted in (never removed)
+   when the strip's own control (`.chq-contacts-filter-add-chip`) has hit
+   MAX_SEGMENT_RULES with the builder closed, per docs/design/Chautauqua
+   Contacts.dc.html:188 (`font-size:10px; font-weight:800;
+   letter-spacing:0.12em; text-transform:uppercase; color:#565A4B;
+   min-height:44px; display:flex; align-items:center`) -- the same
+   micro-caption register as `.chq-contacts-filter-chipstrip-caption`
+   below. Hidden here by default (desktop has no such control to explain);
+   the terminal phone block turns it on. */
+.chq-contacts-filter-chipstrip-cap {
+  display: none;
+}
+
 /* v12m-w16-ui-r2-a (src/decisions-data/DEC-919.md): the rule builder
    disclosure's close control
    has nothing to close at desktop, where the rule groups are never
@@ -1239,6 +1254,27 @@
      tracking is 0.11em, not the frame's 0.12em -- one micro-caption
      vocabulary, not two). */
   .chq-contacts-filter-chipstrip-caption {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: var(--chq-type-micro-size);
+    font-weight: var(--chq-type-micro-weight);
+    letter-spacing: var(--chq-type-micro-tracking);
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* src/decisions-data/DEC-919.md (wave-16 amendment): the chip strip's cap
+     caption, turned on for the 390 head only when the strip's own
+     `.chq-contacts-filter-add-chip` control has hit MAX_SEGMENT_RULES with
+     the builder closed. docs/design/Chautauqua Contacts.dc.html:188
+     `font-size:10px; font-weight:800; letter-spacing:0.12em;
+     text-transform:uppercase; color:#565A4B; min-height:44px; display:flex;
+     align-items:center` -- same micro-caption register as
+     `.chq-contacts-filter-chipstrip-caption` immediately above (no new hex
+     literal, DEC-383). It is a caption, not a control, so no interaction
+     states. */
+  .chq-contacts-filter-chipstrip-cap {
     min-height: 44px;
     display: flex;
     align-items: center;

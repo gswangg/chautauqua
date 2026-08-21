@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilterRulesPanel, FILTER_RULE_FIELDS } from './FilterRulesPanel';
 import { MAX_SEGMENT_RULES } from '../../../../src/domain/contacts';
@@ -191,7 +191,12 @@ describe('FilterRulesPanel (DEC-868)', () => {
     }));
     render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={1} totalCount={10} onSaveAsSegment={noop} />);
     expect(screen.getByRole('button', { name: 'Add a rule' })).toBeDisabled();
-    expect(screen.getByText(`Up to ${MAX_SEGMENT_RULES} rules.`)).toBeInTheDocument();
+    // Scoped to the desktop rules row: since src/decisions-data/DEC-919.md's
+    // wave-16 r4 amendment, the 390 chip strip carries a SECOND cap caption
+    // (`.chq-contacts-filter-chipstrip-cap`) with the same text, so an
+    // unscoped query is now ambiguous.
+    const row = document.querySelector('.chq-contacts-filter-rules-row') as HTMLElement;
+    expect(within(row).getByText(`Up to ${MAX_SEGMENT_RULES} rules.`)).toBeInTheDocument();
   });
 
   it('"Add a rule" renders as a tertiary link, not a bordered button', () => {
