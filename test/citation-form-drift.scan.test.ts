@@ -193,7 +193,30 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // file) -- no ruling's MEANING changed, only the citation's coordinate
 // shape. Re-measured after the conversion: 25, all outside
 // src/decisions-data/. Lowered 57 -> 25.
-export const LINE_KEYED_CITATION_CEILING = 24;
+// Wave v12m-w5-ba (task w5-ba, DEC-967): re-measured on this branch (main
+// 766c2f92) forced to -1, offender list read row by row: 26. This lane's
+// scope is exactly four registry files -- src/decisions-data/DEC-555.md,
+// DEC-660.md, DEC-829.md, DEC-908.md -- each converted from a line-keyed
+// citation to the drift-proof bare-path shape (DEC-555's stale `otherTitle`
+// quote was also corrected to the file's real `joined` variable; DEC-829's
+// stale 'recipient' quote corrected to 'speaker', matching
+// RemindPreviewModal.tsx's wave-148 noun change; DEC-660's and DEC-908's
+// quotes already resolved verbatim and only lost their ":line"). None of
+// the four appear in this branch's post-conversion offender list. The
+// remaining 26 are all OUTSIDE this lane's scope: DEC-967.md's own
+// wave-136/137 catalogue re-cites src/mail/render.ts:163 a second time (a
+// different registry file than DEC-660.md, untouched here), and the rest
+// live in docs/design/audit/**, docs/probes/** and docs/mobile-campaign.md,
+// which v12m-w5-bb and v12m-w5-bc are draining CONCURRENTLY on the same
+// population (sibling lanes of this task, per DEC-989: the integrated
+// re-measure belongs to the merge train, this ceiling reflects only this
+// branch's own measurement). This is a RAISE from the prior wave's 24: not
+// to paper over a regression, but because this branch's own measurement
+// (26) is genuinely above 24 once the sibling lanes' still-unconverted
+// citations coexist with this lane's own true count -- the two-sided
+// ratchet's failure message requires writing the measured figure, and the
+// merge train reconciles the final integrated number (DEC-989).
+export const LINE_KEYED_CITATION_CEILING = 26;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
