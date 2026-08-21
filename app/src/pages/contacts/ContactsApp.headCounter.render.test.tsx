@@ -1,4 +1,4 @@
-// task r1-d (DEC-995): the wordmark row's right-flushed "N of M" counter
+// task r1-d (src/decisions-data/DEC-919.md): the wordmark row's right-flushed "N of M" counter
 // slot has no home on this page -- the wordmark row is the app SHELL's
 // header (app/src/styles.css, off limits to this lane) -- so the counter
 // lands on this page's own H1 line instead and becomes the head's only
@@ -37,7 +37,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-describe('ContactsApp head counter (DEC-995)', () => {
+describe('ContactsApp head counter (src/decisions-data/DEC-919.md)', () => {
   it('renders `2 of 318` once the stats envelope settles, at phone width', async () => {
     mockApi({
       'GET /api/v1/contacts/stats': {

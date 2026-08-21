@@ -1,4 +1,5 @@
-// v12m-w16-ui-r2-a (DEC-919): CONTACTS 390 -- the rule builder is
+// v12m-w16-ui-r2-a (src/decisions-data/DEC-919.md): CONTACTS 390 -- the
+// rule builder is
 // DISCLOSED, not deleted. Below 700px the desktop rule stack
 // (`.chq-contacts-filter-rules-row`) is hidden by default and only shown
 // again with `.is-builder-open`; the 390 chip strip's own controls own the
@@ -28,7 +29,7 @@ function rulesRow(): HTMLElement {
   return row as HTMLElement;
 }
 
-describe('FilterRulesPanel builder disclosure (DEC-919)', () => {
+describe('FilterRulesPanel builder disclosure (src/decisions-data/DEC-919.md)', () => {
   it('the rules row carries no is-builder-open class by default', () => {
     render(<FilterRulesPanel rules={[]} onChange={noop} matchCount={0} totalCount={0} onSaveAsSegment={noop} />);
     expect(rulesRow().className).not.toContain('is-builder-open');

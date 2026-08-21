@@ -1,4 +1,4 @@
-// DEC-919 (Amendment wave 16): the Contacts 390 landing narrows with the
+// src/decisions-data/DEC-919.md (Amendment wave 16): the Contacts 390 landing narrows with the
 // frame's two chip strips, not with the desktop rule builder and rail --
 // this is the SECOND strip (docs/design/Chautauqua Contacts.dc.html:194-198,
 // "All" / "Speakers · 41" / "Reviewers"), re-lining the existing

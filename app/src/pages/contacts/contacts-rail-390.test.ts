@@ -1,4 +1,4 @@
-// DEC-996 (task r1-e): the DirectoryRail stands down at 390 -- the frame's
+// src/decisions-data/DEC-919.md (task r1-e): the DirectoryRail stands down at 390 -- the frame's
 // phone body is the scrolling headerless card list alone. This is a text
 // scan over
 // contacts.css (jsdom applies no stylesheet and evaluates no @media rule,
@@ -29,7 +29,7 @@ const CSS_PATH = join(HERE, 'contacts.css');
 const RAW = readFileSync(CSS_PATH, 'utf-8');
 
 /** Comments stripped first -- a stray `{`/`}` inside a comment (this file's
- * own DEC-996 receipt comment quotes CSS declarations) would desynchronise
+ * own src/decisions-data/DEC-919.md receipt comment quotes CSS declarations) would desynchronise
  * brace-depth scanning. Same idiom as contacts-phone-frames.test.ts's
  * `read()`. */
 const CSS = RAW.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -57,7 +57,7 @@ function mediaBlocks(css: string): { openBrace: number; closeBrace: number }[] {
 
 const BLOCKS = mediaBlocks(CSS);
 
-describe('DEC-996: .chq-contacts-rail stands down inside the terminal phone block', () => {
+describe('src/decisions-data/DEC-919.md: .chq-contacts-rail stands down inside the terminal phone block', () => {
   it('contacts.css has exactly one @media (max-width: 700px) block, and it is the file\'s last one', () => {
     expect(BLOCKS.length).toBeGreaterThan(0);
     const last = BLOCKS[BLOCKS.length - 1]!;

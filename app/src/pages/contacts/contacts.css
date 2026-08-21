@@ -31,7 +31,7 @@
   gap: 9px;
 }
 
-/* DEC-995: the wordmark row's right-flushed `N of M` counter slot has no
+/* src/decisions-data/DEC-919.md: the wordmark row's right-flushed `N of M` counter slot has no
    home on this page (the wordmark row is the app shell's, off limits to
    this lane) -- it renders on the page's own H1 line instead
    (ContactsApp.tsx) and is desktop-hidden by default; the phone terminal
@@ -122,8 +122,8 @@
   white-space: nowrap;
 }
 
-/* DEC-993/DEC-919 (task r1-b; see FilterRulesPanel.tsx's import-block note
-   on the DEC-993/DEC-992 numbering mismatch): the phone-only builder-close
+/* src/decisions-data/DEC-919.md (see FilterRulesPanel.tsx's import-block
+   note on the retired minted id): the phone-only builder-close
    control ("Done") renders unconditionally in the DOM (the DEC-937
    wave-129 shape) but has nothing to close at desktop, where the rule
    groups are never collapsed -- hidden here by default; the terminal
@@ -138,10 +138,10 @@
    font-weight:700; color:#4E5C31`) draws the 390 head's rule strip
    terminating in its OWN dashed "+ Rule" chip, not the desktop panel's
    plain-text "Add a rule" -- both controls render unconditionally
-   (DEC-919: the capability renders twice in the DOM, once on screen) and
+   (src/decisions-data/DEC-919.md: the capability renders twice in the DOM, once on screen) and
    CSS alone decides which one is on screen. The phone chip is hidden here
    by default so it never doubles up with the desktop button above 700px --
-   its new parent is `.chq-contacts-filter-chipstrip` (DEC-992's rule
+   its new parent is `.chq-contacts-filter-chipstrip` (src/decisions-data/DEC-919.md's rule
    strip, hidden by the sibling rule just below); the desktop button's own
    hide rule (and the chip's visible/floored rule) live in the terminal
    phone block below, per DEC-385 (narrow overrides wide only). */
@@ -149,7 +149,8 @@
   display: none;
 }
 
-/* v12m-w16-ui-r2-a (DEC-919): the rule builder disclosure's close control
+/* v12m-w16-ui-r2-a (src/decisions-data/DEC-919.md): the rule builder
+   disclosure's close control
    has nothing to close at desktop, where the rule groups are never
    collapsed -- hidden here by default, turned on in the terminal phone
    block below. */
@@ -157,7 +158,7 @@
   display: none;
 }
 
-/* DEC-992: the rule strip (`.chq-contacts-filter-chipstrip`, sibling of
+/* src/decisions-data/DEC-919.md: the rule strip (`.chq-contacts-filter-chipstrip`, sibling of
    `.chq-contacts-filter-rules-row` -- see FilterRulesPanel.tsx) is a 390
    head only, docs/design/Chautauqua Contacts.dc.html:187
    (`display:flex; gap:7px; overflow-x:auto;
@@ -192,7 +193,7 @@
   color: var(--chq-ink-2);
 }
 
-/* DEC-994/DEC-919: the Contacts 390 landing head's second strip -- the
+/* src/decisions-data/DEC-919.md: the Contacts 390 landing head's second strip -- the
    frame's "All" / "Speakers · 41" / "Reviewers" pill row (see the
    line-cited quotes on the phone rules for this same class, further
    below in this file's terminal media block) -- re-lines the saved-
@@ -1277,7 +1278,7 @@
     padding: 0 12px;
   }
 
-  /* DEC-992: the rule strip -- one dismissible chip per ACTIVE rule --
+  /* src/decisions-data/DEC-919.md: the rule strip -- one dismissible chip per ACTIVE rule --
      turned back on for the 390 head. docs/design/Chautauqua
      Contacts.dc.html:187 `display:flex; gap:7px; overflow-x:auto;
      -webkit-overflow-scrolling:touch`. */
@@ -1348,7 +1349,7 @@
     font-weight: 400;
     color: var(--chq-muted);
   }
-  /* DEC-995 (task r1-d): a wordmark row with a right-flushed "2 of 318",
+  /* src/decisions-data/DEC-919.md (task r1-d): a wordmark row with a right-flushed "2 of 318",
      the H1 "Contacts", then a 44px search box. The wordmark row is the app
      SHELL's header (app/src/styles.css, off limits here), so the counter
      lands right-flushed on THIS page's own H1 line instead and becomes the
@@ -1382,11 +1383,11 @@
      search-then-narrowing order; the panel tabs are re-lined below it,
      never removed.
 
-     CAPABILITY RECEIPT (DEC-995/DEC-919): the long `.chq-summary` line
+     CAPABILITY RECEIPT (src/decisions-data/DEC-919.md): the long `.chq-summary` line
      (`N people · M speakers · R returning · across E events · K possible
      duplicates`) is not deleted -- its clauses are re-lined: `N people` ->
      the `of M` half of this head counter; `M speakers` -> the saved-segment
-     pill strip's `Speakers · N` pill (DEC-994); `K possible duplicates` ->
+     pill strip's `Speakers · N` pill (src/decisions-data/DEC-919.md); `K possible duplicates` ->
      the `Duplicates · N` panel tab chip already on this page; the
      returning/reach clauses remain on the desktop head, which is
      unchanged. `.chq-contacts-filter-match-count` (`2 of 318 match`)
@@ -1429,12 +1430,12 @@
     order: -1;
   }
 
-  /* DEC-996: the DirectoryRail stands down at 390 -- the frame's phone body
+  /* src/decisions-data/DEC-919.md: the DirectoryRail stands down at 390 -- the frame's phone body
      (docs/design/Chautauqua Contacts.dc.html:201
      `flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px`, :203
      `padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex;
      align-items:center; gap:13px`) is the scrolling headerless card list
-     alone -- no rail beneath it. Legal under DEC-919's carve-out: every
+     alone -- no rail beneath it. Legal under src/decisions-data/DEC-919.md's carve-out: every
      rail section has a full-screen surviving path already on this page at
      390. "Where they work" (top-companies drill on
      {field:'company',op:'eq'}) -> the FilterRulesPanel "+ Rule" chip
@@ -1457,7 +1458,7 @@
     gap: 0;
   }
 
-  /* DEC-994/DEC-919 (task r1-c): the 390 landing head's second strip
+  /* src/decisions-data/DEC-919.md (task r1-c): the 390 landing head's second strip
      (docs/design/Chautauqua Contacts.dc.html:194 `display:flex; gap:7px;
      overflow-x:auto; -webkit-overflow-scrolling:touch`) -- the saved-segment
      filter re-lined as pills, not recomputed: Segment.count already
@@ -1503,18 +1504,19 @@
     display: none;
   }
 
-  /* DEC-993/DEC-919 (task r1-b; see FilterRulesPanel.tsx's import-block
-     note on the DEC-993/DEC-992 numbering mismatch -- src/decisions-data's
-     actual DEC-993/DEC-992 are unrelated mail-merge/contact-merge
-     decisions, so this cites DEC-919's established capability-preservation
-     carve-out instead of a false compile-checked dependency).
+  /* src/decisions-data/DEC-919.md (see FilterRulesPanel.tsx's import-block
+     note): the minted three-digit id this task originally cited was already
+     spent on an unrelated ruling, so this cites the established
+     capability-preservation carve-out of src/decisions-data/DEC-919.md
+     instead of a false compile-checked dependency.
 
      THE PROBLEM: at 390 the chip strip (above) already shows every active
      rule, so the desktop rule groups stacked below it under the plain
      `.chq-contacts-filter-rules-row { flex-direction: column; ... }` rule
      (further up this SAME terminal block) restated the same rule twice on
      one screen. Deleting the groups outright would remove the only way to
-     AUTHOR or EDIT a rule on a phone, which DEC-919 forbids -- disclosure
+     AUTHOR or EDIT a rule on a phone, which src/decisions-data/DEC-919.md
+     forbids -- disclosure
      is the surviving path: the row collapses by default and `+ Rule` (or
      tapping a chip's body) opens it.
 
@@ -1526,7 +1528,8 @@
      (test/phone-terminal-block.scan.test.ts's own rationale) while the
      earlier column-stack rule for the open state is left untouched.
 
-     CAPABILITY RECEIPT (DEC-993/DEC-919): nothing is removed. Authoring a
+     CAPABILITY RECEIPT (src/decisions-data/DEC-919.md): nothing is removed.
+     Authoring a
      rule -> `+ Rule` (adds a rule AND opens the builder). Editing a rule ->
      tapping the rule chip's body (opens the builder on the existing rule).
      Removing a rule -> the chip's own ✕, or "Remove" inside the open

@@ -1,4 +1,5 @@
-// v12m-w16-ui-r2-a (DEC-919): CSS-text scan for the rule builder
+// v12m-w16-ui-r2-a (src/decisions-data/DEC-919.md): CSS-text scan for the
+// rule builder
 // disclosure's four phone declarations
 // (`.chq-contacts-filter-rules-row { display: none }`,
 // `.chq-contacts-filter-rules-row.is-builder-open { display: flex }`,
@@ -54,7 +55,7 @@ const NEW_PHONE_SELECTORS = [
   '.chq-contacts-filter-builder-done {',
 ];
 
-describe('Contacts rule builder disclosure — phone declarations (DEC-919)', () => {
+describe('Contacts rule builder disclosure — phone declarations (src/decisions-data/DEC-919.md)', () => {
   it('contacts.css has exactly one terminal phone block', () => {
     const blocks = phoneBlocks(STRIPPED);
     expect(blocks.length).toBe(1);

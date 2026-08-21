@@ -386,7 +386,7 @@ export function ContactsApp() {
         <div className="chq-contacts-title-row">
           <h1 className="chq-page-title">Contacts</h1>
           {summary && <span className="chq-summary">{summary}</span>}
-          {/* DEC-995: the wordmark row's right-flushed `N of M` counter
+          {/* src/decisions-data/DEC-919.md: the wordmark row's right-flushed `N of M` counter
               slot has no home on this page (the wordmark row is the app
               shell's, off limits here), so it lands on this H1 line
               instead and becomes the head's only count. `total` is the

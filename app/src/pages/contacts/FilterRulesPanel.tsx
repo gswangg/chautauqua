@@ -22,18 +22,15 @@ import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
 import { MAX_SEGMENT_RULES } from '../../lib/domain-caps';
 import { DEC_868, DEC_919, DEC_937 } from '../../../../src/decisions';
 
-// NOTE (worker r1-b): the delegating task cited DEC-993/DEC-992 for this
-// disclosure behaviour, but src/decisions-data (binding per project
-// instructions) has DEC-993 = "One 'Insert a field' control per composer…"
-// (mail merge-field menu) and DEC-992 = "The merge compare table names BOTH
-// records…" (contact-merge duplicate screen) -- neither is about the
-// Contacts filter builder. Rather than compile-check a false dependency
-// (the exact "registry laundering" failure mode this campaign's field
-// guide repeatedly flags), this file cites DEC_919 (the established
-// capability-preservation/disclosure carve-out already used by this same
-// page's other phone rules, e.g. DirectoryRail's stand-down comment above)
-// and keeps its existing DEC_868/DEC_937 citations. Flagged for the
-// planner/scribe to reconcile the DEC-992/DEC-993 numbering.
+// NOTE (integration): the delegating task minted a fresh three-digit id for
+// this disclosure behaviour. The id space has been CLOSED since wave 37
+// (decisions/README.md) and the ids it reached for were already spent on
+// unrelated rulings, so this file cites src/decisions-data/DEC-919.md -- the
+// established capability-preservation/disclosure carve-out already used by
+// this same page's other phone rules, e.g. DirectoryRail's stand-down
+// comment above -- and keeps its existing DEC_868/DEC_937 compile pins. See
+// app/src/pages/contacts/contacts-wave16-citation.scan.test.ts, which
+// enforces this directory-wide.
 void DEC_868;
 void DEC_919;
 void DEC_937;
@@ -56,7 +53,7 @@ const OP_OPTIONS: { value: SegmentRule['op']; label: string }[] = [
 
 const CUSTOM_FIELD_CHOICE = 'custom';
 
-// DEC-992: the 390 head's rule strip projects each ACTIVE rule as a
+// src/decisions-data/DEC-919.md: the 390 head's rule strip projects each ACTIVE rule as a
 // dismissible chip, in the SAME vocabulary the desktop builder uses for its
 // own field/op selects (FIELD_LABELS / OP_OPTIONS above) -- not
 // segments.ts's describeRules, which renders `=`/`≠` and quotes for the
@@ -86,7 +83,8 @@ interface Props {
 }
 
 export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSaveAsSegment }: Props) {
-  // DEC-919: the 390 chip strip stands in for the desktop rule groups, but
+  // src/decisions-data/DEC-919.md: the 390 chip strip stands in for the
+  // desktop rule groups, but
   // hiding those groups outright would remove the ability to author/edit a
   // rule on a phone. `builderOpen` is a PHONE-ONLY effect -- read by CSS at
   // width, never by a useIsPhone branch here -- so desktop markup (which
@@ -185,7 +183,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           "+ Rule" chip, not the desktop panel's plain-text "Add a rule" --
           a shared idiom (this tertiary button) is still scoped by the
           frame that draws it. Both controls render unconditionally (the
-          capability renders twice in the DOM, once on screen, DEC-919's
+          capability renders twice in the DOM, once on screen, src/decisions-data/DEC-919.md's
           established shape); contacts.css's terminal max-width:700px
           block is the ONLY place that decides which one is visible, so
           exactly one copy is ever on screen at a given width. Same
@@ -216,7 +214,8 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         </span>
       )}
 
-      {/* DEC-919 (see note above imports): the builder-close control only
+      {/* src/decisions-data/DEC-919.md (see note above imports): the
+          builder-close control only
           means anything for the collapsed-by-default 390 state -- it
           renders unconditionally (both controls in the DOM, CSS decides
           which is on screen, the DEC-937 wave-129 shape) and is
@@ -254,7 +253,8 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           </span>
         )
       )}
-      {/* DEC-919: while the builder is CLOSED this control's job is
+      {/* src/decisions-data/DEC-919.md: while the builder is CLOSED this
+          control's job is
           disclosure, so it is never inert here -- otherwise a user who
           fills the cap with blank rules (which render no chip) and closes
           the builder has no path back in. Only inert once the builder is

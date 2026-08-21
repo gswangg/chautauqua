@@ -1,4 +1,4 @@
-// DEC-992: the 390 head's rule strip projects each ACTIVE rule as a
+// src/decisions-data/DEC-919.md: the 390 head's rule strip projects each ACTIVE rule as a
 // dismissible chip -- a second sibling to the desktop
 // `.chq-contacts-filter-rules-row`, hidden on desktop by CSS alone. This
 // suite covers the chip strip specifically: it renders once per ACTIVE
@@ -20,7 +20,7 @@ afterEach(() => {
 
 const noop = () => {};
 
-describe('FilterRulesPanel rule chip strip (DEC-992)', () => {
+describe('FilterRulesPanel rule chip strip (src/decisions-data/DEC-919.md)', () => {
   const rules: SegmentRule[] = [
     { field: 'company', op: 'eq', value: 'Acme' },
     { field: 'email', op: 'contains', value: '' }, // half-typed: no chip

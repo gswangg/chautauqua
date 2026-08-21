@@ -1,5 +1,5 @@
 // Text-scan contract for the Contacts 390 segment-pill strip (task r1-c,
-// DEC-994/DEC-919, DEC-385 single-direction responsive). Asserts:
+// src/decisions-data/DEC-919.md, DEC-385 single-direction responsive). Asserts:
 //   1) the four phone rules for `.chq-contacts-segment-pills` and the
 //      `.chq-contacts-segment-summary { display: none }` stand-down live
 //      INSIDE contacts.css's single terminal `@media (max-width: 700px)`
@@ -78,7 +78,7 @@ function normalise(s: string): string {
   return s.trim().replace(/\s+/g, ' ');
 }
 
-describe('contacts.css: segment-pill strip 390 rules (DEC-994/DEC-919, DEC-385)', () => {
+describe('contacts.css: segment-pill strip 390 rules (src/decisions-data/DEC-919.md, DEC-385)', () => {
   const block = findTerminalMediaBlockBody(CSS);
   const blockBody = CSS.slice(block.start, block.end);
   const afterBlock = CSS.slice(block.end);
