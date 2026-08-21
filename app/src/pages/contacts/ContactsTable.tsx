@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import type { ContactListItem } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { useIsPhone } from '../../lib/useIsPhone';
+import { BulkEmailModal } from './BulkEmailModal';
 
 /** B7 rule 6 (DEC-678): ContactsTable is presentational, so ContactsApp
  * computes which of the two voices applies from the facets it holds (search
@@ -45,6 +48,12 @@ export function ContactsTable({
   const pageIds = items.map((item) => item.id);
   const selectedCount = selection.selectedIds.size;
   const settledEmpty = !loading && items.length === 0;
+  const isPhone = useIsPhone();
+  // Chautauqua Contacts.dc.html:209 (390 frame): the row's boxed action reads
+  // `Email`, not the desktop `Open` -- wired to the SAME BulkEmailModal/
+  // eventId:null path ContactDrawer.tsx:701/739-746's DEC-959 dock Email
+  // button already opens for a single contact, never a second email flow.
+  const [emailContact, setEmailContact] = useState<ContactListItem | null>(null);
 
   return (
     <div className="chq-contacts-table-wrap">
@@ -166,9 +175,20 @@ export function ContactsTable({
                     </span>
                   </td>
                   <td>
-                    <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => onOpenContact(c.id)}>
-                      Open
-                    </button>
+                    {isPhone ? (
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-tertiary"
+                        aria-label={`Email ${c.firstName} ${c.lastName}`}
+                        onClick={() => setEmailContact(c)}
+                      >
+                        Email
+                      </button>
+                    ) : (
+                      <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => onOpenContact(c.id)}>
+                        Open
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -202,6 +222,15 @@ export function ContactsTable({
             </button>
           </div>
         </div>
+      )}
+
+      {emailContact && (
+        <BulkEmailModal
+          contactIds={[emailContact.id]}
+          eventId={null}
+          recipientNames={[`${emailContact.firstName} ${emailContact.lastName}`.trim()]}
+          onClose={() => setEmailContact(null)}
+        />
       )}
     </div>
   );
