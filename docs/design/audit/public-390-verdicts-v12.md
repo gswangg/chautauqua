@@ -53,7 +53,7 @@ matches exactly (w14-f, DEC-986); the Track fieldset (:1042) matches
 exactly.
 
 - **Format legend text.** :1051 draws the bare legend `"Format"`.
-  `FormatChoices` (`submit-views.tsx:288`) renders
+  `FormatChoices` (`src/routes/public/submit-views.tsx`) renders
   `<legend>{field.label}</legend>`, and the session-format field's stored
   label is `"Session format"` — the fixture value here matches the same
   seed data `test/submit-cfp-frame-copy.test.ts`'s `FIELD_ROWS` already

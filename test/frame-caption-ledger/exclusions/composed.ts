@@ -529,7 +529,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 249,
     text: 'Averaged by weight · not editable. A plain average of 5, 4, 4 would be 4.33.',
     reason:
-      "app/src/pages/review/Scorecard.tsx composes the desktop overall caption from `Averaged by weight, not editable — a plain average of ${ratingCriteria` and `.join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}` (falling back to 'Averaged by weight, not editable' with no scores) plus the appended overallDenominatorClause, from the plan's own live rating-criteria scores.",
+      "app/src/pages/review/Scorecard.tsx composes the desktop overall caption from two sibling <p> elements the frame reads as one line (DEC-889 wave-159 split what was one paragraph into two): `.chq-review-overall-caption` composes `'Averaged by weight, not editable' + overallDenominatorClause` and `.chq-review-overall-reconciliation` composes `A plain average of ${ratingCriteria.map((c) => scores[c.id] as number).join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`, both from the plan's own live rating-criteria scores.",
   },
   {
     fileName: 'Chautauqua Review.dc.html',
@@ -543,7 +543,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 326,
     text: 'A plain average of 5, 4, 4 would be 4.33',
     reason:
-      "the same Scorecard.tsx overall-caption composing expression as Chautauqua Review.dc.html:249's entry above (`Averaged by weight, not editable — a plain average of ${ratingCriteria`) -- this is the 390-phone rendering of the same one-component overall caption, split across two <span> elements at this width instead of one paragraph (DEC-385).",
+      "the same Scorecard.tsx `.chq-review-overall-reconciliation` composing expression as Chautauqua Review.dc.html:249's entry above (`A plain average of ${ratingCriteria.map((c) => scores[c.id] as number).join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`) -- this is the 390-phone rendering of the same reconciliation paragraph, split across two <span> elements at this width instead of the desktop's two <p> elements (DEC-385).",
   },
   {
     fileName: 'Chautauqua Review.dc.html',
