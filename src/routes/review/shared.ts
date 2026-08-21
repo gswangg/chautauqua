@@ -33,10 +33,11 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import { isDayLabelMs, isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517/DEC-522
-import { DEC_676, DEC_703 } from "../../decisions";
+import { DEC_517, DEC_676, DEC_703 } from "../../decisions";
 
 void DEC_676; // parseCriteriaList's guidance passthrough below
 void DEC_703; // hydrateResultsRows' speakers/trackNames columns below
+void DEC_517; // parseScale/parseCriteriaList's finite checks below
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -68,7 +69,16 @@ export function parseScale(body: Record<string, unknown>, errors: Record<string,
     return undefined;
   }
   const s = scale as Record<string, unknown>;
-  if (typeof s.min !== "number" || typeof s.max !== "number" || s.min >= s.max) {
+  // DEC-517 amendment: mirrors the read door's finite check so this write
+  // door refuses everything it refuses -- src/domain/evaluation/plan-json.ts
+  // `!Number.isFinite(min)` / `!Number.isFinite(max)`.
+  if (
+    typeof s.min !== "number" ||
+    typeof s.max !== "number" ||
+    !Number.isFinite(s.min) ||
+    !Number.isFinite(s.max) ||
+    s.min >= s.max
+  ) {
     errors.scale = "must be { min: number, max: number } with min < max";
     return undefined;
   }
@@ -129,7 +139,10 @@ export function parseCriteriaList(
     }
     const guidance = normalizeGuidance(typeof c.guidance === "string" ? c.guidance : undefined);
     if (c.kind === "rating") {
-      if (typeof c.weight !== "number" || c.weight <= 0) {
+      // DEC-517 amendment: mirrors the read door's finite check so this
+      // write door refuses everything it refuses --
+      // src/domain/evaluation/plan-json.ts `!Number.isFinite(c.weight)`.
+      if (typeof c.weight !== "number" || !Number.isFinite(c.weight) || c.weight <= 0) {
         errors[errKey] = `criterion "${c.id}" (rating) requires weight > 0`;
         return undefined;
       }
