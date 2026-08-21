@@ -442,12 +442,13 @@ describe('ReviewerQueue hub row (DEC-874 findings wave 5 amendment)', () => {
     const openAction2 = openRow2.querySelector('.chq-reviewer-plan-row-action') as HTMLAnchorElement;
     expect(openAction2.textContent).toBe('Start scoring');
 
-    // Closing muted line -- both sentences from frame :775.
-    expect(
-      screen.getByText(
-        'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
-      ),
-    ).toBeInTheDocument();
+    // Closing muted line -- both sentences from frame :775, now two sibling
+    // spans inside one paragraph (DEC-874 wave-19 amendment) so the text is
+    // read off the paragraph's own textContent rather than a single node.
+    const footnote = document.querySelector('.chq-reviewer-plans-footnote') as HTMLElement;
+    expect(footnote.textContent).toBe(
+      'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
+    );
   });
 
   it('a row whose per-plan envelope fetch rejects still renders its name and still links into its queue', async () => {

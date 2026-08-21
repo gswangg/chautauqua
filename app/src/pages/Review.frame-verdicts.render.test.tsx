@@ -432,7 +432,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
   });
 
   // Frame :594-669 "Plan editor · 390" -- caption at :590.
-  it('frame :594 Plan editor -- DIVERGES (narrowed further, wave 17, task w17-e): only the v4 title-row shell remains -- "Criteria"/"Cap each" copy resolved at phone, "Swap" stays DEVIATIONS-blessed as "Remove"', async () => {
+  it('frame :594 Plan editor -- RESOLVED (wave 19, task w19-e): the v4 title-row shell is DEVIATIONS-blessed and the screen gains its one level-1 heading', async () => {
     verbatimLine(
       590,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Plan editor · 390</span>",
@@ -481,16 +481,21 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
       </MemoryRouter>,
     );
 
-    // :596-598: DIVERGES -- the frame draws a back link, then a plain <h1>
-    // plan name, then a subtitle line, then (:665-668) a footer Save/
-    // Cancel pair. DEC-745's v4 shell instead renders the plan name as an
-    // EDITABLE INPUT (no heading role) with Duplicate/Save on the SAME
-    // title row as the back link -- there is no separate footer band at
-    // all.
+    // :596-598: RESOLVED (wave 19, task w19-e) -- the frame draws a back
+    // link, then a plain <h1> plan name, then a subtitle line, then
+    // (:665-668) a footer Save/Cancel pair. DEC-745's v4 shell instead
+    // renders the plan name as an EDITABLE INPUT with Duplicate/Save on
+    // the SAME title row as the back link -- there is no separate footer
+    // band -- and this shell is now DEVIATIONS-blessed. The screen gains
+    // exactly one level-1 heading naming the plan (visually hidden,
+    // review.css's own top-level rule), so the heading role the frame
+    // draws is preserved without a second editable copy of the name.
     const backLink = await screen.findByRole('link', { name: '‹ Review' });
     const nameInput = screen.getByLabelText('Plan name') as HTMLInputElement;
     expect(nameInput.value).toBe('Wave 2');
-    expect(screen.queryByRole('heading', { name: 'Wave 2' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    const heading = screen.getByRole('heading', { level: 1, name: 'Wave 2' });
+    expect(heading).toHaveClass('chq-review-editor-title-h1');
     const saveButton = screen.getByRole('button', { name: 'Save' });
     expect(backLink.compareDocumentPosition(nameInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(nameInput.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -553,7 +558,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
   // SKIPPED entirely and the reviewer lands straight in its queue -- this
   // verdict renders the multi-plan state the frame actually draws (two
   // open plans), not the single-plan skip.
-  it('frame :793 Your plans -- DIVERGES (narrowed, wave 17, task w17-e): row anatomy is resolved by a CSS grid unwrap the DOM order no longer measures; the footnote sentence-merge remains a real gap', async () => {
+  it('frame :793 Your plans -- RESOLVED (wave 19, task w19-e): row anatomy is resolved by a CSS grid unwrap and the footnote states each sentence once, in each place, at each width', async () => {
     verbatimLine(
       789,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Your plans · /review</span>",
@@ -628,17 +633,24 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
       "grid-template-areas:\n      'name pill'\n      'meta meta'\n      'bar bar'\n      'action action';",
     );
 
-    // :817/:820-821: DIVERGES (surviving, unchanged by this task) -- the
-    // frame states "With one open plan this page is skipped" as its own
-    // body line, and "Scores stay hidden from other reviewers" as a
-    // SEPARATE standing dock sentence. The app merges BOTH sentences into
-    // one footnote paragraph, in addition to a second, phone-only node
-    // repeating the second sentence alone -- a real content-anatomy gap,
-    // not a screen-vs-DOM measurement artifact like the row anatomy above.
-    const footnote = screen.getByText(/With one open plan this page is skipped/);
+    // :817/:820-821: RESOLVED (wave 19, task w19-e, DEC-874 amendment) --
+    // the frame states "With one open plan this page is skipped" as its
+    // own body line, and "Scores stay hidden from other reviewers" as a
+    // SEPARATE standing dock sentence. The footnote paragraph now states
+    // both as two sibling spans (desktop byte-identical to the merged
+    // 1600 frame :775), and review.css's terminal max-width:700px block
+    // hides only the repeat span at 390 -- one sentence, one place, at
+    // each width. jsdom applies no stylesheet, so the repeat span is
+    // still present here; the CSS-source assertion in
+    // ReviewerQueue.footnote-390.render.test.tsx is what proves it is
+    // hidden at 390.
+    const footnote = document.querySelector('.chq-reviewer-plans-footnote') as HTMLElement;
     expect(footnote.textContent).toBe(
       'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
     );
+    const repeatSpan = footnote.querySelector('.chq-reviewer-plans-footnote-repeat');
+    expect(repeatSpan).not.toBeNull();
+    expect(repeatSpan!.textContent).toBe('Scores stay hidden from other reviewers.');
     expect(document.querySelectorAll('.chq-reviewer-plans-phone-note').length).toBe(1);
   });
 });

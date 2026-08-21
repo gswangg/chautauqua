@@ -1607,6 +1607,26 @@
   color: var(--chq-ink);
 }
 
+/* DEC-745 wave-19 amendment: the plan editor's one level-1 heading, naming
+   the plan the same string `.chq-review-editor-title-input` already shows
+   as an editable value -- a heading carrying that same string is not a
+   desktop geometry change (DEC-385), so this top-level (non-media) rule
+   applies at every width, not just the terminal max-width:700px block.
+   Standard visually-hidden clip: present in the accessibility tree and to
+   DOM-structure assertions, absent from the painted frame at either
+   width. */
+.chq-review-editor-title-h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* DEC-882: the open plan's status line under the title -- "Open · N of M
    reviews in", read straight off the progress aggregate. It is a caption,
    not a heading, so it takes the caption's muted voice. */
@@ -2999,5 +3019,17 @@
     font-weight: 400;
     color: var(--chq-muted);
     line-height: 1.4;
+  }
+
+  /* phone-hidden: .chq-reviewer-plans-footnote-repeat (ReviewerQueue.tsx's
+     "Scores stay hidden from other reviewers." span) is a same-surface
+     substitution for .chq-reviewer-plans-phone-note -- the standing dock
+     already renders that exact sentence at this width (Chautauqua
+     Review.dc.html:821), so the inline copy is hidden here rather than
+     read twice (DEC-874 wave-19 amendment, DEC-919). Desktop is untouched:
+     the 1600 frame (:775) carries both sentences in the one paragraph and
+     this rule lives only inside this max-width block. */
+  .chq-reviewer-plans-footnote-repeat {
+    display: none;
   }
 }

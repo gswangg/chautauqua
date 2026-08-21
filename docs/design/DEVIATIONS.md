@@ -715,3 +715,24 @@ carries this section's ruling in full; these five entries are its record.
   one control with one name at every width, and the frame's `Draft` is a
   drawing abbreviation rather than a label to ship. Cite the sheet, not a
   line number: src/routes/public/cfp.css.ts`the accessible name stays "Save draft" per DEC-613 wave-96 amendment`.
+- **Plan editor's v4 title-row shell (name-as-input + Duplicate/Save on the
+  back-link row) is BLESSED, superseding the frame's separate-H1 +
+  footer-Save/Cancel anatomy.** `docs/design/Chautauqua Review.dc.html`'s
+  390 plan-editor frame draws a standalone `<h1>` plus a docked
+  footer `Save the plan`/`Cancel` pair below the fields. The shipped shell
+  instead renders the plan's name as an editable
+  `<input aria-label="Plan name">` with `Duplicate`/`Save` on the SAME row
+  as the `‹ Review` back link (`app/src/pages/review/PlanEditor.tsx`'s
+  `chq-review-editor-title-row`) — rebuilding the frame's separate anatomy
+  would delete rename-in-place, a shipped capability the frame predates,
+  and the row's Duplicate/Save-not-Cancel pair is itself an earlier,
+  already-blessed deviation (DEC-745 wave-98 amendment, recorded above).
+  What was genuinely missing — a level-1 heading naming the plan, since
+  the name previously existed only as a form-control's `aria-label` — is
+  now built: `PlanEditor.tsx` renders one visually-hidden
+  `<h1 className="chq-review-editor-title-h1">` naming the current plan,
+  styled by a top-level (non-media) rule in `app/src/pages/review/review.css`
+  since a heading carrying the string the input already shows is not a
+  desktop geometry change (DEC-385). The input keeps its `aria-label` and
+  stays the one rename affordance — the heading is not a second editable
+  copy of the name (DEC-613). DEC-745 wave-19 amendment.
