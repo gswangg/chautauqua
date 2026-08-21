@@ -113,4 +113,18 @@ describe('Submission detail 390 head band (DEC-919 wave-98 amendment)', () => {
   it('Previous/Next keep their existing 44px floor rule (unmodified by this task)', () => {
     expect(PHONE).toMatch(/\.chq-detail-position-prev,\s*\.chq-detail-position-next\s*\{[^}]*min-height:\s*44px/);
   });
+
+  // w6-ce (DEC-919 amendment): the top-level rule (detail.css:69-70) pulls
+  // .chq-detail-placement up -1rem to tuck it under the h1's own 1.25rem
+  // bottom margin -- correct only while .chq-detail-byline is display:none.
+  // This terminal phone block reveals the byline directly above the
+  // placement as a sibling, so the unmodified -16px pull would drag the
+  // placement (and the schedule link inside it) up onto the byline,
+  // superimposing both at 390. The phone block must neutralise the pull so
+  // a future edit to the top-level rule cannot silently re-open the
+  // overlap; bottom spacing stays untouched.
+  it('the phone block neutralises .chq-detail-placement\'s negative top pull so it no longer overlaps the revealed byline', () => {
+    expect(CSS).toMatch(/\.chq-detail-placement\s*\{[^}]*margin:\s*-1rem 0 1\.25rem/);
+    expect(PHONE).toMatch(/\.chq-detail-placement\s*\{[^}]*margin-top:\s*0/);
+  });
 });

@@ -1285,6 +1285,19 @@
     color: var(--chq-muted);
   }
 
+  /* w6-ce (DEC-919 amendment): the top-level rule (:69-70) pulls
+     .chq-detail-placement up -1rem to tuck it under the h1's own
+     1.25rem bottom margin -- correct only while .chq-detail-byline is
+     display:none. This terminal block reveals the byline directly
+     above the placement as a sibling in .chq-detail-heading-title, so
+     the -16px now drags the placement (and the schedule link inside
+     it) up onto the byline, superimposing both at 390. Neutralise the
+     top pull here only -- bottom spacing (1.25rem) is untouched, and
+     the top-level rule and desktop rendering stay byte-identical. */
+  .chq-detail-placement {
+    margin-top: 0;
+  }
+
   /* DEC-919: the frame's 390 head draws no pager (dc.html:356-364 ends at
      the byline), but the capability doesn't vanish -- Previous/Next
      RE-LINE onto their own full-width row below the head band instead of
