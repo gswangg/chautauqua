@@ -5,6 +5,12 @@
 // closing over a module-level constant) so this module has no import-order
 // dependency on how the caller derives its budget.
 import type { Rule } from './rules';
+// DEC-957/DEC-987: the diagnostic below is a count phrase, so it goes
+// through the ONE count vocabulary like every other one, never a
+// hand-rolled "(s)" -- DEC-374's wave-147 ruling names this exact literal
+// as the single genuine offender that survives comment-stripping and says
+// it must be reworded rather than exempted.
+import { countOf } from '../lib/plural';
 
 export function checkWidthProps(body: string, budgetPx: number): string[] {
   const hits: string[] = [];
@@ -118,7 +124,7 @@ export function checkStarvedFlexTrack(body: string, budgetPx: number): string[] 
   if (perFlexTrackPx < widestFixedTrackPx) {
     return [
       `grid-template-columns yields ${perFlexTrackPx.toFixed(1)}px per flexible track ` +
-        `((budget ${budgetPx}px - fixed ${fixedSum}px - gaps ${gapPx}px) / ${flexTrackCount} track(s)), ` +
+        `((budget ${budgetPx}px - fixed ${fixedSum}px - gaps ${gapPx}px) / ${countOf(flexTrackCount, 'track')}), ` +
         `below its own widest fixed track ${widestFixedTrackPx}px -- a starved re-line`,
     ];
   }

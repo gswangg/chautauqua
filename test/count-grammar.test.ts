@@ -13,6 +13,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { capitalizeFirst, countOf, overBudgetBy, plural } from "../src/domain/count-copy";
+import { stripSourceComments } from "./source-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -52,7 +53,13 @@ const PATTERN = /[A-Za-z]\(s\)/;
 
 function scanFile(file: string): Violation[] {
   const violations: Violation[] = [];
-  const lines = readFileSync(file, "utf8").split("\n");
+  // DEC-374 (wave-147 amendment): this scan's subject is user-facing COPY,
+  // and a comment is not product. Stripped through the ONE shared
+  // string-aware helper (./source-comments) rather than a private two-regex
+  // copy, which a URL in a string literal would blind. The stripper
+  // preserves newlines inside comments, so the reported line number is still
+  // the real source coordinate.
+  const lines = stripSourceComments(readFileSync(file, "utf8")).split("\n");
   lines.forEach((line, i) => {
     if (PATTERN.test(line)) {
       violations.push({ file, line: i + 1, text: line.trim() });
@@ -78,6 +85,31 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
 
   it(".map((s) => ...) never trips the guard (preceding char is '(', not a letter)", () => {
     expect(PATTERN.test(".map((s) => s.trim())")).toBe(false);
+  });
+
+  // DEC-374 (wave-147 amendment) requires BOTH controls in the same commit
+  // as the conversion: a violation in real copy is still caught, and the
+  // same token inside a comment is not.
+  it("[positive control] a raw '(s)' in a real string literal is still caught after stripping", () => {
+    const synthetic = '// mentions answer(s) in prose\nconst msg = "collected answer(s) so far";';
+    const hits = stripSourceComments(synthetic)
+      .split("\n")
+      .filter((l) => PATTERN.test(l));
+    expect(hits).toEqual(['const msg = "collected answer(s) so far";']);
+  });
+
+  it("[negative control] the same '(s)' inside a `//` or block comment is NOT caught", () => {
+    const synthetic = "// the card states the talk's track(s) and level\n/* and track(s) again */\nconst x = 1;";
+    expect(stripSourceComments(synthetic).split("\n").some((l) => PATTERN.test(l))).toBe(false);
+  });
+
+  // The false-negative this helper exists to prevent: the private two-regex
+  // idiom cuts a string literal at the "//" of a URL and deletes the real
+  // offender that follows it on the same line.
+  it("[control] a '//' inside a string literal never blinds the scan", () => {
+    const synthetic = 'const s = "see https://example.com/docs for the answer(s)";';
+    expect(stripSourceComments(synthetic)).toBe(synthetic);
+    expect(PATTERN.test(stripSourceComments(synthetic))).toBe(true);
   });
 
   it("countOf/plural produce the correct singular/plural noun", () => {
