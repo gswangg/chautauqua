@@ -53,68 +53,85 @@
 //    template row is exactly this shape and is correctly excluded here
 //    rather than counted as an unresolved offender.
 //
-// 2. JOIN -- drawn control -> product rule: the non-test source corpus is
-//    `app/src/**` + `src/**` .ts/.tsx/.css (test/frame-source-corpus.ts's
-//    `enumerateSourceFiles`, which already skips `.test.` paths and the
-//    decision registry via `isDecisionRegistryFile` -- DEC-967 sighting
-//    #16, a DEC quoting a caption must never satisfy a ledger). Comments
-//    are stripped (string/template-aware, `stripComments`) and HTML
-//    entities decoded (`ENTITY_MAP`) -- but, unlike `normalizeSource`,
-//    *not* whitespace-collapsed, because this file needs the source's own
-//    tag structure to find the element that RENDERS a label, not merely
-//    whether the label occurs anywhere in the corpus (that weaker question
-//    is `frame-control-label.scan.test.ts`'s job).
+// 2. JOIN -- drawn control -> product rule (WAVE 25 REPAIR, DEC-393
+//    amendment, task w25-b -- ported from test/desktop-control-floor.scan.
+//    test.ts, which "already solved this" for the desktop half). The
+//    non-test source corpus is `app/src/**` + `src/**` .ts/.tsx/.css
+//    (test/frame-source-corpus.ts's `enumerateSourceFiles`, which already
+//    skips `.test.` paths and the decision registry via
+//    `isDecisionRegistryFile` -- DEC-967 sighting #16). Each file is
+//    normalized (`normalizeSource`: comment-stripped, entity-decoded,
+//    whitespace-collapsed -- DEC-967's one-stripper rule) into a blob.
 //
-//    The element is found by a BOUNDARY-ANCHORED match in the strongest
-//    available sense: an exact, flat (no nested tag, no `{`/`}` JSX
-//    expression) tag/text pair -- `<TAG attrs>LABEL</TAG>` -- whose
-//    trimmed, whitespace-collapsed text content equals the drawn control's
-//    label exactly. This is strictly stronger than the substring
-//    boundary-anchoring `frame-control-label.scan.test.ts`'s
-//    `labelIsMatched` uses (which only proves the label occurs SOMEWHERE in
-//    the corpus): a whole-text-node equality can only ever be satisfied by
-//    the actual rendering element, never by a longer sentence merely
-//    containing the label as a substring, and it is the narrowest
-//    interpretation that still lets this file read the RENDERING element's
-//    own class attribute rather than merely proving the words exist (which
-//    is already graded elsewhere). A label whose control is composed at
-//    render (a shared helper, a template literal, a live count) therefore
-//    does not resolve to a source element here -- it falls into the
-//    UNRESOLVED bucket below, exactly as `frame-control-label.scan.test.ts`
-//    already treats that shape as an exclusion, not a defect.
+//    For every BOUNDARY-ANCHORED occurrence of a drawn control's label in
+//    every blob (`allBoundaryMatches`, collecting EVERY position rather
+//    than the first), the occurrence is kept only when `ownTextEquals`
+//    confirms the enclosing tag's OWN text content -- the run from the
+//    nearest preceding `>` to the next `<` -- normalises to EXACTLY the
+//    label, never merely CONTAINS it ("the element whose own text content
+//    IS the label"). At each surviving position, the enclosing tag's
+//    `class=`/`className=` tokens are read (`classTokensNear`; quoted
+//    string, `{...}` expression, or template literal, any syntax) and its
+//    `chq-` tokens are UNIONED across every surviving position in every
+//    blob -- never a first-occurrence-per-blob pick. `classTokensNear`
+//    additionally rejects a position that sits inside an as-yet-unclosed
+//    tag's OWN attribute value (e.g. `aria-label="File type"`), so a
+//    sibling/ancestor's class is never misattributed to a string that is
+//    not the control's own rendered label.
 //
-//    Once an element is found, its own `class=`/`className=` tokens (BOTH
-//    spellings; the value may be a quoted string, a `{...}` expression, or
-//    a template literal -- Hono JSX writes `class=`, DEC-393 wave-95) are
-//    read, and each `chq-` token's DECLARED `min-height` is resolved from
-//    any CSS rule (app/src/**/*.css via `allCssFiles`/
-//    `topLevelRulesWithExemption`/`narrowMediaRules`, plus src/**/*.css.ts
-//    via `extractCssTsLiteral` -- both already-shared primitives from
-//    app/src/phone-tap-target-scan/core.ts and app/src/phone-overflow-scan/
-//    population.ts, reused rather than re-derived per DEC-613) whose
-//    selector mentions the token (`selectorMentionsToken`), in a top-level
-//    rule OR inside ANY `@media (max-width: ...)` block regardless of
-//    breakpoint -- a phone-only rule is the correct authoring shape under
-//    DEC-385 and must not be treated as unowned (DEC-393 wave-94). When a
-//    token resolves against more than one matching rule, the token's
-//    resolved height is the MAXIMUM declared `min-height` among them (the
-//    narrowest reasonable reading of "declared": the strongest floor any
-//    rule commits the token to, since which rule actually wins the cascade
-//    at runtime is not this scan's question -- that is `css-contract`'s).
-//    When an element carries more than one `chq-` token, the element's
-//    resolved height is the maximum across its tokens for the same reason.
+//    WAVE 25 REPAIR retires the wave-22 (DEC-995) `LABEL_SITES`/
+//    `AMBIGUOUS_LABELS`/`ambiguous-source-match` shape entirely: that join
+//    graded a label UNRESOLVED (rather than crediting an arbitrary
+//    first-file pick) the moment its several rendering SITES disagreed on
+//    token set -- an honest-but-unmeasuring fix that left 60 of 235 drawn
+//    controls (26% of the population) permanently ungraded on principle,
+//    with a ceiling of 0 giving no signal over them. The union join
+//    resolves this the same way `ownTextEquals`+`allBoundaryMatches` do for
+//    the desktop half: every genuinely OWN-TEXT-EQUAL site (not a mere
+//    substring/aria-label/co-incidental-sibling match) legitimately renders
+//    that exact label, so its class tokens all belong in the same row's
+//    token set -- there is no "disagreement" to be ambiguous about, only a
+//    control whose token set is the union of every element that truly
+//    renders it. `firstBoundaryMatch`'s old "first occurrence per blob"
+//    shape (never used by the ambiguity join, but a decoy the desktop file
+//    already diagnosed) is not ported here at all.
 //
-// 3. GRADE: an OFFENDER is a drawn control whose resolved token declares a
-//    min-height STRICTLY BELOW the floor its own frame draws. A control
-//    with no exact-text source match, no `chq-` class token on the matched
-//    element, or no CSS rule for any of its tokens is NOT an offender --
-//    already graded by frame-control-label's own label ledger and by the
-//    tap-floor family -- and is counted separately as UNRESOLVED, with its
-//    own tripwire so the population cannot silently shrink (DEC-180/808).
+// 3. GRADE (WAVE 25 REPAIR, ported from desktop's `gradeControl` union
+//    grade): the token set is the union of every own-text-equal position's
+//    `chq-` tokens across the whole corpus. A row grades:
+//      - `no-label-match`  -- no own-text-equal position exists anywhere
+//        (the corpus renders no element whose text IS the label -- a label
+//        composed at render, a shared helper, a live count, ...);
+//      - `no-token`        -- an own-text-equal position exists but no
+//        `chq-` token was extracted from its enclosing tag;
+//      - `no-rule`         -- every extracted token has NO CSS rule
+//        anywhere in the corpus mentioning it as a class selector (any
+//        top-level rule, or ANY `@media (max-width: ...)` block regardless
+//        of breakpoint -- a phone-only rule is the correct authoring shape
+//        under DEC-385 and is not treated as unowned, DEC-393 wave-94);
+//      - `no-control-shape` -- every extracted token's qualifying rule(s)
+//        declare no min-height AND none is CONTROL-SHAPED (its own
+//        top-level-or-@media rule declares a `border:`, `background:`,
+//        `padding-inline:`, or `min-height:`, EXCLUDING a bare
+//        `border:none`/`background:none`/`transparent`/`0`/`0px` reset) --
+//        a typography/eyebrow class the pack happens to draw inside a
+//        bordered chip is not the app rendering a control, and grading it
+//        OFFENDER at 0 would assert a gap that does not exist (this is
+//        what stops a bordered typography class becoming a false
+//        offender, ported from desktop's wave-157 repair (iii));
+//      - `resolved`        -- at least one resolved token is
+//        control-shaped; the row's resolved height is the MAXIMUM declared
+//        `min-height` across every qualifying rule and every token found,
+//        and it is an OFFENDER iff that height is strictly below the floor
+//        its own frame draws (an unstyled-height rule counts as declaring
+//        0).
+//    `no-label-match`/`no-token`/`no-rule`/`no-control-shape` are all
+//    UNRESOLVED, never OFFENDER.
 //
 // 4. RATCHET (two-sided, DEC-808): FRAME_FLOOR_DIVERGENCE_CEILING, seeded
 //    by forcing it to -1, running the file, and reading the printed
-//    offender list back.
+//    offender list back. UNRESOLVED_COUNT_TRIPWIRE is its non-vacuity
+//    companion for the unresolved bucket, seeded the identical way.
 //
 // 5. VACUITY: an exact drawn-control count and exact per-file breakdown
 //    tripwire, plus a synthetic positive/negative control pair over a
@@ -126,12 +143,32 @@
 //    (never CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES) -- the wave-147
 //    ruling is explicit that a new non-zero row in the exit gate would move
 //    the campaign's goalposts mid-convergence.
+//
+// PORTING NOTE (wave 25): `ownTextEquals`/`allBoundaryMatches`/
+// `classTokensNear` are copied (not imported) from
+// test/desktop-control-floor.scan.test.ts even though that file exports
+// them, because that file is itself a vitest suite -- importing it would
+// execute its module-scope `describe`/`it` calls a second time inside this
+// file's own module graph, double-registering its 12 tests. This mirrors
+// the file's own pre-existing precedent (§1 above): a sibling SCAN test is
+// always PORTED, never imported, exactly per that file's own "stands
+// alone" header. `stripMediaBlocks`/desktop's `resolveTokenMinHeight`/
+// `tokenIsControlShaped` are NOT ported as-is: the desktop file grades
+// against TOP-LEVEL rules only (DEC-385: desktop is the unqualified base),
+// while the phone grade must ALSO admit `@media (max-width: ...)` rules
+// (DEC-393 wave-94) -- this file's pre-existing CSS-rule corpus (`ALL_CSS_RULES`,
+// built from the shared `app/src/phone-tap-target-scan/core` +
+// `app/src/phone-overflow-scan/population` primitives per DEC-613) already
+// carries both registers as a flat `{selector, body}` list, a different
+// shape from desktop's raw-blob-plus-regex walk. The control-shape test
+// itself (`isControlShapedBody`'s property/value grammar) is ported
+// unchanged onto that `{selector, body}` shape.
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { enumerateSourceFiles, ENTITY_MAP, stripComments } from './frame-source-corpus';
+import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import {
   allCssFiles,
   narrowMediaRules,
@@ -394,70 +431,106 @@ function drawnControlsInFile(fileName: string): DrawnControl[] {
 
 const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
 
-// -- Source corpus: comment-stripped, entity-decoded, whitespace NOT
-// collapsed (this file needs tag structure, unlike frame-control-label's
-// whitespace-collapsed blobs). --------------------------------------------
-
-function decodeEntitiesKeepingStructure(raw: string): string {
-  let s = raw;
-  for (const [entity, char] of Object.entries(ENTITY_MAP)) {
-    s = s.split(entity).join(char);
-  }
-  return s;
-}
+// -- Source corpus: comment-stripped, entity-decoded, whitespace-collapsed
+// (`normalizeSource`, DEC-967's one-stripper rule -- shared with the
+// desktop half, same corpus population). -----------------------------------
 
 const SOURCE_FILE_PATHS = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
+const NORMALIZED_BLOBS: string[] = SOURCE_FILE_PATHS.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
 
-// Every flat (no nested tag, no `{`/`}` JSX expression) tag/text pair found
-// across the whole source corpus, keyed by its trimmed whitespace-collapsed
-// text content -- an exact match against this key is the strongest
-// available boundary anchoring (see file header §2). `chq-` class tokens
-// come from either spelling, string/expr/template value.
-const CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*"|`[^`]*`)/;
-const FLAT_TAG_TEXT_RE = /<([a-zA-Z][a-zA-Z0-9-]*)\b([^>]*)>([^<>{}]*)<\/\1>/g;
-
-// wave-22 (DEC-995 / DEC-976 amendment): first-occurrence-wins undercounts
-// ambiguity -- 82/720 labels carry more than one DISTINCT `chq-` token set
-// across the corpus (measured on this branch). Every site is now collected
-// per label, keyed by a SIGNATURE (its sorted, joined token list; a site
-// with NO chq- token is itself a distinct signature, the empty string). A
-// label whose sites carry more than one distinct signature can never be
-// resolved to a single owning rule here -- it grades `ambiguous-source-match`
-// (falls into the existing UNRESOLVED bucket, never an offender) rather than
-// silently crediting whichever file happened to sort first.
-const LABEL_SITES = new Map<string, Map<string, string[]>>(); // label -> signature -> tokens (first tokens seen for that signature)
-for (const filePath of SOURCE_FILE_PATHS) {
-  const raw = readFileSync(filePath, 'utf-8');
-  const processed = decodeEntitiesKeepingStructure(stripComments(raw));
-  FLAT_TAG_TEXT_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = FLAT_TAG_TEXT_RE.exec(processed))) {
-    const attrs = m[2]!;
-    const text = m[3]!.replace(/\s+/g, ' ').trim();
-    if (text.length === 0) continue;
-    const classMatch = attrs.match(CLASS_ATTR_RE);
-    const tokens = classMatch ? [...classMatch[1]!.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]) : [];
-    const signature = [...tokens].sort().join(',');
-    let sites = LABEL_SITES.get(text);
-    if (!sites) {
-      sites = new Map();
-      LABEL_SITES.set(text, sites);
-    }
-    if (!sites.has(signature)) sites.set(signature, tokens); // first tokens seen for this signature, deterministic file order
-  }
+function isAlnum(ch: string | undefined): boolean {
+  return ch !== undefined && /[A-Za-z0-9]/.test(ch);
 }
 
-const LABEL_TO_TOKENS = new Map<string, string[]>();
-const AMBIGUOUS_LABELS = new Set<string>();
-for (const [label, sites] of LABEL_SITES) {
-  if (sites.size > 1) {
-    AMBIGUOUS_LABELS.add(label);
-  } else {
-    LABEL_TO_TOKENS.set(label, [...sites.values()][0]!);
+/** Every boundary-anchored occurrence of `label` in `blob`. Ported
+ * unchanged from test/desktop-control-floor.scan.test.ts's export of the
+ * same name (see file-header PORTING NOTE for why this is a copy, not an
+ * import). Exported for the non-vacuity fixture below. */
+export function allBoundaryMatches(label: string, blob: string): number[] {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return [];
+  const firstIsAlnum = isAlnum(needle[0]);
+  const lastIsAlnum = isAlnum(needle[needle.length - 1]);
+  const positions: number[] = [];
+  let idx = blob.indexOf(needle);
+  while (idx !== -1) {
+    const before = idx > 0 ? blob[idx - 1] : undefined;
+    const afterIdx = idx + needle.length;
+    const after = afterIdx < blob.length ? blob[afterIdx] : undefined;
+    const boundaryBeforeOk = !firstIsAlnum || !isAlnum(before);
+    const boundaryAfterOk = !lastIsAlnum || !isAlnum(after);
+    if (boundaryBeforeOk && boundaryAfterOk) positions.push(idx);
+    idx = blob.indexOf(needle, idx + 1);
   }
+  return positions;
+}
+
+/** True when the text content of the tag immediately enclosing `idx` in
+ * `blob` -- from the nearest preceding `>` to the next `<` -- normalises
+ * (whitespace-collapsed, trimmed) to EXACTLY `label`. Ported unchanged from
+ * test/desktop-control-floor.scan.test.ts's export of the same name.
+ * Exported for the non-vacuity fixture below. */
+export function ownTextEquals(label: string, blob: string, idx: number): boolean {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  const prevGt = blob.lastIndexOf('>', idx);
+  if (prevGt === -1) return false;
+  const afterPrevGt = blob.slice(prevGt + 1, idx);
+  if (afterPrevGt.includes('<')) return false;
+  const nextLt = blob.indexOf('<', idx);
+  const textEnd = nextLt === -1 ? blob.length : nextLt;
+  const fullText = blob.slice(prevGt + 1, textEnd).replace(/\s+/g, ' ').trim();
+  return fullText === needle;
+}
+
+const CLASS_TOKEN_RE = /\bchq-[A-Za-z0-9-]+/g;
+
+/** `chq-` tokens carried by the nearest enclosing element's class=/
+ * className= attribute at `idx` in `blob`. Ported unchanged from
+ * test/desktop-control-floor.scan.test.ts's export of the same name.
+ * Exported for the non-vacuity fixture below. */
+export function classTokensNear(blob: string, idx: number): string[] {
+  const prevGt = blob.lastIndexOf('>', idx);
+  const afterPrevGt = blob.slice(prevGt + 1, idx);
+  if (afterPrevGt.includes('<')) return [];
+  if (prevGt === -1) return [];
+  const openLt = blob.lastIndexOf('<', prevGt);
+  if (openLt === -1) return [];
+  const tagChunk = blob.slice(openLt, prevGt + 1);
+  const cm = tagChunk.match(/\b(?:class|className)\s*=\s*/);
+  if (!cm) return [];
+  const startAttr = (cm.index ?? 0) + cm[0].length;
+  const opener = tagChunk[startAttr];
+  let valueEnd: number;
+  if (opener === '"' || opener === "'" || opener === '`') {
+    const close = tagChunk.indexOf(opener, startAttr + 1);
+    if (close === -1) return [];
+    valueEnd = close + 1;
+  } else if (opener === '{') {
+    let depth = 0;
+    let j = startAttr;
+    for (; j < tagChunk.length; j++) {
+      if (tagChunk[j] === '{') depth++;
+      else if (tagChunk[j] === '}') {
+        depth--;
+        if (depth === 0) {
+          j++;
+          break;
+        }
+      }
+    }
+    valueEnd = j;
+  } else {
+    return [];
+  }
+  const valueChunk = tagChunk.slice(startAttr, valueEnd);
+  return [...new Set(valueChunk.match(CLASS_TOKEN_RE) ?? [])];
 }
 
 // -- CSS corpus: app/src/**/*.css + src/**/*.css.ts template literals ------
+// (unchanged from the pre-wave-25 file: this is the phone-specific CSS
+// register that admits BOTH top-level and @media(max-width) rules per
+// DEC-385/DEC-393 wave-94, a different corpus shape from desktop's
+// top-level-only blob walk -- see file-header PORTING NOTE.)
 
 function cssTsFiles(root: string): string[] {
   const out: string[] = [];
@@ -489,52 +562,163 @@ for (const cssTsFile of cssTsFiles(SRC_ROOT)) {
 
 const MIN_HEIGHT_DECL_RE = /min-height\s*:\s*(\d+(?:\.\d+)?)px/g;
 
-/** The largest declared `min-height` (px) among every CSS rule whose
- * selector mentions `token`, or `undefined` if no rule mentions it at all
- * (file header §2: "declared" is read as the strongest floor any matching
- * rule commits the token to). */
-function resolveTokenMinHeight(token: string): number | undefined {
-  let best: number | undefined;
+/** Resolves `token`'s declared min-height from every CSS rule (top-level or
+ * @media(max-width), per the phone corpus above) whose selector mentions
+ * it: `hasRule` is true the moment any such rule exists (even one
+ * declaring no min-height, per the file's own "an offender at 0" grammar);
+ * `maxMinHeight` is the largest min-height px value found across all
+ * qualifying rules. Ported (grammar, not code shape -- the underlying rule
+ * representation differs) from desktop's `resolveTokenMinHeightIndexed`. */
+function resolveTokenMinHeight(token: string): { hasRule: boolean; maxMinHeight: number | undefined } {
+  let hasRule = false;
+  let maxMinHeight: number | undefined;
   for (const rule of ALL_CSS_RULES) {
     if (!selectorMentionsToken(rule.selector, token)) continue;
+    hasRule = true;
     MIN_HEIGHT_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = MIN_HEIGHT_DECL_RE.exec(rule.body))) {
       const v = Number(m[1]);
-      if (best === undefined || v > best) best = v;
+      if (maxMinHeight === undefined || v > maxMinHeight) maxMinHeight = v;
     }
   }
-  return best;
+  return { hasRule, maxMinHeight };
+}
+
+// -- Control-shape corroboration (WAVE 25 REPAIR, ported from desktop's
+// `isControlShapedBody`/`tokenIsControlShaped`, §676/§795): a resolved
+// token must actually paint a control face -- its own rule declares a
+// border, a background, a padding-inline, or a min-height, EXCLUDING a
+// bare `border:none`/`background:none`/`transparent`/`0`/`0px` reset -- or
+// the row grades UNRESOLVED (`no-control-shape`) rather than OFFENDER.
+// `isControlShapedBody`'s grammar is ported byte-for-byte onto the phone
+// corpus's own `{selector, body}` shape; `selectorOwnsToken` is likewise
+// ported so a token only "owns" a rule when it is the rightmost
+// (own-element) compound of a selector, never merely an ANCESTOR
+// (`.token button { ... }` resets a nested control, not `.token`'s own
+// box). -----------------------------------------------------------------
+
+const NONE_VALUE_RE = /^(none|transparent|0|0px)$/i;
+
+/** Ported byte-for-byte from desktop's `isControlShapedBody`. */
+function isControlShapedBody(body: string): boolean {
+  for (const raw of body.split(';')) {
+    const m = raw.trim().match(/^(border|background|padding-inline|min-height)\s*:\s*(.+)$/);
+    if (!m) continue;
+    const prop = m[1]!;
+    const value = m[2]!.trim();
+    if ((prop === 'border' || prop === 'background') && NONE_VALUE_RE.test(value)) continue;
+    return true;
+  }
+  return false;
+}
+
+function isTokenChar(ch: string | undefined): boolean {
+  return ch !== undefined && /[A-Za-z0-9-]/.test(ch);
+}
+
+/** Ported unchanged from desktop's `selectorOwnsToken`: `topLevelRulesWithExemption`/
+ * `narrowMediaRules` capture the raw, still comma-joined selector text of
+ * each `{...}` block exactly as desktop's own `RULE_RE` walk does (neither
+ * splits a comma-separated selector list into one rule per selector), so
+ * the comma-split loop is required here too -- e.g.
+ * `app/src/pages/submissions/detail.css`'s `.chq-detail-back,\n
+ * .chq-detail-position-prev,\n  .chq-detail-position-next { ... }` is ONE
+ * rule with a 3-way selector list, and `.chq-detail-position-prev` only
+ * "owns" it via the middle branch of that list. */
+function selectorOwnsToken(selectorText: string, token: string): boolean {
+  const needle = `.${token}`;
+  for (const rawSel of selectorText.split(',')) {
+    let idx = rawSel.indexOf(needle);
+    while (idx !== -1) {
+      const before = idx > 0 ? rawSel[idx - 1] : undefined;
+      const afterIdx = idx + needle.length;
+      const after = rawSel[afterIdx];
+      if (!isTokenChar(before) && !isTokenChar(after)) {
+        const rest = rawSel.slice(afterIdx);
+        if (!/[\s>+~][^\s]/.test(rest)) return true;
+      }
+      idx = rawSel.indexOf(needle, idx + 1);
+    }
+  }
+  return false;
+}
+
+/** True when `token`'s own rule(s) anywhere in the phone CSS corpus
+ * (top-level or @media(max-width)) declare a border, a background, a
+ * padding-inline, or a min-height. Ported from desktop's
+ * `tokenIsControlShaped`, adapted to the phone corpus's pre-parsed
+ * `{selector, body}` list rather than a raw-blob regex walk. Exported for
+ * the non-vacuity fixture below. */
+export function tokenIsControlShaped(token: string): boolean {
+  for (const rule of ALL_CSS_RULES) {
+    if (!selectorOwnsToken(rule.selector, token)) continue;
+    if (isControlShapedBody(rule.body)) return true;
+  }
+  return false;
 }
 
 // -- Grade -------------------------------------------------------------------
 
+export type RowReason = 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'resolved';
+
 interface Graded {
   control: DrawnControl;
   resolvedHeight: number | undefined;
-  reason: 'no-source-match' | 'no-class-token' | 'no-css-rule' | 'ambiguous-source-match' | 'resolved';
+  reason: RowReason;
+  tokens: string[];
 }
 
-const GRADED: Graded[] = ALL_CONTROLS.map((control) => {
-  if (AMBIGUOUS_LABELS.has(control.label)) {
-    return { control, resolvedHeight: undefined, reason: 'ambiguous-source-match' };
+/** WAVE 25 REPAIR (DEC-393 amendment, task w25-b): resolves the token set
+ * as the UNION of the class tokens of every element in the whole corpus
+ * whose OWN text content IS the label (`allBoundaryMatches` +
+ * `ownTextEquals`, ported from desktop's `gradeControl`) -- never a
+ * first-occurrence-per-blob pick, and never a "sites disagree -> unresolved"
+ * ambiguity gate (the retired wave-22 `LABEL_SITES` shape): every
+ * genuinely own-text-equal site really does render that exact label, so
+ * its tokens belong in the row's set. A row with a resolved token set but
+ * no CONTROL-SHAPED member grades UNRESOLVED (`no-control-shape`) rather
+ * than OFFENDER. */
+function gradeControl(control: DrawnControl): Graded {
+  let tokens: string[] = [];
+  let ownTextMatched = false;
+  for (const blob of NORMALIZED_BLOBS) {
+    for (const idx of allBoundaryMatches(control.label, blob)) {
+      if (!ownTextEquals(control.label, blob, idx)) continue;
+      ownTextMatched = true;
+      tokens.push(...classTokensNear(blob, idx));
+    }
   }
-  const tokens = LABEL_TO_TOKENS.get(control.label);
-  if (tokens === undefined) return { control, resolvedHeight: undefined, reason: 'no-source-match' };
-  const chqTokens = tokens.filter((t) => t.startsWith('chq-'));
-  if (chqTokens.length === 0) return { control, resolvedHeight: undefined, reason: 'no-class-token' };
-  let best: number | undefined;
-  for (const t of chqTokens) {
-    const h = resolveTokenMinHeight(t);
-    if (h !== undefined && (best === undefined || h > best)) best = h;
-  }
-  if (best === undefined) return { control, resolvedHeight: undefined, reason: 'no-css-rule' };
-  return { control, resolvedHeight: best, reason: 'resolved' };
-});
+  tokens = [...new Set(tokens)].filter((t) => t.startsWith('chq-'));
 
+  if (!ownTextMatched) {
+    return { control, resolvedHeight: undefined, reason: 'no-label-match', tokens };
+  }
+  if (tokens.length === 0) {
+    return { control, resolvedHeight: undefined, reason: 'no-token', tokens };
+  }
+
+  let best: number | undefined;
+  let anyRule = false;
+  let anyControlShaped = false;
+  for (const t of tokens) {
+    const { hasRule, maxMinHeight } = resolveTokenMinHeight(t);
+    if (hasRule) anyRule = true;
+    if (maxMinHeight !== undefined && (best === undefined || maxMinHeight > best)) best = maxMinHeight;
+    if (tokenIsControlShaped(t)) anyControlShaped = true;
+  }
+  if (!anyRule) {
+    return { control, resolvedHeight: undefined, reason: 'no-rule', tokens };
+  }
+  if (!anyControlShaped) {
+    return { control, resolvedHeight: undefined, reason: 'no-control-shape', tokens };
+  }
+  return { control, resolvedHeight: best ?? 0, reason: 'resolved', tokens };
+}
+
+const GRADED: Graded[] = ALL_CONTROLS.map(gradeControl);
 const OFFENDERS: Graded[] = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! < g.control.drawnFloor);
 const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved');
-const AMBIGUOUS: Graded[] = GRADED.filter((g) => g.reason === 'ambiguous-source-match');
 
 // -- Ratchets ------------------------------------------------------------
 // Wave-155 pb (DEC-393): the 7 offenders measured on v12m-w7-da -- "Sign in"
@@ -543,64 +727,20 @@ const AMBIGUOUS: Graded[] = GRADED.filter((g) => g.reason === 'ambiguous-source-
 // "Next ›" (Docs:201-202, drawn 46/declared 44), and "Download .ics" (Public
 // and Portal:401, drawn 46/declared 44; :885, drawn 48/declared 44) -- are
 // each fixed at the token the scan resolved, in a scoped rule inside the
-// owning sheet's terminal max-width:700px block. Re-measured on this branch
-// by forcing this ceiling to -1: 0 offenders remain. See
-// docs/design/audit/frame-control-floor-390-v12.md's DRAINED section.
+// owning sheet's terminal max-width:700px block.
+//
+// WAVE 25 REPAIR (DEC-393 amendment, task w25-b): re-measured on this
+// branch with the union join replacing the wave-22 ambiguity gate, forcing
+// this ceiling to -1 and reading the printed offender list back:
+// FRAME_FLOOR_DIVERGENCE_CEILING remains 0. See
+// docs/design/audit/frame-control-floor-390-v12.md for the wave-25
+// breakdown.
 export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 
-// Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808): re-measured
-// on this branch the same way, so the population cannot silently shrink to
-// zero controls and pass by construction. May move either direction as the
-// pack or the corpus changes -- it is a tripwire, not a two-sided ratchet,
-// because "resolved but conformant" and "unresolved" are not the same
-// finding and neither direction of this count is inherently a regression.
-// Re-measured wave 154 (merge of task w10-na, the SPA classless-control
-// tap-floor widening): 153 -> 152. w10-na gave previously classless page
-// anchors real CSS rules (.chq-notfound-links a, .chq-agenda-held-back a,
-// .chq-event-unscheduled-notice a, .chq-settings-portal-preview-link,
-// .chq-speakers-*/.chq-detail-* terminal-block rules), so one drawn control
-// that previously resolved to NO CSS rule now resolves to one and leaves
-// this bucket. The population did not shrink -- a member moved from
-// UNRESOLVED to resolved, which is the direction this campaign wants.
-//
-// Re-measured again wave-155 pb, independently, and read the same 152. That
-// task's fix only moves already-resolved controls, so it cannot change this
-// bucket -- the two waves agreeing on 152 is the receipt that the drift was
-// w10-na's and is now settled.
-//
-// Re-measured by the wave-155 merge train (batch pb/pd/pf/pc/pa/pe): 152 ->
-// 151. Bisected across the train's six merge commits rather than assumed --
-// the count is 152 at the pb, pd, pf and pc merges and 151 from the pa merge
-// onward, so the mover is task pa (DEC-919 wave-155 amendment), whose
-// ApiTokensPanel/PeopleRolesPanel read drills newly render the frame's
-// phone-only primary. A drawn control that previously matched no source at
-// all now resolves to a real class token (.chq-settings-phone-action) with a
-// real CSS rule behind it, so it leaves this bucket. Same direction as
-// w10-na above: the population did not shrink, a member moved from
-// UNRESOLVED to resolved.
-//
-// Re-measured wave-22 (DEC-995): the ambiguity-honest join (see LABEL_SITES
-// above) moves every drawn control whose label previously "resolved" (or
-// graded `no-class-token`/`no-css-rule` off a first-file-wins pick) via an
-// arbitrary first-file-wins pick, but whose label actually carries more than
-// one distinct `chq-` token set elsewhere in the corpus, into this bucket as
-// `ambiguous-source-match`. Seeded by forcing this constant to -1, running
-// the file, and reading the printed count back: 151 -> 202 (+51 net -- of
-// the 60 drawn controls now graded ambiguous (AMBIGUOUS_COUNT_TRIPWIRE
-// below), 51 previously graded `resolved` and 9 were already in this bucket
-// under a different reason, so the population did not shrink, it became
-// honest about which of its members a first-hit pick was mis-crediting). See
-// docs/design/audit/frame-control-floor-390-v12.md for the corrected
-// DRAINED section.
-export const UNRESOLVED_COUNT_TRIPWIRE = 202;
-
-// Non-vacuity tripwire for the AMBIGUOUS_COUNT (DEC-180/808/995): the subset
-// of UNRESOLVED_COUNT_TRIPWIRE whose reason is specifically
-// `ambiguous-source-match` -- a label whose sites carry more than one
-// distinct `chq-` token set. Seeded the same way this file seeds every
-// constant: forced to -1, run, read the printed number back. Measured on
-// this branch: 60.
-export const AMBIGUOUS_COUNT_TRIPWIRE = 60;
+// Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
+// on this branch the same way. See the audit doc for the wave-25
+// no-label-match/no-token/no-rule/no-control-shape breakdown.
+export const UNRESOLVED_COUNT_TRIPWIRE = 112;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
@@ -658,7 +798,8 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
     // Fabricated single-file source population + CSS, written to a real
     // tmpdir (never a live product path), proving the join/resolve/grade
     // pipeline end to end: the OFFENDER token declares LESS than its drawn
-    // floor; the CONFORMING token declares AT LEAST its drawn floor.
+    // floor; the CONFORMING token declares AT LEAST its drawn floor; the
+    // TYPOGRAPHY-ONLY token (no control shape) must not offend either.
     const dir = mkdtempSync(join(tmpdir(), 'frame-control-floor-synth-'));
     try {
       writeFileSync(
@@ -669,6 +810,7 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
           '  <div>',
           '    <span className="chq-zzy-painted">Zzy Painted Present</span>',
           '    <a className="chq-zzy-anchor">Zzy Anchor Present</a>',
+          '    <span className="chq-zzy-label">Zzy Typography Present</span>',
           '  </div>',
           ');',
         ].join('\n'),
@@ -676,47 +818,67 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
       writeFileSync(
         join(dir, 'fixture.css'),
         [
-          '.chq-zzy-painted { min-height: 30px; }', // OFFENDER: 30 < 46
-          '@media (max-width: 700px) { .chq-zzy-anchor { min-height: 44px; } }', // conforming: 44 >= 44
+          '.chq-zzy-painted { border-radius: 4px; background: #4E5C31; min-height: 30px; }', // OFFENDER: control-shaped, 30 < 46
+          '@media (max-width: 700px) { .chq-zzy-anchor { min-height: 44px; } }', // conforming: control-shaped (min-height itself), 44 >= 44
+          '.chq-zzy-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }', // NOT control-shaped
         ].join('\n'),
       );
 
-      const synthTokens = new Map<string, string[]>();
-      const raw = readFileSync(join(dir, 'Fixture.tsx'), 'utf-8');
-      const processed = decodeEntitiesKeepingStructure(stripComments(raw));
-      FLAT_TAG_TEXT_RE.lastIndex = 0;
-      let mm: RegExpExecArray | null;
-      while ((mm = FLAT_TAG_TEXT_RE.exec(processed))) {
-        const text = mm[3]!.replace(/\s+/g, ' ').trim();
-        const classMatch = mm[2]!.match(CLASS_ATTR_RE);
-        const tokens = classMatch ? [...classMatch[1]!.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]) : [];
-        synthTokens.set(text, tokens);
-      }
-      expect(synthTokens.get('Zzy Painted Present')).toEqual(['chq-zzy-painted']);
-      expect(synthTokens.get('Zzy Anchor Present')).toEqual(['chq-zzy-anchor']);
-      expect(synthTokens.get('Zzy Footer Present')).toBeUndefined(); // negative: comment-only mention never satisfies
+      const rawTsx = readFileSync(join(dir, 'Fixture.tsx'), 'utf-8');
+      const blob = normalizeSource(rawTsx);
+      const paintedIdx = allBoundaryMatches('Zzy Painted Present', blob).find((idx) =>
+        ownTextEquals('Zzy Painted Present', blob, idx),
+      );
+      expect(paintedIdx).not.toBeUndefined();
+      expect(classTokensNear(blob, paintedIdx!)).toEqual(['chq-zzy-painted']);
+      const anchorIdx = allBoundaryMatches('Zzy Anchor Present', blob).find((idx) =>
+        ownTextEquals('Zzy Anchor Present', blob, idx),
+      );
+      expect(anchorIdx).not.toBeUndefined();
+      expect(classTokensNear(blob, anchorIdx!)).toEqual(['chq-zzy-anchor']);
+      // NEGATIVE: a comment-only mention never satisfies own-text-equal.
+      const footerSites = allBoundaryMatches('Zzy Footer Present', blob).filter((idx) =>
+        ownTextEquals('Zzy Footer Present', blob, idx),
+      );
+      expect(footerSites).toEqual([]);
 
       const cssRaw = sanitizeCommentBraces(stripCssComments(readFileSync(join(dir, 'fixture.css'), 'utf-8')));
       const synthRules = [
         ...topLevelRulesWithExemption(cssRaw),
         ...narrowMediaRules(cssRaw, Number.MAX_SAFE_INTEGER),
       ];
-      function synthResolve(token: string): number | undefined {
-        let best: number | undefined;
+      function synthResolve(token: string): { hasRule: boolean; maxMinHeight: number | undefined } {
+        let hasRule = false;
+        let maxMinHeight: number | undefined;
         for (const rule of synthRules) {
           if (!selectorMentionsToken(rule.selector, token)) continue;
+          hasRule = true;
           MIN_HEIGHT_DECL_RE.lastIndex = 0;
           let hm: RegExpExecArray | null;
           while ((hm = MIN_HEIGHT_DECL_RE.exec(rule.body))) {
             const v = Number(hm[1]);
-            if (best === undefined || v > best) best = v;
+            if (maxMinHeight === undefined || v > maxMinHeight) maxMinHeight = v;
           }
         }
-        return best;
+        return { hasRule, maxMinHeight };
       }
-      expect(synthResolve('chq-zzy-painted')).toBe(30);
-      expect(synthResolve('chq-zzy-anchor')).toBe(44);
-      // POSITIVE: an offender (drawn 46 > declared 30).
+      function synthControlShaped(token: string): boolean {
+        for (const rule of synthRules) {
+          if (!selectorOwnsToken(rule.selector, token)) continue;
+          if (isControlShapedBody(rule.body)) return true;
+        }
+        return false;
+      }
+      expect(synthResolve('chq-zzy-painted')).toEqual({ hasRule: true, maxMinHeight: 30 });
+      expect(synthResolve('chq-zzy-anchor')).toEqual({ hasRule: true, maxMinHeight: 44 });
+      expect(synthControlShaped('chq-zzy-painted')).toBe(true);
+      expect(synthControlShaped('chq-zzy-anchor')).toBe(true);
+      // NEGATIVE: a typography-only rule (no border/background/
+      // padding-inline/min-height) is not control-shaped, even though a
+      // rule mentioning it exists.
+      expect(synthResolve('chq-zzy-label')).toEqual({ hasRule: true, maxMinHeight: undefined });
+      expect(synthControlShaped('chq-zzy-label')).toBe(false);
+      // POSITIVE: an offender (drawn 46 > declared 30, control-shaped).
       expect(30 < 46).toBe(true);
       // NEGATIVE: a conforming control (drawn 44 <= declared 44).
       expect(44 < 44).toBe(false);
@@ -735,7 +897,7 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
       const lines = OFFENDERS.map(
         (o) =>
           `${o.control.fileName}:${o.control.line} -- drawn ${o.control.drawnFloor}px, "${o.control.label}" ` +
-          `declares ${o.resolvedHeight}px`,
+          `declares ${o.resolvedHeight}px (tokens [${o.tokens.join(', ')}])`,
       );
       throw new Error(
         `${OFFENDERS.length} drawn controls declare a min-height BELOW the floor their own frame draws, ` +
@@ -758,7 +920,7 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
     expect(OFFENDERS.length).toBeGreaterThanOrEqual(FRAME_FLOOR_DIVERGENCE_CEILING);
   });
 
-  it(`UNRESOLVED bucket tripwire: exactly UNRESOLVED_COUNT_TRIPWIRE (${UNRESOLVED_COUNT_TRIPWIRE}) drawn controls resolve to no source match, no class token, no CSS rule, or an ambiguous source match`, () => {
+  it(`UNRESOLVED bucket tripwire: exactly UNRESOLVED_COUNT_TRIPWIRE (${UNRESOLVED_COUNT_TRIPWIRE}) drawn controls resolve to no label match, no class token, no CSS rule, or no control-shaped token`, () => {
     if (UNRESOLVED.length !== UNRESOLVED_COUNT_TRIPWIRE) {
       throw new Error(
         `measured ${UNRESOLVED.length} unresolved drawn controls, expected the tripwire value ` +
@@ -770,84 +932,47 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
     expect(UNRESOLVED.length).toBe(UNRESOLVED_COUNT_TRIPWIRE);
   });
 
-  it(`AMBIGUOUS bucket tripwire: exactly AMBIGUOUS_COUNT_TRIPWIRE (${AMBIGUOUS_COUNT_TRIPWIRE}) drawn controls carry a label whose sites resolve to more than one distinct chq- token set (DEC-995)`, () => {
-    if (AMBIGUOUS.length !== AMBIGUOUS_COUNT_TRIPWIRE) {
-      throw new Error(
-        `measured ${AMBIGUOUS.length} ambiguous-source-match drawn controls, expected the tripwire value ` +
-          `${AMBIGUOUS_COUNT_TRIPWIRE}. Re-measure and replace the line:\n` +
-          `  export const AMBIGUOUS_COUNT_TRIPWIRE = ${AMBIGUOUS.length};`,
-      );
-    }
-    expect(AMBIGUOUS.length).toBe(AMBIGUOUS_COUNT_TRIPWIRE);
+  it('every row is accounted for exactly once across resolved/unresolved, and every resolved row is offender xor ok', () => {
+    expect(GRADED.length).toBe(ALL_CONTROLS.length);
+    const resolvedCount = GRADED.filter((g) => g.reason === 'resolved').length;
+    expect(resolvedCount + UNRESOLVED.length).toBe(ALL_CONTROLS.length);
+    const resolvedOk = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! >= g.control.drawnFloor);
+    expect(resolvedOk.length + OFFENDERS.length).toBe(resolvedCount);
   });
 
-  it('ambiguity join, wave-22 (DEC-995): a label with two distinct chq- token sets across sites grades ambiguous-source-match; a label with two sites sharing the SAME token set still resolves', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'frame-control-floor-ambiguity-synth-'));
+  it('union join: a label rendered at more than one site unions their tokens rather than flagging ambiguity (DEC-393 wave-25 repair of the retired wave-22 ambiguity gate)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'frame-control-floor-union-synth-'));
     try {
       writeFileSync(
         join(dir, 'FixtureA.tsx'),
-        [
-          'export const FixtureA = () => (',
-          '  <span className="chq-zzy-ambiguous-a">Zzy Ambiguous Present</span>',
-          ');',
-        ].join('\n'),
+        ['export const FixtureA = () => (', '  <span className="chq-zzy-union-a">Zzy Union Present</span>', ');'].join(
+          '\n',
+        ),
       );
       writeFileSync(
         join(dir, 'FixtureB.tsx'),
-        [
-          'export const FixtureB = () => (',
-          '  <span className="chq-zzy-ambiguous-b">Zzy Ambiguous Present</span>',
-          ');',
-        ].join('\n'),
+        ['export const FixtureB = () => (', '  <span className="chq-zzy-union-b">Zzy Union Present</span>', ');'].join(
+          '\n',
+        ),
       );
-      writeFileSync(
-        join(dir, 'FixtureC.tsx'),
-        [
-          'export const FixtureC = () => (',
-          '  <span className="chq-zzy-same">Zzy Unambiguous Present</span>',
-          ');',
-        ].join('\n'),
-      );
-      writeFileSync(
-        join(dir, 'FixtureD.tsx'),
-        [
-          'export const FixtureD = () => (',
-          '  <span className="chq-zzy-same">Zzy Unambiguous Present</span>',
-          ');',
-        ].join('\n'),
-      );
-
-      function collectSites(filePaths: string[]): Map<string, Map<string, string[]>> {
-        const sites = new Map<string, Map<string, string[]>>();
-        for (const filePath of filePaths) {
-          const raw = readFileSync(filePath, 'utf-8');
-          const processed = decodeEntitiesKeepingStructure(stripComments(raw));
-          FLAT_TAG_TEXT_RE.lastIndex = 0;
-          let mm: RegExpExecArray | null;
-          while ((mm = FLAT_TAG_TEXT_RE.exec(processed))) {
-            const text = mm[3]!.replace(/\s+/g, ' ').trim();
-            const classMatch = mm[2]!.match(CLASS_ATTR_RE);
-            const tokens = classMatch ? [...classMatch[1]!.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]) : [];
-            const signature = [...tokens].sort().join(',');
-            let bucket = sites.get(text);
-            if (!bucket) {
-              bucket = new Map();
-              sites.set(text, bucket);
-            }
-            if (!bucket.has(signature)) bucket.set(signature, tokens);
-          }
+      const blobs = [
+        normalizeSource(readFileSync(join(dir, 'FixtureA.tsx'), 'utf-8')),
+        normalizeSource(readFileSync(join(dir, 'FixtureB.tsx'), 'utf-8')),
+      ];
+      let tokens: string[] = [];
+      let matched = false;
+      for (const blob of blobs) {
+        for (const idx of allBoundaryMatches('Zzy Union Present', blob)) {
+          if (!ownTextEquals('Zzy Union Present', blob, idx)) continue;
+          matched = true;
+          tokens.push(...classTokensNear(blob, idx));
         }
-        return sites;
       }
-
-      // POSITIVE: two distinct token sets for the same label -> ambiguous.
-      const ambiguousSites = collectSites([join(dir, 'FixtureA.tsx'), join(dir, 'FixtureB.tsx')]);
-      expect(ambiguousSites.get('Zzy Ambiguous Present')?.size).toBe(2);
-
-      // NEGATIVE: two sites, same token set -> still a single distinct
-      // signature, resolves rather than grading ambiguous.
-      const unambiguousSites = collectSites([join(dir, 'FixtureC.tsx'), join(dir, 'FixtureD.tsx')]);
-      expect(unambiguousSites.get('Zzy Unambiguous Present')?.size).toBe(1);
+      tokens = [...new Set(tokens)];
+      // POSITIVE: both sites' tokens are UNIONED into one row, not flagged
+      // ambiguous and dropped to unresolved -- the retired wave-22 shape.
+      expect(matched).toBe(true);
+      expect(tokens.sort()).toEqual(['chq-zzy-union-a', 'chq-zzy-union-b']);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
