@@ -194,6 +194,12 @@ export async function loadEditableSubmission(
         answerFieldRoleCondition("session_format"),
       ),
     )
+    // DEC-558: a submission may carry more than one session_format-role
+    // answer (one per role-tagged field on its form), so the candidate set
+    // needs a total order for `.limit(1)` to name one unambiguous row.
+    // submission_answer.id is unique, so ordering by it makes the winner
+    // deterministic instead of storage-order-dependent.
+    .orderBy(schema.submissionAnswer.id)
     .limit(1);
   const formatLabel = formatRows[0] ? roleAnswerLabel(formatRows[0].valueJson) : null;
 

@@ -349,7 +349,7 @@
 
 .chq-comms-merge-warning-title {
   margin: 0;
-  font-family: 'Familjen Grotesk', sans-serif;
+  font-family: var(--chq-font-display);
   font-size: 16px;
   font-weight: 700;
 }
@@ -365,12 +365,18 @@
 /* DEC-939: the frame's "Comms · Compose · step N" breadcrumb, portalled
    into the admin shell's #chq-header-slot -- same shape as review.css's
    .chq-review-scoped-progress-caption. */
+/* DEC-989: the breadcrumb is a single-line header caption, so it keeps
+   `white-space: nowrap` -- but a long step label must truncate inside the
+   header slot rather than push the 390 viewport horizontally, so the
+   nowrap carries its own overflow escape in the same rule. */
 .chq-comms-wizard-breadcrumb {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--chq-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Ruling A18: the evaluation-plan select is "Include reviewer feedback"'s

@@ -271,12 +271,12 @@ export function EditPage(props: {
       </form>
       <FieldRulesScript fields={data.fields} />
       {/* DEC-777 (wave-148 amendment): docs/design/Chautauqua Public and
-          Portal.dc.html:620 (390) / :1405 (desktop) draw a read-only
-          "Session length" row between the Session/Speaker fields and the
-          participants list -- "Talk, 30 min · set by the organisers". The
+          Portal.dc.html:620 `Talk, 30 min · set by the organisers` (390)
+          / :1405 (desktop) draw a read-only "Session length" row between
+          the Session/Speaker fields and the participants list. The
           format answer comes through data.formatLabel
           (loadEditableSubmission's answerFieldRoleCondition('session_format')
-          read, review/submissions.ts:908's own predicate) and the SAME
+          read, src/server/repo/review/submissions.ts's own predicate) and the SAME
           sessionFormatLabel vocabulary (DEC-908) every other reader uses --
           never a second '(N min)' parser. When there is no session_format
           answer, or its stored label carries no parseable duration (so

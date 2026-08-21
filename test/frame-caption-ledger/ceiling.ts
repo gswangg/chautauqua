@@ -385,5 +385,8 @@
 // this file's own standing rule the constant below is re-seeded to what the
 // two-sided ratchet actually PRINTS against the integrated tree (ceiling
 // forced to -1, the offender count read back), never a lane's pre-merge figure
-// and never a guess.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
+// and never a guess. Measured on the integrated tree: 6 -- a LOWERING from
+// every lane's own figure, because six lanes' builds and exclusions coexist
+// here for the first time and each was measured without the others'.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=6
+export const FRAME_CAPTION_UNMATCHED_CEILING = 6;

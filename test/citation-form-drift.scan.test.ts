@@ -193,7 +193,17 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // file) -- no ruling's MEANING changed, only the citation's coordinate
 // shape. Re-measured after the conversion: 25, all outside
 // src/decisions-data/. Lowered 57 -> 25.
-export const LINE_KEYED_CITATION_CEILING = 24;
+//
+// Merge train (wave-148 megabatch: w4-ak/ai/al/aj/am/an): this ratchet was
+// already RED on main at 25 against a stale ceiling of 24. Repairing the
+// citations the batch itself drifted (DEC-555, DEC-829, DEC-660 and the
+// DEC-967 narrative quoting the very citation it rules against, all
+// converted to the bare-path shape DEC-967 wave-115 requires) also repaid
+// that inherited breach, and the two duplicate line-keyed citations into
+// app/src/phone-block-visibility.test.ts in docs/probes/
+// metafid-desktop-2026-08-19.md were converted alongside them. Re-measured
+// against the integrated tree: 23. Lowered 24 -> 23.
+export const LINE_KEYED_CITATION_CEILING = 23;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
