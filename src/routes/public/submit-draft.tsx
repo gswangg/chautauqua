@@ -21,6 +21,7 @@ import { MAX_SUBMISSION_TRACK_IDS } from "../../domain/ids";
 import { saveDraft, newDraftToken, draftCookieName, type KVStore as DraftKVStore } from "../../lib/draft";
 import { parseCookies, newCsrfToken, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { publicNotFound } from "./not-found";
+import { getPriorPublicEvent } from "../../server/repo/public/event";
 import { ClosedPage, NotYetOpenPage, SubmitPage } from "./submit-views";
 import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
 import { emailBudgetOk, refundEmailBudget } from "./submit-guards";
@@ -36,7 +37,8 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
-    return c.html(<NotYetOpenPage event={event} form={form} />);
+    const lastYear = await getPriorPublicEvent(db, event);
+    return c.html(<NotYetOpenPage event={event} form={form} lastYear={lastYear} />);
   }
   if (windowState === "closed") {
     return c.html(<ClosedPage event={event} form={form} />);

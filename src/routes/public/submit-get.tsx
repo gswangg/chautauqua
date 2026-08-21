@@ -12,6 +12,7 @@ import {
 } from "../../server/repo/submit";
 import type { AnswerMap } from "../../forms/types";
 import { formWindowState, resolveOfferedTrackIds } from "../../lib/submit-core";
+import { getPriorPublicEvent } from "../../server/repo/public/event";
 import {
   parseDraftRecord,
   draftCookieName,
@@ -35,7 +36,8 @@ publicSubmitGetRoutes.get("/submit/:eventSlug", async (c) => {
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
-    return c.html(<NotYetOpenPage event={event} form={form} />);
+    const lastYear = await getPriorPublicEvent(db, event);
+    return c.html(<NotYetOpenPage event={event} form={form} lastYear={lastYear} />);
   }
   if (windowState === "closed") {
     return c.html(<ClosedPage event={event} form={form} />);

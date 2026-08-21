@@ -17,14 +17,16 @@ import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { CfpStepsScript } from "./cfp-steps-script";
-import { eventDatesLine, validAccent } from "./shell";
+import { eventDatesLine, validAccent, surfacePath } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
+import type { PublicEvent } from "../../server/repo/public";
 import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
-import { DEC_322, DEC_380 } from "../../decisions";
+import { DEC_322, DEC_380, DEC_745 } from "../../decisions";
 
 void DEC_322;
 void DEC_380;
+void DEC_745;
 
 // w5-c (frame 10--14 copy batch): the bio field's caption is a display-only
 // override applied to the locked bio FormFieldDef at render time -- the
@@ -140,7 +142,21 @@ function notYetOpenMetaLine(event: EventRow): string {
   return `${event.name} · ${start}–${end}`;
 }
 
-export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
+// DEC-745 (wave-150 amendment): the frame's one action
+// (`docs/design/Chautauqua Public and Portal.dc.html:1543`) points at the
+// prior edition's sessions, not this event's own -- by definition
+// unpublished -- programme. `getPriorPublicEvent`
+// (src/server/repo/public/event.ts:79) already returns null both when
+// there is no prior event AND when that edition's publicly-visible session
+// count is 0, so `lastYear` here is exactly "a qualifying prior edition
+// exists" -- no separate zero-check needed. When it is null the link keeps
+// its original destination and label unchanged (DEC-986: never a
+// fabricated destination the window state cannot know).
+export function NotYetOpenPage(props: {
+  event: EventRow;
+  form: FormRow;
+  lastYear?: { event: PublicEvent; sessionCount: number } | null;
+}) {
   return (
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
       <div class="chq-cfp-closed chq-bare-page">
@@ -173,7 +189,11 @@ export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
           </>
         )}
         <div class="chq-cfp-links">
-          <a href={`/e/${props.event.slug}/sessions`}>Browse the sessions &rsaquo;</a>
+          {props.lastYear ? (
+            <a href={surfacePath(props.lastYear.event, "sessions", "/e")}>Browse last year&rsquo;s sessions &rsaquo;</a>
+          ) : (
+            <a href={`/e/${props.event.slug}/sessions`}>Browse the sessions &rsaquo;</a>
+          )}
         </div>
       </div>
     </PageShell>

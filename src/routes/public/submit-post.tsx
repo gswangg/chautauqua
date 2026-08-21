@@ -51,6 +51,7 @@ import { validateUpload, sanitizeFilenameForKey, CFP_FILE_FIELD_KIND, type Valid
 import { fieldInputName } from "../../views/form-render";
 import { resolveBaseUrl } from "../../server/origin";
 import { publicNotFound } from "./not-found";
+import { getPriorPublicEvent } from "../../server/repo/public/event";
 import {
   ClosedPage,
   ConfirmationPage,
@@ -80,7 +81,8 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
-    return c.html(<NotYetOpenPage event={event} form={form} />);
+    const lastYear = await getPriorPublicEvent(db, event);
+    return c.html(<NotYetOpenPage event={event} form={form} lastYear={lastYear} />);
   }
   if (windowState === "closed") {
     return c.html(<ClosedPage event={event} form={form} />);

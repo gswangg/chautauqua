@@ -229,3 +229,65 @@ describe("ClosedPage — dead-end link copy (w5-c)", () => {
     expect(html).not.toContain("Browse the programme");
   });
 });
+
+// DEC-745 (wave-150 amendment): GET /submit/:eventSlug in the not_yet_open
+// window state resolves getPriorPublicEvent and threads it through
+// NotYetOpenPage. Both branches are exercised through the real route (the
+// same appWithDb/fakeDb harness getSubmitPage() uses above), never a
+// component-level shortcut, so the wiring in submit-get.tsx is what is
+// under test, not just NotYetOpenPage's own rendering.
+describe("GET /submit/:eventSlug in the not_yet_open window — prior-edition link (DEC-745 wave-150 amendment)", () => {
+  // getDefaultForm (src/server/repo/submit.ts) calls .getTime() on a
+  // non-null raw row.openDate, so the fake row -- unlike the already-mapped
+  // FORM_ROW constant above, whose openDate is a plain number/null -- must
+  // supply a Date object here to match what the real drizzle column type
+  // produces.
+  const OPEN_FORM_ROW = { ...FORM_ROW, openDate: new Date("2099-01-01T00:00:00.000Z") };
+
+  const PRIOR_EVENT_ROW = {
+    id: "event-0",
+    orgId: "org-1",
+    name: "Test Conf 2026",
+    slug: "test-conf-2026",
+    startDate: "2026-01-01",
+    endDate: "2026-01-03",
+    location: null,
+    timezone: "UTC",
+    recordPrefix: "SES",
+    brandingJson: null,
+  };
+
+  async function getNotYetOpenPage(selectQueue: unknown[][]) {
+    const db = fakeDb(selectQueue);
+    const app = appWithDb(db);
+    const res = await app.request("/submit/test-conf", { headers: {} }, { KV: fakeKv() } as unknown as AppEnv["Bindings"]);
+    expect(res.status).toBe(200);
+    return res.text();
+  }
+
+  it("with a qualifying prior edition, renders the frame's 'Browse last year's sessions' label pointing at that edition's sessions surface", async () => {
+    const html = await getNotYetOpenPage([
+      [EVENT_ROW],
+      [OPEN_FORM_ROW],
+      [PRIOR_EVENT_ROW], // getPriorPublicEvent's own event lookup
+      [{ startDate: PRIOR_EVENT_ROW.startDate, endDate: PRIOR_EVENT_ROW.endDate }], // getPublicSurfaceCounts' event lookup
+      [{ count: 3 }], // sessionRows
+      [{ count: 1 }], // scheduledRows
+      [{ count: 2 }], // speakerRows
+    ]);
+    expect(html).toContain(`href="/e/${PRIOR_EVENT_ROW.slug}/sessions"`);
+    expect(html).toContain("Browse last year");
+    expect(html).not.toContain(`href="/e/${EVENT_ROW.slug}/sessions"`);
+  });
+
+  it("with no qualifying prior edition, renders today's link unchanged", async () => {
+    const html = await getNotYetOpenPage([
+      [EVENT_ROW],
+      [OPEN_FORM_ROW],
+      [], // getPriorPublicEvent finds no prior event -- returns null, no further selects
+    ]);
+    expect(html).toContain(`href="/e/${EVENT_ROW.slug}/sessions"`);
+    expect(html).toContain(">Browse the sessions ");
+    expect(html).not.toContain("Browse last year");
+  });
+});

@@ -533,11 +533,11 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/pages/settings/ResourcesPanel.tsx", literal: "resource.kind === 'file' ? 'File' : 'Wiki page'", testFile: "app/src/pages/settings/ResourcesPanel.render.test.tsx" },
   },
   {
-    key: "cfp-not-yet-open-browse-last-years-sessions-docs-design-chautauqua-public-and-portal-dc-html-1543",
-    status: "honored",
+    key: "cfp-not-yet-open-pages-link-now-points-at-the-prior-edition",
+    status: "superseded",
     reason:
-      "DEC-380 wave-130 amendment. Re-tested against the narrowed rule at wave-140: the original 'no previous-edition model exists anywhere in the domain' claim does NOT survive -- getPriorPublicEvent (src/server/repo/public/event.ts) is a previous-edition model, landed under DEC-745's wave-107 amendment (before wave-130 was even written) and already wired to the public sessions fresh-empty page's 'Last year' aside. The CFP not-yet-open page itself has never been wired to it, which is a real, narrower gap out of this task's file ownership (src/routes/public/submit-views.tsx) -- flagged as a still-owed build, not re-affirmed as a permanent deviation. The link keeps its landed destination and label unchanged pending that build.",
-    honored: { kind: "present", file: "src/routes/public/submit-views.tsx", literal: "/e/${props.event.slug}/sessions", testFile: "test/cfp-phone-frames.test.ts" },
+      "DEC-745 wave-150 amendment: the still-owed build recorded through wave-149 (getPriorPublicEvent existed but NotYetOpenPage was never wired to it) landed -- NotYetOpenPage now resolves getPriorPublicEvent at all three call sites and renders the frame's 'Browse last year's sessions' label pointing at the prior edition's sessions surface when one qualifies, falling back to the original link/label unchanged otherwise. This bullet is its own record of that build; nothing external adjudicates it.",
+    superseded: { literal: "RETIRES the entry recorded above through wave-149" },
   },
 ];
 
