@@ -46,6 +46,45 @@ short index header for the full split map.)
   box; OVERDUE filled chip vs frame's weighted text at 390; portal edit
   scope (frame :597 scopes to title/abstract, live ships full CFP);
   scorecard copy drift (Read-full absent, recuse wording, "—" vs "Not yet").
+  CLOSED (wave 155, DEC-967, "duplicate Sign out" + "portal footer 93px ink
+  stub" clauses only): DEC-154 stands the footer copy down at phone once
+  the header cluster carries it, and the footer's phone padding matches
+  the frame's own dock band exactly (same `12px 16px 16px` triple named in
+  the DEC-576 comment two rules above) --
+  src/routes/portal/portal.css.ts`.chq-portal-shell > .chq-portal-footer .chq-portal-signout {`
+  (`display: none;`, phone-only) and
+  src/routes/portal/portal.css.ts`.chq-portal-shell > .chq-portal-footer {`
+  (`padding: 12px 16px 16px;`, same rule the DEC-576 comment cites as the
+  frame's dock).
+  CLOSED (wave 155, DEC-967, "tab-bar dot flow/baseline" clause only —
+  same evidence as this file's own sibling probe, phoneA's S2 tab-bar row):
+  app/src/App.tsx`const PHONE_TAB_FIXED_PATHS = ['/overview', '/submissions', '/speakers'] as const;`
+  renders `chq-dot` before each tab's label for every item (App.tsx:358-359),
+  not active-only.
+  CLOSED (wave 155, DEC-967, "Read-full absent" sub-clause of "scorecard
+  copy drift" only): app/src/pages/review/Scorecard.tsx`Read the full submission`
+  renders as the phone-only disclosure link the row found missing; the
+  "recuse wording" and "'—' vs 'Not yet'" sub-clauses were not checked
+  against the frame this wave and stay open below.
+  RESTATED (2026-08-21, DEC-967, still open): "overview remind-all breaks
+  gutters", "speakers Remind-outstanding wraps in 107px box", "OVERDUE
+  filled chip vs frame's weighted text at 390", the "recuse wording"/
+  "'—' vs 'Not yet'" sub-clauses of scorecard copy drift, and "portal edit
+  scope" are NOT closed by anything found in the tree this wave.
+  `app/src/pages/overview/overview.css`.chq-overview-remind-all {` now
+  forces `flex: 1 0 100%` onto its own row rather than fixing a gutter
+  break, but this was not checked against the frame's own gutter geometry
+  so is not receipted as a fix. No `107px` or matching wrap rule was found
+  under app/src/pages/speakers/speakers.css for Remind-outstanding, and no
+  OVERDUE-chip-vs-weighted-text comparison was found against the frame.
+  Portal edit scope remains the widest divergence found: the live
+  `/portal/edit` form still submits title/abstract/track fields alongside
+  the co-presenter block on one shared form --
+  src/routes/portal/edit.tsx`title/abstract/track edits ride along on this submit too, instead`
+  — where frame :597 is described as scoping edit to title/abstract only;
+  not independently re-measured against the frame's own field list this
+  wave, so left open rather than guessed closed (DEC-967 forbids
+  receipting a fix that was not read).
   CLOSED (wave v12m-w20-f, DEC-367): "pub-empty-what 36px > page H1" —
   `src/routes/public/css/empty.css.ts`'s terminal `@media (max-width:
   700px)` block now sets `.chq-pub-empty-block-fresh .chq-pub-empty-what`
