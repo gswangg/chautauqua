@@ -524,6 +524,62 @@ export function deriveInteractiveOffenders(
  * is replaced by that measured count. */
 export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 79;
 
+/** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —
+ * only the path and the offender roster, so the pure formatter never has to
+ * import the full MobileRouteResult/RouteManifestEntry (or any playwright
+ * type) to be called. */
+export interface AdminMobileOffenderLedgerRow {
+  readonly path: string;
+  readonly interactiveOffenders: readonly string[];
+}
+
+/** DEC-996: renders the admin 390 mobile pass's per-route offender roster as
+ * deterministic markdown — the file scripts/render-sweep.ts writes to
+ * docs/design/audit/admin-mobile-tap-floor-390-v12.md on every gate run, so
+ * the count the gate prints and discards to scrollback has a durable roster
+ * in the tree instead. Pure: takes only {path, interactiveOffenders} per row
+ * (never a live MobileRouteResult/playwright type), sorted by route path for
+ * a stable diff across re-runs; each offender string is emitted verbatim,
+ * one per line. */
+export function formatAdminMobileOffenderLedger(
+  results: readonly AdminMobileOffenderLedgerRow[],
+  ceiling: number,
+): string {
+  const lines: string[] = [];
+  lines.push("# Admin mobile tap-floor offender roster (390px, DEC-253/DEC-367/DEC-808/DEC-996)");
+  lines.push("");
+  lines.push(
+    "MACHINE-WRITTEN by `npm run gate:render-sweep` (scripts/render-sweep.ts). Do not hand-edit — the next gate run overwrites this file unconditionally.",
+  );
+  lines.push("");
+  lines.push(
+    "Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path.",
+  );
+  lines.push("");
+
+  const offending = results
+    .filter((r) => r.interactiveOffenders.length > 0)
+    .slice()
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  if (offending.length === 0) {
+    lines.push("No offenders measured on the last gate run.");
+  } else {
+    for (const r of offending) {
+      lines.push(`## ${r.path}`);
+      lines.push("");
+      for (const offender of r.interactiveOffenders) {
+        lines.push(`- ${offender}`);
+      }
+      lines.push("");
+    }
+  }
+
+  const total = results.reduce((sum, r) => sum + r.interactiveOffenders.length, 0);
+  lines.push(`Measured total: ${total} (ceiling ${ceiling})`);
+  return lines.join("\n") + "\n";
+}
+
 // ---------------------------------------------------------------------------
 // DEC-411: page.evaluate keepNames shim. tsx runs esbuild with keepNames,
 // which rewrites named function/closure declarations to

@@ -21,6 +21,7 @@ import {
   filterExpectedStatusConsoleNoise,
   filterKnownClipExceptions,
   fontFloorErrorResult,
+  formatAdminMobileOffenderLedger,
   formatFontFloorSummary,
   formatFontFloorTable,
   formatMobileResultsTable,
@@ -32,6 +33,7 @@ import {
   mobileErrorResult,
   routeErrorResult,
   selectClipOffenders,
+  type AdminMobileOffenderLedgerRow,
   type ClipCandidate,
   type FontFloorRouteEntry,
   type InteractiveMeasurement,
@@ -1526,5 +1528,84 @@ describe("mobileErrorResult interactiveOffenders field", () => {
       "navigation error",
     );
     expect(result.interactiveOffenders).toEqual([]);
+  });
+});
+
+describe("formatAdminMobileOffenderLedger (DEC-996 w22-i)", () => {
+  const row = (over: Partial<AdminMobileOffenderLedgerRow>): AdminMobileOffenderLedgerRow => ({
+    path: "/admin/overview",
+    interactiveOffenders: [],
+    ...over,
+  });
+
+  it("renders the no-offenders form when every route's roster is empty", () => {
+    const out = formatAdminMobileOffenderLedger(
+      [row({ path: "/admin/overview" }), row({ path: "/admin/settings" })],
+      79,
+    );
+    expect(out).toContain("No offenders measured on the last gate run.");
+    expect(out).not.toContain("## /admin/overview");
+    expect(out).toContain("Measured total: 0 (ceiling 79)");
+  });
+
+  it("renders each offender string verbatim for a single-route roster", () => {
+    const out = formatAdminMobileOffenderLedger(
+      [
+        row({
+          path: "/admin/overview",
+          interactiveOffenders: [
+            "button.chq-participation-menu-trigger w=95px h=19px",
+            "select.chq-bad-w w=10px h=44px",
+          ],
+        }),
+      ],
+      79,
+    );
+    expect(out).toContain("## /admin/overview");
+    expect(out).toContain("- button.chq-participation-menu-trigger w=95px h=19px");
+    expect(out).toContain("- select.chq-bad-w w=10px h=44px");
+    expect(out).toContain("Measured total: 2 (ceiling 79)");
+  });
+
+  it("sorts multiple offending routes by path, independent of input order", () => {
+    const out = formatAdminMobileOffenderLedger(
+      [
+        row({ path: "/admin/settings", interactiveOffenders: ["a.chq-z w=10px h=10px"] }),
+        row({ path: "/admin/overview", interactiveOffenders: ["a.chq-a w=10px h=10px"] }),
+        row({ path: "/admin/agenda", interactiveOffenders: ["a.chq-m w=10px h=10px"] }),
+      ],
+      79,
+    );
+    const agendaIdx = out.indexOf("## /admin/agenda");
+    const overviewIdx = out.indexOf("## /admin/overview");
+    const settingsIdx = out.indexOf("## /admin/settings");
+    expect(agendaIdx).toBeGreaterThanOrEqual(0);
+    expect(overviewIdx).toBeGreaterThan(agendaIdx);
+    expect(settingsIdx).toBeGreaterThan(overviewIdx);
+  });
+
+  it("the total/ceiling line reads the passed values, not a re-derived count", () => {
+    const out = formatAdminMobileOffenderLedger(
+      [
+        row({ path: "/admin/a", interactiveOffenders: ["x", "y"] }),
+        row({ path: "/admin/b", interactiveOffenders: ["z"] }),
+      ],
+      42,
+    );
+    expect(out).toContain("Measured total: 3 (ceiling 42)");
+  });
+
+  it("is machine-written and instructs against hand-editing", () => {
+    const out = formatAdminMobileOffenderLedger([row({ path: "/admin/overview" })], 79);
+    expect(out).toContain("MACHINE-WRITTEN");
+    expect(out).toContain("Do not hand-edit");
+  });
+
+  it("is deterministic: re-running with the same input produces byte-identical output", () => {
+    const rows = [
+      row({ path: "/admin/b", interactiveOffenders: ["z w=1px h=1px"] }),
+      row({ path: "/admin/a", interactiveOffenders: ["y w=2px h=2px"] }),
+    ];
+    expect(formatAdminMobileOffenderLedger(rows, 79)).toBe(formatAdminMobileOffenderLedger(rows, 79));
   });
 });
