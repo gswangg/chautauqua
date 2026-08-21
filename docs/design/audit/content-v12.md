@@ -167,3 +167,91 @@ rots faster than the code it describes (field guide).
   label, comment rows, upload link, note textbox) via `order` while
   leaving the desktop two-column DOM untouched (DEC-385). Verified green
   on this branch before retiring the row.
+
+<!-- w21-k (DEC-901/DEC-967) -->
+
+## Update (wave 21, task w21-k): re-verified against the current tree; all four rows RESOLVED or STALE
+
+Field guide: "a scribe amendment/ledger row is a claim about the tree, not
+a receipt" — this task re-derived all four rows against the tree at HEAD
+before writing anything below, rather than inheriting the w17-c prose
+above (which itself already carried a citation-only claim for `:338`'s
+byte-format clause that no longer holds).
+
+- **`:373` Session · deliverable — RESOLVED, confirmed.** The w17-c row
+  above already retired this; this task ADDS a second, more direct
+  receipt: `app/src/pages/content/content-phone-frames.test.ts`'s
+  `"Session · deliverable"` describe block now carries an explicit
+  order-contract test reading every `order:` content.css's terminal phone
+  block declares for the promoted grandchildren (`.chq-content
+  -deliverables-label` → `.chq-chipstrip` → `.chq-content-chip-caption` →
+  `.chq-content-version-list` → `.chq-content-notes-label` →
+  `.chq-content-comment-list` → `.chq-content-upload-reopened-notice` →
+  `.chq-content-upload-zone` → `.chq-comment-composer`), plus a DEC-967
+  `verbatimLine` citation of `docs/design/Chautauqua
+  Content.dc.html:417`'s dashed "Upload a file for the speaker" link. The
+  render-level receipt (`Content.frame-verdicts.render.test.tsx`'s `:373`
+  block) is converted from DIVERGES to RESOLVED — jsdom applies no `@media`
+  so it still finds the frozen two-column DOM (`.chq-content-files-col` /
+  `.chq-content-comments-col`, DEC-385: never forked), which is correct,
+  not a divergence; the visual stack order is the CSS-level test's claim
+  to verify, not this file's.
+
+- **`:198` Content (worklist) — STALE, retiring the citation.** The w17-c
+  row's own receipt already covers the fix; re-verified here:
+  `content.css`'s terminal `@media (max-width: 700px)` block makes
+  `tr.chq-content-row` a wrapping flex card
+  (`.chq-content-worklist .chq-content-table tr.chq-content-row { display:
+  flex; flex-wrap: wrap; ... }`) with the status cell (`td:nth-child(5)`)
+  at `order: 2` ahead of the title cell (`td:nth-child(2)`) at `order: 3`,
+  and the action pair (`td:nth-child(6)`) full-measure at `order: 6` —
+  status-before-title and the combined speaker/file meta line both draw
+  exactly as the frame's card does. No open clause remains against this
+  row.
+
+- **`:247` Content · selecting — STALE, retiring the citation.** Re-checked
+  `app/src/pages/content/ContentApp.tsx`: the `!phoneSelectMode` guard the
+  w17-c row already credited is present TWICE, on both clauses the
+  original divergence named —
+  `{!submissionId && view === 'worklist' && !phoneSelectMode &&
+  counts.needs_decision !== null && reUploadedCount !== null && (` (the
+  idle summary line) and `{!submissionId && view === 'worklist' &&
+  !phoneSelectMode && (` (the rest-state row) — so the idle summary and
+  the "N selected / All N / Done" meta row stay mutually exclusive exactly
+  as the frame draws. No open clause remains against this row.
+
+- **`:338` Files · 390 — STALE, retiring the citation.** Re-checked all
+  three sub-clauses this row and its w17-c update still carried:
+  - Chip vocabulary: `app/src/pages/content/FilesLibrary.tsx` renders
+    `isPhone ? 'All' : 'All types'` for the leading chip's VISIBLE text,
+    but that chip's accessible name is a static `aria-label="All types"`
+    at every width — the frame's own "All" was never actually unreachable
+    by name, only the longer text was cosmetic. The Recording/Video split
+    is a per-surface register, not a per-width one: `app/src/pages/content
+    /types.ts`'s `LIBRARY_KIND_LABELS` (DEC-613 wave-159 amendment) gives
+    `recording: 'Video'` for the files library specifically, while
+    `DELIVERABLE_LABELS` keeps `recording: 'Recording'` for the session
+    deliverable strip elsewhere — so the files library's own kind chip now
+    reads "Video · 4" at every width, matching the frame.
+  - Byte format: the w17-c update above says this clause is "NOT fixed by
+    this task or by any lane yet," citing only DEC-613's ruling, not a
+    receipt of build. That is now stale — `FilesLibrary.tsx`'s own DEC-613
+    wave-17-amendment comment records that `formatBytes` trims a trailing
+    ".0", and `src/domain/files.ts`'s `formatBytes` confirms it in code
+    (`Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)`),
+    so an integral byte count like 412 MB renders bare, exactly as the
+    frame draws it.
+  - Header duplicate download control: still open, unchanged from w17-c —
+    `.chq-content-files-header-row` still mounts its own "Download …
+    (.zip)" secondary beside the stat line as well as the footer dock's
+    copy, which the frame reserves for the dock alone. This clause is
+    real and this task does not fix it (out of scope: DEC-901/DEC-967
+    bind this task to the `:373` phone-order fix, not `FilesLibrary.tsx`).
+
+  Receipt for the vocabulary fixes:
+  `app/src/pages/Content.frame-verdicts.render.test.tsx`'s `:338` block,
+  updated this task to assert the current (correct) chip vocabulary
+  instead of the stale "Recording"/full-"All types"-text pin it used to
+  carry (DEC-976: the pin moves with the fix). The row stays **DIVERGES**
+  only for the still-real header-duplicate-control clause; the two
+  vocabulary clauses that motivated the original citation are retired.
