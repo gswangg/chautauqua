@@ -60,6 +60,7 @@ function renderConfirmation(state: "fresh" | "pending-existing-contact" | "has-a
     form: FORM_ROW,
     emailDelivered: true,
     meta: "Platform & Infra · Talk, 30 min",
+    speakerLine: "Priya Raman · Latticework Systems",
   });
   return el.toString();
 }
