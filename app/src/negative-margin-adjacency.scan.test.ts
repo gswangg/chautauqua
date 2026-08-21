@@ -366,13 +366,17 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
     expect(SOURCES.length).toBe(43);
   });
 
-  it('the swept population carries exactly 160 comment-stripped `display: none` declarations', () => {
+  // 160 -> 161 (DEC-919 wave-156, task qb-settings-yourdata-read-drill): the
+  // read drill's per-row boxed action is phone-only, so
+  // `.chq-settings-summary-row-action` carries a desktop `display: none` in
+  // settings-lists.css -- a real new declaration, not a sweep regression.
+  it('the swept population carries exactly 161 comment-stripped `display: none` declarations', () => {
     let total = 0;
     for (const s of SOURCES) {
       const stripped = stripCssComments(extractCssText(s));
       total += (stripped.match(/display\s*:\s*none\b/g) ?? []).length;
     }
-    expect(total).toBe(160);
+    expect(total).toBe(161);
   });
 
   it('finds exactly the 16 negative margin/margin-top/margin-block-start declarations named in the task brief', () => {

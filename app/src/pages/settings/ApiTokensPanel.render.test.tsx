@@ -102,9 +102,9 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
   });
 
   // DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill): the
-  // 390 read drill (docs/design/Chautauqua Settings.dc.html:423, :426) draws
-  // a per-row boxed "Revoke" and a filled full-width "New token" primary
-  // that used to be unreachable from this branch -- both now render here.
+  // 390 read drill draws a per-row boxed "Revoke" and a filled full-width
+  // "New token" primary that used to be unreachable from this branch --
+  // both now render here.
   it('renders a boxed "Revoke" per row, opening the SAME ConfirmDialog/confirmDelete path as the edit branch', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/tokens': listEnvelope([token()]),
@@ -113,7 +113,9 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
 
     renderPanel({ readOnly: true });
 
+    // docs/design/Chautauqua Settings.dc.html:423 `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Revoke</span>`
     const revokeBtn = await screen.findByRole('button', { name: 'Revoke' });
+    expect(revokeBtn).toHaveClass('chq-settings-summary-row-action');
     fireEvent.click(revokeBtn);
 
     const dialog = screen.getByRole('dialog');
@@ -144,6 +146,7 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
       </MemoryRouter>,
     );
 
+    // docs/design/Chautauqua Settings.dc.html:426 `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
     const newTokenBtn = await screen.findByRole('button', { name: 'New token' });
     expect(newTokenBtn).toHaveClass('chq-settings-phone-action');
     // No local create form to drive -- clicking only ever navigates.

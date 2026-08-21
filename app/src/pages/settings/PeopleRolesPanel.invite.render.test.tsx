@@ -14,7 +14,6 @@ import {
   installConsoleErrorGuard,
   mockPeople,
   renderPanel,
-  renderPanelWithLocation,
 } from './PeopleRolesPanel.test-helpers';
 
 installConsoleErrorGuard();

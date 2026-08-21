@@ -73,10 +73,11 @@ describe('YourDataPanel', () => {
     expect(within(section).getByText('Last used: Never')).toBeInTheDocument();
     // DEC-919 wave-155 + wave-156 (task qb-settings-yourdata-read-drill):
     // Revoke is a direct destructive act and New token is an edit-surface
-    // entry point -- both now render in the read drill itself
-    // (docs/design/Chautauqua Settings.dc.html:423, :426), receipted in full
-    // in ApiTokensPanel.render.test.tsx. Only the create/import SURFACE stays
-    // behind Change.
+    // entry point -- both now render in the read drill itself, receipted in
+    // full in ApiTokensPanel.render.test.tsx. Only the create/import SURFACE
+    // stays behind Change.
+    // docs/design/Chautauqua Settings.dc.html:423 `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Revoke</span>`
+    // docs/design/Chautauqua Settings.dc.html:426 `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
     expect(within(section).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'New token' })).toHaveClass('chq-settings-phone-action');
 

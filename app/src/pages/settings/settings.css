@@ -2436,7 +2436,7 @@
   }
 
   /* tap-floor-exempt: .chq-settings-tokens-col-actions is a <th>-only
-     column-width class (ApiTokensPanel.tsx:285
+     column-width class (ApiTokensPanel.tsx:336
      `<th className="chq-settings-tokens-col-actions">Revoke</th>`), not a
      control -- the desktop markup never repeats it on the matching
      <td>/<button>. The real Revoke anchor is already floored positionally
