@@ -398,7 +398,7 @@ describe('FilesLibrary render smoke', () => {
     const heading = await screen.findByRole('heading', { name: 'Files', level: 1 });
     const headerRow = heading.closest<HTMLElement>('.chq-content-files-header-row');
     if (!headerRow) throw new Error('header row not found');
-    expect(within(headerRow).getByText('31 files · 412.0 MB')).toBeInTheDocument();
+    expect(within(headerRow).getByText('31 files · 412 MB')).toBeInTheDocument();
     expect(within(headerRow).getByRole('button', { name: /Content/ })).toBeInTheDocument();
     // CNT-14 (DEC-160, wave-65 amendment): "all" is reserved for the whole
     // filtered set — a page of a larger set (3 of 31) names its true scope
@@ -542,7 +542,7 @@ describe('FilesLibrary render smoke', () => {
 
     const button = await within(getHeaderRow()).findByRole('button', { name: 'Download all 51 (.zip)' });
     expect(button).toBeDisabled();
-    expect(screen.getByText('50 files or 20.0 MB at a time — narrow the filter')).toBeInTheDocument();
+    expect(screen.getByText('50 files or 20 MB at a time — narrow the filter')).toBeInTheDocument();
   });
 
   it('renders a Previous/Next pager driven by the envelope total', async () => {

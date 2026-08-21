@@ -363,12 +363,22 @@ export function archiveCapMessage(): string {
 // one number instead of a route-local constant the view can't reach.
 export const MAX_COMMENT_BODY_LENGTH = 4000;
 
-// DEC-020 (wave-55 amendment): the ONE human byte-size renderer in this
-// codebase. Below 1024 bytes renders as a whole-number byte count; at or
-// above 1024, one decimal place and a single space before the KB/MB/GB
-// unit. Fails loudly on a non-finite or negative input rather than
-// silently coercing it (house invariant) — a caller passing a corrupted
-// sizeBytes wants to know, not see "NaN B".
+// DEC-020 (wave-17 amendment, DEC-613 byte-size register): the ONE human
+// byte-size renderer in this codebase. Below 1024 bytes renders as a
+// whole-number byte count; at or above 1024, an integral value renders
+// bare and a non-integral value keeps exactly one decimal place, with a
+// single space before the KB/MB/GB unit — a trailing ".0" is trimmed, it
+// is never printed. Fails loudly on a non-finite or negative input rather
+// than silently coercing it (house invariant) — a caller passing a
+// corrupted sizeBytes wants to know, not see "NaN B".
+//
+// Pack citations for the trimmed register (each line's literal copied
+// verbatim from the cited file, one citation per line — never a
+// comma-list of path:line citations in one sentence):
+// docs/design/Chautauqua Content.dc.html:298
+// `31 files · 412 MB`
+// docs/design/Chautauqua Settings.dc.html:1629
+// `2.1 MB · 18 opens`
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
     throw new Error(`formatBytes: bytes must be a finite non-negative number, got ${bytes}`);
@@ -381,7 +391,9 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     unitIndex += 1;
   }
-  return `${value.toFixed(1)} ${units[unitIndex]}`;
+  const rounded = Math.round(value * 10) / 10;
+  const formatted = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${formatted} ${units[unitIndex]}`;
 }
 
 /** Whether a served content type should be presented as an inline image

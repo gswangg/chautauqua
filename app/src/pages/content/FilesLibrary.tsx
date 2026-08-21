@@ -189,8 +189,10 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         </div>
         <div className="chq-content-files-header-actions">
           <span className="chq-summary">
-            {/* formatBytes' .toFixed(1) is NOT settled by the pack -- Content.dc.html:298
-                draws "412 MB" against Settings.dc.html:1629's "2.1 MB"; do not "fix" it here. */}
+            {/* DEC-613 wave-17 amendment: formatBytes trims a trailing ".0" for an
+                integral value -- Content.dc.html:298's "412 MB" and Settings.dc.html:1629's
+                "2.1 MB" are the SAME register (trimmed integral, one decimal otherwise),
+                not two registers needing reconciliation. */}
             {`${countOf(total, 'file')} · ${formatBytes(totalSizeBytes)}`}
           </span>
           {/* CNT-14 (DEC-160, wave-26 amendment): a bordered SECONDARY

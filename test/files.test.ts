@@ -426,16 +426,20 @@ describe("formatBytes", () => {
     expect(formatBytes(1023)).toBe("1023 B");
   });
 
-  it("renders 1024 bytes (exactly the KB tier) with one decimal place", () => {
-    expect(formatBytes(1024)).toBe("1.0 KB");
+  it("renders 1024 bytes (exactly the KB tier) as an integral value with the trailing .0 trimmed", () => {
+    expect(formatBytes(1024)).toBe("1 KB");
   });
 
-  it("renders 1 MB with one decimal place", () => {
-    expect(formatBytes(1024 * 1024)).toBe("1.0 MB");
+  it("renders 1 MB as an integral value with the trailing .0 trimmed", () => {
+    expect(formatBytes(1024 * 1024)).toBe("1 MB");
   });
 
-  it("renders 1 GB with one decimal place", () => {
-    expect(formatBytes(1024 * 1024 * 1024)).toBe("1.0 GB");
+  it("renders 1 GB as an integral value with the trailing .0 trimmed", () => {
+    expect(formatBytes(1024 * 1024 * 1024)).toBe("1 GB");
+  });
+
+  it("keeps exactly one decimal place for a non-integral value", () => {
+    expect(formatBytes(Math.round(2.1 * 1024 * 1024))).toBe("2.1 MB");
   });
 
   it("throws on a negative input", () => {

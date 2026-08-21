@@ -223,10 +223,10 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
     await screen.findByRole('button', { name: '‹ Content' });
     expect(screen.getByRole('heading', { name: 'Files' })).toBeInTheDocument();
     // Frame :340 states "31 files · 412 MB" under the H1 -- the real stat
-    // line matches in shape but formatBytes (src/domain/files.ts) always
-    // carries one decimal place, so it reads "412.0 MB", not the frame's
-    // bare "412 MB".
-    expect(screen.getByText('31 files · 412.0 MB')).toBeInTheDocument();
+    // line now MATCHES: formatBytes (src/domain/files.ts, DEC-613 wave-17
+    // amendment) trims a trailing ".0" for an integral value, so 412 MB
+    // renders bare, exactly as the frame draws it.
+    expect(screen.getByText('31 files · 412 MB')).toBeInTheDocument();
 
     // Frame :344 draws a plain "All" chip and a "Video · 4" chip; the real
     // toolbar reads "All types" (SessionList's tab-strip vocabulary carried
