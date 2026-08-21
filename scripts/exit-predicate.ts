@@ -780,6 +780,15 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "live-pixel superimposition detector the campaign's render lane might carry, so it is " +
     "not a v12 frame or 390-geometry conformance fact in the campaign's own sense " +
     "(app/src/negative-margin-adjacency.scan.test.ts, DEC-919 wave-152 amendment).",
+  ROUTE_SUBSTATE_UNVISITED_CEILING:
+    "measures how many derived (route, query-key, value) triples a page's own closed-set " +
+    "query-param reads mint that ROUTE_MANIFEST -- the population every live gate (render " +
+    "sweep, overflow probe, tap-floor pass, contrast pass) walks -- carries no row for. It is " +
+    "an INSTRUMENT-COMPLETENESS/POPULATION fact (whether the graded surface area is complete), " +
+    "not itself a v12 frame or 390-geometry conformance fact about any one screen; widening " +
+    "ROUTE_MANIFEST to close a row is a separate act from rostering the gap, so a newly " +
+    "nonzero count here would move the campaign's own convergence goalposts mid-stream " +
+    "(test/route-substate-coverage.scan.test.ts, DEC-144 amendment).",
   ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING:
     "measures the admin mobile pass's own OFFENDER COUNT for a population "
     + "(INTERACTIVE_CONTROL_SELECTOR under MIN_TAP_TARGET_PX) that is ADVISORY, not "
