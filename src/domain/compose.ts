@@ -57,17 +57,68 @@ export type ExpandRecipientsResult =
   | { ok: false; error: "invalid"; message: string };
 
 /**
+ * DEC-936 (wave-19 amendment): the merge-var tokens buildMergeVars sets from
+ * SUBMISSION-scoped input rather than contact/global input — read straight
+ * off buildMergeVars below: talk_title (submission.title), feedback
+ * (submission-scoped comments), session_time (submission's schedule slot).
+ * speaker_name/event_name/portal_link are per-person/global, and
+ * task_list/task_due_date are per-CONTACT (grouped by contactId across ALL
+ * of that contact's submissions in buildRenderTargets, so they don't vary by
+ * which submission a collapsed row keeps) — none of those five belong here.
+ *
+ * DEC-912's `ref` field (the human-readable submission ref, e.g. 'DFC-014')
+ * is ALSO submission-scoped and was part of the precedence dilemma DEC-936's
+ * wave-19 amendment names, but it is never a {template} placeholder — it is
+ * a structural field on RenderTarget/RenderedRecipientEmail set outside
+ * `vars` (src/routes/comms/compose-core.ts), so renderTemplate would throw
+ * MergeFieldError for a literal `{ref}` regardless of this set. It cannot be
+ * a member of a token set scanned against composed TEXT, and a collapsed
+ * row's `ref` is already covered by "keep the first occurrence" (below) —
+ * not by a spend check.
+ */
+export const PER_SUBMISSION_MERGE_VARS: ReadonlySet<string> = new Set(["talk_title", "feedback", "session_time"]);
+
+const PER_SUBMISSION_VAR_RE = /\{([a-zA-Z0-9_]+)\}/g;
+
+/** DEC-936 (wave-19 amendment): true when the composed subject+body spends
+ * at least one of PER_SUBMISSION_MERGE_VARS, i.e. the message text itself
+ * differs meaningfully across a contact's submissions. Pure text scan —
+ * doesn't resolve merge-field aliases (none of PER_SUBMISSION_MERGE_VARS has
+ * one in src/mail/render.ts's MERGE_FIELD_ALIASES). */
+export function spendsPerSubmissionVars(text: string): boolean {
+  for (const match of text.matchAll(PER_SUBMISSION_VAR_RE)) {
+    const name = match[1];
+    if (name !== undefined && PER_SUBMISSION_MERGE_VARS.has(name)) return true;
+  }
+  return false;
+}
+
+/**
  * Expands the selected submissions into one recipient row per
  * (contactId, submissionId) — every participant on every selected
- * submission. Rejects the whole batch as 'invalid' when the expanded count
+ * submission.
+ *
+ * DEC-936 (wave-19 amendment): when `opts.perSubmissionVarsSpent` is false
+ * — the composed text spends none of PER_SUBMISSION_MERGE_VARS — the list
+ * collapses to one row per contactId, keeping the FIRST occurrence in this
+ * function's existing iteration order (submissions in input order, then
+ * participants in input order — test/compose-order.test.ts pins that order
+ * as deterministic). Defaults to `true` (no collapsing) so an existing
+ * caller that doesn't pass `opts` keeps today's per-(contact, submission)
+ * shape unchanged.
+ *
+ * Rejects the whole batch as 'invalid' when the FINAL (post-collapse) count
  * exceeds MAX_COMPOSE_RECIPIENTS (DEC-019: the producer must narrow the
  * batch, no silent truncation).
  */
-export function expandRecipients(submissions: ComposeSubmission[]): ExpandRecipientsResult {
-  const recipients: ComposeRecipient[] = [];
+export function expandRecipients(
+  submissions: ComposeSubmission[],
+  opts: { perSubmissionVarsSpent: boolean } = { perSubmissionVarsSpent: true },
+): ExpandRecipientsResult {
+  const expanded: ComposeRecipient[] = [];
   for (const submission of submissions) {
     for (const participant of submission.participants) {
-      recipients.push({
+      expanded.push({
         contactId: participant.contactId,
         submissionId: submission.id,
         email: participant.email,
@@ -75,6 +126,20 @@ export function expandRecipients(submissions: ComposeSubmission[]): ExpandRecipi
       });
     }
   }
+
+  let recipients: ComposeRecipient[];
+  if (opts.perSubmissionVarsSpent) {
+    recipients = expanded;
+  } else {
+    const seenContacts = new Set<string>();
+    recipients = [];
+    for (const r of expanded) {
+      if (seenContacts.has(r.contactId)) continue;
+      seenContacts.add(r.contactId);
+      recipients.push(r);
+    }
+  }
+
   if (recipients.length > MAX_COMPOSE_RECIPIENTS) {
     return {
       ok: false,

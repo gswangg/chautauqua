@@ -259,8 +259,15 @@ export async function buildRenderTargets(
   event: { id: string; name: string; recordPrefix: string; startDate: string; endDate: string },
   submissions: ComposeSubmission[],
   feedback: { planId: string; round: number } | null,
+  // DEC-936 (wave-19 amendment): defaults to `true` (no collapsing) so a
+  // caller that predates the dedup flag — e.g. a test exercising this
+  // function directly for reasons unrelated to recipient collapsing — keeps
+  // today's per-(contact, submission) shape unchanged. Both production call
+  // sites (src/routes/comms/preview.ts, src/routes/comms/send.ts) always
+  // pass an explicit value computed from the composed subject+body.
+  perSubmissionVarsSpent = true,
 ) {
-  const expanded = expandRecipients(submissions);
+  const expanded = expandRecipients(submissions, { perSubmissionVarsSpent });
   if (!expanded.ok) throw new ApiError("invalid", expanded.message);
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
