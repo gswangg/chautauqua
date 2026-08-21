@@ -198,8 +198,15 @@
    a grid item's automatic min size defaults to its min-content width, and
    nowrap makes that the full "N sends · last DATE" string -- without this
    the item's own box blows out past its 148px track for anything longer
-   than "Never", and text-align:right anchors to that wider box instead of
-   the track. */
+   than "Never". `min-width: 0` alone is not sufficient, though: once the
+   box is correctly sized, a right-aligned nowrap line that's still wider
+   than it does not keep its right edge pinned in this engine (measured
+   directly outside a grid too), so `overflow:hidden`/`text-overflow:
+   ellipsis` below is what actually enforces the constant gap -- the clip
+   is the real mechanism, text-align:right only decides which side elides.
+   The DEC-989 half was added by a concurrent lane closing the same
+   nowrap-needs-an-escape idiom this rule already declared the intent
+   for. */
 .chq-taskview-waiting .chq-taskview-row > :nth-child(4) {
   text-align: right;
   white-space: nowrap;

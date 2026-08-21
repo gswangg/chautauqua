@@ -390,7 +390,7 @@ const LEDGER: LedgerEntry[] = [
       "the tasks row's due-date cell right-aligns so its glyph sits a constant 18px gap before the status track, for both the \"Was due\" and \"Due\" copy variants.",
     honored: {
       file: "app/src/pages/speakers/speakers.css",
-      literal: ".chq-speaker-detail-tasks-row > :nth-child(2) {\n  white-space: nowrap;\n  text-align: right;\n  min-width: 0;\n}",
+      literal: ".chq-speaker-detail-tasks-row > :nth-child(2) {\n  white-space: nowrap;\n  text-align: right;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}",
       testFile: "app/src/pages/speakers/speakers-css.test.ts",
     },
   },

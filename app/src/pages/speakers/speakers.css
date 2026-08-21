@@ -1392,13 +1392,16 @@ button.chq-speakers-status-overdue:hover {
    already lands on ITS OWN cell edge (:1433 below cancels the same -6px
    ring margin this family uses everywhere). Live measurement across every
    session row in the seed: "Not placed" through "Wed 12 May 09:30-10:00,
-   Room 2A" swung the pre-status gap 20px-87px before this rule; right-
-   aligning closes it to a constant 18px (the row's own `gap`) for all of
-   them. `min-width: 0` for the same reason the tasks row needs it below --
-   a grid item's automatic min size is its min-content width, and nowrap
-   makes that the full schedule string, so the item's own box was blowing
-   out past its 150px track for anything longer than "Not placed" and
-   text-align:right was anchoring to that wider box, not the track.
+   Room 2A" swung the pre-status gap 20px-87px before this rule.
+
+   `min-width: 0` and `overflow:hidden`/`text-overflow:ellipsis` are both
+   required, not just the first -- see the fuller writeup on the tasks row's
+   due-date rule below for why text-align:right alone does not pin the
+   right edge once nowrap content is wider than its (correctly min-width:0
+   -sized) box in this engine. The clip is what actually enforces the
+   constant 18px gap for every schedule string, long or short; the DEC-989
+   half was added by a concurrent lane closing the same nowrap-needs-an-
+   escape idiom this rule already declared the intent for.
    DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
    right-align before status ink". */
 .chq-speaker-detail-sessions-row > :nth-child(2) {
@@ -1487,23 +1490,45 @@ button.chq-speakers-status-overdue:hover {
    stays a full-width grid item so the 18px gap comes from the row's own
    `gap`, never a hand-tuned margin.
 
-   `min-width: 0` is load-bearing, not decoration: a grid item's automatic
-   minimum size defaults to its MIN-CONTENT width, and `white-space:nowrap`
-   makes min-content equal the full unwrapped string -- so "Was due 16 Aug
-   2026" (wider than the 132px track) was blowing the item's own box out
-   past the track to fit, and text-align:right then anchored to THAT wider
-   box's right edge, 13px past the real track edge (measured live: gap
-   4.56px-4.83px instead of 18px, only the shorter "Due …" strings that fit
-   under 132px happened to land on 18px by coincidence). Zeroing min-width
-   lets the item honour the track's actual 132px and overflow into the
-   title column's own generous whitespace instead, which is where the
-   overflow already went before this fix (nowrap was never new). DESIGN-
-   RULINGS.md, "Speaker detail -- due-date and schedule columns right-align
-   before status ink". */
+   `min-width: 0` and the overflow/ellipsis pair below are both load-
+   bearing, not decoration, and BOTH were needed -- first-cut shipped with
+   only `min-width: 0` and still measured wrong live:
+
+   1. A grid item's automatic minimum size defaults to its MIN-CONTENT
+      width, and `white-space:nowrap` makes min-content equal the full
+      unwrapped string -- so "Was due 16 Aug 2026" (wider than the 132px
+      track) was blowing the item's OWN BOX out past the track to fit it.
+      `min-width: 0` un-blocks the item so it actually honours the 132px
+      track instead.
+   2. That alone was not enough: once the box genuinely is 132px, a
+      right-aligned nowrap line that's still wider than its box does NOT
+      keep its right edge pinned in this engine -- measured directly (a
+      plain non-grid `width:132px; text-align:right; white-space:nowrap`
+      block overflows to the RIGHT, past the box, with the left edge
+      sitting near the box's own left edge -- the opposite of what CSS
+      prose reading suggests). So even with a correctly-sized box, the
+      "Was due …" rows still measured a 4.56px-4.83px gap instead of 18px
+      on the live rebuilt sandbox; only the "Due …" strings short enough to
+      actually fit inside 132px landed on 18px, by coincidence of length,
+      not by the rule working.
+   3. `overflow: hidden; text-overflow: ellipsis` (DEC-989's own idiom,
+      completed for this rule the same way a concurrent lane completed it
+      for the sessions/taskview siblings below) closes it for real: content
+      cannot render past the box once it's clipped, so text-align:right's
+      pinned edge is enforced by the clip rather than requested of layout
+      that doesn't grant it. The visible truncation elides the "Was due "
+      prefix first, keeping the actual date -- the more useful half --
+      which is a happier failure mode than the earlier bleed-into-the-
+      title-column behaviour ever was.
+
+   DESIGN-RULINGS.md, "Speaker detail -- due-date and schedule columns
+   right-align before status ink". */
 .chq-speaker-detail-tasks-row > :nth-child(2) {
   white-space: nowrap;
   text-align: right;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chq-speaker-detail-tasks-row > :nth-child(4) {
