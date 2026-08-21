@@ -383,76 +383,13 @@
 /* Modals (Bulk email / Add to event)                                     */
 /* ---------------------------------------------------------------------- */
 
-/* DEC-856 (wave-1 amendment): templates whose merge fields the bulk-email
-   context cannot resolve are disabled in the picker; this list names the
-   blocking token and the one forward path (Comms compose). A note, not a
-   control tier — muted, sized with the modal's other helper text. */
-/* Ruling A19 (wave 26): the one-sentence naming of the unavailable
-   templates that sits directly above the list -- same muted helper voice,
-   no margin of its own (the modal's own stack gap does the spacing). */
-.chq-bulk-email-unsendable-note {
-  margin: 0;
-  font-size: 12px;
-  color: var(--chq-muted);
-}
-
-/* G13 (frame 08-contacts--10, ruling A19): the merge-fields footnote sits
-   under the one-sentence unavailability note in the same muted helper
-   voice (the four-item unsendable-templates list is gone). */
-.chq-bulk-email-merge-footnote {
-  margin: 0;
-  font-size: 12px;
-  color: var(--chq-muted);
-}
-
-.chq-bulk-email-preview-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chq-bulk-email-preview-item {
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-card);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-bulk-email-preview-to {
-  font-size: 12px;
-  color: var(--chq-muted);
-}
-
-.chq-bulk-email-preview-subject {
-  font-weight: 600;
-}
-
-.chq-bulk-email-preview-body {
-  white-space: pre-wrap;
-  font-family: inherit;
-  font-size: 13px;
-  margin: 0;
-}
-
-.chq-cap-warning {
-  color: var(--chq-ink);
-}
-
-/* DEC-597 (wave 8 amendment): NewContactModal's frame 08--16 two-up rows --
-   First/Last share one row, Company/Title share a second, Email stays full
-   width between them (docs/design/Chautauqua Contacts.dc.html:821-845
-   `grid-template-columns:1fr 1fr; gap:16px`). */
-.chq-contacts-new-contact-row-2up {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
+/* Contention decomposition (structure custodian): this section's rules
+   (.chq-bulk-email-*, .chq-cap-warning, .chq-contacts-new-contact-row-2up)
+   moved byte-for-byte to ./contacts-modals.css. `@import` here is a CSS
+   at-rule Vite inlines at build time, so bundle output and cascade order
+   are unchanged; this is not a JS module import and has no effect on the
+   text any test reads directly from THIS file. */
+@import './contacts-modals.css';
 
 /* ---------------------------------------------------------------------- */
 /* DEC-616: drawer-as-record (task-w5-e) — label/value rows on a 130px/1fr */

@@ -362,8 +362,14 @@ const OFFENDERS: OffenderReport[] = ALL_CANDIDATES.map(checkOffender).filter(
 // ---------------------------------------------------------------------------
 
 describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 amendment)', () => {
-  it('sweeps exactly 43 CSS-bearing sources (app/src/**/*.css + ssrCssSources())', () => {
-    expect(SOURCES.length).toBe(43);
+  it('sweeps exactly 44 CSS-bearing sources (app/src/**/*.css + ssrCssSources())', () => {
+    // 43 -> 44 (contention decomposition, task
+    // custodian-app_src_pages_contacts_contacts_css): contacts.css's Modals
+    // section moved byte-for-byte to the new
+    // app/src/pages/contacts/contacts-modals.css, `@import`ed from
+    // contacts.css at its original position (build/cascade unchanged); the
+    // new file is a legitimate additional CSS-bearing source.
+    expect(SOURCES.length).toBe(44);
   });
 
   // Floor, not an equality (DEC-808 wave-18 amendment): this count moved
