@@ -112,6 +112,21 @@ export const CFP_CSS = `
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
 
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
+  /* DEC-393 wave-155 amendment (task pe): docs/design/Chautauqua Public
+     and Portal.dc.html:1003/:1289 draw the Submit-a-talk desktop dock's
+     primary at min-height:50px and :1004/:1290 draw its secondary
+     (Draft/"Save draft") at 48px -- both above the shared house registers
+     (the primary button rule declares no min-height at desktop scope; the
+     secondary button's global desktop max resolves to 46px from other
+     pages' rules). Scoped to this one action pairing so no other primary/
+     secondary button consumer on the site moves -- never raised in
+     theme.ts's shared house register. NOTE: deliberately no leading dot
+     before a class name anywhere in this comment -- the desktop-control-
+     floor scan reads comment text as part of the following rule's raw
+     selector, so a dot-prefixed class name in prose here would get
+     credited a min-height it never declared. */
+  .chq-cfp-actions .chq-btn-primary { min-height: 50px; }
+  .chq-cfp-actions .chq-cfp-save-draft { min-height: 48px; }
   .chq-cfp-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
   /* DEC-970: the "already have an account?" note in the form intro was
      rendering with no declared style -- same small/muted note treatment

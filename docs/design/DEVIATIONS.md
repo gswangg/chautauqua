@@ -586,3 +586,30 @@ instead of re-flagging.
   pointing away from a dock, wave-19-a's build shows it was always the
   argument FOR one. No further code change; this entry only reconciles
   the authority with the landed build.
+- Field-name eyebrows drawn as bordered chips, rendered as plain text — A
+  CLASS, not a per-row allowlist (DEC-393 wave-155 amendment, task pe).
+  `test/desktop-control-floor.scan.test.ts`'s desktop drawn-floor ledger
+  extracts any pack element carrying `min-height:NNpx` + `border-radius` +
+  (`border:` or `background:`) as a DRAWN CONTROL, with no way to tell a
+  real interactive control from decoration — a scan cannot infer
+  interactivity from a border. Twelve of that ledger's 23 wave-151
+  offenders are the pack drawing a plain field-name or section-name label
+  ("First name", "Last name", "Company", "Sessions", "Reviewer", "Speaker",
+  "Form") inside a bordered chip shape at 44-46px, where the app correctly
+  renders the SAME name as an unbordered text label:
+  `.chq-portal-field-label` (contact/portal/invite field labels),
+  `.chq-page-title` (page/section eyebrows named "Speaker"/"Reviewer"),
+  `.chq-section-label` (section headers named "Sessions"/"Form"). None of
+  these three classes is a control anywhere in the app — no click handler,
+  no href, no form association — and none carries or needs a min-height: a
+  text label has no tap target to floor. BLESSED: the twelve rows stay
+  offenders in the ledger (the scan has no decoration/control distinction
+  to encode a waiver into) but no CSS byte moves for them. Any FUTURE row
+  the ledger reports whose resolved token is one of the three classes above
+  and whose drawn label is a bare field/section name (not a value, not a
+  button caption) is the same class, blessed the same way — a scan finding
+  in this shape is not itself grounds to add real interactivity CSS.
+  Measured on this branch (`docs/design/audit/desktop-control-floor-v12.md`
+  carries the row-by-row receipts): `Chautauqua Contacts.dc.html:601/602`,
+  `:824/828/839`; `Chautauqua Public and Portal.dc.html:1435/1439`;
+  `Chautauqua Settings.dc.html:1287/1291/1302`; `Chautauqua Speakers.dc.html:209`.

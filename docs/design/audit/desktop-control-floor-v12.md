@@ -15,42 +15,99 @@ shape). Drawn-floor histogram: `min-height:46px` is the most common value
 whole desktop population, confirmed again inside just the DRAWN-CONTROL
 subset this scan grades.
 
-## Offenders: 23 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 23`)
+## Offenders: 14 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 14`, was 23)
 
-Every offender's resolved token declares strictly below the height its own
-frame draws. Two shapes recur:
+WAVE 155 (DEC-393 amendment, task pe) split the wave-151 population of 23
+into DRAINED (9 real-control offender rows, fixed by 4 scoped desktop
+rules), BLESSED (12 field-name-eyebrow rows, documented as a class, no CSS
+moved), and two rows that are neither -- left as live, unaddressed
+offenders. 9 + 12 + 2 = 23; 23 - 9 = 14, the new measured ceiling.
 
-**Field-label chips resolve to `.chq-portal-field-label`, `.chq-page-title`,
-`.chq-section-label` and similar text-only tokens that declare no
-min-height at all (declared 0px).** The pack draws several form field
-names ("First name", "Last name", "Company", "Sessions", "Reviewer",
-"Speaker", "Form") as bordered/backgrounded chips at 44-46px on
-`docs/design/Chautauqua Contacts.dc.html`, `docs/design/Chautauqua Public
-and Portal.dc.html`, `docs/design/Chautauqua Settings.dc.html` and
-`docs/design/Chautauqua Speakers.dc.html`; the app's corresponding label
-element is a plain text token with no drawn box. Whether these are
-INTENDED as tap-floored controls, or the frame is drawing a field-name
-eyebrow as a decorative chip that the app correctly renders as plain text,
-is a design call this ledger does not make -- it reports the divergence as
-measured, per this scan's own literal DRAWN CONTROL definition (any
-bordered/backgrounded, radius-bearing, min-height-bearing element), not a
-judgment about interactivity.
+### Drained (9 rows, 4 scoped desktop rules)
 
-**Two "Sign in" buttons and one "API docs ›" link resolve to
-`chq-home-signin` / `chq-home-action-tertiary`, both undeclared anywhere.**
-`docs/design/Chautauqua Account.dc.html`:51/318 and `docs/design/Chautauqua
-Home.dc.html`:214/285 draw the sign-in button at 46-48px;
-`docs/design/Chautauqua Home.dc.html`:286 draws the tertiary API-docs link
-at 46px. Neither token carries a min-height rule anywhere in the corpus.
+**`chq-home-signin` -- "Sign in", 4 rows.** `docs/design/Chautauqua
+Account.dc.html`:51 (frame "Sign in · a card, not a stretched phone") and
+`:318` (frame "Sign in · rejected") draw 46px; `docs/design/Chautauqua
+Home.dc.html`:214 (frame "{{ e.name }}") draws 46px and `:285` (frame
+"Fresh deploy · desktop") draws 48px. The token carried no min-height rule
+anywhere. Fixed in `src/routes/public/home.css.ts`'s desktop scope (outside
+its `@media (max-width: 700px)` block, which already floors the same token
+at 44px for phone and is unchanged) with `min-height: 48px` -- the max of
+the two drawn values, since the scan grades declared-at-least-drawn, not
+equality -- plus centred flex and horizontal padding so the reserved
+height is actually filled.
 
-**Four rows resolve to a real, non-zero, but insufficient declared
-height.** `docs/design/Chautauqua Public and Portal.dc.html`:1003/1289 draw
-"Submit this talk" at `min-height:50px`; the resolved `chq-btn
-chq-btn-primary` pairing declares 48px. `docs/design/Chautauqua Public and
-Portal.dc.html`:1004/1290 draw "Save draft" at `min-height:48px`; the
-resolved `chq-btn chq-btn-secondary chq-cfp-save-draft` pairing declares
-46px. Both are 2px short of their own frame's drawn value, not an absent
-rule.
+**`chq-home-action-tertiary` -- "API docs ›", 1 row.**
+`docs/design/Chautauqua Home.dc.html`:286 (frame "Fresh deploy · desktop")
+draws 46px; the token carried no min-height rule anywhere (only its own
+44px phone floor existed). Fixed in `src/routes/public/home.css.ts`'s
+desktop scope with a `min-height: 46px` rule kept deliberately SEPARATE
+from the token's main declaration block -- that block's own preceding
+comment names the sibling `chq-home-action-quiet` token with a leading
+dot, and this scan reads comment text as part of the following rule's raw
+selector, so folding the min-height into that block's body would have
+falsely credited the quiet token too (verified: it did, before the split).
+
+**`chq-btn-primary` (CFP submit pairing) -- "Submit this talk", 2 rows.**
+`docs/design/Chautauqua Public and Portal.dc.html`:1003 and `:1289` (both
+frame "Submit a talk") draw `min-height:50px`; the resolved `chq-btn
+chq-btn-primary` pairing declared 48px (the shared house register, from
+other pages' rules -- the CFP page's own primary button rule declared no
+min-height at desktop scope at all). Fixed with a rule SCOPED to the CFP
+action pairing, `.chq-cfp-actions .chq-btn-primary { min-height: 50px; }`,
+added to `src/routes/public/cfp.css.ts` outside its `@media (max-width:
+700px)` block (whose own `.chq-cfp-actions .chq-btn-primary { flex: 1;
+min-height: 48px; }` phone rule is unchanged) -- never by raising
+`.chq-btn-primary`'s shared desktop register in `src/views/theme.ts`.
+
+**`chq-cfp-save-draft` (CFP save-draft pairing) -- "Save draft", 2 rows.**
+`docs/design/Chautauqua Public and Portal.dc.html`:1004 and `:1290` (both
+frame "Submit a talk") draw `min-height:48px`; the resolved `chq-btn
+chq-btn-secondary chq-cfp-save-draft` pairing declared 46px (the shared
+`chq-btn-secondary` house register; the token's own `min-height:48px`
+declaration lives inside `cfp.css.ts`'s phone `@media` block, stripped
+before desktop grading). Fixed with `.chq-cfp-actions .chq-cfp-save-draft {
+min-height: 48px; }`, added to `src/routes/public/cfp.css.ts` outside the
+`@media` block (the phone rule at `.chq-cfp-save-draft { min-height: 48px;
+... }` inside it is unchanged) -- never by raising `chq-btn-secondary`'s
+shared register.
+
+### Blessed (12 rows -- field-name eyebrows, a CLASS not a per-row allowlist)
+
+Recorded in full, with reasoning, in `docs/design/DEVIATIONS.md`'s
+"Field-name eyebrows drawn as bordered chips, rendered as plain text"
+entry (section 6). Summary: the pack draws a plain field-name or
+section-name label ("First name", "Last name", "Company", "Sessions",
+"Reviewer", "Speaker", "Form") inside a bordered chip shape at 44-46px;
+the app correctly renders the SAME name as an unbordered text label via
+`.chq-portal-field-label`, `.chq-page-title`, or `.chq-section-label` --
+none of which is a control anywhere in the app (no click handler, no href,
+no form association), so none needs or carries a min-height. A scan cannot
+infer interactivity from a border; these twelve rows stay in the ledger's
+offender count (the scan has no decoration/control distinction to encode a
+waiver into) but no CSS byte moved for them:
+
+`docs/design/Chautauqua Contacts.dc.html`:601 "Speaker", `:602`
+"Reviewer", `:824` "First name", `:828` "Last name", `:839` "Company";
+`docs/design/Chautauqua Public and Portal.dc.html`:1435 "First name",
+`:1439` "Last name"; `docs/design/Chautauqua Settings.dc.html`:1287 "First
+name", `:1291` "Last name", `:1302` "Reviewer";
+`docs/design/Chautauqua Speakers.dc.html`:209 "Form".
+
+### Neither drained nor blessed (2 rows -- real, unaddressed, flagged for a later wave)
+
+These two are genuine controls (not field-name-eyebrow decoration) but
+were not named in this wave's drain list; left as live offenders rather
+than silently absorbed into either bucket above:
+
+- `docs/design/Chautauqua Account.dc.html`:225 -- "Back to sign in" (frame
+  "Reset · link sent") draws `min-height:46px`; resolves to
+  `chq-auth-tertiary`, declared 0px.
+- `docs/design/Chautauqua Submissions.dc.html`:314 -- "Waitlist" (frame
+  "Submission detail · /submissions/:id") draws `min-height:44px`;
+  resolves to `chq-overview-btn chq-overview-btn-waitlist`, declared 0px
+  (44px is already the ruled floor, so this is a near-miss rather than a
+  large gap, but the scan still grades it strictly-below).
 
 One measured false-positive was closed by the JOIN's own attribute-value
 guard before this ceiling was seeded, and is recorded here as a receipt of
