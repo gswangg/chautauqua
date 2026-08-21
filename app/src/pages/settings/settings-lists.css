@@ -225,9 +225,13 @@
 
   /* DEC-919 wave-156 (task qe-tracks-rooms-read-drill): the Tracks/Rooms
      READ view's own per-row 'Edit' box and list-closing dashed 'Add a
-     track'/'Add a room' row (docs/design/Chautauqua
-     Settings.dc.html:364,367,379,382 -- verbatim receipts sit beside each
-     JSX call site in TracksRoomsPanel.tsx). Both classes layer onto
+     track'/'Add a room' row -- docs/design/Chautauqua Settings.dc.html:364
+     `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+     min-height:44px` (the boxed Edit) and docs/design/Chautauqua
+     Settings.dc.html:367 `border:1px dashed #BAB6A6; border-radius:6px;
+     min-height:44px` (the dashed Add row); :379 and :382 are byte-identical
+     twins of those two for the Rooms column, receipted beside their own JSX
+     call sites in TracksRoomsPanel.tsx. Both classes layer onto
      .chq-settings-phone-action above for its hidden-by-desktop / flex-on-
      phone toggle (reused rather than a second base display:none rule --
      this file's own vocabulary, DEC-613); every property below overrides

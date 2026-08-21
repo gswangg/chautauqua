@@ -769,9 +769,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(14);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(15);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(44);
+    expect(derived.length).toBe(45);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

@@ -97,6 +97,12 @@ const EXCLUDED = new Set<string>([
   "/admin/settings?section=cfp",
   "/admin/settings?section=tracks-rooms",
   "/admin/settings?section=public-pages",
+  // DEC-728 wave-156: Saved embeds is a NESTED drill under the Public pages
+  // section, addressed with a second `?view=` sub-state on the same base
+  // path -- same disposition as every `?section=` row above (the underlying
+  // `/admin/settings` surface is named in AUDIT.md; the individual drill is
+  // not broken out as its own line).
+  "/admin/settings?section=public-pages&view=embeds",
   "/admin/settings?section=portal",
   "/admin/settings?section=your-data",
   "/admin/settings?section=people",

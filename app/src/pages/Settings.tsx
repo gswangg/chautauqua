@@ -68,7 +68,7 @@ export interface SettingsSection {
 // by PortalSettingsPanel (its Resources row delegates to ResourcesPanel
 // internally) -- no separate wrapper needed.
 
-// DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): the public-pages
+// DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): the public-pages
 // section's own nested `view` sub-states -- addressed
 // `?section=public-pages&view=<value>`, never a SECTIONS entry of their own
 // (DEC-747/DEC-691 pin the rail at the pack's seven). routeManifest.test.ts
@@ -186,7 +186,7 @@ export function SettingsPage() {
   // file's own read-drill/edit-drill title-and-back machinery rather than
   // inventing a second one: `viewingEmbeds` is this file's only awareness
   // of the `view` param, and only for the one section the audit
-  // (docs/design/audit/settings-v12.md:578) named as needing an own
+  // (docs/design/audit/settings-v12.md's `:578` row) named as needing an own
   // screen. Public pages itself has no edit view (DEC-896 B10 DROP), so
   // this never collides with `editingSection`.
   const viewingEmbeds = urlSection === 'public-pages' && !editing && searchParams.get('view') === 'embeds';

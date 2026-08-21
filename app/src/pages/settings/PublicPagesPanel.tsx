@@ -108,7 +108,7 @@ export function PublicPagesPanel() {
   // DEC-822: SavedEmbedsPanel's Edit link opens the builder at ?embed=<id>
   // -- the builder must actually be mounted for that link to land anywhere.
   const embedOpen = embedOpenState || searchParams.get('embed') !== null;
-  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): Saved embeds
   // renders as its own 390 screen at `?section=public-pages&view=embeds`,
   // nested under this section rather than a new SECTIONS entry. The DOM
   // is unconditional (DEC-385, narrow overrides wide via max-width media
@@ -172,8 +172,8 @@ export function PublicPagesPanel() {
           // "its own screen" and not a second card sharing scroll space
           // with the one just opened. Desktop is untouched (DEC-385).
           viewingEmbeds
-            ? 'chq-settings-panel chq-settings-numbered chq-settings-public-pages-own chq-settings-public-pages-own-hidden'
-            : 'chq-settings-panel chq-settings-numbered chq-settings-public-pages-own'
+            ? 'chq-settings-panel chq-settings-numbered chq-settings-public-pages-own-hidden'
+            : 'chq-settings-panel chq-settings-numbered'
         }
         aria-label="Public pages"
       >

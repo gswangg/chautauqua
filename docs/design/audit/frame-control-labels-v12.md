@@ -96,7 +96,7 @@ are recorded below as Composed rows, not as surviving gaps.
 | `Chautauqua Public and Portal.dc.html:494` | "Later" | BLESSED — DEVIATIONS.md §6, DEC-967 wave-106 |
 | `Chautauqua Submissions.dc.html:151` | "All 47" | `` `All ${allTotal}` ``, in `app/src/pages/submissions/FilterBar.tsx` |
 | `Chautauqua Overview.dc.html:277` | "Place the other six ›" | wave-131 drain: `` `Place the other ${spellCount(...)} ›` ``, in `app/src/pages/overview/AgendaWorkSection.tsx` (v12m-w4-s landed DEC-919 wave-129's reversal) |
-| `Chautauqua Settings.dc.html:318/349/395/446/483/512/554/580` | "‹ Settings" | wave-131 drain: `` `&lsaquo; {editingSection ? editingSection.label : 'Settings'}` ``, in `app/src/pages/Settings.tsx` — the read drill still renders `‹ Settings`, but v12m-w5-k's DEC-896 wave-130 two-level head means the literal string no longer occurs verbatim in source (frames: Settings · Event / Tracks and rooms / Your data / Call for papers / Public pages / Speaker portal / People and roles / Saved embeds) |
+| `Chautauqua Settings.dc.html:318/349/395/446/483/512/554/580` | "‹ Settings" | wave-131 drain: `` `&lsaquo; {editingSection ? editingSection.label : viewingEmbeds ? 'Public pages' : 'Settings'}` ``, in `app/src/pages/Settings.tsx` — the read drill still renders `‹ Settings`, but v12m-w5-k's DEC-896 wave-130 two-level head means the literal string no longer occurs verbatim in source (frames: Settings · Event / Tracks and rooms / Your data / Call for papers / Public pages / Speaker portal / People and roles / Saved embeds) |
 
 ## Not in scope for this ledger
 

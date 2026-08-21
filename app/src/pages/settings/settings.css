@@ -2187,7 +2187,7 @@
     white-space: normal;
   }
 
-  /* DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): "Saved
+  /* DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): "Saved
      embeds" renders as its own 390 screen at
      `?section=public-pages&view=embeds`, not a second always-open section
      nested inside Public pages. `data-screen` (SavedEmbedsPanel.tsx) is
@@ -2217,6 +2217,12 @@
     display: none;
   }
 
+  /* phone-hidden: NAVIGATION control with nothing left to reach -- this is
+     the "Open" entry link INTO the Saved-embeds screen, and this rule only
+     fires once that screen is already open (`data-screen='true'`). Its
+     destination is the surface the user is standing on; the way back out is
+     the screen's own "< Public pages" back control (Settings.tsx), not a
+     second exit this rule would have to preserve. */
   [data-screen='true'] .chq-settings-saved-embeds-open {
     display: none;
   }

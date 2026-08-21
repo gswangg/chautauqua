@@ -1,7 +1,9 @@
 // w13-ra (DEC-976 wave-157): the phone CLAIMED_FLOOR row for the Content
 // cluster reads 53/53 event-wide, but NONE of Content's four width:390px
-// frames (docs/design/Chautauqua Content.dc.html:198, :247, :338, :373)
-// had ever been RENDERED against the tree -- Content is recorded as
+// frames (docs/design/Chautauqua Content.dc.html, caption lines 198, 247,
+// 338 and 373 -- each cited with its own verbatim receipt beside the it()
+// that renders it, never from this header) had ever been RENDERED against
+// the tree -- Content is recorded as
 // 'DONE' in docs/mobile-campaign.md on the strength of a probe, not a
 // render receipt. This task builds that receipt, modelled EXACTLY on
 // Settings.frame-verdicts.render.test.tsx (DEC-976 amendment wave 154,

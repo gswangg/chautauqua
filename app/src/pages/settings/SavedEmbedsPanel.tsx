@@ -194,7 +194,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const onCount = embeds?.filter((e) => e.enabled).length ?? 0;
   const offCount = embeds?.filter((e) => !e.enabled).length ?? 0;
 
-  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): Saved embeds
   // renders as its own 390 screen at `?section=public-pages&view=embeds`.
   // `screenMode` is this panel's only awareness of that -- it drives two
   // phone-only CSS hooks (`data-screen` on the section below, and the

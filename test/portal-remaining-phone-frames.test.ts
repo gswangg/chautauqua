@@ -1,12 +1,13 @@
 // v12m-w5-a: Portal's last two 390 frames (DEC-029 wave-87 amendment) --
-// "Portal · Resources" (docs/design/Chautauqua Public and Portal.dc.html:1561)
-// `width:390px; height:844px` -- v9-f (DEC-976 wave-91) receipt at :54 below,
-// which asserts the frame's own citation against the RENDERED tree, not
-// merely against the design file reading itself back (DEC-374 wave-156: an
-// orphan `it()` doing only the latter was removed from here -- see
+// "Portal · Resources" and "Portal · co-presenter rejected", both drawn in
+// docs/design/Chautauqua Public and Portal.dc.html. This header carries NO
+// frame citation of its own: the Resources frame's `width:390px;
+// height:844px` container receipt lives beside its own assertion in the
+// describe block below, where it asserts the citation against the RENDERED
+// tree rather than the design file reading itself back (DEC-374 wave-156:
+// an orphan `it()` doing only the latter was removed from here -- see
 // app/src/tautological-assertion.scan.test.ts's header, which named this
-// exact block as its live example).
-// and "Portal · co-presenter rejected" (:1304). Each assertion below cites
+// exact block as its live example). Each assertion below cites
 // the exact dc.html line it pins, quotes that line's literal verbatim, and
 // asserts what the literal declares -- either against the rendered SSR
 // markup (src/routes/portal/tasks/views.tsx's ResourcesPage,

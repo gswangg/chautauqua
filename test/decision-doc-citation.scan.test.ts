@@ -735,7 +735,7 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // no decisions/*.md body. Seeded by forcing this to -1 and reading the
 // printed count off this tree (see docs/design/audit/decisions-registry-
 // citation-v12.md for the measured shape).
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1291;
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1290;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {

@@ -159,7 +159,7 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/settings?section=cfp", role: "organizer" },
   { path: "/admin/settings?section=tracks-rooms", role: "organizer" },
   { path: "/admin/settings?section=public-pages", role: "organizer" },
-  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): "Saved
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): "Saved
   // embeds" now renders as its own 390 screen, reached as a NESTED drill
   // under Public pages rather than the fold-in the comment above still
   // describes for the row above -- Settings.tsx's `PublicPagesView` union

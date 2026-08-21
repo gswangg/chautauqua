@@ -265,7 +265,7 @@ describe("routeManifest tab/panel sub-state parity (DEC-144)", () => {
   });
 });
 
-// DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds'
+// DEC-728 wave-156 (docs/design/audit/settings-v12.md's `:578` row): Saved embeds'
 // `view` sub-state is nested INSIDE the public-pages section
 // (`?section=public-pages&view=<value>`), one query param deeper than any
 // group above's single-param shape -- its own check, still source-scanned

@@ -46,7 +46,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 614,
     text: 'Settings · Call for papers',
     reason:
-      "app/src/pages/Settings.tsx composes the fixed 'Settings' word with the live section label as `&lsaquo; {editingSection ? editingSection.label : 'Settings'}`; editingSection.label is 'Call for papers' for the cfp section (SECTIONS[1].label, Settings.tsx).",
+      "app/src/pages/Settings.tsx composes the fixed 'Settings' word with the live section label as `&lsaquo; {editingSection ? editingSection.label : viewingEmbeds ? 'Public pages' : 'Settings'}`; editingSection.label is 'Call for papers' for the cfp section (SECTIONS[1].label, Settings.tsx).",
   },
   {
     fileName: 'Chautauqua Settings.dc.html',
