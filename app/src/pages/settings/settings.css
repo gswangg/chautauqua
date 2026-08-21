@@ -2315,6 +2315,17 @@
     grid-template-columns: 1fr;
   }
 
+  /* .chq-settings-track-edit-row's desktop grid (minmax(0,1fr) 150px 200px,
+     :1174) totals 350px of fixed tracks plus the inherited 16px gap x 2 --
+     32px -- against the 358px phone budget, leaving the track NAME input
+     eight pixels wide (TrackEditRow.tsx:46). Re-lined to a single column,
+     same idiom as the room row above -- DEC-919: a 390 frame re-lines, it
+     never removes a control, so the name input and the Save/Cancel/Remove
+     actions simply stack instead of sharing one row. */
+  .chq-settings-track-edit-row {
+    grid-template-columns: 1fr;
+  }
+
   /* v12m-w5-o/DEC-393 wave-109 amendment, DEC-383 wave-109 amendment:
      Settings' only route into edit mode was a 15px bare-text control, and
      the borderless cancelled-padding idiom (padding-inline + equal negative
