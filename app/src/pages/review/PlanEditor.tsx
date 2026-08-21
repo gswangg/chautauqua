@@ -307,6 +307,38 @@ function capRowSummaryLine(submissionsInScope: number, reviewsPerTalk: number, r
   return distributeSummaryText(submissionsInScope, reviewsPerTalk, reviewerCount);
 }
 
+// DEC-745 (wave-33 amendment): `Chautauqua Review.dc.html:662` draws the
+// PHONE cap row's summary in a different grammar than desktop's
+// `capRowSummaryLine` -- "Would assign 22 of 36 · you confirm before
+// anything saves" -- naming the RUN's own outcome (how many of the still-
+// needed reviews this Distribute click would actually place) rather than
+// the plan's static shape. Desktop keeps capRowSummaryLine byte-identically;
+// this is a second composer, not a rewrite of the first.
+function capRowSummaryLinePhone(reviewsNeeded: number, wouldAssign: number): string {
+  return `Would assign ${wouldAssign} of ${reviewsNeeded} · you confirm before anything saves`;
+}
+
+// DEC-745 (wave-33 amendment): wouldAssign is bounded by the SAME two
+// constraints the preview/apply endpoints enforce -- it can never exceed
+// what the plan still needs (reviewsNeeded - alreadyAssigned), and when a
+// cap is set it can never exceed the remaining per-reviewer capacity summed
+// across progressRows (the same rows the roster below reads its own
+// assigned counts from). No new fetch: every input here is already on the
+// page.
+function capRowWouldAssignPhone(
+  reviewsNeeded: number,
+  progressRows: ProgressRow[],
+  capPerReviewer: number | undefined,
+): number {
+  const alreadyAssigned = progressRows.reduce((sum, r) => sum + r.assigned, 0);
+  const capacity =
+    capPerReviewer !== undefined
+      ? progressRows.reduce((sum, r) => sum + Math.max(0, capPerReviewer - r.assigned), 0)
+      : Infinity;
+  const remaining = reviewsNeeded - alreadyAssigned;
+  return Math.min(Math.max(Math.min(remaining, capacity), 0), reviewsNeeded);
+}
+
 // DEC-840: a reviewer the run could not use is LISTED with its reason,
 // never omitted -- this is the closed-vocabulary text for the "unchanged"
 // cell, shared with the sentence-form shortfall summaries above.
@@ -430,6 +462,13 @@ export function PlanEditor() {
   // assigned/completed aggregate ProgressPanel already renders, joined by
   // userId -- never a second count derived here.
   const [progressRows, setProgressRows] = useState<ProgressRow[]>([]);
+  // DEC-745 (wave-33 amendment): progressRows starts `[]` on mount, which is
+  // indistinguishable from "loaded, zero reviewers" -- the phone cap-row
+  // summary below needs to tell those apart (a fabricated "Would assign 0
+  // of 0" before the fetch resolves is the failure mode DEC-745 forbids),
+  // so this flips true only once loadProgress's response has actually
+  // landed, alongside progressRows/submissionsInScope/reviewerAccountCount.
+  const [progressLoaded, setProgressLoaded] = useState(false);
   // DEC-745 (wave-72 amendment): the persistent cap row's summary reads off
   // GET /plans/:id/progress's submissionsInScope -- the SAME plan-filtered
   // count the server already loads for assignment resolution, never a
@@ -647,6 +686,7 @@ export function PlanEditor() {
         // ACCOUNT (src/routes/review/plans-progress.ts), the true figure
         // the cap row's summary names.
         setReviewerAccountCount(res.total);
+        setProgressLoaded(true);
       })
       .catch(() => {
         // Same non-blocking treatment as the reviewer roster -- rows still
@@ -2329,11 +2369,33 @@ export function PlanEditor() {
                   one reviewer scoped to two tracks is two rows). Neither
                   figure is fabricated: the whole summary waits for both
                   numbers to have actually loaded. */}
-              {submissionsInScope !== null && reviewerAccountCount !== null && (
-                <span className="chq-review-distribute-summary">
-                  {capRowSummaryLine(submissionsInScope, draft.maxEvaluationsPerSubmission ?? 1, reviewerAccountCount)}
-                </span>
-              )}
+              {/* DEC-745 (wave-33 amendment): the PHONE branch draws
+                  `Chautauqua Review.dc.html:662`'s "Would assign N of M ..."
+                  grammar instead of desktop's "N talks · M reviews needed
+                  at K each · R reviewers" -- and additionally requires
+                  progressLoaded (never just submissionsInScope/
+                  reviewerAccountCount), because wouldAssign is computed
+                  FROM progressRows (each reviewer's already-assigned
+                  count); rendering it against the pre-fetch `[]` would
+                  read as "everyone still has zero assigned" and fabricate
+                  a numerator the run has not actually confirmed. Nothing
+                  renders (not a placeholder, not a zero) until the real
+                  numbers have landed. */}
+              {isPhone
+                ? submissionsInScope !== null && progressLoaded && (() => {
+                    const reviewsNeeded = submissionsInScope * (draft.maxEvaluationsPerSubmission ?? 1);
+                    const wouldAssign = capRowWouldAssignPhone(reviewsNeeded, progressRows, parsedCapPerReviewer());
+                    return (
+                      <span className="chq-review-distribute-summary">
+                        {capRowSummaryLinePhone(reviewsNeeded, wouldAssign)}
+                      </span>
+                    );
+                  })()
+                : submissionsInScope !== null && reviewerAccountCount !== null && (
+                    <span className="chq-review-distribute-summary">
+                      {capRowSummaryLine(submissionsInScope, draft.maxEvaluationsPerSubmission ?? 1, reviewerAccountCount)}
+                    </span>
+                  )}
             </div>
             {/* w1-g/DEC-745 wave-98 amendment: docs/design/Chautauqua
                 Review.dc.html:663 draws a SECOND, dashed "Assign a
