@@ -26,6 +26,8 @@ import { registerErrorHandler } from "../src/server/http";
 import { hashPassword } from "../src/auth/password";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { KVStore } from "../src/auth/claim";
+import { AUTH_RATE_LIMIT_WINDOW_SECONDS } from "../src/routes/auth-helpers";
+import { scopedRateLimitKey } from "../src/lib/rate-limit";
 
 const DDL = `
 create table org (
@@ -123,6 +125,20 @@ async function seedUser(sqlite: DatabaseSync) {
     `insert into user (id, org_id, email, password_hash, role, contact_id, created_at, updated_at)
      values ('u_1', '${ORG_ID}', '${VICTIM_EMAIL}', '${passwordHash}', 'organizer', null, ${now}, ${now})`,
   );
+}
+
+// Directly seeds a rate_limit row at `count` inside the same fixed
+// epoch-aligned window checkAndIncrementScopedLimit would compute for
+// `now`, instead of driving the bucket there via `count` sequential real
+// POST /login round trips. Same key derivation (scopedRateLimitKey) as the
+// repo uses, so a bucket seeded this way is byte-for-byte what `count`
+// real admissions would have produced.
+function seedRateLimitBucket(sqlite: DatabaseSync, scope: string, id: string, count: number, now: number): void {
+  const windowMs = AUTH_RATE_LIMIT_WINDOW_SECONDS * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  const expiresAt = windowStart + windowMs;
+  sqlite.exec(`insert into rate_limit (key, count, expires_at) values ('${key}', ${count}, ${expiresAt})`);
 }
 
 function buildApp(db: Db) {
@@ -256,10 +272,20 @@ describe("DEC-072 wave-54: the identity-keyed login budget no longer strands a v
     const { app, env } = buildApp(db);
     const ip = "203.0.113.9";
 
-    for (let i = 0; i < 100; i++) {
-      const res = await postLogin(app, env, ip, { email: `nobody-${i}@example.test`, password: "wrong-password" });
-      expect(res.status).toBe(401);
-    }
+    // Seed the IP bucket to 99 directly (the exact key/window
+    // checkAndIncrementScopedLimit would produce for `ip` at FROZEN_NOW)
+    // instead of driving it there with 100 sequential real POST /login
+    // round trips against distinct emails -- this test is about the
+    // shared per-IP bucket capping regardless of which email is used, not
+    // about any individual email's own per-identity or per-account
+    // bucket, so only the last two admissions need to be real requests:
+    // one that lands exactly on the cap (100th, still admitted) and one
+    // that crosses it (101st, denied).
+    seedRateLimitBucket(sqlite, "login-ip", ip, 99, FROZEN_NOW);
+
+    const atCap = await postLogin(app, env, ip, { email: "nobody-99@example.test", password: "wrong-password" });
+    expect(atCap.status).toBe(401);
+
     const res = await postLogin(app, env, ip, { email: "nobody-100@example.test", password: "wrong-password" });
     expect(res.status).toBe(429);
   });
