@@ -125,3 +125,142 @@ describe("routeManifest coverage", () => {
     }
   });
 });
+
+// DEC-144 (wave-154 amendment): every tab/panel sub-state a page declares
+// for itself must have a matching ROUTE_MANIFEST row -- source-scanned from
+// each page's OWN tab/panel union so a new tab landing with no manifest row
+// fails HERE, by name, instead of the render sweep silently never visiting
+// it (the /admin/contacts?tab=pipeline gap DEC-144's ruling names). A
+// hand-listed population is not a population (DEC-180): these arrays are
+// extracted from the page source text on every run, never typed by hand.
+describe("routeManifest tab/panel sub-state parity (DEC-144)", () => {
+  /** Every quoted string literal inside a `type <name> = 'a' | 'b' | ...;`
+   * declaration in `source`. */
+  function extractTypeUnion(source: string, typeName: string): string[] {
+    const re = new RegExp(`type ${typeName}\\s*=\\s*([^;]+);`);
+    const m = re.exec(source);
+    if (!m) throw new Error(`type ${typeName} not found in source`);
+    return [...m[1]!.matchAll(/'([a-zA-Z0-9_-]+)'/g)].map((x) => x[1]!);
+  }
+
+  /** Every quoted string literal inside an `export const <name> = [...] as
+   * const;` array declaration in `source`. */
+  function extractConstArray(source: string, constName: string): string[] {
+    const re = new RegExp(`export const ${constName}\\s*=\\s*\\[([^\\]]+)\\]`);
+    const m = re.exec(source);
+    if (!m) throw new Error(`export const ${constName} not found in source`);
+    return [...m[1]!.matchAll(/'([a-zA-Z0-9_-]+)'/g)].map((x) => x[1]!);
+  }
+
+  /** The single captured group of the first match of `re` against `source`,
+   * throwing (not silently defaulting) if `re` doesn't match -- this test's
+   * job is to notice when the page's own shape moved. */
+  function extractOne(source: string, re: RegExp, label: string): string {
+    const m = re.exec(source);
+    if (!m) throw new Error(`${label} not found in source`);
+    return m[1]!;
+  }
+
+  const commsSource = readFileSync(join(APP_SRC, "pages", "Comms.tsx"), "utf-8");
+  const contactsSource = readFileSync(join(APP_SRC, "pages", "contacts", "ContactsApp.tsx"), "utf-8");
+  const settingsSource = readFileSync(join(APP_SRC, "pages", "Settings.tsx"), "utf-8");
+  const contentAppSource = readFileSync(join(APP_SRC, "pages", "content", "ContentApp.tsx"), "utf-8");
+  const worklistSource = readFileSync(join(APP_SRC, "pages", "content", "worklist.ts"), "utf-8");
+
+  interface SubStateGroup {
+    /** Human label for failure messages. */
+    label: string;
+    /** The manifest row path this sub-state's query string is appended to. */
+    basePath: string;
+    /** The query param name (`tab`, `section`, `view`, ...). */
+    param: string;
+    /** Every value the page's own union/array declares. */
+    values: string[];
+    /** The value that needs NO extra row because the bare `basePath` row
+     * already renders it (the param's own fallback-when-absent). `null`
+     * when the bare row renders neither this param's default NOR any
+     * single value (Settings: absent `?section=` renders the phone index,
+     * not any one section) -- every value then needs its own row. */
+    defaultValue: string | null;
+  }
+
+  const groups: SubStateGroup[] = [
+    {
+      label: "Comms.tsx `type Tab`",
+      basePath: "/admin/comms",
+      param: "tab",
+      values: extractTypeUnion(commsSource, "Tab"),
+      defaultValue: extractOne(
+        commsSource,
+        /isTab\(rawTab\) \? rawTab : '([a-zA-Z0-9_-]+)'/,
+        "Comms.tsx default tab fallback",
+      ),
+    },
+    {
+      label: "ContactsApp.tsx `type Panel`",
+      basePath: "/admin/contacts",
+      param: "tab",
+      values: extractTypeUnion(contactsSource, "Panel"),
+      defaultValue: extractOne(
+        contactsSource,
+        /const panel: Panel = [^\n]*: '([a-zA-Z0-9_-]+)';/,
+        "ContactsApp.tsx default panel fallback",
+      ),
+    },
+    {
+      label: "Settings.tsx `SECTIONS` panel keys",
+      basePath: "/admin/settings",
+      param: "section",
+      // SECTIONS is the only `key: '...'`-shaped array in this file (see
+      // routeManifest.ts's own DEC-144 comment); source-scanned rather than
+      // imported so this test needs no jsdom/React module graph.
+      values: [...settingsSource.matchAll(/\bkey: '([a-zA-Z0-9_-]+)'/g)].map((x) => x[1]!),
+      // Absent `?section=` seeds `active` to null (the phone index/hub),
+      // not any one section -- every key needs its own row.
+      defaultValue: null,
+    },
+    {
+      label: "ContentApp.tsx worklist.ts `WORKLIST_TABS`",
+      basePath: "/admin/content",
+      param: "tab",
+      values: extractConstArray(worklistSource, "WORKLIST_TABS"),
+      defaultValue: extractOne(
+        contentAppSource,
+        /DEFAULT_WORKLIST_TAB: WorklistTab = '([a-zA-Z0-9_-]+)'/,
+        "ContentApp.tsx default worklist tab",
+      ),
+    },
+    {
+      label: "ContentApp.tsx `type ContentView`",
+      basePath: "/admin/content",
+      param: "view",
+      values: extractTypeUnion(contentAppSource, "ContentView"),
+      defaultValue: extractOne(
+        contentAppSource,
+        /ContentView \| null\) \?\? '([a-zA-Z0-9_-]+)'/,
+        "ContentApp.tsx default view fallback",
+      ),
+    },
+  ];
+
+  it("every group's own source extraction found at least one value (sanity check the regexes aren't silently matching nothing)", () => {
+    for (const group of groups) {
+      expect(group.values.length, `${group.label}: extracted zero values`).toBeGreaterThan(0);
+    }
+  });
+
+  it("every declared tab/panel key not covered by the bare route's default has its own ROUTE_MANIFEST row", () => {
+    const manifestPaths = new Set(ROUTE_MANIFEST.map((e) => e.path));
+    const missing: string[] = [];
+    for (const group of groups) {
+      for (const value of group.values) {
+        if (value === group.defaultValue) continue;
+        const expectedPath = `${group.basePath}?${group.param}=${value}`;
+        if (!manifestPaths.has(expectedPath)) {
+          missing.push(`${group.label}: "${value}" -- expected ROUTE_MANIFEST row { path: "${expectedPath}" }`);
+        }
+      }
+    }
+    expect(missing, `tab/panel keys with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
+  });
+});

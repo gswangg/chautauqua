@@ -42,6 +42,8 @@
 //    ((contactIdx+taskIdx) % 3 === 0, scripts/seed.ts). So this id is
 //    form-kind, pending, and owned by the seeded speaker's contact — the
 //    portal task-form route resolves end-to-end (DEC-172).
+import { DEC_144 } from "../../src/decisions";
+
 export interface RouteManifestEntry {
   readonly path: string;
   readonly role: "organizer" | "reviewer" | "speaker" | "public";
@@ -58,6 +60,15 @@ export interface RouteManifestEntry {
    * silently grading whatever page a redirect happened to land on. */
   readonly expectedLandedPath?: string;
 }
+
+// DEC-144 (wave-154 amendment): tab and panel sub-states, one manifest row
+// per key each page's own tab/panel union declares — never hand-listed.
+// routeManifest.test.ts source-scans each page file for its own union/array
+// (Comms.tsx's `type Tab`, ContactsApp.tsx's `type Panel`, Settings.tsx's
+// `SECTIONS` keys, ContentApp.tsx's `type ContentView` and worklist.ts's
+// `WORKLIST_TABS`) and fails, printing the missing key, if any key here
+// lacks a matching row -- so a new tab/panel lands with a gate, not a gap.
+void DEC_144;
 
 export const EVENT_SLUG = "devflow-conf-2027";
 const SUBMISSION_ID = "seed_submission_0001";
@@ -101,6 +112,13 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     params: { taskId: "seed_task_0001" },
   },
   { path: "/admin/content", role: "organizer" },
+  // DEC-144 (wave-154 amendment): ContentApp.tsx's WORKLIST_TABS
+  // (app/src/pages/content/worklist.ts) beyond the default 'needs_decision'
+  // (the bare /admin/content row above), and its `type ContentView` beyond
+  // the default 'worklist' view.
+  { path: "/admin/content?tab=approved", role: "organizer" },
+  { path: "/admin/content?tab=all", role: "organizer" },
+  { path: "/admin/content?view=files", role: "organizer" },
   // DEC-935: a session's content (deliverables/versions/notes) at its own
   // URL, not behind ?submissionId= on the worklist route.
   {
@@ -110,12 +128,39 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   },
   { path: "/admin/agenda", role: "organizer" },
   { path: "/admin/comms", role: "organizer" },
+  // DEC-144 (wave-154 amendment): Comms.tsx's `type Tab` beyond the default
+  // 'compose' (the bare /admin/comms row above) -- the render sweep never
+  // visited the Templates or History tab before this row existed.
+  { path: "/admin/comms?tab=templates", role: "organizer" },
+  { path: "/admin/comms?tab=history", role: "organizer" },
   { path: "/admin/contacts", role: "organizer" },
   // DEC-684: contact merge is a page at its own URL (app/src/pages/contacts/
   // MergePage.tsx), reached from the Duplicates tab -- ids travel in the
   // query string, not a path param, so no seed-id substitution is needed.
   { path: "/admin/contacts/merge", role: "organizer" },
+  // DEC-144 (wave-154 amendment): ContactsApp.tsx's `type Panel` beyond the
+  // default 'directory' (the bare /admin/contacts row above). Meta-probe
+  // round 3 found a bottom dock MISSING ENTIRELY on the pipeline tab -- this
+  // is the exact surface no gate ever navigated to before this row existed.
+  { path: "/admin/contacts?tab=pipeline", role: "organizer" },
+  { path: "/admin/contacts?tab=duplicates", role: "organizer" },
+  { path: "/admin/contacts?tab=segments", role: "organizer" },
   { path: "/admin/settings", role: "organizer" },
+  // DEC-144 (wave-154 amendment): Settings.tsx's `SECTIONS` panel keys --
+  // the mandate counts NINE Settings width:390 frames (Chautauqua
+  // Settings.dc.html hub + seven sections + saved embeds, the last folded
+  // into the public-pages panel per DEC-822) and the gate rendered at most
+  // one of them (the bare /admin/settings hub row above -- `active` is
+  // seeded from the URL's `?section=` param and is null, not a default
+  // section, when the param is absent, so the phone pass without these
+  // rows never drilled into a single section) before these rows existed.
+  { path: "/admin/settings?section=event", role: "organizer" },
+  { path: "/admin/settings?section=cfp", role: "organizer" },
+  { path: "/admin/settings?section=tracks-rooms", role: "organizer" },
+  { path: "/admin/settings?section=public-pages", role: "organizer" },
+  { path: "/admin/settings?section=portal", role: "organizer" },
+  { path: "/admin/settings?section=your-data", role: "organizer" },
+  { path: "/admin/settings?section=people", role: "organizer" },
 
   // --- Organizer review tree (app/src/pages/Review.tsx, me.role !== 'reviewer') ---
   { path: "/admin/review", role: "organizer" },
