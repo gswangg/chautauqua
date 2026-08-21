@@ -190,6 +190,12 @@ describe('Fix 2 (DEC-383 wave-109 amendment): every negative-margin-inline rule 
     // `.chq-phone-dock` idiom (app/src/styles.css:2546-2557), which cancels
     // `.chq-main`'s identical 16px phone padding the same way.
     '.chq-settings-edit-footer',
+    // DEC-393 amendment (w9-kg, Settings tier-2 classless-anchor sweep):
+    // plain <a> tags with no border/fill of their own -- ExportsPanel's
+    // download links and YourDataPanel's "/docs/api" links -- floored via
+    // the same cancelled-padding idiom.
+    '.chq-settings-exports-download',
+    '.chq-settings-api-docs-link',
   ]);
 
   function isBorderlessSubject(selector: string): boolean {

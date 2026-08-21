@@ -60,17 +60,17 @@ export function ExportsPanel() {
               <tr key={kind}>
                 <td>{label}</td>
                 <td>
-                  <a href={`/api/v1/events/${eventId}/export/${kind}?format=csv`}>Download CSV</a>
+                  <a className="chq-settings-exports-download" href={`/api/v1/events/${eventId}/export/${kind}?format=csv`}>Download CSV</a>
                 </td>
                 <td>
-                  <a href={`/api/v1/events/${eventId}/export/${kind}?format=json`}>Download JSON</a>
+                  <a className="chq-settings-exports-download" href={`/api/v1/events/${eventId}/export/${kind}?format=json`}>Download JSON</a>
                 </td>
               </tr>
             ))}
             <tr>
               <td>Show-flow (CSV)</td>
               <td>
-                <a href={`/api/v1/events/${eventId}/exports/showflow.csv`}>Download CSV</a>
+                <a className="chq-settings-exports-download" href={`/api/v1/events/${eventId}/exports/showflow.csv`}>Download CSV</a>
               </td>
               <td>—</td>
             </tr>

@@ -292,7 +292,7 @@ export function YourDataPanel() {
     { label: 'API tokens', value: <ApiTokensPanel readOnly /> },
     {
       label: 'API docs',
-      value: <a href="/docs/api">{apiDocsDisplay}</a>,
+      value: <a className="chq-settings-api-docs-link" href="/docs/api">{apiDocsDisplay}</a>,
     },
     { label: 'Import from Sessionboard', value: 'Import speakers and sessions from a Sessionboard export' },
   ];
@@ -329,7 +329,7 @@ export function YourDataPanel() {
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">API docs</span>
           <div className="chq-settings-row-value">
-            <a href="/docs/api">{apiDocsDisplay}</a>
+            <a className="chq-settings-api-docs-link" href="/docs/api">{apiDocsDisplay}</a>
           </div>
         </div>
 
