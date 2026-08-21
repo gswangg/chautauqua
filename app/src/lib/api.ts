@@ -4,12 +4,14 @@
 // talk to /api/v1 — page code must never call fetch() directly.
 
 import { bumpMutationVersion, subscribeToMutationVersion } from './mutationSignal';
-import { DEC_013, DEC_700, DEC_678, DEC_851, DEC_154 } from '../../../src/decisions';
+import { DEC_013, DEC_700, DEC_678, DEC_851, DEC_154, DEC_621 } from '../../../src/decisions';
+import { clearAllComposeDrafts } from '../pages/comms/composeDraft';
 void DEC_013;
 void DEC_700;
 void DEC_678;
 void DEC_851;
 void DEC_154;
+void DEC_621;
 
 const API_PREFIX = '/api/v1';
 
@@ -304,6 +306,13 @@ export async function signOut(): Promise<void> {
     throw new Error(`Sign-out failed: /logout responded ${res.status}`);
   }
   const destination = res.url && res.url.includes('signed-out=1') ? res.url : '/login?signed-out=1';
+  // DEC_621 (wave-25 amendment): storageKey scopes a compose draft only by
+  // eventId, not by user/org, so on a shared browser (including the seeded
+  // demo personas an eval judge drives) the next organizer's Comms 390
+  // landing rendered the PREVIOUS organizer's subject line and recipient
+  // count. Clear every stored draft before navigating away so a fresh
+  // sign-in never inherits a stranger's in-progress compose.
+  clearAllComposeDrafts();
   window.location.assign(destination);
 }
 

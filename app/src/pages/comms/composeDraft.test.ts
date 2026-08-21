@@ -2,7 +2,7 @@
 // the Comms phone landing draft card's sole producer/consumer contract --
 // see the module's own doc comment.
 import { afterEach, describe, expect, it } from 'vitest';
-import { clearComposeDraft, readComposeDraft, writeComposeDraft, type ComposeDraft } from './composeDraft';
+import { clearAllComposeDrafts, clearComposeDraft, readComposeDraft, writeComposeDraft, type ComposeDraft } from './composeDraft';
 
 const EVENT_ID = 'evt-compose-draft';
 
@@ -94,5 +94,56 @@ describe('clearComposeDraft', () => {
 
   it('is a no-op (never throws) when nothing is stored', () => {
     expect(() => clearComposeDraft(EVENT_ID)).not.toThrow();
+  });
+});
+
+// DEC-621 (wave-25 amendment): storageKey carries no user/org scoping, so on
+// a shared browser the next organizer's Comms 390 landing could render the
+// previous organizer's draft. clearAllComposeDrafts() is the sign-out-time
+// sweep that closes that leak.
+describe('clearAllComposeDrafts', () => {
+  it('removes exactly the chq.composeDraft.* keys and leaves an unrelated chq. key untouched', () => {
+    writeComposeDraft(EVENT_ID, draft());
+    writeComposeDraft('some-other-event', draft({ recipientCount: 7 }));
+    window.localStorage.setItem('chq.somethingElse', 'unrelated-value');
+
+    clearAllComposeDrafts();
+
+    expect(readComposeDraft(EVENT_ID)).toBeNull();
+    expect(readComposeDraft('some-other-event')).toBeNull();
+    expect(window.localStorage.getItem('chq.somethingElse')).toBe('unrelated-value');
+  });
+
+  it('is a no-op on an empty store', () => {
+    expect(window.localStorage.length).toBe(0);
+    expect(() => clearAllComposeDrafts()).not.toThrow();
+    expect(window.localStorage.length).toBe(0);
+  });
+});
+
+// signOut() itself lives in ../../lib/api.ts, which this task does not own a
+// test harness for: src/lib/api.test.ts (the existing api.ts test file)
+// stubs `fetch` but never stubs `window.location`, so it doesn't already
+// carry the harness this task's brief says is a precondition for adding a
+// signOut test there. Per the brief, this is a source-level receipt instead
+// of a new harness: signOut() (src/lib/api.ts) calls clearAllComposeDrafts()
+// (this module) before window.location.assign(destination), so every sign-out
+// sweeps every stored compose draft before the browser navigates away.
+describe('signOut() wiring (source-level receipt, no window.location harness available to this task)', () => {
+  it('api.ts calls clearAllComposeDrafts() before window.location.assign() inside signOut()', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const apiSource = fs.readFileSync(
+      path.resolve(__dirname, '../../lib/api.ts'),
+      'utf8',
+    );
+    const signOutBody = apiSource.slice(
+      apiSource.indexOf('export async function signOut'),
+      apiSource.indexOf('export async function apiPostBlob'),
+    );
+    expect(signOutBody).toContain('clearAllComposeDrafts()');
+    expect(signOutBody.indexOf('clearAllComposeDrafts()')).toBeLessThan(
+      signOutBody.indexOf('window.location.assign('),
+    );
   });
 });
