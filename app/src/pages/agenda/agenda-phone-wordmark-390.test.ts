@@ -69,10 +69,9 @@ function phoneLayer(css: string): string {
 
 describe('v12 frame: Agenda 390 head-band wordmark line', () => {
   it('docs/design/Chautauqua Agenda.dc.html:130 is quoted verbatim', () => {
-    verbatimLine(
-      130,
-      `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>`,
-    );
+    const literal = `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>`;
+    expect(literal).toMatch(/font-size:20px/);
+    verbatimLine(130, literal);
   });
 });
 
