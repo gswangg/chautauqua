@@ -42,6 +42,19 @@ const OP_OPTIONS: { value: SegmentRule['op']; label: string }[] = [
 
 const CUSTOM_FIELD_CHOICE = 'custom';
 
+// DEC-992: the 390 head's rule strip projects each ACTIVE rule as a
+// dismissible chip, in the SAME vocabulary the desktop builder uses for its
+// own field/op selects (FIELD_LABELS / OP_OPTIONS above) -- not
+// segments.ts's describeRules, which renders `=`/`≠` and quotes for the
+// segments LIST, a different surface with a different grammar.
+export function ruleChipLabel(rule: SegmentRule): string {
+  const field = rule.field.startsWith('custom.')
+    ? rule.field.slice('custom.'.length)
+    : (FIELD_LABELS[rule.field] ?? rule.field);
+  const op = OP_OPTIONS.find((o) => o.value === rule.op)?.label ?? rule.op;
+  return `${field} ${op} ${rule.value}`;
+}
+
 function isCustomField(field: string): boolean {
   return field === CUSTOM_FIELD_CHOICE || field.startsWith('custom.');
 }
@@ -72,6 +85,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
   }
 
   return (
+    <>
     <div className="chq-contacts-filter-rules-row">
       <span className="chq-contacts-filter-rules-caption">Matching all of</span>
 
@@ -164,14 +178,6 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       >
         Add a rule
       </button>
-      <button
-        type="button"
-        className="chq-contacts-filter-add-chip"
-        onClick={addRule}
-        disabled={rules.length >= MAX_SEGMENT_RULES}
-      >
-        + Rule
-      </button>
       {rules.length >= MAX_SEGMENT_RULES && (
         <span className="chq-meta chq-contacts-filter-rules-cap">
           Up to {MAX_SEGMENT_RULES} rules.
@@ -189,5 +195,33 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         </span>
       )}
     </div>
+
+    <div className="chq-contacts-filter-chipstrip">
+      <span className="chq-contacts-filter-chipstrip-caption">All of</span>
+      {rules.map((rule, i) =>
+        activeRules([rule]).length === 0 ? null : (
+          <span className="chq-contacts-filter-rule-chip" key={i}>
+            {ruleChipLabel(rule)}
+            <button
+              type="button"
+              className="chq-contacts-filter-rule-chip-dismiss"
+              aria-label={`Remove ${ruleChipLabel(rule)}`}
+              onClick={() => removeRule(i)}
+            >
+              ✕
+            </button>
+          </span>
+        )
+      )}
+      <button
+        type="button"
+        className="chq-contacts-filter-add-chip"
+        onClick={addRule}
+        disabled={rules.length >= MAX_SEGMENT_RULES}
+      >
+        + Rule
+      </button>
+    </div>
+    </>
   );
 }
