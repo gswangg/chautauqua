@@ -8,12 +8,27 @@
 // The regex requires a letter immediately before "(s)" -- `.map((s) =>`
 // does NOT match, since the character before "(s)" there is "(", not a
 // letter.
+//
+// DEC-374 (wave-152 amendment): this scan's subject is USER-FACING COPY,
+// not the comment prose that documents it -- exactly this file's own
+// header, above, says "so new copy is forced through plural()/countOf()".
+// Grading a comment sentence as if it were rendered copy is the mirror of
+// the CSS-comment bug the same amendment fixed elsewhere. Every file is
+// now comment-stripped (string/template-literal aware, `//` and `/* */`,
+// via the ONE shared test/comment-strip.ts helper -- DEC-613, no private
+// second copy) before PATTERN is applied, so a `(s)` sitting only in a
+// comment (e.g. src/routes/public/submit-post.tsx:573's "track(s)")
+// legitimately never trips this guard again.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEC_374, DEC_957 } from "../src/decisions";
 import { capitalizeFirst, countOf, overBudgetBy, plural } from "../src/domain/count-copy";
 import { stripSourceComments } from "./source-comments";
+
+void DEC_957; // this scan's whole reason to exist: one count grammar, no hand-copied `(s)`
+void DEC_374; // comments are stripped before matching -- this scan's subject is copy, not prose about copy
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -53,8 +68,8 @@ const PATTERN = /[A-Za-z]\(s\)/;
 
 function scanFile(file: string): Violation[] {
   const violations: Violation[] = [];
-  // DEC-374 (wave-147 amendment): this scan's subject is user-facing COPY,
-  // and a comment is not product. Stripped through the ONE shared
+  // DEC-374 (wave-147/152 amendment): this scan's subject is user-facing
+  // COPY, and a comment is not product. Stripped through the ONE shared
   // string-aware helper (./source-comments) rather than a private two-regex
   // copy, which a URL in a string literal would blind. The stripper
   // preserves newlines inside comments, so the reported line number is still
@@ -87,10 +102,11 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
     expect(PATTERN.test(".map((s) => s.trim())")).toBe(false);
   });
 
-  // DEC-374 (wave-147 amendment) requires BOTH controls in the same commit
-  // as the conversion: a violation in real copy is still caught, and the
-  // same token inside a comment is not.
-  it("[positive control] a raw '(s)' in a real string literal is still caught after stripping", () => {
+  // DEC-374 (wave-147/152 amendment) requires BOTH controls in the same
+  // commit as the conversion: a violation in real copy is still caught, and
+  // the same token inside a comment is not. Both halves are kept in their
+  // widest form -- string literal AND JSX text, `//` AND `/* */`.
+  it("[DEC-374 positive control] a raw '(s)' in a real string literal is still caught after stripping", () => {
     const synthetic = '// mentions answer(s) in prose\nconst msg = "collected answer(s) so far";';
     const hits = stripSourceComments(synthetic)
       .split("\n")
@@ -98,9 +114,19 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
     expect(hits).toEqual(['const msg = "collected answer(s) so far";']);
   });
 
-  it("[negative control] the same '(s)' inside a `//` or block comment is NOT caught", () => {
-    const synthetic = "// the card states the talk's track(s) and level\n/* and track(s) again */\nconst x = 1;";
-    expect(stripSourceComments(synthetic).split("\n").some((l) => PATTERN.test(l))).toBe(false);
+  it("[DEC-374 positive control] a raw '(s)' in JSX text is still caught after comment-stripping", () => {
+    const fixture = "const el = <p>Pick your track(s) below.</p>;";
+    expect(PATTERN.test(stripSourceComments(fixture))).toBe(true);
+  });
+
+  it("[DEC-374 negative control] a raw '(s)' inside a // comment is not flagged once comments are stripped", () => {
+    const fixture = "// confirmation card states the talk's format, track(s) and audience\nconst x = 1;";
+    expect(stripSourceComments(fixture).split("\n").some((line) => PATTERN.test(line))).toBe(false);
+  });
+
+  it("[DEC-374 negative control] a raw '(s)' inside a /* */ block comment is not flagged once comments are stripped", () => {
+    const fixture = "/* track(s) must never starve -- see DEC-919 */\nconst y = 2;";
+    expect(stripSourceComments(fixture).split("\n").some((line) => PATTERN.test(line))).toBe(false);
   });
 
   // The false-negative this helper exists to prevent: the private two-regex
