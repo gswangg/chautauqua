@@ -121,11 +121,24 @@
    plain-text "Add a rule" -- both controls render unconditionally
    (DEC-919: the capability renders twice in the DOM, once on screen) and
    CSS alone decides which one is on screen. The phone chip is hidden here
-   by default so it never doubles up with the desktop button above 700px;
-   the desktop button's own hide rule (and the chip's visible/floored
-   rule) live in the terminal phone block below, per DEC-385 (narrow
-   overrides wide only). */
+   by default so it never doubles up with the desktop button above 700px --
+   its new parent is `.chq-contacts-filter-chipstrip` (DEC-992's rule
+   strip, hidden by the sibling rule just below); the desktop button's own
+   hide rule (and the chip's visible/floored rule) live in the terminal
+   phone block below, per DEC-385 (narrow overrides wide only). */
 .chq-contacts-filter-add-chip {
+  display: none;
+}
+
+/* DEC-992: the rule strip (`.chq-contacts-filter-chipstrip`, sibling of
+   `.chq-contacts-filter-rules-row` -- see FilterRulesPanel.tsx) is a 390
+   head only, docs/design/Chautauqua Contacts.dc.html:187
+   (`display:flex; gap:7px; overflow-x:auto;
+   -webkit-overflow-scrolling:touch`) draws it above the directory table's
+   own head, not the desktop panel. Hidden by default here so its layout
+   never spends a column in `.chq-contacts-directory-main`'s desktop gap;
+   the terminal phone block below turns it back on. */
+.chq-contacts-filter-chipstrip {
   display: none;
 }
 
@@ -1218,5 +1231,77 @@
     display: flex;
     align-items: center;
     padding: 0 12px;
+  }
+
+  /* DEC-992: the rule strip -- one dismissible chip per ACTIVE rule --
+     turned back on for the 390 head. docs/design/Chautauqua
+     Contacts.dc.html:187 `display:flex; gap:7px; overflow-x:auto;
+     -webkit-overflow-scrolling:touch`. */
+  .chq-contacts-filter-chipstrip {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chq-contacts-filter-chipstrip > * {
+    flex-shrink: 0;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:188 `font-size:10px;
+     font-weight:800; letter-spacing:0.12em; text-transform:uppercase;
+     color:#565A4B; min-height:44px; display:flex; align-items:center` --
+     the frame's 10px/800/0.12em/#565A4B resolve to the existing
+     --chq-type-micro-* trio (--chq-muted covers the frame's #565A4B
+     close enough that no second literal is minted; the trio's own
+     tracking is 0.11em, not the frame's 0.12em -- one micro-caption
+     vocabulary, not two). */
+  .chq-contacts-filter-chipstrip-caption {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: var(--chq-type-micro-size);
+    font-weight: var(--chq-type-micro-weight);
+    letter-spacing: var(--chq-type-micro-tracking);
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:190 `border:1px solid
+     #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
+     min-height:44px; display:flex; align-items:center; gap:9px;
+     padding:0 12px; font-size:13px; font-weight:600` -- #4E5C31 ->
+     --chq-brand exactly, #EFF1E4 -> --chq-surface-sunk, #2E3A16 ->
+     --chq-brand-hover, radius 4px -> --chq-r-ctl exactly. */
+  .chq-contacts-filter-rule-chip {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding-inline: 12px;
+    border: 1px solid var(--chq-brand);
+    border-radius: var(--chq-r-ctl);
+    background: var(--chq-surface-sunk);
+    color: var(--chq-brand-hover);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Single-compound selector on purpose -- NOT `.chq-contacts-filter-rule-chip
+     button` -- a combinator would pull this into
+     cancelled-padding-gap.scan.test.ts's population and force a widened
+     container gap away from the frame's 9px. #5E6B47 -> --chq-muted. */
+  .chq-contacts-filter-rule-chip-dismiss {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--chq-muted);
   }
 }
