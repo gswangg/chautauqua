@@ -29,7 +29,8 @@ import { hashPassword } from "../src/auth/password";
 import { authRoutes } from "../src/routes/auth";
 import { registerErrorHandler } from "../src/server/http";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
-import { loginIdentityKey } from "../src/routes/auth-helpers";
+import { loginIdentityKey, AUTH_RATE_LIMIT_WINDOW_SECONDS } from "../src/routes/auth-helpers";
+import { scopedRateLimitKey } from "../src/lib/rate-limit";
 import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/auth/claim";
 
@@ -243,6 +244,20 @@ async function buildApp() {
   return { app, env, rateLimits };
 }
 
+// Directly seeds a bucket at `count` inside the same window the handler
+// will compute for `now`, instead of driving it there via ~`count`
+// sequential real HTTP round trips. Only the window math is duplicated
+// from src/server/repo/rate-limit.ts's windowBounds (not exported); the
+// key derivation itself (`scopedRateLimitKey`) is the same pure function
+// the repo uses, so a live bucket seeded this way is byte-for-byte what
+// `count` real admissions would have produced.
+function seedBucketAtCap(rateLimits: Row[], scope: string, id: string, count: number, now: number): void {
+  const windowMs = AUTH_RATE_LIMIT_WINDOW_SECONDS * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  rateLimits.push({ key, count, expiresAt: windowStart + windowMs });
+}
+
 function bucketCount(rateLimits: Row[], scope: string, id: string): number {
   // windowStart is 0 for `now = loginNow` computed inside the handler at a
   // real wall-clock time, so match by scope/id substring instead of
@@ -288,13 +303,15 @@ describe("POST /login: consume-then-refund leaves the expected bucket counts", (
 
   it("(d) an ip-denied login leaves the user bucket unchanged (refunded back to its pre-request count)", async () => {
     const { app, env, rateLimits } = await buildApp();
-    // Exhaust the IP bucket (max 100) with attempts against OTHER emails so
-    // only the shared IP bucket is anywhere near its cap, then make one more
-    // request for EMAIL: the user bucket should admit (count 1) and then be
-    // refunded back to 0 once the IP check denies it.
-    for (let i = 0; i < 100; i++) {
-      await postLogin(app, env, { email: `other-${i}@example.test`, password: "wrong" });
-    }
+    // Seed the IP bucket directly at its cap (max 100) instead of driving
+    // it there with 100 sequential real POST /login round trips against
+    // OTHER emails -- those requests would only ever spend the IP bucket
+    // (verified: seedBucketAtCap writes the exact key checkAndIncrementScopedLimit
+    // would have produced), so only the shared IP bucket is anywhere near
+    // its cap. Then make one real request for EMAIL: the user bucket
+    // should admit (count 1) and then be refunded back to 0 once the IP
+    // check denies it.
+    seedBucketAtCap(rateLimits, "login-ip", "unknown", 100, Date.now());
     expect(bucketCount(rateLimits, "login-ip", "unknown")).toBe(100);
 
     const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
