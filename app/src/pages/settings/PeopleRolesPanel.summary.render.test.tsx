@@ -16,7 +16,11 @@ import { listEnvelope } from '../../test-utils/mockApi';
 installConsoleErrorGuard();
 
 describe('PeopleRolesPanel summary/drill-in', () => {
-  it('renders the real rows (name + role) at rest, with no directory controls before edit', async () => {
+  // DEC-919 wave-156 amendment: the read drill DOES now render the frame's
+  // own footer primary "Invite someone" (:568) -- opening the existing
+  // invite dialog directly, never a form submit. Per-row directory
+  // controls (Reset password) still live only behind 'Change'.
+  it('renders the real rows (name + role) at rest, with the frame footer primary but no per-row directory controls before edit', async () => {
     mockPeople();
     renderPanel();
 
@@ -30,7 +34,8 @@ describe('PeopleRolesPanel summary/drill-in', () => {
     expect(within(section).getByText(OTHER.email)).toBeInTheDocument();
     expect(within(section).getByText('Reviewer')).toBeInTheDocument();
 
-    expect(within(section).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
+    const invitePrimary = within(section).getByRole('button', { name: 'Invite someone' });
+    expect(invitePrimary).toHaveClass('chq-settings-drillrow-footer-primary');
     expect(within(section).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });

@@ -38,6 +38,14 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+// DEC-919 wave-156: the People and roles ":264" block below now renders
+// the real component instead of citing the design file alone -- these
+// three imports are scoped to that one test.
+import { screen, waitFor, fireEvent, within } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { installConsoleErrorGuard, mockPeople, renderPanel, OTHER } from './PeopleRolesPanel.test-helpers';
+
+installConsoleErrorGuard();
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -261,7 +269,7 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     expect(row).toMatch(/flex-direction:\s*column/);
   });
 
-  it('reads the frame\'s 46px filled full-width "Invite someone" action (gap: read-drilled view does not yet render it)', () => {
+  it('renders the frame\'s 46px filled full-width "Invite someone" action in the READ drill, opening the existing invite dialog directly (DEC-919 wave-156)', async () => {
     const line = verbatimLine(
       DESIGN_FILE,
       568,
@@ -269,6 +277,24 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
     );
     expect(line).toMatch(/min-height:46px/);
     expect(line).toMatch(/background:#4E5C31/);
+
+    // The receipt above proves the frame's geometry; this proves the tree
+    // beneath it actually renders that control in the READ drill (no
+    // ?edit=1) rather than only inside the edit drill's form.
+    mockPeople();
+    renderPanel(['/settings?section=people']);
+    // OTHER carries no `name`, so the read row's label falls back to its
+    // email (SELF's row instead shows its name -- personLabel's fallback).
+    await waitFor(() => {
+      expect(screen.getByText(OTHER.email)).toBeInTheDocument();
+    });
+    const footerPrimary = screen.getByRole('button', { name: 'Invite someone' });
+    expect(footerPrimary).toHaveClass('chq-settings-drillrow-footer-primary');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(footerPrimary);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Email')).toBeInTheDocument();
   });
 });
 

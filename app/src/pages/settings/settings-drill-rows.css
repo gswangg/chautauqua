@@ -33,8 +33,37 @@
    them, from its own terminal block, via classes this sheet defines. */
 
 .chq-settings-drillrow-add,
-.chq-settings-drillrow-exports-phone {
+.chq-settings-drillrow-exports-phone,
+.chq-settings-drillrow-footer-primary {
   display: none;
+}
+
+/* DEC-919 wave-156 amendment: the 390 READ drill's own filled full-width
+   footer primary -- Chautauqua Settings.dc.html:568 ("Invite someone",
+   People and roles) and :316 ("Save", Event), both
+   `display:flex; align-items:center; justify-content:center;
+   margin-top:1[24]px; background:#4E5C31; color:#F7F9F0;
+   border-radius:6px; min-height:46px; font-size:14px; font-weight:700`.
+   One class shared by both callers (DEC-613 -- not a second copy of
+   .chq-settings-phone-action's geometry, which is the EDIT drill's own
+   phone-only primary and renders from a different SummarySection branch
+   that can never be mounted at the same time as this one). Renders
+   unconditionally in the DOM (SummarySection's `readFooterPrimary` slot),
+   so it needs the explicit desktop `display:none` above, same shape as
+   every other DEC-919 wave-99 phone-only sibling in this file. */
+.chq-settings-drillrow-footer-primary {
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 14px;
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+  border: none;
+  border-radius: 6px;
+  min-height: 46px;
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* docs/design/Chautauqua Settings.dc.html:367
@@ -125,6 +154,10 @@
 
   .chq-settings-drillrow-exports-phone {
     display: block;
+  }
+
+  .chq-settings-drillrow-footer-primary {
+    display: flex;
   }
 
   /* DEC-919 wave-99: "the existing head action gains display:none inside

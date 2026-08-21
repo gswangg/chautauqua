@@ -55,11 +55,14 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
-import { DEC_747, DEC_781 } from '../../../../src/decisions';
+import { DEC_385, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
+import './settings-drill-rows.css';
 
 void DEC_747; // the invite/reset flows below implement wave-58's amendment (verb-matches-act, reveal-once shape, honest email gap) and wave-67's amendment (invite dialog form factor)
 void DEC_781; // the frame's two consequence sentences for this edit view have two different homes
+void DEC_385; // settings-drill-rows.css: page-local sheet, terminal max-width block
+void DEC_919; // wave-156: the read drill's own "Invite someone" footer primary (:568), opening the existing invite dialog directly -- not a form submit
 
 const SECTION_KEY = 'people';
 
@@ -414,72 +417,15 @@ export function PeopleRolesPanel() {
           ...(user.role === 'reviewer' ? { hint: 'Can be scoped to specific tracks in review assignment' } : {}),
         }));
 
-  return (
-    <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>
-      <SettingsEditForm
-        onSubmit={(e) => e.preventDefault()}
-        // DEC-781: the frame draws this sentence beside the H1
-        // (Chautauqua Settings.dc.html:978); the displaced self/scope
-        // sentence has its own frame home below the people list (:1003),
-        // rendered there now instead of duplicated here.
-        consequence="Only organisers can change roles"
-        footer={{
-          primary: (
-            <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
-              Close
-            </button>
-          ),
-          // DEC-919 wave-130 amendment (:1007): the edit view's footer
-          // carries a left-flushed tertiary linking to the self-service
-          // password change -- SettingsEditForm's existing destructive left
-          // slot, not a new one, and not a second copy of the route already
-          // used above (/account/password, src/routes/account.tsx).
-          destructive: (
-            <a className="chq-link-button" href="/account/password">
-              Change your own password
-            </a>
-          ),
-        }}
-      >
-      <div className="chq-settings-section-head">
-        <h2>People &middot; {users.length}</h2>
-        <button
-          type="button"
-          className="chq-settings-section-action chq-settings-people-invite-action chq-link-button"
-          onClick={() => setInviting(true)}
-        >
-          Invite someone
-        </button>
-      </div>
-
-      {/* DEC-747 amendment (wave 67): the reset-password reveal keeps its
-          original inline site -- only the invite-context reveal moved into
-          the dialog below. A general (non-invite) error, e.g. a load
-          failure, still renders here since the dialog isn't open for it. */}
-      {!inviting && error && (
-        <div className="chq-error" role="alert">
-          {error}
-          {duplicateUser ? (
-            <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
-              Open {personLabel(duplicateUser)}&apos;s row
-            </button>
-          ) : null}
-        </div>
-      )}
-
-      {revealedPassword && revealedPassword.context === 'reset' && (
-        <PasswordRevealBlock
-          revealed={revealedPassword}
-          copyResult={copyResult}
-          failedCopyRef={failedCopyRef}
-          onCopy={() => void handleCopyPassword()}
-          onDone={() => {
-            setRevealedPassword(null);
-            setCopyResult(null);
-          }}
-        />
-      )}
-
+  // DEC-919 wave-156 amendment: the invite dialog is its own surface, not
+  // part of the edit drill's form -- both the read drill's footer primary
+  // (below) and the edit drill's head link/phone-action open the SAME
+  // `inviting` state, so the dialog itself must be reachable from either
+  // view rather than nested inside the `editing`-gated `children` where it
+  // used to live. Computed once, rendered once, as a sibling of
+  // <SummarySection> -- never a second dialog (DEC-613).
+  const inviteDialog = (
+    <>
       {inviting && revealedPassword && revealedPassword.context === 'invite' ? (
         <ModalFrame
           title={`${revealedPassword.name || revealedPassword.email} can now sign in`}
@@ -642,6 +588,94 @@ export function PeopleRolesPanel() {
           </div>
         </ModalFrame>
       ) : null}
+    </>
+  );
+
+  return (
+    <>
+    <SummarySection
+      sectionKey={SECTION_KEY}
+      label="People and roles"
+      rows={rows}
+      actionLabel="Change"
+      editing={editing}
+      // DEC-919 wave-156: the READ drill's own footer primary
+      // (Chautauqua Settings.dc.html:568) -- opens the SAME invite dialog
+      // as the edit drill's controls, directly, since the dialog is its
+      // own surface and not a form submit (DEC-919 wave-156 act rule (b)).
+      readFooterPrimary={
+        <button
+          type="button"
+          className="chq-settings-drillrow-footer-primary"
+          onClick={() => setInviting(true)}
+        >
+          Invite someone
+        </button>
+      }
+    >
+      <SettingsEditForm
+        onSubmit={(e) => e.preventDefault()}
+        // DEC-781: the frame draws this sentence beside the H1
+        // (Chautauqua Settings.dc.html:978); the displaced self/scope
+        // sentence has its own frame home below the people list (:1003),
+        // rendered there now instead of duplicated here.
+        consequence="Only organisers can change roles"
+        footer={{
+          primary: (
+            <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
+              Close
+            </button>
+          ),
+          // DEC-919 wave-130 amendment (:1007): the edit view's footer
+          // carries a left-flushed tertiary linking to the self-service
+          // password change -- SettingsEditForm's existing destructive left
+          // slot, not a new one, and not a second copy of the route already
+          // used above (/account/password, src/routes/account.tsx).
+          destructive: (
+            <a className="chq-link-button" href="/account/password">
+              Change your own password
+            </a>
+          ),
+        }}
+      >
+      <div className="chq-settings-section-head">
+        <h2>People &middot; {users.length}</h2>
+        <button
+          type="button"
+          className="chq-settings-section-action chq-settings-people-invite-action chq-link-button"
+          onClick={() => setInviting(true)}
+        >
+          Invite someone
+        </button>
+      </div>
+
+      {/* DEC-747 amendment (wave 67): the reset-password reveal keeps its
+          original inline site -- only the invite-context reveal moved into
+          the dialog below. A general (non-invite) error, e.g. a load
+          failure, still renders here since the dialog isn't open for it. */}
+      {!inviting && error && (
+        <div className="chq-error" role="alert">
+          {error}
+          {duplicateUser ? (
+            <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+              Open {personLabel(duplicateUser)}&apos;s row
+            </button>
+          ) : null}
+        </div>
+      )}
+
+      {revealedPassword && revealedPassword.context === 'reset' && (
+        <PasswordRevealBlock
+          revealed={revealedPassword}
+          copyResult={copyResult}
+          failedCopyRef={failedCopyRef}
+          onCopy={() => void handleCopyPassword()}
+          onDone={() => {
+            setRevealedPassword(null);
+            setCopyResult(null);
+          }}
+        />
+      )}
 
       {loading ? (
         <DelayedLoading />
@@ -774,5 +808,7 @@ export function PeopleRolesPanel() {
       </button>
       </SettingsEditForm>
     </SummarySection>
+    {inviteDialog}
+    </>
   );
 }

@@ -71,6 +71,12 @@ export default defineConfig({
       ["app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts", "jsdom"],
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
       ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
+      // qc-settings-read-drill-primaries (DEC-919 wave-156): the People
+      // and roles ":264" block now renders PeopleRolesPanel via
+      // testing-library (real DOM), same treatment as the other
+      // CSS-source-scan-plus-render suites above; every other `it()` in
+      // this file is a pure text/regex scan unaffected by the environment.
+      ["app/src/pages/settings/settings-phone-390.frames.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",

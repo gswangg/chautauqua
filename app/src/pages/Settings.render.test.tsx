@@ -151,7 +151,12 @@ describe('SettingsPage render smoke', () => {
     await waitFor(() => {
       expect(within(peopleSection).getByText('self@example.com')).toBeInTheDocument();
     });
-    expect(within(peopleSection).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
+    // DEC-919 wave-156: the read drill's own footer primary now renders
+    // too (opening the existing invite dialog directly) -- the per-row
+    // directory (reset password) still lives behind 'Change'.
+    expect(within(peopleSection).getByRole('button', { name: 'Invite someone' })).toHaveClass(
+      'chq-settings-drillrow-footer-primary',
+    );
 
     // Your data section (DEC-747: ONE section -- Exports, API tokens, API
     // docs and Import from Sessionboard). DEC-815 amendment (wave 4): the
