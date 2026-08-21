@@ -8,6 +8,7 @@ import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { YourDataPanel } from './YourDataPanel';
+import { EventSettingsPanel } from './EventSettingsPanel';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-your-data';
@@ -263,12 +264,14 @@ describe('YourDataPanel', () => {
   });
 });
 
-describe('YourDataPanel consequence line (DEC-781)', () => {
-  // Chautauqua Settings.dc.html:1139 -- this panel composes SummarySection
-  // directly with no SettingsEditForm, so it has no consequence slot; the
-  // line is rendered as the first child of the editing branch, reusing
-  // SettingsEditForm's own class for identical right-flushed treatment.
-  it('renders the frame consequence line as the first child of the edit view', async () => {
+describe('YourDataPanel consequence line (DEC-781 amendment via DEC-032)', () => {
+  // Chautauqua Settings.dc.html:1139 draws this sentence as the head
+  // consequence of the frame's "Keeping and deleting" retention block --
+  // DEVIATIONS.md §6 (extended for this task) and DEC-032 already rule that
+  // whole block a deliberate non-build (no retention column, no endpoint,
+  // no deletion job), so the app must NOT assert a retention guarantee
+  // nothing enforces.
+  it('does not render the frame retention consequence line, an unbacked non-build', async () => {
     mockYourData();
     render(
       <MemoryRouter initialEntries={['/settings?section=your-data&edit=1']}>
@@ -276,8 +279,36 @@ describe('YourDataPanel consequence line (DEC-781)', () => {
       </MemoryRouter>,
     );
 
-    const section = await screen.findByRole('region', { name: 'Your data' });
-    const consequence = within(section).getByText('Retention applies to every event in this org');
+    await screen.findByRole('region', { name: 'Your data' });
+    expect(screen.queryByText('Retention applies to every event in this org')).not.toBeInTheDocument();
+  });
+
+  // Positive control: the slot machinery this suite exercises (SettingsEditForm's
+  // `consequence` prop, `.chq-settings-edit-consequence`) still works for a
+  // sibling panel that keeps its own real, backed head consequence line --
+  // proving the assertion above passes because the retention line was
+  // deliberately retired, not because the whole mechanism broke.
+  it('positive control: a sibling panel with a real, backed consequence still renders it', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        name: 'Devcon',
+        slug: 'devcon-2026',
+        startDate: '2026-06-01',
+        endDate: '2026-06-10',
+        location: null,
+        timezone: 'UTC',
+        recordPrefix: 'EV',
+        branding: {},
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={['/settings?section=event&edit=1']}>
+        <EventSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const consequence = await screen.findByText('Renaming does not change the public URL');
     expect(consequence).toHaveClass('chq-settings-edit-consequence');
     expect(consequence.tagName).toBe('P');
   });

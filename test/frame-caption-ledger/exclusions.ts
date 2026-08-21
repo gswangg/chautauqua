@@ -1695,6 +1695,13 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
 export const UNBACKED_EXCLUSIONS: Exclusion[] = [
   {
     fileName: 'Chautauqua Settings.dc.html',
+    line: 1139,
+    text: 'Retention applies to every event in this org',
+    reason:
+      "DEVIATIONS.md §6 rules this the head consequence line of the same 'Keeping and deleting' retention block as the :1175 row above, quoting verbatim: \"is part of the same deferral and returns verbatim the moment the block is built.\" app/src/pages/settings/YourDataPanel.tsx already records the same non-build in its own comment: `Deliberately does NOT build the frame's head consequence line (docs/design/Chautauqua Settings.dc.html, \"Retention applies to every event in this org\") ... Recorded as a deliberate non-build on DEC-032.`",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
     line: 1175,
     text: 'After that the abstract and reviews are deleted; the contact stays',
     reason:
