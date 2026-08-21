@@ -322,6 +322,13 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/pages/settings/tracksRooms/TrackEditRow.tsx", literal: "Track colour for", testFile: "app/src/pages/settings/TracksRoomsPanel.render.test.tsx" },
   },
   {
+    key: "agenda-phone-head-band-line-height-1-dec-991-wave-156-verdict",
+    status: "honored",
+    reason:
+      "DEC-991 wave-156 verdict: the wave-27 ban on display-face line-height<=1 governs; the exemption mechanism src/decisions-data/DEC-991.md proposed is retired unbuilt. agenda.css's phone wordmark/h1 rules correctly omit line-height (satisfying the ban) while the frame's own line-height:1 is read as head-band geometry, already met by the band's drawn padding/gap.",
+    honored: { kind: "present", file: "src/decisions-data/DEC-991.md", literal: "the BAN governs", testFile: "test/display-heading-line-height.scan.test.ts" },
+  },
+  {
     key: "contact-drawer-footer",
     status: "honored",
     reason: "the contact drawer keeps the recorded A20 ruling's footer order and its save-scope sentence above the bar.",
@@ -750,9 +757,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(14);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(43);
+    expect(derived.length).toBe(44);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

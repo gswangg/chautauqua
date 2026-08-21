@@ -129,6 +129,46 @@ line literally draws `line-height:1` for that selector and the citation
 scan verifies the quote; every other `line-height <= 1` on a display face
 remains banned outright, fixed by deletion per the original wave-27 text.
 
+## Campaign-governing verdicts (wave 156, task w12-qi)
+
+The task-named campaign-governing subset -- the ids actually cited by workers
+to justify a geometry decision -- verdicted individually below. Verdict
+vocabulary is deliberately DIFFERENT from the "Classification legend" above
+(AMENDS/SUPERSEDES/CONTRADICTS describes the RELATIONSHIP between the two
+texts; SUPERSEDES/AMENDS/DISJOINT below names which directory's text is
+BINDING, the practical question a worker citing "DEC-NNN" with no directory
+prefix actually needs answered):
+
+- **AMENDS** -- `src/decisions-data/DEC-NNN.md` carries the SAME founding
+  ruling as `decisions/DEC-NNN.md` (identical or near-identical opening
+  paragraph), refined by its own, separately-evolved amendment chain.
+  `src/decisions-data` is binding: it is the compile-checked, actively-read
+  copy every campaign scan and worker comment means when it writes `DEC-NNN`.
+- **SUPERSEDES** -- the id's `src/decisions-data` amendment chain has moved
+  so far from the founding subject (or the founding subject is dormant/
+  unrelated to what the campaign actually governs by this id today) that
+  `src/decisions-data`'s LATER ruling, not the founding text, is what's
+  binding -- effectively a second ruling wearing the first one's id.
+- **DISJOINT** -- the two texts give live, incompatible instructions about
+  the same concrete behavior with no reconciling reading; one directory must
+  be picked as binding by an explicit, separate ruling (not by directory
+  seniority alone).
+
+| id | binding directory | verdict | why |
+| --- | --- | --- | --- |
+| DEC-180 | `src/decisions-data` | AMENDS | same founding login-rate-limiter ruling (opening paragraph identical); `src/decisions-data`'s wave-153/154/156 amendment chain (SPA classless-control population widening, `SPA_CLASSLESS_CONTROL_CEILING`) is what `scripts/exit-predicate.ts` and every citing worker comment mean. |
+| DEC-253 | `src/decisions-data` | AMENDS | title-divergent (see table above); wave-154's live-390-measurement amendment refines the founding render-sweep ruling and is what the control-floor scans read. |
+| DEC-374 | `src/decisions-data` | AMENDS | title-divergent; wave-147's comment-stripped amendment refines the founding SSR-injection ruling; the CSS-comment-citation scans implement this text. |
+| DEC-385 | `src/decisions-data` | AMENDS | title-divergent; wave-103's "a shadow can be load-bearing" amendment extends the founding one-phone-switch ruling. |
+| DEC-393 | `src/decisions-data` | AMENDS | title-divergent; wave-147's "a control's floor is the floor its OWN frame draws" amendment refines the founding 44px-floor ruling; `MIN_TAP_TARGET_PX` and the frame-floor scans read this text. |
+| DEC-613 | `src/decisions-data` | AMENDS | same founding Sessionboard-importer ruling; `src/decisions-data`'s wave-93 cluster-sheet-exemption amendment is the text the field guide's DEC-613 line ("a second copy of a citation vocabulary is a trap with a delay fuse") and every citing worker comment mean. |
+| DEC-728 | `src/decisions-data` | AMENDS | title-divergent; wave-147's nav-snapshot amendment refines the founding Settings-drill ruling; `Settings.tsx`'s `editing`/URL-state logic implements this text. |
+| DEC-808 | `src/decisions-data` | AMENDS | NOT title-divergent (confirmed by the scan's own negative control above) -- same founding page-measure ruling; `src/decisions-data`'s wave-93 citation-practice amendment ("a line-numbered citation is a claim and must sit beside its assertion") is the text the field guide's DEC-808 line ("a directory is not a population") quotes, and every scan comment in this campaign naming "DEC-808" means this text. |
+| DEC-919 | `src/decisions-data` | SUPERSEDES | NOT title-divergent, but the founding subject (public-list filter idiom, `PublicSearchBox`/`PublicFilterBar`) is dormant for this campaign; every live citation (Submissions phone head DEC-919 wave-7, Settings read-drill DEC-919 wave-114/155/156) is `src/decisions-data`'s amendment chain governing a materially different subject (re-lining a frame's controls, never removing them) -- a later ruling wearing the founding id, not a refinement of it. |
+| DEC-967 | `src/decisions-data` | SUPERSEDES | title-divergent (see table above); the id was reused for an unrelated later ruling (this task's own citation-grammar and DEC-991-supersession text lives here). |
+| DEC-976 | `src/decisions-data` | SUPERSEDES | title-divergent; the id was reused (caption-ledger exclusion taxonomy) with no narrative link to `decisions/`'s CSS-contract-second-direction subject. |
+| DEC-991 | `decisions/` | DISJOINT | the one CONTRADICTS pair (see table above and "DEC-991: the resolved contradiction" below) -- `decisions/DEC-991.md`'s wave-27 outright ban and `src/decisions-data/DEC-991.md`'s proposed frame-cited carve-out give opposite instructions for the same concrete case. This wave's amendment (in `src/decisions-data/DEC-991.md` itself) RULES the ban binding: it is the later ruling and the only one with a measured clip receipt behind it; the carve-out mechanism is retired unbuilt. See `docs/design/DEVIATIONS.md` §3 for the resulting blessed deviation. |
+
 ## Not resolved this wave
 
 24 of the 35 title-divergent ids (all rows above with a blank Note column)

@@ -72,6 +72,28 @@ survives contact with state:
 
 ## 3. Interpretations where the frames underspecify
 
+- **Agenda phone head-band `line-height:1`, DEC-991 wave-156 verdict** —
+  `docs/design/Chautauqua Agenda.dc.html:129` draws `line-height:1` on the
+  wordmark `<span>` and `:133` draws `line-height:1` on the `<h1>Agenda</h1>`,
+  but `app/src/pages/agenda/agenda.css`'s `.chq-phone-agenda-wordmark`
+  (around line 1210) and `.chq-phone-agenda-h1` (around line 1240)
+  deliberately OMIT `line-height`. `decisions/DEC-991.md`'s wave-27
+  amendment bans a display-face `line-height <= 1` outright (measured clip
+  receipt: `docs/verification-log.md:3591`, `div.chq-forms-header-titles`);
+  `src/decisions-data/DEC-991.md`
+  proposed a frame-cited exemption mechanism to carve out this exact case.
+  Per `src/decisions-data/DEC-991.md`'s wave-156 amendment, **the ban
+  governs**: the exemption mechanism is retired unbuilt and is not to be
+  built. The two omitted declarations are blessed as-is because a frame
+  drawing `line-height:1` on this 27px display-face `<h1>` inside the fixed
+  390×844 card is declaring the HEAD BAND's tightness (the gap between the
+  wordmark row, the title row, and the chip row below it) — geometry the
+  app already satisfies through the band's own drawn `padding: 14px 16px;`
+  and `gap: 12px;` between rows (`gap: 10px;` inside the wordmark row) —
+  not a glyph metric the app must reproduce verbatim, and the font's own
+  `normal` line box cannot clip by definition. See
+  `docs/design/audit/decision-registry-collision-v12.md` for the full
+  colliding-id verdict.
 - **Track colour picking is a cycle control** — frame 09--12 draws only the
   swatch beside the name; the ruling says "beside the name rather than in a
   separate picker". Selecting the swatch cycles the five system-token
