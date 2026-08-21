@@ -495,4 +495,19 @@
   .chq-review-recusal-label-phone {
     display: inline;
   }
+
+  /* DEC-889 (wave-32 amendment): docs/design/Chautauqua Review.dc.html:964
+     (frame "Scorecard · a criterion unscored") draws, under each unscored
+     criterion's own score row, `font-size:13px; font-weight:600;
+     line-height:1.5; color:#1B1D17`. Scorecard.tsx renders this span with
+     the native `hidden` attribute (same idiom as the Overall value and
+     recusal-label spans above) only for the criterion(s) `incomplete`
+     names -- reveal it here, phone-only. */
+  .chq-review-criterion-hint-phone {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--chq-ink);
+  }
 }
