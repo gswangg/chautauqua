@@ -780,6 +780,16 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "live-pixel superimposition detector the campaign's render lane might carry, so it is " +
     "not a v12 frame or 390-geometry conformance fact in the campaign's own sense " +
     "(app/src/negative-margin-adjacency.scan.test.ts, DEC-919 wave-152 amendment).",
+  ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING:
+    "measures the admin mobile pass's own OFFENDER COUNT for a population "
+    + "(INTERACTIVE_CONTROL_SELECTOR under MIN_TAP_TARGET_PX) that is ADVISORY, not "
+    + "blocking, the same disposition DEC-393 wave-147/151 already gave the desktop/phone "
+    + "drawn-floor ledgers: a new non-zero row in the exit gate for this count would move "
+    + "the campaign's own convergence goalposts mid-stream, when minControlHeight/"
+    + "minControlWidth (the population's SHORTEST offender) already carry the public-pass "
+    + "contract DEC-253 depends on. This constant lives beside that contract without "
+    + "replacing it (scripts/render-sweep-lib.ts, DEC-253/DEC-367/DEC-808 wave-155 "
+    + "amendment, task qf).",
 };
 
 /**
