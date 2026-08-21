@@ -71,6 +71,14 @@ export default defineConfig({
       ["app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts", "jsdom"],
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
       ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
+      // v12m-w12-qb (DEC-919 wave-156 amendment, task
+      // qb-settings-yourdata-read-drill): settings-phone-390.frames.test.ts
+      // grew a real render receipt against the tree (React.createElement,
+      // no JSX, plain .test.ts name -- same idiom as
+      // planEditor-refusal-shapes.test.ts above), which needs a real
+      // DOM/window for its testing-library assertions alongside the file's
+      // existing CSS-source-scan pins.
+      ["app/src/pages/settings/settings-phone-390.frames.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",

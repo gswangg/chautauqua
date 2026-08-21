@@ -171,7 +171,11 @@ describe('SettingsPage render smoke', () => {
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
     expect(await within(yourDataSection).findByText('CI pipeline')).toBeInTheDocument();
-    expect(within(yourDataSection).queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    // DEC-919 wave-156 (task qb-settings-yourdata-read-drill): Revoke and
+    // New token now render in the read drill itself, receipted in full in
+    // ApiTokensPanel.render.test.tsx/settings-phone-390.frames.test.ts.
+    expect(within(yourDataSection).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    expect(within(yourDataSection).getByRole('button', { name: 'New token' })).toBeInTheDocument();
 
     fireEvent.click(within(yourDataSection).getByRole('button', { name: 'Change' }));
     await waitFor(() => {

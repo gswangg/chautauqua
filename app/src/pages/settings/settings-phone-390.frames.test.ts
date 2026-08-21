@@ -38,6 +38,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { render, screen, within, cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { SettingsPage } from '../Settings';
+import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -236,7 +242,7 @@ describe('v12 phone frame "Settings · Your data" (390)', () => {
     expect(pill).toMatch(/background:\s*var\(--chq-surface-sunk\)/);
   });
 
-  it('reads the frame\'s 46px filled full-width "New token" action (gap: read-drilled view does not yet render it)', () => {
+  it('renders the frame\'s 46px filled full-width "New token" action in the read drill', async () => {
     const line = verbatimLine(
       DESIGN_FILE,
       426,
@@ -244,6 +250,74 @@ describe('v12 phone frame "Settings · Your data" (390)', () => {
     );
     expect(line).toMatch(/min-height:46px/);
     expect(line).toMatch(/background:#4E5C31/);
+
+    // DEC-919 wave-156: a real render receipt against the tree, not a
+    // second citation of the frame -- ApiTokensPanel.tsx's `readOnly`
+    // branch mounts this button (task qb-settings-yourdata-read-drill).
+    const EVENT_ID = 'evt-390-your-data-new-token';
+    window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        slug: 'devcon-2026',
+        name: 'DevCon 2026',
+        startDate: '2026-09-01',
+        endDate: '2026-09-03',
+        location: 'Austin, TX',
+        timezone: 'America/Chicago',
+        recordPrefix: 'DC26',
+        branding: { logoUrl: '', accentColor: '' },
+      },
+      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+    });
+    render(createElement(MemoryRouter, { initialEntries: ['/settings?section=your-data'] }, createElement(SettingsPage)));
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    const newTokenBtn = await within(section).findByRole('button', { name: 'New token' });
+    expect(newTokenBtn).toHaveClass('chq-settings-phone-action');
+    window.localStorage.clear();
+    cleanup();
+  });
+
+  it('YourDataPanel read drill (?section=your-data, no edit=1) mounts both per-row actions and the New-token primary', async () => {
+    const EVENT_ID = 'evt-390-your-data-read-drill';
+    window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: {
+        id: EVENT_ID,
+        slug: 'devcon-2026',
+        name: 'DevCon 2026',
+        startDate: '2026-09-01',
+        endDate: '2026-09-03',
+        location: 'Austin, TX',
+        timezone: 'America/Chicago',
+        recordPrefix: 'DC26',
+        branding: { logoUrl: '', accentColor: '' },
+      },
+      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+      'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+    });
+    // No `edit=1` -- this is the READ drill, not the edit drill: the
+    // per-row actions and the create primary must all be reachable without
+    // ever opening 'Change' (DEC-919 wave-156).
+    render(createElement(MemoryRouter, { initialEntries: ['/settings?section=your-data'] }, createElement(SettingsPage)));
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    // Exports row: per-row boxed "Download" (frame :409), reused from
+    // renderExportRowsPhone -- three real hrefs (submissions/contacts CSV,
+    // schedule ICS) render as links; "Everything, JSON" has no href so it
+    // renders as a button, asserted separately below.
+    expect(within(section).getAllByRole('link', { name: 'Download' }).length).toBeGreaterThan(0);
+    // "Everything, JSON" has no href -- it's the one Download rendered as a
+    // <button> rather than a link, same handler as the desktop pill.
+    expect(within(section).getAllByText('Download').some((el) => el.tagName === 'BUTTON')).toBe(true);
+    // API tokens row: per-row boxed "Revoke" (frame :423).
+    expect(within(section).getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    // The filled 46px full-width "New token" primary (frame :426).
+    expect(within(section).getByRole('button', { name: 'New token' })).toBeInTheDocument();
+    // Still the read drill: no Change-drill-only content leaked in.
+    expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    window.localStorage.clear();
+    cleanup();
   });
 });
 

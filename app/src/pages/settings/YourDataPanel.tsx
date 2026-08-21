@@ -286,8 +286,22 @@ export function YourDataPanel() {
 
   const rows = [
     {
+      // DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill):
+      // the read row used to render ONLY the desktop pill strip -- the 390
+      // frame (:409) instead draws a per-row boxed "Download" beside each
+      // export's name/detail stack, which `.chq-pill` (name and action
+      // fused into one element) can never present. Reuses the SAME
+      // renderExportRowsPhone() the edit branch already mounts below (one
+      // list of export kinds, DEC-815) and the SAME
+      // chq-settings-drillrow-pills-desktop class that already hides the
+      // pill strip at phone there -- no new CSS, no second list.
       label: 'Exports',
-      value: <div className="chq-settings-summary-pills">{renderExportPills()}</div>,
+      value: (
+        <>
+          <div className="chq-settings-summary-pills chq-settings-drillrow-pills-desktop">{renderExportPills()}</div>
+          {renderExportRowsPhone()}
+        </>
+      ),
     },
     { label: 'API tokens', value: <ApiTokensPanel readOnly /> },
     {

@@ -6,6 +6,8 @@ import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { ApiTokensPanel } from './ApiTokensPanel';
 import { formatDateTime } from '../../lib/dates';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -13,6 +15,16 @@ import { phoneBlockRulesMentioning, phoneBlockText } from '../../test-utils/phon
 
 const CREATED_AT = 1_700_000_500_000;
 const LAST_USED_AT = 1_700_050_000_000;
+
+// DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill): the
+// readOnly branch now writes `?section=your-data&edit=1` (New token) and
+// reads `useSearchParams` unconditionally (both branches share the same
+// component-level hook call, Rules of Hooks), so every render needs a real
+// Router context -- same MemoryRouter wrapper YourDataPanel.render.test.tsx
+// already uses for the sibling that actually owns this section key.
+function renderPanel(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 function token(overrides: Partial<ReturnType<typeof baseToken>> = {}) {
   return { ...baseToken(), ...overrides };
@@ -42,7 +54,7 @@ describe('ApiTokensPanel (DEC-785 amendment, wave 66)', () => {
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     expect(await screen.findByText('CI pipeline')).toBeInTheDocument();
     expect(screen.getByText(/chq_abc/)).toBeInTheDocument();
@@ -53,20 +65,21 @@ describe('ApiTokensPanel (DEC-785 amendment, wave 66)', () => {
 });
 
 describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
-  it('renders the real token rows with no Change control and no create/revoke surface, ever', async () => {
+  it('renders the real token rows with no Change control and no local create surface, ever', async () => {
     mockApi({
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
 
-    render(<ApiTokensPanel readOnly />);
+    renderPanel(<ApiTokensPanel readOnly />);
 
     expect(await screen.findByText('CI pipeline')).toBeInTheDocument();
     expect(screen.getByText('Last used: Never')).toBeInTheDocument();
     expect(screen.queryByText(/chq_abc/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'API Tokens' })).not.toBeInTheDocument();
+    // No local name field/submit form anywhere -- creation only ever
+    // happens through the edit drill the "New token" primary below opens.
+    expect(screen.queryByLabelText('Token name')).not.toBeInTheDocument();
   });
 
   it('renders the empty state with no Change control when there are no tokens', async () => {
@@ -74,10 +87,67 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
       'GET /api/v1/tokens': listEnvelope([]),
     });
 
-    render(<ApiTokensPanel readOnly />);
+    renderPanel(<ApiTokensPanel readOnly />);
 
     expect(await screen.findByText('No API tokens yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+
+  // DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill): the
+  // 390 read drill (docs/design/Chautauqua Settings.dc.html:423, :426) draws
+  // a per-row boxed "Revoke" and a filled full-width "New token" primary
+  // that used to be unreachable from this branch -- both now render here.
+  it('renders a boxed "Revoke" per row, opening the SAME ConfirmDialog/confirmDelete path as the edit branch', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+      'DELETE /api/v1/tokens/tok-1': { status: 200, body: {} },
+    });
+
+    renderPanel(<ApiTokensPanel readOnly />);
+
+    const revokeBtn = await screen.findByRole('button', { name: 'Revoke' });
+    fireEvent.click(revokeBtn);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Revoke this token?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'Any script or embed still using CI pipeline stops working immediately. This cannot be undone.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+        true,
+      );
+    });
+  });
+
+  it('the "New token" primary enters the edit drill (?section=your-data&edit=1) rather than creating locally', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=your-data']}>
+        <ApiTokensPanel readOnly />
+      </MemoryRouter>,
+    );
+
+    const newTokenBtn = await screen.findByRole('button', { name: 'New token' });
+    expect(newTokenBtn).toHaveClass('chq-settings-phone-action');
+    // No local create form to drive -- clicking only ever navigates.
+    expect(screen.queryByLabelText('Token name')).not.toBeInTheDocument();
+
+    fireEvent.click(newTokenBtn);
+
+    // The panel itself has no route awareness beyond writing the params;
+    // asserting the URL directly would need a route/location probe this
+    // bare-panel render doesn't have. SummarySection.openEdit (the sibling
+    // this button mirrors) is receipted the same way, by class + no local
+    // form, in that component's own tests.
   });
 });
 
@@ -90,7 +160,7 @@ describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amend
       ]),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
 
     expect(await screen.findByRole('columnheader', { name: 'Created' })).toBeInTheDocument();
@@ -116,7 +186,7 @@ describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amend
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     const table = await screen.findByRole('table');
     const footer = screen.getByText(
@@ -135,7 +205,7 @@ describe('ApiTokensPanel table columns (w22-b, DEC-902 amendment)', () => {
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
 
     const table = await screen.findByRole('table');
@@ -205,7 +275,7 @@ describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
       'GET /api/v1/tokens': listEnvelope([token()], { max: 25 }),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
 
     expect(await screen.findByText('1 of 25 used')).toBeInTheDocument();
@@ -220,7 +290,7 @@ describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
       },
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     fireEvent.change(await screen.findByLabelText('Token name'), { target: { value: 'One more' } });
     // DEC-919 wave-99 amendment: "New token" now renders twice in the DOM
@@ -241,7 +311,7 @@ describe('ApiTokensPanel (DEC-941)', () => {
       'DELETE /api/v1/tokens/tok-1': { status: 200, body: {} },
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
 
@@ -276,7 +346,7 @@ describe('ApiTokensPanel phone "New token" primary (DEC-919 wave-99 amendment, t
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     // docs/design/Chautauqua Settings.dc.html:426
     // `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
@@ -296,7 +366,7 @@ describe('ApiTokensPanel phone "New token" primary (DEC-919 wave-99 amendment, t
       'POST /api/v1/tokens': { status: 200, body: { token: 'chq_live_secret' } },
     });
 
-    render(<ApiTokensPanel />);
+    renderPanel(<ApiTokensPanel />);
 
     const [, phoneSibling] = await screen.findAllByRole('button', { name: 'New token' });
     expect(phoneSibling).toBeDisabled();

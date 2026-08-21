@@ -18,17 +18,36 @@
 // DEC-027 amendment (wave 47): GET /tokens now carries createdAt too. Only
 // the full edit-view table grows a Created column -- the readOnly summary
 // stays name + last-used per the ruling above.
+//
+// DEC-919 wave-156 amendment (task qb-settings-yourdata-read-drill): the 390
+// READ drill (docs/design/Chautauqua Settings.dc.html:423, :426) draws a
+// per-row boxed "Revoke" beside each token AND a filled 46px full-width
+// "New token" primary below the list -- both were unreachable from the
+// `readOnly` branch (it rendered a bare name/last-used list, no controls at
+// all). Revoke fires the SAME `pendingDelete`/`confirmDelete` state and the
+// SAME <ConfirmDialog/> the edit branch already owns (DEC-941: revocation is
+// unrecoverable) -- never a second confirm. "New token" is an edit surface,
+// not a direct act, so it writes `?section=your-data&edit=1` the same way
+// SummarySection's own "Change" action does, landing on the edit branch's
+// already-open create form. This component is only ever mounted inside
+// YourDataPanel's "your-data" section (grep confirms the only call sites are
+// there), so the section key is a plain literal here rather than a circular
+// import of YourDataPanel's own local `SECTION_KEY` constant.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
-import { DEC_896 } from '../../../../src/decisions';
+import { DEC_896, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
 
 void DEC_896; // the section's own closing footer (Settings.dc.html:1164) is a SECTION register, distinct from YourDataPanel's head consequence
+void DEC_919; // the readOnly branch's per-row Revoke box and New-token primary render twice in the DOM, once on screen (phone-only CSS)
+
+const YOUR_DATA_SECTION_KEY = 'your-data';
 
 interface ApiTokenItem {
   id: string;
@@ -44,6 +63,7 @@ function formatDate(ms: number | null): string {
 }
 
 export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
+  const [, setSearchParams] = useSearchParams();
   const [tokens, setTokens] = useState<ApiTokenItem[]>([]);
   // DEC-027 wave-51 amendment: the org-scoped bound on the bearer-token
   // population, rendered beside the create control. null until the list
@@ -127,6 +147,15 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   }
 
   if (readOnly) {
+    function openCreateDrill() {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('section', YOUR_DATA_SECTION_KEY);
+        params.set('edit', '1');
+        return params;
+      });
+    }
+
     return (
       <>
         {error && <div className="chq-error" role="alert">{error}</div>}
@@ -136,12 +165,49 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
           <ul className="chq-settings-summary-list">
             {tokens.map((t) => (
               <li key={t.id} className="chq-settings-summary-row">
-                <span className="chq-settings-summary-row-primary">{t.name}</span>
-                <span className="chq-settings-summary-row-detail">Last used: {formatDate(t.lastUsedAt)}</span>
+                {/* docs/design/Chautauqua Settings.dc.html:423 `border:1px
+                    solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+                    min-height:44px; display:flex; align-items:center;
+                    padding:0 14px; font-size:13px; font-weight:600` -- the
+                    boxed per-row action beside a name-over-detail stack,
+                    phone-only (chq-settings-summary-row-info/-action,
+                    settings-lists.css). */}
+                <span className="chq-settings-summary-row-info">
+                  <span className="chq-settings-summary-row-primary">{t.name}</span>
+                  <span className="chq-settings-summary-row-detail">Last used: {formatDate(t.lastUsedAt)}</span>
+                </span>
+                <button
+                  type="button"
+                  className="chq-settings-summary-row-action"
+                  onClick={() => setPendingDelete(t)}
+                >
+                  Revoke
+                </button>
               </li>
             ))}
             {tokens.length === 0 ? <li className="chq-settings-summary-empty">No API tokens yet.</li> : null}
           </ul>
+        )}
+
+        {/* docs/design/Chautauqua Settings.dc.html:426 -- the filled 46px
+            full-width "New token" primary below the token list, phone-only
+            (.chq-settings-phone-action, settings-lists.css). An edit
+            surface, not a direct act: it enters the section's edit drill,
+            which already renders the create form open at its top (no
+            separate "already open" state to thread through). */}
+        <button type="button" className="chq-settings-phone-action" onClick={openCreateDrill}>
+          New token
+        </button>
+
+        {pendingDelete && (
+          <ConfirmDialog
+            title="Revoke this token?"
+            body={`Any script or embed still using ${pendingDelete.name} stops working immediately. This cannot be undone.`}
+            confirmLabel="Revoke"
+            pending={deleting}
+            onConfirm={() => void confirmDelete()}
+            onCancel={() => setPendingDelete(null)}
+          />
         )}
       </>
     );
