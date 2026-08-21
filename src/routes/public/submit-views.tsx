@@ -142,8 +142,9 @@ function notYetOpenMetaLine(event: EventRow): string {
   return `${event.name} · ${start}–${end}`;
 }
 
-// DEC-745 (wave-150 amendment): the frame's one action
-// (`docs/design/Chautauqua Public and Portal.dc.html:1543`) points at the
+// DEC-745 (wave-150 amendment): the frame's one action,
+// docs/design/Chautauqua Public and Portal.dc.html:1543, draws
+// `Browse last year's sessions ›` -- which, per this ruling, points at the
 // prior edition's sessions, not this event's own -- by definition
 // unpublished -- programme. `getPriorPublicEvent`
 // (src/server/repo/public/event.ts:79) already returns null both when
