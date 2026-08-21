@@ -147,8 +147,29 @@ export function PhoneAgenda({
     setArmed(null);
   }
 
+  // frame docs/design/Chautauqua Agenda.dc.html:128 opens the 390x844
+  // phone shell and makes THIS page's bordered head band its first child
+  // (:128 `border-bottom:1px solid #1B1D17; padding:14px 16px;
+  // flex-shrink:0; display:flex; flex-direction:column`), carrying the
+  // wordmark at :130 beside the page-specific "6 unplaced · 2 clash"
+  // counter at :131 -- no app-shell header drawn above it anywhere in the
+  // frame. This is the header-region twin of the footer contract
+  // (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`, see
+  // Scorecard.tsx): a page that draws its own phone head band declares
+  // data-chq-phone-head on its root and styles.css's
+  // `.chq-shell:has([data-chq-phone-head]) .chq-header` (inside its
+  // max-width:700px block) stands the shell header down, DEC-385
+  // single-direction. Desktop cannot be reached by this change: Agenda.tsx
+  // mounts PhoneAgenda only under `isPhone`, and the stand-down rule lives
+  // only inside styles.css's max-width block, never at top level.
+  //
+  // No capability is lost by suppressing the shell header here: this
+  // page's footer is `.chq-phone-footer`, never `data-chq-phone-dock`, so
+  // `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` does not fire --
+  // the tab bar stays mounted and Sign out / the event switcher stay
+  // reachable through the More sheet (DEC-369/DEC-381).
   return (
-    <div className="chq-phone-agenda">
+    <div className="chq-phone-agenda" data-chq-phone-head>
       <div className="chq-phone-agenda-head">
         <div className="chq-phone-agenda-head-top">
           <span className="chq-phone-agenda-wordmark">chautauqua</span>
