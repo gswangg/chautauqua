@@ -1136,17 +1136,23 @@
   /* The frame's card reads tick + status, then the session title, then one
      muted `speaker · file` line, then the Approve/Open pair — a different
      order from the desktop columns (select, session, speaker, latest file,
-     status, actions). A grid places the SAME cells into that reading order
-     with no phone-only DOM (DEC-386). Positional placement is safe here
-     because the six-column order is itself pinned
-     (SessionList.render.test.tsx's "six tracks" suite); nothing positional
-     ever sources a LABEL (phone-label-source.scan.test.ts) — the `·`
-     separators below (this block's, and the meta-row one further down) are
-     punctuation with no letter in them, the documented submissions.css
-     precedent. */
+     status, actions). A wrapping flex line-box places the SAME cells into
+     that reading order with no phone-only DOM (DEC-386) — `order` stands in
+     for the grid this block used to use, so the row's own DOM order
+     (select, session, speaker, latest file, status, actions) never has to
+     change. Positional placement is safe here because the six-column order
+     is itself pinned (SessionList.render.test.tsx's "six tracks" suite);
+     nothing positional ever sources a LABEL (phone-label-source.scan.test
+     .ts) — the `·` separators below (this block's, and the meta-row one
+     further down) are punctuation with no letter in them, the documented
+     submissions.css precedent. w17-c (DEC-825): replaces the prior grid +
+     48%-clamp layout, which forced speaker and latest-file onto a fixed
+     two-column split (col 1 sized by the checkbox) because a grid has no
+     "flow to the next cell" primitive — a flex line-box does, so the clamp
+     is gone outright rather than just relocated. */
   .chq-content-worklist .chq-content-table tr.chq-content-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     column-gap: 9px;
     row-gap: 9px;
@@ -1157,69 +1163,60 @@
     min-width: 0;
   }
 
-  /* select — row 1, leading the status flag, exactly as the "selecting"
-     frame draws the tick beside the status word. */
+  /* select — leads the status flag, exactly as the "selecting" frame draws
+     the tick beside the status word. */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(1) {
-    grid-row: 1;
-    grid-column: 1;
+    order: 1;
+    flex: 0 0 auto;
     align-self: center;
   }
 
   /* status */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(5) {
-    grid-row: 1;
-    grid-column: 2;
+    order: 2;
+    flex: 1 1 auto;
   }
 
-  /* session (title + ref) */
+  /* session (title + ref) — its own full-width flex line */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(2) {
-    grid-row: 2;
-    grid-column: 1 / span 2;
+    order: 3;
+    flex: 0 0 100%;
   }
 
-  /* speaker, then latest file — ONE shared row (frame :220 `{{ row.speaker
-     }} · {{ row.file }}, {{ row.when }}`), w15-ta (DEC-825 wave-159). Both
-     cells sit in the row's own full span (grid-column:1/span2, the SAME
-     span title and actions already use) rather than splitting across the
-     row's two columns: this task's file scope is content.css + ContentApp
-     only (SessionList.tsx's markup is out of reach), and giving speaker its
-     own column would reuse col1 -- the SAME auto track row 1's checkbox
-     sizes -- pushing the status pill away from the tick, off frame
-     :268-271's tight pairing (the exact tradeoff the prior deviation note
-     here used to explain keeping these as two lines). justify-self:start
-     +end pins each to its edge of the shared line with a percentage cap so
-     neither can grow past the other; not the frame's tight inline join,
-     recorded as the DEVIATION this leaves behind. */
+  /* speaker, then latest file — ONE shared line (frame :220 `{{ row.speaker
+     }} · {{ row.file }}, {{ row.when }}`), w17-c (DEC-825). Both cells sit
+     on the same flex line and simply flow one after another, wrapping
+     naturally when the row is too narrow to hold both — the frame's tight
+     inline join, not the 48%-clamp approximation of it this block used to
+     carry (that clamp was itself a DEVIATION forced by the grid's fixed
+     two-column split; a wrapping flex line has no such split to force it,
+     so nothing is left to record here). */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(3) {
-    grid-row: 3;
-    grid-column: 1 / span 2;
-    justify-self: start;
-    max-width: 48%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    order: 4;
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
-  /* latest file — shares row 3 with speaker above; the leading `· ` mirrors
-     the frame's separator (submissions.css precedent, punctuation with no
-     letter in it, so phone-label-source.scan.test.ts stays clean). */
+  /* latest file — shares the flex line with speaker above; the leading `·`
+     mirrors the frame's separator (submissions.css precedent, punctuation
+     with no letter in it, so phone-label-source.scan.test.ts stays clean).
+     No trailing space in the content string — the row's own column-gap
+     supplies the space on both sides. */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(4) {
-    grid-row: 3;
-    grid-column: 1 / span 2;
-    justify-self: start;
-    margin-left: 48%;
+    order: 5;
+    flex: 0 1 auto;
     min-width: 0;
   }
 
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(4)::before {
-    content: '· ';
+    content: '·';
     color: var(--chq-muted);
   }
 
   /* the Approve/Open pair, full measure */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(6) {
-    grid-row: 5;
-    grid-column: 1 / span 2;
+    order: 6;
+    flex: 0 0 100%;
   }
 
   /* The frame's meta reads `file, when` on ONE line — the 200px desktop
@@ -1330,17 +1327,24 @@
     gap: 8px;
   }
 
+  /* docs/design/Chautauqua Content.dc.html:342-367 reserves "Download all"
+     for the sticky footer dock ALONE -- w17-c (DEC-825). FilesLibrary.tsx
+     also mounts this wrap inside the header row (.chq-content-files-
+     header-row), which the phone block above gives the full measure, so at
+     390 the SAME capability drew twice on one screen. phone-hidden:
+     RE-LINED, not removed -- the header's whole download-all wrap
+     (button, cap message, scope message alike) hides, and the capability
+     it carries is the identical control already live in `.chq-phone-dock`'s
+     primary `chq-btn-primary` "Download all" button below (FilesLibrary
+     .tsx's terminal `.chq-phone-dock` block), which reuses the SAME
+     handleDownloadAll handler and disabled state at the frame's own 48px
+     dock height. Nothing the user could do at desktop is unreachable at
+     390 -- only the affordance's position moves, from the header to the
+     dock. Supersedes the narrower `> .chq-btn`-only hide this rule used to
+     carry (DEC-576 wave-125), which still left the cap/scope explanatory
+     text competing for space in the header row. */
   .chq-content-files-download-all-wrap {
     align-items: stretch;
-  }
-
-  /* phone-hidden: DEC-576 wave-125 amendment -- the actionable control
-     moves into the frame's own pinned dock below (.chq-phone-dock), which
-     reuses the SAME handler and disabled state, so the header keeps only
-     its explanatory cap/scope text and never a second live control
-     competing for the one tap that downloads. Capability relocated, not
-     removed (DEC-919). */
-  .chq-content-files-download-all-wrap > .chq-btn {
     display: none;
   }
 
@@ -1731,8 +1735,8 @@
   /* Rest: row verbs show, the leading selection cell (td:nth-child(1))
      hides -- the frame draws no tick until Select is tapped. Equal
      specificity to the earlier phone block's own placement rule for this
-     cell (line ~974), later in source order, so `display:none` wins here
-     without disturbing that rule's grid-row/grid-column assignment. */
+     cell (line ~1162), later in source order, so `display:none` wins here
+     without disturbing that rule's order/flex assignment. */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(1) {
     display: none;
   }
@@ -1882,12 +1886,12 @@
   }
 
   /* .chq-content-files-header-actions .chq-btn no longer takes a floor
-     here -- v12m-w14-g hides that button at 390
-     (.chq-content-files-download-all-wrap > .chq-btn, above); the live
-     control is `.chq-phone-dock .chq-btn`, floored by the shell's own
-     phone rule (styles.css) at 48px, which already exceeds this 44px
-     floor. A hidden control carries no tap-floor obligation (DEC-919: the
-     rule protects what's ON the screen). */
+     here -- v12m-w14-g hid that header button at 390, and w17-c
+     (.chq-content-files-download-all-wrap, above) now hides the whole wrap
+     it sits in; the live control is `.chq-phone-dock .chq-btn`, floored by
+     the shell's own phone rule (styles.css) at 48px, which already exceeds
+     this 44px floor. A hidden control carries no tap-floor obligation
+     (DEC-919: the rule protects what's ON the screen). */
 
   /* -- Tap floor: empty header spacer (inert, see note above) ------------ */
 

@@ -188,9 +188,12 @@ describe('v12 phone frame "Content" (docs/design/Chautauqua Content.dc.html:198)
   });
 
   it('collapses the worklist card to the frame\'s reading order (tick/status, title, speaker · file, actions)', () => {
+    // w17-c (DEC-825): a wrapping flex line-box replaced the earlier grid,
+    // so the row's own display model is what's under test now, not a
+    // grid-template-columns track list.
     const row = phoneRule(CONTENT_CSS, '.chq-content-worklist .chq-content-table tr.chq-content-row');
-    expect(row).toMatch(/display:\s*grid/);
-    expect(row).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\)/);
+    expect(row).toMatch(/display:\s*flex/);
+    expect(row).toMatch(/flex-wrap:\s*wrap/);
   });
 
   it("floors the row's Approve/Open pair at 44px full-width, matching docs/design/Chautauqua Content.dc.html:222 `flex:1; ... min-height:44px; display:flex; align-items:center; justify-content:center`", () => {
@@ -321,8 +324,12 @@ describe('v12 phone frame "Files · 390"', () => {
     const dockPrimary = phoneRule(STYLES_CSS, '.chq-phone-dock .chq-btn-primary');
     expect(dockPrimary).toMatch(/flex:\s*1/);
 
-    const headerBtn = phoneRule(CONTENT_CSS, '.chq-content-files-download-all-wrap > .chq-btn');
-    expect(headerBtn).toMatch(/display:\s*none/);
+    // w17-c (DEC-825): the whole header wrap hides now, not just its
+    // button -- the cap/scope explanatory text it can also carry was
+    // still competing with the header row's measure otherwise (DEC-825
+    // "one capability draws twice on one screen").
+    const headerWrap = phoneRule(CONTENT_CSS, '.chq-content-files-download-all-wrap');
+    expect(headerWrap).toMatch(/display:\s*none/);
 
     const search = phoneRule(CONTENT_CSS, '.chq-content-files-search-input');
     expect(search).toMatch(/display:\s*none/);

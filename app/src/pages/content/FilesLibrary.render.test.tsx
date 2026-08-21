@@ -783,11 +783,12 @@ describe('FilesLibrary: the 390 frame header stack and file card', () => {
     expect(headerActions).toMatch(/flex-direction:\s*column/);
     expect(headerActions).toMatch(/align-items:\s*stretch/);
 
-    expect(filesPhoneRule(phone, '.chq-content-files-download-all-wrap')).toMatch(/align-items:\s*stretch/);
-    // The header's live control is hidden -- the same action now lives in
-    // `.chq-phone-dock` (the shell's own class, reused verbatim) as the
-    // page's last child; the explanatory cap/scope text above stays put.
-    expect(filesPhoneRule(phone, '.chq-content-files-download-all-wrap > .chq-btn')).toMatch(/display:\s*none/);
+    // w17-c (DEC-825): the header's whole download-all wrap hides now, not
+    // just its button -- the same action now lives in `.chq-phone-dock`
+    // (the shell's own class, reused verbatim) as the page's last child.
+    const wrap = filesPhoneRule(phone, '.chq-content-files-download-all-wrap');
+    expect(wrap).toMatch(/align-items:\s*stretch/);
+    expect(wrap).toMatch(/display:\s*none/);
 
     // The breadcrumb is a real tap target on a phone (DESIGN-RULINGS 44px).
     const crumb = filesPhoneRule(phone, '.chq-content-files-breadcrumb');

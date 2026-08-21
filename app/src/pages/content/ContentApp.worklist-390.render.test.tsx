@@ -168,18 +168,21 @@ describe('ContentApp 390: rest summary vs selecting meta row are exclusive (DEC-
 describe('content.css 390 card: reaches frame :216-228\'s row anatomy (DEC-825 wave-159)', () => {
   const ROW = '.chq-content-worklist .chq-content-table tr.chq-content-row';
 
-  it('keeps the pinned tick+status/title/actions placement untouched (SessionList.render.test.tsx six-tracks suite)', () => {
+  it('keeps the pinned tick+status/title/actions reading order untouched (SessionList.render.test.tsx six-tracks suite)', () => {
+    // w17-c (DEC-825): a wrapping flex line-box replaced the grid this test
+    // used to pin -- `order` carries the reading-order job grid-row/
+    // grid-column used to.
     const body = contentPhoneBlock();
     const row = ruleBody(body, ROW);
-    expect(row).toMatch(/display:\s*grid/);
-    expect(row).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\)/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(1)`)).toMatch(/grid-row:\s*1/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/grid-row:\s*1/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/grid-row:\s*2/);
-    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/grid-row:\s*5/);
+    expect(row).toMatch(/display:\s*flex/);
+    expect(row).toMatch(/flex-wrap:\s*wrap/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(1)`)).toMatch(/order:\s*1/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/order:\s*2/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/order:\s*3/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/order:\s*6/);
   });
 
-  it('puts speaker (nth-child 3) and latest-file (nth-child 4) on the SAME row -- frame :220\'s one meta line', () => {
+  it('puts speaker (nth-child 3) and latest-file (nth-child 4) on the SAME flex line -- frame :220\'s one meta line', () => {
     // Frame :219/:220: title, then the ONE `speaker · file, when` meta line
     // (rest state); :272/:273 draw the same pairing in the selecting state.
     verbatimLine(
@@ -191,17 +194,21 @@ describe('content.css 390 card: reaches frame :216-228\'s row anatomy (DEC-825 w
     const speaker = ruleBody(body, `${ROW} > td:nth-child(3)`);
     const file = ruleBody(body, `${ROW} > td:nth-child(4)`);
 
-    // PRODUCT bytes: both cells land on the SAME grid-row, ahead of the
-    // actions row (still pinned at grid-row:5 above) -- the merge the
+    // PRODUCT bytes: both cells sit between the title (order:3) and actions
+    // (order:6) lines and neither forces a break of its own (no `flex: 0 0
+    // 100%`), so they flow onto the same wrapped line -- the merge the
     // frame's one meta line calls for, reached without touching the
     // markup SessionList.tsx owns (out of this task's file scope).
-    const speakerRow = speaker.match(/grid-row:\s*(\d+)/);
-    const fileRow = file.match(/grid-row:\s*(\d+)/);
-    expect(speakerRow).not.toBeNull();
-    expect(fileRow).not.toBeNull();
-    expect(speakerRow![1]).toBe(fileRow![1]);
-    expect(Number(speakerRow![1])).toBeLessThan(5);
-    expect(Number(speakerRow![1])).toBeGreaterThan(2);
+    const speakerOrder = speaker.match(/order:\s*(\d+)/);
+    const fileOrder = file.match(/order:\s*(\d+)/);
+    expect(speakerOrder).not.toBeNull();
+    expect(fileOrder).not.toBeNull();
+    expect(Number(speakerOrder![1])).toBeLessThan(Number(fileOrder![1]));
+    expect(Number(speakerOrder![1])).toBeLessThan(6);
+    expect(Number(speakerOrder![1])).toBeGreaterThan(3);
+    expect(Number(fileOrder![1])).toBeLessThan(6);
+    expect(speaker).not.toMatch(/flex:\s*0 0 100%/);
+    expect(file).not.toMatch(/flex:\s*0 0 100%/);
   });
 
   it('reads status pill first, then title, then the merged meta line, then actions last -- frame :217-224\'s stack order', () => {
@@ -215,23 +222,23 @@ describe('content.css 390 card: reaches frame :216-228\'s row anatomy (DEC-825 w
     verbatimLine(218, '            <span style="{{ row.statusStyleM }}">{{ row.status }}</span>');
 
     const body = contentPhoneBlock();
-    const statusRow = Number(ruleBody(body, `${ROW} > td:nth-child(5)`).match(/grid-row:\s*(\d+)/)![1]);
-    const titleRow = Number(ruleBody(body, `${ROW} > td:nth-child(2)`).match(/grid-row:\s*(\d+)/)![1]);
-    const speakerRow = Number(ruleBody(body, `${ROW} > td:nth-child(3)`).match(/grid-row:\s*(\d+)/)![1]);
-    const actionsRow = Number(ruleBody(body, `${ROW} > td:nth-child(6)`).match(/grid-row:\s*(\d+)/)![1]);
+    const statusOrder = Number(ruleBody(body, `${ROW} > td:nth-child(5)`).match(/order:\s*(\d+)/)![1]);
+    const titleOrder = Number(ruleBody(body, `${ROW} > td:nth-child(2)`).match(/order:\s*(\d+)/)![1]);
+    const speakerOrder = Number(ruleBody(body, `${ROW} > td:nth-child(3)`).match(/order:\s*(\d+)/)![1]);
+    const actionsOrder = Number(ruleBody(body, `${ROW} > td:nth-child(6)`).match(/order:\s*(\d+)/)![1]);
 
     // PRODUCT bytes: status < title < speaker/file meta < actions, in that
     // strict order -- the frame's :217-224 read.
-    expect(statusRow).toBeLessThan(titleRow);
-    expect(titleRow).toBeLessThan(speakerRow);
-    expect(speakerRow).toBeLessThan(actionsRow);
-    expect(actionsRow).toBe(5);
+    expect(statusOrder).toBeLessThan(titleOrder);
+    expect(titleOrder).toBeLessThan(speakerOrder);
+    expect(speakerOrder).toBeLessThan(actionsOrder);
+    expect(actionsOrder).toBe(6);
   });
 
   it('gives the merged meta line a separator, punctuation only (phone-label-source.scan.test.ts stays clean)', () => {
     const body = contentPhoneBlock();
     const separator = ruleBody(body, `${ROW} > td:nth-child(4)::before`);
-    expect(separator).toMatch(/content:\s*'· '/);
+    expect(separator).toMatch(/content:\s*'·'/);
   });
 
   it('never suppresses the row selection checkbox at 390 -- selection stays live (frame draws a live counter head-band)', () => {
