@@ -1659,4 +1659,35 @@
   .chq-contacts-search {
     font-size: 14px;
   }
+
+  /* task v12m-w16-ui-r3-a / DEC-937 amendment (src/decisions-data/DEC-937.md):
+     docs/design/Chautauqua Contacts.dc.html:180 draws the whole 390 head
+     as ONE band closed by a hairline -- `border-bottom:1px solid #1B1D17;
+     padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column;
+     gap:11px` -- and docs/design/Chautauqua Contacts.dc.html:201 opens the
+     scrolling body immediately beneath it -- `flex:1; min-height:0;
+     overflow-y:auto; padding:4px 16px 16px`. r2-d landed the band's 11px
+     rhythm (this same block's `.chq-contacts-title-row`,
+     `.chq-toolbar.chq-contacts-tabstrip-row` and `.chq-contacts-directory-
+     main` rules above) but not the band's closing hairline -- the band's
+     contents span three parents, so no single element can carry the band
+     box. DECIDED (do not re-decide): the edge is drawn as a border-TOP on
+     the body it opens, `.chq-contacts-table-wrap`, with the frame's 4px
+     body inset above the first row. Declared AFTER the earlier phone
+     `.chq-contacts-table-wrap { gap: 16px }` rule (above, ~former line
+     720) in this SAME terminal block so it supersedes on source order
+     without editing that rule (DEC-385 single-direction). The -16px inline
+     margin exactly cancels app/src/styles.css's `.chq-main { padding:
+     16px; }` phone gutter so the hairline runs full-bleed edge to edge,
+     and the 16px inline padding restores the content inset -- the same
+     cancelled-gutter idiom app/src/styles.css's `.chq-phone-head` and
+     app/src/pages/contacts/contacts-panels.css:1886 already use.
+     `var(--chq-ink)` is #1B1D17 exactly -- no new hex literal minted
+     (DEC-383). */
+  .chq-contacts-table-wrap {
+    margin-inline: -16px;
+    padding-inline: 16px;
+    padding-top: 4px;
+    border-top: 1px solid var(--chq-ink);
+  }
 }
