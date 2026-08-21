@@ -174,6 +174,23 @@
   color: var(--chq-ink-2);
 }
 
+/* DEC-994/DEC-919: the Contacts 390 landing head's second strip -- the
+   frame's "All" / "Speakers · 41" / "Reviewers" pill row (see the
+   line-cited quotes on the phone rules for this same class, further
+   below in this file's terminal media block) -- re-lines the saved-
+   segment filter, the `Segment:` <select> above, as pills; the select
+   is never removed, it is re-lined: selecting a segment -> the pills,
+   clearing the selection -> the "All" pill, seeing which segment is
+   applied -> the pressed pill, every segment in the list -> the strip
+   scrolls (none dropped), per-segment counts -> the pill label. Desktop
+   keeps the select and hides the pill strip entirely;
+   `.chq-contacts-directory-main` is a column flex with gap, so a
+   display:none child contributes no gap and the desktop render is
+   unchanged. */
+.chq-contacts-segment-pills {
+  display: none;
+}
+
 .chq-contacts-table-wrap {
   display: flex;
   flex-direction: column;
@@ -1420,5 +1437,51 @@
      the last card -- there is no second grid row left to space from. */
   .chq-contacts-directory-grid {
     gap: 0;
+  }
+
+  /* DEC-994/DEC-919 (task r1-c): the 390 landing head's second strip
+     (docs/design/Chautauqua Contacts.dc.html:194 `display:flex; gap:7px;
+     overflow-x:auto; -webkit-overflow-scrolling:touch`) -- the saved-segment
+     filter re-lined as pills, not recomputed: Segment.count already
+     arrives from GET /segments computed with the SAME where clause the
+     directory list uses (DEC-710). Appended at the very end of this
+     file's single terminal `@media (max-width: 700px)` block
+     (test/phone-terminal-block.scan.test.ts), AFTER the existing phone
+     rules for `.chq-contacts-segment-summary` above (around former line
+     721) rather than editing them -- DEC-385 single-direction responsive
+     means nothing above this point in the block moves; this rule
+     supersedes their sizing on the cascade instead. Capability receipt:
+     selecting a segment -> the pills below; clearing the selection -> the
+     "All" pill; seeing which segment is applied -> the pressed pill
+     (aria-pressed, colour never carries the state alone); every segment
+     in the list -> the strip scrolls, none dropped; per-segment counts ->
+     the pill label `Speakers · 41`
+     (docs/design/Chautauqua Contacts.dc.html:196 `Speakers · 41`). Pill
+     face is the shared `.chq-pill` token (docs/design/Chautauqua
+     Contacts.dc.html:195 `border:1px solid #BAB6A6; border-radius:99px;
+     min-height:44px; display:flex; align-items:center; padding:0 14px;
+     font-size:13px; font-weight:500`) -- radius is var(--chq-r-pill), no
+     new hex literal minted. */
+  .chq-contacts-segment-pills {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chq-contacts-segment-pills > * {
+    flex-shrink: 0;
+  }
+
+  .chq-contacts-segment-pills .chq-pill {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: var(--chq-r-pill);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .chq-contacts-segment-summary {
+    display: none;
   }
 }
