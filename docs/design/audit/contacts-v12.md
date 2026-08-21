@@ -250,7 +250,8 @@ shell-level design question `docs/design/DESIGN-RULINGS.md` has not
 adjudicated.
 
 **Named owners (DEC-180 wave-156: a finding names its owning sheet, not
-just the shell need):**
+just the shell need; DEC-976 wave-16-r5 amendment: the phone-dock candidate
+is FORECLOSED, decided below, not re-adjudicated by a future lane):**
 
 - **`app/src/styles.css`** — a shell head band that carries the wordmark
   row, the counter and the H1 as the frame draws them, so a page-level
@@ -259,23 +260,34 @@ just the shell need):**
   never inside the counter→H1→search→strip column the frame draws as one
   piece. This is the same shell-vs-page register split
   `docs/design/audit/contacts-v12.md`'s Finding 5 (above) already names for
-  the wordmark row itself.
-- **A Contacts-landing phone dock, built in `app/src/pages/contacts/`** —
-  using the established `.chq-phone-dock` / `data-chq-phone-dock`
-  mechanism `app/src/pages/contacts/PipelineBoard.tsx` already uses for its
-  own phone dock, which would give Import CSV / Export CSV / New contact a
-  surviving path off the head band, the way Pipeline's dock gives its own
-  actions one.
+  the wordmark row itself. This sheet is the RESIDUAL'S SOLE OWNER (see
+  below).
+- ~~A Contacts-landing phone dock, built in `app/src/pages/contacts/`~~ —
+  **FORECLOSED (DEC-976 wave-16-r5 amendment).** `app/src/styles.css`
+  suppresses the shell tab bar for any page that mounts a dock —
+  `.chq-shell:has(.chq-phone-dock) .chq-tabbar` `display: none;` and
+  `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` `display: none;` —
+  but the Contacts 390 landing frame draws the shell tab bar as its own
+  footer: `docs/design/Chautauqua Contacts.dc.html:214`
+  `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+  padding:10px 8px 14px; display:flex; gap:2px`, with `:215`
+  `<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">`. Mounting
+  a dock on this screen would delete the footer the frame draws — trading
+  one frame divergence for a worse one. `app/src/pages/contacts/
+  PipelineBoard.tsx` legitimately mounts `<div className="chq-phone-dock"
+  data-chq-phone-dock>` because Pipeline is a one-screen-at-a-time phone
+  DRILL with its own frame and its own band (DEC-964), not the landing —
+  that precedent does not transfer.
 
-Neither candidate resolves the panel-switcher tablist by itself — a shell
-head band absorbs the title-actions cluster but not a page-specific tab
-set, and a phone dock absorbs the title-actions cluster but not a
-navigation control that must stay reachable independent of any one panel's
-scroll state. Both may be needed; which (or both) is a design-authority
-call this finding does not make. Scheduled owner-lane: none yet — this
-residual is filed, not assigned; a future wave should open a dedicated
-lane against whichever of `app/src/styles.css` or a new Contacts phone-dock
-component `docs/design/DESIGN-RULINGS.md` adjudicates, and that lane's
-fix will need to update `ContactsApp.head390.render.test.tsx`'s two
-"recorded residual" assertions (they are written to fail once the
-intrusion moves) rather than leaving them as permanent truths.
+With the dock candidate foreclosed, the residual has exactly ONE owner:
+`app/src/styles.css`. Both intrusions — the `.chq-contacts-title-actions`
+cluster (Import CSV / Export CSV / New contact) AND the Directory/
+Duplicates/Segments/Pipeline `role="tablist"` panel switcher — now land on
+that one sheet; there is no second candidate left to split them across.
+This lane narrows the finding and names the owner; it does not fix the
+residual, which stays outside the Contacts subtree and unassigned here.
+Scheduled owner-lane: none yet — a future wave should open a dedicated
+lane against `app/src/styles.css`, and that lane's fix will need to update
+`ContactsApp.head390.render.test.tsx`'s two "recorded residual" assertions
+(they are written to fail once the intrusion moves) rather than leaving
+them as permanent truths.
