@@ -34,10 +34,13 @@ import { dayLabelEndInstant, zonedMinutesToUtc } from "../../../lib/timezone";
 import { formatCalendarDate } from "../../../lib/event-time";
 import { chaseableContactExists } from "./crud";
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
-import { DEC_238, DEC_441 } from "../../../decisions";
+import { DEC_238, DEC_441, DEC_941 } from "../../../decisions";
 
 void DEC_441;
 void DEC_238;
+// DEC-941 (Amendment wave 22): a claim is released only by the caller that
+// still holds it -- see the release loop in sendReminderEmails below.
+void DEC_941;
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -612,13 +615,29 @@ async function sendReminderEmails(
     }
   });
 
+  // DEC-941 (Amendment wave 22): a claim is released only by the caller that
+  // still holds it. The WHERE below adds `eq(lastRemindedAt, now)` alongside
+  // the id membership test — `now` is the exact value this call's own claim
+  // UPDATE wrote a few lines above, so a release can only ever undo a claim
+  // THIS call made. Without this predicate, a failing send here would
+  // unconditionally overwrite whatever stamp is currently on the row —
+  // including one written by a concurrent claimant (e.g. remindNow's
+  // unconditional claimCutoff:null racing this call) that already delivered
+  // its own send, re-opening the double-send window DEC-023's
+  // claim-before-send exists to close.
+  //
+  // `updatedAt` is deliberately NOT restored here: a write really did occur
+  // on this row (the claim UPDATE bumped it), and un-bumping it on release
+  // would make the row lie about its own history. Same posture as DEC-941's
+  // mergeContacts ruling: make partial state legible rather than pretend at
+  // atomicity the storage layer does not provide.
   for (const [key, ids] of toRelease) {
     const restoreValue = key === "null" ? null : new Date(Number(key));
     for (const chunk of chunkIds(ids)) {
       await db
         .update(schema.taskAssignment)
         .set({ lastRemindedAt: restoreValue })
-        .where(inArray(schema.taskAssignment.id, chunk));
+        .where(and(inArray(schema.taskAssignment.id, chunk), eq(schema.taskAssignment.lastRemindedAt, now)));
     }
   }
 
