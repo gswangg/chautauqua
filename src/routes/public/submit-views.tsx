@@ -790,6 +790,11 @@ export function ConfirmationPage(props: {
   form: FormRow;
   emailDelivered: boolean;
   meta: string | null;
+  // DEC-908 (wave-16 amendment): the submitting speaker's `name · company`
+  // line, rendered ONLY in the "fresh" state -- Chautauqua Public and
+  // Portal.dc.html:1081 draws a third card line for that state alone;
+  // :1124 and :1147 draw title + one meta line and must not gain a third.
+  speakerLine: string | null;
 }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
@@ -806,6 +811,9 @@ export function ConfirmationPage(props: {
             {props.title}
           </span>
           {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
+          {props.state === "fresh" && props.speakerLine ? (
+            <span class="chq-cfp-confirm-card-meta">{props.speakerLine}</span>
+          ) : null}
         </div>
         {/* DEC-377 (amended, DEC-380 wave-137): this refuses an
             arrival-timing or delivery-window promise — the earlier copy
@@ -893,7 +901,11 @@ export function ConfirmationPage(props: {
         </div>
         <div class="chq-cfp-links">
           <a href={`/submit/${props.eventSlug}`}>Submit another talk &rsaquo;</a>
-          <a href={`/e/${props.eventSlug}/sessions`}>Browse the programme &rsaquo;</a>
+          {/* DEC-908 (wave-16 amendment): Chautauqua Public and
+              Portal.dc.html:1092 `<a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Browse the sessions ›</a>`
+              -- the href already pointed at the same route, only the label
+              was named for the wrong noun. */}
+          <a href={`/e/${props.eventSlug}/sessions`}>Browse the sessions &rsaquo;</a>
         </div>
       </div>
     </PageShell>

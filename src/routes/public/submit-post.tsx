@@ -598,6 +598,17 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   ].filter((part): part is string => part !== null);
   const meta = metaParts.length > 0 ? metaParts.join(" · ") : null;
 
+  // DEC-908 (wave-16 amendment): Chautauqua Public and
+  // Portal.dc.html:1081 `<span style="font-size:13px; color:#565A4B">Priya Raman · Latticework Systems</span>`
+  // -- the fresh state's confirmation card carries a second meta line, the
+  // submitting speaker's own `name · company`, built from what this
+  // request just persisted (firstName/lastName, resolvedCompany above) --
+  // no extra query. No company: the bare name, no trailing separator. No
+  // usable name: null, so ConfirmationPage renders nothing (never an empty
+  // span or a stray middot).
+  const speakerName = `${firstName} ${lastName}`.trim();
+  const speakerLine = speakerName === "" ? null : resolvedCompany ? `${speakerName} · ${resolvedCompany}` : speakerName;
+
   return c.html(
     <ConfirmationPage
       event={event}
@@ -610,6 +621,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       form={form}
       emailDelivered={confirmationEmailSent}
       meta={meta}
+      speakerLine={speakerLine}
     />,
   );
 });

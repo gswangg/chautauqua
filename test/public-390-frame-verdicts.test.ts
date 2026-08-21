@@ -482,7 +482,7 @@ describe("PUBLIC SSR 390 frame render verdicts (task w14-sf, DEC-976 wave-158 SS
     expect(saveDraftMatch![1]!.trim()).not.toBe("Draft");
   });
 
-  it("frame :1074 Submitted -- DIVERGES: the confirmation card omits the frame's third speaker·company line, and the way-forward link reads \"Browse the programme\" where the frame draws \"Browse the sessions\"", async () => {
+  it("frame :1074 Submitted -- MATCHES (DEC-908 wave-16 amendment): the confirmation card carries the frame's third speaker·company line, and the way-forward link reads \"Browse the sessions\"", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1081 `Priya Raman · Latticework Systems</span>`
     verbatimLine(1081, '          <span style="font-size:13px; color:#565A4B">Priya Raman · Latticework Systems</span>');
     const res = await postSubmit({});
@@ -496,25 +496,25 @@ describe("PUBLIC SSR 390 frame render verdicts (task w14-sf, DEC-976 wave-158 SS
     // :1077 title -- MATCHES exactly.
     expect(html).toContain("That&#39;s in. Check your email.");
     // :1078-1081 card: title + meta MATCH (:1080's "Talk, 30 min ·
-    // <track> · <level>" shape), but :1081's own speaker · company line has
-    // no counterpart anywhere in ConfirmationPage's render (submit-
-    // views.tsx:794-809 renders only chq-cfp-title + chq-cfp-confirm-card-
-    // meta, two children, never a third).
+    // <track> · <level>" shape); :1081's own speaker line now has a
+    // counterpart -- a second .chq-cfp-confirm-card-meta span (DEC-908
+    // wave-16 amendment, submit-views.tsx's fresh-state branch). The
+    // synthetic form in this file never sets a company field, so the
+    // built line is the bare name.
     const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
     expect(card).toContain("Taming 40-Minute CI");
-    expect(card).toContain('class="chq-cfp-confirm-card-meta"');
-    expect(card).not.toContain("Priya Raman");
-    expect(html).not.toContain("Latticework Systems");
+    const metaSpans = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans.length).toBe(2);
+    expect(card).toContain("Priya Raman");
     // :1088 password block -- MATCHES.
     expect(html).toContain("Set a password now");
     expect(html).toContain('class="chq-btn chq-btn-primary" href="/claim/');
     expect(html).toContain("Create a password");
     // :1091-1092 way-forward links: the frame's own literal is "Browse the
-    // sessions ›"; the tree renders "Browse the programme ›" to the same
-    // /e/test-conf/sessions route.
+    // sessions ›" -- the tree now names the anchor for its destination.
     expect(html).toContain('href="/e/test-conf/sessions"');
-    expect(html).toContain("Browse the programme");
-    expect(html).not.toContain("Browse the sessions");
+    expect(html).toContain("Browse the sessions");
+    expect(html).not.toContain("Browse the programme");
   });
 
   it("frame :1124 Submitted · email already known -- MATCHES: no claim link on screen (DEC-098), card carries title + one meta line, password-link body + Log in ›", async () => {
@@ -530,7 +530,12 @@ describe("PUBLIC SSR 390 frame render verdicts (task w14-sf, DEC-976 wave-158 SS
     // two children) matches it exactly.
     const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
     expect(card).toContain("Taming 40-Minute CI");
-    expect(card).toContain('class="chq-cfp-confirm-card-meta"');
+    // DEC-908 (wave-16 amendment): the identity line is fresh-state only --
+    // this state carries exactly the one meta line the frame draws, no
+    // second .chq-cfp-confirm-card-meta span.
+    const metaSpans1124 = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans1124.length).toBe(1);
+    expect(card).not.toContain("Priya Raman");
     // DEC-098: no /claim/ token rendered on screen for a pre-existing,
     // not-yet-account-holding contact.
     expect(html).not.toContain("/claim/");
@@ -552,6 +557,12 @@ describe("PUBLIC SSR 390 frame render verdicts (task w14-sf, DEC-976 wave-158 SS
     const html = await res.text();
 
     expect(html).toContain("That&#39;s in. Check your email.");
+    // DEC-908 (wave-16 amendment): the identity line is fresh-state only --
+    // this state carries no second .chq-cfp-confirm-card-meta span.
+    const card1147 = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
+    const metaSpans1147 = [...card1147.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans1147.length).toBe(1);
+    expect(card1147).not.toContain("Priya Raman");
     // :1157 the account-holder line, verbatim.
     expect(html).toContain("You already have an account here.");
     // :1158 the filled primary CTA -- a real .chq-btn-primary anchor to

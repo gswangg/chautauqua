@@ -47,7 +47,11 @@ const EVENT_ROW_MISSING_END_DATE = {
   endDate: null,
 } as any;
 
-function render(state: "fresh" | "pending-existing-contact" | "has-account", form = FORM_ROW_WITH_CLOSE) {
+function render(
+  state: "fresh" | "pending-existing-contact" | "has-account",
+  form = FORM_ROW_WITH_CLOSE,
+  speakerLine: string | null = "Priya Raman · Latticework Systems",
+) {
   const el = ConfirmationPage({
     event: EVENT_ROW,
     title: "My Great Talk",
@@ -59,6 +63,7 @@ function render(state: "fresh" | "pending-existing-contact" | "has-account", for
     form,
     emailDelivered: true,
     meta: null,
+    speakerLine,
   });
   return el.toString();
 }
@@ -110,11 +115,48 @@ describe("DEC-961: confirmation edit-until sentence + way-forward links", () => 
     expect(html).toContain("You can edit this until the call for papers closes.");
   });
 
-  it("carries a .chq-cfp-links row with Submit another talk and Browse the programme", () => {
+  it("carries a .chq-cfp-links row with Submit another talk and Browse the sessions", () => {
     const html = render("fresh");
     expect(html).toContain('class="chq-cfp-links"');
     expect(html).toMatch(/href="\/submit\/test-conf"/);
     expect(html).toMatch(/href="\/e\/test-conf\/sessions"/);
+    expect(html).toContain("Browse the sessions");
+    expect(html).not.toContain("Browse the programme");
+  });
+});
+
+describe("DEC-908 (wave-16 amendment): confirmation card speaker·company identity line", () => {
+  it("fresh: renders the speaker·company line as a second .chq-cfp-confirm-card-meta span", () => {
+    const html = render("fresh");
+    const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
+    const metaSpans = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans.length).toBe(1);
+    expect(card).toContain("Priya Raman");
+    expect(card).toContain("Latticework Systems");
+  });
+
+  it("pending-existing-contact: no identity line even when one is passed", () => {
+    const html = render("pending-existing-contact");
+    const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
+    const metaSpans = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans.length).toBe(0);
+    expect(card).not.toContain("Priya Raman");
+  });
+
+  it("has-account: no identity line even when one is passed", () => {
+    const html = render("has-account");
+    const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
+    const metaSpans = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans.length).toBe(0);
+    expect(card).not.toContain("Priya Raman");
+  });
+
+  it("fresh with no speakerLine: no identity span, no stray middot", () => {
+    const html = render("fresh", FORM_ROW_WITH_CLOSE, null);
+    const card = html.split('class="chq-cfp-confirm-card"')[1]?.split("</div>")[0] ?? "";
+    const metaSpans = [...card.matchAll(/class="chq-cfp-confirm-card-meta"/g)];
+    expect(metaSpans.length).toBe(0);
+    expect(card).not.toContain("·");
   });
 });
 
