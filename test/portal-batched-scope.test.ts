@@ -225,6 +225,7 @@ function buildTwoOrgFixture(): DataByTag {
         submissionId: "sub-b",
         filename: "b-slides.pdf",
         sizeBytes: 100,
+        versionNo: 1,
         createdAt: now,
       },
     ],
@@ -255,13 +256,16 @@ describe("DEC-962: portal batched deliverable reads scope in the SQL, not the ca
     const db = makeDb(buildTwoOrgFixture());
     const result = await listLatestDeliverables(db, "contact-b", "org-b", ["sub-b"]);
     expect(result.size).toBe(1);
-    expect(result.get("sub-b")).toMatchObject({ id: "file-b1", filename: "b-slides.pdf" });
+    expect(result.get("sub-b")).toMatchObject({ id: "file-b1", filename: "b-slides.pdf", versionNo: 1 });
   });
 
   it("getLatestDeliverable: speaker B's own submissionId still resolves for speaker B", async () => {
     const db = makeDb(buildTwoOrgFixture());
     const result = await getLatestDeliverable(db, "contact-b", "org-b", "sub-b");
-    expect(result).toMatchObject({ id: "file-b1", filename: "b-slides.pdf" });
+    // getLatestDeliverable never selects version_no (see PortalDeliverable's
+    // versionNo doc comment) -- its resolved versionNo is null "not read",
+    // not the fixture's stored value, so that is what this pin asserts.
+    expect(result).toMatchObject({ id: "file-b1", filename: "b-slides.pdf", versionNo: null });
   });
 
   it("listLatestDeliverables: a submissionId from the RIGHT contact but the WRONG org still gets no rows", async () => {

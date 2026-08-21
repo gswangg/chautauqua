@@ -122,8 +122,9 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
   const submissionIds = rows.map((row) => row.submissionId);
   const trackNames = await loadTrackNamesBySubmission(db, submissionIds);
   // DEC-908: the SAME batched session_format-role predicate the reviewer
-  // queue uses (review/submissions.ts:849) -- ONE query per chunkIds batch,
-  // never one query per row, reused rather than re-implemented.
+  // queue uses (src/server/repo/review/submissions.ts:849 `export async
+  // function listFormatLabelsBySubmission`) -- ONE query per chunkIds
+  // batch, never one query per row, reused rather than re-implemented.
   const formatLabels = await listFormatLabelsBySubmission(db, submissionIds);
 
   const sessions = rows.map((row) => ({
