@@ -13,10 +13,21 @@
 // asserts the captured verb is "reminded" at every site -- so a fifth copy
 // that drifts (or a re-introduced "emailed") fails loudly the moment it
 // lands, without anyone having to remember to update a hand-written list.
+//
+// DEC-374 (wave-18 amendment: FRAME EVIDENCE IS NOT PRODUCT COPY). The
+// design pack's OWN prose (docs/design/Chautauqua Speakers.dc.html:697)
+// still spells the deliberately-superseded "emailed" wording, and a test
+// file that quotes that frame line VERBATIM inside a string/backtick
+// literal (a `verbatimLine(...)` receipt) is receipting the frame, not
+// authoring product copy -- this scan's subject is product copy, so any
+// occurrence whose enclosing literal resolves to a verbatim frame quote
+// via test/helpers/frame-evidence.ts's isFrameEvidence() is excluded from
+// the offender population before it is built.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { isFrameEvidence } from '../../../../test/helpers/frame-evidence';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = join(HERE, '..', '..'); // app/src
@@ -48,7 +59,11 @@ export interface RuleOccurrence {
 // embeds.
 const RULE_SHAPE = /skips? anyone (\w+) in the last hour/gi;
 
-/** Scans a single file's source for every occurrence of the rule's shape. */
+/** Scans a single file's source for every occurrence of the rule's shape.
+ * DEC-374 (wave-18 amendment): an occurrence whose enclosing literal on its
+ * line is a verbatim quote of a docs/design/*.dc.html line is frame
+ * evidence, not product copy, and is excluded here before it can ever
+ * reach the offender population. */
 export function findOccurrences(file: string, source: string): RuleOccurrence[] {
   const found: RuleOccurrence[] = [];
   const lines = source.split('\n');
@@ -58,6 +73,7 @@ export function findOccurrences(file: string, source: string): RuleOccurrence[] 
     while ((m = re.exec(lineText)) !== null) {
       const verb = m[1];
       if (verb === undefined) continue;
+      if (isFrameEvidence(file, lineText, m.index)) continue;
       found.push({ file, line: idx + 1, verb: verb.toLowerCase(), text: lineText.trim() });
     }
   });
