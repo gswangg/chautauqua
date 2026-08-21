@@ -111,26 +111,82 @@ export function parsePlanCriteria(json: string, planId: string): EvaluationCrite
   return parsed as EvaluationCriterionDef[];
 }
 
-/** Parses evaluation_plan.filters_json. Returns null for null/empty input
- * (no filters stored). Throws PlanJsonError if the JSON parses but is not an
- * object whose optional `trackIds` is an array of strings. */
-export function parsePlanFilters(
-  json: string | null | undefined,
-  planId: string,
-): { trackIds?: string[] } | null {
-  if (json === null || json === undefined || json === "") return null;
-  const parsed = parseJson(json, planId, "filters_json");
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new PlanJsonError(planId, "filters_json", "must be an object");
+/** Thrown by assertPlanFiltersShape (the ONE shape predicate for
+ * evaluation_plan.filters_json) when an already-parsed value does not match
+ * `{ trackIds?: string[] }`. Carries a plain `.detail` message with no
+ * plan id / column framing, because this predicate is shared by both the
+ * read door (parsePlanFilters, which wraps it into a PlanJsonError with
+ * plan id + column) and the write door (validatePlanFiltersInput, which has
+ * no plan id yet since the plan may not exist -- POST -- or the value may
+ * never be persisted at all -- a 400). DEC-509 wave-30 amendment. */
+export class PlanFiltersShapeError extends Error {
+  constructor(public readonly detail: string) {
+    super(detail);
+    this.name = "PlanFiltersShapeError";
+  }
+}
+
+/** The ONE shape predicate for evaluation_plan.filters_json (DEC-509
+ * wave-30 amendment). Before this helper, the read door (this file) and the
+ * write door (src/routes/review/plans-crud.ts POST/PATCH) had NO validation
+ * in common -- the write door cast `body.filters` with zero checks, so
+ * `{"trackIds":"t1"}` (a string, not an array) wrote a filters_json that
+ * made every subsequent read of the plan throw PlanJsonError forever
+ * (toPlanRecord calls parsePlanFilters on every read). Both
+ * parsePlanFilters (read) and validatePlanFiltersInput (write) below call
+ * ONLY this function for the shape check, so they can never drift apart
+ * again. Takes an already-JSON.parsed value (the read door has already run
+ * JSON.parse; the write door's value is already-parsed JSON from the
+ * request body). Returns null for `null` (clear filters). Throws
+ * PlanFiltersShapeError with a `.detail` message on any shape violation. */
+export function assertPlanFiltersShape(parsed: unknown): { trackIds?: string[] } | null {
+  if (parsed === null) return null;
+  if (typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new PlanFiltersShapeError("must be an object");
   }
   const { trackIds } = parsed as Record<string, unknown>;
   if (trackIds === undefined) {
     return {};
   }
   if (!Array.isArray(trackIds) || trackIds.some((v) => typeof v !== "string")) {
-    throw new PlanJsonError(planId, "filters_json", "trackIds must be an array of strings");
+    throw new PlanFiltersShapeError("trackIds must be an array of strings");
   }
   return { trackIds };
+}
+
+/** Parses evaluation_plan.filters_json. Returns null for null/empty input
+ * (no filters stored). Throws PlanJsonError if the JSON parses but is not an
+ * object whose optional `trackIds` is an array of strings -- shape checked
+ * by assertPlanFiltersShape above (DEC-509 wave-30 amendment), the same
+ * predicate the write door in plans-crud.ts calls via
+ * validatePlanFiltersInput. */
+export function parsePlanFilters(
+  json: string | null | undefined,
+  planId: string,
+): { trackIds?: string[] } | null {
+  if (json === null || json === undefined || json === "") return null;
+  const parsed = parseJson(json, planId, "filters_json");
+  try {
+    return assertPlanFiltersShape(parsed);
+  } catch (err) {
+    const detail = err instanceof PlanFiltersShapeError ? err.detail : String(err);
+    throw new PlanJsonError(planId, "filters_json", detail);
+  }
+}
+
+/** Write-door validator for evaluation_plan.filters_json's INPUT shape
+ * (DEC-509 wave-30 amendment). Calls assertPlanFiltersShape above -- the
+ * SAME predicate parsePlanFilters uses to read the column back -- so a
+ * `filters` value that passes this validator is guaranteed to pass the read
+ * door too; a value that would fail the read door is refused HERE, as a
+ * named 400 field error, instead of being written and bricking the plan
+ * (and its results/queue/repair-PATCH) on next read. Takes the
+ * already-JSON-parsed request body value (`body.filters`), not a JSON
+ * string. Callers (POST/PATCH in src/routes/review/plans-crud.ts) catch
+ * PlanFiltersShapeError and surface its `.detail` under the `filters` field
+ * of the route's own `errors` map. */
+export function validatePlanFiltersInput(value: unknown): { trackIds?: string[] } | null {
+  return assertPlanFiltersShape(value);
 }
 
 /** Parses evaluation_plan.round_criteria_json. Returns null for null/empty

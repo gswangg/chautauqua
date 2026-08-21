@@ -12,6 +12,7 @@ import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; //
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
+import { validatePlanFiltersInput, PlanFiltersShapeError } from "../../domain/evaluation/plan-json";
 import * as eventsRepo from "../../server/repo/events";
 import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_460, DEC_461, DEC_624, DEC_676, DEC_709, DEC_929 } from "../../decisions";
 import { criteriaForRound, MAX_PLAN_ROUNDS } from "../../domain/evaluation";
@@ -83,6 +84,20 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
   const maxEvaluations = parseMaxEvaluations(body, errors);
   const openDate = parseEpochMs(body, "openDate", errors);
   const closeDate = parseEpochMs(body, "closeDate", errors);
+  // DEC-509 wave-30 amendment: the write door must refuse every shape the
+  // read door (parsePlanFilters, src/domain/evaluation/plan-json.ts) would
+  // later throw on -- both call assertPlanFiltersShape, the shared
+  // predicate -- so a bad `filters` value is a 400 here, never a stored
+  // brick that 500s on every future read.
+  let filters: { trackIds?: string[] } | null = null;
+  if (body.filters !== undefined) {
+    try {
+      filters = validatePlanFiltersInput(body.filters);
+    } catch (err) {
+      if (err instanceof PlanFiltersShapeError) errors.filters = err.detail;
+      else throw err;
+    }
+  }
   // DEC-517: on POST there is no stored record yet, so the effective values
   // ARE the body values.
   if (Object.keys(errors).length === 0) checkEpochOrder(openDate, closeDate, errors);
@@ -93,7 +108,7 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
     instructions: typeof body.instructions === "string" ? body.instructions : null,
     openDate: openDate ?? null,
     closeDate: closeDate ?? null,
-    filters: (body.filters as { trackIds?: string[] } | undefined) ?? null,
+    filters,
     anonymized: body.anonymized === true,
     scale: scale!,
     criteria: criteria!,
@@ -156,6 +171,20 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
   const maxEvaluations = parseMaxEvaluations(body, errors);
   const openDate = parseEpochMs(body, "openDate", errors);
   const closeDate = parseEpochMs(body, "closeDate", errors);
+  // DEC-509 wave-30 amendment: same shared predicate as POST above --
+  // assertPlanFiltersShape via validatePlanFiltersInput -- so a `filters`
+  // value that fails the read door (parsePlanFilters) fails HERE too,
+  // instead of writing a filters_json that bricks the plan (and its
+  // results/reviewer-queue/repair-PATCH) with a 500 on every future read.
+  let filters: { trackIds?: string[] } | null | undefined;
+  if (body.filters !== undefined) {
+    try {
+      filters = validatePlanFiltersInput(body.filters);
+    } catch (err) {
+      if (err instanceof PlanFiltersShapeError) errors.filters = err.detail;
+      else throw err;
+    }
+  }
   // DEC-517: order check against the MERGED post-patch state -- whichever
   // side the body omits falls back to the plan's already-stored value, so a
   // PATCH touching only closeDate is still checked against the stored
@@ -227,7 +256,7 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
     instructions: body.instructions !== undefined ? (body.instructions === null ? null : String(body.instructions)) : undefined,
     openDate,
     closeDate,
-    filters: body.filters !== undefined ? (body.filters as { trackIds?: string[] } | null) : undefined,
+    filters,
     anonymized: typeof body.anonymized === "boolean" ? body.anonymized : undefined,
     scale,
     criteria,
