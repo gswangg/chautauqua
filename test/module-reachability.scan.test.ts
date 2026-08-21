@@ -283,8 +283,11 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
   "app/src/phone-overflow-scan/starved-track-ceiling.ts":
     "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
     "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
-    "(DEC-518). Carries STARVED_FLEX_TRACK_CEILING alone, isolated so a re-measuring worker touches " +
-    "only the constant and its history; it is scan vocabulary, never SPA bundle code.",
+    "(DEC-518). Carries STARVED_FLEX_TRACK_CEILING alone because scripts/exit-predicate.ts requires " +
+    "exactly one tracked declaration of `export const STARVED_FLEX_TRACK_CEILING = <int>;` in the " +
+    "whole tree, and isolating it (away from ./checks.ts) keeps every re-seed of the ratchet to a " +
+    "single-file diff, not a diff against the population/check machinery; it is scan vocabulary, " +
+    "never SPA bundle code.",
   "app/src/pages/agenda/types.ts":
     "Type-only module -- every consumer (DayGrid, SessionCard, ConflictChip, phoneSlots, PhoneAgenda, " +
     "UnscheduledTray, state.ts) imports it exclusively via `import type`, which erases at build time and confers " +
