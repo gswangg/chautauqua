@@ -422,6 +422,10 @@ instead of re-flagging.
 - "Your data" edit view: retention select, keeping-and-deleting checkboxes,
   revoke-every-token footer (09--16). Drawn at
   `docs/design/Chautauqua Settings.dc.html:1111` (`Settings · editing your data`).
+  The block's head consequence line, `docs/design/Chautauqua Settings.dc.html:1139`
+  ("Retention applies to every event in this org"), is part of the same
+  deferral and returns verbatim the moment the block is built (DEC-032,
+  task w9-kb).
 - Tracks/rooms drag-handle reordering — no server-side order field (09--12).
 - Public-pages Publish/Unpublish control (09--07) and saved-embed "in use on"
   host column (09--09) — no backing data. Same disposition for the Settings

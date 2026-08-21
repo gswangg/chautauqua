@@ -54,13 +54,13 @@ import { ApiTokensPanel } from './ApiTokensPanel';
 import { ExportsPanel } from './ExportsPanel';
 import { SessionboardImportPanel } from './SessionboardImportPanel';
 import { SummarySection } from './SummarySection';
-import { DEC_385, DEC_728, DEC_781, DEC_919 } from '../../../../src/decisions';
+import { DEC_032, DEC_385, DEC_728, DEC_919 } from '../../../../src/decisions';
 import './settings-drill-rows.css';
 
 void DEC_385; // new page-local sheet, settings-drill-rows.css
 void DEC_728; // the 390 drill frame's own Exports rows, not a second tap
 void DEC_919; // phone-only export row list, desktop pill strip hidden at phone
-void DEC_781; // consequence line reuses SettingsEditForm's class with no SettingsEditForm here
+void DEC_032; // head consequence line is a non-build, same retention block as DEVIATIONS.md §6
 
 const SECTION_KEY = 'your-data';
 
@@ -302,11 +302,14 @@ export function YourDataPanel() {
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       <SummarySection sectionKey={SECTION_KEY} label="Your data" rows={rows} actionLabel="Change" editing={editing}>
-        {/* DEC-781: this panel composes SummarySection directly with no
-            SettingsEditForm, so it has no consequence slot -- reusing that
-            slot's class here gives it the same right-flushed treatment.
-            Matches Chautauqua Settings.dc.html:1139 verbatim. */}
-        <p className="chq-settings-edit-consequence">Retention applies to every event in this org</p>
+        {/* Deliberately does NOT build the frame's head consequence line
+            (`docs/design/Chautauqua Settings.dc.html`, "Retention applies
+            to every event in this org"). `docs/design/DEVIATIONS.md` §6
+            rules it part of the "Your data" edit view's deferred
+            "Keeping and deleting" retention block, quoting verbatim: "The
+            block's head consequence line ... is part of the same
+            deferral and returns verbatim the moment the block is built."
+            Recorded as a deliberate non-build on DEC-032. */}
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">Exports</span>
           <div className="chq-settings-row-value">
