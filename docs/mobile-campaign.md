@@ -304,3 +304,27 @@ deleted, the moment the tree satisfies it):
    zero margin against the floor if any token shrinks.
    CLOSED (same Cut-3 meta lane pass; no regression observed since): the
    token has not shrunk and the control still measures at the 44px floor.
+
+## Cut-3 eval judge items (2026-08-21 run, 96.5% @ 91.6%) — meta-triaged
+
+Root-cause report: ~/.claude jobs tmp okafor-rootcause.md (meta-owned). The run's
+only MAJOR (duplicate Marcus Okafor contact) is NOT a product bug: the eval
+harness's abstract-management spec hardcodes a wrong email for a seeded contact,
+so the portal add-co-presenter flow correctly created a distinct contact. No
+code change; do not add duplicate-detection to addCoPresenter (portal-side
+advisory would leak org contact data to external speakers — ruled out 2026-08-21).
+
+Two real items for the next waves, in priority order:
+
+1. **Comms recipient dedup (speaker-management minor).** Bulk compose builds
+   its recipient list per-submission, so a speaker with N submissions appears
+   N times as recipient rows. Dedupe by contact_id at the recipient-list
+   query; the visible count and the send must agree with the deduped list.
+2. **Import completion honesty (speaker-crm minor).** CSV import's DEC-663
+   policy (never overwrite a non-blank email) is right, but the completion
+   screen does not disclose declined email updates. Extend the Cut-2
+   emailConflicts receipt so every declined-update path (including
+   email-conflict-on-merge) is enumerated on the completion screen.
+
+Also still open from round 3: the Contacts Pipeline dock (top of the red set,
+no commits yet — treat as the highest-priority build item).
