@@ -91,7 +91,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
   // Frame :280-345 "Reviewer scorecard · /review/plans/:id/submissions/:id"
   // -- caption at :276 (the second occurrence; the first, :183, captions the
   // 1600 desktop frame above it).
-  it('frame :280 Reviewer scorecard -- DIVERGES: the Overall block collapses the frame\'s three-line anatomy into one merged caption', async () => {
+  it('frame :280 Reviewer scorecard -- RESOLVED (wave 17, task w17-e): the Overall block\'s three-piece anatomy renders again, unwrapped onto the frame\'s own grid by CSS the DOM order no longer measures', async () => {
     verbatimLine(
       276,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Reviewer scorecard · /review/plans/:id/submissions/:id</span>",
@@ -185,13 +185,13 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(screen.getByRole('group', { name: /Speaker readiness/ })).toBeInTheDocument();
 
     // :322-328 vs the rendered Overall block: the frame draws THREE stacked
-    // lines under the "Overall" eyebrow -- a denominator sentence ("Weighted
-    // mean of the two scored criteria · Fit is recorded, not averaged") and
-    // a separate plain-average reconciliation sentence -- beside a 34px
-    // value. The app instead prints the value on the SAME line as the
-    // eyebrow (chq-review-overall-line) and merges both sentences into ONE
-    // caption paragraph (chq-review-overall-caption) below it -- fewer
-    // elements carrying the identical two facts, not a missing fact.
+    // pieces -- the "Overall" eyebrow, a denominator sentence ("Weighted
+    // mean of the two scored criteria · Fit is recorded, not averaged"),
+    // and a separate plain-average reconciliation sentence -- beside a 34px
+    // value. RESOLVED (wave 17, DEC-976 task w17-e): the denominator and
+    // reconciliation sentences are once again two SEPARATE elements
+    // (chq-review-overall-caption / chq-review-overall-reconciliation), not
+    // one merged string.
     const overallLabel = screen.getByText('Overall');
     const overallLine = overallLabel.closest('.chq-review-overall-line');
     expect(overallLine).not.toBeNull();
@@ -200,10 +200,26 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(overallCaption).not.toBeNull();
     expect(overallCaption!.textContent).toMatch(/Weighted mean of the 2 scored criteria/);
     expect(overallCaption!.textContent).toMatch(/Fit is recorded, not averaged/);
-    expect(overallCaption!.textContent).toMatch(/plain average of/);
-    // The frame's two sentences are two separate <span> siblings; the app
-    // renders one <p>, not two.
+    const overallReconciliation = document.querySelector('.chq-review-overall-reconciliation');
+    expect(overallReconciliation).not.toBeNull();
+    expect(overallReconciliation!.textContent).toMatch(/plain average of/);
     expect(document.querySelectorAll('.chq-review-overall-caption').length).toBe(1);
+    expect(document.querySelectorAll('.chq-review-overall-reconciliation').length).toBe(1);
+    // The DOM still nests overallLine (eyebrow+value) ahead of both caption
+    // paragraphs as later siblings -- that DOM order is no longer what
+    // draws the frame's own left-column-of-three/value-as-right-sibling
+    // layout. app/src/pages/review/scorecard.css's terminal
+    // max-width:700px block unwraps it instead
+    // (`.chq-review-overall-line { display: contents; }` promotes the
+    // eyebrow/value spans to direct grid items of `.chq-review-overall`,
+    // whose own `grid-template-columns: 1fr auto` then auto-places the
+    // eyebrow + both caption paragraphs into column 1 and pins the value to
+    // column 2 spanning every row) -- jsdom applies no stylesheet, so this
+    // harness can only confirm the rule text exists verbatim in the
+    // stylesheet the browser actually applies, not observe the resulting
+    // layout itself.
+    const scorecardCss = readFileSync(join(HERE, 'review', 'scorecard.css'), 'utf-8');
+    expect(scorecardCss).toContain('.chq-review-overall-line {\n    display: contents;\n  }');
 
     // :332-333: "Comment to the committee" label above its textarea, in
     // frame order.
@@ -416,7 +432,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
   });
 
   // Frame :594-669 "Plan editor · 390" -- caption at :590.
-  it('frame :594 Plan editor -- DIVERGES: the v4 title-row shell replaces the frame\'s H1+footer anatomy; "Swap" is DEVIATIONS-blessed as "Remove"', async () => {
+  it('frame :594 Plan editor -- DIVERGES (narrowed further, wave 17, task w17-e): only the v4 title-row shell remains -- "Criteria"/"Cap each" copy resolved at phone, "Swap" stays DEVIATIONS-blessed as "Remove"', async () => {
     verbatimLine(
       590,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Plan editor · 390</span>",
@@ -483,10 +499,15 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(document.querySelectorAll('button, a').length).toBeGreaterThan(0);
     expect(screen.queryByText('Save the plan')).not.toBeInTheDocument();
 
-    // :601-602: DIVERGES -- the frame's eyebrow reads the bare word
-    // "Criteria" with a right-aligned count; the app instead heads the
-    // section "Scoring criteria" (never the frame's bare noun) with a
-    // hidden-at-desktop phone count span carrying the same number.
+    // :601-602: RESOLVED (wave 17, task w17-e) -- this it() renders without
+    // stubbing matchMedia, so isPhone is false and PlanEditor.tsx's own
+    // ternary ({isPhone ? 'Criteria' : 'Scoring criteria'}) reads its
+    // DESKTOP branch here; the frame's own bare "Criteria" word now renders
+    // verbatim at the actual 390 phone width via that same ternary,
+    // pinned by app/src/pages/review/PlanEditor.copy-390.render.test.tsx --
+    // not re-asserted in this desktop-mode render. The hidden-at-desktop
+    // phone count span still carries the frame's own count regardless of
+    // width.
     expect(screen.getByRole('heading', { name: 'Scoring criteria' })).toBeInTheDocument();
     expect(screen.queryByText('Criteria', { selector: 'span, h2' })).not.toBeInTheDocument();
     const phoneCount = document.querySelector('.chq-review-criteria-count-phone');
@@ -498,22 +519,29 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(screen.getByRole('link', { name: 'Add criterion' })).toBeInTheDocument();
     expect(screen.getByText(/3 of about \d+/)).toBeInTheDocument();
 
-    // :643-652: DIVERGES -- the frame renames this section "Reviewers" and
-    // draws a per-row "Swap" action (:652). The app names it "Who reviews
-    // what" (DEC-745) and offers "Remove" instead of "Swap" -- there is no
-    // reassign-in-place capability in the domain layer (DEVIATIONS.md,
-    // "Plan editor reviewer-row 'Swap'"), a pre-existing blessed deviation,
-    // not a new finding.
+    // :643-652: the frame renames this section "Reviewers" and draws a
+    // per-row "Swap" action (:652). The app names it "Who reviews what"
+    // (DEC-745, same wave-98 amendment as the Swap->Remove clause below,
+    // though DEVIATIONS.md's own bullet names only the label
+    // substitution -- left as this row already had it). "Swap" -> "Remove"
+    // stays exactly as previously recorded: a pre-existing,
+    // DEVIATIONS-blessed deviation (docs/design/DEVIATIONS.md, "Plan
+    // editor reviewer-row 'Swap'"), not a new finding, since there is no
+    // reassign-in-place capability in the domain layer.
     expect(screen.getByRole('heading', { name: 'Who reviews what' })).toBeInTheDocument();
     expect(screen.queryByText('Reviewers')).not.toBeInTheDocument();
     const reviewerRow = screen.getByText('rev1@example.com').closest('.chq-review-reviewer-row') as HTMLElement;
     expect(screen.queryByText('Swap')).not.toBeInTheDocument();
     expect(within(reviewerRow).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
-    // :656-663: DIVERGES -- the frame's "Cap each" number box + "Distribute
-    // the unassigned" + dashed "Assign a reviewer" trio becomes a single
-    // persistent row labelled "Cap per reviewer" (not "Cap each"), whose
-    // "Distribute the unassigned" copy DOES match verbatim.
+    // :656-663: RESOLVED (wave 17, task w17-e) -- this it() renders without
+    // stubbing matchMedia, so isPhone is false and PlanEditor.tsx's own
+    // ternary ({isPhone ? 'Cap each' : 'Cap per reviewer'}) reads its
+    // DESKTOP branch here; the frame's own "Cap each" now renders verbatim
+    // at the actual 390 phone width via that same ternary, pinned by
+    // app/src/pages/review/PlanEditor.copy-390.render.test.tsx -- not
+    // re-asserted in this desktop-mode render. "Distribute the unassigned"
+    // matches verbatim at every width.
     expect(screen.getByText('Cap per reviewer')).toBeInTheDocument();
     expect(screen.queryByText('Cap each')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Distribute the unassigned' })).toBeInTheDocument();
@@ -525,7 +553,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
   // SKIPPED entirely and the reviewer lands straight in its queue -- this
   // verdict renders the multi-plan state the frame actually draws (two
   // open plans), not the single-plan skip.
-  it('frame :793 Your plans -- DIVERGES: a row groups name+meta together, not name+state-pill as the frame\'s own first line does', async () => {
+  it('frame :793 Your plans -- DIVERGES (narrowed, wave 17, task w17-e): row anatomy is resolved by a CSS grid unwrap the DOM order no longer measures; the footnote sentence-merge remains a real gap', async () => {
     verbatimLine(
       789,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Your plans · /review</span>",
@@ -570,36 +598,43 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     const subline = screen.getByText('Across two open plans');
     expect(h1.compareDocumentPosition(subline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    // DIVERGES: :806 pairs name+state-pill on ONE baseline row, with meta
-    // (:810) on a SEPARATE line beneath. The app's row instead groups
-    // name+meta together as the row's first child
-    // (chq-reviewer-plan-row-name-line), with the state pill as a
-    // DIFFERENT, later sibling -- the desktop 1600 frame's own four-column
-    // grid order (:852-864: name+meta / state / bar / action), reused
-    // verbatim rather than the phone frame's own row anatomy (DEC-385
-    // single-direction: this is the phone layer inheriting the desktop
-    // DOM, not deriving its own).
+    // :806 pairs name+state-pill on ONE baseline row, with meta (:810) on a
+    // SEPARATE line beneath. The DOM still groups name+meta together as the
+    // row's first child (chq-reviewer-plan-row-name-line), with the state
+    // pill as a later sibling -- but that DOM order is no longer what draws
+    // the SCREEN. RESOLVED (wave 17, task w17-e):
+    // app/src/pages/review/review.css's terminal max-width:700px block
+    // unwraps chq-reviewer-plan-row-name-line via `display: contents`,
+    // promoting the name and pill to direct grid items of
+    // chq-reviewer-plan-row's own named-area grid ('name pill' / 'meta
+    // meta' / 'bar bar' / 'action action'), landing the plan name and the
+    // pill on the frame's own shared baseline row with the meta line
+    // auto-placed onto its own row beneath -- jsdom applies no stylesheet,
+    // so a DOM-order assertion cannot observe this; the CSS rule text
+    // itself is the drift-proof receipt.
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(2);
     const row = rows[0]!;
     const nameLine = row.querySelector('.chq-reviewer-plan-row-name-line');
     expect(nameLine).not.toBeNull();
     expect(within(nameLine as HTMLElement).getByText('Wave 2')).toBeInTheDocument();
-    // The meta text sits INSIDE the same name-line element the frame draws
-    // as a separate line.
     expect((nameLine as HTMLElement).textContent).toMatch(/assigned/);
     const pill = row.querySelector('.chq-reviewer-plan-row-pill');
     expect(pill).not.toBeNull();
     expect(pill!.textContent).toBe('Open');
-    // The pill is a LATER sibling of the whole name+meta line, not paired
-    // with the name alone on the frame's own first row.
-    expect((nameLine as Node).compareDocumentPosition(pill as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const reviewCss = readFileSync(join(HERE, 'review', 'review.css'), 'utf-8');
+    expect(reviewCss).toContain('.chq-reviewer-plan-row-name-line {\n    display: contents;\n  }');
+    expect(reviewCss).toContain(
+      "grid-template-areas:\n      'name pill'\n      'meta meta'\n      'bar bar'\n      'action action';",
+    );
 
-    // :817/:820-821: DIVERGES -- the frame states "With one open plan this
-    // page is skipped" as its own body line, and "Scores stay hidden from
-    // other reviewers" as a SEPARATE standing dock sentence. The app
-    // merges BOTH sentences into one footnote paragraph, in addition to a
-    // second, phone-only node repeating the second sentence alone.
+    // :817/:820-821: DIVERGES (surviving, unchanged by this task) -- the
+    // frame states "With one open plan this page is skipped" as its own
+    // body line, and "Scores stay hidden from other reviewers" as a
+    // SEPARATE standing dock sentence. The app merges BOTH sentences into
+    // one footnote paragraph, in addition to a second, phone-only node
+    // repeating the second sentence alone -- a real content-anatomy gap,
+    // not a screen-vs-DOM measurement artifact like the row anatomy above.
     const footnote = screen.getByText(/With one open plan this page is skipped/);
     expect(footnote.textContent).toBe(
       'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
