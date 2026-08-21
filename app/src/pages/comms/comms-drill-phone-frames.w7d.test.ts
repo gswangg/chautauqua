@@ -46,6 +46,7 @@ import { fileURLToPath } from 'node:url';
 import { TemplatesTab } from './TemplatesTab';
 import { HistoryTab } from './HistoryTab';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -58,7 +59,10 @@ const TEMPLATES_FRAME_CITED_LINE = 288;
 // Frame :334-... is "Send history · 390"'s extent.
 const HISTORY_FRAME_CITED_LINE = 337;
 
-const STYLES_CSS = readFileSync(join(HERE, '..', '..', 'styles.css'), 'utf-8');
+// Routed through the shared, string-aware stripper (DEC-613) before any
+// `toMatch` -- an unstripped source lets a comment quoting the sought
+// declaration make the assertion pass vacuously (DEC-374 wave-156).
+const STYLES_CSS = stripCssComments(readFileSync(join(HERE, '..', '..', 'styles.css'), 'utf-8'));
 
 const EVENT_ID = 'evt-comms-drill-phone';
 

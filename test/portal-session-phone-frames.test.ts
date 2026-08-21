@@ -26,15 +26,20 @@ it("v9-f receipt: frame container (:505) is the standard 390x844 phone card", ()
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PORTAL_CSS } from "../src/routes/portal/portal.css";
+import { PORTAL_CSS as PORTAL_CSS_RAW } from "../src/routes/portal/portal.css";
 import { EditPage } from "../src/routes/portal/edit";
 import { TaskFormPage } from "../src/routes/portal/tasks/views";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 import type { FormFieldRow } from "../src/server/repo/forms";
 import type { PortalTaskAssignment } from "../src/server/repo/portal/tasks";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 const THEME_TS = readFileSync(join(REPO_ROOT, "src/views/theme.ts"), "utf8");
+// Routed through the shared, string-aware stripper (DEC-613) before any
+// `toMatch`/`.match(` -- an unstripped source lets a comment quoting the
+// sought declaration make the assertion pass vacuously (DEC-374 wave-156).
+const PORTAL_CSS = stripCssComments(PORTAL_CSS_RAW);
 
 /** Extracts the contents of every `@media (max-width: 700px) { ... }` block
  * via balanced-brace scanning -- identical helper to portal-phone-fit.test.ts

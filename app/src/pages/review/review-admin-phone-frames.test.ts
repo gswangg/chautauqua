@@ -30,15 +30,19 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Comments are stripped before any brace scanning: review.css carries long
  * explanatory comments, and a literal `{`/`}` inside one (a class-name
  * example, a `var(--x, #hex)` reference) would desynchronise the depth
- * counter and silently truncate a block. */
+ * counter and silently truncate a block. Routed through the shared,
+ * string-aware stripper (DEC-613) rather than a private regex, so a quoted
+ * `/*` inside a string literal is never mistaken for a comment opener
+ * (DEC-374 wave-156). */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const REVIEW_CSS = read('review.css');

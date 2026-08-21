@@ -28,14 +28,17 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Comments are stripped before any brace scanning, mirroring the contacts
  * pins -- a literal `{`/`}` inside a long explanatory comment would
- * desynchronise the depth counter and silently truncate a block. */
+ * desynchronise the depth counter and silently truncate a block. Routed
+ * through the shared, string-aware stripper (DEC-613), never a private
+ * regex (DEC-374 wave-156). */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const AGENDA_CSS = read('agenda.css');

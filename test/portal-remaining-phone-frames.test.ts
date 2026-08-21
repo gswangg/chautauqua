@@ -1,9 +1,11 @@
 // v12m-w5-a: Portal's last two 390 frames (DEC-029 wave-87 amendment) --
 // "Portal · Resources" (docs/design/Chautauqua Public and Portal.dc.html:1561)
-// `width:390px; height:844px` -- v9-f (DEC-976 wave-91) receipt below.
-it("v9-f receipt: frame container (:1561) is the standard 390x844 phone card", () => {
-  expect(dcLine(1561)).toContain("width:390px; height:844px");
-});
+// `width:390px; height:844px` -- v9-f (DEC-976 wave-91) receipt at :54 below,
+// which asserts the frame's own citation against the RENDERED tree, not
+// merely against the design file reading itself back (DEC-374 wave-156: an
+// orphan `it()` doing only the latter was removed from here -- see
+// app/src/tautological-assertion.scan.test.ts's header, which named this
+// exact block as its live example).
 // and "Portal · co-presenter rejected" (:1304). Each assertion below cites
 // the exact dc.html line it pins, quotes that line's literal verbatim, and
 // asserts what the literal declares -- either against the rendered SSR
