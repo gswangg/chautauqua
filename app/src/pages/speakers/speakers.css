@@ -1405,6 +1405,13 @@ button.chq-speakers-status-overdue:hover {
   text-align: right;
   white-space: nowrap;
   min-width: 0;
+  /* DEC-989: `white-space: nowrap` needs an overflow escape in the SAME rule,
+     or a long due-date/status string blows the 390 viewport horizontally.
+     `min-width: 0` above already un-blocks the grid item from shrinking (it is
+     what makes the two declarations below able to act at all); these complete
+     that idiom rather than adding a new intent. */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* User-filed (speaker detail, Elliot Ekström): each row is its OWN grid, so

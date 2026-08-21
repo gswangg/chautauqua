@@ -204,6 +204,12 @@
   text-align: right;
   white-space: nowrap;
   min-width: 0;
+  /* DEC-989: same as the speaker-detail sessions row -- `white-space: nowrap`
+     needs an overflow escape in the SAME rule so a long reminded/schedule
+     value cannot widen the 390 viewport. Completes the `min-width: 0`
+     truncation idiom already started above. */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chq-taskview-row:hover {
