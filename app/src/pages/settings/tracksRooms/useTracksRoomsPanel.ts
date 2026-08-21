@@ -134,6 +134,26 @@ export function useTracksRoomsPanel(sectionKey: string) {
     });
   }
 
+  // DEC-919 wave-156: the phone-only read-view affordances (per-row boxed
+  // 'Edit', the dashed 'Add a track'/'Add a room' list-closing rows --
+  // docs/design/Chautauqua Settings.dc.html:364,367,382,409,423) all drill
+  // into this SAME edit surface -- every row is already a draft-editable
+  // row once here (DEVIATIONS §5-blessed always-editable model), so there
+  // is no second "which row is open" state to mint. Exposed separately
+  // from SummarySection's own identical-shaped internal opener because
+  // this panel needs to trigger the same URL transition from controls
+  // SummarySection does not render (the per-row Edit box, the dashed Add
+  // rows) -- same params, same effect, not a parallel copy of the state
+  // itself (DEC-613).
+  function openEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', sectionKey);
+      params.set('edit', '1');
+      return params;
+    });
+  }
+
   // The rows whose unsaved edits Done would otherwise lose -- named (by
   // their saved names) in the discard confirm.
   function dirtyRowNames(): string[] {
@@ -458,6 +478,7 @@ export function useTracksRoomsPanel(sectionKey: string) {
     dirtyRowNames,
     unsavedAddDraftNames,
     hasUnsavedAddDraft,
+    openEdit,
     handleDone,
     discardDirtyAndClose,
     isTrackDirty,

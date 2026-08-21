@@ -45,6 +45,13 @@ anatomy for whichever view (read summary vs. edit list) a future task
 chooses to line up with the mock's row-level affordance. The read-view gap
 above is the only piece left open.
 
+**Amendment (wave 156, task qe-tracks-rooms-read-drill):** the Tracks/rooms
+half of this finding is CLOSED — `TracksRoomsPanel`'s read view now renders
+the boxed per-row `Edit` and dashed `Add a track`/`Add a room` row described
+above, phone-only, drilling into the section's existing edit surface. The
+`YourDataPanel` half (Exports `Download`, API tokens `Revoke`, frame
+`:409,423`) is untouched and stays open exactly as documented here.
+
 ## settings.css: five scattered max-width blocks consolidated into one terminal block
 
 Per DEC-385 (w85), `settings.css` had five separate `@media (max-width:
@@ -181,7 +188,7 @@ disposition of the same family of gap.
 | --- | --- | --- |
 | `:275` Settings (landing) | MATCHES | Index row order (label + "Open" + detail) equals the frame's `mobileGroups` order; DEC-691/DEC-747 rail order. |
 | `:316` Settings · Event | DIVERGES (narrowed, DEC-919 wave-156) | Read view is `SummarySection`'s head-first "Change" (button precedes every row); frame draws content rows then a Save/Cancel footer. The footer's "Save" primary now renders in read mode too (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`), pressing it enters the edit drill (`?section=event&edit=1`) rather than saving nothing — a read view holds no form to submit. "Cancel" has nothing to cancel in read mode and stays unbuilt. |
-| `:347` Settings · Tracks and rooms | DIVERGES | No per-row boxed "Edit", no dashed "Add a track"/"Add a room" row (frame `:364,367,409,423`) — only the section-level "Add" drill. Already documented above ("no per-row Edit/Download/Revoke affordance"). |
+| `:347` Settings · Tracks and rooms | MATCHES | CLOSED wave 156 (task qe-tracks-rooms-read-drill): the read view now renders a boxed 44px "Edit" per row plus a dashed "Add a track"/"Add a room" row closing each list (frame `:364,367,379,382`), phone-only via `settings-lists.css`'s terminal `@media (max-width: 700px)` block; both drill into the section's existing edit surface (`?section=tracks-rooms&edit=1`), reusing `useTracksRoomsPanel`'s existing `toggleAddTrack`/`toggleAddRoom` state rather than minting a second one. Your-data's own per-row Download/Revoke gap (`:409,423`) is closed separately by task qb-settings-yourdata-read-drill, same wave. |
 | `:393` Settings · Your data | MATCHES | Per-row boxed "Download" (Exports) and "Revoke" (API tokens) actions, plus the filled 46px full-width "New token" primary, all render in the read drill (task qb-settings-yourdata-read-drill, wave 156). Download performs in place against the existing export hrefs; Revoke opens `ApiTokensPanel`'s existing `ConfirmDialog`; New token enters `?section=your-data&edit=1`, landing on the already-open create form. Closes the still-open remainder of the masked-tokens/Revoke/New-token finding (wave 118). |
 | `:444` Settings · Call for papers | DIVERGES | Per-question list (`:467-475`, one row + boxed "Edit" per question) collapsed to one computed summary row — form-builder delegation, already documented above. |
 | `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
