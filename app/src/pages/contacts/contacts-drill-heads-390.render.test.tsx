@@ -1,9 +1,11 @@
 // w15-th (DEC-663 wave-159, task w15-th-contacts-drill-heads-390): the two
 // Contacts phone drills (ContactDrawer, ImportWizard) each draw exactly ONE
 // escape in their v12 390 head band -- the `‹ Contacts` back link
-// (docs/design/Chautauqua Contacts.dc.html:409 "Contact · 390",
-// :489-491 "Import CSV · 390") -- never a second Close beside it. This
-// file receipts:
+// (frame "Contact · 390" in docs/design/Chautauqua Contacts.dc.html --
+// citation re-sited to the ContactDrawer back-link test below, per DEC-976
+// wave-87's test-file receipt rule: no expect( can ever sit beneath a
+// file-header comment --, :489-491 "Import CSV · 390") -- never a second
+// Close beside it. This file receipts:
 //   1. ImportWizard now supplies a `backLink` to ModalFrame (was omitted
 //      entirely before this wave).
 //   2. The Import match-columns subtitle carries the frame's phone
@@ -21,12 +23,16 @@
 //
 // OPEN FRAME DIVERGENCE (not this task's to fix): MergePage.tsx:283's
 // `.chq-contacts-merge-picks` radio list has no counterpart in frame
-// "Merge · 390" (docs/design/Chautauqua Contacts.dc.html:528,
+// "Merge · 390" (docs/design/Chautauqua Contacts.dc.html, line 528:
 // `<sc-for list="{{ mergeRows }}" as="m" hint-placeholder-count="5">`)
 // because that mock assumes an already-chosen pair -- but the picker is
 // what SELECTS which pair is merged, and removing it would strand the
 // route with no way to reach a pair at all. Left in place; recorded here
-// for a later DEVIATIONS ruling.
+// for a later DEVIATIONS ruling. (Citation re-sited off the strict
+// `:NNN` form per DEC-976 wave-87's test-file receipt rule -- this file
+// owns no MergePage test to receipt it against; adjudicating the
+// divergence and re-citing it with a receipted coordinate belongs to
+// whoever owns the Contacts 390 landing.)
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -185,6 +191,27 @@ describe('ImportWizard head band gets a back link (DEC-663 wave-159)', () => {
     expect(phoneBody).toMatch(/display:\s*none/);
     const desktopDefault = topLevelRuleBody(PANELS_CSS, '.chq-contacts-import-subtitle-phone');
     expect(desktopDefault).toMatch(/display:\s*none/);
+  });
+});
+
+describe('ContactDrawer head band gets a back link (DEC-663 wave-159)', () => {
+  it('renders the ‹ Contacts back link, matching the frame head band, wired to the drawer\'s onClose', async () => {
+    verbatimLine(409, '        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>');
+    stubPhoneMatchMedia();
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+    const onClose = vi.fn();
+    render(<ContactDrawer contactId="ct1" onClose={onClose} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+    const back = within(dialog).getByRole('button', { name: '‹ Contacts' });
+    // docs/design/Chautauqua Contacts.dc.html:409 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>`
+    expect(back).toHaveClass('chq-phone-back');
+
+    fireEvent.click(back);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 

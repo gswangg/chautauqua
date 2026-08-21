@@ -1,8 +1,10 @@
 // w15-tf (DEC-781 wave-159): the Settings · Speaker portal 390 drill's
 // Welcome note row renders the stored `welcomeMessage` verbatim inside the
-// frame's boxed readout (docs/design/Chautauqua Settings.dc.html:510,
-// Welcome note block at :516-518), not a paragraph-count summary of it. That
-// build already landed in wave 157 (DEC-919 clause (a),
+// frame's boxed readout (frame "Settings · Speaker portal" in
+// docs/design/Chautauqua Settings.dc.html -- the phone-container coordinate
+// is re-sited to the render case below, per DEC-976 wave-87's test-file
+// receipt rule; Welcome note block at :516-518), not a paragraph-count
+// summary of it. That build already landed in wave 157 (DEC-919 clause (a),
 // PortalSettingsPanel.tsx / settings-drill-rows.css) and is receipted by
 // Settings.frame-verdicts.render.test.tsx's `:510` case; this file is a
 // second, focused receipt scoped to the files this task owns, entered
@@ -102,6 +104,11 @@ describe('Settings · Speaker portal 390 drill: Welcome note row (w15-tf, DEC-78
       expect(section.querySelector('.chq-settings-portal-welcome-readout')).toBeInTheDocument(),
     );
     const readout = section.querySelector('.chq-settings-portal-welcome-readout');
+    // docs/design/Chautauqua Settings.dc.html:510 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+    verbatimLine(
+      510,
+      '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
+    );
     expect(readout).not.toBeNull();
     expect(readout!.textContent).toBe(note);
   });
