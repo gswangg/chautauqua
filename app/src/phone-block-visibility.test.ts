@@ -21,6 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_919, DEC_967, DEC_991 } from '../../src/decisions';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 void DEC_919; // wave-109 amendment: closes this scan's "no top-level rule at all" escape
 // hatch for phone-named classes that are mounted UNCONDITIONALLY in markup (the premise
@@ -83,10 +84,6 @@ function walk(dir: string, suffix: string): string[] {
     else if (entry.endsWith(suffix)) out.push(p);
   }
   return out;
-}
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Strips every top-level @media {...} block, mirroring shell-geometry.

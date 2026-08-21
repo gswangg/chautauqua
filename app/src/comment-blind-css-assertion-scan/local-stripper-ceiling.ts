@@ -62,4 +62,35 @@
 // Re-measured offender count after conversion: 91 -- not 96-8=88, so
 // re-derive from the real number, never arithmetic on the batch size.
 // Ceiling lowered to match: 96 -> 91.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 91;
+// v12m-w20-d (wave 20, task w20-d, DEC-613 amendment): measured RED at this
+// branch's tree (forced -1, offender list read back) BEFORE any change: 94,
+// not the 91 the ceiling declared and not the 99 the wave-20 planner's brief
+// cited -- re-derive from the real number, never trust a snapshot (of the
+// nine files named by the brief, two -- app/src/phone-dock-desktop-hidden.
+// test.ts and app/src/phone-layer-source-order.test.ts -- were already
+// migrated to the shared import by v12m-w19-b and are not offenders; no
+// change was made to either). Converted 6 of the remaining 7 to import
+// test/helpers/strip-css-comments.ts's shared, string-aware stripCssComments
+// in place of a local strip[Css]Comments declaration:
+// app/src/phone-block-visibility.test.ts, app/src/phone-cascade-terminal.
+// test.ts, app/src/phone-dock-declares.scan.test.ts,
+// app/src/phone-label-source.scan.test.ts,
+// app/src/phone-scaffold-orphan.scan.test.ts,
+// test/phone-cascade-order.scan.test.ts. Every touched file's own tests
+// still passed once routed through the real stripper -- no false receipt
+// was found in this batch. Deliberately left alone: test/phone-terminal-
+// block.scan.test.ts -- its local stripComments blanks `/* ... */` comments
+// BYTE-FOR-BYTE IN PLACE (same character count, non-newline chars replaced
+// with spaces) specifically so char offsets it computes on the stripped
+// text stay valid indices into the RAW cssText (the file's own comments at
+// :56 and :418 name this invariant explicitly); the shared helper instead
+// DELETES a same-line comment outright (no length-preserving residue),
+// which would desync every such offset -- the same shape DEC-613's wave-19
+// amendment already carved out for app/src/pages/contacts/
+// contacts-segment-pills-390.test.ts. Re-measured offender count after
+// conversion: 88 -- exactly 94-6, confirmed by forcing this ceiling to -1
+// again and reading the offender list (test/phone-terminal-block.scan.
+// test.ts still present, the six converted files absent, the two
+// already-migrated files absent as before). Ceiling lowered to match: 91 ->
+// 88.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 88;
