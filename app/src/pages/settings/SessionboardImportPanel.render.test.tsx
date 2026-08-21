@@ -57,6 +57,34 @@ describe('SessionboardImportPanel', () => {
     expect(within(steps).getByText('Done')).toBeInTheDocument();
   });
 
+  // v12 frame `Chautauqua Settings.dc.html`:1515 ('Step 2 of 3 · what we
+  // found') -- the caption reads the SAME step scalar the <ol> renders, so
+  // it can never drift from the step list above it.
+  it('captions the current step off the same scalar the step list renders (DEC-613 wave-148)', async () => {
+    mockApi({
+      [ENDPOINT]: {
+        dryRun: true,
+        entity: 'contacts',
+        created: 5,
+        updated: 2,
+        skipped: [{ row: 9, reason: 'missing email' }],
+        issues: [],
+      },
+    });
+
+    render(<SessionboardImportPanel />);
+    expect(screen.getByText('Step 1 of 3 · choose file')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'name,email\nAda Lovelace,ada@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview import (dry run)' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Step 2 of 3 · what we found')).toBeInTheDocument();
+    });
+  });
+
   it('states that nothing has been written yet and Sessionboard is read-only to us, next to the entity picker', () => {
     render(<SessionboardImportPanel />);
     expect(
@@ -206,6 +234,7 @@ describe('SessionboardImportPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Import complete' })).toBeInTheDocument();
     });
+    expect(screen.getByText('Step 3 of 3 · done')).toBeInTheDocument();
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondCall = fetchMock.mock.calls[1];

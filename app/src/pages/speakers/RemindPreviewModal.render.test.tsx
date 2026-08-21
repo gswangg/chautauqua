@@ -66,7 +66,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
       />,
     );
 
-    expect(screen.getByText('2 recipients')).toBeInTheDocument();
+    expect(screen.getByText('2 speakers · nothing has been sent yet')).toBeInTheDocument();
     // DEC-441 wave-110 amendment: each recipient row shows the name and
     // THAT PERSON'S outstanding task names -- never a bare email list.
     expect(screen.getByText('Priya Raman')).toBeInTheDocument();
@@ -177,6 +177,43 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
       />,
     );
     expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
+  // v12 frame `Chautauqua Speakers.dc.html`:499 ('3 speakers · nothing has
+  // been sent yet') composed off the server's own drafts count and skipped
+  // figure -- and the DEC-613 vocabulary for the skip branch, never a
+  // contradiction like "nothing has been sent yet" beside a skip count.
+  it('subtitle: names the frame\'s "nothing has been sent yet" clause when nothing was skipped', () => {
+    render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={0}
+        remaining={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('2 speakers · nothing has been sent yet')).toBeInTheDocument();
+  });
+
+  it('subtitle: states the skip instead of "nothing has been sent yet" when skipped > 0', () => {
+    render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={3}
+        remaining={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('2 speakers · 3 contacts skipped — reminded in the last hour')).toBeInTheDocument();
+    expect(screen.queryByText(/nothing has been sent yet/)).not.toBeInTheDocument();
   });
 
   // DEC-441 amendment (w52-a): the review dialog names the batch-cap

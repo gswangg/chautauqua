@@ -1539,6 +1539,26 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/settings/ResourcesPanel.tsx's delete-confirm dialog already renders a live consequence sentence at this exact slot -- `Speakers lose the download from their portal. \"${pendingDelete.title}\" cannot be recovered.` -- naming the human consequence a speaker actually experiences rather than the HTTP status code the frame's words describe, which no speaker ever sees. Building the frame's literal '404' sentence would ship a technically-accurate-but-user-hostile message over the app's own deliberately different, tested copy.",
   },
+  // v12m-w4-am (wave-148, DEC-613/DEC-829): both rows below ARE built,
+  // verbatim, off the same scalar the frame draws them from -- neither
+  // survives this ledger's plain-substring or digit-skeleton pass because
+  // the phase/noun word is chosen by a ternary/function call nested inside
+  // a `${...}` template placeholder, which `collapseSourcePlaceholders`
+  // collapses to one sentinel together with the literal text it contains.
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1515,
+    text: 'Step 2 of 3 · what we found',
+    reason:
+      "app/src/pages/settings/SessionboardImportPanel.tsx composes `` `Step ${step} of 3 · ${step === 1 ? 'choose file' : step === 2 ? 'what we found' : 'done'}` `` off the SAME `step` scalar (`const step = finalReport ? 3 : header.length > 0 ? 2 : 1`) the panel's own `chq-steps` <ol> renders -- 'what we found' is the frame's own step-2 phase word verbatim, chosen by the ternary rather than typed as a second copy of the step count (DEC-613).",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 499,
+    text: '3 speakers · nothing has been sent yet',
+    reason:
+      "app/src/pages/speakers/RemindPreviewModal.tsx's `subtitle` prop composes `` `${countOf(count, 'speaker')} · nothing has been sent yet` `` off the server's own `drafts.length` when `skipped === 0` -- the frame's exact clause, printed only when there is truly nothing to report as skipped (when `skipped > 0` the subtitle states the skip instead, via the shared `remindSkipVocabulary.ts` phrase, so the two clauses never contradict on one line, per DEC-829).",
+  },
 ];
 
 /** (f) UNBACKED -- DEC-976 wave-142's fifth exclusion class (task w17-g). A

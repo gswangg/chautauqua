@@ -9,9 +9,15 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { countOf } from '../../lib/plural';
 import type { ReminderDraft } from './types';
 import { OVERDUE_LABEL } from './TaskCell';
+import { REMIND_SKIP_RULE } from './remindSkipVocabulary';
 import { DEC_441 } from '../../../../src/decisions';
 
 void DEC_441;
+
+// DEC-613: derived from the ONE skip-rule phrase remindSkipVocabulary.ts
+// owns (REMIND_SKIP_RULE) rather than retyping its trailing clause as a
+// fifth copy of the same sentence fragment.
+const REMINDED_IN_LAST_HOUR = REMIND_SKIP_RULE.replace(/^skips anyone /, '');
 
 /** DEC-441 wave-110 amendment: the row's right-flushed flag is the SAME
  * OVERDUE vocabulary the grid/detail page use (TaskCell.tsx) -- never a
@@ -69,7 +75,15 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
       // v12 frame `Chautauqua Speakers.dc.html`:491
       // (`<span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Review these reminders</span>`)
       title="Review these reminders"
-      subtitle={loading ? 'Loading...' : isZeroState ? undefined : countOf(count, 'recipient')}
+      subtitle={
+        loading
+          ? 'Loading...'
+          : isZeroState
+            ? undefined
+            : skipped === 0
+              ? `${countOf(count, 'speaker')} · nothing has been sent yet`
+              : `${countOf(count, 'speaker')} · ${countOf(skipped, 'contact')} skipped — ${REMINDED_IN_LAST_HOUR}`
+      }
       onClose={onCancel}
       closeDisabled={sending}
       modalClassName="chq-speakers-modal"
