@@ -384,6 +384,27 @@ survives contact with state:
   exemption mechanism this entry once implied for
   `test/display-heading-line-height.scan.test.ts` is retired unbuilt; see
   `src/decisions-data/DEC-991.md`'s own head note.
+- **Plan editor's v4 title-row shell is BLESSED, not the unrecorded
+  divergence the audit flagged, and the `Reviewers` → `Who reviews what`
+  section-heading rename ships as part of the same shell (DEC-745
+  wave-20 amendment).** `docs/design/Chautauqua Review.dc.html`'s 390
+  plan-editor frame draws the plan name as a standalone `<h1>`, a
+  separate footer band with `Save the plan` / `Cancel`, and labels the
+  reviewer roster section `Reviewers`. `docs/design/audit/review-v12.md`
+  recorded this shell as the plan editor's one surviving divergence and
+  said it was unrecorded here. It is not a removal: the frame's static
+  `<h1>` cannot express renaming, so `app/src/pages/review/PlanEditor.tsx`
+  keeps the plan's rename capability in its editable
+  `aria-label="Plan name"` input, on the same `chq-review-editor-title-row`
+  as the `‹ Review` back link and Duplicate/Save (already recorded above
+  under "## 7. Settled frame divergences"), and the footer band's
+  `Save the plan` / `Cancel` are the same two controls re-lined onto that
+  row, not dropped. The roster heading rename is the DEC-745 wave-98
+  amendment's own text, not an unblessed rewording:
+  `app/src/pages/review/PlanEditor.tsx` renders
+  `<h2 className="chq-section-label">Who reviews what</h2>` in place of
+  the frame's `Reviewers`. `src/decisions-data/DEC-745.md`'s wave-20
+  amendment rules both.
 
 ## 4. Voice
 

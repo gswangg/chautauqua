@@ -409,6 +409,18 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/agenda/agenda-phone-frame.test.ts",
     },
   },
+  {
+    key: "plan-editors-v4-title-row-shell-is-blessed-not-the-unrecorded-divergence-the-audit-flagged-and-the-reviewers-who-reviews-what-section-heading-rename-ships-as-part-of-the-same-shell-dec-745-wave-20-amendment",
+    status: "honored",
+    reason:
+      "DEC-745 wave-20 amendment: the plan editor's v4 title-row shell (already recorded under \"## 7. Settled frame divergences\") is BLESSED rather than an unrecorded divergence, and the same ruling covers the roster section heading's rename from the frame's 'Reviewers' to 'Who reviews what' (DEC-745 wave-98 amendment's own text).",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/review/PlanEditor.tsx",
+      literal: '<h2 className="chq-section-label">Who reviews what</h2>',
+      testFile: "app/src/pages/review/PlanEditor.render.test.tsx",
+    },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -769,9 +781,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(15);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(16);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(45);
+    expect(derived.length).toBe(46);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
