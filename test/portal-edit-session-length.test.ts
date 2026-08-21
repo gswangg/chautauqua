@@ -1,9 +1,11 @@
 // DEC-777 (wave-148 amendment): the portal edit page's read-only
-// "Session length" row (docs/design/Chautauqua Public and Portal.dc.html:620
-// (390) / :1405 (desktop)) — "Talk, 30 min · set by the organisers".
+// "Session length" row (frame reference and backtick-quoted receipt live on
+// the `describe` block below, next to the real `expect(` assertions it
+// covers) — "Talk, 30 min · set by the organisers".
 // loadEditableSubmission reads the submission's session_format-role answer
 // through the SAME answerFieldRoleCondition('session_format') predicate
-// review/submissions.ts:908 already uses; the route renders it through the
+// src/server/repo/review/submissions.ts's own `session_format` predicate
+// uses; the route renders it through the
 // SAME sessionFormatLabel vocabulary (DEC-908) every other reader uses.
 // When the answer is absent, or its stored label carries no parseable
 // duration (sessionFormatLabel would hand back the raw label unchanged),
@@ -124,7 +126,7 @@ function baseData(formatLabel: string | null): EditableSubmissionData {
   };
 }
 
-describe("EditPage's Session length row (DEC-777, Chautauqua Public and Portal.dc.html:620/:1405)", () => {
+describe("EditPage's Session length row (DEC-777, docs/design/Chautauqua Public and Portal.dc.html:620 `Talk, 30 min · set by the organisers` (390) / :1405 (desktop))", () => {
   it("renders the section label and 'set by the organisers' reading when the format parses a duration", () => {
     const html = EditPage(baseProps(baseData("Talk (30 min)"))).toString();
     expect(html).toContain("Session length");

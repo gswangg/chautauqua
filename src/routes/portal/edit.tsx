@@ -273,10 +273,11 @@ export function EditPage(props: {
       {/* DEC-777 (wave-148 amendment): docs/design/Chautauqua Public and
           Portal.dc.html:620 (390) / :1405 (desktop) draw a read-only
           "Session length" row between the Session/Speaker fields and the
-          participants list -- "Talk, 30 min · set by the organisers". The
+          participants list -- `Talk, 30 min · set by the organisers`. The
           format answer comes through data.formatLabel
           (loadEditableSubmission's answerFieldRoleCondition('session_format')
-          read, review/submissions.ts:908's own predicate) and the SAME
+          read, src/server/repo/review/submissions.ts's own `session_format`
+          predicate) and the SAME
           sessionFormatLabel vocabulary (DEC-908) every other reader uses --
           never a second '(N min)' parser. When there is no session_format
           answer, or its stored label carries no parseable duration (so
