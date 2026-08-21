@@ -1418,6 +1418,17 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
   },
+  // v12m-w4-an (wave-148, DEC-555): /schedule overlaps panel, one sentence
+  // per covering session naming its live clock range and every title it
+  // covers -- necessarily COMPOSED, since the range and titles come from
+  // whichever sessions the reader actually saved.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 847,
+    text: 'Evaluating Agents runs 10:00–12:00, over both Taming 40-Minute CI and Your AI Pair Programmer.',
+    reason:
+      "src/routes/public/agenda-itinerary-script.tsx's applyScheduleView composes, per saved item with at least one clash, `item.title + ' runs ' + __chqClock(item.startMin) + '–' + __chqClock(item.endMin) + ', over ' + joined + '.'` where __chqClock is clockHMM (src/domain/clock.ts, embedded via .toString() exactly like the file's other pure helpers) and joined is src/lib/overlap-lanes.ts's joinOverlapTitles(overlap.clashesById[item.id]) -- the frame's exact session title, clock range and covered-title list are all live saved-item data read off the rendered .chq-pub-schedule-row's own data-start-min/-end-min attributes, so no static substring of this sentence exists anywhere in source for a plain-substring or digit-skeleton pass to find.",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

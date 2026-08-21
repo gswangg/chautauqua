@@ -129,3 +129,24 @@ export function computeSavedOverlaps(items: ClashItem[]): SavedOverlapSummary {
   }
   return { pairCount, clashesById };
 }
+
+/** DEC-555 amendment (wave 148): joins the titles a session covers into the
+ * overlaps panel's prose form -- a bare title for one, 'both X and Y' for
+ * two, and a comma list ending in 'and' for three or more. Pure so both the
+ * plain-vitest suite and ItineraryScript's `.toString()` embedding (the
+ * "ONE implementation" rule this file's own header describes) share the
+ * exact same grammar; titles render verbatim (no re-escaping) since they
+ * come straight from the DOM's own rendered text. Throws (DEC-012 fail
+ * loudly) on an empty list -- a session with nothing to cover has no
+ * sentence to build, and a caller composing one must have already checked
+ * clashesById[item.id] is non-empty. */
+export function joinOverlapTitles(titles: string[]): string {
+  if (titles.length === 0) {
+    throw new Error("joinOverlapTitles: titles must be non-empty");
+  }
+  if (titles.length === 1) return titles[0]!;
+  if (titles.length === 2) return `both ${titles[0]} and ${titles[1]}`;
+  const head = titles.slice(0, -1).join(", ");
+  const last = titles[titles.length - 1];
+  return `${head}, and ${last}`;
+}

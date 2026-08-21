@@ -299,4 +299,15 @@
 // sibling {feedback}-needs-a-plan banner is the nearest analogue, not a
 // match). Forced to -1 and read back on this branch: 15.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// v12m-w4-an (wave-148, DEC-555): Chautauqua Public and Portal.dc.html:847
+// (the /schedule overlaps panel's "Evaluating Agents runs 10:00-12:00, over
+// both..." sentence) built -- agenda-itinerary-script.tsx's applyScheduleView
+// now groups by the covering session and composes one sentence per session
+// naming its own clock range (through clockHMM, embedded via .toString()
+// exactly like the file's other pure helpers -- never a second clock
+// formatter, DEC-522) and the titles it covers (src/lib/overlap-lanes.ts's
+// new joinOverlapTitles). Entered as a COMPOSED exclusion above -- the
+// sentence is assembled from live saved-item data, so no static substring
+// exists for a plain-substring pass to find. Forced to -1 and read back: 14,
+// down from 15. RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
