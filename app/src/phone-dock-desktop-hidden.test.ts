@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLES_PATH = join(HERE, 'styles.css');
@@ -18,10 +19,6 @@ const REVIEWER_QUEUE_PATH = join(HERE, 'pages', 'review', 'ReviewerQueue.tsx');
 
 const STYLES_CSS = readFileSync(STYLES_PATH, 'utf-8');
 const REVIEWER_QUEUE_TSX = readFileSync(REVIEWER_QUEUE_PATH, 'utf-8');
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Strips every top-level @media {...} block (one level of nested braces
  * inside @media), same helper as phone-block-visibility.test.ts. */

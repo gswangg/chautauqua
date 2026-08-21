@@ -12,15 +12,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, 'contacts.css'), 'utf-8');
 
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
-}
-
-const STRIPPED = stripComments(CSS);
+const STRIPPED = stripCssComments(CSS);
 
 /** All `@media (max-width: 700px) { ... }` block bodies (top-level only —
  * this sheet is known to have exactly one, per phone-terminal-block.scan). */

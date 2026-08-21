@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const overviewTsxPath = path.join(here, '..', 'Overview.tsx');
@@ -17,11 +18,6 @@ const overviewCssPath = path.join(here, 'overview.css');
 
 const overviewTsx = readFileSync(overviewTsxPath, 'utf8');
 const overviewCssRaw = readFileSync(overviewCssPath, 'utf8');
-
-/** Strip /* ... *\/ CSS comments (non-greedy, dotall) before any brace walk. */
-function stripCssComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 interface CssRule {
   selector: string;

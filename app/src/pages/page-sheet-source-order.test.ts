@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { stripCssComments as stripComments } from "../../../test/helpers/strip-css-comments";
 
 // w6-b: source-order shadowing detector for the page-level stylesheets.
 //
@@ -45,12 +46,6 @@ interface ParsedSheet {
   file: string;
   decls: Decl[];
   maxWidthBlocks: number;
-}
-
-function stripComments(css: string): string {
-  // Blank out comment bodies but preserve every newline so line numbers
-  // computed downstream stay accurate.
-  return css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
 }
 
 /**
