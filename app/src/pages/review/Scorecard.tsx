@@ -914,6 +914,30 @@ export function Scorecard() {
             <p className="chq-review-overall-line">
               <span className="chq-section-label">Overall</span>
               <span className="chq-review-overall-value">{formatScore(overallScore)}</span>
+              {/* DEC-889 (wave-20 amendment): the 390 frame
+                  (Chautauqua Review.dc.html:966-970, "a criterion
+                  unscored") letters the Overall value `Not yet` at
+                  14px/600/#565A4B rather than the desktop em dash --
+                  a phone-only second copy, present only while
+                  overallScore is null (once every rating criterion is
+                  scored both widths print the identical
+                  formatScore(overallScore) string, so no second copy
+                  is needed then). Hidden at top level via the native
+                  `hidden` attribute (never a CSS rule outside the
+                  terminal media block, and respected by accessible-name
+                  computation with no stylesheet applied) and revealed
+                  only inside scorecard.css's one terminal
+                  max-width:700px block, which also hides the desktop
+                  span there -- the same exactly-one-visible idiom
+                  edit.tsx's `editDock` comment states verbatim. NEVER
+                  matchMedia/useIsPhone here (DEC-385 single-direction;
+                  cfp-steps-script.tsx's ungated setStep is the
+                  cautionary case). */}
+              {overallScore === null && (
+                <span hidden className="chq-review-overall-value-phone">
+                  Not yet
+                </span>
+              )}
             </p>
             <p className="chq-review-overall-caption">
               {(overallScore !== null && ratingCriteria.length > 0
@@ -979,7 +1003,26 @@ export function Scorecard() {
                     if (checked) void handleRecuse();
                   }}
                 />
-                Recuse me from this one
+                {/* DEC-889 (wave-20 amendment): the 390 frame
+                    (Review.dc.html:336) letters this control `Recuse me
+                    — conflict of interest`, while the desktop frame
+                    (:259) keeps `Recuse me from this one`, which is what
+                    this file already shipped at every width. Both
+                    copies now render; the phone copy is hidden at top
+                    level via the native `hidden` attribute (excluded
+                    from accessible-name computation regardless of
+                    stylesheet application, so the control's accessible
+                    name stays the desktop wording at every width -- the
+                    two frames differ only in the SIGHTED label, per
+                    DEC-889's own citation) and revealed only inside
+                    scorecard.css's terminal max-width:700px block,
+                    which also hides the desktop span there. Same
+                    exactly-one-visible idiom as the Overall value
+                    above -- never matchMedia/useIsPhone. */}
+                <span className="chq-review-recusal-label-desktop">Recuse me from this one</span>
+                <span hidden className="chq-review-recusal-label-phone">
+                  Recuse me — conflict of interest
+                </span>
               </label>
             )}
           </div>

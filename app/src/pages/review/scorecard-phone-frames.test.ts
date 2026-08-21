@@ -220,3 +220,52 @@ describe('v12 phone frames: the shell header stands down where the scorecard dra
     expect(SCORECARD_TSX).toMatch(/&lsaquo; \{plan\.name\} queue/);
   });
 });
+
+// DEC-889 (wave-20 amendment): the 390 Overall register ("Not yet" instead
+// of the desktop em dash) and the 390 recusal label ("Recuse me —
+// conflict of interest" instead of the desktop "Recuse me from this
+// one"). Both are the exactly-one-visible idiom (edit.tsx's `editDock`
+// comment) -- rendered markup + declared phone rule, order-independently
+// (DEC-882), never an implementation expression, never matchMedia.
+describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/design/Chautauqua Review.dc.html:966-970', () => {
+  it('docs/design/Chautauqua Review.dc.html:969 `<span style="font-size:14px; font-weight:600; color:#565A4B">Not yet</span>` — a phone-only "Not yet" span is rendered, hidden at top level via the native `hidden` attribute', () => {
+    expect(SCORECARD_TSX).toMatch(/<span hidden className="chq-review-overall-value-phone">\s*\n\s*Not yet\s*\n\s*<\/span>/);
+    // it only renders while the Overall score is null -- once every rating
+    // criterion is scored, both widths print the same formatScore string
+    // and no second copy is composed.
+    expect(SCORECARD_TSX).toMatch(/\{overallScore === null && \(\s*\n\s*<span hidden className="chq-review-overall-value-phone">/);
+  });
+
+  it('the phone Overall value is revealed at 14px/600/#565A4B, the desktop 34px scored value is untouched, and the desktop span hides only when the phone span is present', () => {
+    const rule = phoneRule(SCORECARD_CSS, '.chq-review-overall-value-phone');
+    expect(rule).toMatch(/display:\s*inline/);
+    expect(rule).toMatch(/font-size:\s*14px/);
+    expect(rule).toMatch(/font-weight:\s*600/);
+    expect(rule).toMatch(/color:\s*#565A4B/);
+    const hideRule = phoneRule(SCORECARD_CSS, '.chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value');
+    expect(hideRule).toMatch(/display:\s*none/);
+    // the scored-value register (frame 03--01) stays untouched: no phone
+    // override targets .chq-review-overall-value directly (only the
+    // :has()-scoped hide above, which only fires alongside the phone span).
+    expect(() => phoneRule(SCORECARD_CSS, '.chq-review-overall-value')).toThrow();
+  });
+});
+
+describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/design/Chautauqua Review.dc.html:336', () => {
+  it('docs/design/Chautauqua Review.dc.html:336 `Recuse me — conflict of interest` — a phone-only copy of the recusal label is rendered beside the unchanged desktop copy, hidden at top level via the native `hidden` attribute', () => {
+    expect(SCORECARD_TSX).toMatch(/<span className="chq-review-recusal-label-desktop">Recuse me from this one<\/span>/);
+    expect(SCORECARD_TSX).toMatch(/<span hidden className="chq-review-recusal-label-phone">\s*\n\s*Recuse me — conflict of interest\s*\n\s*<\/span>/);
+  });
+
+  it('the phone recusal label is revealed and the desktop copy hides, ONLY inside the terminal max-width:700px block', () => {
+    const desktopRule = phoneRule(SCORECARD_CSS, '.chq-review-recusal-label-desktop');
+    expect(desktopRule).toMatch(/display:\s*none/);
+    const phoneRuleBody = phoneRule(SCORECARD_CSS, '.chq-review-recusal-label-phone');
+    expect(phoneRuleBody).toMatch(/display:\s*inline/);
+    // single-direction (DEC-385): neither selector has a top-level rule
+    // outside the media query -- the desktop wording is the default,
+    // unauthored state, not an explicit rule this file could un-terminal.
+    expect(() => topLevelRuleBody(SCORECARD_CSS, '.chq-review-recusal-label-desktop')).toThrow();
+    expect(() => topLevelRuleBody(SCORECARD_CSS, '.chq-review-recusal-label-phone')).toThrow();
+  });
+});
