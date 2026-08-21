@@ -17,7 +17,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..');
@@ -571,8 +571,20 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
     }
   });
 
+  // v12m-w6-cb (DEC-069 wave 150): scanFrameReceiptAssertions(population)
+  // walks the whole tree and was previously re-run fresh inside each of
+  // the three it()s below, ~3x the real cost -- cheap enough alone
+  // (~17s for the whole file) but enough to blow the 5000ms per-test
+  // timeout under the normal fast tier's parallelism. Hoisted to one
+  // beforeAll computation shared by all three assertions; the assertions
+  // and FRAME_RECEIPT_OFFENDER_CEILING itself are untouched.
+  let scanResult: ReturnType<typeof scanFrameReceiptAssertions>;
+  beforeAll(() => {
+    scanResult = scanFrameReceiptAssertions(population);
+  });
+
   it('the citation-carrying block population is non-empty and above a floor (guards against the citation regex silently matching nothing)', () => {
-    const { citationBlockCount } = scanFrameReceiptAssertions(population);
+    const { citationBlockCount } = scanResult;
     expect(citationBlockCount).toBeGreaterThan(100);
   });
 
@@ -590,7 +602,7 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
   // without any real defect surviving in the tree.
 
   it(`no more than FRAME_RECEIPT_OFFENDER_CEILING (${FRAME_RECEIPT_OFFENDER_CEILING}) frame-receipt blocks assert only about the design file, never the tree (ceiling may only be lowered)`, () => {
-    const { offenders } = scanFrameReceiptAssertions(population);
+    const { offenders } = scanResult;
     if (offenders.length > FRAME_RECEIPT_OFFENDER_CEILING) {
       throw new Error(
         `${offenders.length} it()/test() blocks cite a design-file line and assert only about the design ` +
@@ -603,7 +615,7 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
   });
 
   it('every offender basename is a real file under the population roots (sanity check on the reporting path)', () => {
-    const { offenders } = scanFrameReceiptAssertions(population);
+    const { offenders } = scanResult;
     for (const o of offenders) {
       expect(basename(o.file).endsWith('.test.ts') || basename(o.file).endsWith('.test.tsx')).toBe(true);
     }
