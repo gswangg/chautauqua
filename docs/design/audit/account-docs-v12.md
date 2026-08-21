@@ -56,7 +56,7 @@ the palette-closure ban — RULED: the app keeps `--chq-surface`, no change,
 DEC-383 wave-114 amendment) is out of scope here and was left exactly as-is,
 per the task's explicit instruction not to touch it.
 
-## Docs · an article · 390 — header stays the desktop brandrow, no "Contents" affordance
+## Docs · an article · 390 — Contents disclosure now built (RESOLVED wave 27, task w27-c)
 
 **Frame**: docs/design/Chautauqua Docs.dc.html:166-204 ("Docs · an article ·
 390"). The mockup draws a dedicated phone header band: `‹ Docs` back link on
@@ -64,27 +64,26 @@ the left, a `Contents` trigger on the right (:167-169) — implying a mobile
 table-of-contents drawer/sheet, replacing the desktop brandrow+search+
 leaving-link header entirely at phone widths.
 
-**Current implementation (unchanged by this task)**: `DocsArticlePage`
-(src/routes/docs-site.tsx) renders the SAME `.chq-docs-header` (brandrow +
-compact search + leaving link) at every width, and separately renders a
-`.chq-docs-phone-back` (`‹ Docs`) link inline in the article body, above the
-H1 — already phone-only via `display:none` → `display:flex` in the existing
-700px block. There is no `Contents` trigger and no drawer/sheet anywhere in
-the codebase.
+**RESOLVED** (DEC-976: the pin moves with the fix): the gap this row
+described is closed. `src/routes/docs-site.tsx:488-508` renders a
+`.chq-docs-phone-toolbar` carrying BOTH the `‹ Docs` back link and a
+`Contents` trigger — a checkbox+label disclosure (`chq-docs-contents-
+checkbox` / `chq-docs-contents-toggle`, the same `sr-only-checkbox` idiom
+as `.chq-itinerary-toggle`) with `aria-controls="chq-docs-nav"` that
+re-lines the EXISTING `DocsNav` element rather than mounting a second copy
+of the article vocabulary (DEC-613; no second nav). Native checkbox
+semantics make it keyboard-operable (Tab + Space) with no JS and no
+framework. This was built at DEC-990 wave-128, and this file's own later
+"w14-sg per-frame 390 RENDER verdicts" section already recorded it as
+MATCHES against a live request through the mounted route
+(`test/home-account-docs-390-frame-verdicts.test.ts`) — the standing
+finding above simply never caught up to that section's own knowledge, and
+is closed here.
 
-**Why not fixed here**: building a functioning contents drawer is a new
-interactive feature (state, a trigger, a sheet/overlay, its own a11y), not a
-geometry fix — outside a CSS/markup-geometry task's scope and file list
-(no client-side JS module is among the six files this task owns). The
-existing `.chq-docs-phone-back` link already gives phone readers a way back
-to the index, so nothing is broken, only incomplete against the frame's
-fuller phone chrome.
-
-**Suggested fix (future task)**: a phone-only header variant for
-`DocsArticlePage` — swap the shared `.chq-docs-header` for a two-item bar
-(`‹ Docs` / `Contents`) at <=700px, with `Contents` opening the existing
-`.chq-docs-nav` group list (already rendered, currently `display:none` on
-phone) in a bottom sheet or full-screen overlay.
+**Historical note (superseded)**: this row previously claimed the phone
+Contents disclosure was absent from the codebase — that was accurate for
+the wave that wrote it but is not accurate against the current tree; kept
+only as the pointer the RESOLVED citation above closes out.
 
 ## What this task did fix (docs-site.css.ts)
 
