@@ -31,6 +31,15 @@
   gap: 9px;
 }
 
+/* DEC-995: the wordmark row's right-flushed `N of M` counter slot has no
+   home on this page (the wordmark row is the app shell's, off limits to
+   this lane) -- it renders on the page's own H1 line instead
+   (ContactsApp.tsx) and is desktop-hidden by default; the phone terminal
+   block below turns it on. */
+.chq-contacts-head-count {
+  display: none;
+}
+
 /* eval-findings 55 + DEC-710: the tab row carries the chips on the left and
    the directory's search + segment controls on the right
    (.chq-contacts-tab-filters, margin-left:auto). The StatsStrip KPI block
@@ -1218,5 +1227,86 @@
     display: flex;
     align-items: center;
     padding: 0 12px;
+  }
+
+  /* DEC-995 (task r1-d): a wordmark row with a right-flushed "2 of 318",
+     the H1 "Contacts", then a 44px search box. The wordmark row is the app
+     SHELL's header (app/src/styles.css, off limits here), so the counter
+     lands right-flushed on THIS page's own H1 line instead and becomes the
+     head's only count.
+     docs/design/Chautauqua Contacts.dc.html:183 `margin-left:auto;
+     font-size:12px; font-weight:600; color:#565A4B`
+     docs/design/Chautauqua Contacts.dc.html:186 `border:1px solid
+     #BAB6A6; border-radius:6px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:14px; color:#565A4B;
+     background:#FAF8F2`
+     docs/design/Chautauqua Contacts.dc.html:180 `border-bottom:1px solid
+     #1B1D17; padding:14px 16px; flex-shrink:0; display:flex;
+     flex-direction:column; gap:11px`
+     #565A4B is var(--chq-muted) exactly; radius 6px is var(--chq-r-ctl-phone)
+     exactly -- no new hex literal is minted.
+
+     (a) The grid rule below is declared AFTER the earlier phone
+     `.chq-contacts-title-row { flex-direction: column; align-items:
+     flex-start; }` rule in this SAME terminal block and deliberately
+     supersedes it for the cascade -- that earlier rule is untouched
+     (DEC-385 single-direction, narrow overrides wide only).
+     (b) `.chq-summary` is a SHELL token (app/src/styles.css) never
+     redeclared bare -- its hide below is scoped through this page's own
+     `.chq-contacts-title-row` ancestor.
+     (c) `.chq-contacts-filter-match-count`'s hide is declared after that
+     selector's earlier ellipsis rule in this same block and supersedes
+     only its visibility.
+     (d) `order: -1` on `.chq-contacts-tab-filters` puts the frame's
+     search box above the panel chipstrip inside
+     `.chq-toolbar.chq-contacts-tabstrip-row` -- the frame's
+     search-then-narrowing order; the panel tabs are re-lined below it,
+     never removed.
+
+     CAPABILITY RECEIPT (DEC-995/DEC-919): the long `.chq-summary` line
+     (`N people · M speakers · R returning · across E events · K possible
+     duplicates`) is not deleted -- its clauses are re-lined: `N people` ->
+     the `of M` half of this head counter; `M speakers` -> the saved-segment
+     pill strip's `Speakers · N` pill (DEC-994); `K possible duplicates` ->
+     the `Duplicates · N` panel tab chip already on this page; the
+     returning/reach clauses remain on the desktop head, which is
+     unchanged. `.chq-contacts-filter-match-count` (`2 of 318 match`)
+     states the same two numbers the head counter now carries, right-
+     flushed where the frame puts them -- the hide below removes a
+     duplicate reading, not a capability. `Save as a segment` beside it is
+     untouched.
+
+     ALSO VERIFIED: the phone `.chq-contacts-search` box already clears the
+     44px floor with real horizontal padding via the shared unconditional
+     `.chq-input` rule (app/src/styles.css: `padding: 0 13px; min-height:
+     44px`) -- nothing added here for that. */
+  .chq-contacts-title-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+  }
+
+  .chq-contacts-title-actions {
+    grid-column: 1 / -1;
+  }
+
+  .chq-contacts-head-count {
+    display: block;
+    justify-self: end;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  .chq-contacts-title-row .chq-summary {
+    display: none;
+  }
+
+  .chq-contacts-filter-match-count {
+    display: none;
+  }
+
+  .chq-contacts-tab-filters {
+    order: -1;
   }
 }
