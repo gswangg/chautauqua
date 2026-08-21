@@ -341,7 +341,7 @@ describe("w4-k: description disclosure replaces its preview", () => {
 
     // The <summary> carries the snippet (truncated prefix + ellipsis) and
     // the "Show more" affordance, not the full text.
-    const summaryMatch = html.match(/<summary>([\s\S]*?)<\/summary>/);
+    const summaryMatch = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/);
     expect(summaryMatch).not.toBeNull();
     const summaryHtml = summaryMatch![1];
     expect(summaryHtml).toContain(LONG_DESCRIPTION.slice(0, 160));

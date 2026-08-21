@@ -603,6 +603,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // value set the 13 frame files actually draw
   // (test/pack-declaration-vocabulary.scan.test.ts).
   "PACK_VOCABULARY_OFFENDERS_CEILING",
+  // wave-146 (task w21-d, DEC-613/DEC-989 amendment): brand-new
+  // one-sided-only instrument -- grades whether any src/routes/**/*.css.ts
+  // comment quotes a >=16-char run of real src/routes/**/*.tsx copy
+  // verbatim (a server-rendered stylesheet comment leaking product copy
+  // onto the page a second time, test/css-comment-copy-leak.scan.test.ts).
+  "CSS_COMMENT_COPY_LEAK_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -663,6 +669,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
   // above -- never a declared-but-unread knob (DEC-851/DEC-988).
   "PACK_VOCABULARY_OFFENDERS_CEILING",
+  // wave-146 (task w21-d): CSS comment copy-leak scan, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "CSS_COMMENT_COPY_LEAK_CEILING",
 ];
 
 /**
