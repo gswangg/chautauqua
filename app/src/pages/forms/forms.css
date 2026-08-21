@@ -820,4 +820,20 @@
     justify-content: center;
     padding-inline: 12px;
   }
+
+  /* .chq-forms-rule-row's desktop grid (1fr 120px 1fr, gap:10px, :392)
+     leaves each flexible track ~109px against the 358px phone budget --
+     worse still inside FieldModal, whose measure is narrower than the
+     full budget. Re-lined to a single column, DEC-919 idiom: a 390 frame
+     re-lines, it never removes a control, so Field/Is/Value stack.
+     DEC-650(a) is not weakened by this: its "share ONE grid row so the
+     Value column's track stays reserved" is a DESKTOP layout-stability
+     concern -- a fixed three-track row must not shift sideways when the
+     Value control first appears. A stacked 390 re-line has no such
+     shift (each control gets its own row from the start), so the
+     invariant holds by construction and all three controls still
+     render. */
+  .chq-forms-rule-row {
+    grid-template-columns: 1fr;
+  }
 }
