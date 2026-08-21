@@ -11,30 +11,27 @@ task's stated scope (either the shared shell owns the class, or the fix
 belongs to a different cluster's lane). Recorded here per the task
 instructions rather than widening w7-b.
 
-## `.chq-link-button` itself (shared, `app/src/styles.css:783`)
+## `.chq-link-button` itself (shared, `app/src/styles.css`) — RESOLVED (DEC-976 amendment, wave w9-ke)
 
-The base shell class carries `padding:0` and no `min-height` — by design,
-since it is meant to inherit ambient font/line-height from its container and
-is reused across every cluster (contacts, comms, submissions, review). Every
-review-cluster consumer of it as a BARE class (not paired with
-`.chq-review-plan-actions > .chq-link-button`, which this wave's fix already
-covers) still measures under 44px on a phone frame:
+Was: the base shell class carried `padding:0` and no `min-height`, so every
+review-cluster consumer of it as a BARE class still measured under 44px on
+a phone frame — `ProgressPanel.tsx` (two call sites), `ResultsTable.tsx`
+(two call sites), `PlanEditor.tsx` (the reviewer-row secondary action and
+"Delete plan"), all reasoned as a shell/DEC-368 boundary out of that wave's
+scope.
 
-- `app/src/pages/review/ProgressPanel.tsx` (two call sites) — "Remind laggards" and its retry action,
-  class `chq-link-button chq-section-action`.
-- `app/src/pages/review/ResultsTable.tsx` (two call sites) — "Export CSV" / round switch links, class
-  `chq-section-action chq-link-button` / `chq-link-button` (Link).
-- `PlanEditor.tsx:2058` — reviewer-row secondary action, class
-  `chq-link-button chq-section-action`.
-- `PlanEditor.tsx:2517` — "Delete plan", class
-  `chq-link-button chq-review-editor-footer-delete`.
-
-These all key off the shared `.chq-section-action` class too
-(`app/src/styles.css`), which is also shell-owned. A fix here has to live in
-`styles.css` (the shell lane), not `review.css`, or it needs a
-review-cluster-local override class the way `.chq-review-plan-actions > a`
-got this wave — either way it is a shell/DEC-368 boundary this task's scope
-note ("do NOT widen this task") puts out of bounds.
+That fix has since landed in the shell lane. `app/src/styles.css` now
+floors both `.chq-link-button` (app/src/styles.css`.chq-link-button {`) and
+`.chq-section-action` (app/src/styles.css`.chq-section-action {`) directly,
+each with min-height:44px, centred flex, and padding, inside the
+`@media (max-width: 700px)` block — that block's own comment names this
+population by call site (`ResultsTable.tsx`, `PlanEditor.tsx`,
+`ProgressPanel.tsx`). The one call site pairing `chq-link-button` with a
+class other than `chq-section-action` (PlanEditor's "Delete plan",
+`chq-link-button chq-review-editor-footer-delete`) is covered by
+`.chq-link-button`'s own direct floor, and `.chq-review-editor-footer-delete`
+additionally carries its own floor
+(app/src/pages/review/review.css`.chq-review-editor-footer-delete {`).
 
 ## `.chq-review-editor-title-actions` (drift-proof citation, DEC-967 wave-115 shape -- this declaration has drifted from the line number originally cited here: app/src/pages/review/review.css`.chq-review-editor-title-actions {`)
 

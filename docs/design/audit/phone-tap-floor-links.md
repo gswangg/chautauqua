@@ -55,7 +55,7 @@ sheets below. Everything else is unsatisfied residue for wave 7 to schedule.
 | `chq-detail-position-prev` | ROOMY | app/src/pages/submissions/detail.css | Satisfied | Same as `chq-detail-position-next`. |
 | `chq-error-summary-link` | ROOMY | app/src/components/error-states.css | **Fixed this wave** | One link per `<li>` row inside the error summary list (`ErrorSummary.tsx:32`); the sheet declared no `@media` block at all before this wave. |
 | `chq-forms-back` | ROOMY | app/src/pages/forms/forms.css | Satisfied | Back link "‹ Submissions" on its own line (`FormsPage.tsx:328`); floored (app/src/pages/forms/forms.css`chq-forms-back`) with min-height:44px, centred flex, and padding-right:12px. |
-| `chq-link-button` | ROOMY | app/src/styles.css | **Unsatisfied** | Shared base class; every use composes it with a page-local class that is itself its own line/target (back links, footer links, row titles). Base rule (styles.css:783) has no phone floor; each composed selector currently carries (or lacks) its own floor individually rather than inheriting one from the shared base. |
+| `chq-link-button` | ROOMY | app/src/styles.css | **RESOLVED** | Was: shared base class with no phone floor of its own. Now floored directly (app/src/styles.css`.chq-link-button {`) with min-height:44px, centred flex, and padding, inside the `@media (max-width: 700px)` block. |
 | `chq-overview-deadline-cell` | ROOMY | app/src/pages/overview/overview.css | Satisfied | The `<Link>` itself wraps the whole grid cell (label + value), own tappable unit (`Overview.tsx:281`); floored (app/src/pages/overview/overview.css`chq-overview-deadline-cell`). |
 | `chq-overview-link-btn` | ROOMY (mixed) | app/src/pages/overview/overview.css | Satisfied — CLOSED | Split into `chq-overview-link-btn` (roomy, all remaining call sites) and `chq-overview-link-inline` (the public-URL call site, deliberately unfloored) — DEC-393 wave-106; full citations and receipts are given in the RESOLVED note at the foot of this document, not repeated here. |
 | `chq-overview-section-action` | ROOMY | app/src/pages/overview/overview.css | Satisfied | "All N" section link stands alone at the right of the section header row (`app/src/pages/Overview.tsx`, two call sites); floored (app/src/pages/overview/overview.css`chq-overview-section-action`) with min-height:44px, centred flex, and padding-inline:10px. |
@@ -67,11 +67,11 @@ sheets below. Everything else is unsatisfied residue for wave 7 to schedule.
 | `chq-review-editor-back-link` | ROOMY | app/src/pages/review/review.css | Satisfied | Standalone back link out of `PlanEditor.tsx:1264`; floored (app/src/pages/review/review.css`.chq-review-editor-back-link {`) with min-height:44px, centred flex, and padding-inline:10px. |
 | `chq-review-queue-row-action` | ROOMY | app/src/pages/review/review.css | Satisfied (off-limits) | Co-occurs `chq-btn` (`app/src/pages/review/ReviewerQueue.tsx`, two call sites); the recused-row span variant (`ReviewerQueue.tsx:379`) is inert text, not a tap target. |
 | `chq-review-queue-score-action` | ROOMY | app/src/pages/review/review.css | Satisfied (off-limits) | Same co-occurrence as `chq-review-queue-row-action`. |
-| `chq-review-queue-title` | ROOMY | app/src/pages/review/review.css | **Unsatisfied** (off-limits) | Submission title link is the only tap target in its part of the row, the row itself is not one target (`ReviewerQueue.tsx:266`); no phone rule found. |
+| `chq-review-queue-title` | ROOMY | app/src/pages/review/review.css | **RESOLVED** | Was: submission title link is the only tap target in its part of the row, the row itself is not one target; review.css declared no floor for the selector. Now floored, element-qualified to the anchor only per its own comment (the span variant on recused rows stays inert) (app/src/pages/review/review.css`a.chq-review-queue-title {`) with min-height:44px, centred flex, and padding. |
 | `chq-review-scoped-title-action` | ROOMY | app/src/pages/review/review.css | Satisfied (off-limits) | Co-occurs `chq-btn chq-btn-primary` (`app/src/pages/review/ReviewerQueue.tsx`, `chq-review-scoped-title-action`). |
 | `chq-reviewer-plan-row-action` | ROOMY | app/src/pages/review/review.css | Satisfied | Standalone action label at the foot of a plan progress row, moved out of PlanList.tsx to `ReviewerQueue.tsx:510`; floored (app/src/pages/review/review.css`.chq-reviewer-plan-row-action {`) with min-height:44px, centred flex, and padding-inline:10px. |
-| `chq-row-title` | ROOMY | app/src/styles.css | **Unsatisfied** | Base class for table-cell title links (composed with page-local `-name-link`/`-task-title` classes below); no phone rule exists for this selector in styles.css. |
-| `chq-section-action` | ROOMY | app/src/styles.css / review.css | **Unsatisfied** | Section-header "All N ›" link pattern shared across pages; base rule (styles.css:560) has no phone floor. |
+| `chq-row-title` | ROOMY | app/src/styles.css | **RESOLVED** | Was: base class for table-cell title links, no phone rule in styles.css. Now floored directly (app/src/styles.css`.chq-row-title {`) with min-height:44px, centred flex, and cancelled padding, inside the `@media (max-width: 700px)` block. |
+| `chq-section-action` | ROOMY | app/src/styles.css / review.css | **RESOLVED** | Was: section-header "All N ›" link pattern shared across pages, base rule had no phone floor. Now floored directly (app/src/styles.css`.chq-section-action {`) with min-height:44px, centred flex, and cancelled padding. |
 | `chq-settings-inline-action` | INLINE | app/src/pages/settings/settings.css | n/a | Trails an inline `" · "` separator on the same text line as the resource name (`app/src/pages/settings/ResourcesPanel.tsx`: `{' · '}` immediately before `<a className="chq-settings-inline-action"`, repeated further down the same file). |
 | `chq-speaker-detail-back` | ROOMY | app/src/pages/speakers/speakers.css | Satisfied | Back link "‹ Speakers" composed with `chq-link-button` (`SpeakerDetailPage.tsx:470`); floored (app/src/pages/speakers/speakers.css`.chq-speaker-detail-back,`) with min-height:44px, centred flex, and padding-inline:10px. |
 | `chq-speakers-file-link` | ROOMY | app/src/pages/speakers/speakers.css | Satisfied | Only interactive element in its own table cell (app/src/pages/speakers/SpeakerDetailPage.tsx`className="chq-speakers-file-link"` — drift-proof citation, DEC-967 wave-115; also `ResponseModal.tsx:60`); row has other non-link cells, is not itself the target; floored (app/src/pages/speakers/speakers.css`.chq-speakers-file-link,`) with min-height:44px, centred flex, and padding-inline:10px. |
@@ -84,26 +84,27 @@ sheets below. Everything else is unsatisfied residue for wave 7 to schedule.
 | `chq-taskview-name` | ROOMY | app/src/pages/speakers/task-view.css | Satisfied | Speaker-name cell link, same row shape as `chq-speakers-name-link` (`TaskView.tsx:532`); floored (app/src/pages/speakers/task-view.css`.chq-taskview-name,`) with min-height:44px, centred flex, and horizontal padding. |
 | `chq-toolbar-link` | ROOMY | app/src/pages/agenda/agenda.css | Satisfied | "Add a room or track" standalone CTA in the Agenda toolbar (`Agenda.tsx:450`); floored (app/src/pages/agenda/agenda.css`.chq-toolbar-link {`) with min-height:44px, centred flex, and padding-inline:10px. |
 
-## Remaining unsatisfied residue (DEC-518 amendment, re-derived against the tree)
+## Remaining unsatisfied residue (DEC-518 amendment, re-derived against the tree) — RESOLVED (DEC-976 amendment, wave w9-ke)
 
-Re-derived row by row against the current stylesheets: only three tokens
-remain genuinely unfloored, each for a stated structural reason rather than
-a schedule or an owner:
+The four tokens named below (`chq-link-button`, `chq-row-title`,
+`chq-section-action`, `chq-review-queue-title`) were re-derived against the
+tree as of wave w9-ke and no longer reproduce; the table rows above now read
+RESOLVED with drift-proof citations. This section is kept as the historical
+record of the finding rather than deleted (DEC-069 wave-140: a row is
+CLOSED, never deleted):
 
-- `chq-link-button` / `chq-row-title` / `chq-section-action` — each is a
-  SHARED BASE CLASS with no `@media (max-width)` rule of its own anywhere in
-  `app/src/styles.css`. Every concrete use composes the base with a
-  page-local selector (a back link, a row title, a section action), and it
-  is that composed selector, not the base, that must (and in every audited
-  case now does) carry its own floor — the base staying bare is the correct
-  shape for a shared class whose call sites diverge in ROOMY vs.
-  ROW-IS-THE-TARGET treatment, not a gap.
-- `chq-review-queue-title` — ROW-IS-NOT-THE-TARGET: the submission title
-  link is one of two independent tap targets inside
-  `.chq-review-queue-row` (the title link and the row's own action button
-  both live in the row), so the row's own `min-height` cannot stand in for
-  the title's floor, and `review.css` declares no floor for
-  `.chq-review-queue-title` itself (`ReviewerQueue.tsx:266`).
+- `chq-link-button` / `chq-row-title` / `chq-section-action` were
+  previously reasoned about as SHARED BASE CLASSES that were correct to
+  leave bare, each concrete composed selector carrying its own floor
+  instead. That reasoning has since been superseded: all three base
+  classes now carry their own direct phone floor in
+  `app/src/styles.css`'s `@media (max-width: 700px)` block, in addition to
+  (not instead of) the composed selectors' own floors.
+- `chq-review-queue-title` — previously ROW-IS-NOT-THE-TARGET with no
+  floor of its own. `app/src/pages/review/review.css` now declares
+  `a.chq-review-queue-title { display: flex; align-items: center;
+  min-height: 44px; padding: 0 4px; }`, element-qualified to the anchor so
+  the recused-row `<span>` variant stays untouched.
 
 RESOLVED (DEC-393 wave-106, task w2-d): `chq-overview-link-btn` was split.
 The four row-action call sites (`app/src/pages/Overview.tsx`, four call sites) keep
