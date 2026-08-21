@@ -212,4 +212,33 @@
     min-height: 44px;
     padding-inline: 12px;
   }
+
+  /* v12m-w21-m (DEC-613 wave-21 ruling, Contacts audit Finding 4): at
+     390 the shared modal title adopts the SAME phone drill register as
+     every other full-screen drill head (.chq-phone-head-drill
+     .chq-page-title, styles.css) -- enumerated population is every
+     ModalFrame call site in app/src whose dialog the pack actually draws
+     a 390 frame for: only Contacts draws one (docs/design/Chautauqua
+     Contacts.dc.html), at four call sites -- ContactDrawer (:410 "Priya
+     Raman"), PipelineBoard (:450 "Pipeline"), ImportWizard (:490 "Match
+     the columns"), MergePage (:525 "Merge two records") -- every one
+     `font-size:25px; font-weight:700; letter-spacing:-0.04em;
+     line-height:1.05`, one register, not two. Every other ModalFrame call
+     site (Agenda/BreaksPanel, Comms/ComposeWizard, forms/FieldModal,
+     settings/PeopleRolesPanel, settings/ResourcesPanel,
+     speakers/RemindPreviewModal, speakers/ResponseModal,
+     speakers/RosterPanel, speakers/TaskModal, speakers/TaskView,
+     submissions/NewSubmissionModal, submissions/ViewTabs,
+     ConfirmDialog, EventSwitcher, content/UploadRejectedModal) has no
+     390-width dialog frame drawn anywhere in docs/design/*.dc.html at
+     all (checked: their dialog titles only ever appear inside
+     440-560px-wide desktop containers, at the frozen 23px desktop
+     register) -- so this rule cannot contradict an undrawn frame, and
+     there is no second register to flatten. Desktop is untouched: the
+     23px top-level `.chq-modal .chq-modal-title` rule above this block
+     stands (DEC-385 single-direction). */
+  .chq-modal .chq-modal-title {
+    font-size: var(--chq-type-page-title-phone-drill);
+    letter-spacing: var(--chq-type-page-title-tracking);
+  }
 }

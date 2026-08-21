@@ -142,21 +142,28 @@ phone swaps to the frame's generic phrasing, since the phone head band
 does the same. This finding no longer reproduces against the tree; kept
 here only as the citation the "Merge · 390" verdict row below points to.
 
-**Finding 4 — `ContactDrawer.tsx`'s title renders through the shared
-modal-title class, outside this document's file scope (DEC-959,
-DEC-613).** `docs/design/Chautauqua Contacts.dc.html:410` sets the
-"Contact · 390" head H1 at `font-size:25px; font-weight:700;
-letter-spacing:-0.04em`. `ContactDrawer`'s title renders through the
-shared `.chq-modal-title` class (app/src/components/modal-frame.css`font-size: 23px`
-(drift-proof citation, DEC-967 wave-115)), which is 2px short of the frame's figure, and the
-class carries no `letter-spacing` declaration at all (the frame calls for
-`-0.04em`). This is the SAME shared modal-title class every other v12m
-drawer/modal renders through, so widening it is a REGISTER change, not a
-page-local one: DEC-613 wave-104's rule is that a page lane wires the
-shared class and files the register delta here for whoever owns
-`modal-frame.css`, rather than forking a page-local heading style. The
-delta is recorded as a register fact, not as a claim on anyone's
-calendar (DEC-518).
+**Finding 4 — RESOLVED (v12m-w21-m, DEC-613 wave-21 ruling).**
+`docs/design/Chautauqua Contacts.dc.html:410` sets the "Contact · 390"
+head H1 at `font-size:25px; font-weight:700; letter-spacing:-0.04em;
+line-height:1.05`. `ContactDrawer`'s title renders through the shared
+`.chq-modal-title` class, which this task's ruling (parked since filing
+"for whoever owns modal-frame.css") now closes: inside
+`app/src/components/modal-frame.css`'s ONE terminal
+`@media (max-width: 700px)` block, `.chq-modal .chq-modal-title` now
+sets `font-size: var(--chq-type-page-title-phone-drill)` and
+`letter-spacing: var(--chq-type-page-title-tracking)` — the same two
+tokens (`25px` / `-0.04em`) `.chq-phone-head-drill .chq-page-title`
+already uses for every other full-screen drill head. Desktop is
+untouched: the top-level `.chq-modal .chq-modal-title { font-size: 23px; }`
+rule stands, single-direction (DEC-385). Receipted by
+`app/src/components/modal-frame-title-phone-drill.test.ts`, which also
+enumerates the population this register applies to: all four Contacts
+390 drill heads (`ContactDrawer` :410, `PipelineBoard` :450,
+`ImportWizard` :490, `MergePage` :525) draw the identical figures, and
+no other `ModalFrame` call site in `app/src` has a 390-width dialog frame
+drawn anywhere in `docs/design/*.dc.html` to contradict it. The
+companion H2-vs-H1 structural gap this row also names is ruled the
+OTHER way — settled, not built — see `docs/design/DEVIATIONS.md` §7.
 
 **Finding 5 — whether the shell header stands down for the whole
 Contacts cluster during a 390 drill is a SHELL decision, outside any
@@ -187,7 +194,7 @@ route) — never a sub-component mounted directly.
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
 | `Chautauqua Contacts.dc.html` "Contacts" (390 landing) | DIVERGES | The frame draws a headerless card list (name / company·role / tags, one boxed "Email" action per row) under a search box, an "All of … + Rule" chip row and an All/Speakers/Reviewers pill row, ending in a shell tab-bar footer. The actual read is the SAME desktop `<table class="chq-table chq-contacts-table">` at every width — a checkbox column, "Name and email"/"Company"/"Labels" header row, and a per-row "Open" action instead of "Email" — plus the full desktop `FilterRulesPanel` rule builder above it, not the frame's chip strip. |
-| `Chautauqua Contacts.dc.html` "Contact · 390" | DIVERGES (narrowed, DEC-663 wave-17) | The frame draws its own full-screen route: a `‹ Contacts` back link and nothing else in the head band. The actual screen is `ContactDrawer`, mounted through the shared `ModalFrame` as a `role="dialog"` portal — an H2 title, not the frame's own H1. The row's earlier "always-on Close button beside the back link" clause is RETIRED: `contacts-panels.css`'s terminal `max-width:700px` block now blanks `.chq-contacts-drawer .chq-modal-close-btn` at phone (v12m-w15-th, DEC-663 wave-159), leaving the back link as the drill's sole escape, matching the frame. The two-control dock below (`Email <name>` / `Edit`, DEC-959) matches exactly, as does the title-register gap already filed above (Finding 4) — the surviving divergence is exactly that title-register gap. |
+| `Chautauqua Contacts.dc.html` "Contact · 390" | DIVERGES (narrowed further, v12m-w21-m, DEC-613 wave-21) | The frame draws its own full-screen route: a `‹ Contacts` back link and nothing else in the head band. The actual screen is `ContactDrawer`, mounted through the shared `ModalFrame` as a `role="dialog"` portal — an H2 title, not the frame's own H1. The row's earlier "always-on Close button beside the back link" clause is RETIRED: `contacts-panels.css`'s terminal `max-width:700px` block now blanks `.chq-contacts-drawer .chq-modal-close-btn` at phone (v12m-w15-th, DEC-663 wave-159), leaving the back link as the drill's sole escape, matching the frame. The two-control dock below (`Email <name>` / `Edit`, DEC-959) matches exactly, and the title-register gap (Finding 4) is now RESOLVED — `.chq-modal-title` matches the frame's `25px/700/-0.04em/1.05` at 390. The one surviving divergence is the H2-vs-H1 structural gap itself, and it is SETTLED not open: `docs/design/DEVIATIONS.md` §7 rules a `ModalFrame` dialog's title stays an `<h2>` referenced by `aria-labelledby`, since the frame's `<h1>` is a drawing convention for a full-screen drill and demoting the page's real H1 for a dialog would trade an accessibility contract for a pixel-level resemblance. |
 | `Chautauqua Contacts.dc.html` "Pipeline · 390" | MATCHES | Back link, H1, the "N people" caption, the five-stage chip strip, the per-row card ending in a "Move ›" control, and the "Add someone"/"Filter" dock all render exactly as drawn. |
 | `Chautauqua Contacts.dc.html` "Import CSV · 390" | RESOLVED (DEC-663 wave-17) → MATCHES | The frame draws a `‹ Contacts` back link in the head band (`:489`). This row previously read DIVERGES because `ImportWizard` passed `ModalFrame` no `backLink` prop; it now does (`app/src/pages/contacts/ImportWizard.tsx``backLink={{ label: '‹ Contacts', onClick: onClose }}`, landed by commit f2fd0c43), and the shared `Close` control it would have stacked beside is CSS-hidden at phone by the same `.chq-contacts-import .chq-modal-close-btn` rule cited on the Contact row above. The one-column-per-screen pager body (eyebrow, column name, samples, "Import it as" rule, radio targets) and its "Next column"/"Skip" dock match, per findings 1-2 (RESOLVED, DEC-663 wave-108) above. |
 | `Chautauqua Contacts.dc.html` "Merge · 390" | ADJUDICATED, frame-SILENT addition (DEC-663 wave-17) → MATCHES | The frame body goes straight from the head band into the field-by-field compare rows — no picker block. `MergePage` renders an additional `.chq-contacts-merge-picks` radio-list block (one radio per contact, with email/company/title) above the compare rows, with no frame counterpart. Per DEC-663's wave-17 ruling this is NOT an open divergence: the compare rows are drawn showing the result of a keep/drop choice already made, which a static frame cannot depict being made, so `.chq-contacts-merge-picks` seeds that choice rather than duplicating a peer of it — removing it would leave the 390 screen unable to express the merge's primary decision (a capability removal DEC-919 forbids), and hiding it at phone only would fork the merge's semantics by width. Same disposition `docs/design/audit/account-docs-v12.md`'s "Change password · 390" row already uses for the sign-in-persists hint: an addition the frame is silent on, not a MATCHES/DIVERGES call. The consequence box is RESOLVED (Finding 3 above, w2-c) — the per-field keep/drop pair and the "Merge them"/"Not a duplicate" footer both match as drawn. |
