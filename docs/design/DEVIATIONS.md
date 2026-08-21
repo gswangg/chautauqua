@@ -614,6 +614,21 @@ instead of re-flagging.
   identity cell on the roster grid before it was measured and fixed). The
   ring is rounded with `var(--chq-r-ctl)`, the same corner `.chq-btn`
   already uses.
+- Contacts 390 rule chip: the frame's drawn `gap:9px` is now met as HIT-BOX
+  separation, not literal optical separation (DEC-393 wave-16 r4
+  amendment, task v12m-w16-ui-r4-a). `docs/design/Chautauqua
+  Contacts.dc.html:190` draws `gap:9px; padding:0 12px` between the chip's
+  edit label and its `✕` dismiss control. Meeting the 44px width floor on
+  both (DESIGN-RULINGS.md:189) makes each an outward-only cancelled-padding
+  box, per the invariant above — no negative margin faces its sibling — so
+  the two 44px hit boxes now sit edge-to-edge with a real 9px gap between
+  them. Because the `✕` glyph is only ~10px wide and its 44px box is mostly
+  empty on its leading side, the READING between the label's last glyph and
+  the ✕ is optically wider than 9px, even though the hit-box separation is
+  frame-exact. The 44px width floor and a literal 9px drawn gap between
+  glyphs cannot both hold at this glyph size; the floor wins per DEC-393,
+  and this optical residual is recorded rather than left as a silent
+  divergence.
 - Portal-resource modal Kind pair `File` / `Link` (`docs/design/Chautauqua
   Settings.dc.html:1463-1464`) — this product's second resource kind is a
   wiki page with stored markdown, not a link; there is no link kind to
