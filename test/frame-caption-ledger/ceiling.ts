@@ -389,4 +389,26 @@
 // every lane's own figure, because six lanes' builds and exclusions coexist
 // here for the first time and each was measured without the others'.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=6
+// v12m-w4-ao (wave-148, task w4-ao, DEC-908 amendment): disposed the three
+// CFP-confirmation-card rows the prior note (v12m-w18-a) had left UNMATCHED
+// on the grounds that they were order-pinned by
+// test/cfp-confirmation-email-honesty.test.ts's own assertion -- that pin
+// is re-pointed by this same task to the frame's own clause order
+// (format, track, audience level; DEC-908 wave-148 amendment), and
+// submit-post.tsx now composes all three clauses via
+// src/lib/session-vocabulary.ts. All three (:1080/:1130/:1153) remain
+// unmatched by the plain-substring pass -- each interpolates this fixture
+// pack's own sample track name -- and are filed as new COMPOSED rows
+// (exclusions.ts, tagged v12m-w4-ao) rather than left in the residue.
+// Forced to -1 and read back: 12.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=12
+//
+// THUNDERDOME MEGABATCH (wave-150, 19 lanes): the two figures above (6 from
+// the wave-148 train's integrated tree, 12 from w4-ao measured alone) are
+// each true only of the tree they were read on. Per this file's standing
+// rule the constant is re-seeded to what the two-sided ratchet PRINTS
+// against the fully integrated megabatch tree, measured once at the end of
+// the batch with the ceiling forced to -1 -- never a lane's pre-merge
+// figure.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=__PENDING__
 export const FRAME_CAPTION_UNMATCHED_CEILING = 6;

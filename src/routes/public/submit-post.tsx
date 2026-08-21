@@ -37,9 +37,11 @@ import { REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { newId, formatRef } from "../../domain/ids";
-import { DEC_814 } from "../../decisions";
+import { DEC_814, DEC_908 } from "../../decisions";
 // implements DEC_814 (an anonymous CFP match never writes to the CRM contact row).
 void DEC_814;
+// implements DEC_908 (confirmation card meta follows the frame's clause order and carries audience level).
+void DEC_908;
 import { deleteDraft, draftCookieName, type KVStore as DraftKVStore } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
 import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
@@ -59,6 +61,7 @@ import {
 import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
 import { emailBudgetOk, refundEmailBudget, isSameOriginSubmitPost } from "./submit-guards";
 import { trackChoiceMessage } from "./submit-messages";
+import { sessionFormatLabel, audienceLevelLabel } from "../../lib/session-vocabulary";
 
 export const publicSubmitPostRoutes = new Hono<AppEnv>();
 
@@ -564,20 +567,32 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       ? "fresh"
       : "pending-existing-contact";
 
-  // DEC-098 (wave 8 amendment): the confirmation card states the talk's
-  // track and format, not just its title -- built from what was JUST
-  // persisted, no extra query. The track clause is looked up from the
-  // offered-tracks list already in scope (joined in that list's own order,
-  // ' · '-separated, for the rare multi-select case); the format clause is
-  // the session_format-role field's answer label verbatim (an option's raw
-  // value already carries its own "(N min)" suffix -- see FormatChoices).
+  // DEC-098 (wave 8 amendment) / DEC-908 (wave-148 amendment): the
+  // confirmation card states the talk's format, track(s) and audience
+  // level, in the frame's clause order (Chautauqua Public and
+  // Portal.dc.html:1080/:1130/:1153 -- "Talk, 30 min · Platform & Infra ·
+  // intermediate") -- built from what was JUST persisted, no extra query.
+  // Format and audience level are read from src/lib/session-vocabulary.ts,
+  // the ONE display vocabulary (DEC-613: never a second derivation here);
+  // the track clause is looked up from the offered-tracks list already in
+  // scope (joined in that list's own order, ' · '-separated, for the rare
+  // multi-select case). Each clause drops individually when its answer is
+  // absent or blank.
   const selectedTrackNames = tracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name);
   const formatField = fields.find((f) => f.role === "session_format");
   const formatAnswer = formatField ? cleaned[formatField.id] : undefined;
-  const formatLabel = typeof formatAnswer === "string" && formatAnswer.trim() !== "" ? formatAnswer : null;
+  const formatLabel =
+    typeof formatAnswer === "string" && formatAnswer.trim() !== "" ? sessionFormatLabel(formatAnswer) : null;
+  const audienceLevelField = fields.find((f) => f.role === "audience_level");
+  const audienceLevelAnswer = audienceLevelField ? cleaned[audienceLevelField.id] : undefined;
+  const audienceLevelClause =
+    typeof audienceLevelAnswer === "string" && audienceLevelAnswer.trim() !== ""
+      ? audienceLevelLabel(audienceLevelAnswer)
+      : null;
   const metaParts = [
-    selectedTrackNames.length > 0 ? selectedTrackNames.join(" · ") : null,
     formatLabel,
+    selectedTrackNames.length > 0 ? selectedTrackNames.join(" · ") : null,
+    audienceLevelClause,
   ].filter((part): part is string => part !== null);
   const meta = metaParts.length > 0 ? metaParts.join(" · ") : null;
 
