@@ -139,6 +139,14 @@
   display: none;
 }
 
+/* v12m-w16-ui-r2-a (DEC-919): the rule builder disclosure's close control
+   has nothing to close at desktop, where the rule groups are never
+   collapsed -- hidden here by default, turned on in the terminal phone
+   block below. */
+.chq-contacts-filter-builder-done {
+  display: none;
+}
+
 /* DEC-992: the rule strip (`.chq-contacts-filter-chipstrip`, sibling of
    `.chq-contacts-filter-rules-row` -- see FilterRulesPanel.tsx) is a 390
    head only, docs/design/Chautauqua Contacts.dc.html:187
@@ -1483,5 +1491,63 @@
 
   .chq-contacts-segment-summary {
     display: none;
+  }
+
+  /* v12m-w16-ui-r2-a (DEC-919): the rule builder is DISCLOSED, not deleted.
+     The frame's 390 head draws no desktop-style rule stack directly above
+     the chip strip -- with no phone rule here, the full "Matching all of"
+     builder (one full-width select/input/Remove stack per rule) rendered
+     in full above the frame's chip strip, stating every rule twice on one
+     screen. Superseded below by the is-builder-open rule, which reopens
+     it on demand. */
+  /* phone-hidden: AUTHOR a rule -> + Rule (adds AND discloses); EDIT a
+     rule -> tap the chip's own label button; REMOVE a rule -> the chip's
+     dismiss control, which acts on the rule list directly and never needs
+     the builder; READ the active rule set -> the chip strip, visible
+     whether the builder is open or closed; SAVE the rule set -> Save as a
+     segment, still inside this row and reachable whenever the builder is
+     open. */
+  .chq-contacts-filter-rules-row {
+    display: none;
+  }
+
+  .chq-contacts-filter-rules-row.is-builder-open {
+    display: flex;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:190 `border:1px solid
+     #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
+     min-height:44px; display:flex; align-items:center; gap:9px;
+     padding:0 12px; font-size:13px; font-weight:600` -- single-compound
+     selector on purpose, NOT `.chq-contacts-filter-rule-chip button`,
+     which would pull it into cancelled-padding-gap.scan.test.ts's
+     population and force the chip's frame-drawn 9px gap wider. Unpainted
+     face (no border/background of its own), so the cancelled-padding
+     idiom stays legal under DEC-937's wave-121 amendment. */
+  .chq-contacts-filter-rule-chip-edit {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:192 `border:1px dashed
+     #A9AE94; border-radius:4px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:13px; font-weight:700;
+     color:#4E5C31` -- the builder's own close control, sharing the same
+     tertiary-button treatment as its desktop sibling. */
+  .chq-contacts-filter-builder-done {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: 16px;
   }
 }

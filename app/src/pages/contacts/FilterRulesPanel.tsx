@@ -15,13 +15,15 @@
 // of what the server accepts. custom.<key> fields are addressed by typing
 // the key: no server-side enumeration of a org's contact custom-field keys
 // exists to populate a dropdown from.
+import { useState } from 'react';
 import { activeRules } from './segments';
 import type { SegmentRule } from './types';
 import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
 import { MAX_SEGMENT_RULES } from '../../lib/domain-caps';
-import { DEC_868, DEC_937 } from '../../../../src/decisions';
+import { DEC_868, DEC_919, DEC_937 } from '../../../../src/decisions';
 
 void DEC_868;
+void DEC_919;
 void DEC_937;
 
 export const FILTER_RULE_FIELDS: string[] = [...SEGMENT_STANDARD_FIELDS];
@@ -72,6 +74,12 @@ interface Props {
 }
 
 export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSaveAsSegment }: Props) {
+  // DEC-919: the 390 chip strip disclosure. A PHONE-ONLY effect read by CSS
+  // at width (`.is-builder-open`), never by a useIsPhone branch here -- so
+  // desktop markup, which has no rule keyed to that class, stays
+  // byte-identical.
+  const [builderOpen, setBuilderOpen] = useState(false);
+
   function updateRule(index: number, next: SegmentRule) {
     onChange(rules.map((r, i) => (i === index ? next : r)));
   }
@@ -86,7 +94,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
 
   return (
     <>
-    <div className="chq-contacts-filter-rules-row">
+    <div className={`chq-contacts-filter-rules-row${builderOpen ? ' is-builder-open' : ''}`}>
       <span className="chq-contacts-filter-rules-caption">Matching all of</span>
 
       {rules.map((rule, i) => {
@@ -194,6 +202,18 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           </button>
         </span>
       )}
+
+      {/* DEC-919: renders unconditionally (both controls in the DOM, CSS
+          alone decides which is on screen, the DEC-937 wave-129 shape) --
+          desktop's own row is never collapsed, so this has nothing to close
+          there. */}
+      <button
+        type="button"
+        className="chq-btn chq-btn-tertiary chq-contacts-filter-builder-done"
+        onClick={() => setBuilderOpen(false)}
+      >
+        Done
+      </button>
     </div>
 
     <div className="chq-contacts-filter-chipstrip">
@@ -201,7 +221,14 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       {rules.map((rule, i) =>
         activeRules([rule]).length === 0 ? null : (
           <span className="chq-contacts-filter-rule-chip" key={i}>
-            {ruleChipLabel(rule)}
+            <button
+              type="button"
+              className="chq-contacts-filter-rule-chip-edit"
+              aria-label={`Edit ${ruleChipLabel(rule)}`}
+              onClick={() => setBuilderOpen(true)}
+            >
+              {ruleChipLabel(rule)}
+            </button>
             <button
               type="button"
               className="chq-contacts-filter-rule-chip-dismiss"
@@ -213,11 +240,20 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           </span>
         )
       )}
+      {/* DEC-919: while the builder is CLOSED this control's job is
+          disclosure, so it is never inert here -- otherwise a user who
+          fills the cap with blank rules (which render no chip) and closes
+          the builder has no path back in. Only inert once the builder is
+          open AND the cap is reached, matching the desktop
+          `.chq-contacts-filter-add-full` button's own disabled state. */}
       <button
         type="button"
         className="chq-contacts-filter-add-chip"
-        onClick={addRule}
-        disabled={rules.length >= MAX_SEGMENT_RULES}
+        onClick={() => {
+          if (rules.length < MAX_SEGMENT_RULES) addRule();
+          setBuilderOpen(true);
+        }}
+        disabled={builderOpen && rules.length >= MAX_SEGMENT_RULES}
       >
         + Rule
       </button>

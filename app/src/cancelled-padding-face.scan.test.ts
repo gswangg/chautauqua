@@ -587,8 +587,14 @@ describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
     // BORDERLESS cancelled-padding member -- a legitimate new member of
     // this population, not a face regression, so the band's upper edge
     // moves with the measurement.
+    // Re-measured v12m-w16-ui-r2-a: 33. Task added
+    // `.chq-contacts-filter-rule-chip-edit` (app/src/pages/contacts/
+    // contacts.css terminal phone block, DEC-919), another BORDERLESS
+    // (unpainted-face) cancelled-padding member -- the rule builder
+    // disclosure's chip edit control -- so the band's upper edge moves
+    // again with the measurement.
     expect(MEMBER_COUNT.rules).toBeGreaterThanOrEqual(20);
-    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(32);
+    expect(MEMBER_COUNT.rules).toBeLessThanOrEqual(33);
   });
 
   describe('cancelledPaddingN', () => {
