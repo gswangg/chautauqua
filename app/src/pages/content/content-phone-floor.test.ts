@@ -116,16 +116,55 @@ function topLevelConstructEnds(src: string): number[] {
 }
 
 /** Extracts a flat rule's declaration body for `selector` from a block of
- * CSS text (no nested rules expected inside `src`). */
+ * CSS text (no nested rules expected inside `src`).
+ *
+ * PERFORMANCE (w5-be, DEC-989): the previous implementation matched
+ * whitespace-or-comment run-up to the selector inline, as
+ * `(?:\s|\/\*[\s\S]*?\*\/)*` -- an alternation of two variable-length
+ * branches under a `*` quantifier. On a MISS (selector absent from `src`)
+ * the engine has no anchor to commit to and backtracks catastrophically
+ * across every possible split of that run against content.css's terminal
+ * phone block, which is thousands of lines and heavily commented -- this
+ * is the classic "evil regex" shape, and this file's three `.toBeNull()`
+ * assertions each paid a full worst-case walk (measured: two `it`s over
+ * the 5000ms budget, the whole file ~40s). Fix: strip block comments from
+ * `src` ONCE up front (comments become a single space each, which
+ * preserves every `}`/selector boundary the match depends on -- comments
+ * never contain an unmatched brace in this file), then match with a
+ * simple LINEAR run: `(?:^|\})\s*<escaped>\s*\{([^{}]*)\}`. No more
+ * alternation-under-star, so there is nothing to backtrack across.
+ *
+ * LAST-MATCH SEMANTICS (found while fixing the above): two selectors in
+ * this file's own corpus -- `.chq-content-actions .chq-btn` and
+ * `.chq-content-status-band-actions .chq-btn` -- are declared TWICE in
+ * the appended phone block: once in the pre-existing base rule (no floor)
+ * and once in this batch's own addition (min-height:44px). Same
+ * specificity, so CSS cascade rules mean the LATER declaration in source
+ * order is the one that actually renders at 390 -- content.css itself is
+ * correct. The prior catastrophic-backtracking regex happened to return
+ * the second (winning) declaration for these two by accident, because its
+ * exhaustive backtracking search over `(?:\s|comment)*` would swallow the
+ * first (non-matching-tail) occurrence as spurious "comment" content
+ * before finally landing on a position where the full pattern succeeded --
+ * an accidental, undocumented side effect of the bug being fixed, not a
+ * deliberate contract. A plain leftmost `.exec()` on the linear pattern
+ * would instead surface the FIRST (overridden, dead) declaration and
+ * wrongly fail this file's floor assertions against a cascade-correct
+ * stylesheet. So `ruleBody` explicitly takes the LAST match in the block
+ * for a selector that appears more than once, matching the browser's
+ * actual cascade-effective declaration: this is the intended contract now
+ * made explicit, not a behavior change. Selectors with exactly one
+ * occurrence (the overwhelming majority) are unaffected. */
 function ruleBody(src: string, selector: string): string | null {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Allow arbitrary whitespace AND block comments between the previous
-  // rule's closing brace (or the block's own start) and the selector --
-  // every subsection in the appended phone block opens with a `/* ... */`
-  // header comment directly above its first rule.
-  const re = new RegExp(`(?:^|\\})(?:\\s|\\/\\*[\\s\\S]*?\\*\\/)*${escaped}\\s*\\{([^{}]*)\\}`);
-  const m = re.exec(src);
-  return m ? (m[1] ?? '') : null;
+  const stripped = src.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const re = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^{}]*)\\}`, 'g');
+  let last: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(stripped)) !== null) {
+    last = m;
+  }
+  return last ? (last[1] ?? '') : null;
 }
 
 function hasMinHeightFloor(body: string): boolean {
@@ -198,6 +237,30 @@ describe('content.css phone 44px floor + 390 overflow fixes (task w8-e)', () => 
         '.chq-ok-col',
       );
       expect(hasOverflowEscape(okOverflow!)).toBe(true);
+    });
+
+    it('ruleBody stays linear-time on a MISS against a heavily-commented blob (guards the backtracking regression, DEC-989)', () => {
+      // Fabricated fixture only -- never a live product string, so this
+      // fixture can never become a stale sentinel for real CSS content.
+      const commentRun = '/* filler comment padding out the block */\n'.repeat(400);
+      const fabricatedBlob = `.chq-fixture-present-${'x'.repeat(40)} {\n  color: red;\n}\n${commentRun}`;
+      const start = Date.now();
+      const absent = ruleBody(fabricatedBlob, `.chq-fixture-absent-${'y'.repeat(40)}`);
+      const elapsedMs = Date.now() - start;
+      expect(absent).toBeNull();
+      // A linear scan of this ~20KB fixture completes in low single-digit
+      // ms; the old catastrophic-backtracking shape would blow well past a
+      // vitest test timeout on a blob this size. 250ms is a generous,
+      // non-flaky ceiling that still fails loudly if the exponential shape
+      // ever returns.
+      expect(elapsedMs).toBeLessThan(250);
+
+      // And the present selector still resolves correctly on the same
+      // comment-laden blob, so the fix didn't just make misses fast at the
+      // cost of hits.
+      const present = ruleBody(fabricatedBlob, `.chq-fixture-present-${'x'.repeat(40)}`);
+      expect(present).not.toBeNull();
+      expect(present).toContain('color: red');
     });
   });
 
