@@ -263,8 +263,9 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // to what the ratchet actually PRINTS against the fully integrated tree
 // (ceiling forced to -1, offender list read back) -- never a lane's
 // pre-merge figure and never a guess.
-// RATCHET: LINE_KEYED_CITATION_CEILING=__MEGABATCH_PENDING__
-export const LINE_KEYED_CITATION_CEILING = 26;
+// Measured against the fully integrated megabatch tree: 4. Lowered 26 -> 4.
+// RATCHET: LINE_KEYED_CITATION_CEILING=4
+export const LINE_KEYED_CITATION_CEILING = 4;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

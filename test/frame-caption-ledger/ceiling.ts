@@ -442,5 +442,9 @@
 // to what the ratchet actually PRINTS against the fully integrated tree
 // (ceiling forced to -1, offender list read back) -- never a lane's
 // pre-merge figure and never a guess.
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=__MEGABATCH_PENDING__
-export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
+// Measured against the fully integrated megabatch tree (ceiling forced to -1,
+// offender list read back): ZERO unmatched captions -- every row the nineteen
+// lanes owned is either built or dispositioned, and their union closes the
+// campaign population. Lowered 14 -> 0.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=0
+export const FRAME_CAPTION_UNMATCHED_CEILING = 0;
