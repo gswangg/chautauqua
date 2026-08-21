@@ -68,16 +68,21 @@ function makeChain(rows: unknown[]) {
 }
 
 /** Feeds successive db.select() calls the queued row sets, in order, and
- * records every update()/delete() write (table object + values/where). */
-function fakeDb(selectQueue: unknown[][]) {
+ * records every update()/delete() write (table object + values/where). A
+ * queue entry may also be a zero-arg thrower function (`() => { throw ... }`)
+ * -- DEC-941 wave-19's mid-loop-failure tests use this to simulate a runtime
+ * failure partway through the fold, at the exact select that would otherwise
+ * feed the next step. */
+function fakeDb(selectQueue: (unknown[] | (() => never))[]) {
   let call = 0;
   const updates: { table: unknown; vals: unknown }[] = [];
   const deletes: { table: unknown }[] = [];
   const db = {
     select: () => {
-      const rows = selectQueue[call] ?? [];
+      const entry = selectQueue[call] ?? [];
       call += 1;
-      return makeChain(rows);
+      if (typeof entry === "function") return entry();
+      return makeChain(entry);
     },
     update: (table: unknown) => ({
       set: (vals: unknown) => ({
@@ -292,5 +297,135 @@ describe("mergeContacts whole-operation atomicity (DEC-026 wave-43, DEC-069)", (
     expect(userRepoints.length).toBe(2);
     // Both discarded contact rows are deleted; the keeper survives.
     expect(deletes.filter((d) => d.table === schema.contact).length).toBe(2);
+  });
+});
+
+describe("mergeContacts partial-failure honesty (DEC-941 wave-19)", () => {
+  const KEEP = contactRaw("contact-keep", "keep@example.com", "Jane", "Doe");
+  const M1 = contactRaw("contact-m1", "keep@example.com", "Jane", "Doe");
+  const M2 = contactRaw("contact-m2", "keep@example.com", "Jane", "Doe");
+  const M3 = contactRaw("contact-m3", "keep@example.com", "Jane", "Doe");
+
+  it("preflight conflict raises with ZERO writes attempted (no fold ever starts)", async () => {
+    const { db, updates, deletes } = fakeDb([
+      [KEEP], // preflight: findContactById(keepId)
+      [M1], // preflight: findContactById(mergeIds[0])
+      // preflight: login chunk -- keeper alone holds an account, no conflict
+      // from a second holder... instead force an email_taken conflict via
+      // an owner outside the id set.
+      [],
+      [{ email: KEEP.email, contactId: "some-other-contact" }],
+    ]);
+
+    let caught: unknown;
+    try {
+      await mergeContacts(db, KEEP.id, [M1.id]);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).code).toBe("conflict");
+    expect((caught as ApiError).message).toBe(MERGE_EMAIL_TAKEN_MESSAGE);
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
+  });
+
+  it("a mid-loop failure on pair 2 of 3 re-raises an ApiError naming the already-folded id and the not-yet-folded ids", async () => {
+    const { db } = fakeDb([
+      // Whole-operation preflight (clean).
+      [KEEP], // findContactById(keepId)
+      [M1], // findContactById(mergeIds[0])
+      [M2], // findContactById(mergeIds[1])
+      [M3], // findContactById(mergeIds[2])
+      [], // login chunk
+      [], // email-owner chunk
+
+      // Fold 1: mergeOnePair(keep, m1) -- succeeds fully.
+      [KEEP], // findContactById(keepId)
+      [M1], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [KEEP], // findContactById(keepId) after merge
+
+      // Fold 2: mergeOnePair(keep, m2) -- findContactById(keepId) throws,
+      // simulating a runtime failure partway through the fold (e.g. a
+      // transient DB error), well before the pair's own writes or its
+      // irreversible contact delete.
+      () => {
+        throw new Error("simulated transient failure mid-fold");
+      },
+    ]);
+
+    let caught: unknown;
+    try {
+      await mergeContacts(db, KEEP.id, [M1.id, M2.id, M3.id]);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(ApiError);
+    const message = (caught as ApiError).message;
+    expect(message).toContain("simulated transient failure mid-fold");
+    // Already folded: m1. Not yet folded: m2 (the one that just failed) and
+    // m3 (never attempted).
+    expect(message).toContain(`[${M1.id}]`);
+    expect(message).toContain(M2.id);
+    expect(message).toContain(M3.id);
+    expect(message.indexOf(M2.id)).toBeLessThan(message.indexOf(M3.id) + M3.id.length);
+  });
+
+  it("a mid-loop ApiError conflict on pair 2 of 3 still reads as a conflict, with both id lists named", async () => {
+    const { db } = fakeDb([
+      // Whole-operation preflight (clean).
+      [KEEP],
+      [M1],
+      [M2],
+      [M3],
+      [],
+      [],
+
+      // Fold 1: mergeOnePair(keep, m1) -- succeeds fully.
+      [KEEP],
+      [M1],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [KEEP],
+
+      // Fold 2: mergeOnePair(keep, m2) -- throws an ApiError partway
+      // through, as if a UNIQUE constraint fired unexpectedly.
+      () => {
+        throw new ApiError("conflict", "unexpected unique-index collision");
+      },
+    ]);
+
+    let caught: unknown;
+    try {
+      await mergeContacts(db, KEEP.id, [M1.id, M2.id, M3.id]);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).code).toBe("conflict");
+    const message = (caught as ApiError).message;
+    expect(message).toContain("unexpected unique-index collision");
+    expect(message).toContain(`[${M1.id}]`);
+    expect(message).toContain(M2.id);
+    expect(message).toContain(M3.id);
   });
 });

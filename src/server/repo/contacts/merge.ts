@@ -770,16 +770,46 @@ export async function checkMergeConflicts(
   return detectMergeConflicts({ keepId, mergeIds, contactIdsWithLogin, emailOwners, steps });
 }
 
-/** DEC-629/DEC-026 wave-43 amendment: set-based, ALL-OR-NOTHING merge.
+/** DEC-941 wave-19 amendment: builds the message for a runtime failure inside
+ * the fold, naming BOTH lists by id -- the pairs already folded (already
+ * destructive, already irreversible) and the pairs not yet confirmed folded
+ * (the failing id itself plus everything after it in the loop, since a
+ * throw from mergeOnePair leaves that pair's own outcome unknown -- it must
+ * never be counted as folded on the strength of a caught exception). The
+ * original error's own message is preserved verbatim, prefixed rather than
+ * replaced, so a conflict still reads as a conflict and a plain failure
+ * still reads as whatever it said. */
+function partialMergeFailureMessage(originalMessage: string, foldedIds: string[], notFoldedIds: string[]): string {
+  const foldedPart = foldedIds.length > 0 ? foldedIds.join(", ") : "none";
+  return (
+    `${originalMessage} Merge partially completed: already merged into the kept contact: [${foldedPart}]. ` +
+    `Not merged (retry these): [${notFoldedIds.join(", ")}].`
+  );
+}
+
+/** DEC-629/DEC-026 wave-43/DEC-941 wave-19 amendment: set-based merge.
  * Dedupes mergeIds, drops keepId if present (a no-op to merge a contact into
  * itself), then runs checkMergeConflicts's whole-operation preflight BEFORE
  * any write -- the SAME function the GET /contacts/merge/preview route calls
  * (wave-47 amendment), so there is exactly one implementation of the rule,
- * not a parallel copy that can drift. Only once the preflight passes clean
- * does the fold run, one mergeOnePair call per id — so a refusal always
- * means ZERO writes, never a write of contacts 1..k-1 followed by a 409 on
- * contact k. Both keepId and every id in mergeIds must already be verified
- * org-scoped by the caller. */
+ * not a parallel copy that can drift. When the preflight refuses, that is a
+ * ZERO-write refusal: no pair's fold has started, never a write of contacts
+ * 1..k-1 followed by a 409 on contact k. That all-or-nothing guarantee is
+ * scoped to the preflight ONLY.
+ *
+ * Once the preflight passes clean, the fold itself is NOT atomic -- no
+ * transaction primitive exists (db.batch is unused across src/, and unlike
+ * updateSubmissionStatuses this operation is destructive and non-idempotent,
+ * so a compensating-write path would only add a second untested destructive
+ * route). If mergeOnePair throws partway through -- e.g. on pair 2 of 3 --
+ * pair 1 has ALREADY been folded and its losing contact ALREADY deleted; that
+ * write is real and cannot be un-done by this function. Rather than hide
+ * that behind a bare re-thrown 409/500, the thrown error is re-raised as an
+ * ApiError whose message names, by id, every pair already folded and every
+ * pair not yet confirmed folded (the failing pair plus everything after it),
+ * preserving the original error's own code (so a conflict still reads as a
+ * conflict) and message. Both keepId and every id in mergeIds must already
+ * be verified org-scoped by the caller. */
 export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
   const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
   if (toMerge.length === 0) {
@@ -791,9 +821,22 @@ export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]):
     throw new ApiError("conflict", conflict.message);
   }
 
+  const folded: string[] = [];
   let survivor: ContactRow | undefined;
-  for (const mergeId of toMerge) {
-    survivor = await mergeOnePair(db, keepId, mergeId);
+  for (let i = 0; i < toMerge.length; i++) {
+    const mergeId = toMerge[i]!;
+    try {
+      survivor = await mergeOnePair(db, keepId, mergeId);
+    } catch (err) {
+      const notFolded = toMerge.slice(i);
+      const originalMessage = err instanceof Error ? err.message : String(err);
+      const message = partialMergeFailureMessage(originalMessage, folded, notFolded);
+      if (err instanceof ApiError) {
+        throw new ApiError(err.code, message, err.fields);
+      }
+      throw new ApiError("internal", message);
+    }
+    folded.push(mergeId);
   }
   if (!survivor) throw new Error("merge: no survivor produced");
   return survivor;
