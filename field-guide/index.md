@@ -9,52 +9,36 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60
 - WAVES 155-159 HEAVILY COMPACTED: two directories collided on `DEC-NNN.md` ids, cite the directory not the bare id (DEC-976); rulings are not receipts of build, always check `git rev-list --count` (four lanes committed 0 across w155-156); measure in a detached worktree, never shared `main`, but skip D1-backed tests there (no `.wrangler`); vitest rewrites `path:line` in error messages, replicate a scan's regex before trusting one; CLAIMED_FLOOR/claimed-ledger counts prove citation not conformance (44/53 phone frames ungraded despite 53/53 claimed); SSR "phone-frames" tests were source scans not requests, copy `test/portal-page-headings.test.ts`'s `vi.mock`+`buildApp` harness; branch prefixes burn almost every wave, re-check `show-ref`+`packed-refs`+`worktree list` before AND after planning (w11-w14 letters all pre-burned, moved to q/r/s-prefixes); `signOut()` discards `?signed-out=1` (DEC-154), `useCurrentEvent`'s search-keyed cache never evicts (DEC-728); the pack draws vocabulary in per-surface registers a flattened map can't express, un-adjudicable divergences stay unfixed.
 - WAVE 16 HEAVILY COMPACTED: branch letters pre-burned again, moved to `ua..ui`; a full-suite run against shared `main` can report a phantom red while the scribe writes mid-suite, re-run the single failing file; verdict ledgers rot faster than the code they grade, check the owning file's comment block before spending a lane on a row; the 390 verdict sweep is COMPLETE (53/53 phone + 4 desktop), remaining work is DIVERGES rows, DEVIATIONS, and the five DEC-069 verification slots; some lanes land committed-but-UNMERGED, read ledgers via `git show <branch>:<path>` until the train lands them.
 - WAVE 17 HEAVILY COMPACTED: namespace held clean for once; ledgers are the campaign's biggest liability not the code — a dozen DIVERGES rows advertised work already landed, verdict tests still asserting stale truth (DEC-976: row+test move in one commit, `git log -S` before planning); a "two registers" verdict can be a two-sample undercount, enumerate the WHOLE drawn population (DEC-613/DEC-180); a control-floor row can resolve to the WRONG element by text-match, fix the frame's actual control then correct the join (DEC-393); exit-predicate reality check: all 31 ceilings DECLARED ONLY, not measured, all five DEC-069 slots VOID.
-## Wave 18 (planner notes)
+- WAVE 18 HEAVILY COMPACTED: fast tier was red on main 8 files/8 tests at `6aa65834`, all fidelity/citation ratchets at ceiling 0 (DECLARED ceiling is a STRING, run the owning test); tree moved four times during planning, re-derive offender lists at a fresh sha; an exact-equality population pin is a merge-conflict magnet, use floors/supersets not equalities (DEC-808); a product scan must never read a verdict test's own frame-verbatim quote as vocabulary (DEC-374); claim-token mint scans missed `createClaimToken`/`applyMintedPortalLinks` for reading only a route's registration text, not indirect mints (DEC-027).
 
-**THE FAST TIER IS RED ON MAIN AND HAS BEEN FOR AT LEAST TWO WAVES.**
-Measured, not inherited: `test:fast` fails 8 files / 8 tests at `6aa65834`,
-every one a fidelity or citation ratchet sitting at ceiling 0. The
-exit-predicate prints all 31 rows DECLARED 0 / TARGET 0 while at least four
-of those constants are provably wrong against the tree
-(`UNRECEIPTED_CLAIM_CEILING` declares 0, measures 6;
-`PHONE_HIDDEN_UNRECEIPTED_CEILING` declares 0, measures 2). A DECLARED
-ceiling is a STRING; run the owning test. Wave 18 spends 6 of 7 lanes
-draining that set so a verification wave can finally record a
-`--suite-verified-sha` — no worker task can flip the five DEC-069 slots.
+## Wave 19 (planner notes)
 
-**THE TREE MOVED FOUR TIMES DURING PLANNING.** `main` went
-`4a74f3b6` -> `f4540923` -> `649155df` -> `6aa65834` while wave 17's lanes
-spawned, committed and merged around me, and for part of that window the
-SHARED checkout carried ten uncommitted modified files from another agent.
-Every offender list here was re-derived at `6aa65834` with a clean tree.
-Corollary: a red ratchet you measured 20 minutes ago may be someone else's
-lane by now — re-run the single test before writing the brief.
+**MEASURE THE SUITE, THEN READ THE DIFF BETWEEN THE REDS AND THE PLAN.**
+I ran `test:fast` in a detached worktree pinned to `8489dfef` (never the
+shared checkout — which was carrying two uncommitted files from another
+agent mid-run): 12 files / 13 tests red. Nine were already wave-18 lanes.
+The four that were NOT are the whole reason this wave exists. A red set is
+only actionable once you subtract what is already in flight, and that
+subtraction needs the in-flight branches' `git diff --name-only main...`,
+not their briefs.
 
-**AN EXACT POPULATION PIN IS A MERGE-CONFLICT MAGNET.**
-`negative-margin-adjacency.scan.test.ts`'s `display:none` count read 169,
-then 174, then 186 within one hour — three legitimate merges, three red
-suites, on a file no lane owns. A tripwire that fires on legitimate growth
-is a tripwire nobody reads (DEC-808 wave-18: floors and superset checks,
-never equalities; the real subject keeps its exact-zero ratchet).
+**THE LEDGERS OVERSTATE THE WORK BY A LARGE FACTOR, IN ONE DIRECTION.**
+Every one of eight candidate build items I inherited or derived turned out
+already built: Contacts 390 landing (chip strip, segment pills,
+table→cards, `Email` action all present), Submissions 390 filterbar
+(Status caption, divider and ColumnPicker all `display:none` with DEC-919
+receipts; `Needs triage` label swap landed w16), CFP-builder's dateless
+meta line (`formatDateOnlyNoYear`), portal profile H1 (`Your profile`),
+`tap-floor-undeclared-v12.md`'s 23 offenders (owning scan measures 0).
+Ledgers rot toward pessimism; the code moves and the row does not. Grep
+the TREE for the row's own claim before spending a lane on it.
 
-**A PRODUCT SCAN THAT READS A VERDICT TEST READS THE WRONG DOCUMENT.**
-Two ceiling-0 ratchets are red on `Speakers.desktop-frame-verdicts.render.test.tsx`
-for quoting the frame VERBATIM — the one artefact that proves the
-divergence. Frame evidence is the subject of its sentence, not the
-product's vocabulary (DEC-374 wave-18); byte-identity against
-`docs/design/*.dc.html` is the unfakeable test.
+**A NEGATIVE VERDICT PIN IS A RATCHET HOLDING THE PRODUCT WRONG.**
+`home-account-docs-390-frame-verdicts` asserts `not.toMatch(/href=\"\\/docs
+\\/api\"/)` — the fix landed in another lane and turned the pin red, so
+green now REQUIRES the divergence. Convert negative pins with the fix, and
+when the fix lands cross-lane, schedule the pin next wave (DEC-976 w19).
 
-**A SCAN'S PREMISE, NOT ITS COUNT, IS WHERE THE ESCALATION HIDES.** Both
-credential scans read green while four organizer routes mint 30-day
-`/claim/<token>` logins with no `requireCookieSession`, because
-`createClaimToken`/`applyMintedPortalLinks` are in neither marker list
-(DEC-027 wave-18). Two of the four mint INDIRECTLY — a marker list that
-only reads a route's own registration text can never see them.
-
-**LENS FINDINGS I DISPROVED at `6aa65834`:** `signOut()` reads `res.url`;
-`captureNavigationContext` evicts on `lastCapturedSearch`; the
-`home.css.ts:49/:125` + `cfp.css.ts:116` frame citations are receipted;
-`DEC-576.md:388` and `DEC-029.md`'s `My Profile` quote resolve. The
-`send.ts`/`bulk-email.ts` half of the claim-token finding IS real, but via
-`applyMintedPortalLinks`, not the `resolvePortalLinks(..., false)` line the
-lens cited.
+**FOUR NEW `decisions/` CITATIONS BROKE FROM LINE DRIFT ALONE** (1290 →
+1294). Repair by CONVERTING to path+quoted-content, never by re-pinning a
+line — a re-pin buys one wave (DEC-967 w19).
