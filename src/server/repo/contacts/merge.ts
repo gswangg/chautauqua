@@ -770,15 +770,16 @@ export async function checkMergeConflicts(
   return detectMergeConflicts({ keepId, mergeIds, contactIdsWithLogin, emailOwners, steps });
 }
 
-/** DEC-941 wave-19 amendment: builds the message for a runtime failure inside
- * the fold, naming BOTH lists by id -- the pairs already folded (already
- * destructive, already irreversible) and the pairs not yet confirmed folded
- * (the failing id itself plus everything after it in the loop, since a
- * throw from mergeOnePair leaves that pair's own outcome unknown -- it must
- * never be counted as folded on the strength of a caught exception). The
- * original error's own message is preserved verbatim, prefixed rather than
- * replaced, so a conflict still reads as a conflict and a plain failure
- * still reads as whatever it said. */
+/** DEC-941 wave-19 amendment, only called once at least one pair HAS folded
+ * (wave-20 amendment -- see mergeContacts): builds the message for a runtime
+ * failure inside the fold, naming BOTH lists by id -- the pairs already
+ * folded (already destructive, already irreversible) and the pairs not yet
+ * confirmed folded (the failing id itself plus everything after it in the
+ * loop, since a throw from mergeOnePair leaves that pair's own outcome
+ * unknown -- it must never be counted as folded on the strength of a caught
+ * exception). The original error's own message is preserved verbatim,
+ * prefixed rather than replaced, so a conflict still reads as a conflict and
+ * a plain failure still reads as whatever it said. */
 function partialMergeFailureMessage(originalMessage: string, foldedIds: string[], notFoldedIds: string[]): string {
   const foldedPart = foldedIds.length > 0 ? foldedIds.join(", ") : "none";
   return (
@@ -787,29 +788,47 @@ function partialMergeFailureMessage(originalMessage: string, foldedIds: string[]
   );
 }
 
-/** DEC-629/DEC-026 wave-43/DEC-941 wave-19 amendment: set-based merge.
- * Dedupes mergeIds, drops keepId if present (a no-op to merge a contact into
- * itself), then runs checkMergeConflicts's whole-operation preflight BEFORE
- * any write -- the SAME function the GET /contacts/merge/preview route calls
- * (wave-47 amendment), so there is exactly one implementation of the rule,
- * not a parallel copy that can drift. When the preflight refuses, that is a
- * ZERO-write refusal: no pair's fold has started, never a write of contacts
- * 1..k-1 followed by a 409 on contact k. That all-or-nothing guarantee is
- * scoped to the preflight ONLY.
+/** DEC-629/DEC-026 wave-43/DEC-941 wave-19+wave-20 amendments: set-based
+ * merge. Dedupes mergeIds, drops keepId if present (a no-op to merge a
+ * contact into itself), then runs checkMergeConflicts's whole-operation
+ * preflight BEFORE any write -- the SAME function the GET
+ * /contacts/merge/preview route calls (wave-47 amendment), so there is
+ * exactly one implementation of the rule, not a parallel copy that can
+ * drift. When the preflight refuses, that is a ZERO-write refusal: no pair's
+ * fold has started, never a write of contacts 1..k-1 followed by a 409 on
+ * contact k. That all-or-nothing guarantee is scoped to the PREFLIGHT
+ * REFUSAL PATH ONLY (the `checkMergeConflicts` call above, before the loop
+ * below starts) -- it says nothing about a runtime IO failure once the fold
+ * itself is underway.
  *
  * Once the preflight passes clean, the fold itself is NOT atomic -- no
- * transaction primitive exists (db.batch is unused across src/, and unlike
- * updateSubmissionStatuses this operation is destructive and non-idempotent,
- * so a compensating-write path would only add a second untested destructive
- * route). If mergeOnePair throws partway through -- e.g. on pair 2 of 3 --
- * pair 1 has ALREADY been folded and its losing contact ALREADY deleted; that
- * write is real and cannot be un-done by this function. Rather than hide
- * that behind a bare re-thrown 409/500, the thrown error is re-raised as an
- * ApiError whose message names, by id, every pair already folded and every
- * pair not yet confirmed folded (the failing pair plus everything after it),
- * preserving the original error's own code (so a conflict still reads as a
- * conflict) and message. Both keepId and every id in mergeIds must already
- * be verified org-scoped by the caller. */
+ * transaction primitive exists (db.batch is unused across src/). Unlike
+ * `changeStatus` in src/server/repo/submissions/status.ts, whose own
+ * docstring justifies its own lack of a transaction by leaning on
+ * idempotence -- "Planning is idempotent on (contact, task-title) pairs and
+ * the stamp write only ever sets accepted_at from null, so a retry after a
+ * partial failure converges to the same terminal state rather than
+ * double-firing or double-stamping" -- this operation has no such retry-safe
+ * terminal state to converge to: a contact DELETE is not idempotent, a
+ * repeated merge of an already-deleted id is not a no-op, and there is no
+ * compensating-write path that would not itself be a second untested
+ * destructive route. So on a mid-loop IO failure -- e.g. mergeOnePair throws
+ * on pair 2 of 3 -- pair 1 has ALREADY been folded and its losing contact
+ * ALREADY deleted; that write is real and cannot be un-done by this
+ * function.
+ *
+ * Wave-20 amendment: if the failure happens before ANY pair has folded (the
+ * common case -- typically pair 1, and behaviourally indistinguishable from
+ * the preflight's own zero-write refusal), the original error is rethrown
+ * completely untouched: no new error shape, no message rewrite, same class,
+ * same code, same fields. Only once at least one pair HAS folded does the
+ * thrown error get re-raised as an ApiError whose message names, by id,
+ * every pair already folded and every pair not yet confirmed folded (the
+ * failing pair plus everything after it), preserving the original error's
+ * own code (so a conflict still reads as a conflict) and prefixing rather
+ * than replacing its message, with the original error attached as `cause`.
+ * Both keepId and every id in mergeIds must already be verified org-scoped
+ * by the caller. */
 export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
   const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
   if (toMerge.length === 0) {
@@ -828,13 +847,19 @@ export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]):
     try {
       survivor = await mergeOnePair(db, keepId, mergeId);
     } catch (err) {
+      if (folded.length === 0) {
+        // Nothing has folded yet -- this failure is indistinguishable from
+        // the preflight's own zero-write refusal, so it must read exactly
+        // the same way: rethrow the original error completely untouched,
+        // no new error shape on the common (preflight-equivalent) path.
+        throw err;
+      }
       const notFolded = toMerge.slice(i);
       const originalMessage = err instanceof Error ? err.message : String(err);
       const message = partialMergeFailureMessage(originalMessage, folded, notFolded);
-      if (err instanceof ApiError) {
-        throw new ApiError(err.code, message, err.fields);
-      }
-      throw new ApiError("internal", message);
+      const wrapped = err instanceof ApiError ? new ApiError(err.code, message, err.fields) : new ApiError("internal", message);
+      wrapped.cause = err;
+      throw wrapped;
     }
     folded.push(mergeId);
   }
