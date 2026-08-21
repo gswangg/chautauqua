@@ -3,21 +3,25 @@
 > A finding recorded here is a claim about the tree, not a permanent record.
 > It is re-derived against current code before it is scheduled, and once it
 > stops reproducing it is rewritten as RESOLVED with a file:line citation of
-> where the behaviour now lives (DEC-976 wave-106). Finding 3 was
-> re-derived (wave 106) against `app/src/pages/contacts/MergePage.tsx` and
-> still reproduces as written — `.chq-contacts-merge-rule-box` (line 347)
-> still splits the frame's one line across `.chq-contacts-merge-rule-box-rule`
-> (line 348) and `.chq-contacts-merge-impact` (line 350), naming the kept
-> record by `{keepContact.firstName} {keepContact.lastName}` rather than
-> the frame's generic "the record you keep." `MergePage.tsx` is outside
-> this document's own file-ownership boundary (`app/src/pages/contacts/**`
-> only: `ImportWizard.tsx`, `contacts-panels.css`,
-> `contacts-phone-frames.test.ts`, and the `ImportWizard.*.render.test.tsx`
-> files) so reconciling it is unfiled work, not a claim on any branch.
+> where the behaviour now lives (DEC-976 wave-106). Finding 3 (the
+> `MergePage.tsx` consequence-box split) was re-derived at wave-17 and no
+> longer reproduces: `.chq-contacts-merge-rule-box` now renders a SINGLE
+> `<p>` and both the named-record and generic-record spans exist, toggled
+> by width — RESOLVED (w2-c, DEC-919), see that section below for
+> receipts.
 >
 > Findings 1 and 2 (the match-columns/phone-pager findings, distinct
 > from the "Finding 3" above) are RESOLVED as of the DEC-663 wave-108
 > amendment — see that section below for receipts.
+>
+> The "Import CSV · 390" and "Contact · 390" per-frame verdict rows below
+> were also re-derived at wave-17 (DEC-663): Import CSV's missing
+> `backLink` is RESOLVED and its verdict row now reads MATCHES; the
+> Contact row's "always-on Close" clause is RETIRED (CSS now hides it at
+> phone), narrowing that row to its one surviving structural gap
+> (H2-vs-H1, Finding 4). The Merge row's `.chq-contacts-merge-picks`
+> block is ADJUDICATED as a frame-silent addition, not an open
+> divergence — see that row below.
 
 Findings surfaced building the "Import CSV · 390" one-column-per-screen
 pager against `docs/design/Chautauqua Contacts.dc.html:483` ('Import CSV ·
@@ -121,24 +125,22 @@ button logic) and `contacts-panels.css` (`.chq-contacts-import-dedupe`'s
 phone-hidden rule); new coverage in
 `ImportWizard.phoneColumns.render.test.tsx`.
 
-**Finding 3 — `MergePage.tsx`, outside this document's file scope
-(`app/src/pages/contacts/**` only: `ImportWizard.tsx`,
-`contacts-panels.css`, `contacts-phone-frames.test.ts`, and the
-`ImportWizard.*.render.test.tsx` files).** `docs/design/Chautauqua
+**Finding 3 — RESOLVED (w2-c, DEC-919).** `docs/design/Chautauqua
 Contacts.dc.html:535` ("Merge · 390") draws the consequence block as ONE
 line: `Labels combine, notes are appended · 3 submissions and 1 task move
 to the record you keep`. `MergePage.tsx`'s `.chq-contacts-merge-rule-box`
-(around line 330) splits this across TWO `<p>` elements
-(`.chq-contacts-merge-rule-box-rule` for the combine rule,
-`.chq-contacts-merge-impact` for the submissions/tasks line) and names
-the kept record by first/last name (`{keepContact.firstName}
-{keepContact.lastName}`) instead of the frame's generic "the record you
-keep." Reconciling this touches the component's core data-flow (the
-impact paragraph currently needs `keepContact` for its name interpolation
-and is conditionally rendered only when `impact` has loaded) and is a
-copy/structure decision, not a one-line fix -- unfiled work, since
-`MergePage.tsx` sits outside `app/src/pages/contacts/ImportWizard.tsx`'s
-four assigned divergences.
+(`app/src/pages/contacts/MergePage.tsx:365-382`) now renders this as a
+SINGLE `<p className="chq-contacts-merge-rule-box-rule">` — the combine
+rule and the `.chq-contacts-merge-impact` submissions/tasks span sit
+inline in that one paragraph, not two stacked `<p>`s, matching the
+frame's single line. The record-name half is also resolved: the
+paragraph carries both a `.chq-contacts-merge-impact-name` span (first/
+last name) and a `.chq-contacts-merge-impact-generic` span ("the record
+you keep"), toggled by width in `contacts-panels.css:1814-1818` — desktop
+keeps the name (its head band already names the kept record at :526),
+phone swaps to the frame's generic phrasing, since the phone head band
+does the same. This finding no longer reproduces against the tree; kept
+here only as the citation the "Merge · 390" verdict row below points to.
 
 **Finding 4 — `ContactDrawer.tsx`'s title renders through the shared
 modal-title class, outside this document's file scope (DEC-959,
@@ -185,7 +187,7 @@ route) — never a sub-component mounted directly.
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
 | `Chautauqua Contacts.dc.html` "Contacts" (390 landing) | DIVERGES | The frame draws a headerless card list (name / company·role / tags, one boxed "Email" action per row) under a search box, an "All of … + Rule" chip row and an All/Speakers/Reviewers pill row, ending in a shell tab-bar footer. The actual read is the SAME desktop `<table class="chq-table chq-contacts-table">` at every width — a checkbox column, "Name and email"/"Company"/"Labels" header row, and a per-row "Open" action instead of "Email" — plus the full desktop `FilterRulesPanel` rule builder above it, not the frame's chip strip. |
-| `Chautauqua Contacts.dc.html` "Contact · 390" | DIVERGES | The frame draws its own full-screen route: a `‹ Contacts` back link and nothing else in the head band. The actual screen is `ContactDrawer`, mounted through the shared `ModalFrame` as a `role="dialog"` portal — an H2 title (not the frame's own H1) and an always-on "Close" button beside the back link that the frame never draws. The two-control dock below (`Email <name>` / `Edit`, DEC-959) matches exactly, as does the title-register gap already filed above (Finding 4). |
+| `Chautauqua Contacts.dc.html` "Contact · 390" | DIVERGES (narrowed, DEC-663 wave-17) | The frame draws its own full-screen route: a `‹ Contacts` back link and nothing else in the head band. The actual screen is `ContactDrawer`, mounted through the shared `ModalFrame` as a `role="dialog"` portal — an H2 title, not the frame's own H1. The row's earlier "always-on Close button beside the back link" clause is RETIRED: `contacts-panels.css`'s terminal `max-width:700px` block now blanks `.chq-contacts-drawer .chq-modal-close-btn` at phone (v12m-w15-th, DEC-663 wave-159), leaving the back link as the drill's sole escape, matching the frame. The two-control dock below (`Email <name>` / `Edit`, DEC-959) matches exactly, as does the title-register gap already filed above (Finding 4) — the surviving divergence is exactly that title-register gap. |
 | `Chautauqua Contacts.dc.html` "Pipeline · 390" | MATCHES | Back link, H1, the "N people" caption, the five-stage chip strip, the per-row card ending in a "Move ›" control, and the "Add someone"/"Filter" dock all render exactly as drawn. |
-| `Chautauqua Contacts.dc.html` "Import CSV · 390" | DIVERGES | The frame draws a `‹ Contacts` back link in the head band (`:489`). `ImportWizard` never passes `ModalFrame` a `backLink` prop, so only the shared "Close" control renders — no back link at all. The one-column-per-screen pager body (eyebrow, column name, samples, "Import it as" rule, radio targets) and its "Next column"/"Skip" dock match, per findings 1-2 (RESOLVED, DEC-663 wave-108) above. |
-| `Chautauqua Contacts.dc.html` "Merge · 390" | DIVERGES | The frame body goes straight from the head band into the field-by-field compare rows — no picker block. `MergePage` renders an additional `.chq-contacts-merge-picks` radio-list block (one radio per contact, with email/company/title) above the compare rows, with no frame counterpart. The consequence box (Finding 3 above) is STALE as currently written: `w2-c` folded the rule/impact text into ONE `<p>`, not the two `<p>`s the finding still describes — the per-field keep/drop pair and the "Merge them"/"Not a duplicate" footer both match as drawn. |
+| `Chautauqua Contacts.dc.html` "Import CSV · 390" | RESOLVED (DEC-663 wave-17) → MATCHES | The frame draws a `‹ Contacts` back link in the head band (`:489`). This row previously read DIVERGES because `ImportWizard` passed `ModalFrame` no `backLink` prop; it now does (`app/src/pages/contacts/ImportWizard.tsx``backLink={{ label: '‹ Contacts', onClick: onClose }}`, landed by commit f2fd0c43), and the shared `Close` control it would have stacked beside is CSS-hidden at phone by the same `.chq-contacts-import .chq-modal-close-btn` rule cited on the Contact row above. The one-column-per-screen pager body (eyebrow, column name, samples, "Import it as" rule, radio targets) and its "Next column"/"Skip" dock match, per findings 1-2 (RESOLVED, DEC-663 wave-108) above. |
+| `Chautauqua Contacts.dc.html` "Merge · 390" | ADJUDICATED, frame-SILENT addition (DEC-663 wave-17) → MATCHES | The frame body goes straight from the head band into the field-by-field compare rows — no picker block. `MergePage` renders an additional `.chq-contacts-merge-picks` radio-list block (one radio per contact, with email/company/title) above the compare rows, with no frame counterpart. Per DEC-663's wave-17 ruling this is NOT an open divergence: the compare rows are drawn showing the result of a keep/drop choice already made, which a static frame cannot depict being made, so `.chq-contacts-merge-picks` seeds that choice rather than duplicating a peer of it — removing it would leave the 390 screen unable to express the merge's primary decision (a capability removal DEC-919 forbids), and hiding it at phone only would fork the merge's semantics by width. Same disposition `docs/design/audit/account-docs-v12.md`'s "Change password · 390" row already uses for the sign-in-persists hint: an addition the frame is silent on, not a MATCHES/DIVERGES call. The consequence box is RESOLVED (Finding 3 above, w2-c) — the per-field keep/drop pair and the "Merge them"/"Not a duplicate" footer both match as drawn. |
