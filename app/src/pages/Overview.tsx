@@ -5,6 +5,9 @@
 // loudly on ApiError. Sole owner: this file + app/src/pages/overview/*.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+// DEC-833 (wave-16 amendment): the four section labels below carry both a
+// desktop and a phone form as sibling spans, matching the frame's 390 copy.
+import { DEC_833 } from '../../../src/decisions';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -16,6 +19,8 @@ import type {
   OverviewPayload,
   TriageRow,
 } from './overview/types';
+
+void DEC_833;
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments } from './overview/rows';
 import { plural, spellCount } from '../lib/plural';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
@@ -319,7 +324,10 @@ export function OverviewPage() {
 
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">
-          <span className="chq-overview-section-label">01 — Overdue speaker tasks</span>
+          <span className="chq-overview-section-label">
+            <span className="chq-overview-section-label-desktop">01 — Overdue speaker tasks</span>
+            <span className="chq-overview-section-label-phone">01 — Overdue tasks</span>
+          </span>
           {payload.overdueTasks.rows.length > 0 && (
             <button
               type="button"
@@ -371,7 +379,10 @@ export function OverviewPage() {
 
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">
-          <span className="chq-overview-section-label">02 — Submissions awaiting triage</span>
+          <span className="chq-overview-section-label">
+            <span className="chq-overview-section-label-desktop">02 — Submissions awaiting triage</span>
+            <span className="chq-overview-section-label-phone">02 — Awaiting triage</span>
+          </span>
           {payload.triage.total > 0 && (
             <Link to="/submissions?status=pending" className="chq-overview-section-action">
               All {payload.triage.total}
@@ -433,7 +444,10 @@ export function OverviewPage() {
 
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">
-          <span className="chq-overview-section-label">03 — Session content awaiting approval</span>
+          <span className="chq-overview-section-label">
+            <span className="chq-overview-section-label-desktop">03 — Session content awaiting approval</span>
+            <span className="chq-overview-section-label-phone">03 — Content to decide</span>
+          </span>
           {payload.contentApproval.total > 0 && (
             <Link to="/content" className="chq-overview-section-action">
               All {payload.contentApproval.total} · {payload.contentApproval.reuploadedCount} re-uploaded

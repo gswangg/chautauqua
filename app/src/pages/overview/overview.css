@@ -198,6 +198,22 @@
   color: var(--chq-ink);
 }
 
+/* DEC-833 (wave-16 amendment): the 390 frame draws a shorter form of each
+   §01-04 section label than the 1600 frame's long form the tree already
+   ships -- docs/design/Chautauqua Overview.dc.html:211 `01 — Overdue
+   tasks`, docs/design/Chautauqua Overview.dc.html:235 `02 — Awaiting
+   triage`, docs/design/Chautauqua Overview.dc.html:253 `03 — Content to
+   decide`, docs/design/Chautauqua Overview.dc.html:270 `04 — Agenda` --
+   two sibling spans on the same chq-overview-section-label element, the
+   phone-only-label-desktop/-phone idiom of DEC-878/DEC-833. Desktop is the
+   frame default here, so the phone span hides at top level; the terminal
+   @media (max-width:700px) block below (overview.css:518) reveals it and
+   hides the desktop span in the same block, never a second phone block
+   (DEC-385 single-direction). */
+.chq-overview-section-label-phone {
+  display: none;
+}
+
 .chq-overview-section-action {
   font-family: inherit;
   font-size: 13px;
@@ -827,5 +843,22 @@
     margin-inline: -4px;
     font-size: 13px;
     font-weight: 700;
+  }
+
+  /* DEC-833 (wave-16 amendment): reveal the phone short form
+     (chq-overview-section-label-phone) and hide the desktop long form
+     (chq-overview-section-label-desktop) in this one terminal block --
+     the frame's 390 short labels, verbatim in Overview.tsx and
+     AgendaWorkSection.tsx: docs/design/Chautauqua Overview.dc.html:211
+     `01 — Overdue tasks`, docs/design/Chautauqua Overview.dc.html:235
+     `02 — Awaiting triage`, docs/design/Chautauqua Overview.dc.html:253
+     `03 — Content to decide`, docs/design/Chautauqua Overview.dc.html:270
+     `04 — Agenda`. */
+  .chq-overview-section-label-desktop {
+    display: none;
+  }
+
+  .chq-overview-section-label-phone {
+    display: inline;
   }
 }
