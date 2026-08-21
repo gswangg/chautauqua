@@ -546,6 +546,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // the anchor's nearest enclosing element's chq- token
   // (app/src/phone-tap-target-ssr-classless-anchor.scan.test.ts).
   "SSR_CLASSLESS_ANCHOR_CEILING",
+  // wave-154 (task w10-na, DEC-180 amendment): SPA mirror of
+  // SSR_CLASSLESS_ANCHOR_CEILING above -- every SPA tap-target ratchet is
+  // keyed on class TOKENS taken from markup, so an
+  // {a,Link,NavLink,button,select,textarea,input} tag with no `className=`
+  // contributes no token and was ungradeable by construction until this
+  // ceiling (app/src/phone-tap-target-spa-classless-control.scan.test.ts).
+  "SPA_CLASSLESS_CONTROL_CEILING",
   "OVERFLOW_OFFENDERS_CEILING",
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",
@@ -630,6 +637,13 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   "SSR_TAP_FLOOR_OFFENDERS_CEILING",
   "SSR_UNFLOORED_TOKENS_CEILING",
   "SSR_CLASSLESS_ANCHOR_CEILING",
+  // wave-154 (task w10-na, DEC-180 amendment): SPA mirror of
+  // SSR_CLASSLESS_ANCHOR_CEILING above -- every SPA tap-target ratchet is
+  // keyed on class TOKENS taken from markup, so an
+  // {a,Link,NavLink,button,select,textarea,input} tag with no `className=`
+  // contributes no token and was ungradeable by construction until this
+  // ceiling (app/src/phone-tap-target-spa-classless-control.scan.test.ts).
+  "SPA_CLASSLESS_CONTROL_CEILING",
   "OVERFLOW_OFFENDERS_CEILING",
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",

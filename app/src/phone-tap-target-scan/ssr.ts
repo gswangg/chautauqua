@@ -45,6 +45,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
+  classlessTagSites,
   declaredHeightPx,
   escapeRe,
   hasFlexCenter,
@@ -235,21 +236,6 @@ export function findSsrUnflooredTokens(
 // against the literal label `(no enclosing chq- token)` -- there is
 // nothing a CSS rule could key on, so it can never pass.
 
-/** Every opening JSX tag in `src` (self-closing or not), matched in source
- * order. `closing` is true for a `</tag>` closer; `selfClosing` is true for
- * a non-closing tag whose attribute text ends `/` (the JSX void/self-close
- * shape). Comments must already be stripped by the caller (`stripTsxComments`
- * -- a `<a href>` inside a `//` comment in
- * src/routes/public/empty-state.tsx is a known false positive otherwise). */
-const ANY_TAG_RE = /<(\/)?([A-Za-z][\w.]*)([^>]*)>/g;
-
-function chqTokensFromAttrs(attrs: string): string[] {
-  const classMatch = attrs.match(SSR_CLASS_ATTR_RE);
-  if (!classMatch) return [];
-  const classText = classMatch[1] ?? '';
-  return [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
-}
-
 export interface ClasslessAnchorSite {
   readonly line: number;
   /** The nearest enclosing element's chq- tokens, walking outward through
@@ -261,36 +247,18 @@ export interface ClasslessAnchorSite {
 /** Every `<a …>` opening tag in `src` (already comment-stripped) declaring
  * neither `class=` nor `className=`, keyed on its nearest enclosing
  * element's chq- tokens via a depth-only tag-stack walk (DEC-808: walked,
- * never a hand-listed file/line set). */
+ * never a hand-listed file/line set).
+ *
+ * Delegates to `core.ts`'s `classlessTagSites` (wave v12m-w10, task
+ * w10-na, DEC-613: a second copy of a vocabulary is a trap with a delay
+ * fuse) -- byte-identical behaviour to this function's original inline
+ * walk, which is now the `['a']` / `SSR_CLASS_ATTR_RE` case of the shared,
+ * wider-tag-set version `spa-classless.ts` also uses. */
 export function classlessAnchorSites(src: string): ClasslessAnchorSite[] {
-  const out: ClasslessAnchorSite[] = [];
-  const stack: string[][] = [];
-  ANY_TAG_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = ANY_TAG_RE.exec(src)) !== null) {
-    const closing = m[1] === '/';
-    const tagName = m[2] as string;
-    const attrs = m[3] ?? '';
-    if (closing) {
-      stack.pop();
-      continue;
-    }
-    const selfClosing = /\/\s*$/.test(attrs);
-    if (tagName === 'a' && !/\bclass(?:Name)?\s*=/.test(attrs)) {
-      let tokens: string[] = [];
-      for (let i = stack.length - 1; i >= 0; i--) {
-        const frame = stack[i];
-        if (frame && frame.length > 0) {
-          tokens = frame;
-          break;
-        }
-      }
-      const line = src.slice(0, m.index).split('\n').length;
-      out.push({ line, tokens });
-    }
-    if (!selfClosing) stack.push(chqTokensFromAttrs(attrs));
-  }
-  return out;
+  return classlessTagSites(src, ['a'], /\bclass(?:Name)?\s*=/, SSR_CLASS_ATTR_RE).map(({ line, tokens }) => ({
+    line,
+    tokens,
+  }));
 }
 
 /** Every `*.tsx` file under `routesRoot` (typically `src/routes`), excluding

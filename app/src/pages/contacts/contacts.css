@@ -1204,4 +1204,17 @@
     color: var(--chq-disabled);
     border-color: var(--chq-disabled-bg);
   }
+
+  /* Wave v12m-w10 task w10-na (DEC-180): ContactDrawer's delete-confirm
+     "Go to the Duplicates tab" `<Link>` carries no `className` of its own
+     -- classless-control widening, keyed by the tag-stack walk on its
+     nearest enclosing chq- token (the delete-confirm body's
+     `.chq-contacts-record-label` ancestor is the nearest one still open at
+     that point in the source). */
+  .chq-contacts-record-label a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
 }

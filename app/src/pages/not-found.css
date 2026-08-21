@@ -37,3 +37,17 @@
   gap: 16px;
   flex-wrap: wrap;
 }
+
+/* Wave v12m-w10 task w10-na (DEC-180, DEC-385 single-direction): the two
+   `<Link to="...">` rows (NotFound.tsx) carry no `className` of their own
+   -- classless-control widening, floored on the enclosing
+   `.chq-notfound-links` token. New terminal narrow block (none existed in
+   this file before); desktop is untouched. */
+@media (max-width: 700px) {
+  .chq-notfound-links a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+}

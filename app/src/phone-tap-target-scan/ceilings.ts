@@ -318,3 +318,34 @@ export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
 // .chq-cfp-confirm-actions) took the inline-in-prose exemption instead.
 // Re-measured after the fix: 0. RATCHET: SSR_CLASSLESS_ANCHOR_CEILING=0
 export const SSR_CLASSLESS_ANCHOR_CEILING = 0;
+
+// Wave v12m-w10 task w10-na (DEC-180 wave-154 amendment): every SPA
+// tap-target ratchet in this directory is keyed on class TOKENS taken from
+// markup -- a control declaring NO `className=` at all (a bare `<a>`, a
+// react-router `<Link>`/`<NavLink>`, a bare `<button>`/`<select>`/
+// `<textarea>`/`<input>`) contributes no token and is ungradeable by
+// construction, the same blind spot `SSR_UNFLOORED_TOKENS_CEILING` and
+// `SSR_CLASSLESS_ANCHOR_CEILING` above name for the SSR half of the
+// product -- no SPA mirror of that widening ever existed. See
+// `app/src/phone-tap-target-spa-classless-control.scan.test.ts` for the
+// population/predicate and `docs/design/audit/spa-classless-control-390
+// -v12.md` for the full offender ledger.
+//
+// Forced to -1 and read the printed offender list on this branch: raw
+// population 15 (PortalSettingsPanel.tsx:245's bare `<a>` had no enclosing
+// chq- token at all -- given its own `chq-settings-portal-preview-link`
+// class directly so it could carry a floor, dropping raw population to 14
+// and offenders to 4 in the same pass). Drained 11 of 15 -- Agenda.tsx,
+// NotFound.tsx x2, EventSettingsPanel.tsx, PortalSettingsPanel.tsx,
+// RosterPanel.tsx, SpeakerDetailPage.tsx x2, ContactDrawer.tsx,
+// SubmissionDetailPage.tsx x2 -- each given a real phone floor
+// (min-height:44px + centred flex + non-zero horizontal padding) inside
+// its own cluster sheet's terminal `@media (max-width: 700px)` block
+// (append-only, DEC-385, desktop byte-identical). The remaining 4 --
+// AddToEventModal.tsx, BulkEmailModal.tsx, DuplicateEmailNotice.tsx,
+// NewContactModal.tsx, all keyed on tokens declared in app/src/styles.css
+// -- are SHELL-owned (this task's HARD SCOPE forbids editing
+// app/src/styles.css / app/src/App.tsx) and stay in the ceiling; recorded
+// as a shell finding in the audit doc, not silently exempted. RATCHET:
+// SPA_CLASSLESS_CONTROL_CEILING=4
+export const SPA_CLASSLESS_CONTROL_CEILING = 4;

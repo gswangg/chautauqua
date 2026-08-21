@@ -1729,4 +1729,17 @@
   .chq-breaks-row-actions {
     gap: 28px;
   }
+
+  /* Wave v12m-w10 task w10-na (DEC-180): the withheld-session receipt's
+     `<Link to={...}>` (Agenda.tsx) carries no `className` of its own --
+     classless-control widening. Floored on its enclosing
+     `.chq-agenda-held-back` token rather than the `<a>` element itself
+     (which would also reach the desktop DayGrid's other anchors, if any
+     were ever added there -- DEC-385 single-direction). */
+  .chq-agenda-held-back a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
 }

@@ -243,6 +243,7 @@ export function PortalSettingsPanel() {
       value: (
         <>
           <a
+            className="chq-settings-portal-preview-link"
             href={eventId ? `/portal/preview?eventId=${eventId}` : '/portal/preview'}
             target="_blank"
             rel="noopener noreferrer"
