@@ -165,17 +165,23 @@ recorded a verdict per frame below. Render receipts:
 one per frame, each opening with a DEC-967 `verbatimLine` citation of the
 frame's own caption line).
 
-The original "five of nine" undercounted: **eight of nine diverge**, only
-Public pages matches. No divergence found is a phone-CSS or markup-ORDER
-fix (DEC-385) — every one is a genuine content/control gap, most already
-catalogued above by earlier lanes, in the app's deliberate DEC-728
-read/edit split (a `SummarySection` head-first "Change" drill in front of
-plain read rows, converged wave 15, adopted identically by every panel in
-this cluster) versus the frame's per-screen field-list-then-Save/Cancel-
-footer anatomy. Rebuilding that split is a cross-cutting architectural
-change spanning every panel in the cluster, well outside a page-scoped
-task — flagged, not attempted, consistent with every prior lane's
-disposition of the same family of gap.
+The original "five of nine" undercounted: at the time, **eight of nine
+diverge**, only Public pages matches. No divergence found is a phone-CSS or
+markup-ORDER fix (DEC-385) — every one is a genuine content/control gap,
+most already catalogued above by earlier lanes, in the app's deliberate
+DEC-728 read/edit split (a `SummarySection` head-first "Change" drill in
+front of plain read rows, converged wave 15, adopted identically by every
+panel in this cluster) versus the frame's per-screen field-list-then-Save/
+Cancel-footer anatomy. Rebuilding that split is a cross-cutting
+architectural change spanning every panel in the cluster, well outside a
+page-scoped task — flagged, not attempted, consistent with every prior
+lane's disposition of the same family of gap.
+
+**Amendment (wave 156):** the `:578` Saved-embeds row closed (DEC-728) —
+Saved embeds now renders as its own screen, a nested drill under Public
+pages. **Seven of nine diverge; Public pages and Saved embeds match.** The
+remaining seven rows are all instances of the DEC-728 read/edit-split gap
+named above and are unchanged by this amendment.
 
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
@@ -187,11 +193,11 @@ disposition of the same family of gap.
 | `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
 | `:510` Settings · Speaker portal | DIVERGES | Welcome note (`:518`, full boxed readout) collapsed to a computed one-line summary ("Shown above the task list · N paragraph(s)") — already documented above (DEC-815). |
 | `:552` Settings · People and roles | DIVERGES | No per-row boxed "Change" (`:560`), no always-on primary "Invite someone" (`:565`) — both live behind the section-level "Change" drill (DEC-815). Not previously receipted in this doc; newly found by this task's render. |
-| `:578` Settings · Saved embeds | DIVERGES | Never renders as its own screen: no own back-link, no own H1 ("Saved embeds"), no "N on · N off" summary line (`:579`) under the H1. `SavedEmbedsPanel` instead mounts as a second, always-visible section nested *inside* the Public pages screen (`PublicPagesPanel.tsx`) whose own H1 stays "Public pages". Row-shape differences (Turn on/off + Get code pair vs. "four flush buttons") already documented in `docs/probes/metafid-phoneA-2026-08-19.md`. |
+| `:578` Settings · Saved embeds | MATCHES (nested) | Closed wave 156, DEC-728: renders as its own 390 screen at `?section=public-pages&view=embeds` (a nested drill under Public pages, not an eighth `SECTIONS` entry — DEC-747/DEC-691). Own back-link ("‹ Public pages", returning to the Public pages read drill rather than the section index — DESIGN-RULINGS:247), own H1 ("Saved embeds", via `Settings.tsx`'s existing `phoneDrillTitle` machinery) and the "N on · N off" summary (`:582`) directly under it all render. Public pages' own read drill, at rest, now carries the screen's entry point instead of always mounting the full row list inline. Row-shape differences (Turn on/off + Get code pair vs. "four flush buttons") already documented in `docs/probes/metafid-phoneA-2026-08-19.md`. |
 
-**Nothing in this list is a phone-block-CSS or markup-order fix** — every
-row is a missing control or a missing screen, each requiring new markup/
-wiring (per-row action buttons, a standalone Saved-embeds screen with its
-own route state, full-text readouts) rather than a reflow of what already
-renders. Left as findings for whoever owns the next architectural pass on
-this cluster, per this task's design-gap instruction.
+**Nothing in this list (besides the now-closed `:578` row) is a
+phone-block-CSS or markup-order fix** — every remaining row is a missing
+control, each requiring new markup/wiring (per-row action buttons, full-text
+readouts) rather than a reflow of what already renders. Left as findings for
+whoever owns the next architectural pass on this cluster, per this task's
+design-gap instruction.

@@ -43,7 +43,12 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { EmbedsPanel } from './EmbedsPanel';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
+import { DEC_728 } from '../../../../src/decisions';
 import './settings-lists.css';
+
+// DEC-728: "Saved embeds" is a NESTED drill under Public pages, not an
+// eighth rail section -- `viewingEmbeds` below.
+void DEC_728;
 
 interface EventSummary {
   id: string;
@@ -103,6 +108,17 @@ export function PublicPagesPanel() {
   // DEC-822: SavedEmbedsPanel's Edit link opens the builder at ?embed=<id>
   // -- the builder must actually be mounted for that link to land anywhere.
   const embedOpen = embedOpenState || searchParams.get('embed') !== null;
+  // DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds
+  // renders as its own 390 screen at `?section=public-pages&view=embeds`,
+  // nested under this section rather than a new SECTIONS entry. The DOM
+  // is unconditional (DEC-385, narrow overrides wide via max-width media
+  // queries only) -- this boolean only feeds phone-only CSS hooks
+  // (`chq-settings-public-pages-own-hidden`,
+  // SavedEmbedsPanel's `data-screen`) that swap which of "this section's
+  // own six rows" and "Saved embeds' full body" is visible at phone width.
+  // Desktop is frozen: both always render together there, exactly as
+  // before this task, regardless of `view`.
+  const viewingEmbeds = searchParams.get('view') === 'embeds';
 
   useEffect(() => {
     if (!eventId) return;
@@ -148,7 +164,19 @@ export function PublicPagesPanel() {
     <>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-      <section className="chq-settings-panel chq-settings-numbered" aria-label="Public pages">
+      <section
+        className={
+          // DEC-728 wave-156: phone-only (settings.css terminal @media
+          // block) -- while the Saved-embeds nested screen is open, this
+          // section's own six rows step aside so their read drill is
+          // "its own screen" and not a second card sharing scroll space
+          // with the one just opened. Desktop is untouched (DEC-385).
+          viewingEmbeds
+            ? 'chq-settings-panel chq-settings-numbered chq-settings-public-pages-own chq-settings-public-pages-own-hidden'
+            : 'chq-settings-panel chq-settings-numbered chq-settings-public-pages-own'
+        }
+        aria-label="Public pages"
+      >
         <div className="chq-settings-section-head">
           <h2>Public pages</h2>
           <span className="chq-settings-section-head-consequence">
@@ -207,7 +235,12 @@ export function PublicPagesPanel() {
       </section>
 
       {/* DEC-896 amendment (wave 26): SavedEmbedsPanel always renders its
-          full capability set now -- there is no drill to gate it behind. */}
+          full capability set now -- there is no drill to gate it behind.
+          DEC-728 wave-156: SavedEmbedsPanel reads `view` itself (it already
+          holds a `useSearchParams`) to decide whether it's rendering its
+          phone-only condensed summary or its own screen's full body -- see
+          the `data-screen` hook in SavedEmbedsPanel.tsx and settings.css's
+          terminal @media block. */}
       {event ? (
         <>
           <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} editing />

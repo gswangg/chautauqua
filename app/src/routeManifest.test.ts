@@ -264,3 +264,26 @@ describe("routeManifest tab/panel sub-state parity (DEC-144)", () => {
     expect(missing, `tab/panel keys with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
   });
 });
+
+// DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): Saved embeds'
+// `view` sub-state is nested INSIDE the public-pages section
+// (`?section=public-pages&view=<value>`), one query param deeper than any
+// group above's single-param shape -- its own check, still source-scanned
+// from Settings.tsx's own `PublicPagesView` union (DEC-180: never
+// hand-listed) rather than typed into this test by hand.
+describe("routeManifest public-pages nested `view` sub-state parity (DEC-144/DEC-728 wave-156)", () => {
+  it("every PublicPagesView value has its own ROUTE_MANIFEST row nested under ?section=public-pages", () => {
+    const settingsSource = readFileSync(join(APP_SRC, "pages", "Settings.tsx"), "utf-8");
+    const re = /type PublicPagesView\s*=\s*([^;]+);/;
+    const m = re.exec(settingsSource);
+    if (!m) throw new Error("type PublicPagesView not found in Settings.tsx");
+    const values = [...m[1]!.matchAll(/'([a-zA-Z0-9_-]+)'/g)].map((x) => x[1]!);
+    expect(values.length, "extracted zero PublicPagesView values").toBeGreaterThan(0);
+
+    const manifestPaths = new Set(ROUTE_MANIFEST.map((e) => e.path));
+    const missing = values
+      .map((value) => `/admin/settings?section=public-pages&view=${value}`)
+      .filter((expectedPath) => !manifestPaths.has(expectedPath));
+    expect(missing, `PublicPagesView values with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
+  });
+});

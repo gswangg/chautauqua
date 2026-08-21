@@ -35,7 +35,12 @@ import { PublicPagesPanel } from './settings/PublicPagesPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
 import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { YourDataPanel } from './settings/YourDataPanel';
+import { DEC_728 } from '../../../src/decisions';
 import './settings/settings.css';
+
+// DEC-728: "Saved embeds" is a NESTED drill under Public pages, not an
+// eighth rail section -- `viewingEmbeds`/`SECTIONS` below.
+void DEC_728;
 
 export interface SettingsSection {
   key: string;
@@ -62,6 +67,15 @@ export interface SettingsSection {
 // DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely
 // by PortalSettingsPanel (its Resources row delegates to ResourcesPanel
 // internally) -- no separate wrapper needed.
+
+// DEC-728 wave-156 (docs/design/audit/settings-v12.md:578): the public-pages
+// section's own nested `view` sub-states -- addressed
+// `?section=public-pages&view=<value>`, never a SECTIONS entry of their own
+// (DEC-747/DEC-691 pin the rail at the pack's seven). routeManifest.test.ts
+// source-scans this union (DEC-144/DEC-180: never hand-listed) so a future
+// value added here without a matching ROUTE_MANIFEST row fails there, by
+// name, instead of the render sweep silently never visiting it.
+export type PublicPagesView = 'embeds';
 
 // DEC-747/DEC-691: rail converges on exactly the mock's seven sections
 // (docs/design/Chautauqua Settings.dc.html lines 61-233), in this order.
@@ -166,11 +180,28 @@ export function SettingsPage() {
   // comment states. `editingSection` already covers the edit-drill case;
   // `active` covers the plain read-drill case the phone index taps into.
   const activeSection = active !== null ? SECTIONS.find((section) => section.key === active) : undefined;
+  // DEC-728 wave-156: Saved embeds is a NESTED drill under Public pages
+  // (`?section=public-pages&view=embeds`), not an eighth SECTIONS entry
+  // (DEC-747/DEC-691 pin the rail at the pack's seven). It shares this
+  // file's own read-drill/edit-drill title-and-back machinery rather than
+  // inventing a second one: `viewingEmbeds` is this file's only awareness
+  // of the `view` param, and only for the one section the audit
+  // (docs/design/audit/settings-v12.md:578) named as needing an own
+  // screen. Public pages itself has no edit view (DEC-896 B10 DROP), so
+  // this never collides with `editingSection`.
+  const viewingEmbeds = urlSection === 'public-pages' && !editing && searchParams.get('view') === 'embeds';
   // DEC-896 wave-130 amendment: an edit view's H1 names the EDIT
   // (editTitle), not the section -- the section name moves to the back
   // control below. A plain read-drill (active, not editing) still titles
-  // the page with the section label; the index keeps 'Settings'.
-  const pageTitle = editingSection ? editingSection.editTitle : (activeSection?.label ?? 'Settings');
+  // the page with the section label; the index keeps 'Settings'. The
+  // Saved-embeds nested drill is a read-drill too, so its H1 names the
+  // NESTED screen ("Saved embeds"), same shape as editTitle naming the
+  // edit rather than the section.
+  const pageTitle = editingSection
+    ? editingSection.editTitle
+    : viewingEmbeds
+      ? 'Saved embeds'
+      : (activeSection?.label ?? 'Settings');
   // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill case needs
   // this same phone-only twin too -- the ORIGINAL top-level h1 (pageTitle,
   // above) sits BEFORE .chq-settings-layout in the DOM, so it always paints
@@ -345,10 +376,24 @@ export function SettingsPage() {
                       params.delete('edit');
                       return params;
                     })
-                : clearSection
+                : viewingEmbeds
+                  ? () =>
+                      // DEC-728 wave-156: back leaves the Saved-embeds nested
+                      // screen for the Public pages read drill it nests
+                      // under, not the section index (DESIGN-RULINGS:247's
+                      // "a drill still always has a way out, it's just the
+                      // one the frame draws instead of a second one this
+                      // component minted" -- same shape as editingSection's
+                      // own back, one level up).
+                      setSearchParams((prev) => {
+                        const params = new URLSearchParams(prev);
+                        params.delete('view');
+                        return params;
+                      })
+                  : clearSection
             }
           >
-            &lsaquo; {editingSection ? editingSection.label : 'Settings'}
+            &lsaquo; {editingSection ? editingSection.label : viewingEmbeds ? 'Public pages' : 'Settings'}
           </button>
           {phoneDrillTitle ? (
             // w4-e/DEC-375: phone-only twin of the page h1 (settings.css
