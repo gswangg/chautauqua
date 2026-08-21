@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Amendment (wave 153): A population keyed on class tokens excludes every classless element — the SPA half of that hole is still open";
+export const DEC_180 = "Amendment (wave 156): a ledger row that names no owner is a shrug — a shell-owned token left in a page lane's ceiling is drained by the shell lane that owns the sheet";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
