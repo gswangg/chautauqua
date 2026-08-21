@@ -743,6 +743,15 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "comment-stripping function instead of importing test/helpers/strip-css-comments.ts's " +
     "shared one. A fact about the test corpus's maintainability, not a v12 frame or " +
     "390-geometry conformance fact.",
+  NEGATIVE_MARGIN_ADJACENCY_CEILING:
+    "measures a STATIC, authoring-time property of every CSS rule in the tracked tree -- " +
+    "whether a negative top/all-sides margin's preceding-comment receipt names an external " +
+    "sibling whose display:none base is revealed by some @media block in the same sheet -- " +
+    "not a live-pixel overlap a render sweep would catch. It grades every rule in every " +
+    "sheet, including surfaces no route sweep visits, deliberately distinct from any " +
+    "live-pixel superimposition detector the campaign's render lane might carry, so it is " +
+    "not a v12 frame or 390-geometry conformance fact in the campaign's own sense " +
+    "(app/src/negative-margin-adjacency.scan.test.ts, DEC-919 wave-152 amendment).",
 };
 
 /**

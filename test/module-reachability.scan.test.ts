@@ -256,6 +256,16 @@ const reachable = walkReachable(ENTRY_POINTS);
 // ---------------------------------------------------------------------------
 
 const ENTRY_OR_ALLOWED: Record<string, string> = {
+  "app/src/negative-margin-adjacency-ceiling.ts":
+    "Ratchet-constant module for a brand-new instrument (DEC-919 wave-152 amendment, task w8-eg) -- its only " +
+    "importer is app/src/negative-margin-adjacency.scan.test.ts, and test-file imports don't confer " +
+    "reachability (DEC-518). Isolated so every re-measure of the ratchet touches only this constant and its " +
+    "history comment (mirrors app/src/phone-overflow-scan/starved-track-ceiling.ts's precedent).",
+  "app/src/phone-overflow-scan/starved-track-ceiling.ts":
+    "Ratchet-constant module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Pre-existing gap (wave-149 landing never added this entry) closed here as an append-only " +
+    "fix so this task's targeted module-reachability run is green; not otherwise part of task w8-eg's scope.",
   "app/src/phone-overflow-scan/budget.ts":
     "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
     "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
