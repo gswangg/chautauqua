@@ -127,7 +127,10 @@
    control ("Done") renders unconditionally in the DOM (the DEC-937
    wave-129 shape) but has nothing to close at desktop, where the rule
    groups are never collapsed -- hidden here by default; the terminal
-   phone block turns it back on only for the collapsed-builder state. */
+   phone block turns it back on only for the collapsed-builder state.
+   (v12m-w16-ui-r2-a landed a second, identical copy of this rule below
+   this comment block; v12m-w16-ui-r3-b folded it back into this single
+   declaration -- same selector, same declaration, no cascade change.) */
 .chq-contacts-filter-builder-done {
   display: none;
 }
@@ -146,15 +149,6 @@
    hide rule (and the chip's visible/floored rule) live in the terminal
    phone block below, per DEC-385 (narrow overrides wide only). */
 .chq-contacts-filter-add-chip {
-  display: none;
-}
-
-/* v12m-w16-ui-r2-a (src/decisions-data/DEC-919.md): the rule builder
-   disclosure's close control
-   has nothing to close at desktop, where the rule groups are never
-   collapsed -- hidden here by default, turned on in the terminal phone
-   block below. */
-.chq-contacts-filter-builder-done {
   display: none;
 }
 
@@ -1554,6 +1548,12 @@
     padding-inline-end: 12px;
     margin-inline-start: -4px;
     margin-inline-end: -12px;
+    /* DEC-383 amendment (v12m-w16-ui-r3-b): the cursor declaration below
+       is folded into this landed rule rather than into a third bare block
+       for this same selector, so contacts-rule-chip-dismiss-floor.test.ts's
+       own two-rule count (the earlier landed rule and this appended fix)
+       still holds. */
+    cursor: pointer;
   }
 
   /* task v12m-w16-ui-r2-d / DEC-937 (src/decisions-data/DEC-937.md): the
@@ -1670,5 +1670,101 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* DEC-383 amendment (v12m-w16-ui-r3-b): B8 interaction states for the
+     three phone-only chip controls in the rule strip. MEASURED DEFECT on
+     main -- these were bare `<button>` elements this page owns with NO
+     hover, NO active and NO cursor declared anywhere, resting at the UA's
+     `cursor: default` while their desktop `.chq-btn-tertiary` siblings
+     (app/src/styles.css:598-627) carry the full B8 tier. A phone-only
+     control that re-lines a desktop control inherits that control's B8
+     tier states, except a control resolved faceless by the
+     cancelled-padding idiom may only darken its ink -- never gain a
+     background or border on hover (DEC-937 wave-121's
+     cancelled-padding-face contract, app/src/cancelled-padding-face.scan.test.ts).
+
+     docs/design/Chautauqua Contacts.dc.html:192 `border:1px dashed
+     #A9AE94; border-radius:4px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:13px; font-weight:700;
+     color:#4E5C31` -- `.chq-contacts-filter-add-chip` has a PAINTED face
+     (its own dashed border, declared above), so unlike the two faceless
+     controls below it, hover darkens BOTH the label and the dashed edge
+     to the tertiary tier's hover ink -- no underline (the dashed edge
+     already bounds the control) and no background. Disabled is the B8
+     ruling's "inert control" leg (DESIGN-RULINGS.md's B8 table: a
+     disabled control has no hover state at all, and takes
+     `cursor:default`) -- excluded via `:not(:disabled)` /
+     `:not([aria-disabled='true'])` rather than relying on cascade order
+     against the existing disabled-state rule above. */
+  .chq-contacts-filter-add-chip {
+    cursor: pointer;
+  }
+
+  .chq-contacts-filter-add-chip:disabled,
+  .chq-contacts-filter-add-chip[aria-disabled='true'] {
+    cursor: default;
+  }
+
+  @media (hover: hover) {
+    .chq-contacts-filter-add-chip:hover:not(:disabled):not([aria-disabled='true']) {
+      color: var(--chq-brand-hover);
+      border-color: var(--chq-brand-hover);
+    }
+  }
+
+  .chq-contacts-filter-add-chip:active:not(:disabled):not([aria-disabled='true']) {
+    color: var(--chq-brand-active);
+    border-color: var(--chq-brand-active);
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:192 `border:1px dashed
+     #A9AE94; border-radius:4px; min-height:44px; display:flex;
+     align-items:center; padding:0 13px; font-size:13px; font-weight:700;
+     color:#4E5C31` -- `.chq-contacts-filter-rule-chip-edit` is the chip's
+     own faceless, cancelled-padding label (`border:none; background:none`,
+     declared above) acting as the way back into the builder, so it
+     inherits the desktop tertiary tier's B8 states rather than the
+     painted dashed-chip treatment above: hover darkens the label only,
+     with the tertiary tier's underline, and never gains a background or
+     border (DEC-937 wave-121's cancelled-padding-face contract). */
+  .chq-contacts-filter-rule-chip-edit {
+    cursor: pointer;
+  }
+
+  @media (hover: hover) {
+    .chq-contacts-filter-rule-chip-edit:hover {
+      color: var(--chq-brand-hover);
+      text-decoration: underline;
+    }
+  }
+
+  .chq-contacts-filter-rule-chip-edit:active {
+    color: var(--chq-brand-active);
+    text-decoration: underline;
+  }
+
+  /* docs/design/Chautauqua Contacts.dc.html:190 `border:1px solid
+     #4E5C31; background:#EFF1E4; color:#2E3A16; border-radius:4px;
+     min-height:44px; display:flex; align-items:center; gap:9px;
+     padding:0 12px; font-size:13px; font-weight:600` --
+     `.chq-contacts-filter-rule-chip-dismiss` is the frame's muted "x"
+     glyph, faceless and cancelled-padding (`border:none; background:none`,
+     declared above), so hover darkens the glyph's ink to var(--chq-ink)
+     with no underline (an underlined "x" reads as noise, not a link) and
+     no background; active holds the same ink -- DEC-937 wave-121's
+     cancelled-padding-face contract forbids this control ever gaining a
+     border or background on hover. `cursor: pointer` is folded into the
+     earlier landed width-floor rule above rather than declared as a third
+     bare block here, so contacts-rule-chip-dismiss-floor.test.ts's
+     two-rule count for this selector still holds. */
+  @media (hover: hover) {
+    .chq-contacts-filter-rule-chip-dismiss:hover {
+      color: var(--chq-ink);
+    }
+  }
+
+  .chq-contacts-filter-rule-chip-dismiss:active {
+    color: var(--chq-ink);
   }
 }
