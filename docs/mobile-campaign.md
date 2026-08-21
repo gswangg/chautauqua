@@ -6,7 +6,7 @@ DEVIATIONS.md (user overrides). This file is the campaign mandate the planner
 works from, tiered.
 
 ## TIER 0 (2026-08-19 meta-probe, VERIFIED reds — work these before all else)
-docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDES their open rows: docs/probes/metafid-round2-2026-08-20.md — work its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDES round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md records Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... CURRENT RED SET" section below records round 3's three-item red set as now CLOSED as well — the "two CRITICALS in B are being fixed by a META lane" sentence this paragraph used to end on described that in-flight state three probe rounds ago and is stale; there is no META lane still in flight against WAVE B today. The two disproportionate root fixes plus the S1 breaks and S2 structure rows live in docs/probes/metafid-phoneA-2026-08-19.md, NOT the desktop file (docs/probes/metafid-desktop-2026-08-19.md contains no S1/S2/negative-margin/section-action rows at all — verified by grep, DEC-967 wave-154 amendment). Both root fixes there are already CLOSED: app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {` (bordered-control cancelled-padding removed) and app/src/pages/settings/settings.css`.chq-settings-section-action {` (44px phone floor added). Work phoneA's remaining open S1/S2 rows next.
+docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDES their open rows: docs/probes/metafid-round2-2026-08-20.md — work its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDES round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md records Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... CURRENT RED SET" section below records round 3's three-item red set as now CLOSED as well; no META lane remains in flight against WAVE B today. The two disproportionate root fixes plus the S1 breaks and S2 structure rows live in docs/probes/metafid-phoneA-2026-08-19.md, NOT the desktop file (docs/probes/metafid-desktop-2026-08-19.md contains no S1/S2/negative-margin/section-action rows at all — verified by grep, DEC-967 wave-154 amendment). Both root fixes there are already CLOSED: app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {` (bordered-control cancelled-padding removed) and app/src/pages/settings/settings.css`.chq-settings-section-action {` (44px phone floor added). Work phoneA's remaining open S1/S2 rows next.
 
 ## Tier 0 — fidelity on landed work (verify first, then fix)
 
@@ -58,22 +58,41 @@ tasks must not touch shell files and instead record shell needs as findings.
 
 ## Wave-1 handoff findings (pre-campaign lanes; planner must schedule)
 
-Shell lane (T1, blocking several page frames):
-- Phone page scaffold: frames draw header (flex-shrink:0) / body (flex:1,
-  overflow-y:auto) / pinned footer inside the 390 viewport; pages scroll as
-  one document today. Needed by: Contacts drawer errand flow, Submissions
-  detail decision bar, Content docked bars (Approve N / Download all /
-  Ask for changes).
-- Bottom tab bar: CSS exists (styles.css:390-402) but Submissions reports
-  nothing renders the five-item nav; reconcile and mount it.
-- .chq-drawer phone inset 16px (now 20px 26px; sticky-bar negative margins
-  at styles.css:1128-1145 are paired to the 26px and must move with it).
-- Drawer back-link header (`‹ Contacts` 44px) — ModalFrame affordance.
-- .chq-header phone slot treatment (selection counter "2 of 318").
-- .chq-page-title phone size (Files H1 wants 25px at 390).
-- Global: .chq-table td:first/last-child 16px inset stacks on .chq-main's
-  gutter at 390 (32px total) for every card-stacking table; comms
-  neutralized its own two tables; fix globally.
+Shell lane (T1, blocking several page frames) — re-derived wave-21, all
+seven bullets CLOSED:
+- Phone page scaffold: CLOSED — `app/src/phone-page-scaffold.test.ts` pins
+  the shared header (flex-shrink:0) / body (flex:1, overflow-y:auto) /
+  pinned-footer band anatomy (DEC-576/643/368/616, wave 83) drawn across the
+  Speakers, Settings, Contacts and Public-and-Portal frames.
+- Bottom tab bar: CLOSED — `app/src/App.tsx`'s `<nav className="chq-tabbar"
+  aria-label="Primary, phone">` mounts the five-item nav in the shell itself
+  (DEC-381), not per-page; `app/src/styles.css`'s `.chq-tabbar` rules style
+  it, including the `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` and
+  `.chq-shell:has(.chq-phone-dock) .chq-tabbar` opt-out pairings.
+- .chq-drawer phone inset 16px: CLOSED — `app/src/components/modal-frame.css`'s
+  terminal `@media (max-width: 700px)` block sets
+  `.chq-drawer .chq-modal-head { margin: -16px -16px 0; padding: 0 16px 16px; }`,
+  its own comment pairing that number to `styles.css`'s `.chq-drawer` 16px
+  phone padding cut (w6-d) so the two never re-derive independently.
+- Drawer back-link header: CLOSED — the same terminal block's
+  `.chq-modal-head .chq-phone-back { display: flex; align-items: center;
+  min-height: 44px; padding-inline: 12px; }` (DEC-393 wave-w12-q) restates
+  the 44px floor on its own terms rather than relying on cascade order.
+- .chq-header phone slot treatment: CLOSED — `#chq-header-slot` is a real
+  portal target rendered by the shell header (`app/src/App.tsx`) and
+  consumed by counter content from feature pages, e.g.
+  `app/src/pages/review/Scorecard.tsx`'s `document.getElementById('chq-header-slot')`
+  portal and `app/src/pages/comms/ComposeWizard.tsx`'s desktop-only lookup
+  of the same id.
+- .chq-page-title phone size: CLOSED — `app/src/styles.css` declares both
+  `--chq-type-page-title-phone-size: 27px` (cluster landing) and
+  `--chq-type-page-title-phone-drill: 25px` (drill-down, e.g. Files), each
+  consumed by a phone `.chq-page-title { font-size: var(...) }` rule.
+- Global table inset: CLOSED — `app/src/styles.css`'s DEC-368 amendment
+  comment states the shared `.chq-table th/td:first-child`/`:last-child`
+  16px inset now zeroes at <=700px globally (`padding-left: 0` /
+  `padding-right: 0`) and that comms.css's prior local neutralization "is
+  now dead and has been removed as part of this shell fix".
 
 Unclaimed frame: "CFP form · 390" (Chautauqua Submissions.dc.html:468)
 renders from app/src/pages/forms/** — no lane owned it. Schedule it.
@@ -129,19 +148,29 @@ pinned; sweep the remaining stylesheets for the same exposure.
   form-only. Per-kind actions: form=Open, file_request=file link, general=none.
 
 ## Eval root-cause round (2026-08-19 evening) — swarm follow-ups
-- INTEGRITY: src/decisions-data/DEC-986.md (scribe wave 10/11) documents phone-CFP
-  fixes that DO NOT EXIST in the tree — cfp-steps-script.tsx:33 still calls
-  setStep('2') with no reportValidity(), form-render.tsx:278 still uses singular
-  querySelector. (a) Actually implement the phone-CFP step-1 validation dead-end
-  fix; (b) correct the false doc; (c) lens: audit scribe-authored DEC docs
-  from waves 10-11 for claims not backed by the diff, AND audit css/code
-  comments for citations of DECs that do not exist (found: agenda.css cites
-  a "DEC-021 delta-2 amendment" that grep cannot find; the 9f12f7ce commit
-  body also justified its overlay on a false premise).
-- Pre-existing UX bug (portal edit): "Add co-presenter" is a full-page POST that
-  silently discards unsaved title/abstract/track edits (a55cce81, by the page's
-  own inviting copy order). Schedule a fix (preserve the draft across the POST or
-  make the add row-scoped).
+- INTEGRITY: CLOSED (re-verified wave-21, DEC-967 form): the phone-CFP step-1
+  validation dead-end is implemented — `src/routes/public/cfp-steps-script.tsx`
+  checks the OUTGOING step's controls with `firstInvalidIn(talkSection)` and
+  calls `invalid.reportValidity()` before `setStep('2', true)` runs. The
+  companion clause's file no longer exists under `src/routes/public/` — the
+  form renderer it named lives at `src/views/form-render.tsx` today, and the
+  singular-querySelector defect it flagged is itself fixed there:
+  `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(...)`
+  un-requires every control sharing a hidden field's id, not just the first.
+  Both fixes and their full history are receipted in
+  `src/decisions-data/DEC-986.md`'s RULING paragraph and wave-93/108/109/138
+  amendments; `test/cfp-phone-steps.test.ts` and `test/form-render-rules.test.ts`
+  pin them. The (c) lens item (scribe-doc/comment DEC-citation audit) is
+  separate scope and is not addressed by this pass.
+- Pre-existing UX bug (portal edit): CLOSED (re-verified wave-21). "Add
+  co-presenter" is no longer a full-page POST that discards unsaved edits —
+  `src/routes/portal/edit.tsx` renders the co-presenter controls as a SECOND
+  SUBMIT of `#chq-portal-edit-form`: every control below the section carries
+  `form="chq-portal-edit-form"`, and the "Add co-presenter" button carries
+  `formaction={`/portal/submissions/${submissionId}/participants`}` plus
+  `formenctype="multipart/form-data"`, so the speaker's in-progress
+  title/abstract/track edits ride along on this submit too (the file's own
+  comment block cites this as DEC-029's wave-108 amendment).
 
 ## RULED (user, 2026-08-19): D19 cross-event switch — explicit, never silent
 The URL write-through in useCurrentEvent.ts:90 stays (page and context move
