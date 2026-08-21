@@ -19,6 +19,37 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert";
+import { stripComments, parseAllRules } from "../../cancelled-padding-gap.scan.test";
+
+// Does this rule's SELECTOR LIST name `className` as one of its (possibly
+// compound) selector entries -- e.g. `.chq-speakers-status-dense` matches
+// both the bare selector and `.chq-speakers-status-dense.chq-speakers-status-overdue`,
+// but not a longer unrelated class like `.chq-speakers-status-densex`, and
+// never a comment (comments are stripped before parseAllRules ever sees the
+// text, so a rule's `selector` field can only be real CSS).
+function ruleNamesClass(selector: string, className: string): boolean {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`${escaped}(?![\\w-])`);
+  return re.test(selector);
+}
+
+// Asserts every rule (comment-stripped, top-level or narrow-media) in `css`
+// whose selector list names `.chq-speakers-status-dense` stays under the
+// 44px floor -- the B8 dense/roomy pair must never collapse into a single
+// grown density.
+function assertDenseUnder44(css: string): void {
+  const rules = parseAllRules(stripComments(css));
+  const denseRules = rules.filter((r) => ruleNamesClass(r.selector, ".chq-speakers-status-dense"));
+  for (const r of denseRules) {
+    const heightMatch = r.body.match(/min-height:\s*(\d+)px/);
+    if (heightMatch) {
+      expect(
+        Number(heightMatch[1]),
+        `dense cell min-height must stay under 44px (selector: ${r.selector})`,
+      ).toBeLessThan(44);
+    }
+  }
+}
 
 const SPEAKERS_CSS = readFileSync(join(__dirname, "speakers.css"), "utf8");
 const TASK_VIEW_CSS = readFileSync(join(__dirname, "task-view.css"), "utf8");
@@ -55,13 +86,11 @@ function lastPhoneBlock(css: string): { body: string; end: number } {
   return last;
 }
 
-// Strip `/* ... */` comments before selector matching -- several selectors
-// this wave sit right after a documentation comment inside the terminal
-// block, and comments must never count as the "preceded by { , or start"
-// anchor a comma-list entry needs.
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
+// Comment-stripping before selector matching -- several selectors this wave
+// sit right after a documentation comment inside the terminal block, and
+// comments must never count as the "preceded by { , or start" anchor a
+// comma-list entry needs. Uses the canonical stripper imported above (DEC-613:
+// no second private derivation of the same vocabulary).
 
 function ruleBodyFor(css: string, selector: string): string {
   const stripped = stripComments(css);
@@ -119,18 +148,27 @@ describe("speakers cluster: 44px floor already closed (DEC-393 wave-7 amendment,
   }
 
   it("falsifiability control: .chq-speakers-status-dense carries no min-height >= 44px anywhere in the file (B8 dense/roomy pair, never grown)", () => {
-    const re = /\.chq-speakers-status-dense[^{]*\{([^}]*)\}/g;
-    let m: RegExpExecArray | null;
-    let sawAny = false;
-    while ((m = re.exec(SPEAKERS_CSS)) !== null) {
-      sawAny = true;
-      const body = m[1] ?? "";
-      const heightMatch = body.match(/min-height:\s*(\d+)px/);
-      if (heightMatch) {
-        expect(Number(heightMatch[1]), "dense cell min-height must stay under 44px").toBeLessThan(44);
-      }
-    }
-    expect(sawAny, "expected .chq-speakers-status-dense to appear at least once").toBe(true);
+    const rules = parseAllRules(stripComments(SPEAKERS_CSS));
+    const denseRules = rules.filter((r) => ruleNamesClass(r.selector, ".chq-speakers-status-dense"));
+    expect(denseRules.length, "expected .chq-speakers-status-dense to appear in at least one rule's selector list").toBeGreaterThan(0);
+    assertDenseUnder44(SPEAKERS_CSS);
+  });
+
+  it("positive control: a fabricated genuine .chq-speakers-status-dense rule with min-height:44px IS flagged (proves the control still catches the real thing)", () => {
+    const fabricated = `.chq-speakers-status-dense {\n  min-height: 44px;\n}\n`;
+    expect(() => assertDenseUnder44(fabricated)).toThrow();
+  });
+
+  it("negative control: a comment merely NAMING .chq-speakers-status-dense next to an unrelated rule is NOT flagged", () => {
+    const fabricated = `
+  /* this comment mentions .chq-speakers-status-dense in prose only, right
+     before an unrelated rule -- it must never be read as that rule's
+     selector. */
+  .chq-unrelated-rule {
+    min-height: 44px;
+  }
+`;
+    expect(() => assertDenseUnder44(fabricated)).not.toThrow();
   });
 
   it("negative control: the extraction helpers actually fail on a selector missing the floor (proves the scan can fail, not just pass)", () => {

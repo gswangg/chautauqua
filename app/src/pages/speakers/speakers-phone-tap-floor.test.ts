@@ -12,6 +12,33 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert";
+import { stripComments, parseAllRules } from "../../cancelled-padding-gap.scan.test";
+
+// Does this rule's SELECTOR LIST name `className` as one of its (possibly
+// compound) selector entries -- same boundary rule as
+// speakers-phone-floor.test.ts's helper of the same name: matches a bare or
+// compound occurrence, never a longer unrelated class name, and never a
+// comment (comments are stripped before parseAllRules ever sees the text).
+function ruleNamesClass(selector: string, className: string): boolean {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`${escaped}(?![\\w-])`);
+  return re.test(selector);
+}
+
+// Asserts no rule (comment-stripped, top-level within the given CSS text)
+// whose selector list names `className` declares min-height -- used to
+// scan the terminal phone block for a collapsed density pair.
+function assertNoMinHeightForClass(cssBlock: string, className: string): void {
+  const rules = parseAllRules(stripComments(cssBlock));
+  for (const r of rules) {
+    if (ruleNamesClass(r.selector, className)) {
+      expect(
+        r.body,
+        `${className}: selector "${r.selector}" must not declare min-height inside the terminal phone block`,
+      ).not.toMatch(/min-height:/);
+    }
+  }
+}
 
 const SPEAKERS_CSS = readFileSync(join(__dirname, "speakers.css"), "utf8");
 const TASK_VIEW_CSS = readFileSync(join(__dirname, "task-view.css"), "utf8");
@@ -118,9 +145,27 @@ describe("speakers.css phone tap floor (DEC-393 wave-7 amendment)", () => {
     expect(baseRule![1]).not.toMatch(/min-height/);
   });
 
-  it("falsifiability control: the dense status-cell selectors carry NO min-height in the phone block (B8's dense/roomy pair must not be collapsed by this sweep)", () => {
-    expect(SPEAKERS_PHONE_BLOCK).not.toMatch(/\.chq-speakers-status-dense/);
-    expect(SPEAKERS_PHONE_BLOCK).not.toMatch(/\.chq-speakers-status-roomy/);
+  it("falsifiability control: no rule whose selector list names .chq-speakers-status-dense or -roomy declares min-height inside the terminal phone block (B8's dense/roomy pair must not be collapsed by this sweep)", () => {
+    assertNoMinHeightForClass(SPEAKERS_PHONE_BLOCK, ".chq-speakers-status-dense");
+    assertNoMinHeightForClass(SPEAKERS_PHONE_BLOCK, ".chq-speakers-status-roomy");
+  });
+
+  it("positive control: a fabricated phone block with a genuine .chq-speakers-status-dense min-height:44px rule IS flagged (proves the control still catches the real thing)", () => {
+    const fabricatedBlock = `\n  .chq-speakers-status-dense {\n    min-height: 44px;\n  }\n`;
+    expect(() => assertNoMinHeightForClass(fabricatedBlock, ".chq-speakers-status-dense")).toThrow();
+  });
+
+  it("negative control: a comment merely NAMING .chq-speakers-status-dense next to an unrelated min-height rule is NOT flagged", () => {
+    const fabricatedBlock = `
+  /* DEC-833 amendment: the participation trigger carrying the dense
+     status-cell class (.chq-participation-menu-trigger.chq-speakers-status-dense)
+     measures short at 390 -- fixed below, on the CONTAINER-SCOPED trigger
+     selector, never on the dense class itself. */
+  .chq-speaker-detail-sessions-row .chq-participation-menu-trigger {
+    min-height: 44px;
+  }
+`;
+    expect(() => assertNoMinHeightForClass(fabricatedBlock, ".chq-speakers-status-dense")).not.toThrow();
   });
 
   it("falsifiability control: .chq-pill is untouched by this sweep (styles.css already floors it globally)", () => {
