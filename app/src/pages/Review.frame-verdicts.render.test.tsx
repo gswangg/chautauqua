@@ -339,7 +339,7 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
 
   // Frame :413-445 "Reviewer queue · /review/plans/:id" (Subscreen) --
   // caption at :410.
-  it('frame :413 Reviewer queue -- DIVERGES: the app draws its OWN back link ("‹ Your plans") the frame never draws on this subscreen', async () => {
+  it('frame :413 Reviewer queue -- MATCHES: landed on directly (no hub in this session), the queue draws no back link, same as the frame\'s own head band', async () => {
     verbatimLine(
       410,
       "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Reviewer queue · /review/plans/:id</span>",
@@ -387,13 +387,15 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(h1.compareDocumentPosition(subtitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(bar).not.toBeNull();
 
-    // DIVERGES: :413-425 draws NO back control at all in this subscreen's
-    // head band (only the wordmark + reviewer name, then eyebrow/H1/
-    // subtitle/bar) -- the app instead renders its own "‹ Your plans" back
-    // link above the head band on every visit, single-plan or not.
-    const backLink = screen.getByRole('link', { name: /Your plans/ });
-    expect(backLink).toBeInTheDocument();
-    expect(backLink.compareDocumentPosition(head as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // MATCHES (DEC-874 wave-159 amendment): :413-425 draws NO back control
+    // at all in this subscreen's head band (only the wordmark + reviewer
+    // name, then eyebrow/H1/subtitle/bar). The app's own "‹ Your plans" link
+    // is now gated on `plans` (the reviewer's plan list) actually holding
+    // more than one entry -- this fixture is a direct deep link straight to
+    // `/plans/:planId` (no prior `/review` hub visit in this render tree),
+    // so `plans` is never populated and the link stays unrendered, same as
+    // the frame.
+    expect(screen.queryByRole('link', { name: /Your plans/ })).not.toBeInTheDocument();
 
     // :429-437: each queue row draws ref+mark, title, meta, then the row's
     // action -- in that DOM order (a CSS grid at desktop, a stack at

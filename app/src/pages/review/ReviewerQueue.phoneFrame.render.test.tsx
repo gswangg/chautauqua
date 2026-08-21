@@ -10,7 +10,7 @@
 // scaffold's drill-in classes (chq-phone-head/-head-drill), not the
 // cluster-landing register, since this route is a back-linked drill-in.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ReviewerQueue } from './ReviewerQueue';
@@ -109,8 +109,20 @@ describe('ReviewerQueue phone frame (Chautauqua Review.dc.html:413)', () => {
     expect(head!.className).toMatch(/\bchq-phone-head-drill\b/);
   });
 
+  // DEC-874 wave-159 amendment: the frame draws NO back control on this
+  // subscreen at all, so the app's own "‹ Your plans" link now only renders
+  // when `plans` (read off this same component instance, no second fetch)
+  // proves a hub actually exists -- a bare deep link to `/review/plans/:id`
+  // never populates `plans` and correctly renders none. This test now
+  // drills in via a two-plan hub (the case where the link legitimately
+  // exists) so it can still assert the scaffold's back/body classes.
   it('the back link and the queue body carry the scaffold\'s back/body classes', async () => {
+    const OTHER_PLAN_ID = 'plan-phone-frame-other';
     mockApi({
+      'GET /api/v1/review/plans': listEnvelope([
+        { id: PLAN_ID, eventId: 'evt-1', name: 'Phone Frame Plan', timezone: 'America/New_York' },
+        { id: OTHER_PLAN_ID, eventId: 'evt-1', name: 'Other Plan', timezone: 'America/New_York' },
+      ]),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...queueEnvelope([queueItem()]),
@@ -123,9 +135,29 @@ describe('ReviewerQueue phone frame (Chautauqua Review.dc.html:413)', () => {
         currentRound: 1,
         roundMeta: null,
       },
+      [`GET /api/v1/review/plans/${OTHER_PLAN_ID}/queue`]: {
+        ...queueEnvelope([queueItem()]),
+        open: true,
+        recused: [],
+        planName: 'Other Plan',
+        scopeTrackName: 'All tracks',
+        closeDate: null,
+      },
     });
 
-    renderQueue();
+    render(
+      <MemoryRouter initialEntries={['/review']}>
+        <Routes>
+          <Route path="/review" element={<ReviewerQueue />} />
+          <Route path="/review/plans/:planId" element={<ReviewerQueue />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Phone Frame Plan');
+    const links = screen.getAllByRole('link', { name: /Score the next one|Start scoring/ });
+    const link = links.find((l) => l.getAttribute('href') === `/review/plans/${PLAN_ID}`)!;
+    fireEvent.click(link);
 
     const backLink = await screen.findByRole('link', { name: /Your plans/ });
     expect(backLink.className).toMatch(/\bchq-phone-back\b/);

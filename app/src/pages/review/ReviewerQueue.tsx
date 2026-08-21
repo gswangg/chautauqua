@@ -621,10 +621,19 @@ export function ReviewerQueue() {
               `width:390px; height:844px; ...`
               -- chq-phone-back only supplies the 44px tap-target floor
               (display:flex; align-items:center; min-height:44px) under the
-              max-width:700px block; no effect at desktop. */}
-          <Link to="/review" className="chq-review-back chq-phone-back">
-            &lsaquo; Your plans
-          </Link>
+              max-width:700px block; no effect at desktop.
+              DEC-874: the frame's phone head band (:414-424) draws no back
+              control at all -- with exactly one plan the hub is skipped
+              (Navigate above) and there is nothing to go back TO, so the
+              link only renders once `plans` proves a hub actually exists
+              (2+ plans). `plans` is read off state already held by this
+              component (populated by the /review fetch that precedes this
+              same-instance Navigate); no second fetch is added. */}
+          {plans && plans.length > 1 && (
+            <Link to="/review" className="chq-review-back chq-phone-back">
+              &lsaquo; Your plans
+            </Link>
+          )}
         </p>
         {!routeEnvelope ? (
           <DelayedLoading />
