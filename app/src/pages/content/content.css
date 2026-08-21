@@ -1140,9 +1140,10 @@
      with no phone-only DOM (DEC-386). Positional placement is safe here
      because the six-column order is itself pinned
      (SessionList.render.test.tsx's "six tracks" suite); nothing positional
-     ever sources a LABEL (phone-label-source.scan.test.ts) — the one
-     ::before below is a `·` separator, punctuation with no letter in it,
-     the documented submissions.css precedent. */
+     ever sources a LABEL (phone-label-source.scan.test.ts) — the `·`
+     separators below (this block's, and the meta-row one further down) are
+     punctuation with no letter in them, the documented submissions.css
+     precedent. */
   .chq-content-worklist .chq-content-table tr.chq-content-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -1176,23 +1177,43 @@
     grid-column: 1 / span 2;
   }
 
-  /* speaker, then latest file — each on its own full-measure line.
-     DEVIATION, recorded: the frame draws these as one `speaker · file,
-     when` line. Merging two table cells onto one line needs either a
-     phone-only wrapper (DEC-386 forbids duplicate phone DOM) or a shared
-     grid column, and the tick column cannot share its track with a speaker
-     name without the status flag on row 1 being pushed off the tick. The
-     tick/status pairing is the frame's load-bearing anatomy, so the meta
-     takes two lines instead. */
+  /* speaker, then latest file — ONE shared row (frame :220 `{{ row.speaker
+     }} · {{ row.file }}, {{ row.when }}`), w15-ta (DEC-825 wave-159). Both
+     cells sit in the row's own full span (grid-column:1/span2, the SAME
+     span title and actions already use) rather than splitting across the
+     row's two columns: this task's file scope is content.css + ContentApp
+     only (SessionList.tsx's markup is out of reach), and giving speaker its
+     own column would reuse col1 -- the SAME auto track row 1's checkbox
+     sizes -- pushing the status pill away from the tick, off frame
+     :268-271's tight pairing (the exact tradeoff the prior deviation note
+     here used to explain keeping these as two lines). justify-self:start
+     +end pins each to its edge of the shared line with a percentage cap so
+     neither can grow past the other; not the frame's tight inline join,
+     recorded as the DEVIATION this leaves behind. */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(3) {
     grid-row: 3;
     grid-column: 1 / span 2;
+    justify-self: start;
+    max-width: 48%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  /* latest file */
+  /* latest file — shares row 3 with speaker above; the leading `· ` mirrors
+     the frame's separator (submissions.css precedent, punctuation with no
+     letter in it, so phone-label-source.scan.test.ts stays clean). */
   .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(4) {
-    grid-row: 4;
+    grid-row: 3;
     grid-column: 1 / span 2;
+    justify-self: start;
+    margin-left: 48%;
+    min-width: 0;
+  }
+
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(4)::before {
+    content: '· ';
+    color: var(--chq-muted);
   }
 
   /* the Approve/Open pair, full measure */
@@ -1651,8 +1672,10 @@
   /* Selecting: frame :247 `width:390px; height:844px; background:#F4F1E8`,
      meta row :255-257 -- `2 selected` (15px display) · right-flushed
      `All 5` · `Done` (both 44px bold links). Replaces the rest-state row
-     above; the two are mutually exclusive via React (ContentApp.tsx),
-     never both mounted at once. */
+     above -- ContentApp.tsx guards the summary line, the phone Select
+     toggle, AND this meta row each on `phoneSelectMode`/`!phoneSelectMode`
+     (w15-ta, DEC-825 wave-159), so exactly one of the two ever mounts,
+     never both at once. */
   /* DEC-989(b): the row's leading child, .chq-content-phone-selecting-
      count, states `${selectedIds.size} selected` (ContentApp.tsx) --
      data, not a fixed word, and its own rule already sits at

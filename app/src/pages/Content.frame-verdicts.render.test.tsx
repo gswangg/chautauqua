@@ -142,7 +142,7 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
   });
 
   // Frame :247-284 "Content · selecting" -- caption at :243.
-  it('frame :247 Content selecting -- DIVERGES: no per-row check icon, the idle summary line stays mounted alongside "N selected", and the bar renders inside the worklist column rather than as the header\'s own footer', async () => {
+  it('frame :247 Content selecting -- DIVERGES: no per-row check icon, and the bar renders inside the worklist column rather than as the header\'s own footer (w15-ta, DEC-825 wave-159: the idle summary line used to stay mounted alongside "N selected" too -- ContentApp.tsx now guards it on !phoneSelectMode, so that part MATCHES)', async () => {
     verbatimLine(243, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Content · selecting</span>");
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([oneWorklistRow], {
@@ -157,17 +157,16 @@ describe('v12 Content 390 frames: per-frame render verdict receipts (w13-ra, DEC
     await screen.findByRole('button', { name: 'Select' });
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
 
-    // The header's "selecting" meta row (w1-e) DOES match the frame's
-    // "N selected / All N / Done" line (:255-257) -- but it renders
-    // ALONGSIDE the rest-state summary line rather than replacing it: the
-    // header block's summary-line clause carries no `!phoneSelectMode`
-    // guard, so "N need a decision · M re-uploaded" (frame :198-203's OWN
-    // idle-state text) stays mounted underneath the "selecting" row the
-    // frame draws as swapping it out for.
+    // The header's "selecting" meta row (w1-e) matches the frame's
+    // "N selected / All N / Done" line (:255-257) and now REPLACES the
+    // rest-state summary line, per !phoneSelectMode guards on both
+    // clauses (w15-ta, DEC-825 wave-159) -- "N need a decision · M
+    // re-uploaded" (frame :198-203's OWN idle-state text) is gone while
+    // selecting, exactly as the frame's :247-263 head draws it.
     expect(await screen.findByText('0 selected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'All 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
-    expect(screen.getByText('5 need a decision · 2 re-uploaded')).toBeInTheDocument();
+    expect(screen.queryByText('5 need a decision · 2 re-uploaded')).not.toBeInTheDocument();
 
     // Frame :266-273 draws a leading check-mark glyph on each row ahead of
     // the status pill -- the real row instead carries the SAME plain
