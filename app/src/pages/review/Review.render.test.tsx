@@ -386,7 +386,11 @@ describe('ReviewPage render smoke: reviewer', () => {
     });
     expect(await screen.findByRole('heading', { name: '1 left to score' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your queue' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Your plans/ })).toBeInTheDocument();
+    // DEC-874 wave-159 amendment: this is a bare deep link straight to
+    // `/plans/:planId` (no prior `/review` hub visit), so `plans` was never
+    // populated and the frame's own head band (:413-425) draws no back
+    // control here anyway -- the app now matches, rendering none.
+    expect(screen.queryByRole('link', { name: /Your plans/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /A Talk About Testing/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Another Talk/ })).toBeInTheDocument();
 
