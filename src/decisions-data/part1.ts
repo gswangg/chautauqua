@@ -126,7 +126,7 @@ export const DEC_120 = "Task-assign contact org-scoping: POST /api/v1/tasks/:id/
 export const DEC_121 = "Portal submission edit: locked speaker fields prefill from the contact row; first/last name sync back to the contact on save; email is read-only with stored-value carry-over";
 export const DEC_122 = "Compose preview and send hard-fail on unmatched submission ids (400 invalid listing the unknown ids) before any render or ics preflight; ics preflight runs only after the full-set match";
 export const DEC_123 = "Plan criteria and scale are immutable once any evaluation exists on the plan: PATCH /api/v1/plans/:id returns 409 conflict, with a deep-equal no-op exemption";
-export const DEC_124 = "Amendment (wave 134): a server-only conflict that saved nothing gets the frame's refusal PANEL, which names what survived";
+export const DEC_124 = "Amendment (wave 153): The invalid-field treatment keys on the band's KIND, never on the band's presence";
 export const DEC_125 = "scripts/perf-seed.ts criteria literal gains kind: 'rating', unblocking the perf-smoke rating PUT check and the DEC-069 exit predicate";
 export const DEC_126 = "Wave-14 structure: six parallel code-bearing fix lanes named task-w14-i..n (a..h burned by round-0); landing any of them voids every 3b7ed3d gate section per DEC-069/114; wave 15 is a full five-gate re-run at the new sha";
 export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes task-w15-g..k (a-f burned by round-0), code-frozen log-only, fresh ports 8851/8852/8853, six-fix preflight mandatory, triage chains behind perf-smoke";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Login rate limiter counts only failed attempts; success resets the per-email window";
+export const DEC_180 = "Amendment (wave 153): A population keyed on class tokens excludes every classless element — the SPA half of that hole is still open";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
