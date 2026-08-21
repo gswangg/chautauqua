@@ -538,29 +538,24 @@ instead of re-flagging.
   (`src/db/schema/content.ts`) is still populated only by `'file'` and
   `'wiki'` — the clause that keeps this deferred is THE PRODUCT HAS NO SUCH
   OBJECT, unchanged.
-- CFP not-yet-open `Browse last year's sessions ›`
-  (`docs/design/Chautauqua Public and Portal.dc.html:1543`) — the link
-  keeps its landed destination and label, this event's published sessions
-  at `/e/:slug/sessions` (`src/routes/public/submit-views.tsx:139`).
-  DEC-380 wave-130 amendment. Re-tested at wave-140 against the narrowed
-  rule and the original reasoning does NOT survive as written: a
-  previous-edition model now exists in the domain — `getPriorPublicEvent`
-  (`src/server/repo/public/event.ts:79`, same-org, most recent event whose
-  `endDate` is strictly before this event's `startDate`) was landed under
-  DEC-745's wave-107 amendment, before wave-130's "no previous-edition
-  model exists anywhere in the domain" claim was even written, and is
-  already wired to a "Last year" aside on the public sessions fresh-empty
-  page (`src/routes/public/sessions.tsx:397-410`). The claim this bullet
-  rested on was false the day it was recorded. What DOES still hold: this
-  specific surface — the CFP not-yet-open page
-  (`src/routes/public/submit-views.tsx`'s `NotYetOpenPage`) — has never been
-  wired to that repo function, so today it is a real gap, just not the gap
-  originally named. This task's file ownership does not include
-  `src/routes/public/submit-views.tsx`, so the wiring is not done here;
-  recorded as a STILL-OWED BUILD for a future task, not as a permanent
-  deviation — flagged, not resolved, per this decision's own wave-137 note
-  that a worker task does not extend its scope to fix a finding it turns up
-  outside its owned files.
+- CFP not-yet-open page's link now points at the prior edition — THIS
+  RETIRES the entry recorded above through wave-149 (DEC-745 wave-150
+  amendment). `NotYetOpenPage` (`src/routes/public/submit-views.tsx`)
+  resolves `getPriorPublicEvent` (`src/server/repo/public/event.ts:79`) at
+  each of its three call sites — `submit-get.tsx`, `submit-post.tsx`,
+  `submit-draft.tsx` — and, when a qualifying prior edition exists
+  (same-org, most recent event whose `endDate` precedes this event's
+  `startDate`, with a non-zero publicly-visible session count), renders the
+  frame's own label `Browse last year's sessions ›`
+  (`docs/design/Chautauqua Public and Portal.dc.html:1543`) pointing at
+  `surfacePath(lastYear.event, "sessions", "/e")` — the same path helper
+  the public sessions fresh-empty page's "Last year" aside already uses
+  (`src/routes/public/sessions.tsx:397-410`). With no qualifying prior
+  edition the page keeps its original link and label unchanged —
+  `Browse the sessions ›` to this event's own `/e/:slug/sessions` — per
+  DEC-986's rule against fabricating a destination the window state cannot
+  know. No further code change beyond the wiring; this entry only
+  reconciles the authority with the landed build.
 - Contacts Pipeline · 390 dock IS minted — THIS REVERSES DEC-576
   wave-120/124's "no phone dock is minted" ruling recorded in §3
   (v12m-w19-a, DEC-967 wave-145 amendment). `Pipeline · 390`
