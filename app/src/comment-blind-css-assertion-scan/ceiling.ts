@@ -39,4 +39,23 @@
 // touched file still passed once routed through the real stripper -- no
 // false receipt (a comment-satisfied assertion) was found in this batch.
 // Ceiling lowered by exactly 5, 38 -> 33.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 33;
+// v12m-w13-rg (wave 157, task rg, DEC-374 amendment, phone-frame batch B):
+// re-measured against the same 38-on-main population lane rf shares. Of
+// this batch's four assigned files
+// (app/src/pages/agenda/agenda-phone-frame.test.ts,
+// app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts,
+// test/portal-session-phone-frames.test.ts, test/cfp-phone-steps.test.ts),
+// three were already routed through the shared stripper by an earlier
+// wave (v12m-w11-pg) and were never in the live 33-offender set measured
+// here; only test/cfp-phone-steps.test.ts was still comment-blind (a raw
+// `CFP_CSS` fed directly into `toMatch`, no stripping call in the file).
+// Migrated it to import test/helpers/strip-css-comments.ts, applied to
+// every product-content assertion; the one assertion that deliberately
+// checks a COMMENT's own presence (the DEC-919 `phone-hidden:` receipt)
+// was repointed at the raw, unstripped source instead, since stripping
+// would erase the very text it is testing for. Every assertion in the
+// file still passed once routed through the real stripper -- no vacuous
+// receipt (a comment-satisfied assertion) was found in this batch.
+// Ceiling lowered by exactly 1, 33 -> 32; v12m-w13-rf drains N more of the
+// same 38 in this batch; the merge train re-measures.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 32;

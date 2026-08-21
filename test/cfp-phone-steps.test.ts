@@ -8,8 +8,18 @@ import { JSDOM } from "jsdom";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
-import { CFP_CSS } from "../src/routes/public/cfp.css";
+import { CFP_CSS as RAW_CFP_CSS } from "../src/routes/public/cfp.css";
 import type { AppEnv } from "../src/server/env";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// Routed through the shared, string-aware stripper (DEC-374/DEC-613) before
+// any assertion below matches against it -- an un-stripped sheet passes a
+// positive `toMatch` VACUOUSLY when this file's house style quotes the
+// frame line verbatim inside the comment directly above the rule it
+// describes (v12m-w13-rg). RAW_CFP_CSS is kept only for the one assertion
+// below that deliberately checks for a comment's own presence (the
+// DEC-919 `phone-hidden:` receipt), never for a product-content match.
+const CFP_CSS = stripCssComments(RAW_CFP_CSS);
 
 const EVENT_ROW = {
   id: "event-1",
@@ -256,8 +266,11 @@ describe("cfp.css.ts — phone wizard chrome (w14-f)", () => {
   it("hides the step label, bar and both step buttons when data-chq-cfp-step is the inert \"all\" default, and leaves \"1\"/\"2\" behaviour unchanged", () => {
     const mediaBody = CFP_CSS.slice(CFP_CSS.indexOf("@media (max-width: 700px)"));
     expect(mediaBody).toMatch(/\[data-chq-cfp-step="all"\] \.chq-cfp-steps,\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-step-next,\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-step-back \{\s*display:\s*none;\s*\}/);
-    // The "all" hide carries its own DEC-919 receipt.
-    expect(mediaBody).toMatch(/\/\*\s*phone-hidden:[^*]*\*\/\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-steps,/);
+    // The "all" hide carries its own DEC-919 receipt -- this checks the
+    // COMMENT's own presence, so it deliberately reads the raw (unstripped)
+    // source, not the stripped one every other assertion in this file uses.
+    const rawMediaBody = RAW_CFP_CSS.slice(RAW_CFP_CSS.indexOf("@media (max-width: 700px)"));
+    expect(rawMediaBody).toMatch(/\/\*\s*phone-hidden:[^*]*\*\/\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-steps,/);
     // The pre-existing step-1/step-2 rules are untouched: still present,
     // still scoped to their own data-chq-cfp-step value, not "all".
     expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="1"\] \.chq-cfp-step-back \{\s*display:\s*none;\s*\}/);
