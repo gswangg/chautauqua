@@ -49,19 +49,35 @@ route/page component and rendered against `docs/design/Chautauqua
 Submissions.dc.html`, receipts at
 `app/src/pages/Submissions.frame-verdicts.render.test.tsx`.
 
-4. **Frame :137 "Submissions" — DIVERGES.** The head band (H1 `Submissions`
-   at :144, the `12 awaiting triage` summary, the 44px search field at
-   :147, the status chip strip at :148-151) renders in the frame's own
-   top-to-bottom order. Two divergences: (a) the frame's filled/active
-   first chip reads "Needs triage" (:149); the real control's own
-   vocabulary (`STATUS_LABELS`) reads "Pending" — never the frame's copy.
-   (b) the worklist itself is a desktop `<table>` (`role="cell"` cells for
+4. **Frame :137 "Submissions" — DIVERGES (narrowed, task v12m-w21-l,
+   DEC-976).** The head band (H1 `Submissions` at :144, the
+   `12 awaiting triage` summary, the 44px search field at :147, the status
+   chip strip at :148-151) renders in the frame's own top-to-bottom order.
+   (a) **CLOSED.** The pending chip DOES draw the frame's phone label:
+   `app/src/pages/submissions/FilterBar.tsx` renders both
+   `<span className="chq-submissions-status-pending-desktop">{STATUS_LABELS.pending}</span>`
+   and `<span className="chq-submissions-status-pending-phone">Needs triage</span>`
+   on the same button, and `app/src/pages/submissions/
+   submissions-landing-phone-frame.test.ts` pins both the frame's `"Needs
+   triage"` textContent and `STATUS_LABELS.pending` ("Pending") as the
+   control's pinned accessible name, at every width — not a divergence,
+   two labels sharing one control by design (DEC-825 wave-16 amendment).
+   (b) NARROWED to a DOM-element fact, not a screen fact: the worklist is
+   still a `<table>` element (`role="cell"` cells for
    ref/title/speakers/tracks/status/date/custom-columns/clone, then the
-   `role="group"` triage actions), not the frame's standalone stacked
-   card — extra columns interleave between the frame's four content blocks
-   (ref → title → speakers → actions). The triage row's own action triple
-   itself — Accept/Decline/Read (:165-167) — is present in the frame's
-   exact order.
+   `role="group"` triage actions) — jsdom, which applies no stylesheet,
+   still sees `<table>` markup. But drawn at 390 it is not a table shape:
+   `app/src/pages/submissions/submissions.css`'s phone
+   (`max-width:700px`) block card-stacks the row (`.chq-submissions-table
+   tbody tr { display:flex; flex-wrap:wrap; ... }`, per-cell `order`s
+   collapsing ref/select/status onto one line, speakers/track/custom
+   columns onto a second, `.chq-submissions-row-triage` full-width and
+   ordered last) into the frame's own four-block card
+   (ref → title → speakers → actions); the columnpicker rule's own comment
+   confirms the drawn shape by naming it directly: `/* ... once the table
+   stacks into cards (the earlier phone block, line 579-591 region) ...
+   */`. The triage row's own action triple — Accept/Decline/Read
+   (:165-167) — is present in the frame's exact order.
 
 5. **Frame :355 "Submission detail" — DIVERGES (clause (a) live; clause (b)
    CLOSED).** Ref/eyebrow → title (:362) → byline (:363) → abstract (:367)
@@ -90,16 +106,25 @@ Submissions.dc.html`, receipts at
    capability-removal receipt is satisfied by construction — see
    `app/src/pages/submissions/detail-390-headings.test.ts`).
 
-6. **Frame :468 "CFP form · 390" — DIVERGES (route: the admin form
-   BUILDER, `app/src/pages/forms/FormsPage.tsx`, per this task's
-   disambiguation, not the public SSR CFP).** The back link "‹
-   Submissions" (:470), H1 "CFP form" (:471), the field-list row's drag
-   handle "⋮⋮" (:476) and boxed "Edit" pill (:481), the phone "Add a
-   question" dashed control (:484), and the fixed footer's "Save the
-   form" + "Preview" pair (:486) all render in the frame's own order and
-   text. Two divergences: (a) the meta line under the H1 (:472) spells out
-   the close date's year — "Closes 16 Aug 2025 · 47 received" — where the
-   frame's own copy carries no year ("Closes 16 Aug · 47 received"),
-   because `formatDateOnly` always includes one. (b) each field row also
-   renders a "Delete" button beside "Edit" that the frame's row (:475-481)
-   never draws (frame shows one action pill only).
+6. **Frame :468 "CFP form · 390" — RESOLVED (both clauses, task v12m-w21-l,
+   DEC-976; route: the admin form BUILDER,
+   `app/src/pages/forms/FormsPage.tsx`, per this task's disambiguation, not
+   the public SSR CFP).** The back link "‹ Submissions" (:470), H1 "CFP
+   form" (:471), the field-list row's drag handle "⋮⋮" (:476) and boxed
+   "Edit" pill (:481), the phone "Add a question" dashed control (:484),
+   and the fixed footer's "Save the form" + "Preview" pair (:486) all
+   render in the frame's own order and text. Both previously-noted
+   divergences are stale. (a) CLOSED: the meta line is composed by
+   `formatDateOnlyNoYear` (`app/src/pages/forms/FormsPage.tsx`:
+   `const closesText = form.closeDate ? formatDateOnlyNoYear(form.closeDate) : 'No close date set';`),
+   yielding the frame's own year-less `"Closes 16 Aug · 47 received"` —
+   not `formatDateOnly`, and no year is spelled out. (b) CLOSED: each
+   field row's "Delete" button is hidden at phone width — the row's own
+   `chq-forms-field-row-delete` class token
+   (`app/src/pages/forms/FieldList.tsx`) is targeted by
+   `app/src/pages/forms/forms.css`'s phone block, whose own comment
+   records why it's a re-line, not a removal: `/* phone-hidden: re-lined
+   elsewhere -- the row's own Delete pill is reachable inside FieldModal's
+   own far-left "Delete this question" action ... no capability is lost,
+   only the access path changes. */`. The frame's one-action-pill row
+   (:475-481) is what actually renders at 390.

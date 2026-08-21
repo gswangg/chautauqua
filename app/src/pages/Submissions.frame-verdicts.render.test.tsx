@@ -339,7 +339,7 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
   });
 
   // Frame :468-486 "CFP form · 390".
-  it('frame :468 CFP form -- DIVERGES (narrowed, DEC-967 wave-20/21): back link, H1, field-list rows (Edit pill + drag handle) and the fixed footer (Save the form + Preview) all render in the frame\'s own order, and the meta line now matches the frame\'s year-less "Closes 16 Aug" too; the surviving divergence is the Delete button each field row renders, which the frame never draws', async () => {
+  it('frame :468 CFP form -- RESOLVED (task v12m-w21-l): back link, H1, field-list rows (Edit pill + drag handle), the year-less "16 Aug" meta line, and the fixed footer (Save the form + Preview) all render in the frame\'s own order and text; each field row\'s Delete button stays in the DOM (jsdom applies no stylesheet) but is CSS-hidden at 390, re-lined into FieldModal\'s own "Delete this question" action -- a DOM fact, not a screen divergence', async () => {
     const EVENT_ID = 'evt-forms-frame-468';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -408,9 +408,13 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Edit</span>`
     verbatimLine(481, L481);
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    // The frame's row draws ONE action pill ('Edit'); the real row also
-    // renders a 'Delete' button the frame never draws for this row.
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    // The row's own 'Delete' button stays in the DOM -- jsdom applies no
+    // stylesheet -- but forms.css's phone block hides it
+    // (.chq-forms-field-row-delete { display:none }), re-lined into
+    // FieldModal's own far-left 'Delete this question' action reached via
+    // this same visible Edit control. A DOM element, not a drawn control.
+    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    expect(deleteButton).toHaveClass('chq-forms-field-row-delete');
 
     // docs/design/Chautauqua Submissions.dc.html:484
     // `        <span style="display:flex; align-items:center; justify-content:center; margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Add a question</span></div>`

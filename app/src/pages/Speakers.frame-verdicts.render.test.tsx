@@ -103,7 +103,7 @@ function mockOnboarding() {
 
 describe('v12 Speakers 390 frames: per-frame render verdict receipts (w14-sc, DEC-976)', () => {
   // Frame :133 "Speakers" -- caption at :129 (`390` chip group).
-  it('frame :133 Speakers landing -- DIVERGES: the phone head repeats the desktop H1/summary (frame :139-140) with a Remind-outstanding/Filter row (:142-143), plus a phone-only "Roster ›" trigger the frame draws no control for', async () => {
+  it('frame :133 Speakers landing -- DIVERGES (blessed, DEC-976): the phone head repeats the desktop H1/summary (frame :139-140) with a Remind-outstanding/Filter row (:142-143), plus a phone-only "Roster ›" trigger the frame draws no control for, blessed in DEVIATIONS.md as the narrowest possible entry point to the drawn :260 drill-in destination', async () => {
     mockOnboarding();
     render(
       <MemoryRouter initialEntries={['/speakers']}>
@@ -129,8 +129,11 @@ describe('v12 Speakers 390 frames: per-frame render verdict receipts (w14-sc, DE
     // OnboardingGrid.tsx's own comment (:1059-1062) states this trigger is
     // "this task's own narrowest addition" -- the frame draws no control
     // for the Roster drill-in's entry, only its destination (:260). This
-    // is the divergence the title names: the rendered tree carries a
-    // control the frame simply does not draw.
+    // is the divergence the title names, and it is already blessed in
+    // docs/design/DEVIATIONS.md's "Speakers 390 landing's 'Roster ›'
+    // trigger" bullet: without a trigger the drill-in destination would be
+    // unreachable dead code, so the app adds this narrowest possible entry
+    // point.
     expect(screen.getByRole('button', { name: 'Roster ›' })).toBeInTheDocument();
   });
 
