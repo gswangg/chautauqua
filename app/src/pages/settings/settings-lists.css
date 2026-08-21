@@ -172,4 +172,42 @@
     color: var(--chq-ink-2);
     line-height: 1.5;
   }
+
+  /* DEC-919 wave-156 (task qe-tracks-rooms-read-drill): the Tracks/Rooms
+     READ view's own per-row 'Edit' box and list-closing dashed 'Add a
+     track'/'Add a room' row (docs/design/Chautauqua
+     Settings.dc.html:364,367,379,382 -- verbatim receipts sit beside each
+     JSX call site in TracksRoomsPanel.tsx). Both classes layer onto
+     .chq-settings-phone-action above for its hidden-by-desktop / flex-on-
+     phone toggle (reused rather than a second base display:none rule --
+     this file's own vocabulary, DEC-613); every property below overrides
+     that shared rule's brand-filled 46px-primary look, since these two
+     describe different phone-only affordances riding the same toggle.
+     Declared LAST in this block (append-only -- lane qb also appends here
+     this wave) so equal-specificity cascade order still resolves these
+     overrides after .chq-settings-phone-action's own declarations above. */
+  .chq-settings-tracks-rooms-row-edit {
+    grid-column: 3;
+    align-self: center;
+    flex-shrink: 0;
+    width: auto;
+    margin-top: 0;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    color: var(--chq-ink);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chq-settings-tracks-rooms-add {
+    min-height: 44px;
+    border: 1px dashed var(--chq-border);
+    background: transparent;
+    color: var(--chq-brand);
+    font-size: 13px;
+    font-weight: 700;
+  }
 }

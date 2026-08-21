@@ -226,4 +226,75 @@ describe('TracksRoomsPanel', () => {
     fireEvent.click(roomPhone!);
     expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
   });
+
+  // qe-tracks-rooms-read-drill (DEC-919 wave-156): the settings-v12.md
+  // wave-154 verdict for :347 ("no per-row boxed 'Edit', no dashed
+  // 'Add a track'/'Add a room' row -- only the section-level 'Add' drill")
+  // -- closed. The read view (editing=false) now carries its own boxed
+  // 44px Edit per row and its own dashed Add row per list, both driving the
+  // SAME ?section=tracks-rooms&edit=1 transition the section-level 'Add'
+  // action already opens.
+  it('renders a boxed 44px "Edit" per row and a dashed "Add a track"/"Add a room" row in the READ view, each drilling into the existing edit surface (DEC-919 wave-156)', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Tracks and rooms' });
+    await waitFor(() => {
+      expect(within(section).getAllByText('18 submissions')).toHaveLength(2);
+    });
+
+    // docs/design/Chautauqua Settings.dc.html:364 (twin :379)
+    // `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+    // min-height:44px; display:flex; align-items:center; padding:0 14px;
+    // font-size:13px; font-weight:600`
+    const editButtons = within(section).getAllByRole('button', { name: 'Edit' });
+    expect(editButtons).toHaveLength(4); // 2 tracks + 2 rooms
+    for (const btn of editButtons) {
+      expect(btn).toHaveClass('chq-settings-phone-action', 'chq-settings-tracks-rooms-row-edit');
+    }
+
+    // docs/design/Chautauqua Settings.dc.html:367 (twin :382)
+    // `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
+    // font-size:13px; font-weight:700; color:#4E5C31`
+    const addTrackRow = within(section).getByRole('button', { name: 'Add a track' });
+    expect(addTrackRow).toHaveClass('chq-settings-phone-action', 'chq-settings-tracks-rooms-add');
+    const addRoomRow = within(section).getByRole('button', { name: 'Add a room' });
+    expect(addRoomRow).toHaveClass('chq-settings-phone-action', 'chq-settings-tracks-rooms-add');
+
+    // Read view has no editable inputs and no 'Done' footer yet.
+    expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+
+    // Clicking a row's Edit drills into the existing edit surface -- every
+    // row is already draft-editable there (DEVIATIONS §5), so entering it
+    // IS "that row's edit already open"; no add form pops open uninvited.
+    fireEvent.click(editButtons[0]!);
+    await waitFor(() => {
+      expect(within(section).getByDisplayValue('AI Engineering')).toBeInTheDocument();
+    });
+    expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+  });
+
+  it('the dashed "Add a track"/"Add a room" read rows drill in with the matching add form already open (DEC-919 wave-156)', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Tracks and rooms' });
+    await waitFor(() => {
+      expect(within(section).getAllByText('18 submissions')).toHaveLength(2);
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a track' }));
+    await waitFor(() => {
+      expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
+    });
+    expect(within(section).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
+  });
 });

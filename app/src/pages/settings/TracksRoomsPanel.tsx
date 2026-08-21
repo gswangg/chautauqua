@@ -26,6 +26,7 @@ import { roomBaseline, trackBaseline, unownedFieldEntries, ROOM_FIELD_KEYS, TRAC
 import { useTracksRoomsPanel } from './tracksRooms/useTracksRoomsPanel';
 import { DEC_385, DEC_728, DEC_896, DEC_919 } from '../../../../src/decisions';
 import './settings-drill-rows.css';
+import './settings-lists.css';
 
 void DEC_385; // new page-local sheet, settings-drill-rows.css
 void DEC_728; // the 390 drill frame's own controls, not a second tap
@@ -70,6 +71,7 @@ export function TracksRoomsPanel() {
     toggleAddRoom,
     dirtyRowNames,
     unsavedAddDraftNames,
+    openEdit,
     handleDone,
     discardDirtyAndClose,
     isTrackDirty,
@@ -90,6 +92,26 @@ export function TracksRoomsPanel() {
     onRoomCapacityChange,
   } = useTracksRoomsPanel(SECTION_KEY);
 
+  // DEC-919 wave-156: the phone-only per-row 'Edit' box (frame :364/:379)
+  // and dashed 'Add a track'/'Add a room' list-closing row (frame
+  // :367/:382) both drill into the SAME edit surface openEdit() already
+  // opens for the section-level Add action -- every row there is already
+  // draft-editable at once (DEVIATIONS §5), so entering it IS "that row's
+  // edit already open". The dashed Add controls additionally reveal the
+  // matching add form via the panel's existing toggleAddTrack/toggleAddRoom
+  // (never a second open/closed flag -- DEC-613); read view only ever
+  // renders while that flag is false (closeEdit's retireAddForms() always
+  // resets it), so a bare toggle is safe here.
+  function openTrackAdd() {
+    openEdit();
+    toggleAddTrack();
+  }
+
+  function openRoomAdd() {
+    openEdit();
+    toggleAddRoom();
+  }
+
   const readValue = (
     <div className="chq-settings-tracks-rooms-grid">
       <div className="chq-settings-tracks-rooms-col" aria-label="Tracks">
@@ -106,8 +128,36 @@ export function TracksRoomsPanel() {
           <div key={track.id} className="chq-settings-tracks-rooms-row">
             <span>{track.name}</span>
             <span className="chq-settings-tracks-rooms-count">{track.submissionCount} submissions</span>
+            {/* docs/design/Chautauqua Settings.dc.html:364 `border:1px
+                solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+                min-height:44px; display:flex; align-items:center;
+                padding:0 14px; font-size:13px; font-weight:600` -- the
+                read view's own per-row Edit box, phone-only (DEC-919
+                wave-156: renders unconditionally, hidden at desktop via
+                .chq-settings-phone-action's base rule). */}
+            <button
+              type="button"
+              className="chq-settings-phone-action chq-settings-tracks-rooms-row-edit"
+              onClick={openEdit}
+            >
+              Edit
+            </button>
           </div>
         ))}
+        {/* docs/design/Chautauqua Settings.dc.html:367 `border:1px dashed
+            #BAB6A6; border-radius:6px; min-height:44px; font-size:13px;
+            font-weight:700; color:#4E5C31` -- the read view's own
+            list-closing Add row (distinct from the edit view's identical-
+            looking sibling built wave-99: this one opens the edit surface
+            itself, the other only reveals the add form already inside
+            it). Phone-only, same toggle reuse as above. */}
+        <button
+          type="button"
+          className="chq-settings-phone-action chq-settings-tracks-rooms-add"
+          onClick={openTrackAdd}
+        >
+          Add a track
+        </button>
       </div>
       <div className="chq-settings-tracks-rooms-col" aria-label="Rooms">
         <div className="chq-settings-tracks-rooms-phone-caption">
@@ -121,8 +171,26 @@ export function TracksRoomsPanel() {
             <span className="chq-settings-tracks-rooms-count">
               {room.capacity !== null ? `${room.capacity} seats` : 'No capacity set'}
             </span>
+            {/* docs/design/Chautauqua Settings.dc.html:379, byte-identical
+                to :364 above. */}
+            <button
+              type="button"
+              className="chq-settings-phone-action chq-settings-tracks-rooms-row-edit"
+              onClick={openEdit}
+            >
+              Edit
+            </button>
           </div>
         ))}
+        {/* docs/design/Chautauqua Settings.dc.html:382, byte-identical to
+            :367 above. */}
+        <button
+          type="button"
+          className="chq-settings-phone-action chq-settings-tracks-rooms-add"
+          onClick={openRoomAdd}
+        >
+          Add a room
+        </button>
       </div>
     </div>
   );

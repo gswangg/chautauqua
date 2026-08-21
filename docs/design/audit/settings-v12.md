@@ -45,6 +45,13 @@ anatomy for whichever view (read summary vs. edit list) a future task
 chooses to line up with the mock's row-level affordance. The read-view gap
 above is the only piece left open.
 
+**Amendment (wave 156, task qe-tracks-rooms-read-drill):** the Tracks/rooms
+half of this finding is CLOSED — `TracksRoomsPanel`'s read view now renders
+the boxed per-row `Edit` and dashed `Add a track`/`Add a room` row described
+above, phone-only, drilling into the section's existing edit surface. The
+`YourDataPanel` half (Exports `Download`, API tokens `Revoke`, frame
+`:409,423`) is untouched and stays open exactly as documented here.
+
 ## settings.css: five scattered max-width blocks consolidated into one terminal block
 
 Per DEC-385 (w85), `settings.css` had five separate `@media (max-width:
@@ -181,7 +188,7 @@ disposition of the same family of gap.
 | --- | --- | --- |
 | `:275` Settings (landing) | MATCHES | Index row order (label + "Open" + detail) equals the frame's `mobileGroups` order; DEC-691/DEC-747 rail order. |
 | `:316` Settings · Event | DIVERGES | Read view is `SummarySection`'s head-first "Change" (button precedes every row); frame draws content rows then a Save/Cancel footer. No Save/Cancel renders in read mode. |
-| `:347` Settings · Tracks and rooms | DIVERGES | No per-row boxed "Edit", no dashed "Add a track"/"Add a room" row (frame `:364,367,409,423`) — only the section-level "Add" drill. Already documented above ("no per-row Edit/Download/Revoke affordance"). |
+| `:347` Settings · Tracks and rooms | MATCHES | CLOSED wave 156 (task qe-tracks-rooms-read-drill): the read view now renders a boxed 44px "Edit" per row plus a dashed "Add a track"/"Add a room" row closing each list (frame `:364,367,379,382`), phone-only via `settings-lists.css`'s terminal `@media (max-width: 700px)` block; both drill into the section's existing edit surface (`?section=tracks-rooms&edit=1`), reusing `useTracksRoomsPanel`'s existing `toggleAddTrack`/`toggleAddRoom` state rather than minting a second one. Your-data's own per-row Download/Revoke gap (`:409,423`) is untouched by this task and stays open below. |
 | `:393` Settings · Your data | DIVERGES | No per-row "Download"/"Revoke" action in read mode — only the section-level "Change" drill. Masked-tokens/Revoke/New-token clause is separately CLOSED (wave 118); this per-row-action clause is the still-open remainder of that same finding. |
 | `:444` Settings · Call for papers | DIVERGES | Per-question list (`:467-475`, one row + boxed "Edit" per question) collapsed to one computed summary row — form-builder delegation, already documented above. |
 | `:481` Settings · Public pages | MATCHES | Row order (name, path, state, View, Embed code) matches; no head-first gate at all (DEC-896 B10 DROP — the frame itself draws no edit view for this section). Sole omission is the DEVIATIONS §6-blessed Publish/Unpublish toggle (`:495`, never rendered, not even disabled). |
