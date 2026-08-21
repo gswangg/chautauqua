@@ -209,12 +209,16 @@ function findRegistrations(file: string, rawSrc: string): RouteReg[] {
 }
 
 // Capability markers that classify a registration CREDENTIAL-BEARING.
+// DEC-027 wave-18 amendment: createClaimToken( joins the list -- a
+// /claim/<token> URL is an interactive login credential exactly like a
+// password or API token (src/auth/claim.ts).
 const CAPABILITY_MARKERS = [
   "generatePassword(",
   "updateUserPasswordHash(",
   "hashPassword(",
   "newApiToken(",
   "updateUserRole(",
+  "createClaimToken(",
 ];
 
 function isCredentialBearing(text: string): boolean {
@@ -307,10 +311,87 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-38 amendment)", () 
 
 const ALL_ROUTES_ROOT = join(ROOT, "src", "routes");
 
-// The three primitives a credential MINT or ROTATION performs. A route
-// module whose stripped source calls any of these is, by construction, a
+// The primitives a credential MINT or ROTATION performs. A route module
+// whose stripped source calls any of these is, by construction, a
 // credential-bearing route -- the population this section checks.
-const CREDENTIAL_PRIMITIVES = ["hashPassword(", "issueSessionRevokingAll(", "buildSessionCookie("];
+//
+// DEC-027 wave-18 amendment: applyMintedPortalLinks( joins the list --
+// unconditionally, since applyMintedPortalLinks always calls
+// resolvePortalLinks(..., true) internally (src/server/repo/portal-link.ts)
+// and so is ALWAYS a mint, never a preview. resolvePortalLinks( is NOT
+// added as a bare string here: it is called with mintClaimTokens=true (a
+// mint) in some call sites and mintClaimTokens=false (a preview handing
+// out PREVIEW_CLAIM_TOKEN, not a credential) in others -- a bare substring
+// marker would misclassify every preview call site as a mint. Instead
+// hasMintingResolvePortalLinksCall below parses each resolvePortalLinks(
+// call's own argument list and only counts it when the LAST (mintClaimTokens)
+// argument is the literal `true`.
+const CREDENTIAL_PRIMITIVES = ["hashPassword(", "issueSessionRevokingAll(", "buildSessionCookie(", "applyMintedPortalLinks("];
+
+/** Splits a call's argument-list text (the text between, but not
+ * including, its outer parens) into top-level arguments -- commas nested
+ * inside (), [], {}, or a string/template are not split points. */
+function splitTopLevelArgs(argsText: string): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let current = "";
+  let i = 0;
+  while (i < argsText.length) {
+    const ch = argsText[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      current += ch;
+      i++;
+      while (i < argsText.length && argsText[i] !== quote) {
+        if (argsText[i] === "\\" && i + 1 < argsText.length) {
+          current += (argsText[i] ?? "") + (argsText[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        current += argsText[i];
+        i++;
+      }
+      if (i < argsText.length) {
+        current += argsText[i];
+        i++;
+      }
+      continue;
+    }
+    if ("([{".includes(ch ?? "")) depth++;
+    else if (")]}".includes(ch ?? "")) depth--;
+    if (ch === "," && depth === 0) {
+      args.push(current);
+      current = "";
+      i++;
+      continue;
+    }
+    current += ch;
+    i++;
+  }
+  if (current.trim().length > 0) args.push(current);
+  return args;
+}
+
+/** True when stripped source contains a resolvePortalLinks( call whose
+ * last top-level argument is the literal `true` -- i.e. an actual mint,
+ * not a mintClaimTokens=false preview. Reuses this file's own
+ * findMatchingParen (the same balanced-paren walker findRegistrations
+ * uses for a route registration's arg list). */
+function hasMintingResolvePortalLinksCall(strippedSrc: string): boolean {
+  const CALL = "resolvePortalLinks(";
+  let searchFrom = 0;
+  while (true) {
+    const idx = strippedSrc.indexOf(CALL, searchFrom);
+    if (idx === -1) return false;
+    const openParenIdx = idx + CALL.length - 1;
+    const closeParenIdx = findMatchingParen(strippedSrc, openParenIdx);
+    const argsText = strippedSrc.slice(openParenIdx + 1, closeParenIdx);
+    const args = splitTopLevelArgs(argsText);
+    const lastArg = (args[args.length - 1] ?? "").trim();
+    if (lastArg === "true") return true;
+    searchFrom = closeParenIdx + 1;
+  }
+}
 
 // DEC-027 wave-70: the exemption list is CLOSED. A fourth entry needs a
 // written justification added directly to this record (and reflected in the
@@ -333,7 +414,7 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-70 amendment: whole
   const credentialFiles: string[] = [];
   for (const file of files) {
     const stripped = stripComments(readFileSync(file, "utf8"));
-    if (CREDENTIAL_PRIMITIVES.some((p) => stripped.includes(p))) {
+    if (CREDENTIAL_PRIMITIVES.some((p) => stripped.includes(p)) || hasMintingResolvePortalLinksCall(stripped)) {
       credentialFiles.push(file);
     }
   }
@@ -342,16 +423,36 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-70 amendment: whole
     expect(credentialFiles.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("every credential-bearing route file guards each mutating (.post/.patch/.put/.delete) registration with requireCookieSession, or is a declared UNAUTHENTICATED_DOOR", () => {
+  // DEC-027 wave-18 amendment: classification is now PER-REGISTRATION, not
+  // per-file. A file can carry both a minting registration (e.g. POST
+  // /contacts/bulk-email, applyMintedPortalLinks) and a non-minting sibling
+  // in the SAME file (e.g. POST /contacts/bulk-email/preview, which only
+  // ever calls resolvePortalLinks(..., false)) -- classifying the whole
+  // file would wrongly demand the guard on the preview route too. Each
+  // mutating registration's own slice (its start through the next
+  // registration's start in the same file, comment-stripped -- the same
+  // technique the wave-38 section above uses for CAPABILITY_MARKERS) is
+  // checked against CREDENTIAL_PRIMITIVES / hasMintingResolvePortalLinksCall
+  // independently.
+  it("every credential-bearing registration guards with requireCookieSession, or is a declared UNAUTHENTICATED_DOOR", () => {
     const gaps: string[] = [];
-    for (const file of credentialFiles) {
+    for (const file of files) {
       const relFile = relative(ROOT, file).split("\\").join("/");
       if (relFile in UNAUTHENTICATED_DOORS) continue;
       const rawSrc = readFileSync(file, "utf8");
-      const regs = findRegistrations(file, rawSrc).filter((r) => MUTATING_METHODS.has(r.method));
-      for (const reg of regs) {
-        if (!/\brequireCookieSession\b/.test(reg.registrationText)) {
-          gaps.push(`${reg.file}:${reg.line} ${reg.method} registration is missing requireCookieSession`);
+      const stripped = stripComments(rawSrc);
+      const regs = findRegistrations(file, rawSrc);
+      const starts = regs
+        .map((r) => ({ reg: r, idx: stripped.indexOf(r.registrationText) }))
+        .sort((a, b) => a.idx - b.idx);
+      for (let i = 0; i < starts.length; i++) {
+        const cur = starts[i]!;
+        if (!MUTATING_METHODS.has(cur.reg.method)) continue;
+        const nextIdx = i + 1 < starts.length ? starts[i + 1]!.idx : stripped.length;
+        const slice = stripped.slice(cur.idx, nextIdx);
+        const isCredentialBearingSlice = CREDENTIAL_PRIMITIVES.some((p) => slice.includes(p)) || hasMintingResolvePortalLinksCall(slice);
+        if (isCredentialBearingSlice && !/\brequireCookieSession\b/.test(cur.reg.registrationText)) {
+          gaps.push(`${cur.reg.file}:${cur.reg.line} ${cur.reg.method} registration is missing requireCookieSession`);
         }
       }
     }
@@ -399,5 +500,77 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-70 amendment: whole
     expect(relFiles).toContain("src/routes/api/users.ts");
     expect("src/routes/account.tsx" in UNAUTHENTICATED_DOORS).toBe(false);
     expect("src/routes/api/users.ts" in UNAUTHENTICATED_DOORS).toBe(false);
+  });
+
+  // ===========================================================================
+  // DEC-027 wave-18 amendment: a claim-token mint IS a credential mint.
+  // applyMintedPortalLinks( and a minting (mintClaimTokens=true)
+  // resolvePortalLinks( call now widen CREDENTIAL_PRIMITIVES, and
+  // createClaimToken( widens the wave-38 CAPABILITY_MARKERS above -- both
+  // DERIVED, not hand-listed. These four routes were the verified escalation:
+  // portal-invites.ts and content-notes.ts mint directly
+  // (resolvePortalLinks(..., true)); send.ts and bulk-email.ts mint
+  // indirectly through applyMintedPortalLinks.
+  // ===========================================================================
+
+  it("known population: the four DEC-027 wave-18 claim-token-minting routes are all credential-bearing and none is a declared door", () => {
+    const relFiles = credentialFiles.map((f) => relative(ROOT, f).split("\\").join("/"));
+    const expectedFiles = [
+      "src/routes/comms/portal-invites.ts",
+      "src/routes/content-notes.ts",
+      "src/routes/comms/send.ts",
+      "src/routes/api/contacts/bulk-email.ts",
+    ];
+    for (const f of expectedFiles) {
+      expect(relFiles, `${f} should be in the derived credential-file population`).toContain(f);
+      expect(f in UNAUTHENTICATED_DOORS, `${f} must not be a declared door`).toBe(false);
+    }
+  });
+
+  it("positive control: hasMintingResolvePortalLinksCall detects an indirect mint via applyMintedPortalLinks on a synthetic fixture", () => {
+    const synthetic = stripComments(`
+      async function handler(kv, recipients, eventId, origin, targets) {
+        await applyMintedPortalLinks(kv, recipients, eventId, origin, targets);
+      }
+    `);
+    expect(CREDENTIAL_PRIMITIVES.some((p) => synthetic.includes(p))).toBe(true);
+  });
+
+  it("positive control: hasMintingResolvePortalLinksCall detects a direct mint (mintClaimTokens=true), including multi-line calls with nested parens", () => {
+    const synthetic = stripComments(`
+      async function handler(kv, participants, eventId, origin) {
+        const portalLinkByContactId = await resolvePortalLinks(
+          kv,
+          participants.map((p) => ({ contactId: p.contactId, userId: lookup.get(p.contactId) ?? null })),
+          eventId,
+          origin,
+          true,
+        );
+      }
+    `);
+    expect(hasMintingResolvePortalLinksCall(synthetic)).toBe(true);
+  });
+
+  it("negative control: a resolvePortalLinks(..., false) preview call site is NOT classified as a mint", () => {
+    const synthetic = stripComments(`
+      async function handler(kv, recipientAccounts, eventId, origin) {
+        const portalLinkMap = await resolvePortalLinks(kv, recipientAccounts, eventId, origin, false);
+      }
+    `);
+    expect(hasMintingResolvePortalLinksCall(synthetic)).toBe(false);
+    expect(CREDENTIAL_PRIMITIVES.some((p) => synthetic.includes(p))).toBe(false);
+  });
+
+  it("negative control: applyMintedPortalLinks is a mint regardless of any nearby false-valued argument text elsewhere in the file", () => {
+    // Guards against a naive bare-substring check on "resolvePortalLinks("
+    // being reintroduced: a file with ONLY a preview call must not be
+    // swept in just because the substring "resolvePortalLinks(" appears.
+    const previewOnly = stripComments(`
+      async function preview(kv, recipients, eventId, origin) {
+        return resolvePortalLinks(kv, recipients, eventId, origin, false);
+      }
+    `);
+    expect(CREDENTIAL_PRIMITIVES.includes("resolvePortalLinks(")).toBe(false);
+    expect(hasMintingResolvePortalLinksCall(previewOnly)).toBe(false);
   });
 });

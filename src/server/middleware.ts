@@ -273,7 +273,16 @@ export const requireSpeaker = requireRole("speaker");
  * missing session check here is a full escalation, not just a CSRF gap.
  * This is the ONE assembler of that refusal: every credential-bearing route
  * places this immediately after requireOrganizer (or the relevant role
- * guard) rather than re-implementing the check inline. */
+ * guard) rather than re-implementing the check inline.
+ *
+ * DEC-027 wave-18 amendment: a claim-token mint IS a credential mint — a
+ * /claim/<token> URL is an interactive login credential exactly like a
+ * password or API token. Every route that reaches createClaimToken
+ * (src/auth/claim.ts), directly via resolvePortalLinks(..., true) or
+ * indirectly via applyMintedPortalLinks, places this guard immediately
+ * after its role guard: src/routes/comms/portal-invites.ts,
+ * src/routes/content-notes.ts, src/routes/comms/send.ts, and
+ * src/routes/api/contacts/bulk-email.ts. */
 export const requireCookieSession: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (!c.var.auth) {
     throw new ApiError("unauthorized", "Login required");
