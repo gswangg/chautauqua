@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
+import { listFormatLabelsBySubmission } from "../review/submissions";
 import { chunkIds } from "../../../lib/chunk";
 import { findConflicts, type PlacedSession } from "../../../domain/schedule";
 import { DEC_777, DEC_962 } from "../../../decisions";
@@ -51,6 +52,12 @@ export interface PortalSession {
   endMin: number | null;
   roomName: string | null;
   trackName: string | null;
+  /** DEC-908: the raw session_format answer label (verbatim, unparsed --
+   * same contract as listFormatLabelsBySubmission's own map value). Null
+   * when the submission has no session_format answer. Readers print it
+   * through sessionFormatLabel (src/lib/session-vocabulary.ts), never a
+   * second '(N min)' parser. */
+  format: string | null;
   acceptedAt: number | null;
   eventId: string;
   eventName: string;
@@ -112,10 +119,12 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
       ),
     );
 
-  const trackNames = await loadTrackNamesBySubmission(
-    db,
-    rows.map((row) => row.submissionId),
-  );
+  const submissionIds = rows.map((row) => row.submissionId);
+  const trackNames = await loadTrackNamesBySubmission(db, submissionIds);
+  // DEC-908: the SAME batched session_format-role predicate the reviewer
+  // queue uses (review/submissions.ts:849) -- ONE query per chunkIds batch,
+  // never one query per row, reused rather than re-implemented.
+  const formatLabels = await listFormatLabelsBySubmission(db, submissionIds);
 
   const sessions = rows.map((row) => ({
     submissionId: row.submissionId,
@@ -126,6 +135,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     endMin: row.endMin,
     roomName: row.roomName,
     trackName: trackNames.get(row.submissionId)?.[0] ?? null,
+    format: formatLabels.get(row.submissionId) ?? null,
     acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,
     eventId: row.eventId,
     eventName: row.eventName,
@@ -198,6 +208,13 @@ export interface PortalDeliverable {
   filename: string;
   sizeBytes: number;
   uploadedAt: number;
+  /** DEC-908: only populated by listLatestDeliverables (the portal home's
+   * batched read) -- getLatestDeliverable (the single-submission detail-page
+   * read) leaves this null; that page already resolves version through its
+   * own getFileVersionNumber call. Null here means "not read", never "no
+   * version" -- files-library-list.ts's fail-loud null-version rule applies
+   * only where this field IS populated (listLatestDeliverables below). */
+  versionNo: number | null;
 }
 
 /** Most recently uploaded file linked to `submissionId` (any kind — this is
@@ -224,7 +241,9 @@ export async function getLatestDeliverable(
     .orderBy(desc(schema.file.createdAt))
     .limit(1);
   const row = rows[0];
-  return row ? { id: row.id, filename: row.filename, sizeBytes: row.sizeBytes, uploadedAt: row.createdAt.getTime() } : null;
+  return row
+    ? { id: row.id, filename: row.filename, sizeBytes: row.sizeBytes, uploadedAt: row.createdAt.getTime(), versionNo: null }
+    : null;
 }
 
 /** Batched form of getLatestDeliverable: the portal home's per-session
@@ -254,6 +273,7 @@ export async function listLatestDeliverables(
         filename: schema.file.filename,
         sizeBytes: schema.file.sizeBytes,
         createdAt: schema.file.createdAt,
+        versionNo: schema.file.versionNo,
       })
       .from(schema.file)
       .where(and(inArray(schema.file.submissionId, chunk), fileSubmissionOwnedByContact(contactId, orgId)))
@@ -261,11 +281,17 @@ export async function listLatestDeliverables(
     for (const row of rows) {
       if (row.submissionId === null) continue;
       if (out.has(row.submissionId)) continue;
+      // DEC-818: fail loudly rather than defaulting -- files-library-list.ts's
+      // identical rule for a file row with no stored version_no.
+      if (row.versionNo === null || row.versionNo === undefined) {
+        throw new Error(`listLatestDeliverables: file ${row.id} has no stored version_no — data corruption`);
+      }
       out.set(row.submissionId, {
         id: row.id,
         filename: row.filename,
         sizeBytes: row.sizeBytes,
         uploadedAt: row.createdAt.getTime(),
+        versionNo: row.versionNo,
       });
     }
   }

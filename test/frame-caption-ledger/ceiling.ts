@@ -386,4 +386,23 @@
 // two-sided ratchet actually PRINTS against the integrated tree (ceiling
 // forced to -1, the offender count read back), never a lane's pre-merge figure
 // and never a guess.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 14;
+// v12m-w6-cd (wave 150, task w6-cd, DEC-908 amendment): closed the last two
+// unclaimed rows of the campaign's frame-caption ledger --
+// Chautauqua Public and Portal.dc.html:444/:445, the portal home
+// SessionCard's format-first meta clause and version + review-status
+// deliverable clause (src/routes/portal/index.tsx, src/server/repo/portal/
+// sessions.ts). Both closed via new COMPOSED_EXCLUSIONS entries (neither is
+// a plain-substring or digit-skeleton match -- both are assembled from live
+// per-submission/per-file data), not by a build any digit-skeleton pass can
+// see. Main was RED on this ledger in both directions before this task
+// (declared 14, measuring 6 on 6426c8d9 in the field guide's own detached-
+// worktree reading); the other four rows the field guide named
+// (P&P:1080/:1130/:1153, Settings:1422) live on unmerged branches
+// v12m-w4-ao/v12m-w4-aq, not present on this branch's own base, so they are
+// NOT reflected in this branch's own measurement. Forced to -1 and read
+// back directly off THIS branch's own offender list (never a guess, never a
+// pre-measurement figure): 4. Lowered from the stale 14 to the measured 4 --
+// this branch's own re-seed, to be reconciled against the other three
+// unmerged lanes' figures at the next merge-train act, per this file's own
+// standing "never a lane's pre-merge figure" rule for the INTEGRATED tree.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 4;
