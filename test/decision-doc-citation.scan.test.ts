@@ -573,18 +573,52 @@ const PROBE_ENTRIES: [string, string][] = PROBE_DOC_NAMES.map((name) => [
   readFileSync(join(PROBES_DIR, name), "utf-8"),
 ]);
 
+// DECISIONS REGISTRY CLASS (DEC-518 wave-155, task ph): the OLDER, disjoint
+// `decisions/` directory (1000 files) that test/decision-path-references.
+// scan.test.ts already checks for bare path EXISTENCE only -- no line-range,
+// no quote. This class runs the SAME two-directional grammar
+// (findCitations/resolvePath/quoteAfter/checkCitationsPartitioned) every
+// other widened class above uses -- not a second grammar (DEC-613), only a
+// longer file list. Enumerated by readdirSync, never a hand-listed manifest
+// (DEC-808/DEC-180). Kept OUT of WIDENED_VIOLATIONS/WIDENED_PARTITIONED
+// below and given its own separately-named ratchet
+// (DECISIONS_REGISTRY_CITATION_CEILING) deliberately: this is a 1000-file
+// population never before measured beyond existence, and folding its first
+// count into WIDENED_UNRESOLVED_CITATION_CEILING -- already drained to 0
+// against a DIFFERENT, previously-measured population -- would silently
+// move that ceiling's goalposts mid-convergence.
+const DECISIONS_REGISTRY_DIR = join(ROOT, "decisions");
+
+function decisionsRegistryDocFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && /^DEC-\d+\.md$/.test(e.name))
+    .map((e) => e.name)
+    .sort();
+}
+
+const DECISIONS_REGISTRY_DOC_NAMES = decisionsRegistryDocFiles(DECISIONS_REGISTRY_DIR);
+const DECISIONS_REGISTRY_ENTRIES: [string, string][] = DECISIONS_REGISTRY_DOC_NAMES.map((name) => [
+  `decisions/${name}`,
+  readFileSync(join(DECISIONS_REGISTRY_DIR, name), "utf-8"),
+]);
+
 /** One source class = one label plus the (doc, content) pairs it
  * contributes to the walk. Each class gets its own vacuous-population
  * tripwire below (the task's explicit requirement: a widened population
  * that silently contributes zero checked citations from one of its four
  * new classes would be indistinguishable from a class that was never
- * added). */
+ * added). The `decisions/DEC-*.md` sixth entry (DEC-518 wave-155) is
+ * included here so it shares that same tripwire coverage, but is EXCLUDED
+ * from WIDENED_PARTITIONED/WIDENED_VIOLATIONS below -- see
+ * DECISIONS_REGISTRY_LABEL and the dedicated ratchet further down. */
+const DECISIONS_REGISTRY_LABEL = "decisions/DEC-*.md";
 const WIDENED_SOURCE_CLASSES: { label: string; entries: [string, string][] }[] = [
   { label: "docs/design/audit/*.md", entries: AUDIT_ENTRIES },
   { label: "docs/design/DEVIATIONS.md", entries: [DEVIATIONS_ENTRY] },
   { label: "docs/design/DESIGN-RULINGS.md", entries: [DESIGN_RULINGS_ENTRY] },
   { label: "docs/mobile-campaign.md", entries: [MOBILE_CAMPAIGN_ENTRY] },
   { label: "docs/probes/*.md", entries: PROBE_ENTRIES },
+  { label: DECISIONS_REGISTRY_LABEL, entries: DECISIONS_REGISTRY_ENTRIES },
 ];
 
 /** Citations that DIRECTION 1 resolved (real file, in-range line) -- the
@@ -607,11 +641,23 @@ function countResolved(entries: [string, string][]): number {
   return n;
 }
 
-const WIDENED_PARTITIONED = WIDENED_SOURCE_CLASSES.flatMap(({ entries }) =>
-  entries.map(([doc, content]) => checkCitationsPartitioned(doc, content)),
-);
+const WIDENED_PARTITIONED = WIDENED_SOURCE_CLASSES.filter(
+  ({ label }) => label !== DECISIONS_REGISTRY_LABEL,
+).flatMap(({ entries }) => entries.map(([doc, content]) => checkCitationsPartitioned(doc, content)));
 const WIDENED_VIOLATIONS: Violation[] = WIDENED_PARTITIONED.flatMap((p) => p.ordinary);
 const WIDENED_EXHIBIT_HEALED: Violation[] = WIDENED_PARTITIONED.flatMap((p) => p.exhibitHealed);
+
+// Separate walk + ratchet for the decisions/ registry class (DEC-518
+// wave-155) -- same functions, its own population, its own ceiling. See
+// DECISIONS_REGISTRY_LABEL comment above for why this is not folded into
+// WIDENED_PARTITIONED/WIDENED_VIOLATIONS.
+const DECISIONS_REGISTRY_PARTITIONED = DECISIONS_REGISTRY_ENTRIES.map(([doc, content]) =>
+  checkCitationsPartitioned(doc, content),
+);
+const DECISIONS_REGISTRY_VIOLATIONS: Violation[] = DECISIONS_REGISTRY_PARTITIONED.flatMap((p) => p.ordinary);
+const DECISIONS_REGISTRY_EXHIBIT_HEALED: Violation[] = DECISIONS_REGISTRY_PARTITIONED.flatMap(
+  (p) => p.exhibitHealed,
+);
 
 // Ratchet (DEC-967 wave-107, DEC-808 wave-106 two-sided-ratchet rule):
 // seeded at the count this scan itself measured on this branch (never
@@ -679,6 +725,55 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
       );
     }
     expect(WIDENED_EXHIBIT_HEALED).toEqual([]);
+  });
+});
+
+// Ratchet for the decisions/ registry class (DEC-518 wave-155, task ph):
+// this is a 1000-file population never before checked beyond bare path
+// existence (test/decision-path-references.scan.test.ts). MEASURE-ONLY
+// landing per this task's explicit instruction -- fix no offenders, change
+// no decisions/*.md body. Seeded by forcing this to -1 and reading the
+// printed count off this tree (see docs/design/audit/decisions-registry-
+// citation-v12.md for the measured shape).
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1291;
+
+describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
+  it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
+    expect(DECISIONS_REGISTRY_DOC_NAMES.length).toBeGreaterThan(0);
+    expect(DECISIONS_REGISTRY_DOC_NAMES).toContain("DEC-001.md");
+  });
+
+  it(`every citation in decisions/DEC-*.md resolves to a real file/line and, where a backtick quote immediately follows, matches it verbatim (ceiling: DECISIONS_REGISTRY_CITATION_CEILING, may only be lowered)`, () => {
+    if (DECISIONS_REGISTRY_VIOLATIONS.length > DECISIONS_REGISTRY_CITATION_CEILING) {
+      throw new Error(
+        `${DECISIONS_REGISTRY_VIOLATIONS.length} decisions/ registry citations are unresolved, above the ratchet ` +
+          `ceiling of ${DECISIONS_REGISTRY_CITATION_CEILING} (may only be LOWERED, never raised to paper over a ` +
+          `regression):\n` + DECISIONS_REGISTRY_VIOLATIONS.map((v) => v.message).join("\n"),
+      );
+    }
+    expect(DECISIONS_REGISTRY_VIOLATIONS.length).toBeLessThanOrEqual(DECISIONS_REGISTRY_CITATION_CEILING);
+  });
+
+  it("the ceiling is not stale: the measured violation count is not below DECISIONS_REGISTRY_CITATION_CEILING (two-sided ratchet, DEC-808 wave-106 amendment)", () => {
+    if (DECISIONS_REGISTRY_VIOLATIONS.length < DECISIONS_REGISTRY_CITATION_CEILING) {
+      throw new Error(
+        `measured ${DECISIONS_REGISTRY_VIOLATIONS.length} unresolved decisions/ registry citations, below the ` +
+          `declared ceiling of ${DECISIONS_REGISTRY_CITATION_CEILING} -- lower the constant: ` +
+          `export const DECISIONS_REGISTRY_CITATION_CEILING = ${DECISIONS_REGISTRY_VIOLATIONS.length};`,
+      );
+    }
+    expect(DECISIONS_REGISTRY_VIOLATIONS.length).toBeGreaterThanOrEqual(DECISIONS_REGISTRY_CITATION_CEILING);
+  });
+
+  it("every EXHIBIT!-marked citation in decisions/DEC-*.md still fails to resolve/match (retire the sigil the moment one heals)", () => {
+    if (DECISIONS_REGISTRY_EXHIBIT_HEALED.length > 0) {
+      throw new Error(
+        `${DECISIONS_REGISTRY_EXHIBIT_HEALED.length} decisions/ registry EXHIBIT! citation(s) have healed -- ` +
+          `retire their sigils (they are no longer dead anchors):\n` +
+          DECISIONS_REGISTRY_EXHIBIT_HEALED.map((v) => v.message).join("\n"),
+      );
+    }
+    expect(DECISIONS_REGISTRY_EXHIBIT_HEALED).toEqual([]);
   });
 });
 
