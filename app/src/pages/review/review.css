@@ -2465,6 +2465,28 @@
     color: var(--chq-muted);
   }
 
+  /* --- (1) Criteria column headers: no columns left to label ----------
+     w6-cf/DEC-989 amendment: `.chq-review-criterion-row,
+     .chq-review-criteria-head-row { grid-template-columns: 20px
+     minmax(0, 1fr) 232px 128px 122px 62px; }` (:981) totals 564px of
+     fixed tracks plus 5x16px gaps -- 644px -- against the 358px phone
+     budget; unlike its sibling .chq-review-criterion-row (immediately
+     below), which the cascade already re-lines to a wrapped flex card,
+     this shared declaration had NO phone override at all, so the head
+     row kept rendering its six-track desktop grid, starving the
+     `minmax(0, 1fr)` Criterion label to a sliver. The header row is
+     `aria-hidden="true"` (PlanEditor.tsx:1780) -- decorative column
+     labels, not a control -- and once the body rows below collapse to
+     stacked cards there are no columns left for it to label, so DEC-919's
+     "a 390 frame re-lines, it never removes a control" does not apply:
+     there is no control here to remove. Hidden using the same idiom as
+     .chq-review-criteria-eyebrow above (display:none only; the overflow
+     scan reads property values independent of display, so no fixed-track
+     geometry is left declared at this width either way). */
+  .chq-review-criteria-head-row {
+    display: none;
+  }
+
   /* --- (1) Criteria rows: stacked cards, not the desktop grid ---------- */
   /* Overrides this file's earlier phone-narrow `.chq-review-criterion-row
      { grid-template-columns: 1fr; }` collapse (same selector, later in
