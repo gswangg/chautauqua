@@ -11,13 +11,16 @@
 >
 > **This table supersedes the wave-146 version of this document in full** —
 > every row below was re-grepped against the tree rather than inherited from
-> the older table. The counts in the next paragraph are the PRE-MERGE
-> figures they were taken as. The merge train has since re-derived the
-> INTEGRATED figure, and `FRAME_CAPTION_UNMATCHED_CEILING`
-> (`test/frame-caption-ledger/ceiling.ts`) now reads `0`: read the count
-> below as history and the ceiling as the live number (DEC-976, DEC-989).
-> Three rows are re-graded **CLOSED** in place below, per this document's
-> own rule above — the builds that closed them landed in the same batch.
+> the older table. It was first measured on branch `v12m-w4-aq` (DEC-976),
+> forked from main at `766c2f92`; both `v12m-w4-aq` and the prior
+> `v12m-w21-c` (DEC-976, wave-146) version have since landed on `main`.
+> The counts in the next paragraph are the PRE-MERGE figures they were taken
+> as. The merge train has since re-derived the INTEGRATED figure, and
+> `FRAME_CAPTION_UNMATCHED_CEILING` (`test/frame-caption-ledger/ceiling.ts`)
+> now reads `0`: read the count below as history and the ceiling as the live
+> number (DEC-976, DEC-989). Three rows are re-graded **CLOSED** in place
+> below, per this document's own rule above — the builds that closed them
+> landed in the same batch.
 
 `test/frame-caption-ledger.scan.test.ts`'s own population/match/exclusion
 machinery, forced to `-1` on this branch, measures **14** unmatched captions

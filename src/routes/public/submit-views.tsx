@@ -142,11 +142,11 @@ function notYetOpenMetaLine(event: EventRow): string {
   return `${event.name} · ${start}–${end}`;
 }
 
-// DEC-745 (wave-150 amendment): the frame's one action
-// (docs/design/Chautauqua Public and Portal.dc.html:1543
-// `Browse last year's sessions ›`) points at the prior edition's
-// sessions, not this event's own -- by definition unpublished --
-// programme. `getPriorPublicEvent`
+// DEC-745 (wave-150 amendment): the frame's one action,
+// docs/design/Chautauqua Public and Portal.dc.html:1543, draws
+// `Browse last year's sessions ›` -- which, per this ruling, points at the
+// prior edition's sessions, not this event's own -- by definition
+// unpublished -- programme. `getPriorPublicEvent`
 // (src/server/repo/public/event.ts:79) already returns null both when
 // there is no prior event AND when that edition's publicly-visible session
 // count is 0, so `lastYear` here is exactly "a qualifying prior edition
