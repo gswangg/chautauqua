@@ -62,4 +62,17 @@ describe('FilterRulesPanel rule chip strip (src/decisions-data/DEC-919.md)', () 
     expect(screen.getByText('All of')).toBeInTheDocument();
     expect(screen.getByText('Matching all of')).toBeInTheDocument();
   });
+
+  // src/decisions-data/DEC-930.md (amendment): the chip strip is a named
+  // group -- its caption ("All of") IS the group's accessible name via
+  // aria-labelledby -- and its chip buttons remain reachable by their own
+  // roles inside it.
+  it('is a named group whose caption is its accessible name, with chip controls still reachable', () => {
+    render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={2} totalCount={10} onSaveAsSegment={noop} />);
+    const group = screen.getByRole('group', { name: 'All of' });
+    expect(group).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Edit Company is Acme' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Remove Company is Acme' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: '+ Rule' })).toBeInTheDocument();
+  });
 });

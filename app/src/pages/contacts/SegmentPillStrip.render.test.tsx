@@ -5,7 +5,7 @@
 // `segmentsLoaded` settles (DEC-678).
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { SegmentPillStrip } from './SegmentPillStrip';
 import type { Segment } from './types';
@@ -70,5 +70,17 @@ describe('SegmentPillStrip', () => {
     renderStrip({ segmentId: 'seg1', onApplySegment });
     screen.getByText('All').click();
     expect(onApplySegment).toHaveBeenCalledWith('');
+  });
+
+  // src/decisions-data/DEC-930.md (amendment): the strip is a named group --
+  // it draws no caption of its own, so it takes an aria-label -- and its
+  // pills remain reachable by their own button roles inside it.
+  it('is a named group, with its pills still reachable by their own roles', () => {
+    renderStrip();
+    const group = screen.getByRole('group', { name: 'Filter by saved segment' });
+    expect(group).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'All', pressed: true })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Speakers · 41' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Reviewers · 6' })).toBeInTheDocument();
   });
 });

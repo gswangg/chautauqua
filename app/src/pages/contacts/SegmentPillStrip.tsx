@@ -6,10 +6,11 @@
 // minting a second filter surface. Counts are NOT recomputed here --
 // Segment.count already arrives from GET /segments computed with the SAME
 // where clause the directory list uses (DEC-710).
-import { DEC_919 } from '../../../../src/decisions';
+import { DEC_919, DEC_930 } from '../../../../src/decisions';
 import type { Segment } from './types';
 
 void DEC_919;
+void DEC_930;
 
 interface Props {
   segments: Segment[];
@@ -20,7 +21,10 @@ interface Props {
 
 export function SegmentPillStrip({ segments, segmentsLoaded, segmentId, onApplySegment }: Props) {
   return (
-    <div className="chq-chipstrip chq-contacts-segment-pills">
+    // src/decisions-data/DEC-930.md (amendment): this narrowing strip draws
+    // no caption of its own, so the group takes an aria-label naming what
+    // it narrows by.
+    <div className="chq-chipstrip chq-contacts-segment-pills" role="group" aria-label="Filter by saved segment">
       <button
         type="button"
         className={segmentId === '' ? 'chq-pill is-active' : 'chq-pill'}
