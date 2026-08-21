@@ -2604,4 +2604,30 @@
   .chq-settings-edit-footer-primary .chq-btn {
     flex: 1;
   }
+
+  /* DEC-393 amendment (w9-kg, Settings tier-2 floor sweep): five classless
+     anchors sat at the UA's bare line box on phone -- ExportsPanel's three
+     download links (one per .chq-settings-exports-table row, plus the
+     show-flow row) and YourDataPanel's two "/docs/api" links (summary row
+     + rendered row). Each is the SOLE interactive element on its line or
+     in its cell (ROOMY per docs/design/audit/phone-tap-floor-links.md's
+     taxonomy), so the blanket rule applies: min-height:44px + centred
+     flex + horizontal padding, via the cancelled-padding idiom above
+     (.chq-settings-tokens-table tbody td:last-child .chq-link-button)
+     so the hit box and focus ring grow without moving any glyph. */
+  .chq-settings-exports-download {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-settings-api-docs-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
 }
