@@ -46,7 +46,7 @@ export const DEC_249 = "Format-column auto-show matches a fixed label allowlist 
 export const DEC_250 = "Wave-4 exit battery frozen at product sha c211d4c; allow-listed drift; six greppable sections under docs/verification-log/";
 export const DEC_251 = "eval-findings Section D disposition: five items FIXED with cited evidence, three residuals WAIVED for stage-1 closure";
 export const DEC_252 = "Local-first absolute-link origins: resolveBaseUrl precedence + relative same-origin hrefs";
-export const DEC_253 = "Mobile bar for public, submit and portal surfaces (390x844), enforced by the render-sweep gate";
+export const DEC_253 = "Wave-154 amendment: the live 390 pass measures every interactive element, not a class vocabulary";
 export const DEC_254 = "Wave-1 browser persona passes: lane-scoped fix authority, a regression test per fix, greppable log";
 export const DEC_255 = "Stage-1 completion criterion for this campaign: a fresh six-section battery at a new frozen sha";
 export const DEC_256 = "Wave-2 exit battery: freeze-by-rule at the newest code-bearing commit, eight greppable sections, unanimity predicate (supersedes DEC-255's six-section formulation)";
@@ -186,7 +186,7 @@ export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
 export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
-export const DEC_393 = "Amendment (wave 153): Phone floor 44px reaches a control whether or not it wears a class";
+export const DEC_393 = "Wave-154 amendment: the desktop control-floor register gets a per-rule ledger before anything is drained";
 export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
 export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
 export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";

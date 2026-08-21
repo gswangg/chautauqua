@@ -71,7 +71,7 @@ export const DEC_065 = "Task-assignment upload files are served through GET /fil
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Amendment (wave 150): A wave's own landed scan reds are the next wave's Tier 0, ahead of every build";
+export const DEC_069 = "Wave-154 amendment: a superseded row is not a closed row";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -146,7 +146,7 @@ export const DEC_140 = "Public itinerary .ics: selection travels in ?ids= from t
 export const DEC_141 = "Reviewers can list events: GET /api/v1/events returns plan-assignment-derived events for role=reviewer; event mutations stay organizer-only; queue UI distinguishes plan-not-open from queue-empty";
 export const DEC_142 = "Speaker-edited profile surfaces on the organizer's contact record: ContactDrawer shows and edits bio, social links, and headshot from the same contact row the portal writes";
 export const DEC_143 = "Duplicate detection surfaces same-normalized-name contacts even across distinct emails when normalized company also matches (or one side is blank); import stays an email-keyed upsert; merging stays a human act";
-export const DEC_144 = "Two permanent render gates: a Playwright chromium route-sweep script (scripts/render-sweep.ts) driven by an authoritative route manifest, plus jsdom+RTL component render smokes with fixture-shaped API mocks; render-sweep becomes a required DEC-069 gate section";
+export const DEC_144 = "Wave-154 amendment: the route manifest carries tab and panel sub-states, derived from the pages' own tab unions";
 export const DEC_145 = "Seed is the grader package, so it must exercise every flow at 'now': plan window opens 2026-01-01Z; the demo speaker gets an accepted session, onboarding tasks, a two-version deliverable with a comment thread; several contacts get real headshots; near-duplicate contacts stay";
 export const DEC_146 = "SPA date rendering rule: shared null-safe helpers only — date-input helpers return '' and display formatters return an em dash for null/undefined/invalid; no raw new Date().toISOString()/toLocale* on nullable values in page components";
 export const DEC_147 = "Per-round scorecards: evaluation_plan gains nullable round_criteria_json (map of round -> criteria array); round 1 and any round without an override uses criteria_json; a single pure criteriaForRound() helper is the only resolution point";
