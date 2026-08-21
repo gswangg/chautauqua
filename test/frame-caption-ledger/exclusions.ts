@@ -1418,6 +1418,16 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/contacts/PipelineBoard.tsx's own pipeline head band composes `{total} people{!isPhone && ' · drag between columns'}` -- v12m-w19-a's desktop-vs-phone conditional splits the frame's one literal string into two JSX expressions (the count and the trailing clause), which no substring or digit-skeleton pass can rejoin (DEC-967 drift-proof citation: cite the composing expression itself, not a coordinate that moves).",
   },
+  // v12m-w4-ak (wave 148, DEC-895 amendment): Overview §04's unplaced
+  // remainder duration clause -- built this task, but not visible to
+  // match.ts's own digit-skeleton pass.
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 164,
+    text: '3 more unplaced · all need 120 minutes',
+    reason:
+      "app/src/pages/overview/AgendaWorkSection.tsx's agendaOverflowLine composes `${extraUnplaced} more unplaced · all need ${remainderDurationMin} minutes` from the server's own unplacedRemainderDurationMin (src/server/repo/overview.ts, DEC-895 amendment wave-148/w4-ak) -- a real batched read over the unplaced set minus the capped detail rows, non-null only when every remainder row shares one parseable session_format duration (DEC-936). match.ts's sourceDigitSkeleton pass (collapseSourcePlaceholders) is not scoped to one template literal -- its plain `\\{[^}]*\\}` regex spans from the first unrelated `{` anywhere earlier in this ~200-line component file to the first `}` anywhere after it, swallowing this template's own text into the collapse before the digit-skeleton comparison ever sees it, so the otherwise-correct second pass never gets a chance to match. A ledger-machinery fix (scoping the placeholder collapse to balanced braces) is out of this caption-residue task's file ownership (test/frame-caption-ledger/match.ts is not among its owned files) -- filed as a COMPOSED exclusion per this task's own instructions, not as evidence the clause is unbuilt.",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,

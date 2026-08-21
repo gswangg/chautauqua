@@ -61,6 +61,7 @@ function basePayload(): OverviewPayload {
           },
         },
       ],
+      unplacedRemainderDurationMin: null,
     },
     'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
     review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
@@ -316,6 +317,33 @@ describe('AgendaWorkSection (DEC-652)', () => {
     const overflowLink = screen.getByRole('link', { name: 'Place the other three ›' });
     expect(overflowLink).toHaveClass('chq-overview-overflow-link');
     expect(overflowLink).toHaveAttribute('href', '/agenda');
+  });
+
+  // DEC-895 amendment (wave 148, w4-ak): Chautauqua Overview.dc.html:164 —
+  // "N more unplaced · all need M minutes" — appears ONLY when the server
+  // resolved a single shared duration across every remainder row.
+  it('appends "all need M minutes" to the overflow line when the server found a shared remainder duration', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.unplacedTotal = 4;
+    payload.agendaWork.unplacedRemainderDurationMin = 120;
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('3 more unplaced · all need 120 minutes')).toBeInTheDocument();
+  });
+
+  // DEC-936: a mixed/partial/unparseable remainder must NOT let one row (or
+  // a majority) speak for the rest -- the server sends null and the client
+  // renders the plain "N more unplaced" segment with no duration clause.
+  it('renders the plain overflow line with no duration clause when the remainder duration is null', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.unplacedTotal = 4;
+    payload.agendaWork.unplacedRemainderDurationMin = null;
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('3 more unplaced')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/all need/);
   });
 
   // DEC-919 wave-129 amendment (task w4-s): when the remainder is

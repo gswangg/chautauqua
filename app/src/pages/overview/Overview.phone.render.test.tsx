@@ -117,6 +117,7 @@ function payload(): OverviewPayload {
         },
       ],
       unplaced: [],
+      unplacedRemainderDurationMin: null,
     },
     'triage-counts': { pending: 1, accept_queue: 0, decline_queue: 0 },
     review: { plans: 3, evaluationsSubmitted: 1, evaluationsExpected: 6 },
