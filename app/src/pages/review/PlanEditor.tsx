@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { dateInputToMs, msToDateInput } from '../../lib/dates';
+import { dateInputToMs, formatDateOnly, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { useIsPhone } from '../../lib/useIsPhone';
 import { setNavLeaveGuard } from '../../lib/useNavExceptions';
@@ -54,7 +54,18 @@ import {
   isPlanOpen,
 } from '../../../../src/domain/evaluation';
 import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../lib/domain-caps';
-import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124, DEC_958, DEC_018 } from '../../../../src/decisions';
+import {
+  DEC_745,
+  DEC_786,
+  DEC_824,
+  DEC_882,
+  DEC_715,
+  DEC_213,
+  DEC_124,
+  DEC_958,
+  DEC_018,
+  DEC_709,
+} from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 // w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
 // assignment can be Removed, so it must request/page through the site-wide
@@ -256,6 +267,32 @@ function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: numbe
 function distributeSummaryText(talks: number, reviewsPerTalk: number, reviewers: number): string {
   const reviewsNeeded = talks * reviewsPerTalk;
   return `${countOf(talks, 'talk')} · ${countOf(reviewsNeeded, 'review')} needed at ${reviewsPerTalk} each · ${countOf(reviewers, 'reviewer')}`;
+}
+
+// DEC-709 (wave-148 amendment): the phone plan-editor head's "<tracks> ·
+// closes <date> · <N> reviews per talk" subtitle
+// (`Chautauqua Review.dc.html:598`), composed from fields already on this
+// page -- never a second fetch or a second copy of the tracks/date/count
+// vocabulary. Every clause is dropped individually when its input is null
+// (an untracked plan says nothing about scope rather than claiming "All
+// tracks"), joined through this file's own " · " separator grammar
+// (distributeSummaryText above).
+void DEC_709;
+function planHeadSubtitle(
+  trackIds: string[],
+  tracks: Track[],
+  closeAt: number | null,
+  maxEvaluationsPerSubmission: number | undefined,
+): string | null {
+  const trackNames =
+    trackIds.length > 0
+      ? trackIds.map((id) => tracks.find((t) => t.id === id)?.name ?? id).join(', ')
+      : null;
+  const closesClause = closeAt !== null ? `closes ${formatDateOnly(closeAt)}` : null;
+  const reviewsClause =
+    maxEvaluationsPerSubmission !== undefined ? `${countOf(maxEvaluationsPerSubmission, 'review')} per talk` : null;
+  const clauses = [trackNames, closesClause, reviewsClause].filter((c): c is string => c !== null);
+  return clauses.length > 0 ? clauses.join(' · ') : null;
 }
 
 // DEC-745 (wave-72 amendment): the persistent cap row's summary before any
@@ -1360,6 +1397,14 @@ export function PlanEditor() {
               {errors.name}
             </span>
           )}
+          {/* DEC-709 (wave-148 amendment): `Chautauqua Review.dc.html:598`'s
+              390 head subtitle -- scope/close/reviews-per-talk as one line.
+              Phone-only: the 1600 frames draw no such subtitle and desktop
+              is frozen. */}
+          {isPhone && (() => {
+            const subtitle = planHeadSubtitle(draft.trackIds, tracks, draft.closeAt, draft.maxEvaluationsPerSubmission);
+            return subtitle && <span className="chq-review-editor-head-subtitle">{subtitle}</span>;
+          })()}
           {isNew && <p className="chq-review-field-caption">Nothing is sent to reviewers until you open it.</p>}
           {/* DEC-882: the open-plan header states both numbers from the
               progress aggregate already loaded into progressRows -- never a
