@@ -2147,4 +2147,16 @@ button.chq-speakers-status-overdue:hover {
     text-overflow: ellipsis;
     padding-inline: 16px;
   }
+
+  /* Meta-fidelity round 3 (docs/probes/metafid-round3-2026-08-20.md,
+     regression probe): .chq-speaker-detail-grid kept its desktop
+     `minmax(0, 1fr) 320px` pair at 390 -- the fixed 320px rail plus the
+     34px gap starved the reading column to 4px, wrapping every section
+     label one character per line on /admin/speakers/:id. DEC-919 re-line:
+     the pair collapses to a single column so the rail stacks under the
+     main column; the 320px rail and 34px gap remain desktop truth
+     (:1342-1347). */
+  .chq-speaker-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

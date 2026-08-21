@@ -270,3 +270,26 @@ shell has no mid-page-footer surface to sweep — the sweep is complete.
    no-eligible-recipients refusal names submissions that never rendered"
    and a second comment block naming the "submissions -> recipients
    relationship, at the step where the" counts are produced.
+
+## Meta-fidelity round 3 (2026-08-20, main @ f7432267) — CURRENT RED SET
+
+Full report: docs/probes/metafid-round3-2026-08-20.md. This round SUPERSEDES
+the round-2 backlog: Content cluster is DONE (sticky-dock order fix verified
+end-to-end), Wave B is CLOSED (all five items measured fixed, 0px overflow on
+21 routes), and four of five Wave-A docks pass live (CFP wizard, portal
+profile, portal session, portal task form).
+
+Remaining red set, in priority order:
+
+1. **Contacts Pipeline dock (Wave A, last open item).** No bottom dock exists
+   at 390 on /admin/contacts?tab=pipeline — PipelineBoard.tsx has no dock
+   wiring at all, while the tab bar already suppresses as if one were
+   mounted. Build it with the established dock mechanism (sticky bottom band,
+   last-in-flex-order per content.css:1950's `order: 1` idiom, ≥44px
+   controls, tab-bar suppression contract). The inline "Add to the pipeline"
+   action remains the desktop truth.
+2. Speakers regressions from this round were fixed in the meta lane at the
+   Cut-3 pause (speaker-detail grid collapse; task-drill row placement) — do
+   not re-open; treat those two rules as settled truth.
+3. Watch item, not a task: Pipeline "Move ›" control measures exactly 44×44 —
+   zero margin against the floor if any token shrinks.

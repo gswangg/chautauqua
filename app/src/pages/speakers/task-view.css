@@ -287,11 +287,25 @@
     display: none;
   }
 
+  /* Meta-fidelity round 3 (docs/probes/metafid-round3-2026-08-20.md,
+     regression probe): this collapse declared `26px 1fr` for rows that
+     render FIVE [role="cell"] children (TaskView.tsx:587-651), so grid
+     auto-placement wrapped the third and fifth cells back into the 26px
+     checkbox track -- answer/status text painted as a one-character-wide
+     strip on both tabs of /admin/speakers/tasks/:id. The two-track shape
+     stands; every cell after the checkbox is pinned to the wide track, so
+     the speaker/answer/date/action lines stack beside a single checkbox
+     cell (DEC-919 re-line, never remove). */
   .chq-taskview-answers .chq-taskview-row,
   .chq-taskview-waiting .chq-taskview-row {
-    grid-template-columns: 26px 1fr;
+    grid-template-columns: 26px minmax(0, 1fr);
     align-items: start;
     gap: 10px;
+  }
+
+  .chq-taskview-answers .chq-taskview-row > [role='cell']:not(:first-child),
+  .chq-taskview-waiting .chq-taskview-row > [role='cell']:not(:first-child) {
+    grid-column: 2;
   }
 
   .chq-taskview-back,
