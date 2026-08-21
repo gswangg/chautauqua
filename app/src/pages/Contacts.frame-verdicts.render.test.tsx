@@ -92,7 +92,7 @@ function mockContactsBase(overrides: Record<string, unknown> = {}) {
 
 describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DEC-976)', () => {
   // Frame :179-223 "Contacts" -- caption at :175.
-  it('frame :179 Contacts landing -- DIVERGES (narrowed, DEC-967 wave-20/21): desktop table (checkbox column, header row) and the full rule-builder render unchanged, not the frame\'s headerless card list -- the per-row "Email" action itself now MATCHES the frame at phone', async () => {
+  it('frame :179 Contacts landing -- head band CONFORMS (counter, both chip strips, builder disclosed behind "+ Rule"), body DIVERGES: the same desktop `<table>` (checkbox column, header row) renders at every width, not the frame\'s headerless card list -- the per-row action itself now MATCHES ("Email")', async () => {
     verbatimLine(175, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Contacts</span>");
     stubPhoneMatchMedia();
     mockContactsBase();
@@ -103,32 +103,55 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Contacts', level: 1 })).toBeInTheDocument();
+    const h1 = screen.getByRole('heading', { name: 'Contacts', level: 1 });
+    expect(h1).toBeInTheDocument();
+
+    // docs/design/Chautauqua Contacts.dc.html:183 `          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">2 of 318</span>`
+    // -- the wordmark row's own counter has no home here (the wordmark row
+    // is the app shell's), so ContactsApp.tsx lands it on the H1 line
+    // instead; the head's only count either way.
+    await waitFor(() =>
+      expect(document.querySelector('.chq-contacts-head-count')?.textContent).toMatch(/^\d+ of \d+$/),
+    );
+
+    // docs/design/Chautauqua Contacts.dc.html:187 `        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">`
+    // -- the "All of ... + Rule" chip row above the headerless list;
+    // FilterRulesPanel.tsx renders it as `.chq-contacts-filter-chipstrip`.
+    const chipstrip = document.querySelector('.chq-contacts-filter-chipstrip');
+    expect(chipstrip).not.toBeNull();
+    // docs/design/Chautauqua Contacts.dc.html:188 `          <span style="flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B; min-height:44px; display:flex; align-items:center">All of</span>`
+    expect(within(chipstrip as HTMLElement).getByText('All of')).toBeInTheDocument();
+    // docs/design/Chautauqua Contacts.dc.html:192 `          <span style="flex-shrink:0; border:1px dashed #A9AE94; border-radius:4px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:700; color:#4E5C31">+ Rule</span>`
+    // -- the desktop rule builder is disclosed behind this control rather
+    // than rendering in full (task v12m-w16-ui-r2-a).
+    expect(within(chipstrip as HTMLElement).getByRole('button', { name: '+ Rule' })).toBeInTheDocument();
+
+    // -- the All/Speakers/Reviewers pill row; SegmentPillStrip.tsx renders
+    // it as `.chq-contacts-segment-pills`, an "All" pill plus one
+    // "{name} · {count}" pill per saved segment (none saved here, so only
+    // "All" renders).
+    // docs/design/Chautauqua Contacts.dc.html:194-196 `          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">All</span>`
+    const pills = document.querySelector('.chq-contacts-segment-pills');
+    expect(pills).not.toBeNull();
+    expect(within(pills as HTMLElement).getByRole('button', { name: 'All' })).toBeInTheDocument();
+
+    // Below the now-conforming head band, the body still diverges: the
+    // frame's headerless per-row card list (:203-209) and its footer tab
+    // strip (:214-221) are NOT what mounts here -- the actual read is the
+    // same desktop `<table class="chq-table chq-contacts-table">`
+    // (checkbox column, "Name and email"/"Company"/"Labels" headers) every
+    // width renders.
     const table = await screen.findByRole('table');
-    // Frame :186-198 draws a search box + "All of ... + Rule" chip row +
-    // an All/Speakers/Reviewers pill row, then a headerless per-row list
-    // (name / company·role / tags, a single boxed "Email" action, :209)
-    // ending in a footer tab strip (:214-221). The SAME `<table
-    // class="chq-table chq-contacts-table">` markup mounts at every width
-    // (DEC-386, `app/src/pages/contacts/contacts.css`'s terminal
-    // `max-width: 700px` block hides `.chq-contacts-table thead` and
-    // reflows `tbody tr` into the frame's card grid -- jsdom applies no
-    // CSS, so the header row is still structurally queryable here; the
-    // CSS-level conformance is pinned by contacts-phone-frames.test.ts's
-    // source scan instead). What IS width-dependent as pure JS/DOM, and
-    // what this receipt exists to pin, is the per-row action verb.
     const headerCells = within(table).getAllByRole('columnheader');
     expect(headerCells.map((c) => c.textContent)).toEqual(['', 'Name and email', 'Company', 'Labels', '']);
     await waitFor(() => expect(within(table).getByText('Priya Raman')).toBeInTheDocument());
-    // CLOSED (commit 8e7ba734, w15-tg/DEC-385, retired here under DEC-967
-    // wave-20/21 with the tree evidence quoted inline): frame :209's per-row
-    // action is a boxed "Email", and the app MATCHES it at phone --
-    // app/src/pages/contacts/ContactsTable.tsx draws
-    // `aria-label={`Email ${c.firstName} ${c.lastName}`}` inside its
-    // `isPhone ?` branch and keeps "Open" only at desktop, pinned by
-    // app/src/pages/contacts/ContactsTable.row-390.render.test.tsx. The
-    // surviving divergence on this frame is the table chrome above (checkbox
-    // column, header row) and the full rule-builder render, not this control.
+    // -- re-derived against the tree (ContactsTable.tsx's useIsPhone gate,
+    // landed separately from this task's head-band lanes): the row's boxed
+    // action now reads "Email" like the frame instead of the desktop
+    // "Open" -- narrowing the body divergence to the header row/checkbox
+    // column alone.
+    // docs/design/Chautauqua Contacts.dc.html:203 `          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:13px">`
+    // docs/design/Chautauqua Contacts.dc.html:209 `            <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600; flex-shrink:0">Email</span>`
     expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
     const emailButton = within(table).getByRole('button', { name: 'Email Priya Raman' });
     expect(emailButton).toBeInTheDocument();
