@@ -1918,7 +1918,7 @@
 
   /* v12 phone frame "Pipeline · 390" dock (task w19-a): the frame's phone
      head (docs/design/Chautauqua Contacts.dc.html:447-451) draws
-     back-link / "Pipeline" / "20 people" and NO action -- the head's own
+     `width:390px; height:844px` back-link / "Pipeline" / "20 people" and NO action -- the head's own
      "Add to the pipeline" button is superseded, not merely hidden, by the
      dock's "Add someone" control below (same
      setEnrollStage(PIPELINE_STAGES[0])/setShowEnroll(true) pair), so a
@@ -1930,5 +1930,18 @@
   /* phone-hidden: re-lined as the chq-phone-dock Add someone button, same setEnrollStage/setShowEnroll pair, PipelineBoard.tsx */
   .chq-contacts-pipeline-head > .chq-btn {
     display: none;
+  }
+
+  /* v12 phone frame "Pipeline · 390" dock (task w19-a): the filter sheet's
+     per-stage count, sibling to `.chq-contacts-pipeline-filter-row`
+     (:1910) above -- same muted-count register already established by
+     `.chq-contacts-pipeline-column-count` (:103): small, bold, and the
+     shared muted token. No sticky/bottom/border-top here -- this is a
+     count label, not a dock band, and must not read as one to
+     test/phone-dock-ledger.scan.test.ts. */
+  .chq-contacts-pipeline-filter-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--chq-muted);
   }
 }

@@ -1305,8 +1305,7 @@ describe('PipelineBoard phone card matches the v12 "Pipeline · 390" frame', () 
   });
 });
 
-// v12 phone frame "Pipeline · 390" dock (task w19-a,
-// docs/design/Chautauqua Contacts.dc.html:473-476): "Add someone" runs the
+// v12 phone frame "Pipeline · 390" dock (task w19-a): "Add someone" runs the
 // SAME setEnrollStage(PIPELINE_STAGES[0])/setShowEnroll(true) pair the
 // head's own trigger runs; "Filter" opens a five-stage sheet with the SAME
 // PIPELINE_STAGES/live-count pair the .chq-contacts-pipeline-phone-stages
@@ -1353,6 +1352,9 @@ describe('PipelineBoard phone dock (v12 frame "Pipeline · 390", task w19-a)', (
     renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
+    // docs/design/Chautauqua Contacts.dc.html:473-476: `border-top:1px solid
+    // #1B1D17; background:#EFEBDF; padding:12px 16px 16px` draws the dock band
+    // this queries by data-chq-phone-dock below.
     const dock = document.querySelector('[data-chq-phone-dock]') as HTMLElement;
     expect(dock).not.toBeNull();
     expect(dock).toHaveClass('chq-phone-dock');

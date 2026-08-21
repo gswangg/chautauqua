@@ -173,14 +173,16 @@ describe('SpeakerDetailPage render smoke', () => {
     // formatDayLabel + zero-padded clock times, never the raw ISO day.
     expect(screen.getByText('Wed 13 May 10:00–10:45, Hall A')).toBeInTheDocument();
 
-    // DEC-829 (w20-d): docs/design/Chautauqua Speakers.dc.html:365 draws
-    // cell 1 as the session TITLE alone, no code prefix -- the code
-    // (session.ref) stays on the ParticipationMenu's `label` prop, which
-    // needs it to name the participation it writes (chq-participation-
-    // menu-ref, below). Counting matches rather than asserting presence, so
-    // a regression that reprints the code in cell 1 fails even though the
-    // participation control keeps printing it too.
+    // DEC-829 (w20-d): cell 1 as the session TITLE alone, no code prefix --
+    // the code (session.ref) stays on the ParticipationMenu's `label` prop,
+    // which needs it to name the participation it writes
+    // (chq-participation-menu-ref, below). Counting matches rather than
+    // asserting presence, so a regression that reprints the code in cell 1
+    // fails even though the participation control keeps printing it too.
     const sessionRow = document.querySelector('.chq-speaker-detail-sessions-row');
+    // docs/design/Chautauqua Speakers.dc.html:365 draws cell 1's title
+    // `Taming 40-Minute CI: Incremental Builds at Monorepo Scale` with no
+    // session-code prefix.
     expect(sessionRow).not.toBeNull();
     expect(sessionLink).toHaveTextContent('Analytical Engines');
     expect(sessionLink?.textContent).not.toMatch(/S-001/);
