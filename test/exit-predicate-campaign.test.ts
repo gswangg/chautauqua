@@ -195,6 +195,14 @@ function baseFixture(): CampaignFile[] {
       path: "test/css-comment-copy-leak.scan.test.ts",
       content: "export const CSS_COMMENT_COPY_LEAK_CEILING = 6;",
     },
+    // wave-149 (task w5-bf, DEC-919 amendment): STARVED_FLEX_TRACK_CEILING
+    // (the starved flex-track ratchet) landed in scripts/exit-predicate.ts's
+    // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES in the same commit as this
+    // fixture row -- arbitrary value, faithful shape.
+    {
+      path: "app/src/phone-overflow-scan/starved-track-ceiling.ts",
+      content: "export const STARVED_FLEX_TRACK_CEILING = 2;",
+    },
   ];
 }
 
@@ -277,6 +285,9 @@ function allGreenFixture(): CampaignFile[] {
     }
     if (f.path === "test/css-comment-copy-leak.scan.test.ts") {
       return { ...f, content: "export const CSS_COMMENT_COPY_LEAK_CEILING = 0;" };
+    }
+    if (f.path === "app/src/phone-overflow-scan/starved-track-ceiling.ts") {
+      return { ...f, content: "export const STARVED_FLEX_TRACK_CEILING = 0;" };
     }
     return f;
   });
@@ -363,7 +374,12 @@ describe("buildCampaignReport", () => {
     // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES without its fixture row or
     // this pin -- added both above. Re-derived by running buildCampaignReport
     // over baseFixture() at HEAD (29 rows): 28 -> 29.
-    expect(report.rows).toHaveLength(29);
+    // wave-149 (task w5-bf, DEC-919 amendment): STARVED_FLEX_TRACK_CEILING
+    // (the starved flex-track ratchet) declared in CAMPAIGN_CONSTANT_NAMES/
+    // TIER2_CEILING_NAMES and given its fixture row and this pin in the same
+    // commit -- re-derived by running buildCampaignReport over baseFixture()
+    // at HEAD (30 rows): 29 -> 30.
+    expect(report.rows).toHaveLength(30);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });

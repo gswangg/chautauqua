@@ -55,10 +55,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_808, DEC_976, DEC_989, DEC_991 } from '../../src/decisions';
+import { DEC_808, DEC_919, DEC_976, DEC_989, DEC_991 } from '../../src/decisions';
 import { deriveContentBudget, PHONE_FRAME_WIDTH_PX } from './phone-overflow-scan/budget';
 import { effectiveRuleFor, isCandidateRule } from './phone-overflow-scan/cascade';
-import { checkGridTemplateColumns, checkNowrap, runChecks } from './phone-overflow-scan/checks';
+import { checkGridTemplateColumns, checkNowrap, checkStarvedFlexTrack, runChecks } from './phone-overflow-scan/checks';
 import { findCrossBundleReceiptCitations, type CrossBundleOffender } from './phone-overflow-scan/cross-bundle';
 import {
   allFiles,
@@ -67,12 +67,14 @@ import {
   sanitizeCommentBraces,
   type SourceFile,
 } from './phone-overflow-scan/population';
-import { extractRules, mediaSpans } from './phone-overflow-scan/rules';
+import { appliesAt390, extractRules, isPhoneCondition, mediaSpans } from './phone-overflow-scan/rules';
+import { STARVED_FLEX_TRACK_CEILING } from './phone-overflow-scan/starved-track-ceiling';
 
 void DEC_989; // this scan's whole reason to exist: DEC-989's horizontal-extent-vs-390-viewport probe (wave 119 amendment: candidacy is cascade-aware)
 void DEC_991; // a new overflow-exempt comment may be authored only in the commit that makes its rule flagged -- this task authors none
 void DEC_808; // population-by-source-content, never a hand-listed manifest or a filename convention
 void DEC_976; // an SSR sheet's exemption receipt may not cite the unloaded app/src/ SPA bundle
+void DEC_919; // a re-line that starves its yielding flex track has not re-lined (wave-149 amendment)
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -135,6 +137,7 @@ function clusterFor(label: string): string {
   return m?.[1] ?? m?.[2] ?? (label.startsWith('app/src/styles.css') ? 'shell' : 'misc');
 }
 const AUDIT_ROWS: Array<{ file: string; selector: string; excess: string; cluster: string }> = [];
+const STARVED_TRACK_OFFENDERS: Offender[] = [];
 
 for (const source of SOURCES) {
   const spans = mediaSpans(source.css);
@@ -156,6 +159,19 @@ for (const source of SOURCES) {
     } else if (hits.length > 0) {
       OFFENDERS.push({ file: source.label, selector: rule.selector, reasons: hits });
       AUDIT_ROWS.push({ file: source.label, selector: rule.selector, excess: hits.join(' | '), cluster: clusterFor(source.label) });
+    }
+
+    // DEC-919 (wave-149 amendment): the starved-flex-track check is its own
+    // shape (E), graded by its own ratchet (STARVED_FLEX_TRACK_CEILING),
+    // never folded into OFFENDERS/OVERFLOW_OFFENDERS_CEILING -- same
+    // candidacy and effective (cascade-merged) body as shapes (A)-(D)
+    // above, so a phone override that re-lines a starved grid to `1fr` or
+    // to `display: flex` clears it exactly as it clears any other shape.
+    if (isCandidate) {
+      const starvedHits = checkStarvedFlexTrack(effectiveRule.body, CONTENT_BUDGET_PX);
+      if (starvedHits.length > 0) {
+        STARVED_TRACK_OFFENDERS.push({ file: source.label, selector: rule.selector, reasons: starvedHits });
+      }
     }
   }
 }
@@ -421,6 +437,42 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
       const offenders = scanFixture(fixture);
       expect(offenders).toEqual([]);
     });
+
+    // v12m wave 149 (task w5-bf, DEC-991 amendment): appliesAt390 widens
+    // candidacy/cascade to every media block that genuinely applies at 390,
+    // not just the sheet's own DEC-385 terminal <=700px block.
+    it('appliesAt390 (DEC-991): a rule inside a wider-than-700px @media (max-width: 900px) block is now a real phone-scoped candidate', () => {
+      const fixture = '@media (max-width: 900px) { .x { white-space: nowrap; } }\n';
+      const offenders = scanFixture(fixture);
+      expect(offenders).toHaveLength(1);
+      expect(offenders[0]!.selector).toBe('.x');
+      expect(offenders[0]!.reasons.join(' ')).toMatch(/nowrap/);
+    });
+
+    it('appliesAt390 (DEC-991): a top-level offender is cleared by a @media (max-width: 900px) override the same way a <=700px override clears it', () => {
+      const fixture =
+        '.x { display: grid; grid-template-columns: 550px 190px; }\n@media (max-width: 900px) { .x { grid-template-columns: 1fr; } }\n';
+      const offenders = scanFixture(fixture);
+      expect(offenders).toEqual([]);
+    });
+
+    it('appliesAt390 (DEC-991) negative control: a @media (min-width: 700px) and (max-width: 900px) block does NOT apply at 390 and is not a candidate', () => {
+      const fixture = '@media (min-width: 700px) and (max-width: 900px) { .x { white-space: nowrap; } }\n';
+      const offenders = scanFixture(fixture);
+      expect(offenders).toEqual([]);
+    });
+
+    it('isPhoneCondition (DEC-385) stays narrow: a 900px block does not become a DEC-385 terminal phone block just because it applies at 390', () => {
+      expect(appliesAt390('(max-width: 900px)')).toBe(true);
+      expect(isPhoneCondition('(max-width: 900px)')).toBe(false);
+    });
+  });
+
+  it('the widened appliesAt390 candidacy surfaces zero new (A)/(B)/(C) offenders in this tree (measured, DEC-991 wave-149)', () => {
+    // The predicate widening is asserted not to raise OVERFLOW_OFFENDERS_CEILING --
+    // it is a candidacy repair, not a new source of real offenders, per this
+    // task's own measurement against this tree.
+    expect(OVERFLOW_OFFENDERS_CEILING).toBe(0);
   });
 
   it('offender count never exceeds the ceiling (one-sided ratchet: may only fall)', () => {
@@ -466,6 +518,122 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('fixed files (app/src/components/*.css) carry zero offenders', () => {
     const fixedOffenders = OFFENDERS.filter((o) => o.file.startsWith('app/src/components/'));
     expect(fixedOffenders.map((o) => `${o.file} :: ${o.selector} -- ${o.reasons.join('; ')}`)).toEqual([]);
+  });
+});
+
+describe('starved flex track at 390 (DEC-919 wave-149 amendment)', () => {
+  // House non-vacuity pair (checkStarvedFlexTrack itself, synthetic fixtures --
+  // same shape as this file's other leaf-function pairs above).
+  it('POSITIVE control: a fabricated starved grid is flagged (fixed tracks starve the flexible track below its own widest fixed track)', () => {
+    const hits = checkStarvedFlexTrack(
+      'display: grid; grid-template-columns: minmax(0, 1fr) 300px;',
+      CONTENT_BUDGET_PX,
+    );
+    expect(hits).not.toEqual([]);
+    expect(hits.join(' ')).toMatch(/starved/);
+  });
+
+  it('NEGATIVE control: a fabricated healthy grid (flexible track keeps at least the widest fixed track) is NOT flagged', () => {
+    const hits = checkStarvedFlexTrack(
+      'display: grid; grid-template-columns: minmax(0, 1fr) 40px;',
+      CONTENT_BUDGET_PX,
+    );
+    expect(hits).toEqual([]);
+  });
+
+  it('display gate: a grid-template-columns under an effective display that is not grid/inline-grid is inert and never flagged', () => {
+    expect(
+      checkStarvedFlexTrack('display: flex; grid-template-columns: minmax(0, 1fr) 300px;', CONTENT_BUDGET_PX),
+    ).toEqual([]);
+    expect(
+      checkStarvedFlexTrack('display: none; grid-template-columns: minmax(0, 1fr) 300px;', CONTENT_BUDGET_PX),
+    ).toEqual([]);
+  });
+
+  it('a rule with fewer than two tracks, or with no fixed/flexible pairing, is out of grammar and never flagged', () => {
+    expect(checkStarvedFlexTrack('display: grid; grid-template-columns: 1fr;', CONTENT_BUDGET_PX)).toEqual([]);
+    expect(
+      checkStarvedFlexTrack('display: grid; grid-template-columns: 1fr 1fr;', CONTENT_BUDGET_PX),
+    ).toEqual([]); // no fixed track at all
+    expect(
+      checkStarvedFlexTrack('display: grid; grid-template-columns: 150px 200px;', CONTENT_BUDGET_PX),
+    ).toEqual([]); // no flexible track at all
+  });
+
+  it("repeat(...) is out of grammar and skipped, per this check's header (never guessed at)", () => {
+    expect(
+      checkStarvedFlexTrack('display: grid; grid-template-columns: repeat(2, 1fr) 300px;', CONTENT_BUDGET_PX),
+    ).toEqual([]);
+  });
+
+  it('gap attribution is conservative: a gap declared only on a co-classed BASE selector is not attributed to this rule', () => {
+    // Mirrors .chq-settings-track-edit-row's real shape: its own body carries
+    // no `gap` (the `gap: 16px` lives on the sibling `.chq-settings-edit-row`
+    // base selector) -- this check reads gap from the given body only.
+    const withoutGap = checkStarvedFlexTrack(
+      'display: grid; grid-template-columns: minmax(0, 1fr) 150px 200px;',
+      CONTENT_BUDGET_PX,
+    );
+    const withGap = checkStarvedFlexTrack(
+      'display: grid; grid-template-columns: minmax(0, 1fr) 150px 200px; gap: 16px;',
+      CONTENT_BUDGET_PX,
+    );
+    expect(withoutGap).not.toEqual([]);
+    expect(withGap).not.toEqual([]);
+    // The un-gapped reading yields MORE room per flex track than the gapped
+    // one would if the gap were (wrongly) attributed -- the check therefore
+    // never OVER-reports the deficit, only ever under-reports it.
+    const pxFrom = (hit: string) => Number(hit.match(/yields (-?\d+(?:\.\d+)?)px/)?.[1]);
+    expect(pxFrom(withoutGap[0]!)).toBeGreaterThan(pxFrom(withGap[0]!));
+  });
+
+  it('a fabricated negative control: a display:flex phone override clears a starved top-level grid (cascade-merge integration)', () => {
+    const fixture =
+      '.x { display: grid; grid-template-columns: minmax(0, 1fr) 300px; }\n' +
+      '@media (max-width: 700px) { .x { display: flex; } }\n';
+    const spans = mediaSpans(fixture);
+    const rules = extractRules(fixture, spans);
+    const topLevel = rules.find((r) => r.isTopLevel);
+    expect(topLevel).toBeDefined();
+    const effective = effectiveRuleFor(topLevel!, rules);
+    expect(checkStarvedFlexTrack(effective.body, CONTENT_BUDGET_PX)).toEqual([]);
+  });
+
+  it('a fabricated positive control: a top-level starved grid with no phone override is flagged through the full pipeline', () => {
+    const fixture = '.x { display: grid; grid-template-columns: minmax(0, 1fr) 300px; }\n';
+    const spans = mediaSpans(fixture);
+    const rules = extractRules(fixture, spans);
+    const topLevel = rules.find((r) => r.isTopLevel);
+    expect(topLevel).toBeDefined();
+    const effective = effectiveRuleFor(topLevel!, rules);
+    expect(checkStarvedFlexTrack(effective.body, CONTENT_BUDGET_PX)).not.toEqual([]);
+  });
+
+  // Two-sided ratchet (DEC-989's wave-49 shape, applied to this brand-new
+  // instrument from birth).
+  it('starved-track offender count never exceeds the ceiling (one-sided ratchet: may only fall)', () => {
+    const detail = STARVED_TRACK_OFFENDERS.map((o) => `${o.file} :: ${o.selector} -- ${o.reasons.join('; ')}`).join(
+      '\n',
+    );
+    expect(
+      STARVED_TRACK_OFFENDERS.length,
+      `starved-track offenders (${STARVED_TRACK_OFFENDERS.length}) exceed STARVED_FLEX_TRACK_CEILING ` +
+        `(${STARVED_FLEX_TRACK_CEILING}):\n${detail}`,
+    ).toBeLessThanOrEqual(STARVED_FLEX_TRACK_CEILING);
+  });
+
+  it(`never falls below STARVED_FLEX_TRACK_CEILING (${STARVED_FLEX_TRACK_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    if (STARVED_TRACK_OFFENDERS.length < STARVED_FLEX_TRACK_CEILING) {
+      throw new Error(
+        `starved-track offenders (${STARVED_TRACK_OFFENDERS.length}) fell below the ` +
+          `STARVED_FLEX_TRACK_CEILING of ${STARVED_FLEX_TRACK_CEILING}. This is the ratchet working: ` +
+          `offenders got fixed. Lower the ceiling in the same commit (a merge-train act, never a ` +
+          `worker's edit mid-lane) by replacing the line in ` +
+          `app/src/phone-overflow-scan/starved-track-ceiling.ts:\n  export const ` +
+          `STARVED_FLEX_TRACK_CEILING = ${STARVED_TRACK_OFFENDERS.length};`,
+      );
+    }
+    expect(STARVED_TRACK_OFFENDERS.length).toBeGreaterThanOrEqual(STARVED_FLEX_TRACK_CEILING);
   });
 });
 
