@@ -30,6 +30,17 @@
 // the <h2> used to supply for the panel survives its removal.
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DEC_919 } from '../../../../src/decisions';
+
+// w17-d/DEC-919 (wave 17): the `data-chq-section` attribute below is the
+// hook settings.css's terminal @media(max-width:700px) block uses to scope
+// the head-action re-line to Event ONLY (Event's own filled "Save" footer,
+// `.chq-settings-drillrow-footer-primary`, already routes to the same
+// `?section=event&edit=1` this head's "Change" opens -- People and roles
+// keeps its head action, since its per-row "Change" is DEVIATIONS
+// §6-blessed as omitted and the head is its only route to role editing at
+// 390).
+void DEC_919;
 
 export interface SummarySectionRow {
   label: string;
@@ -89,7 +100,11 @@ export function SummarySection({
   }
 
   return (
-    <section className="chq-settings-panel chq-settings-numbered" aria-label={label}>
+    <section
+      className="chq-settings-panel chq-settings-numbered"
+      aria-label={label}
+      data-chq-section={sectionKey}
+    >
       {editing ? null : (
         <div className="chq-settings-section-head">
           <h2>{label}</h2>
