@@ -561,3 +561,22 @@ instead of re-flagging.
   deviation — flagged, not resolved, per this decision's own wave-137 note
   that a worker task does not extend its scope to fix a finding it turns up
   outside its owned files.
+- Contacts Pipeline · 390 dock IS minted — THIS REVERSES DEC-576
+  wave-120/124's "no phone dock is minted" ruling recorded in §3
+  (v12m-w19-a, DEC-967 wave-145 amendment). `Pipeline · 390`
+  (`docs/design/Chautauqua Contacts.dc.html:472-475`) draws `Add someone`
+  at flex:1 and `Filter` beside it; the earlier ruling held that "Filter"
+  had no referent worth minting a dock for and kept the single action in
+  its landed full-width head placement. That premise no longer holds: the
+  same 390 screen already renders, directly above the list, the five-stage
+  horizontal facet strip `.chq-contacts-pipeline-phone-stages` — and
+  `PipelineBoard.tsx` now docks both controls (`data-chq-phone-dock`),
+  wiring `Filter` to open that same five-stage set as a sheet
+  (`showPhoneFilter`) rather than inventing a new capability. The dock's
+  membership is satisfied entirely from controls the surface already
+  owns — exactly the general rule the superseded ruling itself set
+  ("adopt the band when the frame's membership is satisfiable from
+  controls the surface already owns"); wave-120/124 read that clause as
+  pointing away from a dock, wave-19-a's build shows it was always the
+  argument FOR one. No further code change; this entry only reconciles
+  the authority with the landed build.
