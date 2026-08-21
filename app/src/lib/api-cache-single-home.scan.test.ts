@@ -11,11 +11,15 @@
 //      `const <ident> = new Map<string, ...>(` -- generic-typed on a string
 //      key, matching how a URL-keyed response cache is declared.
 //   2. It only counts as a RESPONSE CACHE (not, say, a lookup table built at
-//      module scope for some other reason) if it is "cache/peek-shaped":
-//      either the declared identifier itself matches /cache|peek/i, or the
-//      same file also declares a function/const whose name matches
-//      /peek|cache/i (api.ts's peekCachedRead/cacheSet/cacheKey satisfy
-//      this for readCache).
+//      module scope for some other reason, or a reference-counted registry
+//      like useCurrentEvent.ts's navigationContexts) if the declared MAP
+//      IDENTIFIER ITSELF is cache/peek-shaped (/cache|peek/i). Grading the
+//      identifier only -- never "does this file declare *some* cache/peek
+//      -shaped function anywhere" -- matters because that broader fallback
+//      previously matched any file that merely exports a differently-named
+//      cache/peek-shaped test seam (e.g. resetEventsCacheForTests) even
+//      when its own module-level Map is not a response cache at all
+//      (DEC-013 wave-146 amendment).
 // Exactly one file may satisfy both, and it must be app/src/lib/api.ts.
 //
 // Also pins the negative half directly: app/src/lib/useCachedRead.ts (the
@@ -66,22 +70,15 @@ function moduleLevelStringMapDecls(source: string): string[] {
   return idents;
 }
 
-/** True if `source` declares a module-level string-keyed Map that is also
- * cache/peek-shaped, per the header's two-part heuristic. */
+/** True if `source` declares a module-level string-keyed Map whose own
+ * identifier is cache/peek-shaped, per the header's narrowed heuristic.
+ * Deliberately does NOT fall back to "some other function/const in this
+ * file has a cache/peek-shaped name" -- that broader check flagged files
+ * (e.g. useCurrentEvent.ts, via its resetEventsCacheForTests test seam)
+ * whose module-level Map is not a response cache at all. */
 function hasCacheShapedModuleMap(source: string): boolean {
   const idents = moduleLevelStringMapDecls(source);
-  if (idents.length === 0) return false;
-  if (idents.some((ident) => CACHE_SHAPED_RE.test(ident))) return true;
-  // Fallback: the file declares some other function/const whose name is
-  // cache/peek-shaped (api.ts's peekCachedRead/cacheSet/cacheKey satisfy
-  // this even though the ident 'readCache' alone would already match).
-  const declRe = /\b(?:function|const)\s+([A-Za-z_$][\w$]*)\s*[=(]/g;
-  let m: RegExpExecArray | null;
-  while ((m = declRe.exec(source)) !== null) {
-    const name = m[1] ?? '';
-    if (CACHE_SHAPED_RE.test(name)) return true;
-  }
-  return false;
+  return idents.some((ident) => CACHE_SHAPED_RE.test(ident));
 }
 
 const FILES = scanTargets(APP_SRC);
@@ -137,6 +134,25 @@ labelById.set('a', 'Alpha');
 export function buildCache() {
   const cacheOfThings = new Map<string, unknown>();
   return cacheOfThings;
+}
+`;
+    expect(hasCacheShapedModuleMap(synthetic)).toBe(false);
+  });
+
+  it('non-vacuity: an identifier-shaped module-level Map is still caught with no fallback', () => {
+    const synthetic = `
+const responseCache = new Map<string, unknown>();
+`;
+    expect(hasCacheShapedModuleMap(synthetic)).toBe(true);
+  });
+
+  it('the removed fallback no longer flags a non-cache-named registry that merely sits ' +
+    'alongside a cache/peek-shaped test seam (useCurrentEvent.ts\'s shape)', () => {
+    const synthetic = `
+const navigationContexts = new Map<string, unknown>();
+
+export function resetEventsCacheForTests(): void {
+  navigationContexts.clear();
 }
 `;
     expect(hasCacheShapedModuleMap(synthetic)).toBe(false);
