@@ -160,6 +160,50 @@
 //      docs/design/audit/desktop-control-floor-v12.md. This wave changes
 //      not one product CSS byte -- test/docs only, per its own task scope.
 //
+//      WAVE 159 (DEC-393 wave-156 clauses (b)/(c), task qh, chained on qg):
+//      re-measured on THIS branch (forcing the ceiling to -1) rather than
+//      trusting the wave-156/157 prose above, which was written against an
+//      earlier tree state: the live offender list is THREE rows, not one --
+//      `Chautauqua Contacts.dc.html:602`/`Chautauqua Settings.dc.html:1302`,
+//      both labelled "Reviewer" and both resolving to `[chq-pill]`, plus
+//      the already-discussed `Chautauqua Submissions.dc.html:314`
+//      "Waitlist". Hand-checked all three against the source, mirroring
+//      wave-157's own mis-attribution audit: `Chautauqua Settings.dc.html:1302`
+//      ("Invite someone" modal) is the GENUINE match -- PeopleRolesPanel.tsx
+//      is mounted only from Settings.tsx, its role radiogroup's `.chq-pill`
+//      chips (the shared `chq-chipstrip`/`chq-pill` house register, absent
+//      from this file's own tap-floor block by design, settings.css:2270)
+//      declare no min-height at desktop. Drained by a rule scoped to that
+//      radiogroup's own `aria-labelledby` anchor
+//      (`[aria-labelledby='people-invite-role-label'] .chq-pill`,
+//      settings.css) -- the shared `.chq-pill` base and every other
+//      chipstrip in the app stay untouched (wave-156 clause (c): a house
+//      register is never raised). `Chautauqua Contacts.dc.html:602`
+//      ("Add to an event" modal) is a MIS-ATTRIBUTION of the same shape
+//      wave-156/157 already named for other rows: `AddToEventModal.tsx`
+//      renders its role list dynamically (its own header comment: "never a
+//      hardcoded Speaker/Reviewer/Guest list"), so the join's only literal
+//      "Reviewer" own-text match in the whole corpus is PeopleRolesPanel's
+//      -- a different page's control. Per wave-156 clause (b), the base
+//      rule for a token drawn at two floors takes the LOWER, and the
+//      higher floor may only be raised in a rule "scoped to the frame that
+//      draws it"; there is no such scope here (no code renders this frame's
+//      control at all), so forcing `.chq-pill` to 46px would satisfy the
+//      scanner while drawing a fabricated selector that matches nothing
+//      real -- exactly the "misattributed row" this chained task's own
+//      description warns against. Left live, matching `Chautauqua
+//      Submissions.dc.html:314`'s existing, ruling-authorised irreducible
+//      status (DEC-393 wave-157: `.chq-detail-decision-secondary-pair
+//      .chq-btn` already declares `min-height:44px` in
+//      app/src/pages/submissions/detail.css, floors the REAL control, but
+//      the join still resolves this row's tokens to Overview's phone-hidden
+//      queue button, so the ledger's own count cannot move without a
+//      worker's-judgment drain the wave-157 ruling forbids). MEASURED (this
+//      branch, post-drain): 2 offenders (both misattributions, neither
+//      drainable without gaming the join), 166 unresolved (unchanged --
+//      this drain touches only an already-`offender` row's declared value,
+//      moving it to `ok`, never creating or removing an `unresolved` row).
+//
 //   4. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      DESKTOP_FLOOR_DIVERGENCE_CEILING is a single exported const, hand-
 //      measured on this branch by forcing it to -1 and reading the printed
@@ -888,7 +932,7 @@ const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 // printed row list. Two-sided per DEC-808 (every ratchet in this campaign
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 3;
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
 export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 166;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {

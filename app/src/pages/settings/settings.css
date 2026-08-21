@@ -443,6 +443,21 @@
   margin: 0;
 }
 
+/* Desktop drawn-floor ledger drain (DEC-393 wave-159, task qh):
+   docs/design/Chautauqua Settings.dc.html
+   `<span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:600">Reviewer</span>`
+   ("Invite someone" modal's role radiogroup) draws min-height:44px --
+   .chq-pill (the shared house register PeopleRolesPanel.tsx:558-576's
+   role chips share with every other chq-chipstrip in the app, see the
+   w9-c note above: ".chq-pill is deliberately absent" from this file's
+   own tap-floor block for exactly this reason) declares none at desktop
+   today. Scoped to this radiogroup only via its own aria-labelledby
+   anchor -- the shared .chq-pill base and every other chipstrip's chip
+   stay untouched. */
+[aria-labelledby='people-invite-role-label'] .chq-pill {
+  min-height: 44px;
+}
+
 /* DEC-747 amendment (wave 58): the one-time password on the invite/reset
    reveal-once screen -- 20px monospace, larger than the generic
    .chq-token-reveal <code> (12px) it's nested inside, so the value that
