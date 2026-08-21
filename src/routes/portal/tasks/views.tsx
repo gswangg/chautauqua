@@ -516,7 +516,7 @@ export function TasksPage(props: {
           portal' -- the H1 keeps the same voice ('Your tasks'), and the
           undrawn progress bar is gone (the frame draws none). */}
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero">Your tasks</h1>
+      <h1 class="chq-portal-hero chq-portal-hero-drill">Your tasks</h1>
       {uploadedAssignment ? (
         <p role="status" class="chq-portal-detail">
           Received your file for "{uploadedAssignment.title}". The session is off the public schedule pending the
@@ -596,7 +596,7 @@ export function ResourcesPage(props: {
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName} footerExtra={footerExtra}>
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero chq-portal-resources-hero">Resources</h1>
+      <h1 class="chq-portal-hero chq-portal-hero-drill chq-portal-resources-hero">Resources</h1>
       <p class="chq-portal-sub">The same for every speaker · nothing here is about your session</p>
       {groups.length === 0 ? (
         <PublicEmptyState

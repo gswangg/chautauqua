@@ -169,7 +169,11 @@ function ProfilePage(props: {
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName} dock={profileDock}>
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero">My Profile</h1>
+      {/* DEC-576 (wave-16 amendment): docs/design/Chautauqua Public and
+          Portal.dc.html:534 draws the H1 `Your profile` behind the back
+          link -- a drill-in H1 takes the 25px register and the frame's
+          literal copy. */}
+      <h1 class="chq-portal-hero chq-portal-hero-drill">Your profile</h1>
       {props.error ? <p role="alert">{props.error}</p> : null}
       {props.saved ? <p role="status">Profile saved.</p> : null}
       {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content of
