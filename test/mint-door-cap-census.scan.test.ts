@@ -502,4 +502,24 @@ describe("mint-door cap census (DEC-180 wave-23 amendment) -- measurement only, 
     expect(isTextLengthName("MAX_API_TOKENS_PER_ORG")).toBe(false);
     expect(isTextLengthName("MAX_FORM_FIELDS")).toBe(false);
   });
+
+  // DEC-808 wave-27 (task w27-a): companion for test/campaign-ratchet-two-
+  // sided.scan.test.ts's ABOVE-direction detector. The "ratchet:" `it`
+  // above already asserts this same bound, but its
+  // `.toBeLessThanOrEqual(\n MINT_DOOR_UNCAPPED_CEILING,\n)` call has a
+  // trailing comma between the constant and the closing paren, which the
+  // two-sided scan's single-line regex does not match -- so from that
+  // scan's point of view the ceiling direction was invisible even though
+  // the BELOW-direction "ratchet companion" `it` above it does match.
+  // Appended here (never editing the existing `it`s, per that scan's own
+  // instruction) as a single-line form the detector recognizes.
+  it(`ratchet (single-line form for the two-sided scan): offenders never exceed ${MINT_DOOR_UNCAPPED_CEILING}`, () => {
+    const offenders: string[] = [];
+    for (const entry of MINT_DOORS) {
+      const snippets = gradedSnippetsFor(entry, doors);
+      const { pass } = gradeMintDoor(snippets);
+      if (!pass) offenders.push(`${entry.route} :: ${entry.file}`);
+    }
+    expect(offenders.length).toBeLessThanOrEqual(MINT_DOOR_UNCAPPED_CEILING);
+  });
 });
