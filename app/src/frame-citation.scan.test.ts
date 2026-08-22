@@ -393,28 +393,217 @@ const EXPECT_PROXIMITY_LINES = 6;
  * the tightening. */
 const UNRECEIPTED_CLAIM_CEILING = 0;
 
-/** Shared receipt check (quote presence + nearby `expect(`), factored out so
- * the phone describe block below and the new desktop block (DEC-808 wave-107
- * task w3-v) run the identical rule rather than each re-implementing it --
- * a second copy of a vocabulary is a trap with a delay fuse (DEC-613). */
+// ---------------------------------------------------------------------------
+// Task w14-a (DEC-976 wave-14m amendment): two predicate changes to
+// computeUnreceiptedCitations below.
+//
+// (1) CREDIT A FRAME-VERBATIM HELPER. The corpus's newer idiom -- see
+// app/src/pages/Contacts-import.desktop-frame-verdicts.render.test.tsx:37-42
+// for the canonical body -- reads DESIGN_FILE, indexes `lines[lineNo - 1]`,
+// and calls `expect(line).toBe(literal)`. That is STRICTLY STRONGER than a
+// comment quote plus a nearby `expect(`: it fails the owning test when the
+// pack is re-cut, where a quote is inert prose. A citation is credited by a
+// helper only when, within its own comment block plus EXPECT_PROXIMITY_LINES
+// source lines beneath, there is a call to a helper that (a) is declared in
+// the SAME file, (b) whose BODY both reads the design file and calls
+// `expect(...).toBe(...)`, and (c) is invoked with the citation's cited
+// FIRST line number as its first argument. All three are structural --
+// derived from the helper's own body shape, never from its NAME (DEC-180: a
+// name allowlist is not a population). Some files call it `frameLine`,
+// others `verbatimLine`; both qualify by shape, neither by name.
+//
+// (2) EXEMPT HEADER-BLOCK SCOPE CITATIONS. A citation above the file's first
+// `describe(` names the frame the FILE is about (DEC-808's already-
+// adjudicated `.dc.html:<line>` naming shorthand) and no `expect(` can
+// legally sit in a header, so it is exempt from the receipt check outright.
+// The exemption is paid for by a companion assertion below: a file carrying
+// a header-block citation into frame file F must also carry at least one
+// FULLY receipted citation (quote+expect, or helper credit) into that same
+// F elsewhere in the file -- otherwise the file declares a scope it verifies
+// nothing about.
+// ---------------------------------------------------------------------------
+
+/** Every named `function NAME(...) { ... }` declaration in `raw`, with its
+ * body extracted via a balanced-brace scan from the declaration's opening
+ * `{` -- never a naive regex body capture, which breaks the instant a
+ * helper's own body contains a nested `{}` (an object literal, an arrow
+ * function, an `if`). */
+function extractFunctionDecls(raw: string): { name: string; body: string }[] {
+  const out: { name: string; body: string }[] = [];
+  const headRe = /function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)[^{]*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = headRe.exec(raw))) {
+    const braceStart = headRe.lastIndex - 1;
+    let depth = 1;
+    let i = braceStart + 1;
+    while (i < raw.length && depth > 0) {
+      if (raw[i] === '{') depth++;
+      else if (raw[i] === '}') depth--;
+      i++;
+    }
+    out.push({ name: m[1]!, body: raw.slice(braceStart + 1, i - 1) });
+  }
+  return out;
+}
+
+/** A helper body "reads the design file" when a `readFileSync(` call's
+ * argument names `docs`/`design` inline, or resolves (via a same-file
+ * `const`/`let`/`var` declaration) to a value that does. Never satisfied by
+ * the helper's NAME -- a `verbatimLine`-named function whose body reads
+ * something else entirely does not qualify. */
+function bodyReadsDesignFile(body: string, raw: string): boolean {
+  const callIdx = body.search(/readFileSync\s*\(/);
+  if (callIdx === -1) return false;
+  const argWindow = body.slice(callIdx, callIdx + 200);
+  if (/docs/i.test(argWindow) && /design/i.test(argWindow)) return true;
+  const identMatch = argWindow.match(/readFileSync\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*[,)]/);
+  if (!identMatch) return false;
+  const varName = identMatch[1]!;
+  const declRe = new RegExp(`(?:const|let|var)\\s+${varName}\\s*=([^;]*);`, 's');
+  const dm = raw.match(declRe);
+  return !!dm && /docs/i.test(dm[1]!) && /design/i.test(dm[1]!);
+}
+
+/** A helper body "calls expect(...).toBe(...)" -- the shape that fails the
+ * owning test outright when the cited literal stops matching, rather than
+ * merely sitting beside an unrelated assertion. */
+function bodyCallsExpectToBe(body: string): boolean {
+  return /expect\([\s\S]*?\)\s*\.toBe\(/.test(body);
+}
+
+/** Qualifying frame-verbatim helper names declared in `raw` (DEC-180:
+ * derived from each function's BODY shape via extractFunctionDecls, never
+ * from a name list). */
+function qualifyingHelperNames(raw: string): Set<string> {
+  const names = new Set<string>();
+  for (const fn of extractFunctionDecls(raw)) {
+    if (bodyReadsDesignFile(fn.body, raw) && bodyCallsExpectToBe(fn.body)) {
+      names.add(fn.name);
+    }
+  }
+  return names;
+}
+
+const HELPER_NAMES_CACHE = new Map<string, Set<string>>();
+function helperNamesFor(raw: string): Set<string> {
+  let names = HELPER_NAMES_CACHE.get(raw);
+  if (!names) {
+    names = qualifyingHelperNames(raw);
+    HELPER_NAMES_CACHE.set(raw, names);
+  }
+  return names;
+}
+
+/** True when `windowText` contains a call to one of `helperNames` whose
+ * FIRST argument is exactly `firstLine` -- `\s*` matches across the
+ * newlines a multi-line call like `verbatimLine(\n  709,\n  '...'\n)`
+ * wraps onto, so a wrapped call is found the same as an inline one. */
+function hasHelperCredit(windowText: string, helperNames: ReadonlySet<string>, firstLine: number): boolean {
+  for (const name of helperNames) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\b${escaped}\\s*\\(\\s*(\\d+)\\s*[,)]`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(windowText))) {
+      if (Number(m[1]) === firstLine) return true;
+    }
+  }
+  return false;
+}
+
+const FIRST_DESCRIBE_LINE_CACHE = new Map<string, number>();
+/** The line number of a file's first `describe(` call, or Infinity if it has
+ * none -- a citation strictly above this line sits in the file's header
+ * block, naming the frame the file is about rather than proving a claim. */
+function firstDescribeLine(raw: string): number {
+  let line = FIRST_DESCRIBE_LINE_CACHE.get(raw);
+  if (line === undefined) {
+    const idx = raw.search(/\bdescribe\s*\(/);
+    line = idx === -1 ? Infinity : lineNumberAt(raw, idx);
+    FIRST_DESCRIBE_LINE_CACHE.set(raw, line);
+  }
+  return line;
+}
+
+function isHeaderBlockCitation(c: { sourceLine: number; raw: string }): boolean {
+  return c.sourceLine < firstDescribeLine(c.raw);
+}
+
+/** True when `c` is receipted by EITHER the quote+nearby-expect( rule or a
+ * qualifying helper call -- the two independent receipt shapes this file
+ * now credits. Never applies the header-block exemption (that is a
+ * separate, prior gate in computeUnreceiptedCitations and in the companion
+ * check below -- a header citation that also happens to satisfy this
+ * predicate should not be double-counted as its own companion). */
+function isFullyReceipted(c: Citation & { sourceLine: number; flat: string; raw: string }): boolean {
+  const quote = quoteAfter(c.flat, c.index);
+  const rawLines = c.raw.split('\n');
+  const window = rawLines.slice(c.sourceLine - 1, c.sourceLine - 1 + EXPECT_PROXIMITY_LINES);
+  if (quote && quote.length > 0 && window.some((l) => l.includes('expect('))) return true;
+  const helperNames = helperNamesFor(c.raw);
+  if (helperNames.size === 0) return false;
+  return hasHelperCredit(window.join('\n'), helperNames, c.firstLine);
+}
+
+/** Shared receipt check (quote presence + nearby `expect(`, OR a qualifying
+ * helper credit; header-block scope citations exempt), factored out so the
+ * phone describe block below and the desktop block (DEC-808 wave-107 task
+ * w3-v) run the identical rule rather than each re-implementing it -- a
+ * second copy of a vocabulary is a trap with a delay fuse (DEC-613). */
 function computeUnreceiptedCitations(
   citations: readonly (Citation & { sourceLine: number; flat: string; raw: string })[]
 ): string[] {
   const unreceipted: string[] = [];
   for (const c of citations) {
+    if (isHeaderBlockCitation(c)) continue; // DEC-808 naming shorthand, exempt (paid for below)
+    if (isFullyReceipted(c)) continue;
     const quote = quoteAfter(c.flat, c.index);
     if (!quote || quote.length === 0) {
       unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no backtick-quoted literal)`);
       continue;
     }
-    const rawLines = c.raw.split('\n');
-    const window = rawLines.slice(c.sourceLine - 1, c.sourceLine - 1 + EXPECT_PROXIMITY_LINES);
-    if (!window.some((l) => l.includes('expect('))) {
-      unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no expect( within ${EXPECT_PROXIMITY_LINES} lines beneath)`);
-    }
+    unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no expect( within ${EXPECT_PROXIMITY_LINES} lines beneath)`);
   }
   return unreceipted;
 }
+
+/** The companion the header-block exemption is paid for with: every file
+ * that carries a header-block citation into frame file F must carry at
+ * least one FULLY receipted (non-header) citation into that same F
+ * elsewhere in the file -- otherwise the file declares a scope it verifies
+ * nothing about. Grouped by (file, frameFile) rather than by file alone, so
+ * a file citing two different frames in its header is checked per frame. */
+function computeHeaderScopeWithoutReceiptOffenders(
+  citations: readonly (Citation & { sourceLine: number; flat: string; raw: string })[]
+): string[] {
+  const byFileFrame = new Map<string, (Citation & { sourceLine: number; flat: string; raw: string })[]>();
+  for (const c of citations) {
+    const key = `${c.file}::${c.frameFile}`;
+    const group = byFileFrame.get(key);
+    if (group) group.push(c);
+    else byFileFrame.set(key, [c]);
+  }
+  const offenders: string[] = [];
+  for (const [key, group] of byFileFrame) {
+    if (!group.some(isHeaderBlockCitation)) continue;
+    const hasReceiptedNonHeader = group.some((c) => !isHeaderBlockCitation(c) && isFullyReceipted(c));
+    if (!hasReceiptedNonHeader) {
+      const [file, frameFile] = key.split('::');
+      offenders.push(`${file} declares header-block scope into ${frameFile} but carries no fully-receipted (non-header) citation into it`);
+    }
+  }
+  return offenders.sort();
+}
+
+/** Ratchet ceiling (task w14-a companion, DEC-808's header-block exemption
+ * pay-for-it rule): the count of (file, frameFile) pairs where the file
+ * carries a header-block scope citation into that frame but no fully-
+ * receipted (non-header) citation into the same frame elsewhere in the
+ * file. Seeded at 22, measured on THIS branch (DEC-989 clause a) by running
+ * the scan, not invented as 0 -- this task adds the check but does not fix
+ * any of these 22 files' bodies (out of this task's stated scope, which is
+ * computeUnreceiptedCitations plus new helpers/controls only). May only be
+ * LOWERED as offenders get fixed, never raised to paper over a regression. */
+const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 22;
 
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
@@ -444,6 +633,18 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
       );
     }
     expect(unreceipted.length).toBeLessThanOrEqual(UNRECEIPTED_CLAIM_CEILING);
+  });
+
+  it(`every file's header-block scope citation into a phone frame is paid for by at least one fully-receipted citation into the same frame elsewhere in the file (ceiling: HEADER_SCOPE_WITHOUT_RECEIPT_CEILING, may only be lowered)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_PHONE_CITATIONS);
+    if (offenders.length > HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `${offenders.length} files declare header-block phone-frame scope with no receipted citation to pay for it, ` +
+          `above the ratchet ceiling of ${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING} (may only be LOWERED, ` +
+          `never raised to paper over a regression):\n${offenders.join('\n')}`
+      );
+    }
+    expect(offenders.length).toBeLessThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
@@ -570,6 +771,12 @@ for (const file of TEST_TARGET_FILES) {
  * This ratchet may only fall. */
 const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
 
+/** Ratchet ceiling, desktop half of HEADER_SCOPE_WITHOUT_RECEIPT_CEILING's
+ * own contract exactly (task w14-a companion). Seeded at 2, measured on
+ * THIS branch, not invented as 0 -- may only be LOWERED, never raised to
+ * paper over a regression. */
+const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 2;
+
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
     expect(TEST_DESKTOP_CITATIONS.length).toBeGreaterThan(0);
@@ -612,6 +819,18 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
     }
     expect(unreceipted.length).toBeGreaterThanOrEqual(DESKTOP_UNRECEIPTED_CLAIM_CEILING);
   });
+
+  it(`every file's header-block scope citation into a desktop frame is paid for by at least one fully-receipted citation into the same frame elsewhere in the file (ceiling: DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING, may only be lowered)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_DESKTOP_CITATIONS);
+    if (offenders.length > DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `${offenders.length} files declare header-block desktop-frame scope with no receipted citation to pay for it, ` +
+          `above the ratchet ceiling of ${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING} (may only be LOWERED, ` +
+          `never raised to paper over a regression):\n${offenders.join('\n')}`
+      );
+    }
+    expect(offenders.length).toBeLessThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
 });
 
 // Two-sided companion for UNRECEIPTED_CLAIM_CEILING (the PHONE ceiling
@@ -652,6 +871,20 @@ describe('UNRECEIPTED_CLAIM_CEILING companion (two-sided ratchet, DEC-808 wave-1
 // quote-present-but-no-nearby-expect -- are each independently confirmed to
 // fire (negative control) and independently confirmed NOT to fire when the
 // citation is fully receipted (positive control).
+/** Builds a synthetic citation-plus-sourceLine object from a fixture's raw
+ * source, reusing this file's own findCitations/flatten/locateSourceIndex/
+ * lineNumberAt (DEC-613: never a second copy of this file's own citation
+ * vocabulary, even for its own fixtures). Assumes exactly one citation in
+ * the fixture; multi-citation fixtures build their own list inline (see
+ * below) the same way ALL_CITATIONS/TEST_PHONE_CITATIONS do. */
+function syntheticCitation(file: string, raw: string): TestPhoneCitation {
+  const flat = flatten(raw);
+  const [citation] = findCitations(file, flat);
+  if (!citation) throw new Error(`fixture for ${file} carries no findable citation`);
+  const idx = locateSourceIndex(raw, citation.matchText, 0);
+  return { ...citation, flat, raw, sourceLine: lineNumberAt(raw, idx) };
+}
+
 describe('receipt-checking synthetic controls (positive/negative, DEC-808 wave-107, task w3-v)', () => {
   it('flags a citation with no following backtick quote at all (negative control)', () => {
     // DEC-976 wave-109 amendment (task w5-r): this fixture must NOT use a real
@@ -682,5 +915,124 @@ describe('receipt-checking synthetic controls (positive/negative, DEC-808 wave-1
     const rawLines = src.split('\n');
     const window = rawLines.slice(0, EXPECT_PROXIMITY_LINES);
     expect(window.some((l) => l.includes('expect('))).toBe(true);
+  });
+
+  // Task w14-a controls: the frame-verbatim helper credit and the
+  // header-block exemption plus its companion. Each fixture reuses this
+  // file's own findCitations/flatten/locateSourceIndex/lineNumberAt (DEC-613)
+  // via `syntheticCitation` below, and -- per the negative control above --
+  // never anchors on a real frame path.
+
+  it('credits a qualifying frame-verbatim helper call with the correct cited line as fully receipted, even with no backtick quote at all (positive control)', () => {
+    const raw = [
+      'function verbatimLine(lineNo, literal) {',
+      '  const lines = readFileSync(join("docs", "design", "Chautauqua Fixture.dc.html"), "utf-8").split("\\n");',
+      '  const line = lines[lineNo - 1];',
+      '  expect(line).toBe(literal);',
+      '}',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {',
+      '    // docs/design/Chautauqua Fixture.dc.html:261 no quote follows this comment at all',
+      '    verbatimLine(261, "whatever the frame says");',
+      '  });',
+      '});',
+    ].join('\n');
+    const citation = syntheticCitation('fixture-helper-credit.ts', raw);
+    expect(helperNamesFor(citation.raw).has('verbatimLine')).toBe(true);
+    expect(computeUnreceiptedCitations([citation])).toEqual([]);
+  });
+
+  it('does NOT credit a qualifying helper called with the WRONG line number (negative control)', () => {
+    const raw = [
+      'function verbatimLine(lineNo, literal) {',
+      '  const lines = readFileSync(join("docs", "design", "Chautauqua Fixture.dc.html"), "utf-8").split("\\n");',
+      '  const line = lines[lineNo - 1];',
+      '  expect(line).toBe(literal);',
+      '}',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {',
+      '    // docs/design/Chautauqua Fixture.dc.html:261 no quote follows this comment at all',
+      '    verbatimLine(999, "whatever the frame says");',
+      '  });',
+      '});',
+    ].join('\n');
+    const citation = syntheticCitation('fixture-wrong-line.ts', raw);
+    expect(computeUnreceiptedCitations([citation])).toEqual([
+      `${citation.file}:${citation.sourceLine} — ${citation.matchText} (no backtick-quoted literal)`,
+    ]);
+  });
+
+  it('does NOT credit a same-named helper whose body never reads the design file (negative control -- DEC-180: shape, not name)', () => {
+    const raw = [
+      'function verbatimLine(lineNo, literal) {',
+      '  const line = SOME_OTHER_ARRAY[lineNo - 1];',
+      '  expect(line).toBe(literal);',
+      '}',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {',
+      '    // docs/design/Chautauqua Fixture.dc.html:261 no quote follows this comment at all',
+      '    verbatimLine(261, "whatever the frame says");',
+      '  });',
+      '});',
+    ].join('\n');
+    const citation = syntheticCitation('fixture-non-reading-helper.ts', raw);
+    expect(helperNamesFor(citation.raw).size).toBe(0);
+    expect(computeUnreceiptedCitations([citation])).toEqual([
+      `${citation.file}:${citation.sourceLine} — ${citation.matchText} (no backtick-quoted literal)`,
+    ]);
+  });
+
+  it("exempts a header-block citation (above the file's first describe()) from the receipt check", () => {
+    const raw = [
+      '// docs/design/Chautauqua Fixture.dc.html:261 scope header, no quote, no expect(',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {});',
+      '});',
+    ].join('\n');
+    const citation = syntheticCitation('fixture-header-only.ts', raw);
+    expect(isHeaderBlockCitation(citation)).toBe(true);
+    expect(computeUnreceiptedCitations([citation])).toEqual([]);
+  });
+
+  it("flags a header-block citation whose file carries no OTHER receipted citation into the same frame (the exemption's companion)", () => {
+    const raw = [
+      '// docs/design/Chautauqua Fixture.dc.html:261 scope header, no quote, no expect(',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {});',
+      '});',
+    ].join('\n');
+    const citation = syntheticCitation('fixture-header-unpaid.ts', raw);
+    expect(computeHeaderScopeWithoutReceiptOffenders([citation])).toEqual([
+      `${citation.file} declares header-block scope into ${citation.frameFile} but carries no fully-receipted (non-header) citation into it`,
+    ]);
+  });
+
+  it('does NOT flag a header-block citation whose file also carries a fully-receipted citation into the same frame elsewhere', () => {
+    const raw = [
+      '// docs/design/Chautauqua Fixture.dc.html:261 scope header, no quote, no expect(',
+      '',
+      'describe("x", () => {',
+      '  it("y", () => {',
+      '    // docs/design/Chautauqua Fixture.dc.html:300 `.chq-fixture{color:#000}`',
+      '    expect(el).toHaveStyle("color:#000");',
+      '  });',
+      '});',
+    ].join('\n');
+    const flat = flatten(raw);
+    const citations = findCitations('fixture-header-paid.ts', flat);
+    expect(citations.length).toBe(2);
+    let cursor = 0;
+    const withSource = citations.map((c) => {
+      const idx = locateSourceIndex(raw, c.matchText, cursor);
+      cursor = idx + c.matchText.length;
+      return { ...c, flat, raw, sourceLine: lineNumberAt(raw, idx) };
+    });
+    expect(withSource.some(isHeaderBlockCitation)).toBe(true);
+    expect(computeHeaderScopeWithoutReceiptOffenders(withSource)).toEqual([]);
   });
 });
