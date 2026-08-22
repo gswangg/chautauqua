@@ -61,8 +61,10 @@ even though they are drawn at both widths); every one pinned by a real
 
 ## DIVERGES rows
 
-None. Every PAGE-CHROME entry's shipped value matches the frame's own drawn
-literal exactly (`Track`, `Name`, `Bio · optional`, `Step 1 of 2 · your
+None (DEC-099 wave-14m clause 1: this heading and paragraph record the
+absence of a divergence, adjudicated by citing that ruling here). Every
+PAGE-CHROME entry's shipped value matches the frame's own drawn literal
+exactly (`Track`, `Name`, `Bio · optional`, `Step 1 of 2 · your
 talk`). No fix was required or made — this task is measurement-only and
 touched no route module or `.css.ts` (per its own scope).
 
