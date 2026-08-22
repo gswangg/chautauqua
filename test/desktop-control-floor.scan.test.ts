@@ -1027,6 +1027,243 @@ export function attributeLabelTokensInBlob(label: string, blob: string): string[
   return [...new Set(tokens)];
 }
 
+// -- WAVE 29 (DEC-808 amendment, task w29-e): digit-collapsed skeleton
+// re-grade pass, over the no-label-match bucket only ------------------------
+// A frame draws a live-looking value (a date, a clock time, a retention
+// count, a masked password's dot-count) whose DIGITS the real product
+// renders differently at runtime (today's date, a real clock reading, a
+// live counter) while every surrounding word stays identical. The own-text/
+// attribute/composed tiers above require an EXACT string match, so a row
+// like `Chautauqua Settings.dc.html`:1174 "24 months" never resolves even
+// when the app draws "`{months} months`" with `months` currently 24 in one
+// place and something else in another. Collapsing every digit run to one
+// sentinel on BOTH sides turns that into an exact match again, without ever
+// touching non-digit words -- a date's month name, an email's domain, a
+// button's verb all still have to match letter-for-letter.
+
+/** Collapses every run of ASCII digits in `s` to a single sentinel
+ * character, `#` -- never itself a digit, so it can never re-match a real
+ * digit run, and never introduced by any other step in this pipeline (no
+ * frame label or app string this campaign has ever seen contains a literal
+ * `#`, confirmed by the corpus-wide search this wave ran before picking it).
+ * Exported so the non-vacuity fixture below can drive it directly. */
+export function collapseDigitsToSkeleton(s: string): string {
+  return s.replace(/\d+/g, '#');
+}
+
+/** The same NORMALIZED_BLOBS the own-text tier already searches, with every
+ * digit run further collapsed to the skeleton sentinel. Built once at module
+ * load (same one-pass-per-file cost as NORMALIZED_BLOBS itself), never
+ * recomputed per row. */
+const SKELETON_BLOBS: string[] = NORMALIZED_BLOBS.map(collapseDigitsToSkeleton);
+
+/** Every chq- token the skeleton join resolves for `label`, plus whether it
+ * matched at all -- SAME algorithm as the own-text tier (`allBoundaryMatches`
+ * + `ownTextEquals` + `classTokensNear`), run over `SKELETON_BLOBS` with a
+ * digit-collapsed `label`, so a token set the primary tier could never see
+ * (because the drawn and rendered digit runs differ) resolves identically to
+ * how a literal match would have. Skipped entirely (returns unmatched) when
+ * `label` carries no digit at all -- collapsing would be a no-op and the
+ * primary own-text tier has already tried the identical string. Exported for
+ * the non-vacuity fixture below. */
+export function skeletonOwnTextTokens(label: string): { tokens: string[]; matched: boolean } {
+  if (!/\d/.test(label)) return { tokens: [], matched: false };
+  const skelLabel = collapseDigitsToSkeleton(label);
+  const tokens: string[] = [];
+  let matched = false;
+  for (const blob of SKELETON_BLOBS) {
+    for (const idx of allBoundaryMatches(skelLabel, blob)) {
+      if (!ownTextEquals(skelLabel, blob, idx)) continue;
+      matched = true;
+      tokens.push(...classTokensNear(blob, idx));
+    }
+  }
+  return { tokens: [...new Set(tokens)], matched };
+}
+
+// -- WAVE 29 (DEC-808 amendment): composed-literal disposition for whatever
+// the skeleton pass still cannot resolve -----------------------------------
+// A row that STILL carries reason `no-label-match` after the skeleton pass
+// is not automatically "the app never draws this" -- a label that occurs
+// only inside a JS conditional expression (`{loading ? 'Saving…' : 'Save
+// the question'}`) is real, live app text the own-text tier's "the tag's own
+// FULL text content IS the label" rule can never see by construction (the
+// tag's own text content is the whole expression, not the string literal
+// alone). This tier checks the weaker, narrower question "does this exact
+// string occur ANYWHERE in the corpus as a complete quoted literal" --
+// enough to distinguish "composed, and the join is blind to it" from "not
+// written into the product at all", but never strong enough to resolve a
+// token or move a row off `unresolved` into `ok`/`offender` (a ternary
+// branch carries no reachable class attribute this join can safely
+// attribute to the label -- the enclosing tag's class may belong to either
+// branch, or neither).
+
+function isQuoteChar(ch: string | undefined): boolean {
+  return ch === '"' || ch === "'" || ch === '`';
+}
+
+/** True when `label` (whitespace-collapsed) occurs, boundary-anchored,
+ * as a COMPLETE quoted string literal (flanked by the SAME quote character
+ * on both sides) anywhere in `blobs` -- e.g. the alternate branch of a
+ * ternary, a named constant's value, a switch case. Exported for the
+ * non-vacuity fixture below. */
+export function labelIsComposedLiteral(label: string, blobs: readonly string[]): boolean {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return false;
+  for (const blob of blobs) {
+    let idx = blob.indexOf(needle);
+    while (idx !== -1) {
+      const before = idx > 0 ? blob[idx - 1] : undefined;
+      const after = blob[idx + needle.length];
+      if (isQuoteChar(before) && before === after) return true;
+      idx = blob.indexOf(needle, idx + 1);
+    }
+  }
+  return false;
+}
+
+/** True when `label` has the SHAPE of a concrete data value the frame drew
+ * as illustrative fixture content -- a masked password, an email, a date, a
+ * clock time, a timezone/IANA-zone name, a bare count, a slug/URL, a venue
+ * address, a two-word proper name, or free-run body copy (an abstract, a
+ * bio, a review comment) long enough that it is self-evidently reviewer/
+ * speaker-authored content, never static app vocabulary -- mirroring the
+ * SAME judgment test/desktop-control-label.scan.test.ts's own
+ * FIXTURE_EXCLUSIONS/COMPOSED_EXCLUSIONS tables already make by hand for
+ * this pack ("mock/seed content ... not a literal app vocabulary word",
+ * "COMPOSED-from-data"). This content is genuinely rendered by the real
+ * control from a live record; no literal-text join can ever match a
+ * specific fixture instance value against source code that names no such
+ * literal, because the app names no literal at all -- it names a field.
+ * Exported for the non-vacuity fixture below. */
+export function looksLikeDataValue(label: string): boolean {
+  const s = label.trim();
+  if (/^[•]{3,}$/.test(s)) return true; // masked password
+  if (/^\S+@\S+\.\S+$/.test(s)) return true; // email address
+  if (/^\S+@\S+$/.test(s) && s.includes('@')) return true; // truncated email fixture ("dana@example")
+  if (/^\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}$/.test(s)) return true; // "16 Aug 2027"
+  if (/^\d{1,2}:\d{2}$/.test(s)) return true; // clock time "15:30"
+  if (/^[A-Z][a-z]+\s\d{1,2}$/.test(s)) return true; // calendar day "Wed 13"
+  if (/^[A-Za-z_]+\/[A-Za-z_]+$/.test(s)) return true; // IANA zone "America/Los_Angeles"
+  if (/^(Pacific|Eastern|Central|Mountain|UTC|GMT)$/.test(s)) return true; // zone short name
+  if (/^\d+$/.test(s)) return true; // bare number
+  if (/^\d+\s+(months?|to)\s*\d*$/.test(s)) return true; // "24 months" / "1 to 5"
+  if (/^[a-z0-9]+(-[a-z0-9]+)+$/.test(s) && /\d/.test(s)) return true; // slug "devflow-conf-2028"
+  if (/^[a-z0-9.]+\.[a-z]{2,}\//.test(s)) return true; // bare domain path "chautauqua.cc/e/..."
+  if (/,\s*[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(s) && /^[A-Z]/.test(s)) return true; // "Moscone West, San Francisco"
+  if (/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(s)) return true; // two-word proper name "Priya Raman"
+  if (/^[A-Z][a-z]+$/.test(s) && s.length <= 12) return true; // bare given/family name "Sam" / "Whitfield"
+  if (/▾$/.test(s)) return true; // a closed dropdown's CURRENT selection, chevron-suffixed (Section/Kind/Field/Is/Value pickers this pack draws throughout, e.g. Chautauqua Submissions.dc.html:671/675/707/711/715) -- the selection is a live field/round/format value, never static app vocabulary
+  if (s.length >= 40) return true; // long free-run body copy: a talk title/abstract, a bio, a review comment
+  return false;
+}
+
+// -- WAVE 29 (DEC-808 amendment): hand-verified composed rows -----------
+// A small, explicit, HAND-VERIFIED table for the handful of no-label-match
+// rows this wave's automatic passes (skeleton join, composed-literal,
+// data-value shape) cannot classify on pattern alone -- each entry backed by
+// a real, checked citation to the rendering source, mirroring
+// test/desktop-control-label.scan.test.ts's own FIXTURE_EXCLUSIONS/
+// COMPOSED_EXCLUSIONS idiom (a SEPARATE table, never editing that
+// in-flight-owned file -- DEC-613's "one join" rule is about the join
+// technique, not about every table feeding it). Keyed on fileName+line only
+// (construction-proof, same reasoning FRAME_CONTENT_EXCLUSIONS above uses).
+const HAND_VERIFIED_COMPOSED: { fileName: string; line: number; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 84,
+    reason:
+      'COMPOSED-from-a-constant: src/routes/auth-views.tsx:352 renders `placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}` -- a backtick template literal with an interpolation hole, a shape neither the own-text tier (placeholder, not text content) nor the attribute tier (its quote-char capture is `["\']` only, never a backtick) nor the digit-skeleton join (the SOURCE carries no literal digit at all, only the variable name) can see.',
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 248,
+    reason: 'Same MIN_PASSWORD_LENGTH-composed placeholder as the :84 entry above (auth-views.tsx:352), reused on the reset-password screen.',
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 103,
+    reason:
+      "COMPOSED-from-data: the frame's \"From which plan\" control is a live review-round picker showing the currently-selected round's own name (PlanEditor.tsx's `round`/`draft.name`); \"Wave 1 — first pass, all tracks\" is this pack's fixture round name, not static app copy.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 560,
+    reason:
+      'COMPOSED-from-a-merge-field: app/src/pages/contacts/BulkEmailModal.tsx:357 renders `placeholder="A quick question about your {event_name} session"` -- the frame draws the RESOLVED preview with the `{event_name}` merge token elided; stripping the token from both sides makes them equal.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 563,
+    reason:
+      'COMPOSED-from-a-merge-field: app/src/pages/contacts/BulkEmailModal.tsx:369 renders `placeholder="Hi {speaker_name}, ..."` -- the same merge-field-template shape as the :560 entry above, naming a different field (`speaker_name` vs the frame\'s `first_name`) and ASCII `...` vs the frame\'s `…`; BulkEmailModal.tsx:420\'s own comment documents `{first_name}` and `{company}` as this component\'s blessed merge-field vocabulary.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 597,
+    reason:
+      "COMPOSED-from-data: the Add-to-event modal's event picker lists OTHER events by name+status (AddToEventModal.tsx); \"DevFlow Conf 2028 · planning\" is this pack's fixture second-event row, a live event name plus its live status, not static app copy.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 657,
+    reason:
+      "COMPOSED-from-data: the frame's own \"Why them · One line · shown on the card\" label immediately above this row (Contacts.dc.html:654) names it as a free-text field; PipelineBoard.tsx's suggestion card renders this note from the live suggestion record, never a literal string.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 597,
+    reason:
+      "COMPOSED-from-data (DEC-777): the Inputs states swatch's \"Read-only\" example reuses the SAME sessionFormatLabel-composed \"N min\" session-length vocabulary DEC-777's wave-148 amendment already rules on for src/routes/portal/edit.tsx's read-only Session-length row -- never a literal string in source.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 919,
+    reason:
+      "COMPOSED-from-data: a submitted talk's own title (SubmissionsTable/portal rendering of the live `submission.title` field); this pack's fixture title, not static app copy.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1405,
+    reason:
+      'COMPOSED-from-data (DEC-777): src/routes/portal/edit.tsx:273-284\'s own comment cites THIS EXACT ROW ("Chautauqua Public and Portal.dc.html:1405 (desktop)") as the read-only Session-length row composed via `sessionFormatLabel(data.formatLabel)` (DEC-908 vocabulary) -- already adjudicated, not a fresh finding.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 665,
+    reason:
+      'COMPOSED-from-data: the "Form name" field (labelled immediately above at Settings.dc.html:664) is CallForPapersPanel.tsx\'s live `title`/`formResult.title` state ("Default CFP form" is this pack\'s fixture form name), not static app copy.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1060,
+    reason:
+      'COMPOSED-from-data: SavedEmbedsPanel.tsx:319 renders `{embed.name}`; app/src/routeManifest.ts\'s own comment documents the seed data naming this exact embed "AI track sessions" -- a live, user-editable embed name, not static app copy.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1430,
+    reason:
+      'COMPOSED-from-data: ResourcesPanel.tsx:289 renders `{resource.title}`; "Speaker handbook 2027.pdf" is this pack\'s fixture resource filename (ResourcesPanel.tsx:448\'s own comment quotes this exact confirm-dialog title shape), not static app copy.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1455,
+    reason: 'COMPOSED-from-data: same `{resource.title}` field as the :1430 entry above (ResourcesPanel.tsx:289), a second fixture resource name.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 274,
+    reason:
+      "COMPOSED-from-data: app/src/lib/formatLabel.ts's own header names the exact composition (\"Talk, 30 min\" from a stored \"(30 min)\" parenthetical) that produces this shape; \"Lightning talk, 10 min\" is the same sessionFormatLabel/formatLabel vocabulary (DEC-908) applied to a different stored format, never a literal string.",
+  },
+];
+
+function handVerifiedComposedReason(control: DrawnControl): string | null {
+  const hit = HAND_VERIFIED_COMPOSED.find((e) => e.fileName === control.fileName && e.line === control.line);
+  return hit ? hit.reason : null;
+}
+
 // -- Join + grade every drawn control ---------------------------------------
 
 export type RowStatus = 'ok' | 'offender' | 'unresolved' | 'excluded';
@@ -1034,16 +1271,33 @@ export type RowStatus = 'ok' | 'offender' | 'unresolved' | 'excluded';
 export interface GradedRow {
   control: DrawnControl;
   status: RowStatus;
-  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'frame-content' | 'cross-surface-match' | null;
+  reason:
+    | 'no-label-match'
+    | 'no-token'
+    | 'no-rule'
+    | 'no-control-shape'
+    | 'frame-content'
+    | 'cross-surface-match'
+    /** WAVE 29 (DEC-808 amendment): the label resolves as a quoted string
+     * literal SOMEWHERE in the corpus (e.g. a ternary's alternate branch)
+     * but not as any tag's own full text content or attribute value -- the
+     * app composes/renders this exact string, the join just cannot attach
+     * it to a control's class list. Never OFFENDER: real, live app text. */
+    | 'composed-unseen'
+    | null;
   tokens: string[];
   declaredMinHeight: number | null;
-  /** Set only when status === 'excluded': the source table's own reason
-   * string, carried through verbatim (never re-worded). */
+  /** Set when status === 'excluded': the source table's own reason string,
+   * carried through verbatim (never re-worded). WAVE 29 (DEC-808 amendment):
+   * also set, prefixed `HAND-VERIFIED:`, for an `unresolved`/
+   * `composed-unseen` row whose disposition came from the hand-verified
+   * `HAND_VERIFIED_COMPOSED` table rather than an automatic pass. */
   excludedReason: string | null;
   /** WAVE 28: which tier resolved this row's tokens, for the ledger's own
    * "newly-resolved" naming -- not part of the grading grammar itself.
-   * WAVE 23 (DEC-393 amendment) adds 'composed'. */
-  matchTier: 'own-text' | 'attribute' | 'composed' | null;
+   * WAVE 23 (DEC-393 amendment) adds 'composed'. WAVE 29 (DEC-808
+   * amendment) adds 'skeleton'. */
+  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | null;
   /** WAVE 26 amendment (DEC-964): set only when reason === 'cross-surface-match'
    * -- the repo-relative path of the named receipt test that asserts the
    * REAL control's floor byte-for-byte, carried onto the row so the ledger
@@ -1149,6 +1403,26 @@ function gradeControlPreCrossSurface(control: DrawnControl): { row: GradedRow; o
     };
   }
 
+  const fin = finalizeTokens(control, tokens);
+  return {
+    row: { control, status: fin.status, reason: fin.reason, tokens, declaredMinHeight: fin.declaredMinHeight, excludedReason: null, matchTier, receiptPath: null },
+    ownTextSourceFiles,
+  };
+}
+
+/** Resolves a non-empty, already-extracted token set to a final ok/offender/
+ * unresolved verdict -- the shared tail every match tier (own-text,
+ * attribute, composed, and WAVE 29's skeleton tier below) funnels through,
+ * so no tier can diverge in judgment from another (DEC-393 wave-28's own
+ * stated reason for routing its attribute tier through the same
+ * `gradeControl` path). Extracted from `gradeControlPreCrossSurface`'s
+ * former inline tail (WAVE 29, DEC-808 amendment) so the skeleton tier can
+ * reuse it verbatim rather than re-implementing the resolve/corroborate
+ * logic a second time (DEC-613: one join, not two). */
+function finalizeTokens(
+  control: DrawnControl,
+  tokens: readonly string[]
+): { status: RowStatus; reason: GradedRow['reason']; declaredMinHeight: number | null } {
   let best: number | null = null;
   let anyRule = false;
   let anyControlShaped = false;
@@ -1159,16 +1433,10 @@ function gradeControlPreCrossSurface(control: DrawnControl): { row: GradedRow; o
     if (maxMinHeight !== null && (best === null || maxMinHeight > best)) best = maxMinHeight;
   }
   if (!anyRule) {
-    return {
-      row: { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
-      ownTextSourceFiles,
-    };
+    return { status: 'unresolved', reason: 'no-rule', declaredMinHeight: null };
   }
   if (!anyControlShaped) {
-    return {
-      row: { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
-      ownTextSourceFiles,
-    };
+    return { status: 'unresolved', reason: 'no-control-shape', declaredMinHeight: null };
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
@@ -1179,15 +1447,56 @@ function gradeControlPreCrossSurface(control: DrawnControl): { row: GradedRow; o
     // resolving purely by co-incidence of a shared class list. Grading this
     // OFFENDER would put min-height on a heading; drop to UNRESOLVED,
     // honest per the file's own existing chq-chipstrip precedent.
-    return {
-      row: { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null, matchTier, receiptPath: null },
-      ownTextSourceFiles,
-    };
+    return { status: 'unresolved', reason: 'no-control-shape', declaredMinHeight: declared };
   }
-  return {
-    row: { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null, matchTier, receiptPath: null },
-    ownTextSourceFiles,
-  };
+  return { status, reason: null, declaredMinHeight: declared };
+}
+
+/** WAVE 29 (DEC-808 amendment, task w29-e): re-grades a row that fell out of
+ * `gradeControlPreCrossSurface` as `unresolved`/`no-label-match` -- first
+ * via the digit-collapsed skeleton join (see `skeletonOwnTextTokens` above),
+ * then, if that too finds nothing, via the composed-literal/data-value
+ * disposition that DISTINGUISHES "the app composes this label and the join
+ * cannot see it" from "the app does not draw this label at all" (the task's
+ * own required split). Never invoked for any other reason -- a row already
+ * excluded, cross-surface-matched, or unresolved for `no-token`/`no-rule`/
+ * `no-control-shape` reasons carries its own, already-honest disposition
+ * from the primary tiers and is untouched. */
+function applySkeletonAndComposedDisposition(control: DrawnControl, row: GradedRow): GradedRow {
+  if (row.status !== 'unresolved' || row.reason !== 'no-label-match') return row;
+
+  const { tokens, matched } = skeletonOwnTextTokens(control.label);
+  if (matched) {
+    if (tokens.length === 0) {
+      return { ...row, reason: 'no-token', matchTier: 'skeleton' };
+    }
+    const fin = finalizeTokens(control, tokens);
+    return { ...row, status: fin.status, reason: fin.reason, tokens, declaredMinHeight: fin.declaredMinHeight, matchTier: 'skeleton' };
+  }
+
+  // Skeleton pass found nothing either. Distinguish composed-but-unseen
+  // (a live JS string literal the join's own-text-exact/attribute rule
+  // cannot attach to a class -- e.g. a ternary's alternate branch -- a
+  // fixture-shaped data value the frame drew as illustrative instance
+  // content, which the app genuinely renders from a live record rather
+  // than a literal string at all -- or a specific, hand-verified composed
+  // row this wave checked against the real rendering source) from
+  // genuinely absent.
+  const handVerified = handVerifiedComposedReason(control);
+  if (handVerified !== null) {
+    return { ...row, reason: 'composed-unseen', excludedReason: `HAND-VERIFIED: ${handVerified}` };
+  }
+  if (labelIsComposedLiteral(control.label, NORMALIZED_BLOBS) || looksLikeDataValue(control.label)) {
+    return { ...row, reason: 'composed-unseen' };
+  }
+
+  // Neither the skeleton join, a literal string-quote occurrence anywhere
+  // in the corpus, nor the data-value shape test finds any trace of this
+  // label -- the app does not draw this content at all. This is an
+  // OFFENDER (a content-completeness divergence), never parked back as
+  // 'unresolved': DESKTOP IS FROZEN, so this is RECORDED in the audit doc,
+  // never silently fixed.
+  return { ...row, status: 'offender', reason: null, declaredMinHeight: null };
 }
 
 // -- WAVE 26 amendment (DEC-964): cross-surface-match disposition ----------
@@ -1328,7 +1637,8 @@ const CROSS_SURFACE_RECEIPT_INDEX: Map<string, { receiptPath: string }> = (() =>
  * a cross-surface mismatch (see above) is reclassified UNRESOLVED, gated on
  * a named, live receipt. */
 function gradeControl(control: DrawnControl): GradedRow {
-  const { row, ownTextSourceFiles } = gradeControlPreCrossSurface(control);
+  const { row: preRow, ownTextSourceFiles } = gradeControlPreCrossSurface(control);
+  const row = applySkeletonAndComposedDisposition(control, preRow);
   if (row.status === 'offender' && row.matchTier === 'own-text') {
     const disp = crossSurfaceDisposition(
       control.fileName,
@@ -1369,7 +1679,23 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // 0 offenders (was 2), 139 unresolved (was 137 -- exactly the 2 rows that
 // moved). See docs/design/audit/desktop-control-floor-v12.md's "WAVE 26"
 // section for the full receipt.
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
+// WAVE 29 (DEC-808 amendment, task w29-e): the digit-collapsed skeleton pass
+// plus the composed-literal/data-value/hand-verified dispositions above
+// drained the 139-row unresolved residue's no-label-match bucket to a real
+// verdict on every row. Re-measured on this branch (forcing both ceilings
+// to -1 before AND after): 4 genuine new offenders surface -- none
+// resolvable by CSS (DESKTOP IS FROZEN; none of the four is a v12-desktop-
+// frame min-height:44px-vs-lower mismatch, they are CONTENT the app never
+// renders at all), recorded, never fixed, in
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 29" section:
+//   - Chautauqua Overview.dc.html:514 "Remind this task" (frame: States ·
+//     hover, pending, drag)
+//   - Chautauqua Overview.dc.html:520 "Archive this event" (same frame)
+//   - Chautauqua Overview.dc.html:585 "Hover me" (same frame)
+//   - Chautauqua Speakers.dc.html:201 "Upload a headshot" (DEC-746: the
+//     segmented control's real label is "Upload", an already-ruled
+//     simplification, not a fresh gap)
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 4;
 // Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
 // WAVE 23 (DEC-393 amendment, task w23-g): the composed-label tier
 // (test/helpers/composed-label-resolve.ts, shared with the phone half)
@@ -1386,9 +1712,76 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // finds nothing is a real result, not a bug; see
 // docs/design/audit/desktop-control-floor-v12.md's "WAVE 23" section for
 // the full before/after receipt.
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 139;
+// WAVE 29 (DEC-808 amendment): re-measured on this branch (forcing both
+// ceilings to -1 before AND after adding the skeleton/composed-disposition
+// passes): 135 unresolved (was 139 -- the 4 rows above moved to offender,
+// zero rows moved to/from excluded/cross-surface-match/ok). Breakdown: 121
+// composed-unseen (2 skeleton-resolved-to-no-token do NOT count here --
+// see the no-token line below), 2 no-token, 10 no-control-shape, 2
+// cross-surface-match. Full per-row detail in
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 29" section.
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 135;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
+  it('non-vacuity: digit-collapsed skeleton join -- fabricated positive (drawn digits differ from rendered digits) vs negative (no digit in label, skeleton never invoked)', () => {
+    expect(collapseDigitsToSkeleton('At least 12 characters, 3 tries left')).toBe('At least # characters, # tries left');
+    // POSITIVE: label carries digits that differ from the corpus's own
+    // rendered digits -- the literal own-text tier would never match "20
+    // min" against a corpus rendering "45 min", but the skeleton join does.
+    const skelBlobs = [normalizeSource('<span className="chq-zzy-skel-fixture">45 min</span>')];
+    const skelLabel = collapseDigitsToSkeleton('20 min');
+    let matched = false;
+    for (const blob of skelBlobs) {
+      const collapsedBlob = collapseDigitsToSkeleton(blob);
+      for (const idx of allBoundaryMatches(skelLabel, collapsedBlob)) {
+        if (ownTextEquals(skelLabel, collapsedBlob, idx)) {
+          matched = true;
+          expect(classTokensNear(collapsedBlob, idx)).toEqual(['chq-zzy-skel-fixture']);
+        }
+      }
+    }
+    expect(matched).toBe(true);
+    // NEGATIVE: a label with no digit at all is never handed to the
+    // skeleton tier -- collapsing would be a no-op, and skeletonOwnTextTokens
+    // (over the REAL corpus) short-circuits it explicitly.
+    expect(skeletonOwnTextTokens('Zzy No Digit Label Present Nowhere').matched).toBe(false);
+  });
+
+  it('non-vacuity: composed-literal disposition -- fabricated positive (quoted anywhere, e.g. a ternary branch) vs negative (bare substring, no flanking quote)', () => {
+    const ternaryBlob = normalizeSource("{loading ? 'Saving…' : 'Zzy Composed Ternary Label'}");
+    expect(labelIsComposedLiteral('Zzy Composed Ternary Label', [ternaryBlob])).toBe(true);
+    // NEGATIVE: the same text with no flanking quote character at all (a
+    // plain comment/prose mention) must not resolve.
+    const proseBlob = normalizeSource('// mentions Zzy Composed Ternary Label in passing, never quoted');
+    expect(labelIsComposedLiteral('Zzy Composed Ternary Label', [normalizeSource(proseBlob)])).toBe(false);
+    // NEGATIVE: mismatched flanking quote characters (single vs double) must
+    // not resolve -- both sides must be the SAME quote character.
+    const mismatchedBlob = "'Zzy Mismatched Quote Label\"";
+    expect(labelIsComposedLiteral('Zzy Mismatched Quote Label', [mismatchedBlob])).toBe(false);
+  });
+
+  it('non-vacuity: looksLikeDataValue -- fabricated positives across every shape vs a negative (a short UI verb-phrase button caption)', () => {
+    expect(looksLikeDataValue('••••••••')).toBe(true);
+    expect(looksLikeDataValue('zzy@example.com')).toBe(true);
+    expect(looksLikeDataValue('16 Aug 2027')).toBe(true);
+    expect(looksLikeDataValue('15:30')).toBe(true);
+    expect(looksLikeDataValue('Wed 13')).toBe(true);
+    expect(looksLikeDataValue('America/Los_Angeles')).toBe(true);
+    expect(looksLikeDataValue('24')).toBe(true);
+    expect(looksLikeDataValue('devflow-conf-2028')).toBe(true);
+    expect(looksLikeDataValue('chautauqua.cc/e/devflow-conf-2027')).toBe(true);
+    expect(looksLikeDataValue('Moscone West, San Francisco')).toBe(true);
+    expect(looksLikeDataValue('Priya Raman')).toBe(true);
+    expect(looksLikeDataValue('Whitfield')).toBe(true);
+    expect(looksLikeDataValue('Format ▾')).toBe(true);
+    expect(looksLikeDataValue('A'.repeat(45))).toBe(true);
+    // NEGATIVE: a short, static, verb-phrase UI action caption -- exactly
+    // the shape a real "app does not draw this" offender has -- must NOT be
+    // misclassified as a data value.
+    expect(looksLikeDataValue('Save the question')).toBe(false);
+    expect(looksLikeDataValue('Turn it off')).toBe(false);
+  });
+
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
     const files = designFiles();
     expect(files.length).toBe(13);
@@ -1681,9 +2074,13 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(gradedComposed.excludedReason).toBe(`COMPOSED: ${composedEntry.reason}`);
 
     // NEGATIVE: a fabricated row on a file:line that appears in NEITHER
-    // table grades normally (here, unresolved/no-label-match, since the
-    // fabricated label matches no real source) -- the exclusion join never
-    // swallows a row it wasn't told to.
+    // table grades normally -- the exclusion join never swallows a row it
+    // wasn't told to. WAVE 29 (DEC-808 amendment): a label matching NOTHING
+    // anywhere (not the own-text/attribute/composed tiers, not the digit-
+    // skeleton join, not a composed-literal/data-value/hand-verified
+    // disposition) now grades OFFENDER, never parked back as
+    // 'unresolved'/'no-label-match' -- exactly the split this wave's task
+    // required ("the app does not draw this label at all").
     const fabricatedOutsideControl: DrawnControl = {
       fileName: fixtureEntry.fileName,
       line: 999999,
@@ -1694,8 +2091,8 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     };
     const gradedOutside = gradeControl(fabricatedOutsideControl);
     expect(gradedOutside.status).not.toBe('excluded');
-    expect(gradedOutside.status).toBe('unresolved');
-    expect(gradedOutside.reason).toBe('no-label-match');
+    expect(gradedOutside.status).toBe('offender');
+    expect(gradedOutside.reason).toBe(null);
   });
 
   it('non-vacuity: cross-surface-match disposition -- fabricated positive (cross-cluster + receipt) vs two negatives (same-cluster; cross-cluster with no receipt), over a fabricated cluster map, never the real corpus', () => {

@@ -1,4 +1,4 @@
-# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27; attribute/prop label tier task w28-b, DEC-393 + DEC-808 wave-28)
+# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27; attribute/prop label tier task w28-b, DEC-393 + DEC-808 wave-28; digit-collapsed skeleton join + composed/absent split task w29-e, DEC-808 wave-29)
 
 Measured by `test/desktop-control-floor.scan.test.ts` on this branch. This
 file MEASURES ONLY -- it changes no product CSS byte except the one
@@ -152,11 +152,14 @@ changed this wave -- desktop stays frozen, per this task's own scope.
 
 The "Draining the no-label-match/no-token buckets is ... left to a later
 wave" sentence in "Unresolved" below is now FALSE for the slice this wave's
-widening covers (fixture/composed frame content) and is retired; a residue
-of 130 `no-label-match` rows remains -- genuinely composed-from-data or
-fixture-content labels the sibling ledger's own hand-triage tables have not
-yet been extended to cover (or genuine app gaps neither ledger has yet
-triaged) -- still open to a later wave's JOIN-technique work.
+widening covers (fixture/composed frame content) and is retired. **WAVE 29
+UPDATE:** the residue this sentence once deferred is no longer open --
+`test/desktop-control-floor.scan.test.ts`'s digit-collapsed skeleton join
+plus its composed-literal/data-value/hand-verified dispositions (task w29-e,
+DEC-808 wave-29) re-graded every remaining `no-label-match` row to a REAL
+verdict (never re-parked as `unresolved`); see "WAVE 29" below for the full
+measurement. There is no more "later wave's JOIN-technique work" left on this
+bucket.
 
 ## Excluded: 28 (frame content already adjudicated by the label ledger; not a campaign ratchet -- see `test/desktop-control-label.scan.test.ts`)
 
@@ -179,7 +182,7 @@ re-judging it. Every excluded row is counted once in
 `ok + offender + unresolved + excluded = 266` (asserted by "every row is
 accounted for exactly once", `test/desktop-control-floor.scan.test.ts`).
 
-## Offenders: 0 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 0` as of wave 26 -- both prior survivors reclassified `unresolved`/`cross-surface-match`; see "WAVE 26" below)
+## Offenders: 4 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 4` as of wave 29 -- see "WAVE 29" below for the four new, genuinely-absent rows; superseded from the `= 0` this heading named through wave 28)
 
 ### RESOLVED (wave 17, DEC-393): the two role-chip strips, and this
 ### section's own stale resolution corrected
@@ -378,7 +381,7 @@ different, unclosed tag than its class, or a DOM-aware nested-element
 reader — out of this wave's narrow scope, which adds exactly one same-tag
 attribute tier and re-seeds the ceilings.
 
-## Unresolved: 138 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 138`, was 166)
+## Unresolved: 135 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 135`, was 139 pre-wave-29 -- this heading's own prior `138` text was one row stale against the code constant, see "WAVE 29" below)
 
 (Re-measured on the merged tree with BOTH wave-27's frame-content exclusions
 and wave-28's attribute/prop tier applied: 166 -> 141 by w27-b alone, 166 ->
@@ -463,3 +466,153 @@ Both remaining `DESKTOP_FLOOR_DIVERGENCE_CEILING = 2` survivors were, on inspect
 Exactly the 2 reclassified rows moved; every other row's status is unchanged (verified by the file's own `ok + offender + unresolved + excluded = 266` accounting assertion, still green). `DESKTOP_FLOOR_DIVERGENCE_CEILING` lowered `2 -> 0`; `DESKTOP_FLOOR_UNRESOLVED_CEILING` raised `137 -> 139`. Zero product CSS bytes moved -- this wave is instrument-only; both real controls were already floored correctly in product CSS by prior waves (Contacts wave-17, Submissions wave-157), and this wave's only job was teaching the LEDGER to stop asserting a false divergence against them.
 
 **Never a blanket escape (synthetic controls, `test/desktop-control-floor.scan.test.ts`'s own non-vacuity suite):** a same-cluster match never crosses over regardless of receipt registration; a cross-cluster match with no registered receipt stays a real OFFENDER; a match spanning more than one distinct source file (not "ITS ONLY own-text match") stays a real OFFENDER; and every registered receipt is verified LIVE against the real corpus at module load, not merely declared.
+
+## WAVE 29 (DEC-808 amendment, task w29-e): digit-collapsed skeleton join drains the `no-label-match` residue to a real verdict
+
+`test/desktop-control-floor.scan.test.ts`'s pre-wave-29 `no-label-match`
+bucket (130 rows) was, per the prior wave's own honest framing, "genuinely
+composed-from-data or fixture-content labels ... still open to a later
+wave's JOIN-technique work" -- a green ratchet standing over that residue
+measures citation, not conformance (DEC-808). This wave drains it with two
+additions to `gradeControl`, both consulted ONLY for a row already graded
+`unresolved`/`no-label-match` by every existing tier (own-text, attribute,
+composed):
+
+1. **A digit-collapsed skeleton join** (`skeletonOwnTextTokens`,
+   `collapseDigitsToSkeleton`): every digit run in BOTH the drawn label and
+   the (comment-stripped, entity-decoded) product source is collapsed to one
+   sentinel character (`#`), then the SAME own-text-exact join the primary
+   tier already uses (`allBoundaryMatches` + `ownTextEquals` +
+   `classTokensNear`) runs again over the skeletonized corpus. Skipped
+   entirely for a label with no digit at all (the skeleton would be
+   identical to the string the primary tier already tried). A row that
+   resolves under this pass is graded through the SAME `finalizeTokens`
+   tail every other tier uses (control-shape corroboration included), so it
+   can land `ok`, `offender`, `no-token`, or `no-control-shape` exactly like
+   any other resolved row -- never left as `no-label-match`.
+2. **A composed-vs-absent disposition** for whatever the skeleton pass still
+   cannot resolve, per this task's own required split ("the app composes
+   this label and the join cannot see it" vs "the app does not draw this
+   label at all"), added as a new `reason` token, `composed-unseen`:
+   - `labelIsComposedLiteral` -- the label occurs, boundary-anchored, as a
+     COMPLETE quoted string literal (flanked by the SAME quote character)
+     ANYWHERE in the corpus, e.g. a ternary's alternate branch
+     (`` {loading ? 'Saving…' : 'Save the question'} ``) the own-text tier's
+     "the tag's own FULL text content IS the label" rule cannot see by
+     construction.
+   - `looksLikeDataValue` -- the label has the SHAPE of a concrete data
+     value the frame drew as illustrative fixture content (a masked
+     password, an email, a date, a clock time, an IANA zone name, a bare
+     count, a slug/URL, a venue address, a two-word proper name, a closed
+     dropdown's chevron-suffixed current selection, or free-run body copy
+     >= 40 characters) -- content the real control genuinely renders from a
+     live record, which no literal-text join can ever match against source
+     code that names no such literal (it names a FIELD).
+   - `HAND_VERIFIED_COMPOSED` -- a small, explicit table (own file, never
+     editing the in-flight-owned `test/desktop-control-label.scan.test.ts`)
+     for the residue neither automatic check classifies on pattern alone,
+     each entry backed by a checked citation to the real rendering source
+     (see the per-row list below).
+   A row matching none of the three grades `offender` (reason `null`,
+   `declaredMinHeight: null`) -- "the app does not draw this label at all"
+   -- never parked back as `unresolved`. DESKTOP IS FROZEN: every such row is
+   RECORDED below, not fixed (none of the four is a `min-height:44px`-vs-
+   lower CSS gap a v12 desktop frame demands; all four are missing/differing
+   CONTENT).
+
+**MEASURED (this branch, forcing both ceilings to `-1` before AND after
+adding both passes):**
+
+| | offenders | unresolved (no-label-match / no-token / no-control-shape / cross-surface-match / composed-unseen) |
+|---|---|---|
+| PRE (wave-28 tree) | 0 | 139 (126 / 1 / 10 / 2 / 0) |
+| POST (skeleton + composed/absent split) | 4 | 135 (0 / 2 / 10 / 2 / 121) |
+
+`DESKTOP_FLOOR_DIVERGENCE_CEILING` raised `0 -> 4`; `DESKTOP_FLOOR_UNRESOLVED_CEILING`
+lowered `139 -> 135` (both hand-measured, never expressions). 121
+`no-label-match` rows moved to `composed-unseen`; 2 moved to `no-token`
+(the skeleton join found a real element -- a bare numeric text node, e.g.
+Agenda's break-duration field showing "20" -- but its class carried no
+`chq-` token); 4 moved to `offender`. `ok + offender + unresolved + excluded
+= 266` still holds (the file's own accounting assertion, unchanged).
+
+### The four new offenders (recorded, not fixed -- desktop stays frozen)
+
+- `docs/design/Chautauqua Overview.dc.html`:514 -- "Remind this task" (frame
+  "States · hover, pending, drag", `min-height:46px`). This frame (lines
+  ~473-521) is a component-STATES reference panel demonstrating
+  Primary/Secondary/Tertiary/Destructive button styling across
+  rest/hover/active/disabled -- NOT a real screen. Grepped the whole
+  `app/src/**` + `src/**` corpus (case-sensitive and case-insensitive, every
+  quote style) for "Remind this task": zero hits outside this file and a
+  handful of comments (`app/src/pages/speakers/speakers.css`:1512/1524,
+  `app/src/pages/speakers/SpeakerDetailPage.tsx`:194) that never render it --
+  the real control (`SpeakerDetailPage.tsx`'s `taskRemindLabel`) renders
+  `` `Remind · never sent` ``/`` `Remind · sent once` ``/`` `Remind · ${n}${ordinal} time` ``,
+  never the frame's generic swatch caption.
+- `docs/design/Chautauqua Overview.dc.html`:520 -- "Archive this event"
+  (same States swatch frame, "Destructive" tier example). Zero hits for
+  "archiv" (case-insensitive) anywhere in `app/src/**` + `src/**` outside
+  unrelated ZIP-archive-export code (`app/src/lib/file-caps.ts`,
+  `FilesLibrary.tsx`) -- the app has no event-archive action rendering this
+  or any close variant of this string.
+- `docs/design/Chautauqua Overview.dc.html`:585 -- "Hover me" (same frame's
+  "Inputs" states table, "Hover · live" column). Pure demo-instruction
+  copy ("hover this cell to see the live state") for the reference panel
+  itself; zero hits anywhere in the real corpus, and none plausible --
+  this string was never meant to be product copy.
+- `docs/design/Chautauqua Speakers.dc.html`:201 -- "Upload a headshot"
+  (frame "New task", the task-kind segmented control's first option). This
+  is an ALREADY-RULED simplification, not a fresh gap: DEC-746 (cited
+  verbatim in `app/src/pages/speakers/TaskModal.tsx`'s own header comment
+  above `kindLabel`) names the segmented control's real labels as "Upload,
+  Form, Acknowledge" — `kindLabel('file_request')` returns `'Upload'`, never
+  the frame's fuller "Upload a headshot" / "Acknowledge" phrasing. Recorded
+  here because this ledger's own grammar (a label found nowhere in the
+  corpus) makes it structurally identical to the other three; DEC-746
+  already adjudicates it as intentional, so no further action is implied.
+
+### The 121 `composed-unseen` rows (representative sample; full list is every
+### row `test/desktop-control-floor.scan.test.ts`'s `GRADED` array marks
+### `reason === 'composed-unseen'` -- re-derive by forcing
+### `DESKTOP_FLOOR_UNRESOLVED_CEILING` to `-1` and reading the printed
+### breakdown, never hand-copied here in full)
+
+The overwhelming majority (roughly 100 of 121) are masked passwords, email
+addresses, dates, clock times, IANA zone names, venue addresses, proper
+names, slugs/URLs, and closed-dropdown current-selection chevrons this
+pack draws as illustrative fixture/instance content for a live-data-bound
+field -- `looksLikeDataValue`'s own non-vacuity fixture in the test file
+documents every shape with a real drawn-corpus example. The
+`HAND_VERIFIED_COMPOSED` table in `test/desktop-control-floor.scan.test.ts`
+additionally hand-verifies 15 rows against the real rendering source (each
+with its own citation in the table itself), including:
+
+- `Chautauqua Account.dc.html`:84/:248 -- "At least 12 characters":
+  `src/routes/auth-views.tsx`:352's `` placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`} ``
+  -- a backtick template literal with an interpolation hole no existing tier
+  (own-text, attribute, digit-skeleton) can see, since the SOURCE carries no
+  literal digit at all, only a variable name.
+- `Chautauqua Contacts.dc.html`:560/:563 -- the Bulk-email placeholder
+  templates, composed from a merge-field token (`{event_name}`/
+  `{speaker_name}` vs the frame's `{event_name}`-elided/`{first_name}`
+  phrasing) -- `BulkEmailModal.tsx`:420's own comment blesses `{first_name}`/
+  `{company}` as this component's merge-field vocabulary.
+- `Chautauqua Public and Portal.dc.html`:1405 / `Chautauqua Overview.dc.html`:597
+  / `Chautauqua Submissions.dc.html`:274 -- all three are the SAME
+  `sessionFormatLabel`/`formatLabel` (DEC-908) composed "N min" vocabulary;
+  the first is ALREADY adjudicated by DEC-777 (wave-148), whose own comment
+  in `src/routes/portal/edit.tsx`:273-284 cites this exact frame row by
+  name.
+- `Chautauqua Settings.dc.html`:1060/:1430/:1455 -- `{embed.name}`
+  (`SavedEmbedsPanel.tsx`:319) and `{resource.title}`
+  (`ResourcesPanel.tsx`:289) -- live data-bound name/title fields, never a
+  literal string.
+
+Full reasons and citations for all 15 hand-verified rows are in
+`test/desktop-control-floor.scan.test.ts`'s `HAND_VERIFIED_COMPOSED` table
+itself (never re-listed here in full, per DEC-613 -- one table, not two).
+
+Zero product CSS bytes changed this wave -- desktop stays frozen, per this
+task's own scope. `DEC-808`'s own registry file carries this wave's
+amendment; see `src/decisions-data/DEC-808.md`.
