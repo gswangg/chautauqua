@@ -191,3 +191,22 @@ built via DEC-728 (`EmbedsPanel.tsx`, not the row-list file the original
 finding read), and :1215's second block is RESOLVED-BY-RULING (DEC-124
 wave-134 — the refusal panel is kept deliberately alongside
 `ErrorSummary`, not a gap between them).
+
+## Amendment (wave 24, DEC-896): field-grid container width closed
+
+`docs/design/audit/desktop-field-width-v12.md`'s row 11 filed the :1021
+frame's Name/Surface/Format/Track 2x2 field grid (drawn `max-width:620px`
+at `:1057`) as UNRESOLVED — "an honest absence of a comparable fact" —
+because that ledger's join has no container-grid tier (it grades field
+CONTROLS, not the grid that lays them out). DEC-896's wave-24 amendment
+rules this an actual divergence, not an absence: `settings.css:795`'s
+`.chq-settings-embed-field-pair` declared no max-width at any width, so
+the grid spanned the full 820px settings measure against DESIGN-RULINGS
+B10 ("Field width follows content, not the column"). Built in
+`v12m-w24-f`: the top-level rule now carries `max-width: 620px;` with a
+citation of `:1057`, pinned by a CSS-shape assertion in
+`app/src/pages/settings/EmbedsPanel.render.test.tsx`. This closes row 11
+of the field-width ledger **on the product side only** — the ledger file
+itself (`test/desktop-field-width.scan.test.ts` and its audit doc) is
+owned by a sibling lane (v12m-w24-e) and is untouched here; its join has
+no container-grid tier so its own counts do not move.

@@ -796,6 +796,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  /* DEC-896 wave-24 amendment: docs/design/Chautauqua Settings.dc.html:1057
+     `padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:620px`
+     draws the field grid at a fixed 620px rather than the full 820px
+     settings measure (DESIGN-RULINGS.md B10: "Field width follows content,
+     not the column."). */
+  max-width: 620px;
 }
 
 /* w4-b/DEC-785 amendment: the settings eyebrow style -- an uppercase,
