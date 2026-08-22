@@ -65,8 +65,8 @@ table-of-contents drawer/sheet, replacing the desktop brandrow+search+
 leaving-link header entirely at phone widths.
 
 **RESOLVED** (DEC-976: the pin moves with the fix): the gap this row
-described is closed. `src/routes/docs-site.tsx:488-508` renders a
-`.chq-docs-phone-toolbar` carrying BOTH the `‹ Docs` back link and a
+described is closed. src/routes/docs-site.tsx`chq-docs-phone-toolbar`
+renders, carrying BOTH the `‹ Docs` back link and a
 `Contents` trigger — a checkbox+label disclosure (`chq-docs-contents-
 checkbox` / `chq-docs-contents-toggle`, the same `sr-only-checkbox` idiom
 as `.chq-itinerary-toggle`) with `aria-controls="chq-docs-nav"` that

@@ -25,8 +25,8 @@ state (`form.openDate`/`closeDate` both null).
 - Header band, `h1`, and the "Your talk"/"You" section chrome — MATCHES.
 - The Track fieldset's legend (frame :933, "Track") — MATCHES exactly.
 - The Format fieldset's legend (frame :942) reads the bare word "Format" in
-  the pack. `FormatChoices` (`src/routes/public/submit-views.tsx:288`)
-  renders `<legend>{field.label}</legend>`, and the form field's stored
+  the pack. `FormatChoices` (src/routes/public/submit-views.tsx`<legend>{field.label}</legend>`)
+  renders that legend, and the form field's stored
   label is "Session format" — one word longer than the frame's literal,
   never trimmed to it. This is the SAME divergence
   `test/public-390-frame-verdicts.test.ts` already verdicts on this
