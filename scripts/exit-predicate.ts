@@ -860,6 +860,23 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "contract DEC-253 depends on. This constant lives beside that contract without "
     + "replacing it (scripts/render-sweep-lib.ts, DEC-253/DEC-367/DEC-808 wave-155 "
     + "amendment, task qf).",
+  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING:
+    "measures whether a drawn v12 FIELD label (an 11px/800-weight/0.1em-tracking eyebrow span "
+    + "over an input-shaped box) matches the WORDS the app's hardcoded label actually renders -- "
+    + "a fidelity fact distinct from whether a frame is CITED or a control's declared WIDTH "
+    + "matches (test/desktop-field-width.scan.test.ts), the same disposition already given to "
+    + "FIELD_WIDTH_DIVERGENCE_CEILING and DESKTOP_FLOOR_DIVERGENCE_CEILING. A newly measured "
+    + "population's non-zero row would move the campaign's goalposts mid-convergence; it "
+    + "measures fidelity now (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task w25-i) "
+    + "and is promoted once its measurement technique is proven complete enough to gate on.",
+  DRAWN_FIELD_LABEL_UNRESOLVED_CEILING:
+    "measures how many drawn v12 FIELD-label rows this ledger's join could not resolve to any "
+    + "grade (STORED-FIELD-LABEL, HARDCODED-MATCHES or HARDCODED-DIVERGES) -- an "
+    + "instrument-completeness fact about the ledger's own join technique (here, a single row "
+    + "whose feature is a recorded, deferred non-build per DEVIATIONS.md §6/DEC-032), not itself "
+    + "a v12 frame or 390-geometry conformance fact, the same disposition already given to "
+    + "FIELD_WIDTH_UNRESOLVED_CEILING (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task "
+    + "w25-i).",
   FIELD_WIDTH_DIVERGENCE_CEILING:
     "measures whether a Settings edit-view field's declared width (a --chq-field-w-* token, "
     + "or the arithmetic a two-up field pair resolves to) reaches the width its OWN v12 "
