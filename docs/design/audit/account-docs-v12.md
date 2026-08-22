@@ -107,7 +107,10 @@ against the returned HTML string, in
 never replacing, `test/account-docs-phone-frames.test.ts`'s existing
 stylesheet-source-scan coverage (that file never calls `app.request`, so
 these rows are the first live-request receipt these two frames have had).
-Home's three states have no `docs/design/audit/home-v12.md` to file into
+Home's three states have no single per-cluster phone audit file named
+`home-v12.md` to file into -- `home-docs-desktop-v12.md` covers the same
+three states but at DESKTOP, and `home-fresh-deploy-390-v12.md` covers only
+one of the three states at phone width, so neither is that file
 (per DEC-976 wave-105's note that a cluster with no audit doc files its
 verdicts in the test file's own header instead) — see
 `test/home-account-docs-390-frame-verdicts.test.ts`'s top-of-file comment
