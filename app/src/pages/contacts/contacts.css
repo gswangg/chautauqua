@@ -1486,12 +1486,30 @@
      purpose, mirroring `.chq-contacts-filter-rule-chip-dismiss` above --
      not a descendant combinator, so it stays out of
      cancelled-padding-gap.scan.test.ts's population. */
+  /* v12m-w16-ui-r4-a (DEC-393 amendment): cancelled padding on a chip's
+     inner controls runs OUTWARD ONLY. This control's FACING (trailing)
+     side no longer cancels -- it was eating 4px of the chip's own
+     docs/design/Chautauqua Contacts.dc.html:190 `gap:9px; padding:0
+     12px`, leaving only 1px of real separation from the adjacent
+     `-dismiss` control's own facing cancel below. The leading side's
+     outward cancel into the chip's 12px leading padding is unchanged --
+     no glyph moves. `min-width: 44px` added: the width half of the 44px
+     floor (docs/design/DESIGN-RULINGS.md:189) was unmet on a
+     one-character custom-key label. IN-FLIGHT NOTE for the merge agent:
+     if a second `.chq-contacts-filter-rule-chip-edit` rule lands here
+     from branch v12m-w16-ui-r3-c with `max-width: 46vw; min-width: 0`,
+     the correct merged value is `min-width: 44px`, not that rule's `0`
+     -- `max-width` (not `min-width`) is what forces its ellipsis, and
+     46vw at 390px is 179px, well above the 44px floor. */
   .chq-contacts-filter-rule-chip-edit {
     min-height: 44px;
+    min-width: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 4px;
-    margin-inline: -4px;
+    padding-inline-start: 4px;
+    padding-inline-end: 0;
+    margin-inline-start: -4px;
+    margin-inline-end: 0;
     border: none;
     background: none;
     font-family: inherit;
@@ -1541,12 +1559,21 @@
      earlier rule above), so this remains legal under DEC-937's wave-121
      amendment reserving the cancelled-padding idiom for controls whose
      resolved face carries no border and no background. */
+  /* v12m-w16-ui-r4-a (DEC-393 amendment): cancelled padding on a chip's
+     inner controls runs OUTWARD ONLY. The leading (FACING) side's cancel
+     is dropped -- this box is min-width-driven, not content-driven, so
+     the leading 4px cancel was inert padding that only ate into the
+     chip's own docs/design/Chautauqua Contacts.dc.html:190 `gap:9px;
+     padding:0 12px`, leaving 1px of real separation from the adjacent
+     `-edit` control above. The trailing outward cancel into the chip's
+     own 12px trailing padding is unchanged -- the `✕` glyph does not
+     move. */
   .chq-contacts-filter-rule-chip-dismiss {
     min-width: 44px;
     justify-content: flex-end;
-    padding-inline-start: 4px;
+    padding-inline-start: 0;
     padding-inline-end: 12px;
-    margin-inline-start: -4px;
+    margin-inline-start: 0;
     margin-inline-end: -12px;
     /* DEC-383 amendment (v12m-w16-ui-r3-b): the cursor declaration below
        is folded into this landed rule rather than into a third bare block
