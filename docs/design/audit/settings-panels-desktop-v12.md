@@ -202,11 +202,16 @@ CONTROLS, not the grid that lays them out). DEC-896's wave-24 amendment
 rules this an actual divergence, not an absence: `settings.css:795`'s
 `.chq-settings-embed-field-pair` declared no max-width at any width, so
 the grid spanned the full 820px settings measure against DESIGN-RULINGS
-B10 ("Field width follows content, not the column"). Built under
-DEC-896: the top-level rule now carries `max-width: 620px;` with a
-citation of `:1057`, pinned by a CSS-shape assertion in
+B10 ("Field width follows content, not the column"). The frame demands
+the fix directly: `docs/design/Chautauqua Settings.dc.html`'s field-grid
+style reads `padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:620px` (DEC-896), and `settings.css`'s
+top-level `.chq-settings-embed-field-pair` rule now carries
+`max-width: 620px;` to match it, pinned by a CSS-shape assertion in
 `app/src/pages/settings/EmbedsPanel.render.test.tsx`. This closes row 11
 of the field-width ledger **on the product side only** — the ledger file
-itself (`test/desktop-field-width.scan.test.ts` and its audit doc) is
-not this row's to move and is untouched here; its join has
-no container-grid tier so its own counts do not move.
+itself (`test/desktop-field-width.scan.test.ts` and its audit doc) stays
+untouched here (DEC-896): its label/extent grammar labels every drawn
+`max-width:(\d+)px` occurrence inside a frame extent as one FIELD width,
+so a container `<div>` that lays out two fields side by side is never
+itself a labelled field and has no row shape in that join; its own
+counts do not move.
