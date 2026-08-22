@@ -744,6 +744,30 @@ function csvWithDataRows(n: number): string {
   return [header, ...rows].join('\n');
 }
 
+describe('ImportWizard: DEC-575 wave-9 amendment -- step-3 footer takes the frame\'s membership and order', () => {
+  it('the review step footer renders exactly Back then the primary Import N rows, in that DOM order, with no Cancel', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('1 new · 1 updated');
+
+    const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
+    const footer = dialog.querySelector('.chq-modal-actions');
+    expect(footer).toBeTruthy();
+    const buttons = within(footer as HTMLElement).getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Back', 'Import 2 rows']);
+    expect(within(footer as HTMLElement).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+  });
+
+  it('step 2\'s footer is unchanged: it still carries its own Cancel', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
+    const footer = dialog.querySelector('.chq-modal-actions') as HTMLElement;
+    expect(within(footer).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(within(footer).getByRole('button', { name: 'Import 2 rows' })).toBeInTheDocument();
+  });
+});
+
 describe('ImportWizard: DEC-478 amendment -- import caps disclosed at choose-file, enforced before match-columns', () => {
   it('the choose-file step names both caps, sourced from the imported constants', () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);

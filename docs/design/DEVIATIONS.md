@@ -851,3 +851,43 @@ carries this section's ruling in full; these five entries are its record.
   list alone, with no rail slot at all. Stood down as recorded
   deviations, not silently dropped inside a receipt that claims
   re-lining.
+
+## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
+
+- **A pack frame that documents a VOCABULARY is not a screen.** Two
+  instances: `Chautauqua Comms.dc.html:686-749` ("What each template
+  renders" / "DevFlow Conf 2027") — a 4-up reference gallery whose
+  distinguishing text (`seenIn`, `seenWhy`, `One shell`, `560px measure`)
+  appears nowhere in the tree, whose nearest real analogue `PreviewPane`
+  renders exactly ONE resolved card with Prev/Next; and `Chautauqua
+  Docs.dc.html:226` ("Docs · the element library") — `docsSiteRoutes`
+  registers only `/docs` and `/docs/:slug`, and the nine block kinds it
+  draws live in `DocsBlock`'s closed union (src/routes/docs-content/types.ts),
+  with test/frame-caption-ledger/exclusions/explainer.ts already treating
+  its caption as design-system vocabulary. Neither is built under the
+  desktop freeze. DEC-976 wave-9 amendment (`decisions/DEC-976.md`).
+- **`ConfirmDialog` gains no subtitle slot** (frame `Chautauqua
+  Settings.dc.html:1392`/:1400, `It is embedded on notion.so`). The
+  referent is an embed HOST the schema has never carried —
+  SavedEmbedsPanel.tsx's own comment (near line 26) records that grepping
+  src/server/repo/embeds.ts and the schema finds no referrer/host column,
+  and DEC-781 already ruled the data-backed consequence lines unbuilt
+  because DEC-380 governs (a frame's drawing does not create a data
+  model). A slot with no reader is DEC-851/DEC-988's declared knob with
+  no reader. Deferred on the same footing as :1422's `Downloaded 18 times
+  by 12 speakers`. DEC-781 wave-9 amendment (`src/decisions-data/DEC-781.md`).
+- **Settings :950's edit footer keeps its single `Close`.** The frame
+  draws a Cancel/Save-changes pair at :1009-:1010, but this form has no
+  fields to submit — every role change and removal writes immediately
+  from the row-level controls — so there is nothing for Save to commit
+  and nothing for Cancel to revert. The "Change your own password" link
+  the frame draws beside them IS built (SettingsEditForm's destructive
+  footer slot, DEC-919 wave-130).
+- **Contacts :720's single-stage pill page is the PHONE register.** The
+  tree's `.chq-contacts-pipeline-phone-stages` IS the frame's pill strip,
+  at the width it belongs to; desktop's five simultaneous Kanban columns
+  are settled truth verdicted MATCHES at frame :312. Also record that
+  `stageEmptyBody()` naming the structurally immediately-preceding stage
+  (Interested) rather than the frame's copy's two-back reference
+  (Contacted) is the correct derivation of the frame's own sentence, not
+  a defect. DEC-976 wave-9 amendment.

@@ -98,9 +98,12 @@ describe('ResourcesPanel (DEC-941)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Delete this resource?')).toBeInTheDocument();
+    // Chautauqua Settings.dc.html:1421 -- the irreversible confirm's TITLE
+    // names the resource (DEC-941 wave-9 amendment); the body keeps only
+    // the consequence sentence so the name appears once (DEC-613).
+    expect(within(dialog).getByText('Delete "Speaker FAQ"?')).toBeInTheDocument();
     expect(
-      within(dialog).getByText('Speakers lose the download from their portal. "Speaker FAQ" cannot be recovered.'),
+      within(dialog).getByText('Speakers lose the download from their portal. This cannot be recovered.'),
     ).toBeInTheDocument();
 
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(

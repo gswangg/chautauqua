@@ -83,6 +83,7 @@ function baseTaskAssignmentRow(responseJson: string | null) {
     taskId: TASK_ID,
     contactId: CONTACT_ID,
     status: "complete",
+    assignedAt: new Date(1699000000000),
     completedAt: new Date(1700000000000),
     responseJson,
     taskTitle: "Hotel stay requirement form",
@@ -115,6 +116,7 @@ describe("DEC-291 getAssignmentResponseDetail", () => {
     expect(detail?.taskTitle).toBe("Hotel stay requirement form");
     expect(detail).not.toHaveProperty("taskKind");
     expect(detail?.contact).toEqual({ id: CONTACT_ID, name: "Ada Lovelace", email: "ada@example.com" });
+    expect(detail?.assignedAt).toBe(1699000000000);
     expect(detail?.completedAt).toBe(1700000000000);
     expect(detail?.fields).toEqual([
       { label: "Hotel name", value: "The Grand" },

@@ -138,21 +138,29 @@ task` button. Receipts live in
 
 ## Frame :228 "Task response"
 
-**DIVERGES** on one wording point; otherwise MATCHES. Entered via
-`TaskView` at `/speakers/tasks/:taskId`, opened from an answered row's
-`Open` action (frame :228's own entry point, "as answered").
+**MATCHES.** Entered via `TaskView` at `/speakers/tasks/:taskId`, opened
+from an answered row's `Open` action (frame :228's own entry point, "as
+answered").
 
 - Q&A rows (frame :242-243) MATCH: each response field renders as a
   question/answer pair inside a definition list.
 - The `Reopen this task` action and its caption (frame :247, "Sets it back
   to pending — the next reminder picks it up") MATCH verbatim, rendered
   only once the response has loaded.
-- **DIVERGES.** The frame's subtitle names WHEN THE TASK WAS SENT (frame
-  :235, `Priya Raman · sent 2 Apr`). `ResponseModal.tsx`'s subtitle instead
-  names when the response was COMPLETED (`{contactName} · Completed
-  {formatDate(detail.completedAt)}`) — a different fact (send date vs.
-  completion date), not a wording variant of the same fact. Filed here as
-  measurement; not fixed (desktop is frozen).
+- **CLOSED this wave (DEC-441 wave-6 amendment).** The frame's subtitle
+  names WHEN THE TASK WAS SENT (frame :235, `Priya Raman · sent 2 Apr`).
+  `ResponseModal.tsx`'s subtitle previously named when the response was
+  COMPLETED instead — a different fact (send date vs. completion date), not
+  a wording variant of the same fact. Fixed: the assignment row's own
+  `createdAt` (the date the task went out — `task_assignment` carries no
+  dedicated "sent" column, and `lastRemindedAt` is a reminder, not the
+  send) is now returned as `AssignmentResponseDetail.assignedAt` from
+  `src/server/repo/tasks/response-detail.ts`, mirrored on the SPA's type,
+  and rendered as `{contactName} · sent {formatDate(detail.assignedAt)}`
+  (lowercase "sent", matching the frame). Legal under the desktop freeze —
+  the v12 desktop frame demands the change. Green under
+  `Speakers-states.desktop-frame-verdicts.render.test.tsx`'s frame :228
+  suite.
 
 ## Frame :288 "Participation · open"
 

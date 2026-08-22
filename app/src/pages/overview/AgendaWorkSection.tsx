@@ -112,13 +112,25 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
       )}
       {payload.agendaWork.conflicts.map((conflict, idx) => (
         <div key={`conflict-${idx}`} className="chq-overview-row chq-overview-row-agenda">
-          <div>
+          <div className="chq-overview-clash-eyebrow-group">
             {/* DEC-877: a raw ISO day with no time never renders — weekday +
                 day-of-month, then the start time, then the room (below). */}
             <div className="chq-overview-row-title chq-overview-row-title-sm">
               {formatDayLabel(conflict.day)}, {clockHHMM(conflict.startMin)}
             </div>
             <div className="chq-overview-row-meta">{publicRoomLabel(conflict.roomName)}</div>
+            {/* DEC-919 wave-32 amendment (task w11-ta): the frame's :274
+                eyebrow is ONE joined span (`Tue 12, 10:00 · Room 2A`), the
+                two divs above stay byte-identical at every width. Same
+                two-node idiom as the clash-line joined sentence just below:
+                a `hidden` phone-only sibling, hidden again at the CSS top
+                level (overview.css, mirroring
+                .chq-overview-clash-line-phone), revealed only inside
+                overview.css's terminal @media (max-width:700px) block. */}
+            <span hidden className="chq-overview-clash-eyebrow-phone">
+              {formatDayLabel(conflict.day)}, {clockHHMM(conflict.startMin)} ·{' '}
+              {publicRoomLabel(conflict.roomName)}
+            </span>
           </div>
           <div>
             <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind, conflict.entries.length)}</div>
@@ -145,9 +157,17 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           </div>
           {conflict.resolution ? (
             <div className="chq-overview-row-actions-column">
+              {/* DEC-919 wave-32 amendment (task w11-ta): frame :276 draws the
+                  resolution action as a FILLED pill (brand fill, on-brand
+                  text). The shared `.chq-overview-link-btn` register (also
+                  Remind / Mark complete / Open / Read the abstract) stays
+                  borderless -- a modifier on THIS button only, styled inside
+                  overview.css's terminal @media (max-width:700px) block with
+                  the existing --chq-brand/--chq-on-brand tokens, no new
+                  colour literal. */}
               <button
                 type="button"
-                className="chq-overview-link-btn"
+                className="chq-overview-link-btn chq-overview-clash-resolve"
                 onClick={() => {
                   const resolution = conflict.resolution!;
                   void placeSlot(

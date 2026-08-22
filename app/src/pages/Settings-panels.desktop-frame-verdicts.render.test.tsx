@@ -143,7 +143,7 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
   // Frame :869 "Settings · editing the speaker portal"
   // ---------------------------------------------------------------------
   describe('frame :869 "Settings · editing the speaker portal"', () => {
-    it('DIVERGES: the frame draws a boxed static readout of the welcome text ABOVE the editable field; the tree ships a plain textarea in its place', async () => {
+    it('RESOLVED (wave 9, DEC-919 amendment): the frame draws a boxed static readout of the welcome text ABOVE the editable field; the tree now builds it', async () => {
       verbatimLine(
         869,
         '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Settings · editing the speaker portal</span>',
@@ -154,13 +154,17 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       const textarea = await within(section).findByLabelText('Welcome note');
       expect(textarea.tagName).toBe('TEXTAREA');
       // The frame's boxed 96px static readout, drawn ABOVE the actual
-      // editable field (PortalSettingsPanel.tsx's own STILL-OPEN comment,
-      // line ~133, already records this exact gap), has no counterpart in
-      // the tree.
+      // editable field, now renders via a `-edit` modifier class carrying
+      // the frame's desktop measure, fed by the STORED welcome text.
       // docs/design/Chautauqua Settings.dc.html:905 --
       // `<div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>`
       verbatimLine(905, '              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>');
-      expect(section.querySelector('.chq-settings-portal-welcome-readout')).toBeNull();
+      const readout = section.querySelector('.chq-settings-portal-welcome-readout-edit');
+      expect(readout).not.toBeNull();
+      expect(readout).toHaveTextContent(
+        'Thanks for speaking at DevCon. Everything we need from you is on this page, in order.',
+      );
+      expect(readout!.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it('MATCHES: "What speakers may edit" pills and the Resources · N heading render in the edit form, in that order', async () => {
@@ -173,6 +177,9 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       // docs/design/Chautauqua Settings.dc.html:906 --
       // `<span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>`
       verbatimLine(906, '              <span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>');
+      // DEC-919 wave-9 amendment: the caption now renders exactly once,
+      // below the readout, no longer doubled as the textarea's field hint.
+      expect(within(section).getAllByText('Takes the full measure · appears above the task list')).toHaveLength(1);
       expect(pillsHead.compareDocumentPosition(resourcesHead) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
@@ -254,10 +261,12 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       // props.
       const editLink = await screen.findByRole('link', { name: 'Edit' });
       fireEvent.click(editLink);
-      await screen.findByRole('heading', { name: 'Editing · AI track sessions', level: 2 });
+      await screen.findByRole('heading', { name: 'AI track sessions', level: 1 });
     }
 
-    it('DIVERGES: the frame\'s H1 is the embed\'s own name ("AI track sessions"); the tree heads the edit form "Editing · <name>" instead', async () => {
+    // w7-b/DEC-728 (wave-7 amendment): the H1 is now the embed's own name,
+    // matching the frame -- no more "Editing · <name>" h2.
+    it('MATCHES: the frame\'s H1 is the embed\'s own name ("AI track sessions"), with the back link and On status above/beside it', async () => {
       verbatimLine(
         1021,
         '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Settings · editing one saved embed</span>',
@@ -266,16 +275,22 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       // docs/design/Chautauqua Settings.dc.html:1047 --
       // `<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>`
       verbatimLine(1047, '              <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>');
-      expect(screen.queryByRole('heading', { name: 'AI track sessions', level: 1 })).not.toBeInTheDocument();
+      const heading = screen.getByRole('heading', { name: 'AI track sessions', level: 1 });
+      expect(heading).toBeInTheDocument();
+      const panel = heading.closest('.chq-embeds-panel') as HTMLElement;
+      expect(within(panel).getByRole('link', { name: '‹ Public pages' })).toBeInTheDocument();
+      expect(within(panel).getByText('On')).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s footer is "Turn this embed off" + Cancel + Save changes; the tree ships only a Save-changes primary -- no Cancel, no off-switch', async () => {
+    // w7-b/DEC-728 (wave-7 amendment): the footer now carries all three
+    // frame-drawn controls.
+    it('MATCHES: the frame\'s footer is "Turn this embed off" + Cancel + Save changes', async () => {
       await driveIntoEmbedEdit();
       // docs/design/Chautauqua Settings.dc.html:1097 --
       // `<a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Turn this embed off</a>`
       verbatimLine(1097, '            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Turn this embed off</a>');
-      expect(screen.queryByRole('link', { name: 'Turn this embed off' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Turn this embed off' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
     });
 

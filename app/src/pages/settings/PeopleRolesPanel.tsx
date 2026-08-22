@@ -41,9 +41,15 @@
 // second step (its body swaps from the form to the reveal block) so the
 // one-time password is still shown exactly once and closing the dialog is
 // still the last time it is seen. The reset-password reveal is a distinct
-// per-row affordance (frame 09--24) and keeps its inline site/copy
-// untouched -- only the shared reveal markup is extracted into
-// PasswordRevealBlock so the two paths can't drift.
+// per-row affordance (frame 09--24) -- only the shared reveal markup is
+// extracted into PasswordRevealBlock so the two paths can't drift.
+//
+// DEC-747 (wave-7 amendment): frame :1477 draws the reset reveal as a 560px
+// Modal with the SAME ModalFrame anatomy the invite reveal already has
+// (title names the person, subtitle is 'email · Role', a Close link in the
+// head) -- the reset reveal moved from its inline site into its own
+// ModalFrame, with its own modalClassName alongside the invite dialog's.
+// PasswordRevealBlock itself is unchanged; only the chrome around it.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -55,7 +61,7 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
-import { DEC_385, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
+import { DEC_385, DEC_651, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
 import './settings-drill-rows.css';
 
@@ -63,6 +69,7 @@ void DEC_747; // the invite/reset flows below implement wave-58's amendment (ver
 void DEC_781; // the frame's two consequence sentences for this edit view have two different homes
 void DEC_385; // settings-drill-rows.css: page-local sheet, terminal max-width block
 void DEC_919; // wave-156: the read drill's own "Invite someone" footer primary (:568), opening the existing invite dialog directly -- not a form submit
+void DEC_651; // wave-9 amendment: Frame :1352 "Invite · rejected" -- retitled header + the escape control lives in the actions row, third, after Cancel
 
 const SECTION_KEY = 'people';
 
@@ -347,7 +354,17 @@ export function PeopleRolesPanel() {
     setError(null);
     try {
       const res = await apiPost<{ email: string; password: string }>(`/users/${user.id}/reset-password`);
-      setRevealedPassword({ email: res.email, password: res.password, context: 'reset' });
+      // DEC-747 (wave-7 amendment): the reset reveal's own ModalFrame names
+      // the person and states 'email · Role' as its subtitle -- captured
+      // from the row being reset, same as the invite path captures at
+      // submit time.
+      setRevealedPassword({
+        email: res.email,
+        password: res.password,
+        context: 'reset',
+        name: user.name,
+        role: user.role === 'organizer' ? 'organizer' : 'reviewer',
+      });
       setResetTargetId(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
@@ -447,7 +464,11 @@ export function PeopleRolesPanel() {
       {inviting && !(revealedPassword && revealedPassword.context === 'invite') ? (
         <ModalFrame
           as="form"
-          title="Invite someone"
+          // DEC-651 wave-9 amendment, frame :1359: on a duplicate-email
+          // refusal the header retitles to "Nobody was invited" -- driven
+          // by the SAME `duplicateUser` predicate as the subtitle below so
+          // the two can never disagree (DEC-613: one predicate).
+          title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}
           // DEC-650 amendment (wave 134), :1360: the rejected-duplicate
           // subtitle, alongside (never replacing) the field-level refusal
           // FormRow already renders on the email input below.
@@ -473,6 +494,14 @@ export function PeopleRolesPanel() {
               <button type="button" className="chq-btn chq-btn-secondary" onClick={closeInviteDialog}>
                 Cancel
               </button>
+              {/* DEC-651 wave-9 amendment, frame :1384: the escape route is
+                  the actions row's THIRD control, after Cancel -- not a
+                  child of the error-alert body above the actions row. */}
+              {duplicateUser ? (
+                <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+                  Open {personLabel(duplicateUser)}&apos;s row
+                </button>
+              ) : null}
             </>
           }
         >
@@ -494,14 +523,12 @@ export function PeopleRolesPanel() {
             We generate a password and show it to you once, on the next screen. There is no pending invitation to
             chase.
           </p>
+          {/* DEC-651 wave-9 amendment: the escape route used to render here,
+              inside the error-alert body; frame :1384 draws it as the
+              actions row's third control instead (see `actions` above). */}
           {error && (
             <div className="chq-error" role="alert">
               {error}
-              {duplicateUser ? (
-                <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
-                  Open {personLabel(duplicateUser)}&apos;s row
-                </button>
-              ) : null}
             </div>
           )}
           {/* DEC-650 amendment (wave 133), :1367: the invite REJECTED
@@ -649,10 +676,10 @@ export function PeopleRolesPanel() {
         </button>
       </div>
 
-      {/* DEC-747 amendment (wave 67): the reset-password reveal keeps its
-          original inline site -- only the invite-context reveal moved into
-          the dialog below. A general (non-invite) error, e.g. a load
-          failure, still renders here since the dialog isn't open for it. */}
+      {/* DEC-747 (wave-7 amendment): the reset-password reveal is now its
+          own Modal (below), the same dialog contract as the invite reveal.
+          A general (non-invite, non-reset) error, e.g. a load failure,
+          still renders here since neither dialog is open for it. */}
       {!inviting && error && (
         <div className="chq-error" role="alert">
           {error}
@@ -665,16 +692,32 @@ export function PeopleRolesPanel() {
       )}
 
       {revealedPassword && revealedPassword.context === 'reset' && (
-        <PasswordRevealBlock
-          revealed={revealedPassword}
-          copyResult={copyResult}
-          failedCopyRef={failedCopyRef}
-          onCopy={() => void handleCopyPassword()}
-          onDone={() => {
+        <ModalFrame
+          // DEC-747 (wave-7 amendment): the reset reveal is a Modal with
+          // exactly the invite reveal's ModalFrame anatomy (Chautauqua
+          // Settings.dc.html:1477-1484) -- title names the PERSON, subtitle
+          // is 'email · Role', a Close link in the head. Its own
+          // modalClassName -- never the invite dialog's
+          // chq-people-invite-modal -- since it is a distinct dialog.
+          title={`${revealedPassword.name || revealedPassword.email} can sign in again`}
+          subtitle={`${revealedPassword.email} · ${roleLabel(revealedPassword.role ?? 'reviewer')}`}
+          onClose={() => {
             setRevealedPassword(null);
             setCopyResult(null);
           }}
-        />
+          modalClassName="chq-people-reset-modal"
+        >
+          <PasswordRevealBlock
+            revealed={revealedPassword}
+            copyResult={copyResult}
+            failedCopyRef={failedCopyRef}
+            onCopy={() => void handleCopyPassword()}
+            onDone={() => {
+              setRevealedPassword(null);
+              setCopyResult(null);
+            }}
+          />
+        </ModalFrame>
       )}
 
       {loading ? (

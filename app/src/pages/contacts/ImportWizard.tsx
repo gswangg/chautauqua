@@ -440,14 +440,24 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // w15-c: the dialog title names the current step; "Import contacts from
   // CSV" moves down to the ModalFrame subtitle so it stays visible across
   // every step instead of being the one static title.
+  //
+  // w8-b (DEC-575): a file-level refusal (showSizeRefusal or
+  // showFileWarning) is its own dialog identity, not a variant of "Match
+  // the columns" -- Chautauqua Contacts.dc.html:770-800 draws it with its
+  // own H1 'Nothing was imported'. `step` still computes 1 or 2 for these
+  // bands (it stays display-only, gating the step strip, not this title),
+  // so the refusal check runs first and wins regardless of which band is
+  // showing.
   const stepTitle =
-    step === 4
-      ? 'Import complete'
-      : step === 3
-        ? 'Review the import'
-        : step === 2
-          ? 'Match the columns'
-          : 'Choose a file';
+    showSizeRefusal || showFileWarning
+      ? 'Nothing was imported'
+      : step === 4
+        ? 'Import complete'
+        : step === 3
+          ? 'Review the import'
+          : step === 2
+            ? 'Match the columns'
+            : 'Choose a file';
 
   // w15-th (DEC-663 wave-159): the phone match-columns frame
   // (Chautauqua Contacts.dc.html:487, head band :489-491) draws the
@@ -715,6 +725,16 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     </button>
   ) : plan ? (
     <>
+      {/* G13 (frame 08-contacts--13); DEC-575 wave-9 amendment: the frame's
+          step-3 footer (Chautauqua Contacts.dc.html:709-710) draws `Back`
+          BEFORE the primary `Import N rows`, in that DOM order, and draws
+          NO `Cancel` at this step -- the step-2 footer's Cancel is not
+          inherited here. Back is the frame's one return path to the match
+          step at this step; Steps 1, 2 and the completion screen keep
+          their own footers unchanged. */}
+      <button type="button" className="chq-btn chq-btn-secondary" onClick={backToMatchColumns} disabled={busy}>
+        Back
+      </button>
       <button
         type="button"
         className={`chq-btn chq-btn-primary ${importPendingLabel.buttonProps.className}`.trim()}
@@ -722,14 +742,6 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
         onClick={runCommit}
       >
         {importPendingLabel.label}
-      </button>
-      {/* G13 (frame 08-contacts--13): a footer Back beside the primary --
-          the second of the frame's two return paths to the match step. */}
-      <button type="button" className="chq-btn chq-btn-secondary" onClick={backToMatchColumns} disabled={busy}>
-        Back
-      </button>
-      <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
-        Cancel
       </button>
     </>
   ) : (
@@ -770,6 +782,15 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       size="wide"
       actions={actions}
       backLink={{ label: '‹ Contacts', onClick: onClose }}
+      // DEC-575 wave-9 amendment: the head `Close` stays for every step,
+      // including step 3. It is DEC-651's shared dialog chrome, not a
+      // step-local escape, so it is out of scope for the step-3 footer
+      // change above. The frame's `1600` section badge at
+      // "Chautauqua Contacts.dc.html:672" is the pack's drawing
+      // convention for a desktop-width mock, not an instruction to
+      // rebuild step 3 as a full-width page -- doing so would break the
+      // DEC-651 focus trap and the 390 drill flow. RULED AGAINST; do not
+      // re-open this in a future wave.
       // v12m-w30-d: frame verdict for "Import CSV · 390" (docs/design/
       // Chautauqua Contacts.dc.html:487-517) is 8/10 literal-exact; see
       // docs/design/audit/contacts-import-390-v12.md for the one filed

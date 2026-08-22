@@ -280,9 +280,11 @@ export const requireSpeaker = requireRole("speaker");
  * password or API token. Every route that reaches createClaimToken
  * (src/auth/claim.ts), directly via resolvePortalLinks(..., true) or
  * indirectly via applyMintedPortalLinks, places this guard immediately
- * after its role guard: src/routes/comms/portal-invites.ts,
- * src/routes/content-notes.ts, src/routes/comms/send.ts, and
- * src/routes/api/contacts/bulk-email.ts. */
+ * after its role guard. That population is DERIVED, not hand-listed (a
+ * hand-listed population is not a population, DEC-180):
+ * test/claim-mint-guard-population.test.ts walks src/routes/** and asserts
+ * the guard on every mint-reaching registration, so this comment never
+ * drifts from the population it once named. */
 export const requireCookieSession: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (!c.var.auth) {
     throw new ApiError("unauthorized", "Login required");

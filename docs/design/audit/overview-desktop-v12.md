@@ -40,15 +40,22 @@ the h1, not a copy of the frame's literal string.
   frame's order — all four controls, not a phone-width subset (Waitlist's
   phone stand-down, DEC-610 wave-83 amendment, is a `max-width:700px`-only
   rule and does not apply at this frame's 1600 width).
-- **§03 DIVERGES** (docs/design/Chautauqua Overview.dc.html:127-128): the
-  frame draws `Approve` then `Ask for changes` — a second DECISION, sending
-  the submission back to its speaker. The tree draws `Approve` then `Open`
-  (`AgendaWorkSection`'s sibling section in Overview.tsx renders a plain
-  `<Link to={/content/:id}>Open</Link>`), a navigation control into the
-  Content page's own detail view, not a decision the Overview row itself can
-  fire. This is a real, unscheduled gap: the frame's second control is a
-  request-changes action the Overview row has no equivalent for at all
-  today — filed here, not fixed (measurement only).
+- **§03 CLOSED-with-receipt** (docs/design/Chautauqua Overview.dc.html:127-128,
+  DEC-720 wave-8 amendment): the frame draws `Approve` then `Ask for
+  changes` — a second DECISION, sending the submission back to its
+  speaker. The tree now renders all three controls in the frame's order —
+  `Approve`, `Ask for changes`, `Open` — with `Ask for changes` firing the
+  same optimistic row-removal + rollback path as `Approve`, posting
+  `{ contentStatus: 'changes_requested' }` to the row's own
+  `/submissions/:id/content-status` endpoint (the silent, no-email flip
+  DEC-720's wave-32 amendment already built; `Open` is kept per DEC-902 — a
+  frame's control list is a floor, not a ceiling). Receipt:
+  `app/src/pages/Overview.render.test.tsx` ("renders §03 controls Approve /
+  Ask for changes / Open in DOM order..." and "'Ask for changes' posts
+  changes_requested and removes the row optimistically...") and
+  `app/src/pages/Overview.desktop-frame-verdicts.render.test.tsx`
+  ("MATCHES (DEC-720 wave-8): §03 draws Approve / \"Ask for changes\" /
+  Open, in that order").
 - §04's overflow (docs/design/Chautauqua Overview.dc.html:164) MATCHES: with
   a fixture whose unplaced total exceeds the (empty) rows array, §04 renders
   a plain `<div class="chq-overview-overflow">` below the row list — the
@@ -153,14 +160,14 @@ which is what actually proves "the first frame", not merely "eventually".
 
 | Frame | Verdict |
 | --- | --- |
-| :28 What needs you today · 1600 | MATCHES, one filed DIVERGES (§03 "Ask for changes" has no tree equivalent) |
+| :28 What needs you today · 1600 | MATCHES (§03 "Ask for changes" CLOSED-with-receipt, DEC-720 wave-8) |
 | :308 New event | MATCHES |
 | :432 Overview · a brand-new event | MATCHES |
 | :476 States · hover, pending, drag | MATCHES for Buttons; DIVERGES by omission (no Pending/Drag controls exist on this page) |
 | :689 Loading · the first paint | MATCHES |
 
-4 of 5 frames MATCH outright as rendered; the two partial rows are a real,
-unscheduled §03 gap (Overview has no "request changes" action at all, only
-a decision-free `Open` link) and a documentation-catalogue frame whose
-Pending/Drag tiers this specific page simply never draws. No desktop byte
-was moved to produce this verdict.
+4 of 5 frames now MATCH outright as rendered; the remaining partial row is a
+documentation-catalogue frame whose Pending/Drag tiers this specific page
+simply never draws. §03's "Ask for changes" gap (Overview previously had no
+"request changes" action, only a decision-free `Open` link) closed this
+wave (DEC-720 wave-8 amendment) — see the CLOSED-with-receipt bullet above.

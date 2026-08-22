@@ -561,10 +561,11 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(new Set(body.taskIds)).toEqual(new Set(['task-1', 'task-2']));
   });
 
-  // DEC-720 amendment (w53-a): §03's silent 'Ask for changes' column-flip
-  // button is gone, replaced by a quiet link to the session's own content
-  // screen. Approve keeps posting its explicit content-status decision.
-  it('has no "Ask for changes" button; §03 renders an Open link to the content screen, and Approve still posts approved', async () => {
+  // DEC-720 (wave-8 amendment): §03 draws the frame's second decision --
+  // Ask for changes, a silent content-status flip -- immediately after
+  // Approve, with Open kept third as navigation (DEC-902: a frame's
+  // control list is a floor, not a ceiling).
+  it('renders §03 controls Approve / Ask for changes / Open in DOM order, and Approve still posts approved', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
       'GET /api/v1/events': eventsListEnvelope(),
@@ -579,8 +580,9 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
     await waitFor(() => expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument());
 
-    expect(screen.queryByRole('button', { name: 'Ask for changes' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Ask for changes')).not.toBeInTheDocument();
+    const row = screen.getByText('Taming 40-Minute CI').closest('.chq-overview-row-content')!;
+    const controls = row.querySelectorAll('.chq-overview-row-actions > *');
+    expect(Array.from(controls).map((el) => el.textContent)).toEqual(['Approve', 'Ask for changes', 'Open']);
 
     const openLink = screen.getByRole('link', { name: 'Open' });
     expect(openLink).toHaveAttribute('href', '/content/sub-2');
@@ -601,6 +603,48 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     })!;
     const body = JSON.parse((call[1] as RequestInit).body as string);
     expect(body).toEqual({ contentStatus: 'approved' });
+  });
+
+  it('"Ask for changes" posts changes_requested and removes the row optimistically, rolling back on failure', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+      [`POST /api/v1/submissions/sub-2/content-status`]: {
+        status: 409,
+        body: errorEnvelope('conflict', 'Submission already decided'),
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask for changes' }));
+
+    // Optimistic removal happens immediately.
+    expect(screen.queryByText('Taming 40-Minute CI')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => {
+        const url = typeof input === 'string' ? input : (input as Request).toString();
+        return url.includes('/content-status');
+      });
+      expect(call).toBeTruthy();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/content-status');
+    })!;
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body).toEqual({ contentStatus: 'changes_requested' });
+
+    // Rolled back loudly after the failed post.
+    await waitFor(() => expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument());
   });
 
   it('rolls back loudly when an action fails', async () => {

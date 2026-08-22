@@ -11,15 +11,12 @@
 // test.tsx's own helper) so a stale `:line` reference fails loudly instead
 // of rotting silently.
 //
-// ONE finding this file could not resolve without touching a product file
-// (out of scope, MEASUREMENT ONLY): frame :381 draws the status line as
-// "Re-uploaded · you asked for changes N days ago"; the live product
-// (DeliverableDetail.tsx's chq-content-status-band-copy, worklist.ts's
-// worklistStatusLabel) renders "Re-uploaded · Updated <date>" instead --
-// same fact (a re-upload N days back), different vocabulary. Recorded as a
-// DIVERGES row in docs/design/audit/content-drill-390-v12.md; the
-// assertion below matches the REAL rendered text, not the frame's literal,
-// per this task's own narrowest-interpretation instruction.
+// w8-g (DEC-874 wave-8, ruled): frame :381's DIVERGES row is now CLOSED --
+// the status band's value line composes a relative-day clause through
+// formatRelativeDays (lib/dates.ts), and the cause clause ("you asked for
+// changes") renders only while the record's content status is actually
+// changes_requested, "Updated" otherwise. See docs/design/audit/
+// content-drill-390-v12.md's CLOSED-with-receipt section for the ruling.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -29,6 +26,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DeliverableDetail } from './DeliverableDetail';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { formatRelativeDays } from '../../lib/dates';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -57,11 +55,13 @@ afterEach(() => {
 });
 
 // Frame :376/:377: title "Taming 40-Minute CI", "Priya Raman · DFC-014".
-// Frame :381: re-uploaded, changes were requested 8 days ago -- an
-// updatedAt 8 days before this suite's fixed "now" reads that honestly
-// through the product's real Updated-<date> vocabulary (see file header
-// note above for why the literal itself diverges).
-const UPDATED_AT = 1700000300000;
+// Frame :381: re-uploaded, changes were requested 8 days ago -- the status
+// band composes its relative-day clause off real Date.now() at render time
+// (formatRelativeDays, lib/dates.ts), so the assertion below re-derives the
+// expected clause through the SAME function+real-"now" pair rather than
+// pinning the clock (the codebase's existing formatDate(1700000300000)
+// convention for date-bearing assertions, DeliverableDetail.render.test.tsx).
+const UPDATED_AT = Date.now() - 8 * 86_400_000;
 
 // Two chains: Slides with 3 versions (active), Recording with 1 -- frame
 // :386/:387.
@@ -232,7 +232,7 @@ describe('DeliverableDetail 390 "Session · deliverable" (docs/design/Chautauqua
     expect(h1.compareDocumentPosition(subtitle!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it(':380/:381 a "Content status" section whose status line names the re-upload and its age (real product vocabulary — see file header DIVERGES note)', async () => {
+  it(':380/:381 a "Content status" section whose status line names the re-upload, its cause and its relative age (DEC-874 wave-8, ruled -- CLOSED)', async () => {
     mockDetail();
     renderDetail();
     await waitFor(() => {
@@ -242,10 +242,89 @@ describe('DeliverableDetail 390 "Session · deliverable" (docs/design/Chautauqua
     const band = screen.getByText('Content status').closest('.chq-content-status-band');
     expect(band).not.toBeNull();
     const valueLine = within(band as HTMLElement).getByText(/^Re-uploaded/);
-    // PRODUCT bytes: worklistStatusLabel + " · Updated <date>" -- the real
-    // rendered shape, not frame :381's literal "you asked for changes N
-    // days ago" (DIVERGES, see file header).
-    expect(valueLine.textContent).toMatch(/^Re-uploaded · Updated /);
+    // The fixture's UPDATED_AT sits exactly 8 real days before render time,
+    // matching frame :381's own worked example ("...8 days ago") byte for
+    // byte, including the cause clause ("you asked for changes"), which the
+    // Re-uploaded state carries (this record was re-uploaded to address a
+    // prior change request -- see DeliverableDetail.tsx's
+    // statusNeedsCauseClause note).
+    expect(valueLine.textContent).toBe(
+      `Re-uploaded · you asked for changes ${formatRelativeDays(UPDATED_AT, Date.now())}`,
+    );
+  });
+
+  it(':381 the changes_requested state (not yet re-uploaded) carries the same cause clause', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'DFC-014',
+        updatedAt: UPDATED_AT,
+        participants: [{ name: 'Priya Raman', contactId: 'contact-priya' }],
+        slot: null,
+        reuploaded: false,
+        contentStatus: 'changes_requested',
+      },
+      [`GET /api/v1/files/file-slides-v3/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="Taming 40-Minute CI"
+          contentStatus="changes_requested"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Content status')).toBeInTheDocument();
+    });
+    const band = screen.getByText('Content status').closest('.chq-content-status-band');
+    const valueLine = within(band as HTMLElement).getByText(/^Changes requested/);
+    expect(valueLine.textContent).toBe(
+      `Changes requested · you asked for changes ${formatRelativeDays(UPDATED_AT, Date.now())}`,
+    );
+  });
+
+  it(':381 an approved/not-reviewed status keeps the neutral "Updated" clause, never the cause clause', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'DFC-014',
+        updatedAt: UPDATED_AT,
+        participants: [{ name: 'Priya Raman', contactId: 'contact-priya' }],
+        slot: null,
+        reuploaded: false,
+        contentStatus: 'pending',
+      },
+      [`GET /api/v1/files/file-slides-v3/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="Taming 40-Minute CI"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Content status')).toBeInTheDocument();
+    });
+    const band = screen.getByText('Content status').closest('.chq-content-status-band');
+    const valueLine = within(band as HTMLElement).getByText(/^Not reviewed/);
+    expect(valueLine.textContent).toBe(`Not reviewed · Updated ${formatRelativeDays(UPDATED_AT, Date.now())}`);
   });
 
   it(':395-399 the deliverable selector renders one entry per kind, each matching / · \\d+ versions?$/', async () => {

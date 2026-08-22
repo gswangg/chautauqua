@@ -181,11 +181,19 @@ describe('CommsPage render smoke', () => {
   });
 
   // DEC-603 amendment (wave 66, gate-11 sweep item 6): the rhythm sentence
-  // is stated ONCE, by Comms.tsx's own page head -- HistoryTab's own
-  // subtitle no longer restates it (and RecentSends' own subtitle slot is
-  // suppressed by columnHeads on the History mount), so the whole rendered
-  // tree carries exactly one instance of the sentence while History is open.
-  it('states the rhythm sentence exactly once in the rendered tree while the History tab is open', async () => {
+  // used to be stated ONCE, by Comms.tsx's own page head -- HistoryTab's own
+  // subtitle never restated it (and RecentSends' own subtitle slot is
+  // suppressed by columnHeads on the History mount).
+  //
+  // DEC-964 wave-8 amendment (task w8-a): Comms.tsx's page head (H1 + rhythm
+  // subtitle + tab pills) now stands down entirely while History is open --
+  // the frame draws History as a self-contained screen with no such band --
+  // so formatSendRhythm's "N sent in the last 7 days" sentence has no
+  // producer left on this tab. The rhythm FIGURE still reaches History,
+  // reused (not re-derived) in HistoryTab's own drill-head count line
+  // ("N sends · M in the last 7 days", frame :339's own grammar,
+  // HistoryTab.tsx's countLine) -- a different sentence, not a restatement.
+  it('the page-head rhythm sentence has no producer while History is open; HistoryTab\'s own count line carries the same figure instead', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -211,8 +219,9 @@ describe('CommsPage render smoke', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
     await screen.findByText('You are in!');
 
-    const matches = await screen.findAllByText(/sent in the last 7 days/, { exact: false });
-    expect(matches).toHaveLength(1);
+    const matches = screen.queryAllByText(/sent in the last 7 days/, { exact: false });
+    expect(matches).toHaveLength(0);
+    expect(screen.getByText(/in the last 7 days/, { exact: false })).toBeInTheDocument();
   });
 });
 
@@ -345,7 +354,13 @@ describe('CommsPage names a failed audit-trail read (DEC-518 wave-43 amendment)'
 // useSearchParams instead of component state, so the tab is bookmarkable and
 // participates in back/forward.
 describe('CommsPage tab strip is URL state (DEC-710)', () => {
-  it('mounts at /comms?tab=history directly on the history tab, with aria-selected set from the URL', async () => {
+  // DEC-964 wave-8 amendment (task w8-a): History is a self-contained
+  // screen at every width now -- the page-level tab strip (and its
+  // aria-selected tabs) stands down whenever History is showing, same as
+  // Templates, so there is no tablist left to read a selection off. The
+  // URL-state receipt is now the drill's own H1 + breadcrumb rendering, and
+  // the tablist's absence, rather than an aria-selected flag.
+  it('mounts at /comms?tab=history directly on the history tab, rendered as its own self-contained screen (no page-level tablist)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -358,10 +373,10 @@ describe('CommsPage tab strip is URL state (DEC-710)', () => {
       </MemoryRouter>,
     );
 
-    const historyTab = await screen.findByRole('tab', { name: 'History' });
-    expect(historyTab).toHaveAttribute('aria-selected', 'true');
-    const composeTab = screen.getByRole('tab', { name: 'Compose' });
-    expect(composeTab).toHaveAttribute('aria-selected', 'false');
+    expect(await screen.findByRole('heading', { name: 'History' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '‹ Comms' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Compose' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
   it('falls back to compose when ?tab= is absent or unknown', async () => {
@@ -398,9 +413,14 @@ describe('CommsPage tab strip is URL state (DEC-710)', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Templates' }));
 
+    // DEC-964 wave-8 amendment (task w8-a): landing on Templates stands the
+    // page-level tablist down (it's a self-contained screen now), so the
+    // post-click receipt is Templates' own drill H1, not an aria-selected
+    // tab -- the tablist itself is gone from the tree at this point.
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Templates' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('heading', { name: 'Templates' })).toBeInTheDocument();
     });
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=templates');
   });
 });
@@ -607,9 +627,13 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     expect(screen.getByTestId('location-search')).not.toHaveTextContent('history');
 
     fireEvent.click(screen.getByRole('button', { name: 'All history' }));
+    // DEC-964 wave-8 amendment (task w8-a): landing on History stands the
+    // page-level tablist down, so the switch's receipt is History's own
+    // drill H1 rather than an aria-selected tab.
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
     });
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 });
 
@@ -630,7 +654,10 @@ describe('CommsPage per-tab page measure (w1-g)', () => {
       </MemoryRouter>,
     );
 
-    const heading = await screen.findByRole('heading', { name: 'Comms' });
+    // DEC-964 wave-8 amendment (task w8-a): Templates stands the page-level
+    // "Comms" H1 down at every width now, so the drill's own "Templates"
+    // H1 is the heading to anchor from.
+    const heading = await screen.findByRole('heading', { name: 'Templates' });
     const pageRoot = heading.closest('.chq-page') as HTMLElement;
     expect(pageRoot).toHaveClass('chq-measure');
     expect(pageRoot).not.toHaveClass('chq-measure-table');

@@ -28,13 +28,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from './helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..');
-
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 const SOURCES: Record<string, string> = {};
 function source(rel: string): string {
@@ -42,7 +39,7 @@ function source(rel: string): string {
   // carry braces that would end a rule body early (home.css.ts's
   // HOME_CHROME_GUTTER sits mid-rule in .chq-home-header). Drop the
   // placeholder; nothing this file asserts lives inside one.
-  SOURCES[rel] ??= stripComments(readFileSync(join(REPO_ROOT, rel), 'utf-8')).replace(/\$\{[^{}]*\}/g, '');
+  SOURCES[rel] ??= stripCssComments(readFileSync(join(REPO_ROOT, rel), 'utf-8')).replace(/\$\{[^{}]*\}/g, '');
   return SOURCES[rel]!;
 }
 

@@ -47,20 +47,36 @@ the form above.
 
 ## Frame :1352 "Invite · rejected"
 
-**DIVERGES** (two findings, additive).
+**RESOLVED** (DEC-651 wave-9 amendment — was two findings, additive; both
+now conform). Receipt: `app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx`,
+`describe('frame :1352 "Invite · rejected"')`.
 
-- The frame retitles the dialog's own header to `Nobody was invited`
-  (frame :1359) on a duplicate-email refusal. The tree's dialog title
-  never changes — it stays `Invite someone` through the whole flow. The
-  subtitle DOES swap, matching the frame's `The address is already in use`
-  (frame :1360).
+- The frame retitles the dialog's own header to `Nobody was invited` on a
+  duplicate-email refusal
+  (docs/design/Chautauqua Settings.dc.html, quoting `Nobody was invited`
+  at the invite-rejected frame's header title span). The tree's dialog
+  title now reads the same `duplicateUser` predicate that already drives
+  the subtitle swap, so title and subtitle can never disagree (DEC-613:
+  one predicate) —
+  `app/src/pages/settings/PeopleRolesPanel.tsx`, quoting
+  `title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}`.
 - The frame draws all three action-row controls — primary `Create the
   account`, `Cancel`, and the `Open Sam's row` tertiary — in ONE row, in
-  that order (frame :1384). The tree instead renders the escape route
-  ("Open {name}'s row") inside the error-alert body, ABOVE the actions row
-  (`ModalFrame`'s own children-before-actions composition) — so in DOM
-  order it is FIRST, not last, and it names the contact by NAME ("Sam
-  Whitfield"), never by email, unlike the frame's literal "Sam" reference.
+  that order
+  (docs/design/Chautauqua Settings.dc.html, quoting the invite-rejected
+  frame's actions-row div, primary `Create the account` then `Cancel`
+  then the `Open Sam's row` anchor). The tree now renders the escape
+  route inside the SAME `ModalFrame` `actions` slot, as the third
+  control after Cancel, matching DOM order —
+  `app/src/pages/settings/PeopleRolesPanel.tsx`, quoting the invite
+  dialog's `actions` prop rendering `Create the account` then `Cancel`
+  then `Open {personLabel(duplicateUser)}'s row`. The tree names the
+  contact using the SAME `personLabel` helper every other row in this
+  panel uses (full name, falling back to email for a nameless row) —
+  the frame's literal "Sam" is the sample data's first name only, not a
+  first-name-only design mandate (no other frame or ruling asks for a
+  first-name abbreviation); this is a stylistic sample-data compression,
+  not a divergence.
 
 ## Frame :1392 "Confirm · reversible"
 
@@ -85,18 +101,20 @@ control.
 
 ## Frame :1414 "Confirm · irreversible"
 
-**DIVERGES** (three findings, one of them a filed deferral).
+**MATCHES** (title/object-naming; one finding remains a filed deferral,
+one is a settled ruling, not a gap).
 
 Entered at `/settings?section=portal&edit=1` (the editable `ResourcesPanel`
 lives inside its `SummarySection` "Change" drill), opened via the real
 "Delete" control on the resource row.
 
 - The frame folds the resource's file name directly into the header
-  TITLE — `Delete "Speaker handbook 2027.pdf"?` (frame :1421). The tree's
-  header title is the fixed, ungenericized `Delete this resource?`; the
-  file name instead appears in the confirm BODY sentence
-  (`Speakers lose the download from their portal. "Speaker handbook
-  2027.pdf" cannot be recovered.`).
+  TITLE — `Delete "Speaker handbook 2027.pdf"?` (frame :1421). **Wave-9
+  (DEC-941 amendment):** `ResourcesPanel.tsx`'s confirm now builds this
+  exact object-naming form (`title={\`Delete "${resource.title}"?\`}`); the
+  body sentence no longer repeats the quoted filename, keeping only the
+  consequence (`Speakers lose the download from their portal. This cannot
+  be recovered.`) — one copy of the name, in the title (DEC-613).
 - The frame's header subtitle (frame :1422, `Downloaded 18 times by 12
   speakers`) is **DEVIATIONS §6 deferred** — quoting DEVIATIONS.md
   verbatim: *"the `resource` table (`src/db/schema/content.ts`) carries no
@@ -109,8 +127,11 @@ lives inside its `SummarySection` "Change" drill), opened via the real
   confirm`) MATCHES: `weight="irreversible"`, primary disabled until the
   resource's own title is typed.
 - The frame's primary reads `Delete it` (frame :1432); the tree's reads
-  the narrower, more specific `Delete resource` — DIVERGES on label text,
-  same destructive-verb-on-primary contract otherwise.
+  the narrower, more specific `Delete resource` — **not adopted, by
+  ruling** (DEC-941 wave-9 amendment): `app/src/confirm-primary-object.
+  scan.test.ts` requires every destructive `ConfirmDialog` primary to name
+  its object, never a bare verb, and DEC-967 rules frame sample prose is
+  not product copy. Recorded at the call site, not a backlog item.
 
 ## Frame :1440 "Portal resource · add"
 
@@ -148,15 +169,16 @@ Entered at `/settings?section=people&edit=1`, "reached" via the real
 | --- | --- |
 | :1271 Invite someone | MATCHES |
 | :1319 Invite · the one-time password | MATCHES |
-| :1352 Invite · rejected | DIVERGES (title stays fixed; escape-route control reorders and renames) |
+| :1352 Invite · rejected | RESOLVED (DEC-651 wave-9 amendment — title now retitles, escape control now third in the actions row) |
 | :1392 Confirm · reversible | DIVERGES (no subtitle slot on `ConfirmDialog`) |
-| :1414 Confirm · irreversible | DIVERGES (title/primary wording differ; subtitle line DEFERRED) |
+| :1414 Confirm · irreversible | MATCHES (title now object-naming, wave-9; primary label non-adoption is a ruling, not a gap; subtitle line DEFERRED) |
 | :1440 Portal resource · add | MATCHES |
 | :1477 Reset a password | DIVERGES (no dialog renders at all — fully inline) |
 
-3 of 7 frames MATCH as rendered; the other four are prose-filed divergences
-per this task's measurement-only mandate — no desktop byte was moved and no
-component or stylesheet was edited to produce this verdict. Frame :1422's
+4 of 7 frames MATCH/RESOLVE as rendered; the other three are prose-filed
+divergences per this task's measurement-only mandate — no desktop byte was
+moved and no component or stylesheet was edited to produce this verdict
+beyond the wave-9 :1352 amendment above. Frame :1422's
 "Downloaded 18 times by 12 speakers" subtitle is separately DEFERRED under
 DEVIATIONS §6 ("Unbuilt features (no data model or endpoint behind the
 drawing)"): the resource table has no download-count column and no

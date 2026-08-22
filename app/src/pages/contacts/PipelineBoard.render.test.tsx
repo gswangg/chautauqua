@@ -853,6 +853,38 @@ describe('PipelineBoard: enroll picker search (w40-c/DEC-821 amendment)', () => 
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
+
+  // Chautauqua Contacts.dc.html:624-625 (DEC-651 wave-7 amendment): the
+  // dialog names the contact it is enrolling once one is picked -- no
+  // subtitle before that (the dialog is still on the picker).
+  it('names the selected contact in the subtitle, org appended only when present', async () => {
+    const WITH_ORG = { id: 'ct9', firstName: 'Aisha', lastName: 'Karim', email: 'aisha@example.com', company: 'Vector Foundry' };
+    const NO_ORG = { id: 'ct10', firstName: 'Rosa', lastName: 'Park', email: 'rosa@example.com', company: null };
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([WITH_ORG, NO_ORG]),
+    });
+
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    expect(within(dialog).queryByText(/Aisha Karim/)).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByLabelText('Search contacts'), { target: { value: 'a' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => within(dialog).getByText('Aisha Karim — aisha@example.com'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Aisha Karim — aisha@example.com' }));
+    expect(within(dialog).getByText('Aisha Karim · Vector Foundry')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Rosa Park — rosa@example.com' }));
+    expect(within(dialog).getByText('Rosa Park')).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Rosa Park ·/)).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
 });
 
 // DEC-898: the board accepts a dropped card via the agenda DayGrid's exact

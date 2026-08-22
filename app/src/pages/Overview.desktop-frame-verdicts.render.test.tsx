@@ -207,19 +207,23 @@ describe('v12 Overview DESKTOP (1600) frames: per-frame render verdict receipts 
       expect(link).toBeInTheDocument();
     });
 
-    it('DIVERGES: §03 draws Approve + "Ask for changes"; the tree draws Approve + "Open" (a view/detail link, not a decision)', async () => {
+    it('MATCHES (DEC-720 wave-8): §03 draws Approve / "Ask for changes" / Open, in that order', async () => {
       renderOverview();
       await screen.findByRole('heading', { name: 'Four things need your attention' });
       const heading = screen.getByText('03 — Session content awaiting approval');
       const section = heading.closest('section') as HTMLElement;
-      const askForChanges = within(section).queryByText('Ask for changes');
-      const openLink = within(section).queryByRole('link', { name: 'Open' });
+      const askForChanges = within(section).getByRole('button', { name: 'Ask for changes' });
+      const openLink = within(section).getByRole('link', { name: 'Open' });
       // docs/design/Chautauqua Overview.dc.html:128 draws §03's second
       // control as `Ask for changes` -- a decision that returns the
-      // submission to the speaker, not merely a navigation link.
+      // submission to the speaker, not merely a navigation link. DEC-720
+      // (wave-8 amendment) built it as a silent content-status flip,
+      // rendered immediately after Approve, with Open kept third.
       verbatimLine(128, '                  <span style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 16px; font-size:13px; font-weight:600; background:#EFEBDF; white-space:nowrap">Ask for changes</span>');
-      expect(askForChanges).not.toBeInTheDocument();
+      expect(askForChanges).toBeInTheDocument();
       expect(openLink).toBeInTheDocument();
+      const row = section.querySelector('.chq-overview-row-content .chq-overview-row-actions')!;
+      expect(Array.from(row.children).map((el) => el.textContent)).toEqual(['Approve', 'Ask for changes', 'Open']);
     });
 
     it('MATCHES: §04\'s overflow renders as a plain-text summary line below the list, not a nav link', async () => {

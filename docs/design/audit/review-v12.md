@@ -119,14 +119,18 @@ SCORE_ON/SCORE_OFF constants). Findings:
 | `:941-943` unscored refusal band | MATCHES | `unscoredBannerCopy` (already verified in the pre-existing MATCHES row, re-confirmed here with a fixture whose criterion count is 3, matching the frame's own "all three are scored" literal exactly rather than the earlier row's 2-criterion approximation). |
 | `:947-953` scored "Relevance to the track" criterion | MATCHES | Five score controls render; the fixture's `5` renders selected. |
 | `:958-963` unscored "Speaker readiness" score row | MATCHES | Five score controls render, none selected. |
-| `:964` recuse hint ("Pick a score, or recuse yourself if you cannot judge this one.") | **DIVERGES** | This sentence does not exist anywhere in `Scorecard.tsx` — not per-criterion, not as a shared caption. The reviewer's only completeness cue in this state is the phone banner (`:941-943`), which explains the weighted-total refusal but never mentions recusal at all. This is the one clause the earlier MATCHES row's receipt never checked (its citation sat outside the frame, so it never reached `:964`). Out of this task's scope — CSS-only fix budget (`scorecard.css`'s terminal `max-width:700px` block), and this is missing copy/markup, not a phone-block geometry fix — so left as a finding, not a fix. |
+| `:964` recuse hint ("Pick a score, or recuse yourself if you cannot judge this one.") | MATCHES (RESOLVED, task w11-td re-verdict) | Originally recorded DIVERGES: this sentence did not exist anywhere in `Scorecard.tsx`. Since then, `unscoredCriterionHint()` (DEC-889 wave-32 amendment) renders under EACH unscored criterion's own score row (`Scorecard.tsx:908`), pinned verbatim against this exact frame line by `app/src/pages/review/Scorecard.recuseHint390.render.test.tsx`. The prior finding text above is retained as the historical record; it no longer describes the built tree. |
 | `:967-969` Overall "Not yet" | MATCHES | The phone-only `.chq-review-overall-value-phone` node renders `Not yet`, reached (not merely present in source) in this exact unscored fixture state; stays behind a native `hidden` attribute jsdom never clears (an unverifiable-in-jsdom limit, not a divergence — same caveat the wave-17 `:280` row already documents for the sibling frame). |
 | `:974`/`:975` dock (`Submit and next`, `Save draft`) | MATCHES | `.chq-review-scorecard-dock` renders exactly one of each label, in that order (DEC-874-scoped query — `Scorecard.tsx` spells both labels a second time in its desktop `.chq-review-editor-actions` block, which does not mount in this phone fixture, but every query is scoped to the dock container regardless). |
 | `:988`/`:989` score-pill 44px floor (dc-script `SCORE_ON`/`SCORE_OFF`) | MATCHES | `.chq-review-rating-btn`'s phone floor is declared in `review.css`'s own terminal `@media (max-width: 700px)` block (`height: 44px`) rather than `scorecard.css` (which restates only radius/type-size for this selector) — read-only pinned since `review.css` is owned by w29-e this wave, not edited by this task. |
 
-**Net: the frame is MATCHES except for one confirmed content gap at `:964`.**
-No `scorecard.css` change was needed to land this verdict (the CSS half of
-this task's floor pin reads `review.css`, unmodified). The earlier `:934`
-row above is left as written, per this task's append-only contract — this
-section is the frame's first strictly-anchored receipt and should be read
-as the authority for `:964` going forward.
+**Net: the frame is MATCHES in full.** The `:964` row's content gap
+(recorded above) is RESOLVED as of task w11-td's re-verdict:
+`unscoredCriterionHint()` (DEC-889 wave-32 amendment) now renders the
+frame's recuse-hint sentence, pinned by
+`Scorecard.recuseHint390.render.test.tsx`. No `scorecard.css` change was
+needed to land this verdict (the CSS half of this task's floor pin reads
+`review.css`, unmodified). The earlier `:934` row above is left as
+written, per this task's append-only contract — this section is the
+frame's first strictly-anchored receipt and should be read as the
+authority for `:964` going forward.

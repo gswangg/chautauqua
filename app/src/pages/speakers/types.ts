@@ -174,6 +174,9 @@ export interface AssignmentResponseDetail {
   // shape never named it, and ResponseModal.tsx renders taskTitle only.
   contact: { id: string; name: string; email: string };
   status: AssignmentStatus;
+  // DEC-441 (wave-6 amendment): the assignment row's own createdAt -- when
+  // the task went out. Speakers.dc.html:235 draws "sent <date>".
+  assignedAt: number;
   completedAt: number | null;
   fields: AssignmentResponseField[];
 }
@@ -216,11 +219,18 @@ export interface EventForm {
 // summary (built server-side from the SAME assignments buildReminderMessage
 // consumes, per docs/design/Chautauqua Speakers.dc.html:504-541's
 // per-recipient row) — never re-derived from `text` here.
+//
+// DEC-441 (wave-7 amendment, Chautauqua Speakers.dc.html:518-530): `parts`
+// is the SAME structured pieces buildReminderMessage composes `text` from
+// (greeting/nudge/stillToDo/portalLine/signature) -- carried through so the
+// preview dialog's rendered email card can be built from real fields
+// instead of re-parsing `text`.
 export interface ReminderDraft {
   contactId: string;
   email: string;
   name: string;
   subject: string;
   text: string;
+  parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
   tasks: { title: string; dueLabel: string; overdue: boolean }[];
 }

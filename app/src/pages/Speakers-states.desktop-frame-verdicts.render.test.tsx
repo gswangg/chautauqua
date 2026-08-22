@@ -184,6 +184,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
           taskTitle: 'Hotel stay form',
           contact: { id: CONTACT_ID, name: 'Priya Raman', email: 'priya@example.com' },
           status: 'complete',
+          assignedAt: completedAt - 10 * 24 * 60 * 60 * 1000,
           completedAt,
           fields: [{ label: 'Nights', value: 'Two nights · 11-13 May' }],
         },
@@ -216,7 +217,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       expect(within(dialog).getByText('Sets it back to pending — the next reminder picks it up')).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s subtitle names WHEN THE TASK WAS SENT ("Priya Raman · sent 2 Apr"); the tree names when it was COMPLETED instead', async () => {
+    it('MATCHES: the subtitle names WHEN THE TASK WAS SENT ("Priya Raman · sent 2 Apr"), not when it was completed', async () => {
       renderAndOpenResponse();
       await screen.findByRole('heading', { name: 'Hotel stay form' });
       fireEvent.click(screen.getByRole('button', { name: 'Open' }));
@@ -226,8 +227,8 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // `<span style="font-size:13px; color:#565A4B">Priya Raman · sent 2 Apr</span>`
       verbatimLine(235, '          <span style="font-size:13px; color:#565A4B">Priya Raman · sent 2 Apr</span>');
       const subtitle = within(dialog).getByText(/Priya Raman/);
-      expect(subtitle.textContent).toMatch(/Completed/);
-      expect(subtitle.textContent).not.toMatch(/sent/);
+      expect(subtitle.textContent).toMatch(/sent/);
+      expect(subtitle.textContent).not.toMatch(/Completed/);
     });
   });
 
@@ -399,6 +400,13 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
               name: 'Marcus Okafor',
               subject: 'Action needed',
               text: 'Hi Marcus,\n\nA quick nudge — 1 of your speaker tasks is still open.\n\nStill to do\nUpload headshot — was due 10 Apr.\n\nchautauqua.cc/portal/tasks\n\n— The team',
+              parts: {
+                greeting: 'Hi Marcus,',
+                nudge: 'A quick nudge — 1 of your speaker tasks is still open.',
+                stillToDo: ['- Upload headshot — was due 10 Apr.'],
+                portalLine: 'chautauqua.cc/portal/tasks',
+                signature: '— The team',
+              },
               tasks: [{ title: 'Upload headshot', dueLabel: '10 Apr', overdue: true }],
             },
           ],
@@ -433,7 +441,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame draws a rendered HTML email card (header/greeting/"Still to do" block/an "Open your tasks" button); the tree renders the plain-text draft in a bare <pre>', async () => {
+    it('MATCHES (w7-a): the dialog draws a rendered email card (subject header/greeting/nudge/"Still to do" block/an "Open your tasks" CTA) fed by the structured `parts` contract, not a bare <pre> of `text`', async () => {
       renderGridAndOpenReminders();
       await screen.findByRole('heading', { name: 'Speakers' });
       fireEvent.click(screen.getByRole('button', { name: 'Remind all outstanding' }));
@@ -444,12 +452,20 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // docs/design/Chautauqua Speakers.dc.html:527 draws the rendered
       // CTA button `Open your tasks` inside the email card.
       verbatimLine(529, '              <span style="display:inline-flex; align-items:center; align-self:flex-start; background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:44px; padding:0 20px; font-size:14px; font-weight:700">Open your tasks</span>');
-      expect(within(dialog).queryByRole('link', { name: 'Open your tasks' })).not.toBeInTheDocument();
-      expect(within(dialog).queryByText('Open your tasks')).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('link', { name: 'Open your tasks' })).toBeInTheDocument();
 
-      const draftText = dialog.querySelector('pre.chq-speakers-remind-draft-text');
-      expect(draftText).not.toBeNull();
-      expect(draftText?.textContent).toMatch(/Still to do/);
+      // DEC-441 (wave-7 amendment): no bare <pre> of the plain-text draft
+      // remains, and no event letterhead block was invented -- the subject
+      // is the honest header instead.
+      expect(dialog.querySelector('pre.chq-speakers-remind-draft-text')).toBeNull();
+      expect(within(dialog).getByText('Action needed')).toBeInTheDocument();
+      expect(within(dialog).getByText('Hi Marcus,')).toBeInTheDocument();
+      expect(within(dialog).getByText(/A quick nudge/)).toBeInTheDocument();
+      expect(within(dialog).getByText('Still to do')).toBeInTheDocument();
+      const card = dialog.querySelector('.chq-speakers-remind-card');
+      expect(card).not.toBeNull();
+      expect(within(card as HTMLElement).getByText(/Upload headshot/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Or paste this into your browser/)).toBeInTheDocument();
     });
   });
 

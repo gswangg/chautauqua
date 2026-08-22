@@ -30,10 +30,39 @@ export const claimRoutes = new Hono<AppEnv>();
 claimRoutes.get("/claim/:token", async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
+  const db = c.var.db;
+
+  // DEC-949 (wave-7 amendment): the GET twin resolves the same KV grant the
+  // POST spends its budget guessing against, and unlike the POST it is
+  // unauthenticated AND CSRF-free -- the cheapest possible surface to spray
+  // token guesses at, and it was previously unmetered. Same
+  // consume-then-refund shape as the POST below: the unit is spent
+  // unconditionally at admission, then refunded the instant the token is
+  // known to resolve, so a speaker following a real link (even a shared NAT
+  // IP that has already burned some of the budget on unrelated traffic) is
+  // never throttled by that refund; a request whose token misses keeps the
+  // spent unit and 429s once the budget is exhausted.
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const claimGetNow = Date.now();
+  const limit = await checkAndIncrementScopedLimit(db, "claim", ip, claimGetNow, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+
   const record = await readClaimToken(kv, token);
   if (!record) {
+    if (!limit.ok) {
+      const { token: csrfToken } = ensureCsrfCookie(c);
+      return c.html(<ClaimPage csrfToken={csrfToken} error={RATE_LIMIT_BAND} />, 429);
+    }
     return c.html(<ExpiredClaimPage />, 410);
   }
+
+  // Token resolved: refund the unit just spent so a real speaker with a
+  // real token is never throttled by unrelated failed attempts sharing this
+  // IP bucket.
+  await refundScopedLimit(db, "claim", ip, claimGetNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
+
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   return c.html(<ClaimPage csrfToken={csrfToken} />);

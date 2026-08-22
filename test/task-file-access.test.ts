@@ -423,6 +423,136 @@ describe("getTaskFileScope precedence: own task_assignment_id beats the reverse 
 });
 
 // ---------------------------------------------------------------------------
+// DEC-065 (wave-10 amendment): the fallback must be gated on whether the
+// FILE carries an authoritative link (task_assignment_id), not on whether
+// the own-link lookup returned a row. A file whose task_assignment_id names
+// a DELETED/dangling assignment must refuse (return null) rather than fall
+// through to the reverse task_assignment.fileId link, which could silently
+// grant the download to a different speaker's assignment. Companion
+// positive case: an UNLINKED file (task_assignment_id null) still resolves
+// through the reverse link exactly as before -- this is a narrowing, not a
+// capability removal.
+// ---------------------------------------------------------------------------
+describe("getTaskFileScope dangling own-link refusal (DEC-065, real db)", () => {
+  const DDL = `
+    create table event (
+      id text primary key,
+      org_id text
+    );
+    create table task (
+      id text primary key,
+      event_id text
+    );
+    create table task_assignment (
+      id text primary key,
+      task_id text,
+      contact_id text,
+      status text,
+      file_id text,
+      created_at integer,
+      updated_at integer
+    );
+    create table file (
+      id text primary key,
+      submission_id text,
+      kind text,
+      filename text,
+      r2_key text,
+      size_bytes integer,
+      content_type text,
+      uploaded_by_contact_id text,
+      task_assignment_id text,
+      created_at integer,
+      updated_at integer
+    );
+  `;
+
+  async function makeTestDb() {
+    const { DatabaseSync } = await import("node:sqlite");
+    const { drizzle } = await import("drizzle-orm/sqlite-proxy");
+    const schema = await import("../src/db/schema");
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(DDL);
+    const db = drizzle(
+      async (sqlText: string, params: unknown[], method: string) => {
+        const stmt = sqlite.prepare(sqlText);
+        stmt.setReturnArrays(true);
+        if (method === "run") {
+          stmt.run(...(params as never[]));
+          return { rows: [] };
+        }
+        const rows = stmt.all(...(params as never[])) as unknown[];
+        return { rows };
+      },
+      { schema },
+    );
+    return { db: db as unknown as import("../src/server/context").Db, sqlite };
+  }
+
+  it("returns null (and canAccessTaskFile denies) when the file's own task_assignment_id is dangling, even though a DIFFERENT assignment's fileId names the same file", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    sqlite.prepare(`insert into event (id, org_id) values ('event-1', 'org-a')`).run();
+    sqlite.prepare(`insert into task (id, event_id) values ('task-1', 'event-1')`).run();
+    // The file names assignment-deleted as its authoritative link, but that
+    // assignment row was never inserted (deleted / never existed).
+    sqlite
+      .prepare(
+        `insert into file (id, submission_id, kind, filename, r2_key, size_bytes, content_type, uploaded_by_contact_id, task_assignment_id, created_at, updated_at)
+         values ('file-1', null, 'presentation', 'slides.pptx', 'k', 10, 'application/pdf', null, 'assignment-deleted', 0, 0)`,
+      )
+      .run();
+    // A different, unrelated assignment's reverse fileId link also happens
+    // to name this file -- must NOT be borrowed.
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-other', 'task-1', 'contact-other-speaker', 'complete', 'file-1', 0, 0)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-1");
+    // The refusal happens at getTaskFileScope: it never returns a scope
+    // naming assignment-other's contact, so canAccessTaskFile is never even
+    // consulted with that population -- the download route 404s upstream of
+    // any authz decision, per the route's null-scope handling.
+    expect(scope).toBeNull();
+    sqlite.close();
+  });
+
+  it("still resolves through the reverse fileId link for an UNLINKED file (task_assignment_id null) -- narrowing, not capability removal", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    sqlite.prepare(`insert into event (id, org_id) values ('event-1', 'org-a')`).run();
+    sqlite.prepare(`insert into task (id, event_id) values ('task-1', 'event-1')`).run();
+    sqlite
+      .prepare(
+        `insert into file (id, submission_id, kind, filename, r2_key, size_bytes, content_type, uploaded_by_contact_id, task_assignment_id, created_at, updated_at)
+         values ('file-legacy', null, 'presentation', 'slides.pptx', 'k', 10, 'application/pdf', null, null, 0, 0)`,
+      )
+      .run();
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-legacy', 'task-1', 'contact-legacy', 'complete', 'file-legacy', 0, 0)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-legacy");
+    expect(scope).not.toBeNull();
+    expect(scope?.assignmentContactId).toBe("contact-legacy");
+    expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-legacy" }, scope!)).toBe(
+      true,
+    );
+    sqlite.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DEC-558 (wave 75): the fileId-link fallback lookup inside assignmentBy had
 // no `.orderBy(` -- `task_assignment_file_id_idx` is a plain (non-unique)
 // index, so if TWO task_assignment rows both point their `fileId` at the

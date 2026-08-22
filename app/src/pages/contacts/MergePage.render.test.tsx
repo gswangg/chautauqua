@@ -349,7 +349,7 @@ describe('MergePage render (DEC-684)', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Contacts.*Duplicates/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Duplicates/ })).toBeInTheDocument();
   });
 
   it('DEC-734/DEC-770: the footer\'s "Not a duplicate" POSTs the dismissal then navigates back to /contacts with the pair to dismiss, no merge POST', async () => {

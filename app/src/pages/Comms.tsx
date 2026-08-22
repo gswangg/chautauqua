@@ -82,8 +82,13 @@ export function CommsPage() {
   // (line 282) and "Send history · 390" (line 332) frames, each a screen of
   // its own with no "Comms" band above it. Compose has no such band (its
   // own step head is the wizard's, not a drill head), so it keeps this
-  // page-level head. Same markup-only shape as ContactsApp.tsx:384 (no CSS
-  // rule added): desktop (isPhone false) renders byte-identically.
+  // page-level head.
+  //
+  // DEC-964 wave-8 amendment (task w8-a): the page-level head's stand-down
+  // for Templates/History is no longer `isPhone`-gated (see the gate below)
+  // -- the 1600 frames draw both drills as self-contained screens too, so
+  // desktop no longer renders byte-identically for these two tabs; it now
+  // matches phone's already-drilled markup shape.
   const isPhone = useIsPhone();
 
   // DEC-700/DEC-905: every successful non-GET already bumps this counter in
@@ -316,11 +321,16 @@ export function CommsPage() {
             {loadError}
           </div>
         )}
-        {/* w13-h: Templates and History are phone drills with their own
-            head band -- stand this page-level head down while either is
-            showing so its band doesn't double up above the drill's own
-            (same gate shape as ContactsApp.tsx:384, DEC-964 precedent). */}
-        {!(isPhone && (tab === 'templates' || tab === 'history')) && (
+        {/* w13-h / DEC-964 wave-8 amendment (task w8-a): Templates and
+            History are self-contained screens at EVERY width, not just
+            phone -- docs/design/Chautauqua Comms.dc.html draws both as a
+            `‹ Comms` back link plus the drill's own <h1> (Templates :225-
+            262, History :593-679, both 1600) with no page-level "Comms" H1
+            and no Compose/Templates/History pills above them. Stand this
+            page-level head down whenever either tab is showing, regardless
+            of `isPhone` (same gate shape as ContactsApp.tsx:384, DEC-964
+            precedent -- now widened past its original phone-only scope). */}
+        {!(tab === 'templates' || tab === 'history') && (
           <div className="chq-comms-head">
             <div className="chq-comms-head-titles">
               <h1 className="chq-page-title">Comms</h1>
@@ -356,13 +366,14 @@ export function CommsPage() {
               )}
             </div>
             <div className="chq-comms-head-actions" role="tablist">
-              {/* w4-g (DEC-890 amendment): Templates is its own page (a
-                  breadcrumb back to Comms, not a peer tab) -- the Compose
-                  pill is chrome left over from the shared tab strip and has
-                  no destination while already on Templates, so it's dropped
-                  here. Templates/History stay so the strip can still switch
-                  straight to History without detouring through Compose. */}
-              {TABS.filter((t) => tab !== 'templates' || t.id !== 'compose').map((t) => (
+              {/* w4-g (DEC-890 amendment) / DEC-964 wave-8 amendment (task
+                  w8-a): this band only mounts for the Compose tab now
+                  (Templates/History stand it down entirely, see the gate
+                  above), so `tab` here is always 'compose' -- the filter
+                  that used to drop the Compose pill while already on
+                  Templates is dead code (that state can no longer reach
+                  this render) and is removed rather than kept unreachable. */}
+              {TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"

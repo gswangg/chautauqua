@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_976 } from '../../src/decisions'; // compile-checked: wave-101/102 amendments below
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 void DEC_976;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +25,7 @@ const REPO_ROOT = join(HERE, '..', '..');
  * contacts-phone-frames.test.ts's `read` helper: a literal `{`/`}` inside a
  * long explanatory comment must never desynchronise the depth counter. */
 function read(path: string): string {
-  return readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(path, 'utf-8'));
 }
 
 const STYLES_CSS = read(join(REPO_ROOT, 'app/src/styles.css'));

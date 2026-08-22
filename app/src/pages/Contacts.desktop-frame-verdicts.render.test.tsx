@@ -381,22 +381,17 @@ describe('v12 Contacts DESKTOP (1600) frames: per-frame render verdict receipts 
       );
     }
 
-    it('DIVERGES (content, read from contacts-panels.css TEXT -- jsdom applies no stylesheet): the frame\'s back link is bare "‹ Duplicates"; the tree\'s "Contacts · " prefix span carries no top-level display:none (only the <=700px block hides it), so it stays VISIBLE at desktop and the rendered link reads "‹ Contacts · Duplicates"', async () => {
-      // The base rule for `.chq-contacts-merge-back-prefix` lives ONLY
-      // inside the phone `@media (max-width:700px)` block -- unlike its
-      // sibling `.chq-contacts-merge-pair-count-name`/
-      // `.chq-contacts-merge-primary-phone-label`, which the file's own
-      // wave-98 comment says "default to hidden here, at TOP LEVEL". No
-      // top-level rule means the prefix is visible at 1600 by ordinary
-      // cascade, not by any override this file writes.
+    it('MATCHES (DEC-919 wave-7 amendment): the frame\'s back link is bare "‹ Duplicates" at both widths; the "Contacts · " prefix span was removed entirely, not merely hidden', async () => {
+      // The prefix class no longer exists anywhere in the source -- neither
+      // top-level nor inside the phone `@media (max-width:700px)` block.
       const topLevelRuleCount = (css.match(/\.chq-contacts-merge-back-prefix\s*\{/g) ?? []).length;
-      expect(topLevelRuleCount).toBe(1); // the single occurrence is inside the phone media block
+      expect(topLevelRuleCount).toBe(0);
       renderMerge();
       const backLink = await screen.findByRole('link', { name: /Duplicates$/ });
       // docs/design/Chautauqua Contacts.dc.html:359 --
       // `<a href="#" style="font-size:13px; font-weight:700">‹ Duplicates</a>`
       verbatimLine(359, '          <a href="#" style="font-size:13px; font-weight:700">‹ Duplicates</a>');
-      expect(backLink.textContent).toBe('‹ Contacts · Duplicates');
+      expect(backLink.textContent).toBe('‹ Duplicates');
     });
 
     it('MATCHES: H1 "Merge two records" and the right-flushed "N of M pairs" caption, with no name suffix (that span carries a top-level display:none)', async () => {

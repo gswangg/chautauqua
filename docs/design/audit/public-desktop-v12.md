@@ -20,7 +20,7 @@ interpolation) is excluded from the desktop population by
 
 ## Frame :28 "Sessions and agenda · 1600"
 
-**DIVERGES (blessed, DEC-593)** on one point; everything else MATCHES.
+**RESOLVED-BY-RULING (DEC-593)** on one point; everything else MATCHES.
 Entered via `GET /e/conf/sessions` (`src/routes/public/sessions.tsx`'s
 `SessionsContent`).
 
@@ -120,8 +120,8 @@ page reached through the List/Grid toggle's `Grid` option (`aria-current=
 
 ## Frame :779 "My schedule · /e/:slug/schedule"
 
-**DIVERGES (blessed, same as its 390 twin)** on the sample byte only;
-everything else MATCHES. Entered via `GET /e/conf/schedule`
+**RESOLVED-BY-RULING (DEC-967, same as its 390 twin)** on the sample byte
+only; everything else MATCHES. Entered via `GET /e/conf/schedule`
 (`ScheduleContent`) — the SAME route and SAME markup
 `test/public-390-frame-verdicts.test.ts`'s frame `:864` verdict already
 covers; only `agenda.css.ts`'s media query differs between the two widths,
@@ -138,7 +138,9 @@ never the HTML.
   `public-390-verdicts-v12.md` already files for this route's 390 twin —
   filed here again for the desktop entry point rather than silently
   matched, since a divergence real on one width is real on both when the
-  markup is shared.
+  markup is shared. DEC-967's "frame sample data is not product copy"
+  resolves this without a lane: the frame's populated sample is not
+  reproducible pre-hydration, real bytes.
 - The desktop-only "Take it with you" rail (`ScheduleRail`,
   `src/routes/public/agenda-rail.tsx`) renders the ics-count caption and the
   `#chq-ics-link` control — this section has no counterpart on the 390
@@ -152,15 +154,15 @@ never the HTML.
 
 | Frame | Verdict |
 | --- | --- |
-| :28 Sessions and agenda · 1600 | DIVERGES (blessed, DEC-593 — nav drops Gallery) |
+| :28 Sessions and agenda · 1600 | RESOLVED-BY-RULING (DEC-593 — nav drops Gallery) |
 | :132 Agenda · 1600 | MATCHES |
 | :249 Agenda · a track highlighted | MATCHES |
 | :680 Speakers · list view | MATCHES |
 | :730 Speakers · grid view | MATCHES |
-| :779 My schedule · /e/:slug/schedule | DIVERGES (blessed — pre-hydration subtitle placeholder, same as the 390 twin) |
+| :779 My schedule · /e/:slug/schedule | RESOLVED-BY-RULING (DEC-967 — pre-hydration subtitle placeholder, same as the 390 twin) |
 
-4 of 6 frames MATCH exactly as rendered; the two DIVERGES rows are both
-previously-ruled, intentional divergences (a nav simplification per DEC-593,
-and a pre-hydration placeholder shared with the already-audited 390 twin of
-the same route), not new debt. No desktop byte was moved to produce this
-verdict.
+4 of 6 frames MATCH exactly as rendered; the other two rows are both
+resolved-by-ruling, previously-ruled intentional divergences (a nav
+simplification per DEC-593, and a pre-hydration placeholder shared with the
+already-audited 390 twin of the same route, per DEC-967), not new debt. No
+desktop byte was moved to produce this verdict.

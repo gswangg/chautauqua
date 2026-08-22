@@ -895,6 +895,16 @@ function EnrollDialog({ alreadyEnrolledContactIds, initialStage, onClose, onEnro
   return (
     <ModalFrame
       title="Add to the pipeline"
+      // Chautauqua Contacts.dc.html:624-625 (DEC-651 wave-7 amendment): once a
+      // contact is picked, the dialog names them -- name, then org when the
+      // contact carries one, joined by " · ". Before a contact is picked the
+      // dialog is still on the picker, so this is `undefined`, never a
+      // placeholder or a fabricated name (DEC-678).
+      subtitle={
+        selectedContact
+          ? `${selectedContact.firstName} ${selectedContact.lastName}${selectedContact.company ? ` · ${selectedContact.company}` : ''}`
+          : undefined
+      }
       onClose={onClose}
       closeDisabled={busy}
       modalClassName="chq-contacts-pipeline-enroll-modal"

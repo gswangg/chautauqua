@@ -215,14 +215,12 @@ describe('v12 Contacts import/bulk-modal DESKTOP (1600) frames: per-frame render
         710,
         '            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Import 214 rows</span>',
       );
+      // DEC-575 wave-9 amendment: the footer now takes the frame's exact
+      // membership and order -- Back, then the primary, no Cancel.
       const actionsBar = document.querySelector('.chq-modal-actions') as HTMLElement;
       const footerLabels = within(actionsBar).getAllByRole('button').map((b) => b.textContent);
-      // The tree's primary comes FIRST (footerLabels[0]), Back second,
-      // Cancel third -- the frame draws only two controls, Back then
-      // Import, primary LAST; the tree's primary is FIRST. Named as a
-      // divergence in the summary below rather than re-asserted twice
-      // here; this check pins the tree's actual, as-rendered control set.
-      expect(footerLabels).toEqual(['Import 1 row', 'Back', 'Cancel']);
+      expect(footerLabels).toEqual(['Back', 'Import 1 row']);
+      expect(within(actionsBar).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
     });
   });
 

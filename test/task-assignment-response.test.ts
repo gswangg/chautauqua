@@ -58,6 +58,7 @@ const DETAIL: AssignmentResponseDetail = {
   taskTitle: "Hotel stay requirement form",
   contact: { id: "contact-1", name: "Ada Lovelace", email: "ada@example.com" },
   status: "complete",
+  assignedAt: 1699000000000,
   completedAt: 1700000000000,
   fields: [
     { label: "Hotel name", value: "The Grand" },

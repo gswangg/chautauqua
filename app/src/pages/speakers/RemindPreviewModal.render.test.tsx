@@ -15,6 +15,13 @@ const DRAFTS: ReminderDraft[] = [
     name: 'Priya Raman',
     subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
     text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Hotel stay requirement form — due Mon, Mar 01, 2027',
+    parts: {
+      greeting: 'Hi Priya,',
+      nudge: 'A quick nudge — one of your speaker tasks is still open, and it is past its due date.',
+      stillToDo: ['- Hotel stay requirement form — due Mon, Mar 01, 2027'],
+      portalLine: 'chautauqua.cc/portal/tasks',
+      signature: '— The DevFlow Conf 2027 team',
+    },
     tasks: [{ title: 'Hotel stay requirement form', dueLabel: 'Mon, Mar 01, 2027', overdue: true }],
   },
   {
@@ -23,6 +30,13 @@ const DRAFTS: ReminderDraft[] = [
     name: 'Jamal Okoye',
     subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
     text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Speaker agreement — No due date',
+    parts: {
+      greeting: 'Hi Jamal,',
+      nudge: 'A quick nudge — one of your speaker tasks is still open.',
+      stillToDo: ['- Speaker agreement — No due date'],
+      portalLine: 'chautauqua.cc/portal/tasks',
+      signature: '— The DevFlow Conf 2027 team',
+    },
     tasks: [{ title: 'Speaker agreement', dueLabel: 'No due date', overdue: false }],
   },
 ];
@@ -83,9 +97,16 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
       screen.getByText("Each speaker's list is their own · the body is built from their outstanding tasks, not typed"),
     ).toBeInTheDocument();
     expect(screen.getByText('Logged in Comms history')).toBeInTheDocument();
+    // The rendered card is fed by the first draft's structured `parts`, not
+    // a re-parse of `text` -- DEC-441 (wave-7 amendment).
     expect(
       screen.getByText(/Hotel stay requirement form — due Mon, Mar 01, 2027/),
     ).toBeInTheDocument();
+    expect(screen.getByText('Hi Priya,')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open your tasks' })).toHaveAttribute(
+      'href',
+      'chautauqua.cc/portal/tasks',
+    );
     // Second recipient's draft is not shown -- only the first draft renders.
     expect(screen.queryByText(/Speaker agreement — No due date/)).not.toBeInTheDocument();
 

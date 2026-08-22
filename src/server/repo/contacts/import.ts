@@ -412,8 +412,13 @@ export async function applyImportRows(
     }
   }
 
-  let created = 0;
-  let updated = 0;
+  // DEC-663 (wave-8 amendment, w8-d): created/updated are DEDUPED CONTACT
+  // counts, not per-CSV-line tallies -- a contact patched by a second line
+  // in the same file (a same-file duplicate email, or a merge target hit by
+  // more than one line) must not inflate its bucket. newIds/seenContactIds
+  // (backing contactIds via addContactId below) are the existing identity
+  // sets; created/updated are derived from them once, after the loop, rather
+  // than incremented inline per row.
   const skipped: ImportSkip[] = [];
   const emailConflicts: ImportEmailConflict[] = [];
   const contactIds: string[] = [];
@@ -610,7 +615,6 @@ export async function applyImportRows(
           emailConflicts.push({ line, contactId: mergeTargetId, kept: storedEmail, offered: key });
         }
       }
-      updated++;
       addContactId(mergeTargetId);
       // The file's address still ROUTES to this contact for the rest of the
       // run (DEC-663 wave-64 point 5) — a later row carrying it patches the
@@ -638,7 +642,6 @@ export async function applyImportRows(
       byEmail.set(key, id);
       pendingById.set(id, createCommitRow(id, orgId, decision.values, now));
       newIds.add(id);
-      created++;
       addContactId(id);
     } else {
       const base = pendingById.get(decision.id) ?? (existingById.has(decision.id) ? commitRowFromExisting(existingById.get(decision.id)!) : undefined);
@@ -646,7 +649,6 @@ export async function applyImportRows(
         throw new Error(`applyImportRows: update decision for unknown contact ${decision.id}`);
       }
       pendingById.set(decision.id, applyCommitPatch(base, decision.patch, now));
-      updated++;
       addContactId(decision.id);
       // DEC-299: repair any never-taken (NULL) attribution snapshot now
       // that an organizer/import has written a real title/company onto
@@ -698,6 +700,13 @@ export async function applyImportRows(
       .where(eq(schema.user.contactId, contactId));
   }
 
+  // DEC-663 (wave-8 amendment, w8-d): created is the count of ids THIS file
+  // minted (newIds); updated is every other touched contact (seenContactIds
+  // minus newIds), each counted exactly once regardless of how many CSV
+  // lines patched it -- addContactId's dedup guarantees seenContactIds.size
+  // never exceeds contactIds.length.
+  const created = newIds.size;
+  const updated = seenContactIds.size - newIds.size;
   return { created, updated, skipped, emailConflicts, contactIds };
 }
 
@@ -834,10 +843,17 @@ export async function planImportRows(
 
   const fileEmails = new Set<string>();
   const fileLastNames = new Set<string>();
-  for (const { parsed } of rows) {
+  // DEC-456 (wave-6 amendment): line -> normalized email, mirroring
+  // applyImportRows' own `emailByLine` pre-pass so the fill-collision check
+  // below can look up the offered address for a merge line without a second
+  // scan over `rows`.
+  const emailByLine = new Map<number, string>();
+  for (const { line, parsed } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
     if (email && email.trim() !== "" && isValidEmail(email)) {
-      fileEmails.add(normalizeEmail(email));
+      const key = normalizeEmail(email);
+      fileEmails.add(key);
+      emailByLine.set(line, key);
     }
     const lastName = typeof parsed.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
     if (lastName !== "") fileLastNames.add(lastName);
@@ -876,9 +892,42 @@ export async function planImportRows(
   const mergeLines = opts?.mergeLines ?? [];
   const mergeTargetsByLine = await resolveMergeTargets(db, orgId, rows, skipLineSet, mergeLines, byEmail);
 
+  // DEC-456 (wave-6 amendment): the SAME login-identity conflict check
+  // applyImportRows' fill branch enforces (import.ts:588-600) — a merge FILL
+  // (target's stored email is blank) is refused here too, before the dry run
+  // ever previews it as a clean update, when a `schema.user` row already
+  // owns the offered address under a DIFFERENT contact. Batched over every
+  // fill candidate in this file, never a per-line query, same discipline as
+  // applyImportRows' own `userOwnerByEmail` pre-pass -- the two can no
+  // longer disagree about whether a fill is refused.
+  const userOwnerByEmail = new Map<string, { userId: string; contactId: string | null }>();
+  {
+    const fillCandidateEmails = new Set<string>();
+    for (const [line, target] of mergeTargetsByLine) {
+      if (target.email.trim() !== "") continue;
+      const key = emailByLine.get(line);
+      if (key !== undefined) fillCandidateEmails.add(key);
+    }
+    for (const batch of chunkIds([...fillCandidateEmails])) {
+      const owners = await db
+        .select({ id: schema.user.id, contactId: schema.user.contactId, email: schema.user.email })
+        .from(schema.user)
+        .where(inArray(sql`lower(${schema.user.email})`, batch));
+      for (const owner of owners as { id: string; contactId: string | null; email: string }[]) {
+        userOwnerByEmail.set(normalizeEmail(owner.email), { userId: owner.id, contactId: owner.contactId });
+      }
+    }
+  }
+
   const planRows: ImportPlanRow[] = [];
-  let created = 0;
-  let updated = 0;
+  // DEC-663 (wave-8 amendment, w8-d): created/updated are deduped-by-key
+  // counts, keyed by the SAME normalized email `key` applyImportRows'
+  // deduped identity resolves to -- so the plan heading and the commit
+  // receipt agree by construction. A same-file collapse (wave-61, :991-1000)
+  // is a later row against a same-file create, never a second contact: its
+  // key is already in createdKeys, so it must not also land in updated.
+  const createdKeys = new Set<string>();
+  const touchedKeys = new Set<string>();
   let skippedCount = 0;
 
   for (const { line, parsed, capViolations } of rows) {
@@ -947,8 +996,19 @@ export async function planImportRows(
             { mergeLines: `line ${line}: resolves to an update` },
           );
         }
+        // DEC-456 (wave-6 amendment): same fill-collision refusal as
+        // applyImportRows' userOwnerByEmail check (import.ts:593-599) -- a
+        // dry run must refuse what the real run refuses.
+        const owner = userOwnerByEmail.get(key);
+        if (owner && owner.contactId !== mergeTarget.id) {
+          throw new ApiError(
+            "invalid",
+            `Line ${line}: this email already belongs to another account`,
+            { mergeLines: `line ${line}: email belongs to another account` },
+          );
+        }
       }
-      updated++;
+      touchedKeys.add(key);
       const overwrites = describeImportOverwrites(targetRecord, decision.patch);
       planRows.push({
         line,
@@ -964,7 +1024,8 @@ export async function planImportRows(
     const decision = resolveImportUpsert(existing?.id, normalizedParsed, existing?.customFields);
 
     if (decision.action === "create") {
-      created++;
+      createdKeys.add(key);
+      touchedKeys.add(key);
       const duplicates = findImportDuplicateCandidates(
         {
           firstName: normalizedParsed.firstName,
@@ -992,7 +1053,7 @@ export async function planImportRows(
       // wrongly planning a second create.
       byEmail.set(key, { id: "", ...decision.values });
     } else {
-      updated++;
+      touchedKeys.add(key);
       const overwrites = existing ? describeImportOverwrites(existing, decision.patch) : [];
       // DEC-663 amendment (wave 61): a row that resolves to an update
       // against a same-file collapsed create (never a real DB row) has no
@@ -1015,5 +1076,7 @@ export async function planImportRows(
     }
   }
 
+  const created = createdKeys.size;
+  const updated = touchedKeys.size - createdKeys.size;
   return { rows: planRows, created, updated, skipped: skippedCount };
 }

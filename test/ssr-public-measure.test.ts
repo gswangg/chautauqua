@@ -92,9 +92,14 @@ import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/lib/draft";
-import { THEME_CSS } from "../src/views/theme";
-import { CHROME_CSS } from "../src/routes/public/css/chrome.css";
-import { RAIL_CSS } from "../src/routes/public/css/rail.css";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { CHROME_CSS as CHROME_CSS_RAW } from "../src/routes/public/css/chrome.css";
+import { RAIL_CSS as RAIL_CSS_RAW } from "../src/routes/public/css/rail.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
+const CHROME_CSS = stripCssComments(CHROME_CSS_RAW);
+const RAIL_CSS = stripCssComments(RAIL_CSS_RAW);
 
 class InMemoryKV implements KVStore {
   private store = new Map<string, string>();

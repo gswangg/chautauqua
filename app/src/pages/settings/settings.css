@@ -817,6 +817,43 @@
   flex-direction: column;
 }
 
+/* w7-b/DEC-728 (:1030-1036): the editing view's own head, replacing the
+   at-rest .chq-settings-panel h2 eyebrow -- a "‹ Public pages" back link
+   stacked above an H1 that IS the embed's own name, with a right-flushed
+   On/Off status sharing the row's own baseline. */
+.chq-settings-embed-edit-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.chq-settings-embed-edit-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-settings-embed-edit-head h1 {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.chq-settings-embed-back {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-settings-embed-edit-status {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 
 /* w15-e/DEC-691, w5-e amendment: People and roles -- Chautauqua Settings.dc.html
    :978-1001 4-track row (identity, role, scope, actions). */
@@ -2793,6 +2830,33 @@
      :2593-2609 describe behaviour another lane's frame still cites, and a
      `column-reverse` on a single remaining flex child is a no-op, not a
      conflict. */
+  /* v12m-w11-tc/DEC-393/DEC-382 live tap-floor sweep: PortalSettingsPanel's
+     "Show resources" toggle (SettingsEditForm.tsx `SettingsField`,
+     PortalSettingsPanel.tsx:380-388) renders `input.chq-check` inside a
+     bare, unstyled `<label htmlFor>` -- a real label (native click-through
+     works), but unlike `.chq-check-hit` (styles.css:2818, the table-cell
+     checkbox wrapper) or `.chq-review-checkbox-label` (review.css:2629,
+     PlanEditor's own criterion checkboxes) this wrapper carried NO phone
+     floor of any kind: `render-sweep`'s live admin-mobile pass measures
+     `input.chq-check` itself (18x18, below the 44px floor on both axes) at
+     `/admin/settings?section=portal&edit=1`, and the top-level `.chq-check`
+     `tap-floor-exempt:` comment (styles.css:1948) forbids inflating the
+     checkbox's own visual box -- the floor belongs on the wrapping label,
+     same idiom as the two sites above. Scoped with `:has(> input.chq-check)`
+     so every OTHER `SettingsField` (text/select/date fields, none of which
+     wrap a `.chq-check`) is untouched; `display:block` keeps the label
+     text stacked above the checkbox exactly as the unstyled default did
+     (the label already fills its `.chq-settings-field-name` column, 320px
+     wide desktop / 100% at this width -- comfortably over 44px, so only
+     height needed a floor). Placed ahead of the file's terminal
+     w17-d/DEC-919 pair (SummarySection.phone-drill-head.render.test.tsx
+     pins those two rules as the LAST two rules in the file, ahead only of
+     the block's closing brace) so that pin stays intact. */
+  .chq-settings-field label:has(> input.chq-check) {
+    display: block;
+    min-height: 44px;
+  }
+
   .chq-settings-panel > .chq-settings-section-head > h2 {
     display: none;
   }

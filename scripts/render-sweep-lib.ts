@@ -4,13 +4,20 @@
 // scripts/perf-smoke-lib.ts.
 
 import type { RouteManifestEntry } from "../app/src/routeManifest";
-import { DEC_253 } from "../src/decisions";
+import { DEC_253, DEC_393 } from "../src/decisions";
 
 // DEC-253 wave-155 amendment: deriveInteractiveOffenders below, and its wiring
 // into evaluateMobileRoute, is this decision's implementation -- a compile-
 // checked reference so the dependency shows up outside the decisions
 // machinery itself (test/decisions-orphan-ratchet.test.ts).
 void DEC_253;
+
+// DEC-393 (v12m-w11-tc): ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING below is
+// re-measured by re-running the live gate this task's ceiling change, not by
+// reading/trusting the offender roster's own prose -- a compile-checked
+// reference so the dependency shows up outside the decisions machinery
+// itself (test/decisions-orphan-ratchet.test.ts).
+void DEC_393;
 
 export interface RouteResult {
   entry: RouteManifestEntry;
@@ -521,8 +528,34 @@ export function deriveInteractiveOffenders(
  * predicate this ceiling itself compares against, wired into
  * ADMIN_MOBILE_PASS_BLOCKING's decision in this same commit. The previous
  * -1 sentinel (which could satisfy neither side of a real two-sided ratchet)
- * is replaced by that measured count. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 79;
+ * is replaced by that measured count.
+ *
+ * RE-MEASURED, task v12m-w11-tc (DEC-393/DEC-382): re-ran the live gate
+ * fresh against this task's own worktree HEAD rather than trusting the
+ * roster's stale prose (docs/design/audit/admin-390-interactive-offenders-
+ * w27.md's row 9 called `.chq-review-checkbox-label` "a class with no CSS
+ * rule of any kind" — false on this tree, review.css:921/:2629 both declare
+ * `min-height: 44px`). Re-measured total before this task's own fix:
+ * still 79 (unchanged — the review.css floor a prior task already landed
+ * doesn't shrink the raw offender count, since render-sweep measures the
+ * bare `<input>` itself, not its wrapping label; it just makes that
+ * sighting EXEMPT rather than a candidate defect, same idiom as
+ * `.chq-check-hit`). This task's own fix — `a.chq-auth-back` (`/account/
+ * password`, 37×44, DEC-393's width-floor gap: `min-height:44px` alone,
+ * no `min-width`, same shape the now-fixed `.chq-link-button`/`.chq-pill`
+ * sites had) — gained `min-width:44px` + centring in `src/routes/
+ * auth.css.ts`'s one terminal `@media (max-width:700px)` block, clearing
+ * both of its two route sightings. Re-measured total after the fix: 77.
+ * `a.chq-wordmark` (`/dev/mailbox`(`/:id`), 113×28, 2 sightings) is left
+ * unfixed and DEC-382-exempted (comment above `.chq-wordmark` in
+ * src/views/theme.ts) — it is TOOLS_CSS operator chrome, not a design-
+ * system control, and restyling the shared THEME_CSS selector would also
+ * inflate the wordmark on every real design surface reusing it. The 9
+ * `input.chq-check.chq-taskview-check` sightings (`/admin/speakers/tasks/
+ * seed_task_0001`) are counted but out of this task's scope (owned by
+ * lane v12m-w11-te). See docs/design/audit/admin-390-interactive-
+ * offenders-w27.md for the full re-measured, re-classified roster. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 77;
 
 /** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —
  * only the path and the offender roster, so the pure formatter never has to

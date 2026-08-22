@@ -72,40 +72,45 @@ mounting `PipelineBoard`.
 
 ## Frame :720 "Pipeline · an empty stage"
 
-**DIVERGES (structural), with the empty-column microcopy matching in part.**
-Produced via a real API envelope through `mockApi` (18 pipeline entries
-split 7/5/4/0/2 across the five stages, zero in `confirmed`) — never by
-mounting an empty-state sub-component directly, per the mandate.
+**RESOLVED-BY-RULING (DEC-976, wave 9), both clauses.** See
+`docs/design/DEVIATIONS.md` §8, "Contacts :720's single-stage pill page is
+the PHONE register." Produced via a real API envelope through `mockApi`
+(18 pipeline entries split 7/5/4/0/2 across the five stages, zero in
+`confirmed`) — never by mounting an empty-state sub-component directly,
+per the mandate.
 
-- **DIVERGES (structural).** The frame draws an entirely different page
-  shape from :312: full app chrome (header/nav), an H1 + "18 people across
-  five stages" caption, a **single-stage pill NAV** (Identified · 7 /
-  Contacted · 5 / Interested · 4 / **Confirmed · 0** filled solid /
-  Declined · 2, frame :749-755) filtering the page to ONE stage at a time,
-  and one large empty-state block below it. The tree has no such page: all
-  five stages render as permanent, simultaneous Kanban columns
-  (`.chq-contacts-pipeline-columns`, verdicted at frame :312 above) — an
-  empty stage is just one of those five columns showing its own empty
-  block, never a dedicated single-stage page. The frame's single-stage
-  pill-strip IS present in the tree, but only as the **phone** fallback
-  (`.chq-contacts-pipeline-phone-stages`), confirming it belongs to a
-  different width class, not this desktop frame's own navigation.
+- **RESOLVED-BY-RULING (structural).** The frame draws an entirely
+  different page shape from :312: full app chrome (header/nav), an H1 +
+  "18 people across five stages" caption, a **single-stage pill NAV**
+  (Identified · 7 / Contacted · 5 / Interested · 4 / **Confirmed · 0**
+  filled solid / Declined · 2, frame :749-755) filtering the page to ONE
+  stage at a time, and one large empty-state block below it. The tree has
+  no such DESKTOP page: all five stages render as permanent, simultaneous
+  Kanban columns (`.chq-contacts-pipeline-columns`, verdicted at frame
+  :312 above) — an empty stage is just one of those five columns showing
+  its own empty block, never a dedicated single-stage page. The frame's
+  single-stage pill-strip IS present in the tree, as the **phone**
+  fallback (`.chq-contacts-pipeline-phone-stages`) — DEC-976 wave-9
+  rules this is the frame's own PHONE register, not a desktop gap: the
+  frame's :720 drawing is the pill-strip's home width, and desktop's
+  five-column Kanban is the settled MATCHES truth at frame :312.
 - **MATCHES.** The empty `confirmed` column's own heading text, "Nobody has
   said yes yet" (frame :757, `STAGE_EMPTY_HEADINGS.confirmed` in
   `PipelineBoard.tsx`), and its tertiary "Add someone to Confirmed ›"
   action (frame :760) both render verbatim inside that one column.
-- **DIVERGES (content).** The frame's empty-stage body sentence (frame
-  :758) reads "Five people are in **Contacted**. Cards land here when you
-  move them, or you can add someone straight to this stage." — naming
-  Contacted (5 people, two stages before Confirmed) as the reference point.
-  `PipelineBoard.tsx`'s `stageEmptyBody()` instead names the
-  **structurally immediately-preceding** stage in the five-stage sequence
-  — Interested (4 people here) — producing "Four people are in
+- **RESOLVED-BY-RULING (content).** The frame's empty-stage body sentence
+  (frame :758) reads "Five people are in **Contacted**. Cards land here
+  when you move them, or you can add someone straight to this stage." —
+  naming Contacted (5 people, two stages before Confirmed) as the
+  reference point. `PipelineBoard.tsx`'s `stageEmptyBody()` instead names
+  the **structurally immediately-preceding** stage in the five-stage
+  sequence — Interested (4 people here) — producing "Four people are in
   **Interested**. Cards land here…" The second sentence is byte-identical;
-  only the named prior stage and its count differ. This reads as the
-  frame's own copy picking a stage two steps back rather than one, not a
-  tree defect — filed here as a content divergence per the mandate's
-  "file it even where the tree looks more considered" instruction.
+  only the named prior stage and its count differ. DEC-976 wave-9 rules
+  this the correct derivation of the frame's own sentence, not a tree
+  defect: the frame's copy picking a stage two steps back rather than one
+  is the anomaly, and `stageEmptyBody()`'s immediately-preceding-stage rule
+  is what a reader would actually expect.
 
 ## Frame :617 "Add to the pipeline"
 
@@ -205,7 +210,7 @@ since `MergePage` is never reached FROM `ContactsPage`).
 | :312 Pipeline · invitations for next year | MOSTLY MATCHES (1 additive DIVERGES: unframed header "Add to the pipeline" button) |
 | :352 Duplicates · merge | MOSTLY MATCHES (2 content DIVERGES: back-link prefix, impact-line naming; 1 already-adjudicated frame-silent addition) |
 | :617 Add to the pipeline | MOSTLY MATCHES (2 content DIVERGES: missing per-contact subtitle, footer button word count) |
-| :720 Pipeline · an empty stage | DIVERGES (structural: single-stage page vs. persistent 5-column Kanban; 1 content DIVERGES in the empty-body copy; empty-column heading/action text MATCHES) |
+| :720 Pipeline · an empty stage | RESOLVED-BY-RULING (DEC-976, wave 9) — see DEVIATIONS.md §8; single-stage pill page is the phone register, desktop keeps the 5-column Kanban (MATCHES at :312); empty-body copy naming rule confirmed correct; empty-column heading/action text MATCHES |
 
 4 of 4 frames in this lane's scope were RENDERED, not merely cited. Every
 divergence above is filed in prose only — no desktop byte was moved and no

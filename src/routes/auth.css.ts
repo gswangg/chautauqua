@@ -698,9 +698,10 @@ ${BARE_PAGE_CSS}
       gap: 14px;
     }
 
-    /* DEC-393 wave-142 (task w17-e): "Submit a talk ›" / "Browse the
-       sessions ›" (LoginPage) and "Log in ›" (the expired-claim bare page)
-       are standalone nav links inside .chq-auth-footer-links, not a
+    /* DEC-393 wave-142 (task w17-e): each of LoginPage's two chevron-suffixed
+       .chq-auth-footer-links nav links (the CFP link and the sessions
+       link), plus the expired-claim bare page's own such link, is a
+       standalone nav link inside .chq-auth-footer-links, not a
        sentence phrase -- DEC-393's real-floor grammar (min-height, centred
        flex, non-zero horizontal padding). The existing
        .chq-auth-footer-links a rule above already carries the 44px
@@ -719,9 +720,10 @@ ${BARE_PAGE_CSS}
        phone-tap-target-ssr-classless-anchor.scan.test.ts's flex-centred
        lens only reads rules INSIDE an <=700px block, so an unconditional
        base rule is invisible to it even though it reaches every width.
-       "Submit a talk ›" / "Browse the sessions ›" (LoginPage) and
-       "Log in ›" (the expired-claim bare page) are each the sole content
-       of their own row inside .chq-auth-footer-links, not a sentence
+       each of LoginPage's two chevron-suffixed footer nav links (the CFP
+       link and the sessions link), plus the expired-claim bare page's own
+       such link, is the sole content of its own row inside
+       .chq-auth-footer-links, not a sentence
        phrase, so DEC-393's standalone disposition (real floor) applies --
        restated here as the literal \`display: flex\` token the scan parses,
        same selector, DEC-385 append-only (the base rule's inline-flex
@@ -732,6 +734,27 @@ ${BARE_PAGE_CSS}
     .chq-auth-footer-links a {
       display: flex;
       align-items: center;
+    }
+
+    /* v12m-w11-tc/DEC-393 live tap-floor sweep: render-sweep's live
+       admin-mobile pass measures a.chq-auth-back (the '‹ Back' link on
+       /account/password) at 37x44 -- the existing min-height:44px rule
+       (:356 above) clears the height floor but the anchor has no
+       min-width/horizontal padding, so its short label ('‹ Back') falls
+       6px short on the width axis, same shape the now-fixed
+       .chq-link-button/.chq-pill sites had (docs/design/audit/
+       admin-390-interactive-offenders-w27.md rows 11-13). DEC-385
+       append-only: the base display:inline-flex/align-self declaration
+       (:127-133 above) is left unedited; this later rule at the same
+       terminal block only adds the missing min-width + centring, per
+       DEC-393's real-floor grammar (min-height, centred flex, non-zero
+       horizontal padding). Appended as the LAST rule of this sheet's one
+       terminal @media (max-width: 700px) block. */
+    .chq-auth-back {
+      min-width: 44px;
+      align-items: center;
+      justify-content: center;
+      padding-inline: 4px;
     }
   }
 ${ERROR_STATES_PHONE_CSS}`;

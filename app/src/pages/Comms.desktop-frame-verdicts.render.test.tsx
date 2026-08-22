@@ -398,15 +398,15 @@ describe('v12 Comms DESKTOP (1600) frames: per-frame render verdict receipts (w2
       });
     }
 
-    it('DIVERGES: the frame draws ONE "History" H1 as its own drill head; at desktop width the tree ALSO renders the page-level "Comms" H1 + tablist above it (only phone gates that band down)', async () => {
+    it('MATCHES (DEC-964 wave-8, task w8-a): the frame draws ONE "History" H1 as its own drill head; the tree no longer renders a page-level "Comms" H1 or tablist above it at any width', async () => {
       renderHistory();
       await screen.findByRole('heading', { name: 'History' });
       // docs/design/Chautauqua Comms.dc.html:616 --
       // `<h1 ...>History</h1>`, the frame's ONLY page-level heading in this
       // shell -- no second "Comms" H1 anywhere above it.
       verbatimLine(616, '            <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">History</h1>');
-      expect(screen.getByRole('heading', { name: 'Comms' })).toBeInTheDocument();
-      expect(screen.getByRole('tablist')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Comms' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
     it('MATCHES: the History drill head carries "‹ Comms", the count line, and right-flushed Export CSV + Compose', async () => {

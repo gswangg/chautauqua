@@ -161,6 +161,33 @@
   display: none;
 }
 
+/* DEC-919 wave-9 amendment: docs/design/Chautauqua Settings.dc.html:905
+   ('Settings · Speaker portal', edit form) `border:1px solid #BAB6A6;
+   border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px;
+   font-size:15px; line-height:1.65; color:#3F4237` -- the edit form's own
+   boxed static readout of the STORED welcome text, above the editable
+   field. Unscoped (no media query) so it wins over the base rule's
+   `display:none` at desktop; the phone media block below still wins on
+   every shared property at <=700px (later in source, equal specificity),
+   so the edit-form instance folds into the SAME 88px phone treatment the
+   read drill already carries -- never a second phone register. */
+.chq-settings-portal-welcome-readout-edit {
+  display: block;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  background: var(--chq-surface);
+  padding: 13px;
+  min-height: 96px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--chq-ink-2);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 @media (max-width: 700px) {
   .chq-settings-drillrow-add {
     display: flex;

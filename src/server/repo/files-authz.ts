@@ -344,7 +344,11 @@ export interface TaskFileScope {
  * taskAssignmentId of their own. We therefore query id=taskAssignmentId
  * FIRST when present, and only fall back to the fileId=... query when that
  * lookup returns nothing — never a single or() with no total order, whose
- * winner SQLite is free to pick arbitrarily. Per DEC-549 the discriminator
+ * winner SQLite is free to pick arbitrarily. The reverse task_assignment.
+ * fileId link answers ONLY for files with no task_assignment_id of their
+ * own -- a file that names an authoritative link which fails to resolve
+ * (a deleted/reassigned assignment) is a refusal, never a re-resolution
+ * through the reverse link. Per DEC-549 the discriminator
  * for the ~/upload path is the uploading task's deliverable_kind at upload
  * time: task.deliverable_kind NULL means the resulting file always has
  * submissionId null and is served here; task.deliverable_kind declared
@@ -398,7 +402,16 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
     const ownRows = await assignmentBy(eq(schema.taskAssignment.id, fileRow.taskAssignmentId));
     assignmentRow = ownRows[0];
   }
-  if (!assignmentRow) {
+  // DEC-065 (wave-10 amendment): the fallback is gated on whether the FILE
+  // carries an authoritative link, not on whether the own-link lookup
+  // returned a row. A file whose taskAssignmentId names a deleted/dangling
+  // assignment must NOT fall through to the reverse fileId link -- that
+  // link is not guaranteed to resolve the same assignment (see docstring
+  // above) and silently borrowing it would grant the download to a
+  // different speaker's assignmentContactId. Fail loudly: a dangling
+  // authoritative link is a refusal (falls to `if (!assignmentRow) return
+  // null` below), never a re-resolution via the reverse link.
+  if (!fileRow.taskAssignmentId) {
     const fallbackRows = await assignmentBy(eq(schema.taskAssignment.fileId, fileId));
     assignmentRow = fallbackRows[0];
   }

@@ -73,6 +73,50 @@ interface Track {
   name: string;
 }
 
+// w7-b/DEC-728 amendment (:1096-1101): the ONE toggle-off confirm path for
+// a saved embed -- EmbedsPanel's editing-view footer ("Turn this embed
+// off") drives the SAME PATCH shape and error-routing this panel's own row
+// action already owns, instead of minting a second implementation. Callers
+// own their own `pendingToggleOff`/`togglingOff` DISPLAY (this panel's row,
+// EmbedsPanel's footer) but never a second fetch.
+export interface EmbedToggleOffTarget {
+  id: string;
+  name: string;
+}
+
+export function useEmbedToggleOff(
+  onFieldErrors: (fields: Record<string, string>) => void,
+  onError: (message: string) => void,
+  onSuccess?: () => void,
+) {
+  const [pendingToggleOff, setPendingToggleOff] = useState<EmbedToggleOffTarget | null>(null);
+  const [togglingOff, setTogglingOff] = useState(false);
+
+  async function handleConfirmToggleOff(): Promise<void> {
+    if (!pendingToggleOff) return;
+    setTogglingOff(true);
+    try {
+      // No explicit load(): the successful PATCH bumps the mutation counter
+      // (api.ts) and any subscriber (SavedEmbedsPanel's own list) re-reads.
+      await apiPatch(`/embeds/${pendingToggleOff.id}`, { enabled: false });
+      onSuccess?.();
+    } catch (err) {
+      // DEC-856: a fields map is never collapsed to err.message -- `enabled`
+      // routes to the toggle control itself, anything else renders labelled.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        onFieldErrors(err.fields as Record<string, string>);
+      } else {
+        onError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
+      }
+    } finally {
+      setTogglingOff(false);
+      setPendingToggleOff(null);
+    }
+  }
+
+  return { pendingToggleOff, setPendingToggleOff, togglingOff, handleConfirmToggleOff };
+}
+
 interface Props {
   onBuild?: () => void;
   editing?: boolean;
@@ -104,8 +148,17 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   // from here, so it is routed through ConfirmDialog at the default
   // reversible weight (one sentence, no typed phrase; nothing is deleted).
   // Turning it back ON stays a direct click.
-  const [pendingToggleOff, setPendingToggleOff] = useState<SavedEmbed | null>(null);
-  const [togglingOff, setTogglingOff] = useState(false);
+  //
+  // w7-b amendment: the fetch + error-routing itself now lives in
+  // useEmbedToggleOff (shared with EmbedsPanel's editing-view footer) --
+  // the field errors it reports are routed into THIS row's own
+  // rowFieldErrors map below, same shape as every other writer on this
+  // panel.
+  const { pendingToggleOff, setPendingToggleOff, togglingOff, handleConfirmToggleOff } = useEmbedToggleOff(
+    (fields) =>
+      setRowFieldErrors((prev) => (pendingToggleOff ? { ...prev, [pendingToggleOff.id]: fields } : prev)),
+    (message) => setError(message),
+  );
   // DEC-856 (wave 67 amendment): PATCH /embeds/:id's only named key on this
   // panel's writers is `enabled` (the toggle) -- any other key the server
   // ever throws here has no control on this row and renders labelled,
@@ -157,16 +210,6 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
       }
-    }
-  }
-
-  async function handleConfirmToggleOff(embed: SavedEmbed) {
-    setTogglingOff(true);
-    try {
-      await handleToggle(embed);
-    } finally {
-      setTogglingOff(false);
-      setPendingToggleOff(null);
     }
   }
 
@@ -394,7 +437,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
           body="The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted."
           confirmLabel="Turn it off"
           pending={togglingOff}
-          onConfirm={() => void handleConfirmToggleOff(pendingToggleOff)}
+          onConfirm={() => void handleConfirmToggleOff()}
           onCancel={() => setPendingToggleOff(null)}
         />
       ) : null}

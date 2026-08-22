@@ -1864,8 +1864,10 @@ export function PlanEditor() {
                   {editingCriteria.map((criterion) => (
                     <div key={criterion.id} className="chq-review-criterion-row chq-review-criterion-row-readonly">
                       {/* DEC-715: criteria cannot reorder once scored -- the
-                          handle is ABSENT here, not disabled. */}
-                      <span />
+                          handle is ABSENT here, not disabled, and (wave 8)
+                          the readonly grid itself now omits the handle
+                          track entirely rather than leaving an empty cell
+                          in a six-track grid. */}
                       <span>{criterion.label}</span>
                       <span>{criterion.guidance ?? ''}</span>
                       {/* DEC-613/DEC-882 (wave 7): the KIND column, dropped
@@ -1884,7 +1886,6 @@ export function PlanEditor() {
                                carry no weight, so the readout says so rather than blanking. */
                             'Not scored'}
                       </span>
-                      <span />
                     </div>
                   ))}
                   {/* DEC-882: the lock card sits BELOW the rows -- a reader

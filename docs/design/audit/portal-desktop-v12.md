@@ -151,31 +151,68 @@ abstract, an unpicked track, a malformed email).
   source citation; this verdict is the first to prove the DEC-029 wiring
   live off a real authenticated request.
 
-## Frame :1473 "Portal preview · /portal/preview" — UNREACHED
+## Frame :1473 "Portal preview · /portal/preview" — DIVERGES
 
-**UNREACHED** via the mandated `test/portal-390-frame-verdicts.test.ts`
-harness (DEC-613 wave-24 amendment). `src/routes/portal/preview.tsx`'s `GET
-/preview` handler reads `getEventForOrg` (from
-`src/server/repo/events.ts`) and, on a resolved event,
-`getPortalSettingsForEvent`/`listResourcesForEvent` (from
-`src/server/repo/portal-config.ts`) directly against `c.var.db` — none of
-which are among the portal-390 harness's four `vi.mock` targets
-(`src/server/repo/portal`, `src/server/repo/forms`,
-`src/server/repo/portal-edit`, `src/server/repo/profile`). That harness's
-`buildApp()` sets `c.set("db", {} as never)` precisely because every route
-it exercises reaches the db only through a mocked repo function; reaching
-`/portal/preview`'s real welcome/resources render would need a fake `db`
-select-chain (the `test/public-390-frame-verdicts.test.ts` harness's
-`makeChain` idiom) answering `getEventForOrg`'s and
-`getPortalSettingsForEvent`'s/`listResourcesForEvent`'s own selects — which
-this task's own instruction forbids building as a fifth mock stack.
+**DECIDED (DEC-613 wave-9 amendment):** the missing-capability question this
+section previously escalated is now closed. The portal-390 harness's own
+`vi.mock` set (`test/portal-390-frame-verdicts.test.ts`) was extended with
+two more targets — `src/server/repo/events` (`getEventForOrg`) and
+`src/server/repo/portal-config` (`getPortalSettingsForEvent`,
+`listResourcesForEvent`) — rather than standing up a second, `makeChain`-
+style fake-`db` stack. `c.set("db", {} as never)` stays valid because these
+two additions are the only db reads `/portal/preview`'s handler makes. Any
+future frame needing a repo this harness doesn't yet mock should extend
+this same set again, never fork a new one.
 
-**MISSING CAPABILITY:** a `db` fixture reachable by both harnesses at once —
-either the portal-390 harness's `vi.mock` set extended to cover
-`repo/events`/`repo/portal-config`, or a documented exception letting a
-`/portal/preview`-specific lane build the `makeChain`-style fake db the
-public-390 harness already establishes. Either is a planning decision, not
-a call this measurement-only lane can make unilaterally.
+**Now REACHED, and DIVERGES** off a real `GET /portal/preview` request
+(organizer auth), asserted in `test/portal-390-frame-verdicts.test.ts`'s
+own describe block for this frame. Structural anatomy matches (read-only
+banner, Welcome hero + lede, Resources section, Not-shown-here section, in
+that order), but three real divergences from
+`docs/design/Chautauqua Public and Portal.dc.html`:
+
+- **Back-link placement** (frame :1490 `<a href="#" style="margin-left:auto;
+  font-size:13px; font-weight:700; white-space:nowrap">‹ Back to
+  settings</a>`): the frame draws this INSIDE the read-only banner card,
+  right-aligned beside its two sentences. `preview.tsx` instead renders it
+  as a standalone `<p class="chq-meta">` link at the very BOTTOM of the
+  page, after the "Not shown here" section — the banner paragraph itself
+  carries no link.
+- **Welcome lede is one sentence, not two** (frame :1495 `<span
+  style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for
+  speaking at DevFlow. Everything we need from you is on this page, in
+  order.</span>`): the route renders only the organiser's stored welcome
+  message (`<p class="chq-portal-lede">`); no fixed second sentence
+  ("Everything we need from you is on this page, in order.") exists
+  anywhere in `preview.tsx`.
+- **"To see a real speaker's portal..." sentence order** (frame :1523
+  `<span style="display:block; padding:14px 0 0; font-size:13px;
+  color:#565A4B; line-height:1.55">To see a real speaker's portal you
+  would have to be them — this preview deliberately cannot.</span>`): the
+  frame trails this sentence at the very END, after the "Not shown here"
+  chips. The route renders the identical sentence, but immediately after
+  the banner — before the Welcome h1, Resources, and Not-shown-here
+  sections it precedes there.
+- **"Not shown here" chip set** (frame :1518-1521, four chips: `Their
+  tasks` / `Their session` / `Their files` / `Their notes`): the route
+  renders three differently-worded chips instead — `Their submissions` /
+  `Their tasks` / `Their uploaded files` (`preview.tsx`'s own header
+  comment draws this list from what the route declines to load —
+  submissions/tasks/files — never from the frame's four-chip wording).
+  Neither "Their session" nor "Their notes" render at all.
+
+Named here rather than force-fit (the desktop freeze this document's
+preamble states): no desktop byte was moved to produce this verdict.
+
+**Superseding note:** this file's own "## 2. `:1473` ... MATCHES" section
+below (task w26-h, via `test/portal-desktop-frame-verdicts.test.ts`) checked
+structural anatomy and order only — its `expectInOrder` needles never
+verbatim-quoted the frame's back-link/lede/chip lines above, so it did not
+catch these four divergences. That section is left as-is (disjoint task,
+disjoint file) but should be read alongside this one, not as a conflicting
+verdict: "matches in the ways it checked" and "diverges in the ways this
+section additionally checked" are both true statements about the same
+render.
 
 ## Summary
 
@@ -187,13 +224,13 @@ a call this measurement-only lane can make unilaterally.
 | :1167 Public sessions · nothing published | MATCHES (reason-sentence divergence, DEC-745, previously filed) |
 | :1211 Submit a talk · rejected on submit | MATCHES |
 | :1373 Portal · Edit your session · desktop | MATCHES (DEC-029) |
-| :1473 Portal preview · /portal/preview | UNREACHED (missing capability: repo/events + repo/portal-config db fixture) |
+| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, one-sentence lede, meta-sentence order, "Not shown here" chip wording/count — see section above) |
 
-6 of 7 frames MATCH as rendered off a real request; one previously-filed,
+5 of 7 frames MATCH as rendered off a real request; one previously-filed,
 already-adjudicated reason-sentence divergence (:1167, DEC-745/DEC-522)
-carries forward unchanged; one frame (:1473) is UNREACHED via the mandated
-harness and is named here rather than force-reached with a fifth mock
-stack. No desktop byte was moved to produce this verdict.
+carries forward unchanged; :1473 is now REACHED via the portal-390
+harness's extended `vi.mock` set (DEC-613 wave-9 amendment) and DIVERGES in
+four named ways. No desktop byte was moved to produce this verdict.
 
 ---
 

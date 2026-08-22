@@ -130,21 +130,17 @@ function paragraphCount(text: string | null): number {
 // (settings-drill-rows.css's terminal max-width block) is the only thing
 // that decides which one is visible at which width.
 //
-// STILL-OPEN (desktop, not spent this wave -- w15-tf): the 1600 "editing
-// the speaker portal" EDIT frame draws its own boxed static readout above
-// the actual editable field, docs/design/Chautauqua Settings.dc.html:905
-// verbatim: `<div style="border:1px solid #BAB6A6; border-radius:4px;
-// background:#FAF8F2; padding:13px; min-height:96px; font-size:15px;
-// line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow.
-// Everything we need from you is on this page, in order.</div>` with its
-// own caption "Takes the full measure · appears above the task list"
-// below it (:906, already reused as this panel's edit-form hint at line
-// ~323). The edit form below ships a plain `.chq-textarea` in its place,
-// never that boxed 96px readout. A future desktop wave should look here.
-function WelcomeNoteReadout({ text }: { text: string | null }) {
+// DEC-919 wave-9 amendment: the SAME component also mounts in the edit
+// form (below), above the `#chq-portal-welcome` textarea, carrying an
+// `-edit` modifier class (settings-drill-rows.css) that gives it the
+// frame's 96px desktop measure -- docs/design/Chautauqua
+// Settings.dc.html:905's boxed static readout of the STORED welcome text,
+// sitting beside the field holding the in-progress edit.
+function WelcomeNoteReadout({ text, className }: { text: string | null; className?: string }) {
   const trimmed = (text ?? '').trim();
   const content = trimmed.length === 0 ? 'No welcome note set.' : text;
-  return <div className="chq-settings-portal-welcome-readout">{content}</div>;
+  const classes = className ? `chq-settings-portal-welcome-readout ${className}` : 'chq-settings-portal-welcome-readout';
+  return <div className={classes}>{content}</div>;
 }
 
 export function PortalSettingsPanel() {
@@ -321,20 +317,20 @@ export function PortalSettingsPanel() {
             ),
           }}
         >
+          {/* DEC-919 wave-9 amendment: docs/design/Chautauqua
+              Settings.dc.html:905's boxed static readout of the STORED
+              welcome text, above the editable field -- fed by
+              `welcomeMessage` (the loaded record), never `form.welcomeMessage`
+              (the in-progress edit). :906's caption sits directly below the
+              readout, a single copy no longer doubling as the textarea's
+              hint (DEC-613). */}
+          <WelcomeNoteReadout text={welcomeMessage} className="chq-settings-portal-welcome-readout-edit" />
+          <p className="chq-settings-field-hint">Takes the full measure · appears above the task list</p>
           <SettingsField
             label="Welcome note"
             htmlFor="chq-portal-welcome"
             width="full"
-            // DEC-896 (wave-133 amendment): the frame's persistent hint (:906)
-            // -- shown except when a save refusal on this field takes
-            // precedence, same rule as EventSettingsPanel's Venue hint.
-            hint={
-              formErrors.welcomeMessage ? (
-                <span role="alert">{formErrors.welcomeMessage}</span>
-              ) : (
-                'Takes the full measure · appears above the task list'
-              )
-            }
+            hint={formErrors.welcomeMessage ? <span role="alert">{formErrors.welcomeMessage}</span> : undefined}
           >
             {/* G13 fix (frames 09--07/09--13): the welcome note draws ~96px
                 tall -- the shared textarea class, never the 44px single-line

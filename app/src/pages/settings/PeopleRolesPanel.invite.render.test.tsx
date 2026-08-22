@@ -273,6 +273,62 @@ describe('PeopleRolesPanel invite dialog', () => {
     expect(screen.getByText('A user with this email already exists')).toBeInTheDocument();
   });
 
+  // DEC-651 wave-9 amendment, frame :1352/:1359: on a duplicate-email
+  // refusal the dialog's own header retitles to "Nobody was invited",
+  // driven by the same predicate as the subtitle -- never disagreeing.
+  it('retitles the invite dialog header on a duplicate-email refusal', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 409,
+        body: errorEnvelope('conflict', 'A user with this email already exists', { email: 'already in use' }),
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
+    expect(screen.getByRole('heading', { name: 'Invite someone' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: OTHER.email } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await screen.findByRole('button', { name: `Open ${OTHER.email}'s row` });
+    expect(screen.getByRole('heading', { name: 'Nobody was invited' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Invite someone' })).not.toBeInTheDocument();
+  });
+
+  // DEC-651 wave-9 amendment, frame :1384: the actions row draws all three
+  // controls in ONE row, in DOM order primary -> Cancel -> escape.
+  it('renders the duplicate-email escape route as the third control in the actions row, after Cancel', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 409,
+        body: errorEnvelope('conflict', 'A user with this email already exists', { email: 'already in use' }),
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: OTHER.email } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    const openRowButton = await screen.findByRole('button', { name: `Open ${OTHER.email}'s row` });
+    const actionsRow = openRowButton.closest('.chq-modal-actions') as HTMLElement;
+    const controls = within(actionsRow).getAllByRole('button');
+    expect(controls.map((c) => c.textContent)).toEqual(['Create the account', 'Cancel', `Open ${OTHER.email}'s row`]);
+  });
+
   // DEC-238 (wave 65 amendment): the 201 body's welcomeEmail vocabulary
   // drives one sentence per outcome, decided server-side.
   it('names the address the welcome notice was sent to when welcomeEmail is "sent"', async () => {

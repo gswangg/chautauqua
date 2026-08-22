@@ -247,13 +247,87 @@
   padding: 16px 18px;
 }
 
-.chq-speakers-remind-draft-text {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-family: inherit;
+/* DEC-441 (wave-7 amendment, Chautauqua Speakers.dc.html:518-530): the
+   rendered email card's own pieces, replacing the bare <pre> that used to
+   dump `first.text` unstyled. .chq-speakers-remind-card is already a flex
+   column (padding/border/radius above); these lay out as its children. */
+.chq-speakers-remind-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* v12 frame :523-524 -- subject header band with a bottom rule. DEC-441
+   (wave-7 amendment): the frame's event-name/date/venue letterhead is NOT
+   built here (a send carries no such block) -- the subject is the honest
+   header in its place. */
+.chq-speakers-remind-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-speakers-remind-card-subject {
+  font-family: var(--chq-font-display, inherit);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.chq-speakers-remind-card-greeting,
+.chq-speakers-remind-card-nudge {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.chq-speakers-remind-card-nudge {
+  color: var(--chq-muted);
+}
+
+/* v12 frame :525-528 -- left-ruled "Still to do" block. */
+.chq-speakers-remind-card-todo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--chq-brand);
+}
+
+.chq-speakers-remind-card-todo-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-speakers-remind-card-todo-lines {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+/* v12 frame :529 -- primary CTA, held at the 44px floor. */
+.chq-speakers-remind-card-cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 20px;
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+  border-radius: var(--chq-r-ctl, 4px);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.chq-speakers-remind-card-paste {
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.6;
+  word-break: break-all;
 }
 
 /* Grid: horizontal scroll within its own container -- never breaks the page
