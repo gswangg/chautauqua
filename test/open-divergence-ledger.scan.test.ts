@@ -196,9 +196,30 @@ function rowsInFile(fileName: string): DivergenceRow[] {
 const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
 const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 
-const EXPECTED_AUDIT_FILE_COUNT = 105;
-const EXPECTED_TOTAL_TOKEN_COUNT = 160;
-const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
+// RE-SHAPED (task w27-c, DEC-180 wave-27 amendment): these four constants
+// used to be exact-equality guards (EXPECTED_AUDIT_FILE_COUNT = 105,
+// EXPECTED_TOTAL_TOKEN_COUNT = 160, EXPECTED_SHAPE_COUNTS =
+// {15,44,26,75}). They went RED on healthy corpus growth -- two lanes
+// landed new audit documents (docs/design/audit/mint-door-caps-v12.md,
+// docs/design/audit/route-substate-390-sweep-v12.md; see
+// docs/design/audit/open-divergence-ledger-v12.md "Measured result" for
+// the verbatim citations) that carry zero DIVERGES rows, taking the file
+// count from 105 to 107 while ALL_ROWS.length stayed at 160 and every
+// shape count was untouched -- the guard was equality where the real
+// invariant is "this population only grows, and every shape it uses stays
+// reachable" (DEC-180: a guard over a corpus lanes append to by design is
+// a monotone floor plus reachability, never an equality). Floors below are
+// seeded at the values MEASURED live on this branch by running this file
+// (never computed from arithmetic on this comment) -- 107 audit files, 160
+// DIVERGES-token rows, shape split 15/44/26/75. A floor may only be RAISED
+// in a future wave after re-measuring on that branch; on a FALL, the
+// companion test prints the shortfall and this comment's instruction:
+// diff `auditFiles()`/`ALL_ROWS` against the last-known-good list to find
+// which audit file or row disappeared before lowering any floor -- a fall
+// is a deleted ledger, exactly what this guard exists to catch.
+const AUDIT_FILE_FLOOR = 107;
+const TOKEN_ROW_FLOOR = 160;
+const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 15,
   table: 44,
   bullet: 26,
@@ -292,16 +313,44 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
-  it('enumerates exactly 102 audit files and exactly 158 DIVERGES-token rows (vacuous-population guard)', () => {
+  it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
     const files = auditFiles();
-    expect(files.length).toBe(EXPECTED_AUDIT_FILE_COUNT);
-    expect(ALL_ROWS.length).toBe(EXPECTED_TOTAL_TOKEN_COUNT);
+    if (files.length < AUDIT_FILE_FLOOR) {
+      throw new Error(
+        `Only ${files.length} audit files found, below the floor of ${AUDIT_FILE_FLOOR}. ` +
+          `This floor may only be LOWERED after confirming which audit file(s) disappeared -- ` +
+          `diff auditFiles() against the last-known-good file list before touching the constant.`
+      );
+    }
+    if (ALL_ROWS.length < TOKEN_ROW_FLOOR) {
+      throw new Error(
+        `Only ${ALL_ROWS.length} DIVERGES-token rows found, below the floor of ${TOKEN_ROW_FLOOR}. ` +
+          `This floor may only be LOWERED after confirming which row(s) disappeared -- ` +
+          `diff ALL_ROWS against the last-known-good row list before touching the constant.`
+      );
+    }
+    expect(files.length).toBeGreaterThanOrEqual(AUDIT_FILE_FLOOR);
+    expect(ALL_ROWS.length).toBeGreaterThanOrEqual(TOKEN_ROW_FLOOR);
   });
 
-  it('classifies rows into the four line-shapes at exactly the counts measured on this branch (vacuous-grammar guard)', () => {
+  it(`classifies rows into all four line-shapes (heading/table/bullet/fallback), each at or above its floor (heading>=${SHAPE_FLOORS.heading}, table>=${SHAPE_FLOORS.table}, bullet>=${SHAPE_FLOORS.bullet}, fallback>=${SHAPE_FLOORS.fallback}) (monotone-floor vacuous-grammar guard, DEC-180 wave-27)`, () => {
     const actual: Record<RowShape, number> = { heading: 0, table: 0, bullet: 0, fallback: 0 };
     for (const row of ALL_ROWS) actual[row.shape]++;
-    expect(actual).toEqual(EXPECTED_SHAPE_COUNTS);
+    for (const shape of Object.keys(SHAPE_FLOORS) as RowShape[]) {
+      if (actual[shape] === 0) {
+        throw new Error(
+          `Shape "${shape}" is entirely unreached (0 rows) -- the grammar has gone vacuous for this shape. ` +
+            `Every one of the four line-shapes must remain represented in the corpus.`
+        );
+      }
+      if (actual[shape] < SHAPE_FLOORS[shape]) {
+        throw new Error(
+          `Shape "${shape}" has ${actual[shape]} rows, below its floor of ${SHAPE_FLOORS[shape]}. ` +
+            `This floor may only be LOWERED after confirming which row(s) of this shape disappeared.`
+        );
+      }
+    }
+    expect(Object.values(actual).every((n) => n > 0)).toBe(true);
   });
 
   it(`never exceeds OPEN_DIVERGENCE_CEILING (${OPEN_DIVERGENCE_CEILING}) open divergence rows`, () => {

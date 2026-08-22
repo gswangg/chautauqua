@@ -73,6 +73,39 @@ applied here to the document that reports it.
   lines, both TABLE-shape and both already carrying a DEC-919 citation on
   their own line).
 
+### Re-measured (task w27-c, DEC-180 wave-27 amendment): guard reshaped from equality to monotone floor
+
+Re-run live on this branch (`v12m-w27-c`): **107 audit files**, **160
+total marker-token rows**, shape split unchanged at 15 heading / 44 table
+/ 26 bullet / 75 fallback, **0 open**. The file count rose from the
+wave-24 baseline of 105 to 107 because two lanes landed new audit
+documents in the interim that carry zero marker-word rows each --
+healthy corpus growth, not a regression:
+
+- `docs/design/audit/mint-door-caps-v12.md` opens: "MEASUREMENT ONLY.
+  This lane files the roster; it fixes no door." -- a census document by
+  design, no marker-word row.
+- `docs/design/audit/route-substate-390-sweep-v12.md` opens: "Task w23-f
+  (DEC-144 wave-23 amendment) widened `app/src/routeManifest.ts`..." and
+  goes on to say it "records the re-measurement task w23-f itself
+  performed" -- a re-measurement narrative document, no marker-word row.
+
+The instrument's own guard (`test/open-divergence-ledger.scan.test.ts`)
+used to assert these two counts (file count, row count) and the four
+per-shape counts by EXACT equality against hardcoded constants. That
+shape fails on exactly this kind of healthy growth: the population is a
+corpus every ledger-writing lane appends to by design, so its file/row
+counts can only ever be expected to grow, never to sit still at a number
+typed into a test on some earlier wave. Per DEC-180 (a guard over a
+corpus lanes append to is a monotone floor plus reachability, never an
+equality), the guard is now `AUDIT_FILE_FLOOR = 107` /
+`TOKEN_ROW_FLOOR = 160` / per-shape `SHAPE_FLOORS` asserted with `>=`,
+plus a non-vacuity check that all four shapes remain represented. The
+`OPEN_DIVERGENCE_CEILING = 0` two-sided ratchet is unchanged by this
+task -- it is the only assertion in this instrument that is actually
+about progress, and this lane moves no product byte and adjudicates no
+row.
+
 Superseded figure, kept per DEC-995 (the same shape `DESIGN-RULINGS.md:191`
 uses to keep its own superseded grid paraphrase alive for its citers):
 `133` open was this section's headline before this re-baseline, and
