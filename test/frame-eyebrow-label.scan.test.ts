@@ -100,7 +100,9 @@
 //      A row the skeleton pass still cannot resolve is graded on its
 //      merits, never by the digit rule alone: DIVERGES when no composing
 //      expression could EVER produce the frame's string, for any data
-//      state (KNOWN_DIVERGES below, exactly one this wave); UNRESOLVED
+//      state (KNOWN_DIVERGES below, empty this wave -- its one row, the
+//      390 CFP header eyebrow at :1019, was SETTLED at wave 36 by the
+//      DEC-986 wave-36 amendment, see SETTLED_EXCLUSIONS below); UNRESOLVED
 //      when a live composing source expression IS named (DIGIT_COMPOSED
 //      below, 14 rows this wave, each citing the expression that builds
 //      it -- the same COMPOSED-from-data shape
@@ -126,7 +128,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_099, DEC_180, DEC_613, DEC_808, DEC_976, DEC_993 } from '../src/decisions';
+import { DEC_099, DEC_180, DEC_613, DEC_808, DEC_976, DEC_986, DEC_993 } from '../src/decisions';
 import { ALL_CAPTIONS } from './frame-caption-ledger/population';
 import { collapseDigitsToSkeleton, enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
 import { labelsInFrameText } from './frame-control-label.scan.test';
@@ -140,6 +142,7 @@ void DEC_180; // an eyebrow discriminator (control-face / input-box / digit) nar
 void DEC_613; // the match-side stripper/matcher, the control-label extraction walk, and the digit-collapsed skeleton sentinel are imported, never re-implemented.
 void DEC_099; // OUT_OF_CAMPAIGN_SCOPE reasons below are principles, not schedules.
 void DEC_993; // wave-28 amendment: the :303 row is a settled divergence, not an open one -- SETTLED_EXCLUSIONS below.
+void DEC_986; // wave-36 amendment: the :1019 row (the 390 CFP header eyebrow) is a settled divergence, not an open one -- SETTLED_EXCLUSIONS below.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -528,13 +531,10 @@ function isDigitComposed(e: Eyebrow): boolean {
   return DIGIT_COMPOSED.some((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
 }
 
-// -- Real, unfixed DIVERGES the skeleton pass surfaced (wave-33, task
-// w33-f) -- NOT fixed in this lane (fix capability is file-scoped to this
-// ledger and the audit doc), recorded here + adjudicated in
-// docs/design/audit/frame-eyebrow-label-390-v12.md so it does not land as a
-// new OPEN row on test/open-divergence-ledger.scan.test.ts's own ledger
-// (that ledger's OPEN_DIVERGENCE_CEILING may only be lowered, and this
-// file is not in this task's file-scope to edit).
+// -- Formerly "known DIVERGES", SETTLED at wave 36 (DEC-986 wave-36
+// amendment) -- see the SETTLED_EXCLUSIONS table below. This array is kept
+// empty (not deleted) so isKnownDiverges retains its shape for a future
+// row; DEC-986's amendment closed the one row that ever populated it.
 interface KnownDiverges {
   fileName: string;
   line: number;
@@ -542,15 +542,7 @@ interface KnownDiverges {
   reason: string;
 }
 
-const KNOWN_DIVERGES: KnownDiverges[] = [
-  {
-    fileName: 'Chautauqua Public and Portal.dc.html',
-    line: 1019,
-    text: 'DevFlow Conf 2027 · closes 16 Aug',
-    reason:
-      'Real gap, no composing expression can ever produce this string: the frame draws ONE eyebrow joining the event name and the CFP close date. src/routes/public/submit-views.tsx:585-597 renders THREE separate header elements instead -- a date·venue meta line (`eventDatesLine(event)`), the event name as a large title (`chq-cfp-title`), and a SEPARATE uppercase sub-line reading the fixed literal `Call for papers · closes {date}` (`chq-cfp-sub`, :592-595) -- `event.name` never reaches the sub-line position at all, for any data state. See the audit doc\'s own row for the adjudication.',
-  },
-];
+const KNOWN_DIVERGES: KnownDiverges[] = [];
 
 function isKnownDiverges(e: Eyebrow): boolean {
   return KNOWN_DIVERGES.some((d) => d.fileName === e.fileName && d.line === e.line && d.text === e.text);
@@ -627,6 +619,26 @@ const SETTLED_EXCLUSIONS: SettledExclusion[] = [
       'vocabulary the menu already carries and cannot satisfy the one-control-per-composer clause), and the ' +
       'divergence is recorded as SETTLED on the Comms row with the DEC cited, so it stops buying triage."',
   },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1019,
+    text: 'DevFlow Conf 2027 · closes 16 Aug',
+    reason:
+      'src/decisions-data/DEC-986.md ("## Amendment (wave 36): the 390 CFP header\'s single drawn eyebrow is a ' +
+      'SETTLED divergence — the wave-40 restructure superseded the frame\'s composition"): "docs/design/' +
+      'Chautauqua Public and Portal.dc.html:1019 draws one eyebrow, `DevFlow Conf 2027 · closes 16 Aug`, ' +
+      'directly above `<h1>Submit a talk</h1>`. src/routes/public/submit-views.tsx renders three header ' +
+      'elements instead — `chq-cfp-meta` (`eventDatesLine(event)`), `chq-cfp-title` (`{event.name}`), ' +
+      '`chq-cfp-sub` (the fixed literal `Call for papers · closes {…}`) — so the event name never reaches the ' +
+      'eyebrow position. This is the only real, unfixed, unowned frame divergence any ledger still names, ' +
+      'handed off by w33-f. RULED: SETTLED, not a build. DEC-986 wave-40 already moved the `<h1>` out of this ' +
+      "header, so the frame's single-eyebrow-above-H1 composition no longer describes a header this codebase " +
+      'draws; the shipped three-element header carries strictly more than the frame\'s one eyebrow (dates, ' +
+      'venue, event name, CFP close) with the event name promoted from eyebrow to title; and the only ' +
+      'available repair — rewording `chq-cfp-sub` — is a desktop-visible copy change on a FROZEN surface. It ' +
+      'is recorded on the DEC and excluded by the ledger\'s own SETTLED table, never as a DEVIATIONS bullet: ' +
+      'that would move a ledger population another lane owns."',
+  },
 ];
 
 function isSettled(e: Eyebrow): boolean {
@@ -678,8 +690,14 @@ const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 // Settings.dc.html:458 -- now resolves to MATCHED + the 2 digit-free
 // NO_DIGIT_COMPOSED rows below, unchanged). See
 // docs/design/audit/frame-eyebrow-label-390-v12.md for the full per-row
-// breakdown and the DEC-993 SETTLED row this ratchet still excludes.
-export const FRAME_EYEBROW_DIVERGENCE_CEILING = 1;
+// breakdown and the DEC-993 + DEC-986 SETTLED rows this ratchet excludes.
+//
+// Re-measured this wave (v12m-w36-h, DEC-986 wave-36 amendment) by forcing
+// FRAME_EYEBROW_DIVERGENCE_CEILING to -1 and reading the printed offender
+// roster back: empty. The one row that ever populated DIVERGES
+// (Chautauqua Public and Portal.dc.html:1019) is now SETTLED, not a live
+// product gap -- see SETTLED_EXCLUSIONS above.
+export const FRAME_EYEBROW_DIVERGENCE_CEILING = 0;
 export const FRAME_EYEBROW_UNRESOLVED_CEILING = 16;
 
 describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', () => {

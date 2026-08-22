@@ -81,7 +81,7 @@ disjointness rules below (88 raw candidates → 62 population).
 | Chautauqua Submissions.dc.html | 2 |
 | **Total** | **62** |
 
-## Grades (re-measured wave 33, task w33-f — the digit-collapsed skeleton join)
+## Grades (re-measured wave 33, task w33-f — the digit-collapsed skeleton join; DIVERGES settled wave 36, task w36-h)
 
 Wave 27's original UNRESOLVED bucket was never joined at all — every
 digit-bearing miss was classified UNRESOLVED by the presence of a digit
@@ -95,9 +95,11 @@ DEC-613) over all 16 digit-bearing misses, then grades whatever it still
 cannot resolve on its own merits.
 
 This wave's DIVERGES count differs from wave 27's by ruling, not by
-re-derivation: see DEC-993 (SETTLED) and the DEC-099-adjudicated
-`docs/design/DEVIATIONS.md` §5 pointer below for the two rulings that
-together govern this bucket.
+re-derivation: see DEC-993 (SETTLED, wave 12m) and DEC-986 (SETTLED, wave
+36) below for the two rulings that together govern this bucket — both
+excluded via the ledger's own `SETTLED_EXCLUSIONS` table, neither logged as
+a `docs/design/DEVIATIONS.md` bullet (DEC-099: that ledger's population is
+owned by a different lane).
 
 - **MATCHED**: 44 (up from 43) — the eyebrow's text occurs verbatim
   (case-folded, comment-stripped, entity-decoded, whitespace-collapsed) in
@@ -114,13 +116,14 @@ together govern this bucket.
     16 pre-skeleton because :458 above resolved and one further row —
     `Chautauqua Public and Portal.dc.html:1019` — turned out to be a real
     DIVERGES, not a composed miss, see below):
-    - `Chautauqua Contacts.dc.html:494` "Column 2 of 5" —
-      `` Column {phoneColumnIndex + 1} of {header.length} ``
-      (`app/src/pages/contacts/ImportWizard.tsx:1096`).
+    - `Chautauqua Contacts.dc.html:494` "Column 2 of 5". Composed by
+      app/src/pages/contacts/ImportWizard.tsx`Column {phoneColumnIndex + 1} of {header.length}`
+      (around line 1096; drift-proof bare-path shape, DEC-967 wave-115 —
+      resolved against the whole file, not one pinned line).
     - `Chautauqua Content.dc.html:381` "Re-uploaded · you asked for changes
-      8 days ago" — `` {statusLabel}{statusNeedsCauseClause ? ' · you asked
-      for changes ' + formatRelativeDays(...) : ...} ``
-      (`app/src/pages/content/DeliverableDetail.tsx:446-452`).
+      8 days ago". Composed by
+      app/src/pages/content/DeliverableDetail.tsx`you asked for changes ${formatRelativeDays(headerDetail.updatedAt, Date.now())}`
+      (around lines 446-452; drift-proof bare-path shape).
     - `Chautauqua Overview.dc.html:274` "Tue 12, 10:00 · Room 2A" —
       `` {formatDayLabel(conflict.day)}, {clockHHMM(conflict.startMin)} ·
       {publicRoomLabel(conflict.roomName)} ``
@@ -141,16 +144,16 @@ together govern this bucket.
       (`src/routes/public/submit-views.tsx:856`), the same composing
       expression rendered against three different fixture refs across the
       confirmation page's three states.
-    - `Chautauqua Review.dc.html:286` "Wave 2 · AI Engineering · round 1" —
-      `scorecardEyebrow` (`app/src/pages/review/Scorecard.tsx:503-507`,
-      `[plan.name, planTrackScope(...), planNamesRound(plan.rounds) ?
-      roundLabel(...) : null]`).
-    - `Chautauqua Review.dc.html:419` "Review · Wave 2" —
-      `` `REVIEW · ${routeEnvelope.planName}` ``
-      (`app/src/pages/review/ReviewerQueue.tsx:657`).
-    - `Chautauqua Settings.dc.html:461` "Questions · 8" —
-      `` `Questions · ${list.length}` ``
-      (`app/src/pages/settings/CallForPapersPanel.tsx:128`).
+    - `Chautauqua Review.dc.html:286` "Wave 2 · AI Engineering · round 1".
+      The `scorecardEyebrow` array is composed by
+      app/src/pages/review/Scorecard.tsx`planNamesRound(plan.rounds) ? roundLabel(plan.name, plan.currentRound, roundMeta) : null`
+      (around lines 503-507; drift-proof bare-path shape).
+    - `Chautauqua Review.dc.html:419` "Review · Wave 2". Composed by
+      app/src/pages/review/ReviewerQueue.tsx`REVIEW · ${routeEnvelope.planName}`
+      (around line 657; drift-proof bare-path shape).
+    - `Chautauqua Settings.dc.html:461` "Questions · 8". Composed by
+      app/src/pages/settings/CallForPapersPanel.tsx`Questions · ${list.length}`
+      (around line 128; drift-proof bare-path shape).
     - `Chautauqua Submissions.dc.html:361` "DFC-033 · lightning talk, 10
       min" — two-sibling-node composition: `<p
       className="chq-detail-eyebrow" data-ref={detail.ref}>{eyebrowText}</p>`
@@ -171,67 +174,80 @@ together govern this bucket.
     - `Chautauqua Content.dc.html:406` "Notes on the slides" —
       `` Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()} ``
       (`app/src/pages/content/DeliverableDetail.tsx:595`).
-- **DIVERGES**: 1 (up from 0), adjudicated per `docs/design/DEVIATIONS.md`
-  §5 "Pending adjudication (not yet blessed — sweep should verdict)" —
-  see that citation repeated below, in this same bullet's own continuation,
-  so this row's adjudication does not depend on a nested bullet a scanner
-  would treat as a separate paragraph. Real, unfixed, measured by the
-  skeleton pass surfacing a row the digit rule had previously mis-swept
-  into UNRESOLVED without ever checking whether a composing expression
-  could actually produce it. Row: `Chautauqua Public and Portal.dc.html:1019`
-  "DevFlow Conf 2027 · closes 16 Aug" — no composing expression can ever
-  produce this exact string, for any data state. The frame draws ONE
-  eyebrow joining the event name and the CFP close date, directly above the
-  "Submit a talk" H1. `src/routes/public/submit-views.tsx:585-597` renders
-  THREE separate header elements instead: a date·venue meta line
-  (`eventDatesLine(event)`, `chq-cfp-meta`), the event name as a large
-  title (`chq-cfp-title`, DEC-986 wave-40 amendment moved the literal
-  `<h1>Submit a talk</h1>` OUT of this header and into the body column),
-  and a separate uppercase sub-line reading the FIXED literal `` Call for
-  papers · closes {formatEventDateTime(...)} `` (`chq-cfp-sub`, :592-595).
-  `event.name` never reaches the sub-line position at all — the app
-  substitutes the fixed literal "Call for papers" for the event name in the
-  eyebrow-equivalent position, a genuine wording gap, not a live-data miss
-  the join technique is merely blind to. **Not fixed in this lane** — fix
-  capability is file-scoped to this ledger and this audit doc; DEVIATIONS.md
-  is out of this task's file-scope to edit, and this lane never makes
-  design decisions, so the row is recorded here, with full frame + code
-  citations, for the next `docs/design/DEVIATIONS.md` sweep to log into its
-  §5 and verdict — this paragraph is not a claim that DEVIATIONS.md already
-  carries the entry, only that this is where it belongs and who should log
-  it (DEC-099).
-- **SETTLED**: 1 — `Chautauqua Comms.dc.html:303` "Insert a field · open",
-  per `src/decisions-data/DEC-993.md`'s wave-12m amendment; excluded from
-  DIVERGES by the ledger's `SETTLED_EXCLUSIONS` table, never counted as a
-  live product gap. Unchanged this wave.
+- **DIVERGES**: 0 (down from 1 at wave 33) — the one row wave 33 surfaced
+  (`Chautauqua Public and Portal.dc.html:1019`, "DevFlow Conf 2027 · closes
+  16 Aug") is SETTLED as of wave 36 per `src/decisions-data/DEC-986.md`'s
+  wave-36 amendment, not a live product gap; see the SETTLED bullet below.
+- **SETTLED**: 2 (up from 1) —
+  - `Chautauqua Comms.dc.html:303` "Insert a field · open", per
+    `src/decisions-data/DEC-993.md`'s wave-12m amendment; excluded from
+    DIVERGES by the ledger's `SETTLED_EXCLUSIONS` table, never counted as a
+    live product gap. Unchanged this wave.
+  - `Chautauqua Public and Portal.dc.html:1019` "DevFlow Conf 2027 · closes
+    16 Aug", per `src/decisions-data/DEC-986.md`'s wave-36 amendment
+    ("the 390 CFP header's single drawn eyebrow is a SETTLED divergence —
+    the wave-40 restructure superseded the frame's composition"). The
+    frame draws ONE eyebrow joining the event name and the CFP close date,
+    directly above `<h1>Submit a talk</h1>`.
+    `src/routes/public/submit-views.tsx`'s `chq-cfp-header` renders THREE
+    separate elements instead: `chq-cfp-meta` (a date·venue meta line,
+    `eventDatesLine(event)`), `chq-cfp-title` (the event name as a large
+    title), and `chq-cfp-sub` (a separate uppercase sub-line reading the
+    FIXED literal `` Call for papers · closes
+    {formatEventDateTime(...)} ``) — `event.name` never reaches the
+    `chq-cfp-sub` position at all. RULED (DEC-986 wave-36, three grounds,
+    each with its own coordinate): (i) DEC-986's OWN wave-40 amendment
+    already moved `<h1 class="chq-pub-surface-title">Submit a talk</h1>`
+    OUT of `chq-cfp-header` and into the `chq-cfp-body` reading column
+    (`src/routes/public/submit-views.tsx:606`), so the frame's
+    single-eyebrow-directly-above-the-H1 composition no longer describes a
+    header this codebase draws at all; (ii) the shipped three-element
+    header (`chq-cfp-meta` + `chq-cfp-title` + `chq-cfp-sub`) carries
+    strictly MORE information than the frame's one eyebrow — event dates,
+    venue, event name, and CFP close date — with the event name promoted
+    from eyebrow text to a large title, not dropped; (iii) the only
+    available repair, rewording the `chq-cfp-sub` literal to splice in
+    `event.name`, is a desktop-visible copy change on a surface the
+    campaign has frozen. Excluded from DIVERGES by the ledger's
+    `SETTLED_EXCLUSIONS` table as of this wave; per the amendment, this is
+    NOT logged as a `docs/design/DEVIATIONS.md` bullet — that ledger's
+    population is owned by a different lane this wave (`v12m-w36-a`), and
+    the amendment itself is the discharge of wave 33's "for the next
+    DEVIATIONS sweep to log" handoff.
 
-Row-count accounting (DEC-808, DEC-976): MATCHED + UNRESOLVED + DIVERGES
-(the one row adjudicated above) + SETTLED (per DEC-993) = 44 + 16 + 1 + 1 =
-62 = population, asserted directly in the test suite.
+Row-count accounting (DEC-808, DEC-976): MATCHED + UNRESOLVED + DIVERGES +
+SETTLED = 44 + 16 + 0 + 2 = 62 = population, asserted directly in the test
+suite.
 
 ## Ratchets
 
-- `FRAME_EYEBROW_DIVERGENCE_CEILING = 1` (up from 0)
-- `FRAME_EYEBROW_UNRESOLVED_CEILING = 16` (down from 18)
+- `FRAME_EYEBROW_DIVERGENCE_CEILING = 0` (down from 1, wave 36)
+- `FRAME_EYEBROW_UNRESOLVED_CEILING = 16` (unchanged since wave 33)
 
-Both re-measured on branch `v12m-w33-f` (DEC-808 amendment) by forcing each
-to `-1` and reading the printed offender rosters back, never arithmetic and
-never carried forward from the prior wave's numbers. Both two-sided
+`FRAME_EYEBROW_DIVERGENCE_CEILING` re-measured on branch `v12m-w36-h`
+(DEC-986 wave-36 amendment) by forcing it to `-1` and reading the printed
+offender roster back: empty, the one row that populated it at wave 33 is
+now SETTLED. `FRAME_EYEBROW_UNRESOLVED_CEILING` unchanged, last measured on
+branch `v12m-w33-f`. Both two-sided
 (`test/campaign-ratchet-two-sided.scan.test.ts` verified green); both
 registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE` with a
 principle reason (DEC-099) — a newly measured, previously-uncounted
 population must not move the campaign's own exit-gate goalposts
 mid-convergence, the same disposition already given to
-`DESKTOP_FLOOR_DIVERGENCE_CEILING`/`DESKTOP_FLOOR_UNRESOLVED_CEILING`.
+`DESKTOP_FLOOR_DIVERGENCE_CEILING`/`DESKTOP_FLOOR_UNRESOLVED_CEILING`
+(`scripts/exit-predicate/campaign-scope.ts` itself is out of this task's
+file-scope to edit, so its own prose still narrates the pre-wave-36 numbers
+until that file's owner re-measures it).
 `test/open-divergence-ledger.scan.test.ts`'s own `OPEN_DIVERGENCE_CEILING`
-is unaffected by the new DIVERGES row above: it is adjudicated in this
-file per the paragraph above, so it opens no new OPEN row on that ledger
-(verified green, unchanged from its pre-wave-33 measurement).
+is unaffected by this wave's change: the row it names was already
+adjudicated in this file, never an OPEN row on that ledger, so settling it
+here closes it out rather than opening or closing anything there
+(verified green, unchanged).
 
-DEC-099: the DIVERGES row this wave measured is a real, unfixed product gap
-recorded for a later lane, not a claim this ledger's own ratchet resolves
-it -- the adjudication above only prevents it from double-counting as a
-second, unadjudicated OPEN row on a sibling ledger.
+DEC-099: the row wave 33 measured as a live product gap is, as of this
+wave's DEC-986 amendment, SETTLED — a standing ruling that the divergence
+is real but permanently unfixable on a frozen, superseded surface, not a
+claim that any code changed to close it.
 
 ## Next population, deliberately not built here
 
