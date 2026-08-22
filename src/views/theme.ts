@@ -21,10 +21,11 @@
 // interpolated with request/user data.
 
 import { jsx } from "hono/jsx";
-import { DEC_367, DEC_371, DEC_383 } from "../decisions";
+import { DEC_367, DEC_371, DEC_382, DEC_383 } from "../decisions";
 
 void DEC_367;
 void DEC_371;
+void DEC_382;
 void DEC_383;
 
 export const THEME_CSS = `
@@ -533,6 +534,19 @@ export const THEME_CSS = `
     gap: 0.75rem;
     background: var(--chq-paper);
   }
+  /* tap-floor-exempt: DEC-382 -- .chq-wordmark renders as an <a href="/">
+     only on the two TOOLS_CSS operator surfaces this rule reaches
+     (src/routes/docs.tsx:41 GET /docs/api, src/routes/dev/mailbox.tsx:59,119
+     GET /dev/mailbox(/:id)); every other mount (App.tsx's SPA header,
+     src/routes/portal/shared.tsx:191) renders it as a plain non-interactive
+     <span>, outside the tap-floor population entirely. render-sweep's live
+     admin-mobile pass measures a.chq-wordmark at 113x28 on those two
+     operator routes (below the 44px floor on height). DEC-382 rules
+     /dev/mailbox and /docs/api operator chrome outside the design system
+     -- restyling this shared THEME_CSS selector to hit the phone tap floor
+     would also inflate the wordmark on every real design-system surface
+     that reuses it, which DEC-382 forbids. Left as measured, real,
+     unfixed operator chrome; not restyled into the design system. */
   .chq-wordmark {
     font-family: 'Familjen Grotesk', system-ui, sans-serif;
     font-size: 22px;

@@ -4,14 +4,6 @@ MACHINE-WRITTEN by `npm run gate:render-sweep` (scripts/render-sweep.ts). Do not
 
 Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path.
 
-## /account/password
-
-- a.chq-auth-back w=37px h=44px
-
-## /account/password
-
-- a.chq-auth-back w=37px h=44px
-
 ## /admin/contacts
 
 - input.chq-check w=18px h=18px
@@ -128,4 +120,4 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 - a.chq-wordmark w=113px h=28px
 
-Measured total: 79 (ceiling 79)
+Measured total: 77 (ceiling 77)
