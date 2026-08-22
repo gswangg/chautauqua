@@ -349,13 +349,22 @@ export function OverviewPage() {
         )}
         {payload.overdueTasks.rows.map((row) => (
           <div key={row.assignmentId} className="chq-overview-row chq-overview-row-overdue">
-            <div>
+            <div className="chq-overview-row-overdue-who">
               <div className="chq-overview-row-title">{row.contactName}</div>
               <div className="chq-overview-row-meta">{row.company}</div>
             </div>
-            <div>
-              <div>{row.taskTitle}</div>
+            <div className="chq-overview-row-overdue-what">
+              <div className="chq-overview-row-task">{row.taskTitle}</div>
               <div className="chq-overview-row-late">{daysLateLabel(row.daysLate)}</div>
+            </div>
+            {/* Chautauqua Overview.dc.html:223 `{{ row.task }} · {{ row.company }}`
+                -- ONE joined string, phone-only sibling. The desktop pairing
+                above (name+company, task+late) stays the frame's own
+                two-column table shape; this line is the frame's phone-only
+                second band, revealed by overview.css's terminal
+                max-width:700px block. */}
+            <div className="chq-overview-row-overdue-line-phone">
+              {`${row.taskTitle} · ${row.company}`}
             </div>
             <div className="chq-overview-row-actions">
               <button type="button" className="chq-overview-link-btn" onClick={() => handleRemind([row])}>

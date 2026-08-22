@@ -546,6 +546,17 @@
   font-size: 13px;
 }
 
+/* DEC-385 wave-20 (task w20-a) leak-guard: `.chq-overview-row-overdue-line-phone`
+   is a phone-only sibling (Chautauqua Overview.dc.html:223 `{{ row.task }} ·
+   {{ row.company }}`) that did not previously exist in the DOM -- same idiom
+   as app/src/pages/agenda/agenda.css's `.chq-phone-slot-*` top-level
+   desktop-hidden list. Hidden by default here; revealed only inside the
+   terminal max-width:700px block below, so desktop paint stays
+   byte-identical. */
+.chq-overview-row-overdue-line-phone {
+  display: none;
+}
+
 /* DEC-385 wave-111 (task w7-a): consolidated to ONE terminal phone block.
    This sheet measured 3 phone blocks on a clean archive of main
    (`1bed0d2c`) at lines 464, 574 and 602 -- test/phone-terminal-block.
@@ -946,5 +957,48 @@
     background: var(--chq-brand);
     color: var(--chq-on-brand);
     border-color: var(--chq-brand);
+  }
+
+  /* DEC-385 wave-20 (task w20-a): Chautauqua Overview.dc.html:221-223 draws
+     the §01 overdue row as three bands -- name/late on one line, then ONE
+     joined `{{ row.task }} · {{ row.company }}` line beneath it. The two
+     anonymous wrappers Overview.tsx renders around name+company and
+     task+late go `display:contents` here so their children become direct
+     `.chq-overview-row-overdue` grid items and can be reordered
+     individually -- the fix the desktop two-column table shape (frame
+     :79) never permitted, since company and task previously shared a
+     wrapper with their (wrong) line-mate. */
+  .chq-overview-row-overdue-who,
+  .chq-overview-row-overdue-what {
+    display: contents;
+  }
+
+  /* phone-hidden: superseded by .chq-overview-row-overdue-line-phone below,
+     which joins this node's text with .chq-overview-row-task into the
+     frame's single `{{ row.task }} · {{ row.company }}` string
+     (Chautauqua Overview.dc.html:223). */
+  .chq-overview-row-overdue-who > .chq-overview-row-meta {
+    display: none;
+  }
+
+  /* phone-hidden: superseded by .chq-overview-row-overdue-line-phone below,
+     same joined-string substitution as the company node above. */
+  .chq-overview-row-overdue-what > .chq-overview-row-task {
+    display: none;
+  }
+
+  .chq-overview-row-overdue-what > .chq-overview-row-late {
+    order: 2;
+  }
+
+  .chq-overview-row-overdue-line-phone {
+    display: block;
+    order: 3;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-actions {
+    order: 4;
   }
 }
