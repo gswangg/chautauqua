@@ -69,21 +69,21 @@ and were left unconverted** (out of this task's owned-file scope; the
 merge train must convert them alongside the branch file above or they go
 red the moment this branch lands):
 
-- `app/src/pages/agenda/Agenda.render.test.tsx:1418` —
+- `app/src/pages/agenda/Agenda.render.test.tsx` —
   `expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();`
   → `'Two sessions in this slot'`. This is inside the
   `describe('AgendaPage phone tap-to-place (DEC-380)')` block (stubs
   `stubPhoneMatchMedia()`) — a **phone** verdict, not desktop, so it does
   not trip the STOP condition in PART 2's grep instruction.
-- `app/src/pages/agenda/Agenda.render.test.tsx:1494-1495` —
+- `app/src/pages/agenda/Agenda.render.test.tsx` —
   `expect(screen.getByText('3 sessions in this slot')).toBeInTheDocument();`
   and `expect(screen.queryByText('Two sessions in this slot')).toBeNull();`
   → the second line inverts to
   `expect(screen.queryByText('3 sessions in this slot')).toBeNull();` and
   the first becomes `'Three sessions in this slot'`. Also inside the same
   phone `describe` block.
-- `app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx:65-66,
-  76-77, 121` — four assertions on `'2 sessions in this slot'` /
+- `app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx`
+  — four assertions on `'2 sessions in this slot'` /
   `'3 sessions in this slot'` (`getByText`/`queryByText` pairs), all
   phone-scoped (mounts `PhoneAgenda` directly). Convert to the spelled
   forms the same way as `PhoneAgenda.w49.render.test.tsx` above.
@@ -117,20 +117,20 @@ the `slot.clash` `sc-if` block, `:155-172`).
 **(b) Existing producer + consumer elsewhere in the codebase, with
 coordinates:**
 
-- *Producer:* `src/server/repo/overview/scheduling.ts:139`
-  (`buildConflictResolutionFor`), which composes the label at
-  `scheduling.ts:192` — `` `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}` `` —
+- *Producer:* `src/server/repo/overview/scheduling.ts`
+  (`buildConflictResolutionFor`), which composes the label
+  (`` `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}` ``) —
   i.e. exactly this frame's copy shape ("Move DFC-047 to 11:30"). Wired
-  into the Overview payload at `src/server/repo/overview.ts:715-720`
+  into the Overview payload at `src/server/repo/overview.ts`
   (`agendaWork.conflicts[i].resolution`), per DEC-652
-  (`src/decisions-data/part4.ts:29`, referenced via `src/decisions.ts`'s
+  (`src/decisions-data/part4.ts`, referenced via `src/decisions.ts`'s
   `DEC_652` constant — Overview §04 "carries the CONCRETE next action the
   server computed … and clicking it places; a suggestion the server
   cannot compute is absent, never invented").
-- *Consumer:* `app/src/pages/overview/AgendaWorkSection.tsx:132-156`
+- *Consumer:* `app/src/pages/overview/AgendaWorkSection.tsx`
   renders `{conflict.resolution.label}` as a button
   (`.chq-overview-link-btn`) whose `onClick` calls `placeSlot` (defined
-  at `AgendaWorkSection.tsx:75-94`), which does
+  in the same file), which does
   `apiPut('/submissions/${submissionId}/slot', { day, startMin, endMin,
   roomId })` — i.e. `PUT /api/v1/submissions/:id/slot`, the same write
   endpoint `PhoneAgenda.tsx`'s own tap-to-place (`placeArmedAt`) already
