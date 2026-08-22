@@ -825,3 +825,29 @@ carries this section's ruling in full; these five entries are its record.
   DEC-613 wave-21, `app/src/components/modal-frame.css`) — only the tag
   name diverges, and it diverges on purpose. Recorded here per DEC-613
   wave-21's ruling so no future wave spends a lane rebuilding it.
+- **Contacts 390 stands down three purely-informational readings with no
+  surviving path (wave-16 r5 amendment, `src/decisions-data/DEC-919.md`).**
+  Two title-row summary clauses and one rail aggregate are lost outright at
+  390, not re-lined: **returning speakers** (`ContactsApp.tsx`'s
+  `stats.returningSpeakers > 0 ? countOf(stats.returningSpeakers,
+  'returning speaker') : null` clause — "R returning speakers"), **reach
+  across events** (its `stats.eventCount > 1 ? across N events : null`
+  clause, template-literal-built — "across E events"), and the
+  DirectoryRail's **ranked top-companies aggregate**
+  (which companies rank highest, and by how much, over the full directory
+  — `contacts.css`'s `.chq-contacts-rail { display: none }`; only the
+  drill-through action on `{field:'company', op:'eq', value:<name>}`
+  survives, via the FilterRulesPanel "+ Rule" chip composing the identical
+  rule by hand, which already requires knowing the ranking the aggregate
+  supplied). All three are readings with no action attached — DEC-919's
+  capability carve-out is about capability, not information — and the
+  frame's phone band has no slot left for any of them:
+  `docs/design/Chautauqua Contacts.dc.html:180` `border-bottom:1px solid
+  #1B1D17; padding:14px 16px; flex-shrink:0; display:flex;
+  flex-direction:column; gap:11px` is the frame's ENTIRE 390 head band,
+  already fully spent on the wordmark row, the page title and the
+  re-lined three-clause summary, with no further row for a fourth or
+  fifth clause, and the frame's phone body below it is the scrolling card
+  list alone, with no rail slot at all. Stood down as recorded
+  deviations, not silently dropped inside a receipt that claims
+  re-lining.
