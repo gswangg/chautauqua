@@ -1,10 +1,14 @@
-# Drawn FIELD-label ledger (DEC-613 wave-25, task w25-i)
+# Drawn FIELD-label ledger (DEC-613 wave-25, task w25-i; re-measured wave-28)
 
-Measured on branch `v12m-w25-i` (forked from main at the wave-25 planning
-point). Lanes w25-c, w25-h and v12m-w24-e are repairing product code
-concurrently on their own branches this same wave; none of their edits are
-on this worktree, so every grade below reflects what THIS branch's tree
-actually renders, not a claim about main once those lanes land.
+This ledger was built while several product lanes were still repairing rows
+it counts. Every one of those lanes (Settings Event name/Starts/Ends,
+Comms From which plan's own sibling fixes, and the Bio/session-field work)
+has since landed on main. The grades below are re-measured against the
+current, integrated tree as part of DEC-613's wave-28 amendment, which also
+made this ledger the sole surviving drawn-FIELD-label instrument after
+resolving a duplicate-instrument conflict with the now-retired
+`test/frame-field-label.scan.test.ts` (see DEC-613's wave-28 amendment for
+the full symmetric-difference evidence).
 
 ## Why this ledger exists
 
@@ -23,7 +27,9 @@ instrument.
 
 Building this instrument found a **third**, previously unrecorded
 divergence of the same shape: Contacts "Message" vs. `BulkEmailModal.tsx`'s
-"Body". See the DIVERGES rows below.
+"Body", adjudicated under DEC-613's own adoption rule as a genuine open
+outlier (DEC-613). See the DIVERGES rows below, each individually
+adjudicated in place.
 
 This lane is **MEASURE AND FILE ONLY** (task w25-i's own hard clause): it
 fixes no divergence and touches no product code.
@@ -53,7 +59,13 @@ its own ("Kind"/"Stage"/"Role" as multi-select chip rows), an `<h1>`, an
 a field label over an input box, and is excluded at the population step
 itself, never drained later.
 
-**121 rows** result: **100 desktop**, **21 phone (390)** — both
+**128 rows** result (widened from 121 by the wave-28 DEC-613 amendment: a
+label sharing its row with a `font-size:12px` counter/helper caption, then
+closing, then meeting its bordered box one level out, is the SAME
+"label sits directly above its own value box" convention one wrapper
+deeper -- see `test/drawn-field-label.scan.test.ts`'s `tailOpensInputBox`
+for the exact grammar and the one false positive its `font-size:12px`
+restriction was verified to exclude) — both desktop and phone (390)
 non-empty, per this ledger's own non-vacuity guard
 (`test/drawn-field-label.scan.test.ts`).
 
@@ -77,13 +89,18 @@ Each row gets one of four verdicts:
   `src/domain/form-copy.ts`'s `OPTIONAL_SUFFIX`, rendered as a sibling
   `<span>`; "What Marcus will read" is `RemindPreviewModal.tsx`'s literal
   `What {firstNameOf(first.name)} will read` template).
-- **HARDCODED-DIVERGES** — a hardcoded label exists for the field, but it
-  is different words than the frame draws.
+- **HARDCODED-DIVERGES** (DEC-613's own adoption rule: the grade for a
+  hardcoded label that exists for the field but spells it in different
+  words than the frame draws) — every such row below carries its own
+  DEC-613 or `docs/design/DEVIATIONS.md` citation on the same table row,
+  never a blanket reference here.
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
 
-**Totals: 99 HARDCODED-MATCHES, 5 HARDCODED-DIVERGES, 16 STORED-FIELD-LABEL,
-1 UNRESOLVED.**
+**Totals (DEC-613 wave-28 re-measurement): 100 HARDCODED-MATCHES, 6
+HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED** — partitions the
+128-row population exactly; see the per-row table below for every
+DIVERGES row's own citation.
 
 A first-pass automated corpus search miscited a few rows (a coincidental
 boundary-anchored match on an unrelated string — e.g. "Email" matching
@@ -97,9 +114,11 @@ accordingly, not silently kept as a false match.
 
 ## Ratchets
 
-Two-sided per DEC-808, seeded at the measured value on this branch:
+Two-sided per DEC-808, seeded at the measured value on this branch (DEC-613
+wave-28 amendment: DIVERGENCE_CEILING re-measured 5 -> 6 after the
+population widened and absorbed one new real divergence):
 
-- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 5`
+- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6`
 - `DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1`
 
 Registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`, the
@@ -109,18 +128,37 @@ must not move the campaign's exit-gate goalposts mid-convergence.
 
 ## Divergences (open, not fixed by this lane)
 
+Every row below is individually adjudicated (a DEC-613 citation resolving
+it as a real, recorded outlier, or a `docs/design/DEVIATIONS.md` section)
+so no row is silently OPEN against `test/open-divergence-ledger.scan.test.ts`.
+
 1. `Chautauqua Comms.dc.html:102` "From which plan" vs.
    `app/src/pages/comms/ComposeWizard.tsx`'s "Evaluation plan" — DEC-613's
-   own already-named, still-open outlier.
+   own already-named, still-open outlier (DEC-613, opening paragraph).
 2. `Chautauqua Contacts.dc.html:562` "Message" vs.
    `app/src/pages/contacts/BulkEmailModal.tsx`'s "Body" — newly found by
-   this ledger.
+   this ledger; adjudicated here under DEC-613's adoption rule (an 11px
+   label span over an input-shaped box is the product's field label) as a
+   genuine, still-open outlier with no blessing on record. No lane has
+   picked this row up; it stays a real, counted divergence against
+   `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING`, not a deferred one.
 3. `Chautauqua Settings.dc.html:739` and `:1253` (two drawn instances of
    the same field) "Public URL" vs. `EventSettingsPanel.tsx`'s "Slug" —
-   blessed, recorded divergence, `docs/design/DEVIATIONS.md` §7.
+   blessed, recorded divergence, `docs/design/DEVIATIONS.md` §7 (DEC-613's
+   own carve-out for this exact row).
 4. `Chautauqua Settings.dc.html:1429` "Type the file name to confirm" vs.
    `app/src/components/ConfirmDialog.tsx`'s composed
-   `Type "${confirmPhrase}" to confirm` — newly found by this ledger.
+   `Type "${confirmPhrase}" to confirm` — newly found by this ledger;
+   adjudicated here under DEC-613's adoption rule as a genuine, still-open
+   outlier (the composed phrase is the confirm-phrase's own value threaded
+   into the label, not a formatting variant of the frame's generic
+   instruction text) with no blessing on record.
+5. `Chautauqua Submissions.dc.html:693` "Options · one per line" vs.
+   `app/src/pages/forms/FieldModal.tsx`'s "Options (one per line)" —
+   wave-28 DEC-613 amendment: found by the widened population step
+   (`tailOpensInputBox`'s caption-sibling clause). Adjudicated here under
+   DEC-613's adoption rule as a genuine, still-open punctuation outlier
+   (middle-dot vs. parenthetical) with no blessing on record.
 
 ## Unresolved
 
@@ -183,9 +221,10 @@ per-row Citation column always names the specific site.
 | Line | Label | Grade | Reason | Citation |
 |---|---|---|---|---|
 | 559 | Subject | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>` |
-| 562 | Message | HARDCODED-DIVERGES | The bulk-email dialog's frame draws a "Message" eyebrow over the body textarea, but BulkEmailModal.tsx labels the same control "Body" -- different words, same field. Found by this ledger's own boundary-anchored corpus search coincidentally landing on an unrelated "Message-ID:" mail header literal before this real divergence was hand-verified. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
+| 562 | Message | HARDCODED-DIVERGES | The bulk-email dialog's frame draws a "Message" eyebrow over the body textarea, but BulkEmailModal.tsx labels the same control "Body" -- different words, same field, adjudicated a genuine open outlier under DEC-613's adoption rule. Found by this ledger's own boundary-anchored corpus search coincidentally landing on an unrelated "Message-ID:" mail header literal before this real divergence was hand-verified. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
 | 566 | Template | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Template" htmlFor="bulk-email-template" optional>` |
 | 595 | Event | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/AddToEventModal.tsx`<FormRow label="Event">` |
+| 654 | Why them | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). | app/src/pages/contacts/PipelineBoard.tsx`<OptionalFieldRow label="Why them" htmlFor="pipeline-enroll-rationale" helper="One line · shown on the card">` |
 | 823 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/ContactDrawer.tsx`firstName: 'First name',` |
 | 827 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/ContactDrawer.tsx`lastName: 'Last name',` |
 | 832 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/NewContactModal.tsx`label="Email"` |
@@ -208,12 +247,14 @@ per-row Citation column always names the specific site.
 | Line | Label | Grade | Reason | Citation |
 |---|---|---|---|---|
 | 608 | Title | STORED-FIELD-LABEL | Session title is a locked FormFieldDef rendered by FormFieldsSection inside the speaker-portal session-edit form -- the SAME dynamic field.label path the public CFP submission form uses, not a JSX string literal. | src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"` |
+| 613 | Abstract | STORED-FIELD-LABEL | Session abstract ("description") is a locked FormFieldDef rendered by FormFieldsSection inside the speaker-portal session-edit form (Portal · Edit your session, phone) -- the same dynamic field.label path as row 608's Title (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). | src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"` |
 | 619 | Session length | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<div class="chq-section-label">Session length</div>` |
 | 644 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-first-name">` |
 | 648 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-last-name">` |
 | 654 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-email">` |
 | 660 | Role | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-role">` |
 | 918 | Title | STORED-FIELD-LABEL | Session title on the public submission form is `f.label` off the session FormFieldDef. | src/routes/public/submit-views.tsx`const sessionFields = displayFields.filter((f) => f.section === "session");` |
+| 924 | Abstract | STORED-FIELD-LABEL | Session abstract on the public submission form (Submit a talk) is `f.label` off the session FormFieldDef, locked field id "description" (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). | src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {` |
 | 962 | Notes for reviewers · optional | STORED-FIELD-LABEL | "Notes for reviewers" is a session FormFieldDef whose LABEL the code never overrides -- only its placeholder is special-cased by exact label match, itself proof the label is read from the field, not hardcoded. | src/routes/public/submit-views.tsx`if (f.label === "Notes for reviewers") {` |
 | 967 | Accessibility needs · optional | STORED-FIELD-LABEL | "Accessibility needs" is a session FormFieldDef, same mechanism as "Notes for reviewers" above. | src/routes/public/submit-views.tsx`if (f.label === "Accessibility needs") {` |
 | 979 | Name | STORED-FIELD-LABEL | The collapsed speaker "Name" control is a locked FormFieldDef pair (first_name/last_name) presented as one field by the public submission form (DEC-986 wave-45 amendment). | src/routes/public/submit-views.tsx`const firstNameField = byLockedName("first_name");` |
@@ -222,7 +263,9 @@ per-row Citation column always names the specific site.
 | 991 | Job title · optional | STORED-FIELD-LABEL | Speaker job title is a locked FormFieldDef, same byLockedName join. | src/routes/public/submit-views.tsx`const jobTitleField = byLockedName("job_title");` |
 | 995 | Bio · optional | STORED-FIELD-LABEL | Speaker bio is a locked FormFieldDef whose stored label ships as-is (DEC-613 wave-19: no label override remains for it). | src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "bio") {` |
 | 1031 | Title | STORED-FIELD-LABEL | Same session-title FormFieldDef as row 918, a second drawn instance of the same submit form. | src/routes/public/submit-views.tsx`const sessionFields = displayFields.filter((f) => f.section === "session");` |
+| 1036 | Abstract | STORED-FIELD-LABEL | Same session-abstract FormFieldDef as row 924, a second drawn instance of the same submit form (wave-28 DEC-613 amendment). | src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {` |
 | 1240 | Title | STORED-FIELD-LABEL | Same session-title FormFieldDef as row 918, drawn on the "rejected on submit" refusal variant. | src/routes/public/submit-views.tsx`const sessionFields = displayFields.filter((f) => f.section === "session");` |
+| 1245 | Abstract | STORED-FIELD-LABEL | Same session-abstract FormFieldDef as row 924, drawn on the "rejected on submit" refusal variant (wave-28 DEC-613 amendment). | src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {` |
 | 1269 | Name | STORED-FIELD-LABEL | Same collapsed speaker Name FormFieldDef pair as row 979, on the refusal variant. | src/routes/public/submit-views.tsx`const firstNameField = byLockedName("first_name");` |
 | 1273 | Email | STORED-FIELD-LABEL | Same speaker-email FormFieldDef as row 983, on the refusal variant. | src/routes/public/submit-views.tsx`const emailField = byLockedName("email");` |
 | 1278 | Company · optional | STORED-FIELD-LABEL | Same speaker-company FormFieldDef as row 987, on the refusal variant. | src/routes/public/submit-views.tsx`const companyField = byLockedName("company");` |
@@ -232,6 +275,7 @@ per-row Citation column always names the specific site.
 | 1347 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-email">` |
 | 1353 | Role | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-role">` |
 | 1393 | Title | STORED-FIELD-LABEL | Same session-title FormFieldDef as row 918, drawn on the desktop "Edit your session" variant. | src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"` |
+| 1398 | Abstract | STORED-FIELD-LABEL | Same session-abstract FormFieldDef as row 613, drawn on the desktop "Edit your session" variant (wave-28 DEC-613 amendment). | src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"` |
 | 1404 | Session length | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<div class="chq-section-label">Session length</div>` |
 | 1434 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-first-name">` |
 | 1438 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | src/routes/portal/edit.tsx`<label class="chq-portal-field-label" for="cp-last-name">` |
@@ -283,7 +327,7 @@ per-row Citation column always names the specific site.
 | 1371 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>` |
 | 1375 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="Last name" htmlFor="people-invite-last-name" error={fieldErrors.lastName}>` |
 | 1380 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`...(mailStatus ? [{ label: 'Email', value: mailStatusSummary(mailStatus) }] : []),` |
-| 1429 | Type the file name to confirm | HARDCODED-DIVERGES | The frame draws a generic instruction label ("Type the file name to confirm") over a box holding the actual filename; ConfirmDialog's irreversible-weight prompt instead composes the phrase directly INTO the label text itself -- different words, not a formatting variant. | app/src/components/ConfirmDialog.tsx`Type "${confirmPhrase}" to confirm` |
+| 1429 | Type the file name to confirm | HARDCODED-DIVERGES | The frame draws a generic instruction label ("Type the file name to confirm") over a box holding the actual filename; ConfirmDialog's irreversible-weight prompt instead composes the phrase directly INTO the label text itself -- different words, not a formatting variant. Adjudicated a genuine open outlier under DEC-613's adoption rule. | app/src/components/ConfirmDialog.tsx`Type "${confirmPhrase}" to confirm` |
 | 1454 | Name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/ApiTokensPanel.tsx`<th>Name and prefix</th>` |
 
 ### Chautauqua Speakers.dc.html
@@ -309,6 +353,7 @@ per-row Citation column always names the specific site.
 | 674 | Kind | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Kind" htmlFor="field-kind">` |
 | 679 | Label | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Label" htmlFor="field-label" help="What the submitter reads">` |
 | 684 | Help text · optional | HARDCODED-MATCHES | FieldModal composes label="Help text" plus the same shared OPTIONAL_SUFFIX constant as the Contacts rows above. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Help text" htmlFor="field-help-text" optional>` |
+| 693 | Options · one per line | HARDCODED-DIVERGES | The frame draws "Options · one per line" (a middle-dot separator, the pack's own composition convention) but FieldModal.tsx's FormRow spells it "Options (one per line)" (a parenthetical) -- different punctuation, same field (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). Adjudicated a genuine open outlier under DEC-613's adoption rule. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Options (one per line)" htmlFor="field-options" optional>` |
 | 706 | Field | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Field" htmlFor="field-rule-trigger">` |
 | 710 | Is | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Is" htmlFor="field-rule-op">` |
 | 714 | Value | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Value" htmlFor="field-rule-value">` |

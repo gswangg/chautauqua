@@ -38,9 +38,16 @@
 //      ("Kind", "Stage", "Role" as multi-select chip rows), a `<h1>`, a
 //      `sc-for` loop, a mustache-templated wrapper (`{{ q.inputStyle }}`)
 //      -- is NOT a field label over an input box and is correctly excluded
-//      at the population step itself, not drained later. 121 rows result:
-//      100 desktop, 21 phone (390) -- both populations non-empty, per the
-//      hard-clause non-vacuity guard below.
+//      at the population step itself, not drained later. 128 rows result
+//      (wave-28 DEC-613 amendment: widened from 121 to absorb 7 rows
+//      test/frame-field-label.scan.test.ts's own looser derivation had
+//      uniquely found and this ledger's original immediate-adjacency-only
+//      grammar missed -- a label sharing its row with a `font-size:12px`
+//      counter/helper caption, closing, THEN meeting its bordered box one
+//      level out; see tailOpensInputBox's own header for the full grammar
+//      and the one false positive it was verified to exclude) -- both
+//      phone and desktop populations non-empty, per the hard-clause
+//      non-vacuity guard below.
 //
 //   2. GRADE, per row, one of four:
 //        - STORED-FIELD-LABEL: the label is organizer-editable FormFieldDef
@@ -76,7 +83,8 @@
 //
 //   3. CEILINGS, two-sided per DEC-808, seeded at the MEASURED value on
 //      this branch (never guessed, never 0): DRAWN_FIELD_LABEL_DIVERGENCE_
-//      CEILING=5, DRAWN_FIELD_LABEL_UNRESOLVED_CEILING=1. Registered in
+//      CEILING=6 (wave-28 DEC-613 amendment, up from 5 -- see the ceiling's
+//      own comment), DRAWN_FIELD_LABEL_UNRESOLVED_CEILING=1. Registered in
 //      scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE only, the SAME
 //      disposition FIELD_WIDTH_DIVERGENCE_CEILING/FIELD_WIDTH_UNRESOLVED_
 //      CEILING already carry: a newly measured population must not move
@@ -102,6 +110,10 @@ import {
   isInsideAPhoneFrame,
 } from '../app/src/frame-citation-frames';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+import { ALL_CAPTIONS } from './frame-caption-ledger/population';
+import { ALL_LABELS as PHONE_CONTROL_LABELS } from './frame-control-label.scan.test';
+import { ALL_LABELS as DESKTOP_CONTROL_LABELS } from './desktop-control-label.scan.test';
+import { ALL_EYEBROWS } from './frame-eyebrow-label.scan.test';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -127,15 +139,34 @@ export interface DrawnFieldLabel {
 const FIELD_LABEL_SPAN_RE =
   /<span\s+style="([^"]*font-size:11px;\s*font-weight:800;\s*letter-spacing:0\.1em;\s*text-transform:uppercase[^"]*)"[^>]*>([^<]*)<\/span>/g;
 
+const CAPTION_SIBLING_RE =
+  /^\s*<span\s+style="([^"]*font-size:12px[^"]*)"[^>]*>[^<]*<\/span>\s*<\/div>\s*<div\s+style="([^"]*)"/;
+
 /** True when the text immediately following a candidate label span's own
  * closing tag (only whitespace may intervene) opens a `<div style="...">`
  * whose style carries `border:` -- the frame's own "label span immediately
- * above a bordered value box" convention. Exported so the non-vacuity
- * fixture below can drive this exact function over a fabricated tail. */
+ * above a bordered value box" convention -- OR (wave-28 DEC-613 amendment,
+ * widening the population to absorb frame-field-label.scan.test.ts's own
+ * unique true positives) the label shares its row with a `font-size:12px`
+ * counter/helper caption ("412 / 1,200", "One line · shown on the card")
+ * with NO border of its own, the row then closes, and the bordered box
+ * follows as the outer column's next child -- the SAME "label sits
+ * directly above its own value box" convention, one level of a
+ * `justify-content:space-between` wrapper deeper. Restricting the sibling
+ * to `font-size:12px` specifically (not any non-bordered span) was
+ * verified against the whole pack to exclude the one real false-positive
+ * this widening would otherwise create: Chautauqua Comms.dc.html:706's
+ * "Subject" eyebrow over a `font-size:15px` MOCK EMAIL PREVIEW value
+ * (`{{ e.subject }}`, a read-only rendered-email row with no input box at
+ * all) -- that row's sibling is the preview's own text, not a counter, and
+ * stays correctly excluded. Exported so the non-vacuity fixture below can
+ * drive this exact function over a fabricated tail. */
 export function tailOpensInputBox(tailText: string): boolean {
   const window = tailText.slice(0, 400);
-  const m = window.match(/^\s*<div\s+style="([^"]*)"/);
-  return !!m && m[1]!.includes('border:');
+  const immediate = window.match(/^\s*<div\s+style="([^"]*)"/);
+  if (immediate && immediate[1]!.includes('border:')) return true;
+  const captionSibling = window.match(CAPTION_SIBLING_RE);
+  return !!captionSibling && !captionSibling[1]!.includes('border:') && captionSibling[2]!.includes('border:');
 }
 
 /** Every drawn field-label span in one file's raw text, extracted via the
@@ -259,6 +290,35 @@ const STORED: Record<string, { reason: string; citation: string }> = {
     reason: 'Same session-title FormFieldDef as row 918, drawn on the desktop "Edit your session" variant.',
     citation: 'src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"`',
   },
+  // Wave-28 DEC-613 amendment: the 5 "Abstract" rows the widened
+  // tailOpensInputBox population step now finds -- the locked session
+  // FormFieldDef's own `description` field, the SAME lockedFieldName join
+  // as the Title rows above, one row per frame variant.
+  'Chautauqua Public and Portal.dc.html:613': {
+    reason:
+      'Session abstract ("description") is a locked FormFieldDef rendered by FormFieldsSection inside ' +
+      'the speaker-portal session-edit form (Portal · Edit your session, phone) -- the same dynamic ' +
+      'field.label path as row 608\'s Title.',
+    citation: 'src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"`',
+  },
+  'Chautauqua Public and Portal.dc.html:924': {
+    reason:
+      'Session abstract on the public submission form (Submit a talk) is `f.label` off the session ' +
+      'FormFieldDef, locked field id "description".',
+    citation: 'src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {`',
+  },
+  'Chautauqua Public and Portal.dc.html:1036': {
+    reason: 'Same session-abstract FormFieldDef as row 924, a second drawn instance of the same submit form.',
+    citation: 'src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {`',
+  },
+  'Chautauqua Public and Portal.dc.html:1245': {
+    reason: 'Same session-abstract FormFieldDef as row 924, drawn on the "rejected on submit" refusal variant.',
+    citation: 'src/routes/public/submit-views.tsx`if (lockedFieldName(f.id) === "description") {`',
+  },
+  'Chautauqua Public and Portal.dc.html:1398': {
+    reason: 'Same session-abstract FormFieldDef as row 613, drawn on the desktop "Edit your session" variant.',
+    citation: 'src/routes/portal/edit.tsx`<FormFieldsSection fields={data.fields} section="session"`',
+  },
 };
 
 const DIVERGES: Record<string, { reason: string; citation: string }> = {
@@ -297,6 +357,15 @@ const DIVERGES: Record<string, { reason: string; citation: string }> = {
       'holding the actual filename; ConfirmDialog\'s irreversible-weight prompt instead composes the ' +
       'phrase directly INTO the label text itself -- different words, not a formatting variant.',
     citation: 'app/src/components/ConfirmDialog.tsx`{`Type "${confirmPhrase}" to confirm`}`',
+  },
+  // Wave-28 DEC-613 amendment: found by the widened tailOpensInputBox
+  // population step (see its own header).
+  'Chautauqua Submissions.dc.html:693': {
+    reason:
+      'The FieldModal options-list textarea\'s frame label draws "Options · one per line" (a middle-dot ' +
+      'separator, the pack\'s own composition convention) but FieldModal.tsx\'s FormRow spells it ' +
+      '"Options (one per line)" (a parenthetical) -- different punctuation, same field.',
+    citation: 'app/src/pages/forms/FieldModal.tsx`<FormRow label="Options (one per line)" htmlFor="field-options" optional>`',
   },
 };
 
@@ -388,12 +457,18 @@ const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
 // FIELD_WIDTH_DIVERGENCE_CEILING/FIELD_WIDTH_UNRESOLVED_CEILING's own
 // reasoning.
 // ---------------------------------------------------------------------------
-export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 5;
+// Wave-28 DEC-613 amendment: re-measured after the population widened
+// 121 -> 128 rows (see tailOpensInputBox's own header) and absorbed
+// test/frame-field-label.scan.test.ts's 7 unique true positives -- 6 of
+// those 7 grade MATCHES/STORED, 1 (Submissions "Options · one per line")
+// grades a real new DIVERGES, forcing 5 -> 6. Never guessed, forced to -1
+// and re-measured on this branch.
+export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6;
 export const DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1;
 
 describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w25-i)', () => {
   it('non-vacuity: population is non-empty and resolves from BOTH desktop and 390 frames', () => {
-    expect(ALL_ROWS.length).toBe(121);
+    expect(ALL_ROWS.length).toBe(128);
     const phoneRows = ALL_ROWS.filter((r) => isInsideAPhoneFrame(r.fileName, r.line));
     const desktopRows = ALL_ROWS.filter((r) => isInsideADesktopFrame(r.fileName, r.line));
     expect(phoneRows.length).toBeGreaterThan(0);
@@ -425,6 +500,44 @@ describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w
     expect(tailOpensInputBox('<div style="border:1px solid #000">box</div>')).toBe(true);
     expect(tailOpensInputBox('<div style="min-height:46px">no border</div>')).toBe(false);
   });
+
+  it(
+    'wave-28 (DEC-613 amendment): disjoint from the caption / phone-control-label / ' +
+      'desktop-control-label / eyebrow ledgers -- a live cross-import assertion, never prose ' +
+      '(this is the fact that made this file, not test/frame-field-label.scan.test.ts, the ' +
+      'DEC-613 survivor after the wave-28 duplication was resolved)',
+    () => {
+      const rowKey = (r: { fileName: string; line: number }) => `${r.fileName}:${r.line}`;
+      const drawnKeys = new Set(ALL_ROWS.map(rowKey));
+
+      const captionOverlap = ALL_CAPTIONS.filter((c) => drawnKeys.has(rowKey(c)));
+      const phoneControlOverlap = PHONE_CONTROL_LABELS.filter((c) => drawnKeys.has(rowKey(c)));
+      const desktopControlOverlap = DESKTOP_CONTROL_LABELS.filter((c) => drawnKeys.has(rowKey(c)));
+      const eyebrowOverlap = ALL_EYEBROWS.filter((c) => drawnKeys.has(rowKey(c)));
+
+      expect(captionOverlap.length).toBe(0);
+      expect(phoneControlOverlap.length).toBe(0);
+      expect(desktopControlOverlap.length).toBe(0);
+      // The eyebrow ledger's own `isFollowedByInputBox` drop (test/frame-
+      // eyebrow-label.scan.test.ts's own field-label-territory exclusion,
+      // clause (b)) hardcodes the STANDARD box border `#BAB6A6` and so
+      // misses this ONE row, whose box is drawn with the emphasized
+      // `#1B1D17` border the "already a participant" co-presenter warning
+      // state uses (a real, narrower field-box variant, not a different
+      // shape) -- verified directly against this row's own markup. This
+      // file does not own test/frame-eyebrow-label.scan.test.ts and does
+      // not widen its exclusion regex; the one known dual-classification
+      // is asserted BY NAME here (never a blind size check) so a second,
+      // unnoticed overlap still fails this test.
+      expect(eyebrowOverlap).toEqual([
+        expect.objectContaining({
+          fileName: 'Chautauqua Public and Portal.dc.html',
+          line: 1347,
+          text: 'Email',
+        }),
+      ]);
+    }
+  );
 
   it('every row is accounted for exactly once across stored/matches/diverges/unresolved', () => {
     expect(GRADED.length).toBe(ALL_ROWS.length);
