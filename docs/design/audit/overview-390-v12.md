@@ -34,39 +34,42 @@ had no citer anywhere in the tree.
   their real DOM order — see the divergence finding below.
 - :236 the §02 "All N" disclosure, graded by shape (`/^All \d+$/`).
 
-## FINDING (not fixed — out of this task's scope)
+## RESOLVED (DEC-385 wave-20, task w20-a)
 
-**The §01 row's field grouping diverges from the frame's line pairing, and
-no CSS-only fix inside `overview.css`'s terminal `@media (max-width:700px)`
-block can repair it.**
+**The §01 row's field grouping now matches the frame's line pairing at 390;
+desktop keeps its own two-column table shape unchanged.**
 
 The frame draws two lines per overdue-task row:
 
 1. `{{ row.name }}` beside `{{ row.late }}` (same line, space-between)
 2. `{{ row.task }} · {{ row.company }}` (next line, one joined string)
 
-`Overview.tsx` (lines ~347-370) instead renders two anonymous wrapper
-`<div>`s with no class hooks:
+`app/src/pages/Overview.tsx` previously rendered two anonymous wrapper
+`<div>`s pairing `contactName`+`company` and `taskTitle`+`daysLateLabel(...)`,
+so the real DOM/reading order at 390 was name, company, task, lateness
+marker — not the frame's name, lateness marker, task · company. The fix:
+the two wrappers gained real class hooks
+(`chq-overview-row-overdue-who`/`chq-overview-row-overdue-what`), the
+classless `taskTitle` node gained its own class
+(`chq-overview-row-task`), and Overview.tsx now also renders one new
+phone-only sibling carrying the joined string
+`` `${row.taskTitle} · ${row.company}` `` as a single text node
+(`chq-overview-row-overdue-line-phone`) — every existing node stays in
+place, nothing reordered or deleted in the DOM.
 
-1. `contactName` + `company` (a name/company pair)
-2. `taskTitle` + `daysLateLabel(...)` (a task/lateness pair)
+`app/src/pages/overview/overview.css`'s terminal `@media (max-width: 700px)`
+block sets `display: contents` on the two wrappers so their children become
+direct grid items of `.chq-overview-row-overdue`, hides the now-superseded
+company and task nodes (each carrying a `phone-hidden:` receipt), reveals
+the joined line, and orders the items name, lateness, joined-task-line,
+actions via the CSS `order` property. A single top-level
+`display: none` leak-guard on `.chq-overview-row-overdue-line-phone`
+(same idiom as `app/src/pages/agenda/agenda.css`'s `.chq-phone-slot-*`
+list) keeps the new node off desktop, so desktop paint stays
+byte-identical and `app/src/pages/Overview.desktop-frame-verdicts.render.test.tsx`
+is unchanged.
 
-So the real DOM/reading order at 390 (where `.chq-overview-row-overdue`
-collapses to a single grid column, per `overview.css`) is: **name, company,
-task, lateness marker, Remind, Mark complete** — not the frame's **name,
-lateness marker, task · company, Remind, Mark complete**. All four fields
-are present and none is invented or missing; only the pairing/order
-diverges, and `{{ row.task }} · {{ row.company }}` never renders as one
-joined string (it's two separate text nodes in two different wrapper
-`<div>`s).
-
-This task's OWNS list permits touching `overview.css` only inside its
-terminal max-width block. A CSS `order` reflow can reorder whole grid
-*items*, but the two mis-paired fields (company vs. task) sit inside the
-*same* anonymous wrapper `<div>` as their line-mate, so no selector exists
-to move one field independently of its sibling — the fix needs a
-`Overview.tsx` JSX restructure (new class hooks separating name+late from
-task+company), which is out of this task's scope. `Overview.frame390.render.test.tsx`'s
-row-template test asserts the TRUE current DOM order (a truthful verdict,
-not the frame's aspirational one) and its own comment block carries this
-same writeup inline. Recorded here for a future task to pick up.
+`app/src/pages/overview/Overview.frame390.render.test.tsx`'s row-template
+case now asserts the frame's order: name, lateness marker, the joined line
+as one text node (`Node.TEXT_NODE`, not split across elements), then
+Remind/Mark complete.

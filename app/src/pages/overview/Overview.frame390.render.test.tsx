@@ -269,42 +269,34 @@ describe('Overview 390 frame verdict (task w29-f, docs/design/Chautauqua Overvie
     expect(caption!.previousElementSibling).toBe(remindAll!.closest('.chq-overview-section-header'));
   });
 
-  // :221-:226 the §01 row template. FINDING (recorded, not fixed -- this
-  // task's OWNS list permits only overview.css inside its terminal
-  // max-width:700px block, and this divergence is a DOM/text-grouping
-  // difference no CSS reorder can repair without also splitting the
-  // anonymous wrapper `<div>`s Overview.tsx renders around
-  // name+company/task+late into their own class hooks): the frame draws
-  // `{{ row.name }}` beside `{{ row.late }}` on one line, then
-  // `{{ row.task }} · {{ row.company }}` on the next. The shipped DOM
-  // instead pairs name+company together and task+late together (a desktop
-  // two-column table shape that only collapses to stacked rows at phone,
-  // never regrouped), so all four fields are present and in this DOM
-  // order: name, company, task, late. See
-  // docs/design/audit/overview-390-v12.md for the full writeup.
-  it(':221-:226 the §01 row carries name, company, task, lateness marker and both actions in DOM order', async () => {
+  // :221-:226 the §01 row template, resolved (DEC-385 wave-20, task w20-a):
+  // the frame draws `{{ row.name }}` beside `{{ row.late }}` on one line
+  // (:221/:222), then `{{ row.task }} · {{ row.company }}` as ONE joined
+  // string on the next (:223). Overview.tsx now renders that joined string
+  // as its own phone-only sibling
+  // (`.chq-overview-row-overdue-line-phone`) alongside the desktop
+  // name+company/task+late pairing; the DOM keeps every original node
+  // (nothing reordered or deleted -- see docs/design/audit/overview-390-v12.md),
+  // so this asserts the DOM node the phone reading order is built from.
+  it(':221-:226 the §01 row carries the joined `{{ row.task }} · {{ row.company }}` line as one text node, plus name, lateness marker and both actions', async () => {
     await mount();
 
     const row = document.querySelector('.chq-overview-row-overdue');
     expect(row).not.toBeNull();
 
-    const walker = document.createTreeWalker(row!, NodeFilter.SHOW_TEXT);
-    const texts: string[] = [];
-    let node: Node | null;
-    // eslint-disable-next-line no-cond-assign
-    while ((node = walker.nextNode())) {
-      const text = node.textContent?.trim();
-      if (text) texts.push(text);
-    }
+    const name = row!.querySelector('.chq-overview-row-overdue-who .chq-overview-row-title');
+    expect(name!.textContent).toBe('Marcus Okafor');
 
-    expect(texts).toEqual([
-      'Marcus Okafor',
-      'Cloudreach Labs',
-      'Upload headshot',
-      '4 days late',
-      'Remind',
-      'Mark complete',
-    ]);
+    const late = row!.querySelector('.chq-overview-row-late');
+    expect(late!.textContent).toBe('4 days late');
+
+    // :223 `{{ row.task }} · {{ row.company }}` -- one joined text node,
+    // not two fields split across separate elements.
+    const joined = row!.querySelector('.chq-overview-row-overdue-line-phone');
+    expect(joined).not.toBeNull();
+    expect(joined!.childNodes.length).toBe(1);
+    expect(joined!.childNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
+    expect(joined!.textContent).toBe('Upload headshot · Cloudreach Labs');
 
     // Both per-row actions are real controls, in frame order (Remind, then
     // Mark complete -- :224/:225).
