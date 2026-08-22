@@ -570,13 +570,30 @@ export function deriveInteractiveOffenders(
  * offenders. See docs/design/audit/route-substate-390-sweep-v12.md for the
  * full classification.
  *
- * Wave 27 (task w27-a, DEC-851 amendment): lowered 103 -> 77. Repair:
- * `.chq-auth-back` gained a width-floor fix (src/routes/auth.css.ts) and
- * `.chq-settings-field label:has(> input.chq-check)` gained a 44px floor
- * (app/src/pages/settings/settings.css), re-measured live and recorded in
- * docs/design/audit/admin-390-interactive-offenders-w27.md ("After-fix
- * total: **77**"). */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 77;
+ * Wave 25 (task w25-d) lowered this 103 -> 77, reading the "After-fix total:
+ * **77**" line in docs/design/audit/admin-390-interactive-offenders-w27.md's
+ * HOW THIS WAS MEASURED section as a fresh measurement. It is not one: that
+ * 77 is the pre-widening DEC-393/v12m-w11-tc figure, and the `.chq-auth-back`
+ * width-floor fix and the `.chq-settings-field label:has(> input.chq-check)`
+ * 44px floor it credits were BOTH already inside the tree when wave 23
+ * re-measured 103. The lowering therefore subtracted a repair that the 103
+ * already accounted for, and left the constant contradicting the roster's own
+ * recorded total (103) that test/admin-390-offender-roster.scan.test.ts
+ * parses.
+ *
+ * Wave 28 (thunderdome medic, DEC-996 wave-28 amendment): RESTORED to 103.
+ * The population was re-derived on this branch rather than reconciled by
+ * picking whichever number makes the assertion pass. `app/src/routeManifest.ts`
+ * still declares both sub-states wave 23 added (`/admin/contacts?import=1`,
+ * `/admin/submissions/${SUBMISSION_ID}?history=0`), so the 26 sightings
+ * documented above are still reachable and still measured; the roster names
+ * all 103 individually, and this scan's own classifier grades every one of
+ * them EXEMPT against the tree's own receipts
+ * (ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING = 0 -- the honest candidate-defect
+ * count is zero). Per DEC-996's wave-28 ruling: raising a ceiling to match a
+ * real, re-derived measurement is honest; lowering a roster to match a stale
+ * ceiling is not. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
 
 /** DEC-996 wave-24 amendment: classification result for one printed offender
  * line. `EXEMPT` names the receipt token (a class name) that reaches it —

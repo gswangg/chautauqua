@@ -371,12 +371,13 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "PeopleRolesPanel.*.render.test.tsx spec files -- test-file imports don't confer reachability (DEC-518). " +
     "Split out of a single 855-line PeopleRolesPanel.render.test.tsx (custodian decomposition, wave v12m-w12), " +
     "so it is test-only code, never SPA bundle code; same shape as mockApi.ts above.",
-  "app/src/phone-tap-target-scan/core.ts":
-    "Scanning primitives (CSS/TSX file population, declared-height parsing, flex-centre and exemption-comment " +
-    "readers) imported only by app/src/phone-tap-target.scan.test.ts and its wave-v12m-w12 siblings " +
-    "(phone-tap-target-anchor-floor.scan.test.ts, phone-tap-target-ssr.scan.test.ts) -- test-file imports don't " +
-    "confer reachability (DEC-518). Split out of that suite in wave v12m-w8 (custodian decomposition of an " +
-    "882-line merge-conflict hotspot), so it is the scan's own code, never SPA bundle code; same shape as mockApi.ts.",
+  // app/src/phone-tap-target-scan/core.ts was here until wave 28. It is no
+  // longer an orphan: DEC-996's wave-24 amendment (task w24-i) made
+  // scripts/render-sweep.ts -- a real entry point -- import `allCssFiles` and
+  // `hasExemptionForToken` from it, so the admin-390 sweep derives its exempt
+  // token set from the tree's own receipts rather than a hand-listed array.
+  // That is a genuine non-test import, so the ledger entry went stale and is
+  // removed rather than kept as a second, contradicting claim.
   "app/src/phone-tap-target-scan/anchor-floor.ts":
     "Row-action-anchor half of the same wave-v12m-w8 decomposition -- imported only by " +
     "app/src/phone-tap-target-anchor-floor.scan.test.ts (wave v12m-w12 split), and test-file imports don't " +

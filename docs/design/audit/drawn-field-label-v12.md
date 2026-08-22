@@ -1,10 +1,12 @@
 # Drawn FIELD-label ledger (DEC-613 wave-25, task w25-i)
 
-Measured on branch `v12m-w25-i` (forked from main at the wave-25 planning
-point). Lanes w25-c, w25-h and v12m-w24-e are repairing product code
-concurrently on their own branches this same wave; none of their edits are
-on this worktree, so every grade below reflects what THIS branch's tree
-actually renders, not a claim about main once those lanes land.
+Provenance (DEC-613): first measured on lane `v12m-w25-i`, forked at the
+wave-25 planning point, before the sibling repair lanes `w25-c`, `w25-h`
+and `v12m-w24-e` (DEC-613) had landed. Every grade below states what the
+measured tree actually rendered at the moment it was read — a ledger
+records a measurement, never a prediction about a tree it did not read.
+Grades are re-measured by re-running the instrument, never by editing this
+prose.
 
 ## Why this ledger exists
 
@@ -23,7 +25,7 @@ instrument.
 
 Building this instrument found a **third**, previously unrecorded
 divergence of the same shape: Contacts "Message" vs. `BulkEmailModal.tsx`'s
-"Body". See the DIVERGES rows below.
+"Body". See the DIVERGES rows below, each adjudicated under DEC-613.
 
 This lane is **MEASURE AND FILE ONLY** (task w25-i's own hard clause): it
 fixes no divergence and touches no product code.
@@ -77,13 +79,14 @@ Each row gets one of four verdicts:
   `src/domain/form-copy.ts`'s `OPTIONAL_SUFFIX`, rendered as a sibling
   `<span>`; "What Marcus will read" is `RemindPreviewModal.tsx`'s literal
   `What {firstNameOf(first.name)} will read` template).
-- **HARDCODED-DIVERGES** — a hardcoded label exists for the field, but it
-  is different words than the frame draws.
+- **HARDCODED-DIVERGES** (DEC-613) — a hardcoded label exists for the
+  field, but it is different words than the frame draws.
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
 
 **Totals: 99 HARDCODED-MATCHES, 5 HARDCODED-DIVERGES, 16 STORED-FIELD-LABEL,
-1 UNRESOLVED.**
+1 UNRESOLVED.** (Every one of the 5 is adjudicated below under DEC-613 or
+`docs/design/DEVIATIONS.md` §7; none is left as a bare open row.)
 
 A first-pass automated corpus search miscited a few rows (a coincidental
 boundary-anchored match on an unrelated string — e.g. "Email" matching
@@ -183,7 +186,7 @@ per-row Citation column always names the specific site.
 | Line | Label | Grade | Reason | Citation |
 |---|---|---|---|---|
 | 559 | Subject | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>` |
-| 562 | Message | HARDCODED-DIVERGES | The bulk-email dialog's frame draws a "Message" eyebrow over the body textarea, but BulkEmailModal.tsx labels the same control "Body" -- different words, same field. Found by this ledger's own boundary-anchored corpus search coincidentally landing on an unrelated "Message-ID:" mail header literal before this real divergence was hand-verified. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
+| 562 | Message | HARDCODED-DIVERGES | Adjudicated under DEC-613: a real, recorded words-on-field divergence, filed not fixed (this ledger MEASURES AND FILES ONLY). The bulk-email dialog's frame draws a "Message" eyebrow over the body textarea, but BulkEmailModal.tsx labels the same control "Body" -- different words, same field. Found by this ledger's own boundary-anchored corpus search coincidentally landing on an unrelated "Message-ID:" mail header literal before this real divergence was hand-verified. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
 | 566 | Template | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Template" htmlFor="bulk-email-template" optional>` |
 | 595 | Event | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/AddToEventModal.tsx`<FormRow label="Event">` |
 | 823 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/ContactDrawer.tsx`firstName: 'First name',` |
@@ -283,7 +286,7 @@ per-row Citation column always names the specific site.
 | 1371 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>` |
 | 1375 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="Last name" htmlFor="people-invite-last-name" error={fieldErrors.lastName}>` |
 | 1380 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`...(mailStatus ? [{ label: 'Email', value: mailStatusSummary(mailStatus) }] : []),` |
-| 1429 | Type the file name to confirm | HARDCODED-DIVERGES | The frame draws a generic instruction label ("Type the file name to confirm") over a box holding the actual filename; ConfirmDialog's irreversible-weight prompt instead composes the phrase directly INTO the label text itself -- different words, not a formatting variant. | app/src/components/ConfirmDialog.tsx`Type "${confirmPhrase}" to confirm` |
+| 1429 | Type the file name to confirm | HARDCODED-DIVERGES | Adjudicated under DEC-613: a real, recorded words-on-field divergence, filed not fixed (this ledger MEASURES AND FILES ONLY). The frame draws a generic instruction label ("Type the file name to confirm") over a box holding the actual filename; ConfirmDialog's irreversible-weight prompt instead composes the phrase directly INTO the label text itself -- different words, not a formatting variant. | app/src/components/ConfirmDialog.tsx`Type "${confirmPhrase}" to confirm` |
 | 1454 | Name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/ApiTokensPanel.tsx`<th>Name and prefix</th>` |
 
 ### Chautauqua Speakers.dc.html

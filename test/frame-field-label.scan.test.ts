@@ -352,7 +352,11 @@ function offenderLines(rows: GradedRow[]): string[] {
 // re-measure is expected, not surprising): v12m-w24-e (Settings
 // 'Event name'/'Starts'/'Ends' -- both `Event name` rows above, lines 735
 // and 1249) and v12m-w24-g (Comms 'From which plan' -- line 102 above).
-export const FRAME_FIELD_LABEL_DIVERGENCE_CEILING = 73;
+// Wave-28 merge train (thunderdome medic): the two in-flight lanes named
+// just above LANDED, so the divergence count fell 73 -> 71 exactly as this
+// header predicted. Re-measured on integrated main and LOWERED to match, per
+// this instrument's own two-sided ratchet discipline -- never left stale.
+export const FRAME_FIELD_LABEL_DIVERGENCE_CEILING = 71;
 export const FRAME_FIELD_LABEL_UNRESOLVED_CEILING = 2;
 
 describe('frame field-label ledger (DEC-180 wave-24 amendment, v12 mobile campaign)', () => {

@@ -684,6 +684,19 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (DEC-808 wave-28 amendment, clauses b/c). Both landed in the
+  // wave-24..27 merge train registered nowhere, which made this module THROW
+  // before printing a single campaign row. Both read 0, so verdict.tier2Done
+  // is unaffected; both are also listed in TIER2_CEILING_NAMES below, because
+  // assertEveryGradedCeilingIsGated leaves no third state for a graded
+  // `_CEILING`.
+  //
+  // (b) ROLE_LABEL_SPELLING_CEILING counts v12 copy-fidelity offences in the
+  //     words the app draws for a role and is seeded at 0 -- a campaign fact.
+  // (c) ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING counts 390 tap-floor sightings
+  //     carrying no adjudicated exemption receipt -- Tier-2 geometry.
+  "ROLE_LABEL_SPELLING_CEILING",
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
 ];
 
 /**
@@ -782,6 +795,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // declared-but-unread knob (DEC-851/DEC-988).
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (DEC-808 wave-28 amendment, clauses b/c): wired into TIER2 in the
+  // same commit that declared these in CAMPAIGN_CONSTANT_NAMES above -- never
+  // a declared-but-unread knob (DEC-851/DEC-988). Both read 0.
+  "ROLE_LABEL_SPELLING_CEILING",
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
 ];
 
 /**
@@ -983,6 +1001,23 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
     + "amendment).",
+
+  AUDIT_FILE_FLOOR:
+    "measures a MONOTONE-UPWARD non-vacuity minimum -- how many audit documents the "
+    + "open-divergence ledger's own recursive enumerator must still reach before its walk may be "
+    + "trusted -- over a corpus that GROWS every time a ledger appends a document. A floor whose "
+    + "honest direction of travel is upward can never converge to zero, so grading it would make "
+    + "ordinary corpus growth read as campaign regression; it is a population-vacuity guard on "
+    + "that ledger's own enumerator, not a v12 frame or 390-geometry conformance fact "
+    + "(test/open-divergence-ledger.scan.test.ts, DEC-808 wave-28 amendment).",
+  TOKEN_ROW_FLOOR:
+    "measures the same MONOTONE-UPWARD non-vacuity minimum one level in -- how many raw "
+    + "DIVERGES-token rows that enumerator must still open across the corpus before an empty walk "
+    + "can be told apart from a genuinely drained one -- and rises with every divergence a new "
+    + "audit document records, whether or not any of them is open. It guards the ledger's own "
+    + "population against silently going vacuous; the conformance question is asked by "
+    + "OPEN_DIVERGENCE_CEILING, which is graded (test/open-divergence-ledger.scan.test.ts, "
+    + "DEC-808 wave-28 amendment).",
 };
 
 /**

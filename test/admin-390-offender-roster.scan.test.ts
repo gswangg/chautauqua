@@ -266,6 +266,39 @@ describe("admin-390-offender-roster classification (DEC-996 wave-24 amendment)",
       receipt: "chq-check",
     });
   });
+
+  // Two-sided companion (DEC-808 wave-85 amendment), appended wave 28 when
+  // DEC-808's wave-28 amendment registered this constant in
+  // CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES and so pulled it into
+  // test/campaign-ratchet-two-sided.scan.test.ts's derived population. The
+  // exact-equality pin in the ceiling `it` above states both directions, but
+  // that enforcer reads `it` bodies through its own brace-matching mask and
+  // sees neither direction on it: its direction regexes end `\s*\)`, and the
+  // pin above is formatted multi-line with a trailing comma before the close
+  // paren (`ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING,\n)`), which that pattern
+  // cannot cross. Both directions are therefore restated here in single-line
+  // form the enforcer reads -- appended, never by weakening the pin above.
+  it("does not fall stale above ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING (two-sided companion, DEC-808 wave-28)", () => {
+    const candidateTokens = new Set<string>();
+    for (const row of ROSTER_CLASSIFICATION_ROWS) {
+      for (const m of row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)) candidateTokens.add(m[0].slice(1));
+    }
+    const exemptTokens = deriveExemptSelectors(candidateTokens);
+    const candidateCount = ROSTER_CLASSIFICATION_ROWS.filter(
+      (row) =>
+        classifyAdminMobileOffender(`${row.selector} w=${row.width}px h=${row.height}px`, exemptTokens)
+          .classification === "CANDIDATE",
+    ).reduce((acc, row) => acc + row.count, 0);
+    if (candidateCount < ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING) {
+      throw new Error(
+        `Measured ${candidateCount} candidate defects, below the declared ceiling of ` +
+          `${ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING}. A ratchet may only be LOWERED; replace the line:\n` +
+          `  export const ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING = ${candidateCount};`,
+      );
+    }
+    expect(candidateCount).toBeLessThanOrEqual(ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING);
+    expect(candidateCount).toBeGreaterThanOrEqual(ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING);
+  });
 });
 
 describe("admin-390-offender-roster (DEC-851 amendment, wave 27)", () => {

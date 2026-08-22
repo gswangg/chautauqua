@@ -217,8 +217,8 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // diff `auditFiles()`/`ALL_ROWS` against the last-known-good list to find
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
-const AUDIT_FILE_FLOOR = 107;
-const TOKEN_ROW_FLOOR = 160;
+const AUDIT_FILE_FLOOR = 110;
+const TOKEN_ROW_FLOOR = 178;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 15,
   table: 44,
@@ -472,5 +472,39 @@ describe('open-divergence ledger negative controls (DEC-099: every scan ships on
     const lines = ['## DIVERGES 1 -- fixed', '', 'Ruled by DEC-100.', '', '## end'];
     const rows = deriveRowsFromLines('synthetic.md', lines);
     expect(rows.every((r) => r.adjudicated)).toBe(true);
+  });
+
+  // Two-sided companions for the two monotone-UPWARD vacuity floors
+  // (DEC-808 wave-28 amendment, clause a), appended when both names were
+  // registered in OUT_OF_CAMPAIGN_SCOPE and so entered
+  // test/campaign-ratchet-two-sided.scan.test.ts's derived population. Each
+  // floor already carries its FALL direction (the enumerator must still reach
+  // at least this many files/rows). What was missing is the STALENESS
+  // direction, and for a floor that is exactly the phone/desktop frame
+  // ledgers' own CLAIMED_FLOOR shape: a floor left behind by a corpus that
+  // has grown past it guards less every wave -- a stale floor licenses
+  // stagnation -- so it is RAISED to the measurement in the same commit that
+  // grows the corpus, and the throw names the exact replacement line.
+  it(`AUDIT_FILE_FLOOR (${AUDIT_FILE_FLOOR}) is not stale below the enumerated audit-file count (a stale floor licenses stagnation)`, () => {
+    const files = auditFiles();
+    if (files.length > AUDIT_FILE_FLOOR) {
+      throw new Error(
+        `The enumerator reaches ${files.length} audit files, above the floor of ${AUDIT_FILE_FLOOR}. ` +
+          `This is the guard working: the corpus grew. Raise the floor in the same commit by ` +
+          `replacing the line:\n  const AUDIT_FILE_FLOOR = ${files.length};`
+      );
+    }
+    expect(files.length).toBeLessThanOrEqual(AUDIT_FILE_FLOOR);
+  });
+
+  it(`TOKEN_ROW_FLOOR (${TOKEN_ROW_FLOOR}) is not stale below the enumerated DIVERGES-token row count (a stale floor licenses stagnation)`, () => {
+    if (ALL_ROWS.length > TOKEN_ROW_FLOOR) {
+      throw new Error(
+        `The enumerator opens ${ALL_ROWS.length} DIVERGES-token rows, above the floor of ${TOKEN_ROW_FLOOR}. ` +
+          `This is the guard working: the corpus grew. Raise the floor in the same commit by ` +
+          `replacing the line:\n  const TOKEN_ROW_FLOOR = ${ALL_ROWS.length};`
+      );
+    }
+    expect(ALL_ROWS.length).toBeLessThanOrEqual(TOKEN_ROW_FLOOR);
   });
 });

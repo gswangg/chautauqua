@@ -219,4 +219,24 @@ describe('role label spelling ledger (DEC-613 wave-27 amendment)', () => {
     }
     expect(offenders.length).toBeGreaterThanOrEqual(0);
   });
+
+  // Two-sided companion (DEC-808 wave-28 amendment, clause b), appended when
+  // this constant was registered in CAMPAIGN_CONSTANT_NAMES and so entered
+  // test/campaign-ratchet-two-sided.scan.test.ts's derived population. The
+  // `it` above states the staleness rule in prose but lands on
+  // `toBeGreaterThanOrEqual(0)`, which is unfalsifiable and is exactly the
+  // escape route DEC-808 clause (1) forbids. This states the BELOW direction
+  // against the CONSTANT, in the throw-message idiom that names the exact
+  // replacement line, and is appended rather than edited into the `it` above.
+  it(`ROLE_LABEL_SPELLING_CEILING (${ROLE_LABEL_SPELLING_CEILING}) is measured against the constant, not against zero (BELOW direction)`, () => {
+    const offenders = [...findOffenders(APP_SRC_ROOT), ...findOffenders(SRC_ROUTES_ROOT)];
+    if (offenders.length < ROLE_LABEL_SPELLING_CEILING) {
+      throw new Error(
+        `Measured ${offenders.length} capitalised American display-position offenders, below the declared ` +
+          `ceiling. A ratchet may only be LOWERED; replace the line:\n` +
+          `  const ROLE_LABEL_SPELLING_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(ROLE_LABEL_SPELLING_CEILING);
+  });
 });

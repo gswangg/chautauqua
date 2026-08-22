@@ -48,8 +48,14 @@ describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.htm
   });
 
   it("card email/password inputs take the frame's 50px min-height", () => {
+    // `[^{]*` (not `\s*`) between the password selector and the `{`: DEC-995
+    // wave-26 appended a third member, `.chq-auth-card .chq-input`, to this
+    // same selector group so the phone drawn-floor scan's class-token join
+    // (test/frame-control-floor.scan.test.ts) can see the 50px rule at all.
+    // The geometry this `it` names is unchanged; only the group grew, so the
+    // pin tolerates further members while still refusing to cross a `{`.
     expect(combined).toMatch(
-      /\.chq-auth-card input\[type=email\],\s*\n\s*\.chq-auth-card input\[type=password\]\s*\{[^}]*min-height:\s*50px/,
+      /\.chq-auth-card input\[type=email\],\s*\n\s*\.chq-auth-card input\[type=password\][^{]*\{[^}]*min-height:\s*50px/,
     );
   });
 

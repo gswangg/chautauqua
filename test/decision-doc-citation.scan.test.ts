@@ -785,7 +785,17 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // `path:line` fragments the FIVE-refusal-grammar paragraph had accumulated
 // as its own citations misread each other's neighbouring quote. Re-measured
 // 1234 by re-running this scan on the repaired tree.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1234;
+// Wave-28 merge train (thunderdome medic): re-measured 1233. Lane v12m-w26-c
+// measured 1234 on a worktree that did not yet contain v12m-w24-g's Comms
+// compose field-label repair (8fa3c9894), which inserted 14 lines into
+// app/src/pages/comms/ComposeWizard.tsx. That shift moved line 496 from
+// `return ids.length > 0 ? ids : null;` to
+// `const end = el?.selectionEnd ?? bodyText.length;`, which contains the
+// substring `body` that decisions/DEC-817.md:24's line-keyed
+// `ComposeWizard.tsx:496` citation quotes -- so exactly one violation healed
+// on integrated main (verified: 1 resolved, 0 new). A ratchet may only be
+// LOWERED, and this is a lowering.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1233;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {

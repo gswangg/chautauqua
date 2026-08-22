@@ -75,8 +75,8 @@ independent:
   `{{` -- a templated/repeated list-row VALUE this join's four static
   call-site shapes cannot resolve to one component instance no matter how
   the label is spelled.
-- **DIVERGES** otherwise -- the join had a definite static call-site shape
-  to check against and found none carrying this exact text.
+- **DIVERGES** (DEC-180) otherwise -- the join had a definite static
+  call-site shape to check against and found none carrying this exact text.
 
 Measured totals: **100 matches / 73 diverges / 2 unresolved** (partitions
 the 175-row population exactly).
@@ -140,11 +140,14 @@ the instrument (DEC-613). Representative samples, by file:
   strip, not real form fields with a `FormRow`/`SettingsField` call site --
   a known shape of this join's population (a caption that happens to sit
   near an input-shaped box is drawn into the population honestly, and
-  grades DIVERGES honestly, rather than being excluded by an allowlist).
+  grades DIVERGES honestly under DEC-180, rather than being excluded by an
+  allowlist).
 
 ## Adjudications
 
-- **No row here is repaired by this lane.** DIVERGES is the correct grade
+- **No row here is repaired by this lane** (DEC-180 wave-24 amendment: a
+  lane that both widens a population and drains it can always drain by
+  narrowing). DIVERGES is the correct grade
   for every row above under this join's grammar, including rows where the
   underlying UI is arguably fine (e.g. a states-legend word that the app
   never needs to render verbatim as a form field) -- this instrument
@@ -155,7 +158,7 @@ the instrument (DEC-613). Representative samples, by file:
   task names one algorithmic exception to the plain exact-match join (the
   shared ` · optional` suffix); no other fuzzy-matching tier is applied.
   A label that differs from its call site by anything other than that one
-  suffix grades DIVERGES, never a near-miss MATCH.
+  suffix grades DIVERGES, never a near-miss MATCH (DEC-180).
 - **UNRESOLVED's reason is structural, not an allowlist.** Both UNRESOLVED
   rows are flagged by the SAME machine-derivable signal (the adjacent
   input-shaped box itself contains `{{`), not by a per-row exemption
@@ -164,17 +167,18 @@ the instrument (DEC-613). Representative samples, by file:
 
 ## Megabatch merge note (Thunderdome)
 
-Two in-flight lanes this wave repair rows counted here; their landing is
-**expected**, not a surprising post-merge red:
+Two sibling lanes this wave repaired rows counted here. Both have LANDED;
+this section records what they closed, as a fact about the past:
 
-- **v12m-w24-e** (Settings `'Event name'`/`'Starts'`/`'Ends'`): repairs
-  the `Event name` DIVERGES rows at `Chautauqua Settings.dc.html:735` and
-  `:1249` (both desktop) among this ledger's 73.
-- **v12m-w24-g** (Comms `'From which plan'`): repairs the `From which
-  plan` DIVERGES row at `Chautauqua Comms.dc.html:102` (desktop) among
-  this ledger's 73.
+- **v12m-w24-e** (DEC-180; Settings `'Event name'`/`'Starts'`/`'Ends'`):
+  repaired the `Event name` DIVERGES rows at
+  `Chautauqua Settings.dc.html:735` and `:1249` (both desktop) among this
+  ledger's original 73.
+- **v12m-w24-g** (DEC-613; Comms `'From which plan'`): repaired the
+  `From which plan` DIVERGES row at `Chautauqua Comms.dc.html:102`
+  (desktop) among this ledger's original 73.
 
-When those lanes land, `FRAME_FIELD_LABEL_DIVERGENCE_CEILING` (currently
-73) will read below its ceiling and must be LOWERED in the same commit
-that lands the fix (or the merge-train's re-measure), per this file's own
-two-sided ratchet discipline -- never left stale.
+On integrated main the count re-measured **71**, and
+`FRAME_FIELD_LABEL_DIVERGENCE_CEILING` was LOWERED 73 -> 71 in the
+merge-train's own re-measure commit, per this file's two-sided ratchet
+discipline -- never left stale.

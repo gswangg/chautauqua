@@ -98,8 +98,10 @@ disjointness rules below (88 raw candidates → 62 population).
   - `Chautauqua Content.dc.html:406` "Notes on the slides" —
     `` Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()} ``
     (`app/src/pages/content/DeliverableDetail.tsx:595`).
-- **DIVERGES**: 1 — a real, unfixed product gap, recorded here rather than
-  fixed in this lane (this lane MEASURES AND RATCHETS ONLY):
+- **DIVERGES**: 1 — a real, unfixed product gap, adjudicated under DEC-976
+  as RECORDED-not-repaired and held at its own ceiling
+  (`FRAME_EYEBROW_DIVERGENCE_CEILING = 1`, which may only be lowered), since
+  this lane MEASURES AND RATCHETS ONLY:
   - `Chautauqua Comms.dc.html:303` "Insert a field · open" — the frame
     draws this as a static header row above the merge-field list panel
     when the panel is open. `app/src/pages/comms/InsertFieldMenu.tsx`
@@ -109,7 +111,8 @@ disjointness rules below (88 raw candidates → 62 population).
     item list. The frame's caption is not reproduced anywhere in source.
 
 MATCHED + UNRESOLVED + DIVERGES = 43 + 18 + 1 = 62 = population, asserted
-directly in the test suite.
+directly in the test suite (DEC-976: the partition is exact, so no row can
+drop out of the population unnoticed).
 
 ## Ratchets
 
