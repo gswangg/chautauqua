@@ -37,7 +37,7 @@ export const DEC_659 = "A scope row carries its own LABEL from the server: GET /
 export const DEC_660 = "Amendment (wave 23): MAX_EMAIL_TEMPLATES_PER_EVENT = 50: the template mint door gets the cap every documented sibling already has";
 export const DEC_661 = "Every public surface has a guessable root: /e/:slug and /embed/:slug redirect to the sessions surface, and an unknown slug 404s rather than redirecting into one";
 export const DEC_662 = "The onboarding grid's per-cell affordance is CONDITIONAL and QUIET; a progress row names the person, not their inbox; and the roster's create actions live on the page's one action row";
-export const DEC_663 = "Amendment (wave 8): An import receipt counts CONTACTS, not CSV lines";
+export const DEC_663 = "Wave-34 amendment: a static mockup's `<a href=\"#\">` is a control TREATMENT, not an element type";
 export const DEC_664 = "One reporter for every send: the SPA renders every reminder/send outcome through a single describeSendResult that must account for every intended recipient";
 export const DEC_665 = "A surface never asserts a fact it has not yet measured, and a worklist opens on a view that can hold work";
 export const DEC_666 = "An internal shorthand is not public prose: a session with no room renders \"To be announced\" from one exported label, while the JSON/ICS payloads keep room null";
@@ -303,7 +303,7 @@ export const DEC_925 = "One count-phrase helper: a printed number and its noun a
 export const DEC_926 = "Amendment (wave 135): A repoint across a partial-unique link deletes the row before it re-links, never after";
 export const DEC_927 = "The speaker portal's round-trip count is independent of its row count: a chain read carries its own version numbers, a home read is set-based";
 export const DEC_928 = "The deliverable kind an organizer picks IS the file-kind enumeration -- imported, ordered, exhaustive";
-export const DEC_929 = "Deleting an evaluation plan freezes server-side once any evaluation exists, through the same predicate the criteria freeze uses";
+export const DEC_929 = "Wave-34 amendment: DESIGN-RULINGS A9's delete freeze is keyed on a LANDED review, never on a draft row — and a refusal may not name a door that does not exist";
 export const DEC_930 = "Amendment (wave-16 r5): one conjunction, one caption — the phone strip's caption is the survivor and the desktop builder's caption stands down at 390";
 export const DEC_931 = "A refused delete names the rows that refuse it, and finds every one of them in ONE query";
 export const DEC_932 = "Every active accepted speaker holds an assignment for EVERY task the event owns: activation BACK-FILLS, it never snapshots";

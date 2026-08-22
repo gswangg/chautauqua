@@ -23,7 +23,7 @@ export const DEC_017 = "Wave-3 schema additions in one migration; legacy track c
 export const DEC_018 = "Amendment (wave 102): the per-criterion TYPE control is a real select, and the editable criterion row grows to the frame's SIXTH track — the desktop frames demand it, so this is not a frozen-desktop violation";
 export const DEC_019 = "Deliberate-notify compose pipeline: recipients, atomic preview, 100-cap, feedback attach";
 export const DEC_020 = "File pipeline: upload validation, version chains, authenticated serving, comments, approval";
-export const DEC_021 = "Agenda API and drag-drop UI contract; slot writes bump ics_sequence";
+export const DEC_021 = "Wave-34 amendment: a clamp is an interval operation, not two independent bounds";
 export const DEC_022 = "Public surfaces: single query gate, SSR + embeds, itinerary .ics, stage-1 cache headers";
 export const DEC_023 = "Onboarding grid API, task CRUD, and due-date reminder cron";
 export const DEC_024 = "Amendment (wave 22): a route is NEVER_PUBLIC only if NO cached public surface reads what it writes — /forms/* and /fields/* fail that test, and the classification scan must grade WHICH list, not merely that a route is in one";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "Amendment (wave 31): a divergence ledger keyed on one literal token measures the token, not the divergences — 28 of 107 audit files carry divergence prose and contribute zero rows";
+export const DEC_099 = "Wave-34 amendment: a verdict sentence names its own authority; an instrument's own constant is adjudicated in place; a lane token carries its ruling on the same line";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
