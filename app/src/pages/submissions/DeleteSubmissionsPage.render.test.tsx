@@ -187,7 +187,7 @@ describe('DeleteSubmissionsPage', () => {
     // DEC-941 (wave 134 amendment): the primary is armed by a typed phrase
     // in the page's own footer, not a stacked ConfirmDialog.
     expect(deleteBtn).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Type "delete sessions" to confirm'), {
+    fireEvent.change(screen.getByLabelText('Type the phrase to confirm'), {
       target: { value: 'delete sessions' },
     });
     expect(deleteBtn).not.toBeDisabled();
@@ -240,7 +240,7 @@ describe('DeleteSubmissionsPage', () => {
     });
 
     const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
-    const armInput = screen.getByLabelText('Type "delete sessions" to confirm');
+    const armInput = screen.getByLabelText('Type the phrase to confirm');
     expect(deleteBtn).toBeDisabled();
 
     fireEvent.change(armInput, { target: { value: 'wrong phrase' } });
@@ -289,7 +289,7 @@ describe('DeleteSubmissionsPage', () => {
     });
 
     const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
-    const armInput = screen.getByLabelText('Type "delete sessions" to confirm') as HTMLInputElement;
+    const armInput = screen.getByLabelText('Type the phrase to confirm') as HTMLInputElement;
     expect(armInput).not.toHaveAttribute('maxlength');
     expect(deleteBtn).toBeDisabled();
 

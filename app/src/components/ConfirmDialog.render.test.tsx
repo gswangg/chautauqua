@@ -85,6 +85,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker slides"
+          confirmNoun="file name"
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
         />,
@@ -107,6 +108,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker Slides"
+          confirmNoun="file name"
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
         />,
@@ -124,6 +126,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker slides"
+          confirmNoun="file name"
           onConfirm={vi.fn()}
           onCancel={onCancel}
         />,
@@ -133,6 +136,46 @@ describe('ConfirmDialog', () => {
       expect(cancelBtn).not.toBeDisabled();
       fireEvent.click(cancelBtn);
       expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    // DEC-613 wave-32 amendment: Chautauqua Settings.dc.html:1429 draws a
+    // GENERIC instruction label ("Type the file name to confirm") with the
+    // object's own name as muted content inside the value box beneath it --
+    // the label states the instruction, the phrase to type lives in the box
+    // (the placeholder), never composed into the label text itself.
+    it('renders a generic instruction label, with the phrase to type only in the box below', () => {
+      render(
+        <ConfirmDialog
+          title="Delete this resource?"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase="Speaker slides"
+          confirmNoun="file name"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('Type the file name to confirm')).toBeInTheDocument();
+      expect(screen.queryByText(/Speaker slides/)).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Speaker slides')).toBeInTheDocument();
+    });
+
+    it('throws when the irreversible weight has no confirmNoun', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ConfirmDialog
+            title="Delete this resource?"
+            confirmLabel="Delete resource"
+            weight="irreversible"
+            confirmPhrase="Speaker slides"
+            onConfirm={vi.fn()}
+            onCancel={vi.fn()}
+          />,
+        ),
+      ).toThrow(/confirmNoun/);
+      consoleError.mockRestore();
     });
 
     it('throws when the irreversible weight has no confirmPhrase', () => {

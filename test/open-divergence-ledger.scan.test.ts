@@ -296,8 +296,21 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // tree, which is higher than either side's -- w31-f's own reasoning is
 // unchanged and still applies, only its arithmetic was superseded by the
 // larger corpus it landed into.
+//
+// Wave-32 amendment (task w32-f): TOKEN_ROW_FLOOR fell by 2 after
+// confirming which rows disappeared, per this comment's own instruction --
+// docs/design/audit/drawn-field-label-v12.md's four adopted rows (Contacts
+// "Message", Submissions "Options · one per line", Settings "Type the file
+// name to confirm", Comms "From which plan") moved from HARDCODED-DIVERGES
+// to HARDCODED-MATCHES, removing their DIVERGES-token table cells; two new
+// DIVERGES-token mentions were added elsewhere in the same file's prose
+// (net -2, verified: `grep -c DIVERGES` on that one file moved 10 -> 8, no
+// other audit file changed). w32-f measured 118/187 on its own smaller
+// base; the megabatch carries the fall forward onto the wave-31 corpus
+// (120 audit files, 246 -> 244 token rows), the audit-file floor being
+// untouched because w32-f added and deleted no audit document.
 const AUDIT_FILE_FLOOR = 120;
-const TOKEN_ROW_FLOOR = 246;
+const TOKEN_ROW_FLOOR = 244;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 34,
   table: 72,

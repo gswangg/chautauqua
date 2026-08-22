@@ -447,6 +447,7 @@ export function MergePage() {
                   ? `${soleDiscard.firstName} ${soleDiscard.lastName}`
                   : discardedContacts.map((c) => `${c.firstName} ${c.lastName}`).join(', ')
               }
+              confirmNoun="name"
               pending={busy}
               onConfirm={doMerge}
               onCancel={() => setConfirmOpen(false)}

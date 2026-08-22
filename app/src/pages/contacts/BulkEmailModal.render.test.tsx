@@ -44,7 +44,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     fireEvent.change(screen.getByLabelText(/Template/), { target: { value: 'tpl1' } });
 
     const subjectInput = screen.getByLabelText('Subject') as HTMLInputElement;
-    const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;
+    const bodyInput = screen.getByLabelText('Message') as HTMLTextAreaElement;
     await waitFor(() => {
       expect(subjectInput.value).toBe('Hi {speaker_name}');
     });
@@ -99,7 +99,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi all' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     expect(await screen.findByText(/2 emails will send now/)).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     await screen.findByText('ada@example.com');
@@ -156,7 +156,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     await waitFor(() => {
@@ -200,7 +200,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     await waitFor(() => {
@@ -247,7 +247,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     const subjectInput = (await screen.findByLabelText('Subject')) as HTMLInputElement;
-    const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;
+    const bodyInput = screen.getByLabelText('Message') as HTMLTextAreaElement;
 
     expect(subjectInput.placeholder).not.toMatch(/\{first_name\}/);
     expect(bodyInput.placeholder).not.toMatch(/\{first_name\}/);
@@ -326,7 +326,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     expect(await screen.findByText('Ada Lovelace is missing {talk_title}')).toBeInTheDocument();
@@ -364,7 +364,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     expect(await screen.findByText('Ada Lovelace is missing {talk_title}')).toBeInTheDocument();
@@ -395,7 +395,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     const subjectInput = await screen.findByLabelText('Subject');
@@ -432,7 +432,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
-    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Body' } });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     expect(await screen.findByText('eventId: required')).toBeInTheDocument();

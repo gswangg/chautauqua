@@ -22,6 +22,13 @@ import {
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../lib/text-caps';
 import { MAX_FIELD_OPTIONS } from '../../lib/batch-caps';
+import { DEC_613 } from '../../../../src/decisions';
+
+// DEC-613 wave-32 amendment: adopted the frame's drawn "Options · one per
+// line" field label (Chautauqua Submissions.dc.html:693, the pack's own
+// middle-dot composition convention) in place of the parenthetical
+// "Options (one per line)".
+void DEC_613;
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -262,7 +269,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
         )}
 
         {kind === 'dropdown' && (
-          <FormRow label="Options (one per line)" htmlFor="field-options" optional>
+          <FormRow label="Options · one per line" htmlFor="field-options" optional>
             <textarea
               id="field-options"
               className="chq-textarea"
