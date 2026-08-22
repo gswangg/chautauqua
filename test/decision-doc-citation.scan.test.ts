@@ -795,7 +795,15 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // `ComposeWizard.tsx:496` citation quotes -- so exactly one violation healed
 // on integrated main (verified: 1 resolved, 0 new). A ratchet may only be
 // LOWERED, and this is a lowering.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1233;
+// Lowered 1233 -> 1228 (custodian decomposition of scripts/exit-predicate.ts,
+// contention-hotspot split): decisions/DEC-068.md, DEC-069.md and DEC-099.md
+// repointed their `scripts/exit-predicate.ts:<line>` citations at the module
+// the cited construct actually moved to
+// (scripts/exit-predicate/log-sections.ts), closing 5 citations that would
+// otherwise have gone stale from the split (net -5 from the split itself)
+// plus repairing 5 more pre-existing drifted citations discovered while
+// doing so.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1228;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
