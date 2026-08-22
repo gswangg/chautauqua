@@ -207,6 +207,50 @@ on screen ... so minting one here would be a control invented to fill the
 band — the exact thing DEC-576's wave-110 amendment forbids ('a second
 control is never manufactured just to fill the band')."
 
+---
+
+## Request verdicts (wave 28)
+
+MEASUREMENT ONLY (task w28-e, DEC-976 wave-28 amendment) — companion to
+`test/portal-phone-frames.test.ts`'s CSS-text scan (which issues zero
+requests and pins `PORTAL_CSS`'s text, so it cannot see markup at all).
+Before writing a new render test, this lane checked for an existing one:
+`test/portal-390-frame-verdicts.test.ts` (task w14-sd, already committed on
+`main`) already dispatches real `app.request()` calls against `/portal`,
+`/portal/tasks`, and `/portal/profile` and asserts H1/back-link/dock/
+section structure in frame order — the three "Portal SSR 390 per-frame
+render verdicts" entries above are its findings. That file is the
+already-built companion for the bulk of this brief and is NOT duplicated
+here. `test/portal-phone-frames.render.test.ts` (new, this task) isolates
+the four assertion classes this task's brief names as their own directly
+citable population — exactly-one-`<h1>` with text equality against the
+frame's literal, dock-band cardinality (zero on the landing frame, one on
+each drill frame), back-link presence on the two drill frames, and full
+static control-label coverage — and surfaces two findings the order-only
+checks above do not name:
+
+1. **"Speaker portal" (:414-472) H1 literal, DIVERGES (new).** The frame's
+   hero (:420, `Two things to do`) spells its count in words. The route's
+   H1 (`src/routes/portal/index.tsx`) composes the same copy through
+   `src/domain/count-copy.ts`'s `countOf` (DEC-925, the one count-phrase
+   helper for the whole codebase), which always renders a numeral — with
+   this task's 2-pending-task fixture the real text is `2 things to do`,
+   not byte-equal to the frame's spelled-out `Two`. Read as illustrative
+   mockup copy, not a literal requirement (DEC-925's helper is used
+   uniformly across the tree and a numeral-vs-word difference is not a
+   markup or geometry defect) — flagged for the planner in case a future
+   ruling wants the frame's exact wording enforced instead.
+
+2. **"Portal · Your profile" (:531-559) headshot control label, DIVERGES
+   (new).** The frame draws a bordered pill labelled `Replace` at :541 for
+   the headshot slot. `src/routes/portal/profile.tsx`'s empty-headshot
+   state (this task's fixture has no `headshotUrl`) renders a plain
+   `<label>Upload a new headshot<input type="file" ...></label>` instead —
+   `Replace` renders nowhere in the body. Not previously named in this
+   file's DEC-576/wave-16 entries (which cover the H1 and the dock's
+   missing Cancel only); recorded here as a control-shape gap for the
+   planner, not fixed by this lane.
+
 ## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
 
 The frame (:1554-1580) draws: back link, H1 "Resources", subtitle "The same
