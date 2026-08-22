@@ -140,7 +140,7 @@ for those three rows.
 - **"Docs · an article" (Chautauqua Docs.dc.html:166, GET
   /docs/reviewing-start-to-finish)** — MATCHES on the phone toolbar ("‹
   Docs" back link + "Contents" disclosure toggle, already built per
-  DEC-990 wave-128 and cited at `src/routes/docs-site.tsx:488-508`), the
+  DEC-990 wave-128 and cited at `src/routes/docs-site.tsx`), the
   article-head anatomy (eyebrow span, H1, standfirst paragraph), and a
   rendered `<h2 class="chq-docs-h2">` heading block. The frame's own H1
   text ("Triaging submissions") and body copy are illustrative mockup
