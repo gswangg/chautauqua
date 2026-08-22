@@ -32,6 +32,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -43,10 +44,6 @@ const SPA_ROOT = join(HERE, 'styles.css');
 /** The SSR stylesheet root -- src/views/theme.ts's THEME_CSS (DEC-371), one
  * inlined string shared by every SSR surface. */
 const SSR_ROOT = join(SRC_DIR, 'views', 'theme.ts');
-
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** THEME_CSS's own text, so the SSR root is read as CSS rather than as TS. */
 function themeCssText(): string {

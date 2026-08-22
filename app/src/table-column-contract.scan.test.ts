@@ -38,6 +38,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -66,10 +67,6 @@ function allCssFiles(root: string): string[] {
 const TSX_FILES = allTsxFiles(HERE);
 const CSS_FILES = allCssFiles(HERE);
 const CSS_TEXTS = CSS_FILES.map((path) => ({ path, css: readFileSync(path, 'utf-8') }));
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Strips every @media block (top-level-only parsing, per house idiom). */
 function stripMedia(css: string): string {

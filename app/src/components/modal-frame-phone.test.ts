@@ -19,6 +19,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ModalFrame } from './ModalFrame';
+import { stripCssComments as stripComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLES_CSS = readFileSync(join(HERE, '../styles.css'), 'utf-8');
@@ -26,10 +27,6 @@ const MODAL_FRAME_CSS = readFileSync(join(HERE, './modal-frame.css'), 'utf-8');
 
 /** Comments stripped before any brace scanning -- a literal `{`/`}` inside
  * one would desynchronise a naive scan (mirrors contacts-phone-frames.test.ts). */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`,
  * brace-matched so a nested rule can never end the block early. */
 function phoneLayer(css: string): string {

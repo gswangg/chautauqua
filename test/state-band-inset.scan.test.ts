@@ -30,13 +30,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments as stripComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 const CSS_PATH = join(REPO_ROOT, "app/src/pages/review/review.css");
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
 
 function findRule(css: string, selector: string): string {
   // Selector text may contain regex-special characters (., -) -- escape them.

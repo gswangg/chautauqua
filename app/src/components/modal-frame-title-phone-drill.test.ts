@@ -34,16 +34,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const MODAL_FRAME_CSS = readFileSync(join(HERE, './modal-frame.css'), 'utf-8');
 const STYLES_CSS = readFileSync(join(HERE, '../styles.css'), 'utf-8');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Contacts.dc.html');
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Concatenated bodies of every `@media (max-width: …)` block in `css`,
  * brace-matched so a nested rule can never end the block early. Copied

@@ -96,6 +96,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -142,10 +143,6 @@ interface RawRule {
 }
 
 /** Strip /* *\/ comments so no prose match ever masquerades as a rule. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 /** Parse "prop: value; prop2: value2" into a lower-cased-key map. */
 function parseDecl(body: string): Decl {
   const out: Decl = {};

@@ -69,6 +69,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_808, DEC_991 } from '../../src/decisions';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 void DEC_393; // this scan's whole reason to exist: the wave-121 companion-gap amendment
 void DEC_808; // population is enumerated (readdirSync), never a hand-listed manifest
@@ -111,14 +112,6 @@ export function cssModuleFiles(root: string): string[] {
 export function extractCssTsLiteral(raw: string): string {
   const literals = [...raw.matchAll(/`([\s\S]*?)`/g)].map((m) => m[1] ?? '');
   return literals.join('\n').replace(/\$\{[^}]*\}/g, '');
-}
-
-/** Strips `/*...*\/` comments, neutralising any `{`/`}` INSIDE a comment first (without
- * changing length) so later brace-matching never desyncs on a comment's own literal braces --
- * the anchor-floor.ts repair this task's description points at (v12m-w9-k). */
-export function stripComments(text: string): string {
-  const sanitized = text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[{}]/g, '·'));
-  return sanitized.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 export interface ParsedRule {
@@ -188,11 +181,11 @@ function loadSources(): Source[] {
   const cssTsFiles = cssModuleFiles(SRC_ROOT);
   const sources: Source[] = [];
   for (const abs of appCssFiles) {
-    sources.push({ label: relative(REPO_ROOT, abs), css: stripComments(readFileSync(abs, 'utf-8')) });
+    sources.push({ label: relative(REPO_ROOT, abs), css: stripCssComments(readFileSync(abs, 'utf-8')) });
   }
   for (const abs of cssTsFiles) {
     const raw = readFileSync(abs, 'utf-8');
-    sources.push({ label: relative(REPO_ROOT, abs), css: stripComments(extractCssTsLiteral(raw)) });
+    sources.push({ label: relative(REPO_ROOT, abs), css: stripCssComments(extractCssTsLiteral(raw)) });
   }
   return sources;
 }
