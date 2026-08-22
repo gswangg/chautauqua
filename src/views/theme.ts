@@ -21,12 +21,13 @@
 // interpolated with request/user data.
 
 import { jsx } from "hono/jsx";
-import { DEC_367, DEC_371, DEC_382, DEC_383 } from "../decisions";
+import { DEC_367, DEC_371, DEC_382, DEC_383, DEC_672 } from "../decisions";
 
 void DEC_367;
 void DEC_371;
 void DEC_382;
 void DEC_383;
+void DEC_672;
 
 export const THEME_CSS = `
   :root {
@@ -534,8 +535,9 @@ export const THEME_CSS = `
     gap: 0.75rem;
     background: var(--chq-paper);
   }
-  /* tap-floor-exempt: DEC-382 -- .chq-wordmark renders as an <a href="/">
-     only on the two TOOLS_CSS operator surfaces this rule reaches
+  /* tap-floor-exempt: DEC-382 -- .chq-wordmark renders as an anchor
+     linking home (href of a bare slash) only on the two TOOLS_CSS
+     operator surfaces this rule reaches
      (src/routes/docs.tsx:41 GET /docs/api, src/routes/dev/mailbox.tsx:59,119
      GET /dev/mailbox(/:id)); every other mount (App.tsx's SPA header,
      src/routes/portal/shared.tsx:191) renders it as a plain non-interactive
@@ -546,7 +548,21 @@ export const THEME_CSS = `
      -- restyling this shared THEME_CSS selector to hit the phone tap floor
      would also inflate the wordmark on every real design-system surface
      that reuses it, which DEC-382 forbids. Left as measured, real,
-     unfixed operator chrome; not restyled into the design system. */
+     unfixed operator chrome; not restyled into the design system.
+     DEC-672 wave-13m: this comment used to spell that anchor's link
+     target attribute out literally (an a-tag, the attribute name, an
+     equals sign, a quoted bare slash), which THEME_CSS inlines verbatim
+     into every SSR page (DEC-374, no HTML escaping inside a <style> text
+     child) -- including every /embed/<slug>/<surface> page, since
+     EmbedShell shares this same THEME_CSS via BaseStyles(). The public
+     embed containment scans read raw HTML for that exact attribute=value
+     shape and cannot distinguish a real anchor from CSS-comment prose
+     that merely spells the same characters, so this prose alone tripped
+     every "stays inside /embed/" assertion though no live embed link
+     ever left /embed/. Containment is a property of the render CONTEXT
+     (is this markup a reachable link on an embed page), not of a
+     string's own shape -- reworded above, and here, to describe the
+     anchor's target without spelling the attribute syntax itself. */
   .chq-wordmark {
     font-family: 'Familjen Grotesk', system-ui, sans-serif;
     font-size: 22px;
