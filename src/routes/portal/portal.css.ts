@@ -237,17 +237,36 @@ export const PORTAL_CSS = `
   /* DEC-747 (findings wave 7 amendment): the read-only banner on
      /portal/preview. Reads as a standing notice, not a transient alert --
      a tinted rule-bordered strip above the previewed content, so an
-     organizer can never mistake the preview for a speaker's own portal. */
+     organizer can never mistake the preview for a speaker's own portal.
+     DEC-902 wave-20 amendment (task w20-g): the frame (Chautauqua Public
+     and Portal.dc.html:1490) draws its settings-return link INSIDE this
+     card, right-aligned beside its two sentences -- a flex row, not a bare
+     paragraph. The card is now the flex container; .chq-portal-preview-
+     banner-text carries the two-sentence copy and .chq-portal-preview-
+     banner-link right-aligns the link within it, both built from this
+     sheet's own tokens (DEC-996: never the frame's inline literals). */
   .chq-portal-preview-banner {
     margin: 0 0 16px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: 1px solid var(--chq-border);
     border-left: 3px solid var(--chq-accent, var(--chq-ink));
     border-radius: 6px;
     background: var(--chq-surface-2, transparent);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .chq-portal-preview-banner-text {
     font-size: 13px;
     line-height: 1.5;
     color: var(--chq-muted);
+  }
+  .chq-portal-preview-banner-link {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
   }
   /* CNT-01: a task's instructions is a real brief, not a muted footnote --
      plain body ink (var(--chq-ink), the surface's default text colour),

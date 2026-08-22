@@ -441,7 +441,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
 // describe block reaches it off a REAL GET /portal/preview request (organizer
 // auth) through the SAME harness, never a second fake-db stack.
 describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html:1473, w9-re)", () => {
-  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: banner/back-link/meta-sentence order and the 'Not shown here' chip set both differ from the frame", async () => {
+  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: the Welcome lede's missing second sentence and the 'Not shown here' chip set differ from the frame; back-link placement and meta-sentence order now MATCH (DEC-902 wave-20, task w20-g)", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1473
     verbatimLine(
       1473,
@@ -452,12 +452,15 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // Structural anatomy MATCHES: read-only banner, Welcome hero + lede,
-    // Resources section (naming the fixture's one resource), Not-shown-here
-    // section, in that top-to-bottom order.
+    // Structural anatomy MATCHES: read-only banner (now carrying its own
+    // back link, DEC-902 wave-20), Welcome hero + lede, Resources section
+    // (naming the fixture's one resource), Not-shown-here section, in that
+    // top-to-bottom order.
     expectInOrder(html, [
       'class="chq-portal-preview-banner" role="note"',
       'Preview · read-only.',
+      'class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal"',
+      '‹ Back to settings',
       '<h1 class="chq-portal-hero">Welcome</h1>',
       '<p class="chq-portal-lede">Thanks for speaking at Arbitrary Con.</p>',
       'aria-label="Resources" class="chq-section"',
@@ -470,24 +473,26 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
       1490,
       `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
     );
-    // DIVERGES: the frame draws '‹ Back to settings' INSIDE the read-only
-    // banner card (margin-left:auto, same row as the two banner sentences,
-    // frame :1476-1490). The route instead renders it as a standalone link
-    // at the very BOTTOM of the page, after the "Not shown here" section --
-    // the banner paragraph (`.chq-portal-preview-banner`) carries no link at
-    // all.
+    // MATCHES (DEC-902 wave-20, task w20-g): the frame draws '‹ Back to
+    // settings' INSIDE the read-only banner card (margin-left:auto, same
+    // row as the two banner sentences, frame :1476-1490); the route now
+    // renders it inside the same `.chq-portal-preview-banner` element via
+    // `.chq-portal-preview-banner-link`, and there is no second, standalone
+    // copy anywhere else on the page.
     const bannerOpen = html.indexOf('class="chq-portal-preview-banner"');
-    const bannerClose = html.indexOf("</p>", bannerOpen);
-    expect(html.slice(bannerOpen, bannerClose)).not.toContain("Back to settings");
+    const bannerClose = html.indexOf("</div>", bannerOpen);
+    expect(html.slice(bannerOpen, bannerClose)).toContain("Back to settings");
     // Checked as an actual rendered <a class="..."> use, never a bare
     // substring -- the class token also appears inertly inside the page's
     // inlined <style> block and a nearby source comment (DEC-976's "a CSS
     // selector definition can't be mistaken for a rendered element" rule).
-    const backLinkAnchor = '<a class="chq-portal-standalone-link" href="/admin/settings?section=portal">';
+    const backLinkAnchor =
+      '<a class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal">';
     expect(html).toContain(backLinkAnchor + "‹ Back to settings</a>");
     const backLinkIdx = html.indexOf(backLinkAnchor);
     const notShownIdx = html.indexOf('aria-label="Not shown here"');
-    expect(backLinkIdx).toBeGreaterThan(notShownIdx);
+    expect(backLinkIdx).toBeLessThan(notShownIdx);
+    expect((html.match(/Back to settings/g) ?? []).length).toBe(1);
 
     // docs/design/Chautauqua Public and Portal.dc.html:1495
     verbatimLine(
@@ -497,7 +502,8 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
     // DIVERGES: the frame's Welcome lede is TWO sentences -- the stored
     // welcome message, then a fixed "Everything we need from you is on this
     // page, in order." The route renders only the stored message; no such
-    // fixed second sentence exists anywhere in preview.tsx.
+    // fixed second sentence exists anywhere in preview.tsx. (Out of this
+    // task's scope -- an in-flight lane owns the Welcome lede.)
     expect(html).not.toContain("Everything we need from you is on this page, in order.");
 
     // docs/design/Chautauqua Public and Portal.dc.html:1523
@@ -505,15 +511,15 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
       1523,
       `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
     );
-    // DIVERGES: the frame places this sentence at the very END of the
-    // page, trailing the "Not shown here" chips. The route renders the same
-    // sentence (verbatim) but much earlier -- immediately after the banner,
-    // before the Welcome h1 -- so it precedes the Resources/Not-shown-here
-    // sections the frame trails it with.
+    // MATCHES (DEC-902 wave-20, task w20-g): the frame places this sentence
+    // at the very END of the page, trailing the "Not shown here" chips.
+    // The route now renders the same sentence (verbatim) as the last child
+    // of that same section, after its chips -- no longer immediately after
+    // the banner.
     expect(html).toContain("To see a real speaker&#39;s portal you would have to be them — this preview deliberately cannot.");
-    const metaIdx = html.indexOf("To see a real speaker's portal you would have to be them");
-    const welcomeIdx = html.indexOf('<h1 class="chq-portal-hero">Welcome</h1>');
-    expect(metaIdx).toBeLessThan(welcomeIdx);
+    const metaIdx = html.indexOf("To see a real speaker&#39;s portal you would have to be them");
+    const chipsIdx = html.indexOf('chq-portal-not-shown-chip">Their uploaded files</li>');
+    expect(metaIdx).toBeGreaterThan(chipsIdx);
 
     // docs/design/Chautauqua Public and Portal.dc.html:1518-1521
     verbatimLine(
