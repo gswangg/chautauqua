@@ -93,6 +93,42 @@
 //
 // This file MEASURES AND RATCHETS ONLY -- it moves no product byte and no
 // CSS (the review.css repair is v12m-w31-a's own lane, not this one's).
+//
+// WAVE-35 AMENDMENT (DEC-725): the join above was a VERBATIM LITERAL MATCH
+// AGAINST EVERY WIDTH:390 FRAME EXTENT IN THE PACK, not scoped to the
+// hidden rule's own page or feature -- docs/design/audit/
+// phone-hidden-drawn-text-v12.md's own words for the gap this amendment
+// closes. Two changes:
+//
+//   (1) CLUSTER SCOPING (DEC-808, derived by name normalisation, never a
+//   hand list): a sheet under `app/src/pages/<cluster>/*` is joined only
+//   against `docs/design/Chautauqua <Cluster>.dc.html`'s own frame extents
+//   (title-cased directory name -> file name); an SSR sheet under
+//   `src/routes/public/**` or `src/routes/portal/**` is joined only against
+//   `Chautauqua Public and Portal.dc.html`; one under `src/routes/docs*`
+//   only against `Chautauqua Docs.dc.html`. Two kinds of sheet EXPLICITLY
+//   keep the old full-pack join rather than being silently narrowed: the
+//   shared roots (`app/src/styles.css`, `src/views/theme.ts`, asserted by
+//   name below) and any sheet whose derived cluster has no same-named frame
+//   file in the pack (`app/src/pages/forms/forms.css` has no `Chautauqua
+//   Forms.dc.html`; `src/routes/auth.css.ts` matches none of the three SSR
+//   prefixes) -- `scopeBlobsForSheet`'s `kind` field names which case fired
+//   so neither can happen by accident.
+//
+//   (2) TWIN DETECTION, reusing `phone-capability-removal.scan.test.ts`'s
+//   own precedent for this exact shape (its closed-row prose: `.chq-
+//   detail-back-full` was receipted "as a desktop twin: the SAME back
+//   link's phone label is `.chq-detail-back-short`") rather than writing a
+//   second copy of that judgment (DEC-613): a PREMISE-FALSE candidate
+//   additionally resolves to TWIN-RESOLVED when some OTHER `chq-` token
+//   that is NEVER phone-hidden anywhere in the tree carries the identical
+//   static text on the SAME cluster surface (derived by the same
+//   `clusterKeyForPath` normalisation cluster-scoping (1) above uses, so
+//   the two mechanisms share one population key, DEC-613) -- the frame's
+//   requirement is met by that still-visible twin, not by the element the
+//   rule hid. TWIN-RESOLVED rows are graded, recorded and counted in
+//   neither ratchet (DEC-180: a resolution is recorded, never a silent
+//   drop).
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -333,10 +369,85 @@ function matchingFrame(text: string, blobs: readonly FrameBlob[] = FRAME_BLOBS):
 }
 
 // ---------------------------------------------------------------------------
+// Cluster scoping (wave-35 amendment, DEC-725/DEC-808): a sheet's frame
+// join is narrowed to the ONE frame file its cluster owns, with an
+// explicit, asserted fallback to the full pack for shared roots and for
+// clusters the pack draws no same-named frame for. The SAME normalisation
+// (`clusterKeyForPath`) also keys twin-detection's "same phone surface"
+// test below, so the two amendments share one population key rather than
+// growing two private notions of "surface" (DEC-613).
+// ---------------------------------------------------------------------------
+
+const PAGES_PREFIX = 'app/src/pages/';
+
+/** The cluster key a REPO_ROOT-relative path belongs to, or `undefined` if
+ * the path names no cluster (a shared root, or a tree this ledger's
+ * mapping does not cover). Derived purely from the path string -- never a
+ * hand list (DEC-808). */
+export function clusterKeyForPath(relPath: string): string | undefined {
+  if (relPath.startsWith(PAGES_PREFIX)) {
+    const rest = relPath.slice(PAGES_PREFIX.length);
+    const firstSeg = rest.split('/')[0]!;
+    // A root-level file directly under app/src/pages (no cluster
+    // subdirectory, e.g. `Agenda.tsx` or `not-found.css`) still names its
+    // own cluster by its own base name (`Agenda.tsx` -> `agenda`, matching
+    // `app/src/pages/agenda/*`'s own key) -- this is what lets a TSX
+    // finding in the top-level page component join the same surface as its
+    // subcomponents' findings and its cluster's CSS sheet.
+    const base = firstSeg.includes('.') ? firstSeg.split('.')[0]! : firstSeg;
+    return base.toLowerCase();
+  }
+  if (relPath.startsWith('src/routes/public/') || relPath.startsWith('src/routes/portal/')) return 'public-portal';
+  if (relPath.startsWith('src/routes/docs')) return 'docs';
+  return undefined;
+}
+
+/** The `docs/design/*.dc.html` file name a cluster key's OWN frame would
+ * carry, were one to exist -- existence against the pack's real file list
+ * is checked by the caller (`scopeBlobsForSheet`), never assumed here. */
+function frameFileNameForClusterKey(key: string): string {
+  if (key === 'public-portal') return 'Chautauqua Public and Portal.dc.html';
+  if (key === 'docs') return 'Chautauqua Docs.dc.html';
+  return `Chautauqua ${key.charAt(0).toUpperCase()}${key.slice(1)}.dc.html`;
+}
+
+// Sheets whose join EXPLICITLY stays full-pack -- never narrowed, because
+// their rules are not owned by any one cluster's frame (asserted by name in
+// the non-vacuity section below, so a future shared root can't silently
+// inherit whichever behaviour this set's absence would produce).
+const SHARED_ROOT_SHEETS = new Set(['app/src/styles.css', 'src/views/theme.ts']);
+
+export interface SheetScope {
+  blobs: FrameBlob[];
+  kind: 'cluster' | 'shared-root' | 'no-frame-fallback';
+  frameFile: string | undefined;
+}
+
+/** The frame-extent population a CSS rule from `sheet` is graded against.
+ * Pure over its `allBlobs`/`knownFrameFiles` inputs so the non-vacuity
+ * section can drive it over synthetic fixtures without touching the real
+ * design pack. */
+export function scopeBlobsForSheet(
+  sheet: string,
+  allBlobs: readonly FrameBlob[],
+  knownFrameFiles: ReadonlySet<string>
+): SheetScope {
+  if (SHARED_ROOT_SHEETS.has(sheet)) {
+    return { blobs: [...allBlobs], kind: 'shared-root', frameFile: undefined };
+  }
+  const key = clusterKeyForPath(sheet);
+  const frameFile = key === undefined ? undefined : frameFileNameForClusterKey(key);
+  if (frameFile === undefined || !knownFrameFiles.has(frameFile)) {
+    return { blobs: [...allBlobs], kind: 'no-frame-fallback', frameFile: undefined };
+  }
+  return { blobs: allBlobs.filter((b) => b.fileName === frameFile), kind: 'cluster', frameFile };
+}
+
+// ---------------------------------------------------------------------------
 // Join: CSS rule -> chq- tokens -> TSX text findings -> frame extents.
 // ---------------------------------------------------------------------------
 
-export type Grade = 'PREMISE-FALSE' | 'UNVERIFIABLE' | 'PREMISE-OK';
+export type Grade = 'PREMISE-FALSE' | 'UNVERIFIABLE' | 'PREMISE-OK' | 'TWIN-RESOLVED';
 
 export interface GradedRule {
   sheet: string;
@@ -349,6 +460,50 @@ function tokensOf(selector: string): string[] {
   return [...new Set([...selector.matchAll(CHQ_TOKEN_RE)].map((m) => m[0]))];
 }
 
+// Every `chq-` token that is phone-hidden by SOME rule, anywhere in the
+// tree -- the population `findTwin` excludes a candidate twin from (a twin
+// must itself remain VISIBLE at phone width). Derived once from the same
+// `PHONE_DISPLAY_NONE_RULES` population this whole file joins against
+// (DEC-613: reusing `phone-capability-removal.scan.test.ts`'s own rule
+// enumeration rather than re-deriving it).
+const HIDDEN_TOKENS: ReadonlySet<string> = new Set(PHONE_DISPLAY_NONE_RULES.flatMap((r) => tokensOf(r.selector)));
+
+/** The wave-35 twin-detection clause (`phone-capability-removal.scan.
+ * test.ts`'s own "desktop twin" receipt precedent, reused rather than
+ * re-derived, DEC-613): some OTHER `chq-` token, never itself phone-hidden
+ * anywhere in the tree, carrying the IDENTICAL static text on the SAME
+ * cluster surface as `finding`. Pure over its inputs so the non-vacuity
+ * section can drive it over synthetic fixtures. */
+export function findTwin(
+  finding: TextFinding,
+  findings: readonly TextFinding[],
+  hiddenTokens: ReadonlySet<string> = HIDDEN_TOKENS,
+  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
+): TextFinding | undefined {
+  const surface = surfaceKeyOf(finding.file);
+  if (surface === undefined) return undefined; // no surface to key a twin match on -- never treat two unrelated "undefined" surfaces as the same one
+  return findings.find((t) => {
+    if (t === finding || t.composed || t.text !== finding.text) return false;
+    if (hiddenTokens.has(t.token)) return false;
+    if (surfaceKeyOf(t.file) !== surface) return false;
+    // A twin must be a SPECIFIC element, not a bulk container: the
+    // balanced-close-tag walk above deliberately attributes NESTED text up
+    // to an outer token (so a token hidden BEHIND further markup is still
+    // found), which means a coarse outer wrapper token (e.g. a page-root
+    // `chq-page`) absorbs every distinct string nested anywhere inside it.
+    // A genuine twin label -- `.chq-detail-back-short` for a hidden
+    // `.chq-detail-back-full`, this scan's own worked precedent -- names
+    // exactly ONE static text in the whole findings population; requiring
+    // that here (rather than hand-listing wrapper token names, DEC-808)
+    // disqualifies the container case by what it measurably does, not by
+    // what it is called.
+    const distinctTextsForToken = new Set(
+      findings.filter((o) => o.token === t.token && !o.composed).map((o) => o.text)
+    );
+    return distinctTextsForToken.size === 1;
+  });
+}
+
 /** Grades one CSS rule's selector against a set of already-gathered text
  * findings and frame blobs -- pure, so the non-vacuity section below can
  * drive it over fabricated inputs. Returns `undefined` if the selector's
@@ -356,7 +511,9 @@ function tokensOf(selector: string): string[] {
 export function gradeRule(
   selector: string,
   findings: readonly TextFinding[],
-  blobs: readonly FrameBlob[]
+  blobs: readonly FrameBlob[],
+  hiddenTokens: ReadonlySet<string> = HIDDEN_TOKENS,
+  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
 ): GradedRule | undefined {
   const tokens = tokensOf(selector);
   const matches = findings.filter((f) => tokens.includes(f.token));
@@ -366,6 +523,18 @@ export function gradeRule(
     if (f.composed) continue;
     const frame = matchingFrame(f.text, blobs);
     if (frame) {
+      const twin = findTwin(f, findings, hiddenTokens, surfaceKeyOf);
+      if (twin) {
+        return {
+          sheet: '',
+          selector,
+          grade: 'TWIN-RESOLVED',
+          reason:
+            `"${f.text}" (${f.file}) is drawn verbatim at ${frame.fileName}:${frame.line} "${frame.title}", ` +
+            `but an identical, still-visible text child exists on the same phone surface: "${twin.text}" ` +
+            `(${twin.file} :: ${twin.token}) -- the frame's requirement is met by that twin, not by the hidden element`,
+        };
+      }
       return {
         sheet: '',
         selector,
@@ -393,31 +562,30 @@ export function gradeRule(
   };
 }
 
+const KNOWN_FRAME_FILES: ReadonlySet<string> = new Set(designFiles());
+
 const GRADED_RULES: GradedRule[] = PHONE_DISPLAY_NONE_RULES.map((r) => {
-  const g = gradeRule(r.selector, TEXT_FINDINGS, FRAME_BLOBS);
+  const scope = scopeBlobsForSheet(r.sheet, FRAME_BLOBS, KNOWN_FRAME_FILES);
+  const g = gradeRule(r.selector, TEXT_FINDINGS, scope.blobs);
   return g ? { ...g, sheet: r.sheet } : undefined;
 }).filter((g): g is GradedRule => g !== undefined);
 
 const PREMISE_FALSE_ROWS = GRADED_RULES.filter((g) => g.grade === 'PREMISE-FALSE');
 const UNVERIFIABLE_ROWS = GRADED_RULES.filter((g) => g.grade === 'UNVERIFIABLE');
+const TWIN_RESOLVED_ROWS = GRADED_RULES.filter((g) => g.grade === 'TWIN-RESOLVED');
 
 // Measured on this branch by forcing both constants to -1 and reading the
 // printed offender roster back (never an expression naming the measured
 // set). The full per-row roster is recorded in
-// docs/design/audit/phone-hidden-drawn-text-v12.md -- this join technique
-// is coarse by the ruling's own design (a verbatim literal join against
-// EVERY width:390 frame extent, not scoped to the hidden rule's own
-// page/feature), so the population is real and larger than the single
-// worked example named in this file's header, which is included in both
-// counts below (app/src/pages/review/review.css ::
-// .chq-review-criteria-head-row is one of the PREMISE-FALSE rows;
-// .chq-review-criteria-eyebrow is one of the UNVERIFIABLE rows). See this
-// file's own "MEGABATCH MERGE NOTE" header: v12m-w31-a repairs exactly
-// those two rows in this same batch, so a post-merge re-measurement
-// dropping each count by (at least) one is the ratchet working, not a
-// broken gate -- tighten both constants then, in the merge-train commit.
-export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 59;
-export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 35;
+// docs/design/audit/phone-hidden-drawn-text-v12.md. Wave-35 amendment
+// (DEC-725): both counts DROPPED once the join was scoped to each sheet's
+// own cluster frame (docs/design/audit/phone-hidden-drawn-text-v12.md's own
+// words for the prior gap: "a verbatim literal match against every
+// width:390 frame extent in the pack, not scoped to the hidden rule's own
+// page or feature") and twin-detection resolved rows whose text is still
+// drawn, visibly, by an unhidden sibling on the same cluster surface.
+export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 28;
+export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 40;
 
 describe('DEC-725 phone hidden-drawn-text probe', () => {
   it('finds more than one phone display:none rule (vacuous-population tripwire, CSS side)', () => {
@@ -437,9 +605,165 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     expect(GRADED_RULES.length).toBeLessThanOrEqual(PHONE_DISPLAY_NONE_RULES.length);
   });
 
-  it('the worked-example row (.chq-review-criteria-head-row) is graded PREMISE-FALSE against the live tree', () => {
+  // --- wave-35 amendment: cluster scoping (DEC-725/DEC-808) --------------
+
+  it('clusterKeyForPath derives the same cluster key for a top-level page component and its cluster-directory subcomponents (the join that lets Agenda.tsx and pages/agenda/DayGrid.tsx share one surface)', () => {
+    expect(clusterKeyForPath('app/src/pages/Agenda.tsx')).toBe('agenda');
+    expect(clusterKeyForPath('app/src/pages/agenda/DayGrid.tsx')).toBe('agenda');
+    expect(clusterKeyForPath('app/src/pages/agenda/agenda.css')).toBe('agenda');
+  });
+
+  it('clusterKeyForPath keys SSR public/portal sheets and docs sheets on their own shared clusters, never a per-file guess', () => {
+    expect(clusterKeyForPath('src/routes/public/cfp.css.ts')).toBe('public-portal');
+    expect(clusterKeyForPath('src/routes/portal/portal.css.ts')).toBe('public-portal');
+    expect(clusterKeyForPath('src/routes/docs-site.css.ts')).toBe('docs');
+  });
+
+  it('shared roots (app/src/styles.css, src/views/theme.ts) are EXPLICITLY scoped full-pack, never silently narrowed (asserted, not dropped)', () => {
+    const blobs = [{ fileName: 'Any.dc.html', line: 1, title: 't', normalized: 'x' }];
+    expect(scopeBlobsForSheet('app/src/styles.css', blobs, new Set(['Any.dc.html']))).toEqual({
+      blobs,
+      kind: 'shared-root',
+      frameFile: undefined,
+    });
+    expect(scopeBlobsForSheet('src/views/theme.ts', blobs, new Set(['Any.dc.html']))).toEqual({
+      blobs,
+      kind: 'shared-root',
+      frameFile: undefined,
+    });
+  });
+
+  it('a cluster with no same-named frame file (forms) and an SSR sheet matching no public/portal/docs prefix (auth.css.ts) EXPLICITLY fall back to full-pack, never silently narrowed to an empty set', () => {
+    const blobs = [{ fileName: 'Chautauqua Agenda.dc.html', line: 1, title: 't', normalized: 'x' }];
+    const known = new Set(['Chautauqua Agenda.dc.html']); // deliberately no "Chautauqua Forms.dc.html"
+    expect(scopeBlobsForSheet('app/src/pages/forms/forms.css', blobs, known)).toEqual({
+      blobs,
+      kind: 'no-frame-fallback',
+      frameFile: undefined,
+    });
+    expect(scopeBlobsForSheet('src/routes/auth.css.ts', blobs, known)).toEqual({
+      blobs,
+      kind: 'no-frame-fallback',
+      frameFile: undefined,
+    });
+  });
+
+  it('every sheet PHONE_DISPLAY_NONE_RULES actually carries resolves to exactly one scope kind against the real pack (no sheet silently falls through undefined)', () => {
+    const sheets = [...new Set(PHONE_DISPLAY_NONE_RULES.map((r) => r.sheet))];
+    expect(sheets.length).toBeGreaterThan(5);
+    for (const sheet of sheets) {
+      const scope = scopeBlobsForSheet(sheet, FRAME_BLOBS, KNOWN_FRAME_FILES);
+      expect(['cluster', 'shared-root', 'no-frame-fallback']).toContain(scope.kind);
+      if (scope.kind === 'cluster') expect(scope.blobs.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('non-vacuity: a cluster-scoped synthetic match against its OWN cluster frame hits PREMISE-FALSE', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Fixture.tsx', token: 'chq-x-fake-scope-hit', text: 'Scoped Fixture Label', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Chautauqua Agenda.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Scoped Fixture Label</span>') },
+    ];
+    const known = new Set(['Chautauqua Agenda.dc.html']);
+    const scope = scopeBlobsForSheet('app/src/pages/agenda/fixture.css', blobs, known);
+    expect(scope.kind).toBe('cluster');
+    const graded = gradeRule('.chq-x-fake-scope-hit', findings, scope.blobs);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('non-vacuity: the SAME synthetic text drawn only in a DIFFERENT cluster frame no longer matches once scoped (proves the scoping does not empty the population by accident, only by design)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Fixture.tsx', token: 'chq-x-fake-scope-miss', text: 'Cross Cluster Fixture Label', composed: false },
+    ];
+    // Drawn ONLY in the Overview frame -- a different cluster from the
+    // agenda.css sheet under test.
+    const blobs: FrameBlob[] = [
+      {
+        fileName: 'Chautauqua Overview.dc.html',
+        line: 1,
+        title: 'Fixture frame',
+        normalized: normalizeSource('<span>Cross Cluster Fixture Label</span>'),
+      },
+    ];
+    const known = new Set(['Chautauqua Agenda.dc.html', 'Chautauqua Overview.dc.html']);
+    const scope = scopeBlobsForSheet('app/src/pages/agenda/fixture.css', blobs, known);
+    expect(scope.kind).toBe('cluster');
+    expect(scope.blobs).toEqual([]); // Agenda's own frame carries none of this synthetic Overview-only text
+    const graded = gradeRule('.chq-x-fake-scope-miss', findings, scope.blobs);
+    expect(graded?.grade).toBe('PREMISE-OK'); // unscoped, this would have wrongly graded PREMISE-FALSE
+  });
+
+  // --- wave-35 amendment: twin detection (DEC-725, reusing DEC-919's
+  // "desktop twin" receipt precedent rather than a second copy, DEC-613) --
+
+  it('non-vacuity: a PREMISE-FALSE candidate whose text is ALSO drawn by another, never-hidden token on the same cluster surface resolves to TWIN-RESOLVED', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Hidden.tsx', token: 'chq-x-fake-twin-hidden', text: 'Twin Fixture Label', composed: false },
+      { file: 'app/src/pages/agenda/Visible.tsx', token: 'chq-x-fake-twin-visible', text: 'Twin Fixture Label', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Fixture.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Twin Fixture Label</span>') },
+    ];
+    const hiddenTokens = new Set(['chq-x-fake-twin-hidden']); // the visible twin's OWN token is never hidden
+    const graded = gradeRule('.chq-x-fake-twin-hidden', findings, blobs, hiddenTokens);
+    expect(graded?.grade).toBe('TWIN-RESOLVED');
+    expect(graded?.reason).toContain('chq-x-fake-twin-visible');
+  });
+
+  it('non-vacuity: the same shape with the candidate twin on a DIFFERENT cluster surface stays PREMISE-FALSE (a twin must share the surface, not just the text)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Hidden.tsx', token: 'chq-x-fake-twin-hidden-2', text: 'Cross Surface Twin Label', composed: false },
+      { file: 'app/src/pages/overview/Visible.tsx', token: 'chq-x-fake-twin-visible-2', text: 'Cross Surface Twin Label', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Fixture.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Cross Surface Twin Label</span>') },
+    ];
+    const hiddenTokens = new Set(['chq-x-fake-twin-hidden-2']);
+    const graded = gradeRule('.chq-x-fake-twin-hidden-2', findings, blobs, hiddenTokens);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('non-vacuity: a candidate twin whose OWN token is also phone-hidden elsewhere is not a twin (it is not actually visible at phone width)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Hidden.tsx', token: 'chq-x-fake-twin-hidden-3', text: 'Both Hidden Label', composed: false },
+      { file: 'app/src/pages/agenda/AlsoHidden.tsx', token: 'chq-x-fake-twin-also-hidden-3', text: 'Both Hidden Label', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Fixture.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Both Hidden Label</span>') },
+    ];
+    const hiddenTokens = new Set(['chq-x-fake-twin-hidden-3', 'chq-x-fake-twin-also-hidden-3']);
+    const graded = gradeRule('.chq-x-fake-twin-hidden-3', findings, blobs, hiddenTokens);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('non-vacuity: a candidate token that carries MANY distinct static texts (a bulk container, e.g. a page-root wrapper) is disqualified as a twin even though it happens to also carry the matching text', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Hidden.tsx', token: 'chq-x-fake-twin-hidden-4', text: 'Container Twin Label', composed: false },
+      { file: 'app/src/pages/agenda/Container.tsx', token: 'chq-x-fake-container', text: 'Container Twin Label', composed: false },
+      { file: 'app/src/pages/agenda/Container.tsx', token: 'chq-x-fake-container', text: 'Some Other Unrelated Text', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Fixture.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Container Twin Label</span>') },
+    ];
+    const hiddenTokens = new Set(['chq-x-fake-twin-hidden-4']); // chq-x-fake-container is never hidden either -- the container itself must still be excluded
+    const graded = gradeRule('.chq-x-fake-twin-hidden-4', findings, blobs, hiddenTokens);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('findTwin never matches a finding against itself, and treats two undefined surfaces as never the same surface', () => {
+    const lone: TextFinding = { file: 'app/src/pages/agenda/Solo.tsx', token: 'chq-x-fake-solo', text: 'Solo Label', composed: false };
+    expect(findTwin(lone, [lone])).toBeUndefined();
+    const outsideA: TextFinding = { file: 'app/src/components/A.tsx', token: 'chq-x-fake-outside-a', text: 'Outside Label', composed: false };
+    const outsideB: TextFinding = { file: 'app/src/components/B.tsx', token: 'chq-x-fake-outside-b', text: 'Outside Label', composed: false };
+    expect(clusterKeyForPath(outsideA.file)).toBeUndefined();
+    expect(findTwin(outsideA, [outsideA, outsideB])).toBeUndefined();
+  });
+
+  it('the worked-example row (.chq-review-criteria-head-row) is graded TWIN-RESOLVED against the live tree (wave-35: PlanEditor.tsx\'s .chq-review-criterion-weight now carries a real, still-visible per-criterion "Weight" eyebrow, DEC-745 -- the frame\'s requirement is met there, not by the still-hidden head-row)', () => {
     const row = GRADED_RULES.find((g) => g.selector.includes('chq-review-criteria-head-row'));
-    expect(row?.grade).toBe('PREMISE-FALSE');
+    expect(row?.grade).toBe('TWIN-RESOLVED');
+    expect(row?.reason).toContain('chq-review-criterion-weight');
   });
 
   it('the worked-example row (.chq-review-criteria-eyebrow) is graded UNVERIFIABLE against the live tree', () => {
@@ -545,9 +869,8 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     if (PREMISE_FALSE_ROWS.length < PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING) {
       throw new Error(
         `${PREMISE_FALSE_ROWS.length} PREMISE-FALSE row(s), below the ratchet ceiling of ` +
-          `${PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING}. This is the ratchet working (the ` +
-          `MEGABATCH MERGE NOTE above says v12m-w31-a's repair is expected to do exactly this) -- ` +
-          `tighten the ceiling in the same merge-train commit by replacing the line:\n` +
+          `${PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING}. This is the ratchet working -- ` +
+          `tighten the ceiling in the same commit by replacing the line:\n` +
           `  export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = ${PREMISE_FALSE_ROWS.length};`
       );
     }
@@ -573,6 +896,21 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     }
     expect(UNVERIFIABLE_ROWS.length).toBeGreaterThanOrEqual(PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING);
   });
+
+  it('TWIN-RESOLVED rows are graded and recorded, never a silent drop from the roster (DEC-180) -- neither ceiling counts them', () => {
+    for (const row of TWIN_RESOLVED_ROWS) {
+      expect(PREMISE_FALSE_ROWS).not.toContain(row);
+      expect(UNVERIFIABLE_ROWS).not.toContain(row);
+      expect(row.reason).toContain('still-visible');
+    }
+  });
 });
 
-export { FRAME_BLOBS, GRADED_RULES, PREMISE_FALSE_ROWS, TEXT_FINDINGS, UNVERIFIABLE_ROWS };
+export {
+  FRAME_BLOBS,
+  GRADED_RULES,
+  PREMISE_FALSE_ROWS,
+  TEXT_FINDINGS,
+  TWIN_RESOLVED_ROWS,
+  UNVERIFIABLE_ROWS,
+};
