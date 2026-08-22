@@ -109,14 +109,15 @@ function topLevelRule(css: string, selector: string): string {
 
 describe('v12 phone frame "Merge · 390" (docs/design/Chautauqua Contacts.dc.html:522-539)', () => {
   // docs/design/Chautauqua Contacts.dc.html:524 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Duplicates</a>`
-  it('back link: ONE anchor, the "Contacts · " prefix is its own span, hidden only at <=700px', () => {
+  it('back link: ONE anchor, bare "‹ Duplicates" with no "Contacts · " prefix (DEC-919 wave-7 amendment)', () => {
     expect(TSX).toMatch(
-      /<Link[^>]*className="chq-contacts-merge-back(?:\s+\S+)*"[^>]*>\s*&lsaquo;\s*<span className="chq-contacts-merge-back-prefix">Contacts &middot; <\/span>Duplicates\s*<\/Link>/,
+      /<Link[^>]*className="chq-contacts-merge-back(?:\s+\S+)*"[^>]*>\s*&lsaquo; Duplicates\s*<\/Link>/,
     );
     // Never a second Link/anchor for the phone case -- ONE <Link>, reused
     // for both the loaded and empty-state branches via the `backLink` const.
     expect(TSX.match(/<Link\b/g)?.length).toBe(1);
-    expect(phoneRule(CSS, '.chq-contacts-merge-back-prefix')).toMatch(/display:\s*none/);
+    expect(TSX).not.toMatch(/chq-contacts-merge-back-prefix/);
+    expect(CSS).not.toMatch(/\.chq-contacts-merge-back-prefix/);
   });
 
   // docs/design/Chautauqua Contacts.dc.html:524
