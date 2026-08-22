@@ -140,7 +140,7 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :316-337 "Settings · Event".
-  it('frame :316 Event -- DIVERGES (narrowed, DEC-919 wave-156): read view is head+Change-first (SummarySection); the frame\'s footer "Save" now renders too, entering the edit drill rather than saving', async () => {
+  it('frame :316 Event -- MATCHES (wave-22, DEC-663 amendment): the phone CSS stands the head\'s "Change" down in favor of the read drill\'s own footer "Save", which opens the identical edit route the frame\'s footer draws; the frame\'s full Save/Cancel pair renders in the edit drill itself, and the read view\'s absent Cancel is DEVIATIONS.md §7-blessed (no form to submit, so nothing is manufactured to fill the band)', async () => {
     verbatimLine(313, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Event</span>");
     renderDrilled('event');
     const section = screen.getByRole('region', { name: 'Event' });
@@ -156,9 +156,19 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
     expect(backBtn.compareDocumentPosition(drillTitle!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // DEC-728: the 'Change' action heads the section, ahead of every read
     // row -- the frame ALSO draws a Save/Cancel pair in a footer AFTER
-    // every row (:334). DEC-919 wave-156: the read view has no form to
-    // submit, so only the primary renders (as a navigation into the edit
-    // drill, never a save-nothing) -- Cancel has nothing to cancel here.
+    // every row (:334). settings.css's data-chq-section='event' phone rule
+    // stands the head's own 'Change' action down (display:none) because
+    // this read drill's own footer primary ('Save', below) already opens
+    // the identical ?section=event&edit=1 route -- two on-screen controls
+    // reaching the same edit surface is exactly the case DEC-919 permits
+    // standing one down for, a re-line onto the footer rather than a
+    // capability removal. The read view itself holds no form to submit, so
+    // no Cancel is manufactured here to pair with the Save primary --
+    // DEVIATIONS.md §7 records this as blessed (the same
+    // never-manufactured-to-fill-the-band rule the portal tasks/profile
+    // docks apply). The frame's full Save/Cancel pair renders in the EDIT
+    // drill instead (EventSettingsPanel.tsx's footer={{ primary, secondary
+    // Cancel }}), where a form genuinely exists to submit or discard.
     const changeBtn = within(section).getByRole('button', { name: 'Change' });
     const firstRow = within(section).getByText('DevCon 2026');
     expect(changeBtn.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
