@@ -589,6 +589,19 @@ const CASES: RouteCase[] = [
       contactIds: [IDS.contactA],
     },
   },
+  // Joined the population in wave 25-g (this probe's own enumeration found
+  // it unledgered). Path names org B's own event; the body carries org A's
+  // real contact id under contactIds. findParticipantContactsForEvent scopes
+  // its join to THIS eventId, so a contact that isn't a participant on a
+  // submission in event B (org A's contact never is) resolves to zero rows
+  // and the route throws ApiError("invalid", ...) -- refused 400 before
+  // mintPortalLinks (a claim-token mint, DEC-027) ever runs.
+  {
+    method: "POST",
+    path: "/api/v1/events/:eventId/portal-invites",
+    requestPath: `/api/v1/events/${EVENT_B}/portal-invites`,
+    body: { contactIds: [IDS.contactA] },
+  },
   // Joined the population in wave 41 (DEC-027 wave-41 amendment gave the
   // email-log and evaluations export kinds their own surface's filter, so
   // this registration now reads ?contactId=/?planId=). Exercised on the
@@ -652,6 +665,7 @@ const CROSS_ORG_BODY_LEDGER: LedgerEntry[] = [
   { method: "POST", path: "/api/v1/tasks/:id/assign", expectedStatus: 400 },
   { method: "POST", path: "/api/v1/tasks/:id/unassign", expectedStatus: 400 },
   { method: "POST", path: "/api/v1/events/:eventId/tasks", expectedStatus: 400 },
+  { method: "POST", path: "/api/v1/events/:eventId/portal-invites", expectedStatus: 400 },
   {
     method: "POST",
     path: "/api/v1/events/:eventId/onboarding/remind",
