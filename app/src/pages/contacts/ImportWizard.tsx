@@ -440,14 +440,24 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // w15-c: the dialog title names the current step; "Import contacts from
   // CSV" moves down to the ModalFrame subtitle so it stays visible across
   // every step instead of being the one static title.
+  //
+  // w8-b (DEC-575): a file-level refusal (showSizeRefusal or
+  // showFileWarning) is its own dialog identity, not a variant of "Match
+  // the columns" -- Chautauqua Contacts.dc.html:770-800 draws it with its
+  // own H1 'Nothing was imported'. `step` still computes 1 or 2 for these
+  // bands (it stays display-only, gating the step strip, not this title),
+  // so the refusal check runs first and wins regardless of which band is
+  // showing.
   const stepTitle =
-    step === 4
-      ? 'Import complete'
-      : step === 3
-        ? 'Review the import'
-        : step === 2
-          ? 'Match the columns'
-          : 'Choose a file';
+    showSizeRefusal || showFileWarning
+      ? 'Nothing was imported'
+      : step === 4
+        ? 'Import complete'
+        : step === 3
+          ? 'Review the import'
+          : step === 2
+            ? 'Match the columns'
+            : 'Choose a file';
 
   // w15-th (DEC-663 wave-159): the phone match-columns frame
   // (Chautauqua Contacts.dc.html:487, head band :489-491) draws the
