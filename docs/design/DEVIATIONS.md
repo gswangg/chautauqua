@@ -881,6 +881,24 @@ carries this section's ruling in full; these five entries are its record.
   "Starts"/"Ends") adopt the frame verbatim because those three have no
   such mismatch between the label and what the control edits; Slug is the
   one outlier, reasoned and recorded rather than silently left stale.
+- **Content 390 chip strip keeps its third chip, "All accepted sessions"
+  (DEC-919 wave-28 amendment).** `docs/design/Chautauqua Content.dc.html`
+  draws three chips in its desktop extent (`:65-67` "Needs a decision · 5" /
+  "Approved · 9" / "All accepted sessions · 23") and only the first two in
+  both of its 390 extents (`:210-211` landing, `:260-261` selecting); the
+  product renders all three at every width (`WORKLIST_TABS` in
+  `app/src/pages/content/worklist.ts`, labels in `SessionList.tsx`). RULED:
+  the third chip STAYS at 390, for two reasons taken from the artifacts
+  themselves. First, DEC-919's re-line-never-remove governs controls, and a
+  filter tab is a capability, not prose — hiding it at phone width removes
+  the only way to see every accepted session. Second, the frame's own 390
+  chip row itself declares `overflow-x:auto;
+  -webkit-overflow-scrolling:touch` — the pack draws a SCROLLING strip, so a
+  member sitting past the drawn 390 viewport is a drawing boundary, not an
+  omission the app is meant to match. `app/src/pages/content/ContentApp.landing390.render.test.tsx`
+  pins all three tabs and asserts the strip carries that same scrolling
+  affordance, so "keeps three chips" is paid for by the mechanism that makes
+  the third one reachable.
 
 ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
 

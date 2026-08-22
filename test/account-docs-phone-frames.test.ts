@@ -39,6 +39,31 @@ function extract700Blocks(src: string): string[] {
   return blocks;
 }
 
+/** DEC-994 (wave 28 amendment): the sheet's terminal (last) `@media
+ * (max-width: 700px)` block -- the one that governs a phone geometry pin. */
+function terminalBlock(src: string): string {
+  const blocks = extract700Blocks(src);
+  expect(blocks.length).toBeGreaterThan(0);
+  return blocks[blocks.length - 1]!;
+}
+
+/** DEC-994 (wave 28 amendment): resolves the DECLARATION that governs a
+ * named selector inside a CSS block -- finds the rule whose selector LIST
+ * (comma-separated, each entry trimmed) contains `selector` exactly, and
+ * returns that rule's body. Adding or reordering a sibling selector in the
+ * same rule can never redden a pin built on this; only deleting the
+ * declaration (or moving the selector out of every rule) can. Returns null
+ * if no rule's selector list contains it. */
+function ruleDeclaringSelector(blockText: string, selector: string): string | null {
+  const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = ruleRe.exec(blockText)) !== null) {
+    const selectors = match[1]!.split(",").map((s) => s.trim());
+    if (selectors.includes(selector)) return match[2]!;
+  }
+  return null;
+}
+
 describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.html:121 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`)', () => {
   const authBlocks = extract700Blocks(AUTH_CSS_TS);
   const combined = authBlocks.join("\n");
@@ -47,16 +72,21 @@ describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.htm
     expect(combined).toMatch(/\.chq-auth-wordmark\s*\{[^}]*font-size:\s*26px/);
   });
 
-  it("card email/password inputs take the frame's 50px min-height", () => {
-    // `[^{]*` (not `\s*`) between the password selector and the `{`: DEC-995
-    // wave-26 appended a third member, `.chq-auth-card .chq-input`, to this
-    // same selector group so the phone drawn-floor scan's class-token join
-    // (test/frame-control-floor.scan.test.ts) can see the 50px rule at all.
-    // The geometry this `it` names is unchanged; only the group grew, so the
-    // pin tolerates further members while still refusing to cross a `{`.
-    expect(combined).toMatch(
-      /\.chq-auth-card input\[type=email\],\s*\n\s*\.chq-auth-card input\[type=password\][^{]*\{[^}]*min-height:\s*50px/,
-    );
+  // DEC-994 wave-28 amendment: resolve the DECLARATION that governs the
+  // selector, never a hand-typed selector-pair regex -- a wave-26 lane
+  // correctly added a third sibling (.chq-input) to this same rule to
+  // close a real 48px-vs-50px offender, and the old literal-pair regex
+  // went red although the drawn geometry got MORE conformant. Adding or
+  // reordering a sibling selector in this rule can never redden this pin;
+  // only deleting the min-height declaration can.
+  it("card email/password inputs take the frame's 50px min-height (docs/design/Chautauqua Account.dc.html:130 `min-height:50px;`)", () => {
+    const block = terminalBlock(AUTH_CSS_TS);
+    const emailBody = ruleDeclaringSelector(block, ".chq-auth-card input[type=email]");
+    expect(emailBody, "expected the phone block's rule whose selector list contains .chq-auth-card input[type=email]").not.toBeNull();
+    expect(emailBody).toMatch(/min-height:\s*50px/);
+    const passwordBody = ruleDeclaringSelector(block, ".chq-auth-card input[type=password]");
+    expect(passwordBody, "expected the phone block's rule whose selector list contains .chq-auth-card input[type=password]").not.toBeNull();
+    expect(passwordBody).toMatch(/min-height:\s*50px/);
   });
 
   it("the submit control is full width at 50px/15px, stacked with the tertiary link below it", () => {
@@ -117,13 +147,28 @@ describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Doc
     expect(DOCS_SITE_CSS_TS).toMatch(/\.chq-docs-figure-frame\s*\{\s*border-left:\s*none;\s*border-right:\s*none;\s*border-radius:\s*0;\s*\}/);
   });
 
+  // DEC-994 wave-28 amendment: the prev/next pair pin is the second
+  // hand-typed selector-pair regex of this shape in the file (swept per
+  // the amendment's instruction) -- rebuilt to resolve the DECLARATION
+  // that governs each selector so a sibling addition/reorder can never
+  // redden it.
   it("the prev/next pager is a filled, edge-to-edge button bar at 46px on phone", () => {
     expect(DOCS_SITE_CSS_TS).toMatch(
       /\.chq-docs-pager\s*\{[^}]*border-top:\s*1px solid var\(--chq-ink\);[^}]*background:\s*var\(--chq-surface-sunk\);[^}]*padding:\s*12px 16px 16px;/,
     );
-    expect(DOCS_SITE_CSS_TS).toMatch(
-      /\.chq-docs-pager-prev,\s*\n\s*\.chq-docs-pager-next\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*46px;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;/,
-    );
+    const block = terminalBlock(DOCS_SITE_CSS_TS);
+    const prevBody = ruleDeclaringSelector(block, ".chq-docs-pager-prev");
+    expect(prevBody, "expected the phone block's rule whose selector list contains .chq-docs-pager-prev").not.toBeNull();
+    expect(prevBody).toMatch(/flex:\s*1;/);
+    expect(prevBody).toMatch(/min-height:\s*46px;/);
+    expect(prevBody).toMatch(/font-size:\s*13px;/);
+    expect(prevBody).toMatch(/font-weight:\s*600;/);
+    const nextBody = ruleDeclaringSelector(block, ".chq-docs-pager-next");
+    expect(nextBody, "expected the phone block's rule whose selector list contains .chq-docs-pager-next").not.toBeNull();
+    expect(nextBody).toMatch(/flex:\s*1;/);
+    expect(nextBody).toMatch(/min-height:\s*46px;/);
+    expect(nextBody).toMatch(/font-size:\s*13px;/);
+    expect(nextBody).toMatch(/font-weight:\s*600;/);
   });
 
   it("desktop pager stays a bare divider (max-width 680, --chq-rule top border) -- phone-only override", () => {

@@ -64,22 +64,30 @@ survives at `:198`.
 
 ## Divergence found
 
-**One real divergence, not previously called out at this granularity:**
-the frame's `:198` chip strip draws exactly two chips ("Needs a decision",
-"Approved"); the shipped `.chq-chipstrip` (app/src/pages/content/SessionList.tsx`WORKLIST_TABS`,
-from `worklist.ts`) renders a third ("All accepted sessions",
-DEC-825) the frame's landing extent never draws. Owning file:
+**One divergence, DIVERGES and settled:** the frame's `:198` chip strip
+draws exactly two chips ("Needs a decision", "Approved"); the shipped
+`.chq-chipstrip` (app/src/pages/content/SessionList.tsx`WORKLIST_TABS`,
+from `worklist.ts`) renders a third ("All accepted sessions", DEC-825) the
+frame's landing extent never draws. This is ADJUDICATED, not open: per
+`src/decisions-data/DEC-919.md`'s wave-28 amendment, the third chip STAYS
+at 390, and the ruling is recorded in full at `docs/design/DEVIATIONS.md`
+§7 ("Content 390 chip strip keeps its third chip") with its two reasons
+(DEC-919's re-line-never-remove governs controls, and the frame's own 390
+chip row itself declares `overflow-x:auto;
+-webkit-overflow-scrolling:touch`, so a member past the drawn 390 viewport
+is a drawing boundary, not an omission). Owning file:
 `app/src/pages/content/worklist.ts` / `SessionList.tsx` (both HARD
-READ-ONLY to this task — measurement only, no fix here).
+READ-ONLY to this task — measurement only, no fix here; the ruling required
+no product edit).
 
 ## Summary
 
 7 of 8 drawn literals in the `:198`-`:237` extent: MATCHES, each now backed
 by a strictly-anchored `verbatimLine()` citation and a real-mount assertion.
-1 of 8 (the chip-strip's two-vs-three-chip count): NARROWED/DIVERGES,
-recorded above, not fixed (out of this lane's file scope). The
-stacked-card-vs-table-row architectural hypothesis this row previously
+1 of 8 (the chip-strip's two-vs-three-chip count): DIVERGES, ADJUDICATED per
+`docs/design/DEVIATIONS.md` §7 as recorded above, not a second open finding.
+The stacked-card-vs-table-row architectural hypothesis this row previously
 carried does NOT survive re-derivation — independently confirmed MATCHES.
 Per DEC-099 wave-14m clause 1, this sentence is a narration of the same
-DEC-825 chip-count divergence already stated in full in "## Divergence
-found" above, not a second open finding.
+DEC-919-settled chip-count divergence already stated in full in "##
+Divergence found" above, not a second open finding.
