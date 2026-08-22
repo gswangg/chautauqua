@@ -900,6 +900,22 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "next dereference into an unhandled 500 -- a server-side request-parsing robustness fact "
     + "about a route's error envelope, not itself a v12 frame or 390-geometry conformance fact "
     + "(test/json-body-door.scan.test.ts, DEC-613 wave-23 amendment).",
+  FRAME_EYEBROW_DIVERGENCE_CEILING:
+    "measures a newly-derived word population (a phone frame's drawn text-transform:uppercase "
+    + "eyebrow, disjoint by construction from the caption ledger, both control-label ledgers and the "
+    + "field-label ledgers) that no instrument previously graded -- a real copy-fidelity fact about "
+    + "this specific population, but a newly measured, previously-uncounted population must not move "
+    + "the campaign's goalposts mid-convergence; it is promoted once its measurement technique is "
+    + "proven complete enough to gate on, the same disposition already given to "
+    + "DESKTOP_FLOOR_DIVERGENCE_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
+    + "amendment).",
+  FRAME_EYEBROW_UNRESOLVED_CEILING:
+    "measures how many drawn phone eyebrow rows the eyebrow ledger's own verbatim join could not "
+    + "resolve (a value composed from live data at render time, which a static substring join can "
+    + "never verify) -- an instrument-completeness fact about that ledger's own join technique, not "
+    + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
+    + "amendment).",
 };
 
 /**
