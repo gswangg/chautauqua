@@ -43,6 +43,21 @@ import { stripCssComments } from './helpers/strip-css-comments';
 import { KNOWN_CLIP_EXCEPTIONS } from '../scripts/render-sweep';
 import { DEC_367 } from '../src/decisions';
 
+const DEVIATIONS_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'design', 'DEVIATIONS.md');
+
+/** The whole `## 3. Interpretations where the frames underspecify` section
+ * body -- BLESSED-DEFENSIVE's burden of proof (b) is a matching entry in
+ * exactly this section, never anywhere else in the file. */
+function deviationsSection3(): string {
+  const text = readFileSync(DEVIATIONS_PATH, 'utf8');
+  const start = text.indexOf('## 3. Interpretations where the frames underspecify');
+  if (start === -1) throw new Error('DEVIATIONS.md §3 heading not found');
+  const rest = text.slice(start + 1);
+  const nextHeadingRel = rest.search(/\n## \d/);
+  const end = nextHeadingRel === -1 ? text.length : start + 1 + nextHeadingRel;
+  return text.slice(start, end);
+}
+
 // DEC-367 wave-30 amendment: "the overflow instrument's two escape hatches
 // (scroller-held and KNOWN_CLIP_EXCEPTIONS) are premises about the pack, and
 // an ungrounded escape hatch hides overflow rather than curing it" -- this
@@ -266,9 +281,44 @@ for (const source of population) {
 // pack join is not applicable at all.
 // -----------------------------------------------------------------------
 
-type Verdict = 'GROUNDED' | 'UNGROUNDED-SCROLLER' | 'OUT-OF-SCOPE';
+type Verdict = 'GROUNDED' | 'UNGROUNDED-SCROLLER' | 'OUT-OF-SCOPE' | 'BLESSED-DEFENSIVE';
 
-const VERDICTS: Readonly<Record<string, Verdict>> = {
+/** BLESSED-DEFENSIVE (DEC-367 wave-34 amendment): 'no frame draws it' is
+ * true of these rows and not dispositive -- each one guards a CONTENT
+ * CLASS the pack cannot draw because the pack is a static mock
+ * (author-supplied markdown, an organiser-chosen column set, a live room
+ * count). A row graded this way must name both (a) the content class it
+ * guards, in `contentClass`, and (b) carry a `reason` whose claim is
+ * cross-checked against a matching docs/design/DEVIATIONS.md §3 entry by
+ * this file's own tests -- a row that cannot name both stays
+ * UNGROUNDED-SCROLLER (see `effectiveVerdict` below). */
+interface BlessedDefensiveEntry {
+  verdict: 'BLESSED-DEFENSIVE';
+  contentClass: string;
+  reason: string;
+}
+
+type VerdictEntry = Verdict | BlessedDefensiveEntry;
+
+function verdictOf(entry: VerdictEntry): Verdict {
+  return typeof entry === 'string' ? entry : entry.verdict;
+}
+
+/** The single place that enforces BLESSED-DEFENSIVE's two-part burden of
+ * proof: a named content class AND a DEVIATIONS.md §3 entry that mentions
+ * both this row's source file and its selector. Either missing downgrades
+ * the row to UNGROUNDED-SCROLLER -- 'no frame draws it' alone never
+ * qualifies. Non-BLESSED-DEFENSIVE verdicts pass through unchanged. */
+function effectiveVerdict(entry: VerdictEntry, file: string, selector: string, section3: string): Verdict {
+  const v = verdictOf(entry);
+  if (v !== 'BLESSED-DEFENSIVE') return v;
+  const e = entry as BlessedDefensiveEntry;
+  const hasContentClass = e.contentClass.trim().length > 0;
+  const groundedInDeviations = section3.includes(file) && section3.includes(selector);
+  return hasContentClass && groundedInDeviations ? 'BLESSED-DEFENSIVE' : 'UNGROUNDED-SCROLLER';
+}
+
+const VERDICTS: Readonly<Record<string, VerdictEntry>> = {
   // Shared chip-strip component: the pattern itself is drawn repeatedly
   // (Contacts.dc.html:187/194/452, Submissions.dc.html:148,
   // Overview.dc.html:196) -- every concrete surface below cites its own
@@ -302,9 +352,14 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   // overflow-x drawn anywhere for the table -- it never needs to scroll in
   // the mock. The wrapper exists for the organizer-toggled custom-column
   // picker (.chq-submissions-columnpicker-panel a few rules above), a
-  // feature the pack's static frame doesn't model. No frame draws this
-  // scroller.
-  'app/src/pages/submissions/submissions.css::.chq-submissions-table-wrap': 'UNGROUNDED-SCROLLER',
+  // feature the pack's static frame doesn't model. BLESSED-DEFENSIVE:
+  // see docs/design/DEVIATIONS.md §3.
+  'app/src/pages/submissions/submissions.css::.chq-submissions-table-wrap': {
+    verdict: 'BLESSED-DEFENSIVE',
+    contentClass: 'organiser-toggled custom-column picker',
+    reason:
+      'a fixed-canvas static frame has no way to draw a column set the viewer chooses at runtime',
+  },
 
   // Overview: phone deadline-chip strip -- grounded by Overview.dc.html:196
   // (`display:flex; gap:7px; overflow-x:auto`).
@@ -319,10 +374,18 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   // Agenda.dc.html:139 draws the sibling chip-strip pattern this same
   // sheet's DEC-584 comment says superseded the room-column layout for the
   // *day* view; .chq-day-grid backs a different, still-live room view. No
-  // frame quote pins this exact wrapper, so it is recorded UNGROUNDED, not
-  // silently accepted on shape alone (DEC-180: a shape resemblance is not
-  // a citation).
-  'app/src/pages/agenda/agenda.css::.chq-day-grid': 'UNGROUNDED-SCROLLER',
+  // frame quote pins this exact wrapper, so shape resemblance alone does
+  // not qualify it (DEC-180). It qualifies instead on the DEC-367 wave-34
+  // content-class ruling: the room count is live data, not a fixed
+  // design-time quantity, so no static frame can draw the matrix at every
+  // width a real room count could produce. BLESSED-DEFENSIVE: see
+  // docs/design/DEVIATIONS.md §3.
+  'app/src/pages/agenda/agenda.css::.chq-day-grid': {
+    verdict: 'BLESSED-DEFENSIVE',
+    contentClass: 'live room-lane matrix (room count is live event data)',
+    reason:
+      'a static frame draws one snapshot room count and cannot depict the matrix at a real event\'s actual room count',
+  },
 
   // Comms: preview-pane Prev/Next switcher, phone-scoped. Comms.dc.html
   // has ZERO overflow-x/overflow:auto|scroll declarations anywhere in the
@@ -333,9 +396,15 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   // frame). Docs.dc.html's "Docs · an article" frame (:27) annotates
   // "Reading measure 680" matching .chq-docs-code's own 680px max-width,
   // but draws no <pre>/code-block example at all -- no literal overflow-x
-  // in the frame. UNGROUNDED, though plausibly a defensive affordance for
-  // markdown-sourced code the static mock never happened to render.
-  'src/routes/docs-site.css.ts::.chq-docs-code': 'UNGROUNDED-SCROLLER',
+  // in the frame. BLESSED-DEFENSIVE: a defensive affordance for
+  // author-supplied, markdown-sourced code of arbitrary line length the
+  // static mock's one captured article never happened to render. See
+  // docs/design/DEVIATIONS.md §3.
+  'src/routes/docs-site.css.ts::.chq-docs-code': {
+    verdict: 'BLESSED-DEFENSIVE',
+    contentClass: 'author-supplied markdown code block',
+    reason: 'markdown authors can paste code of any line length, independent of which article a static mock happened to snapshot',
+  },
 
   // Tools chrome (GET /, /docs/api, /dev/mailbox): DEC-382 rules these
   // three operator surfaces "chrome, not designed screens" sharing
@@ -347,9 +416,20 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   // Portal: generic `table`/`pre` phone rule, a defensive "any embedded
   // content gets its own scroll container instead of the page" catch-all
   // (own comment). "Chautauqua Public and Portal.dc.html" draws no <table>
-  // anywhere in the portal frames. UNGROUNDED.
-  'src/routes/portal/portal.css.ts::table': 'UNGROUNDED-SCROLLER',
-  'src/routes/portal/portal.css.ts::pre': 'UNGROUNDED-SCROLLER',
+  // anywhere in the portal frames. BLESSED-DEFENSIVE: guards
+  // organiser-authored embedded content, the same content class
+  // .chq-docs-code guards on the portal side of the product. See
+  // docs/design/DEVIATIONS.md §3.
+  'src/routes/portal/portal.css.ts::table': {
+    verdict: 'BLESSED-DEFENSIVE',
+    contentClass: 'embedded content (organiser-authored table)',
+    reason: 'a static frame set cannot enumerate the shape of organiser-authored embedded content in advance',
+  },
+  'src/routes/portal/portal.css.ts::pre': {
+    verdict: 'BLESSED-DEFENSIVE',
+    contentClass: 'embedded content (organiser-authored preformatted block)',
+    reason: 'a static frame set cannot enumerate the shape of organiser-authored embedded content in advance',
+  },
 
   // Public Agenda: day-row scroll wrapper. Its own comment (DEC-584
   // wave-64) says the scroller is kept as "a harmless no-op wrapper" --
@@ -420,12 +500,58 @@ describe('horizontal-scroller premise (DEC-367 wave-30 amendment)', () => {
   });
 
   // -----------------------------------------------------------------------
+  // BLESSED-DEFENSIVE burden of proof: every row graded BLESSED-DEFENSIVE
+  // must name a content class AND a DEVIATIONS.md §3 entry that mentions
+  // both its source file and its selector -- effectiveVerdict is the sole
+  // enforcement point, exercised here against the real map.
+  // -----------------------------------------------------------------------
+  const section3 = deviationsSection3();
+
+  it('every BLESSED-DEFENSIVE row names a content class and a matching DEVIATIONS.md §3 entry', () => {
+    const failures: string[] = [];
+    for (const [key, entry] of Object.entries(VERDICTS)) {
+      if (verdictOf(entry) !== 'BLESSED-DEFENSIVE') continue;
+      const [file, selector] = key.split('::');
+      const graded = effectiveVerdict(entry, file!, selector!, section3);
+      if (graded !== 'BLESSED-DEFENSIVE') {
+        failures.push(`${key}: downgraded to ${graded} -- missing content class or DEVIATIONS.md §3 grounding`);
+      }
+    }
+    expect(failures.length, failures.join('\n')).toBe(0);
+  });
+
+  it('negative control: a synthetic BLESSED-DEFENSIVE row with no §3 backing grades UNGROUNDED-SCROLLER', () => {
+    const synthetic: BlessedDefensiveEntry = {
+      verdict: 'BLESSED-DEFENSIVE',
+      contentClass: 'a made-up content class no DEVIATIONS.md entry backs',
+      reason: 'this row exists only to prove the downgrade path fires',
+    };
+    expect(effectiveVerdict(synthetic, 'app/src/pages/nowhere/nowhere.css', '.chq-does-not-exist', section3)).toBe(
+      'UNGROUNDED-SCROLLER',
+    );
+    // Also prove a missing contentClass alone downgrades it, even with real
+    // §3 text supplied.
+    const noContentClass: BlessedDefensiveEntry = { verdict: 'BLESSED-DEFENSIVE', contentClass: '', reason: 'x' };
+    expect(
+      effectiveVerdict(
+        noContentClass,
+        'app/src/pages/submissions/submissions.css',
+        '.chq-submissions-table-wrap',
+        section3,
+      ),
+    ).toBe('UNGROUNDED-SCROLLER');
+  });
+
+  // -----------------------------------------------------------------------
   // TWO-SIDED RATCHET (DEC-948 shape): UNGROUNDED_SCROLLER_CEILING may only
   // be LOWERED as real rows get an actual pack citation or a documented
   // DEVIATIONS.md override; it must never be silently raised to swallow a
   // new one landing elsewhere. Pinned to the exact measured count today.
   // -----------------------------------------------------------------------
-  const ungroundedCount = Object.values(VERDICTS).filter((v) => v === 'UNGROUNDED-SCROLLER').length;
+  const ungroundedCount = Object.entries(VERDICTS).filter(([key, entry]) => {
+    const [file, selector] = key.split('::');
+    return effectiveVerdict(entry, file!, selector!, section3) === 'UNGROUNDED-SCROLLER';
+  }).length;
 
   it(`UNGROUNDED_SCROLLER_CEILING (${UNGROUNDED_SCROLLER_CEILING}) matches the measured UNGROUNDED-SCROLLER count exactly`, () => {
     expect(
@@ -469,14 +595,22 @@ describe('horizontal-scroller premise (DEC-367 wave-30 amendment)', () => {
   });
 });
 
-/** Measured 12 today: contacts-panels.css .chq-steps, submissions.css
- * .chq-submissions-table-wrap, agenda.css .chq-day-grid, comms.css
- * .chq-comms-preview-nav, docs-site.css.ts .chq-docs-code, portal.css.ts
- * table + pre, public/css/agenda.css.ts .chq-pub-agenda-day-scroll.
- * (Tools chrome rows are OUT-OF-SCOPE, DEC-382, and excluded from this
- * count -- see VERDICTS above.) See
+/** DEC-367 wave-34 (task w34-i): five of the eight rows this constant used
+ * to cover (submissions.css .chq-submissions-table-wrap, agenda.css
+ * .chq-day-grid, docs-site.css.ts .chq-docs-code, portal.css.ts table +
+ * pre) each now name a content class the pack's static mock cannot draw
+ * plus a matching docs/design/DEVIATIONS.md §3 entry, and grade
+ * BLESSED-DEFENSIVE instead (see effectiveVerdict above). Measured 3
+ * remaining on a branch cut from main, which lacks v12m-w33-b:
+ * contacts-panels.css .chq-steps, comms.css .chq-comms-preview-nav,
+ * public/css/agenda.css.ts .chq-pub-agenda-day-scroll -- all three are
+ * v12m-w33-b's in-flight work, deliberately left untouched here. Once
+ * v12m-w33-b lands on main this ceiling should re-measure to 0; the merge
+ * train must re-run this scan after both branches are in, not inherit
+ * either measurement. (Tools chrome rows are OUT-OF-SCOPE, DEC-382, and
+ * excluded from this count -- see VERDICTS above.) See
  * docs/design/audit/horizontal-scroller-390-v12.md for the full ledger. */
-export const UNGROUNDED_SCROLLER_CEILING = 8;
+export const UNGROUNDED_SCROLLER_CEILING = 3;
 
 /** Measured 0 today: KNOWN_CLIP_EXCEPTIONS' one member
  * (`/admin/agenda::div.chq-session-card-title`) still names a real

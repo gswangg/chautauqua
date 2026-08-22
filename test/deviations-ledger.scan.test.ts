@@ -666,6 +666,54 @@ const LEDGER: LedgerEntry[] = [
     },
   },
   {
+    key: "chq-submissions-table-wrap-app-src-pages-submissions-submissions-css-is-blessed-defensive-for-the-organiser-toggled-custom-column-picker-content-class-dec-367-wave-34-amendment",
+    status: "honored",
+    reason:
+      "DEC-367 wave-34 amendment: Submissions.dc.html's desktop frame is a fixed 1600px canvas with no overflow-x drawn for the table -- the wrapper exists so the table keeps working once an organiser toggles the custom-column picker's optional columns on, a content class a static mock cannot depict.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/submissions/submissions.css",
+      literal: ".chq-submissions-table-wrap {",
+      testFile: "test/horizontal-scroller-premise.scan.test.ts",
+    },
+  },
+  {
+    key: "chq-day-grid-app-src-pages-agenda-agenda-css-is-blessed-defensive-for-the-live-room-lane-matrix-content-class-dec-367-wave-34-amendment",
+    status: "honored",
+    reason:
+      "DEC-367 wave-34 amendment: the day-grid room-lane matrix's room count is live event data, not a fixed design-time quantity, so no static frame can draw the matrix at every width a real room count could produce.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/agenda/agenda.css",
+      literal: ".chq-day-grid {",
+      testFile: "test/horizontal-scroller-premise.scan.test.ts",
+    },
+  },
+  {
+    key: "chq-docs-code-src-routes-docs-site-css-ts-is-blessed-defensive-for-the-author-supplied-markdown-code-block-content-class-dec-367-wave-34-amendment",
+    status: "honored",
+    reason:
+      "DEC-367 wave-34 amendment: Docs articles are markdown-sourced prose whose authors can paste code of any line length; the scroller guards that content class independent of which article a static mock's one captured example happened to render.",
+    honored: {
+      kind: "present",
+      file: "src/routes/docs-site.css.ts",
+      literal: ".chq-docs-code { max-width: 680px;",
+      testFile: "test/horizontal-scroller-premise.scan.test.ts",
+    },
+  },
+  {
+    key: "table-pre-src-routes-portal-portal-css-ts-are-blessed-defensive-for-the-embedded-content-content-class-dec-367-wave-34-amendment",
+    status: "honored",
+    reason:
+      "DEC-367 wave-34 amendment: portal pages render organiser-authored embedded content whose shape a static frame set cannot enumerate in advance, so any such embed gets its own scroll container instead of pushing the page wide.",
+    honored: {
+      kind: "present",
+      file: "src/routes/portal/portal.css.ts",
+      literal: "table {",
+      testFile: "test/horizontal-scroller-premise.scan.test.ts",
+    },
+  },
+  {
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
     status: "honored",
     reason:
@@ -1137,14 +1185,14 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(18);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(22);
     expect(bySection.get("## 4. Voice")).toBe(1);
     expect(bySection.get("## 4a. Docs screenshots: tall frames, prepared states, and focus (USER RULINGS 2026-08-16 / 2026-08-17)")).toBe(4);
     expect(bySection.get("## 5. Pending adjudication (not yet blessed — sweep should verdict)")).toBe(1);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
     expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(17);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
-    expect(derived.length).toBe(76);
+    expect(derived.length).toBe(80);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {
