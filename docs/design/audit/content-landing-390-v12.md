@@ -36,7 +36,7 @@ passing tests).
 | `:204` | H1 "Content" | MATCHES | `getByRole('heading', {name:'Content'})`, class `chq-page-title` |
 | `:206` | "N need a decision · M re-uploaded" | MATCHES (shape; frame's 5/2 are sample data, DEC-967) | fixture counts 2 pending + 1 changes_requested = 3, reuploadedCount 2 → renders "3 need a decision · 2 re-uploaded" |
 | `:207` | "Select" toggle | MATCHES (shipped as `<button>` not `<a href="#">` — a semantic upgrade, not a divergence) | `getByRole('button', {name:'Select'})`; mutually exclusive with `.chq-content-phone-selecting-meta` on click, summary line disappears |
-| `:210` | Chip label "Needs a decision" | MATCHES verbatim | `TAB_LABELS.needs_decision === 'Needs a decision'` (`SessionList.tsx:40`) AND reaches DOM: `chips.getByRole('tab', {name: /^Needs a decision/})` |
+| `:210` | Chip label "Needs a decision" | MATCHES verbatim | `TAB_LABELS.needs_decision` (`app/src/pages/content/SessionList.tsx:40` — `needs_decision: 'Needs a decision',`) and reaches DOM via a query equivalent to chips.getByRole('tab', {name: /^Needs a decision/}) |
 | `:211` | Chip label "Approved" | MATCHES verbatim | `TAB_LABELS.approved === 'Approved'` AND reaches DOM: `chips.getByRole('tab', {name: /^Approved/})` |
 | `:210`/`:211` | Chip counts | MATCHES (shape) | fixture counts render as "Needs a decision · 3" / "Approved · 9" |
 | — (chip strip overall) | Exactly two chips | **NARROWED** | shipped chipstrip renders THREE tabs (`WORKLIST_TABS`: `needs_decision`, `approved`, `all` — DEC-825), the frame's `:198` extent draws only two. Not a product edit this measurement-only lane may make; recorded as a divergence. |
@@ -66,8 +66,10 @@ survives at `:198`.
 
 **One real divergence, not previously called out at this granularity:**
 the frame's `:198` chip strip draws exactly two chips ("Needs a decision",
-"Approved"); the shipped `.chq-chipstrip` (`SessionList.tsx:246-260`,
-`WORKLIST_TABS` in `worklist.ts`) renders a third ("All accepted sessions",
+"Approved"); the shipped `.chq-chipstrip` (`app/src/pages/content/SessionList.tsx:246`
+— `<div className="chq-chipstrip" role="tablist" aria-label="Content status">`)
+maps over WORKLIST_TABS (`app/src/pages/content/SessionList.tsx:247`
+— `{WORKLIST_TABS.map((t) => (`) in worklist.ts, and renders a third ("All accepted sessions",
 DEC-825) the frame's landing extent never draws. Owning file:
 `app/src/pages/content/worklist.ts` / `SessionList.tsx` (both HARD
 READ-ONLY to this task — measurement only, no fix here).

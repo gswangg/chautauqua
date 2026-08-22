@@ -19,7 +19,9 @@ Tier 0 fix. Task w33-e. Verified against `main` at wave 33.
 
 ## What the tree did before this fix
 
-- `OnboardingGrid.tsx:1017` (pre-fix): `<strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.overdue ?? 0}</strong> overdue` — weight on the RESTING accepted numeral, and weight on the overdue NUMERAL only (not the noun) — the inverse of the pack's rule on both axes.
+- `app/src/pages/speakers/OnboardingGrid.tsx` head summary (pre-fix, no longer on the tree — described from the pre-fix diff, not a live line): the markup read
+  &lt;strong&gt;{counts?.speakers ?? 0}&lt;/strong&gt; accepted &middot; &lt;strong&gt;{counts?.overdue ?? 0}&lt;/strong&gt; overdue
+  — weight on the RESTING accepted numeral, and weight on the overdue NUMERAL only (not the noun) — the inverse of the pack's rule on both axes.
 - `RosterPanel.tsx:474` (pre-fix): both clauses `<strong>`-wrapped; the frame draws neither bold.
 - `.chq-summary` (`app/src/styles.css:433`) is muted 13px — the pre-fix `<strong>` was bold-but-muted, never reaching the frame's ink colour either.
 
@@ -32,11 +34,15 @@ Tier 0 fix. Task w33-e. Verified against `main` at wave 33.
 ## Contention
 
 - `v12m-w31-a` (unmerged, 1 commit ahead of `main` at time of writing) adds `app/src/pages/speakers/Speakers.frame390.render.test.tsx`, which verbatim-cites frame line 140 at its own `:145` and asserts `textContent` only — unaffected by this fix (textContent is unchanged: `"12 accepted · 3 overdue"`).
-- `v12m-w25-e` touches `OnboardingGrid.tsx:658` (`optimisticOverride`) — a different region of the same file; this fix does not touch it.
+- `v12m-w25-e` touches `app/src/pages/speakers/OnboardingGrid.tsx:429` — `const [optimisticOverride, setOptimisticOverride] = useState<OnboardingGridResponse | null>(null);` — a different region of the same file; this fix does not touch it.
 
 ## Desktop pins re-verified (textContent-only, unaffected)
 
-- `app/src/pages/Speakers.desktop-frame-verdicts.render.test.tsx:129-130`
-- `app/src/pages/Speakers.frame-verdicts.render.test.tsx:161-163`
-- `app/src/pages/speakers/OnboardingGrid.render.test.tsx:2174`
+- `app/src/pages/Speakers.desktop-frame-verdicts.render.test.tsx:130` —
+  `expect(summary).toBe('12 accepted · 3 overdue');`
+- `app/src/pages/Speakers.frame-verdicts.render.test.tsx:161` —
+  `verbatimLine(264, '        <span style="font-size:13px; color:#565A4B">12 accepted · 2 not claimed</span>');`
+- `app/src/pages/speakers/OnboardingGrid.render.test.tsx:2174` —
+  `'2 accepted · 1 not claimed',`
 - `app/src/pages/speakers/OnboardingGrid.filteredEmpty.w5t.render.test.tsx`
+  — its own `toMatch(/overdue/)` assertion on the head summary text.

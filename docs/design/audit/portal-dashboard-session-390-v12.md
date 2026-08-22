@@ -19,11 +19,12 @@ to do`, `n` proven equal to `worklist.length` — the exact array the
 `scheduledSubline` one-session form (`<event> · you speak <placement>`),
 the "Waiting on you" / "Your session" / "Done" section labels, the
 per-kind task control label (`taskActionLabel` returns `Upload file` for
-`kind: "file_request"`, index.tsx:136), the session card's title + meta
+`kind: "file_request"`, src/routes/portal/index.tsx:140), the session card's title + meta
 line (format · track · accepted date) and deliverable clause (`{filename}
 v{version} · with the organisers`), the `Upload again` control
-(index.tsx:291), and the footer band (`<name> · <company>` + `Profile`
-link). The sign-out control (DEC-590's "page furniture, not chrome" half)
+(src/routes/portal/index.tsx:297), and the footer band, which reads the
+speaker's name and company followed by a `Profile`
+link. The sign-out control (DEC-590's "page furniture, not chrome" half)
 renders as `chq-btn-tertiary` in the header identity cluster, never a
 primary/secondary-weight button.
 
@@ -56,7 +57,7 @@ notes the existing catalog entry rather than re-opening it:
    `Edit submission`, an expansion for clarity.
 3. **Deliverable visibility clause.** Frame :583's sample reads `with the
    organisers` (the card's shortened form); the detail page's own clause
-   (index.tsx:581, a DEC-908 wording choice) is the longer `Shared with
+   (src/routes/portal/index.tsx:587, a DEC-908 wording choice) is the longer `Shared with
    the organisers`. Version/size shape (`v{version} · {bytes}`) matches
    exactly.
 

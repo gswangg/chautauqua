@@ -110,7 +110,7 @@ because the fix is in `PlanEditor.tsx`, which this task does not own.
 anywhere.** The frame draws these as visible per-criterion labels beside the
 options list and the weight input. The built tree carries those exact words
 in exactly one place — `.chq-review-criteria-head-row`
-(`PlanEditor.tsx:1799`), an `aria-hidden="true"` desktop column-header row
+(`app/src/pages/review/PlanEditor.tsx:1839`), an `aria-hidden="true"` desktop column-header row
 rendered *unconditionally*, not gated by `isPhone` and not scoped per
 criterion. A screen reader user on phone never hears "Options" or "Weight"
 named before the corresponding control. Disposition: needs a real fix in
@@ -132,7 +132,7 @@ scope to make.
 
 **(c) `:662` is a different sentence, not just different numbers.** Frame:
 "Would assign N of M · you confirm before anything saves" — a preview-count
-sentence. Shipped (`PlanEditor.tsx:2334`, `capRowSummaryLine` ->
+sentence. Shipped (`app/src/pages/review/PlanEditor.tsx:2396`, `capRowSummaryLine` ->
 `distributeSummaryText`): "N talks · M reviews needed at K each · R
 reviewers" — a capacity-summary sentence with no "would assign" framing and
 no explicit confirm-before-save language. `DEC-745 wave-72`'s own comment at

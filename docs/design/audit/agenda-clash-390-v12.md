@@ -82,9 +82,11 @@ red the moment this branch lands):
   `expect(screen.queryByText('3 sessions in this slot')).toBeNull();` and
   the first becomes `'Three sessions in this slot'`. Also inside the same
   phone `describe` block.
-- `app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx:65-66,
-  76-77, 121` — four assertions on `'2 sessions in this slot'` /
-  `'3 sessions in this slot'` (`getByText`/`queryByText` pairs), all
+- `app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx:65` —
+  `expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();`
+  (also at :66, :76-77, :121) — four assertions total on
+  `'2 sessions in this slot'` / `'3 sessions in this slot'`
+  (`getByText`/`queryByText` pairs), all
   phone-scoped (mounts `PhoneAgenda` directly). Convert to the spelled
   forms the same way as `PhoneAgenda.w49.render.test.tsx` above.
 
@@ -117,22 +119,20 @@ the `slot.clash` `sc-if` block, `:155-172`).
 **(b) Existing producer + consumer elsewhere in the codebase, with
 coordinates:**
 
-- *Producer:* `src/server/repo/overview/scheduling.ts:139`
-  (`buildConflictResolutionFor`), which composes the label at
-  `scheduling.ts:192` — `` `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}` `` —
+- *Producer:* `src/server/repo/overview/scheduling.ts:140`
+  (`export function buildConflictResolutionFor(`), which composes the
+  label via `conflictMoveLabel` at `src/domain/schedule-copy.ts:58` —
+  `Move ${ref} to ${clockHMM(startMin)}` —
   i.e. exactly this frame's copy shape ("Move DFC-047 to 11:30"). Wired
-  into the Overview payload at `src/server/repo/overview.ts:715-720`
-  (`agendaWork.conflicts[i].resolution`), per DEC-652
-  (`src/decisions-data/part4.ts:29`, referenced via `src/decisions.ts`'s
-  `DEC_652` constant — Overview §04 "carries the CONCRETE next action the
-  server computed … and clicking it places; a suggestion the server
-  cannot compute is absent, never invented").
-- *Consumer:* `app/src/pages/overview/AgendaWorkSection.tsx:132-156`
-  renders `{conflict.resolution.label}` as a button
-  (`.chq-overview-link-btn`) whose `onClick` calls `placeSlot` (defined
-  at `AgendaWorkSection.tsx:75-94`), which does
-  `apiPut('/submissions/${submissionId}/slot', { day, startMin, endMin,
-  roomId })` — i.e. `PUT /api/v1/submissions/:id/slot`, the same write
+  into the Overview payload at `src/server/repo/overview.ts:721`
+  (`resolution: buildConflictResolutionFor(`), per DEC-652
+  (`src/decisions-data/part4.ts:29`) — Overview §04 "carries the CONCRETE
+  next action the server computed … and clicking it places; a suggestion
+  the server cannot compute is absent, never invented".
+- *Consumer:* `app/src/pages/overview/AgendaWorkSection.tsx` renders
+  `{conflict.resolution.label}` (bare path, drift-proof) as a button
+  (`.chq-overview-link-btn`) whose `onClick` calls `placeSlot`, which does
+  a `PUT /api/v1/submissions/:id/slot` write — the same write
   endpoint `PhoneAgenda.tsx`'s own tap-to-place (`placeArmedAt`) already
   drives, just reached from a different screen.
 
