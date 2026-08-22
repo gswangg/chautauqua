@@ -684,6 +684,17 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (task w28-a, DEC-808 amendment): pack spelling-register ratchet
+  // -- counts capitalised American spellings of words the v12 pack draws
+  // British (e.g. "Organizer" vs the frame's "Organiser") against the
+  // pack's own frame-copy register, a v12 frame-copy conformance fact
+  // seeded at 0 (test/role-label-spelling.scan.test.ts).
+  "ROLE_LABEL_SPELLING_CEILING",
+  // wave-28 (task w28-a, DEC-808 amendment): admin-surface 390 tap-floor
+  // sighting count -- docs/mobile-campaign.md Tier 2, wired into TIER2 in
+  // the same commit that declares it here (see TIER2_CEILING_NAMES below)
+  // (test/admin-390-offender-roster.scan.test.ts).
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
 ];
 
 /**
@@ -782,6 +793,15 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // declared-but-unread knob (DEC-851/DEC-988).
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (task w28-a): pack spelling-register ratchet, wired into TIER2
+  // in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "ROLE_LABEL_SPELLING_CEILING",
+  // wave-28 (task w28-a): admin-surface 390 tap-floor sighting count,
+  // wired into TIER2 in the same commit that declared it in
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988).
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
 ];
 
 /**
@@ -983,6 +1003,20 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
     + "amendment).",
+
+  AUDIT_FILE_FLOOR:
+    "measures a MONOTONE-UPWARD non-vacuity floor over the audit corpus (docs/design/audit/*.md) "
+    + "-- how many audit files exist, not how many frame defects remain. It is a corpus lanes "
+    + "append to (a directory a wave adds a file to is honest growth, never regression), the "
+    + "opposite shape from a ceiling; grading it as a campaign row would make an audit lane's own "
+    + "growth read as campaign regression, not a v12 frame or 390-geometry conformance fact "
+    + "(test/open-divergence-ledger.scan.test.ts, DEC-180 wave-27).",
+  TOKEN_ROW_FLOOR:
+    "measures a MONOTONE-UPWARD non-vacuity floor over the same audit corpus's own recorded "
+    + "**DIVERGES**-token row count, not how many of those rows are still open (OPEN_DIVERGENCE_CEILING "
+    + "already grades that). A floor over a corpus lanes append to is a guard against the population "
+    + "silently narrowing, never itself a v12 frame or 390-geometry conformance fact "
+    + "(test/open-divergence-ledger.scan.test.ts, DEC-180 wave-27).",
 };
 
 /**
