@@ -15,6 +15,7 @@ function makeDetail(overrides: Partial<AssignmentResponseDetail> = {}): Assignme
     taskTitle: 'Flight reimbursement form',
     contact: { id: 'c1', name: 'Ada Lovelace', email: 'ada@example.com' },
     status: 'complete',
+    assignedAt: 1699000000000,
     completedAt: 1700000000000,
     fields: [],
     ...overrides,
@@ -22,6 +23,23 @@ function makeDetail(overrides: Partial<AssignmentResponseDetail> = {}): Assignme
 }
 
 describe('ResponseModal', () => {
+  // DEC-441 (wave-6 amendment): Speakers.dc.html:235 draws "sent <date>",
+  // naming when the task went out (assignedAt), not when it was completed.
+  it('subtitle names the send date, not the completion date', () => {
+    render(
+      <ResponseModal
+        contactName="Ada Lovelace"
+        loading={false}
+        error={null}
+        detail={makeDetail()}
+        onStatusChange={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/sent/)).toBeInTheDocument();
+    expect(screen.queryByText(/Completed/)).not.toBeInTheDocument();
+  });
+
   it('renders a download link for a file-kind field', () => {
     render(
       <ResponseModal

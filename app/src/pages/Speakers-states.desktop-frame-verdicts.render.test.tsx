@@ -184,6 +184,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
           taskTitle: 'Hotel stay form',
           contact: { id: CONTACT_ID, name: 'Priya Raman', email: 'priya@example.com' },
           status: 'complete',
+          assignedAt: completedAt - 10 * 24 * 60 * 60 * 1000,
           completedAt,
           fields: [{ label: 'Nights', value: 'Two nights · 11-13 May' }],
         },
@@ -216,7 +217,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       expect(within(dialog).getByText('Sets it back to pending — the next reminder picks it up')).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s subtitle names WHEN THE TASK WAS SENT ("Priya Raman · sent 2 Apr"); the tree names when it was COMPLETED instead', async () => {
+    it('MATCHES: the subtitle names WHEN THE TASK WAS SENT ("Priya Raman · sent 2 Apr"), not when it was completed', async () => {
       renderAndOpenResponse();
       await screen.findByRole('heading', { name: 'Hotel stay form' });
       fireEvent.click(screen.getByRole('button', { name: 'Open' }));
@@ -226,8 +227,8 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // `<span style="font-size:13px; color:#565A4B">Priya Raman · sent 2 Apr</span>`
       verbatimLine(235, '          <span style="font-size:13px; color:#565A4B">Priya Raman · sent 2 Apr</span>');
       const subtitle = within(dialog).getByText(/Priya Raman/);
-      expect(subtitle.textContent).toMatch(/Completed/);
-      expect(subtitle.textContent).not.toMatch(/sent/);
+      expect(subtitle.textContent).toMatch(/sent/);
+      expect(subtitle.textContent).not.toMatch(/Completed/);
     });
   });
 

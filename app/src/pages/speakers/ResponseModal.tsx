@@ -26,7 +26,7 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
       subtitle={
         <>
           {contactName}
-          {detail && <> &middot; Completed {formatDate(detail.completedAt)}</>}
+          {detail && <> &middot; sent {formatDate(detail.assignedAt)}</>}
         </>
       }
       ariaLabel="Task response"
