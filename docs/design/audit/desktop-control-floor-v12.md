@@ -1,4 +1,4 @@
-# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27; attribute/prop label tier task w28-b, DEC-393 + DEC-808 wave-28; digit-collapsed skeleton join + composed/absent split task w29-e, DEC-808 wave-29)
+# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27; attribute/prop label tier task w28-b, DEC-393 + DEC-808 wave-28; digit-collapsed skeleton join + composed/absent split task w29-e, DEC-808 wave-29; States-swatch population exclusion + DEC-746 ruling-settled move task w33-e, DEC-651 wave-33)
 
 Measured by `test/desktop-control-floor.scan.test.ts` on this branch. This
 file MEASURES ONLY -- it changes no product CSS byte except the one
@@ -16,6 +16,13 @@ shape). Drawn-floor histogram: `min-height:46px` is the most common value
 -- the same shape DEC-393's wave-151 amendment's own census names for the
 whole desktop population, confirmed again inside just the DRAWN-CONTROL
 subset this scan grades.
+
+**WAVE 33 (DEC-651) update:** 247 drawn controls, post-population-exclusion
+-- see "WAVE 33" below. The `States · hover, pending, drag` swatch-panel
+frame's 19 rows no longer enter this population at all; the 108-desktop-frame
+count above is unaffected (that is `test/desktop-frame-ledger.scan.test.ts`'s
+own, separate frame-level population -- see "WAVE 33" below for why the two
+never collide).
 
 ## WAVE 157 REPAIR (DEC-393 amendment, task rb)
 
@@ -182,7 +189,7 @@ re-judging it. Every excluded row is counted once in
 `ok + offender + unresolved + excluded = 266` (asserted by "every row is
 accounted for exactly once", `test/desktop-control-floor.scan.test.ts`).
 
-## Offenders: 4 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 4` as of wave 29 -- see "WAVE 29" below for the four new, genuinely-absent rows; superseded from the `= 0` this heading named through wave 28)
+## Offenders: 0 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 0` as of wave 33 -- see "WAVE 33" below for the disposition of the four rows this heading named `= 4` for through wave 32; that count is now stale, corrected here)
 
 ### RESOLVED (wave 17, DEC-393): the two role-chip strips, and this
 ### section's own stale resolution corrected
@@ -536,7 +543,7 @@ Agenda's break-duration field showing "20" -- but its class carried no
 `chq-` token); 4 moved to `offender`. `ok + offender + unresolved + excluded
 = 266` still holds (the file's own accounting assertion, unchanged).
 
-### The four new offenders (recorded, not fixed -- desktop stays frozen)
+### The four new offenders, wave 29 (SUPERSEDED wave 33 -- see "WAVE 33" below; kept for the citation history each row's disposition still cites)
 
 - `docs/design/Chautauqua Overview.dc.html`:514 -- "Remind this task" (frame
   "States · hover, pending, drag", `min-height:46px`). This frame (lines
@@ -616,3 +623,136 @@ itself (never re-listed here in full, per DEC-613 -- one table, not two).
 Zero product CSS bytes changed this wave -- desktop stays frozen, per this
 task's own scope. `DEC-808`'s own registry file carries this wave's
 amendment; see `src/decisions-data/DEC-808.md`.
+
+## WAVE 33 (DEC-651 wave-33 amendment, task w33-e): the four wave-29 offenders were not divergences -- the ledger stops asserting them
+
+DEC-651 (wave 33) named this section's own prior "recorded, not fixed"
+framing as itself the bug: none of the four rows above is a `min-height`
+CSS gap (desktop stays frozen, no product byte moves here either), and this
+ledger should not have kept asserting all four as offenders. `NO PRODUCT
+BYTE MOVES in this lane.`
+
+### The exclusion rule (three rows: "Remind this task", "Archive this event", "Hover me")
+
+`docs/design/Chautauqua Overview.dc.html:476` opens the frame titled
+`States · hover, pending, drag` -- the ONLY frame in the whole 13-file,
+108-frame pack whose title begins `States · `. It is a component swatch
+panel demonstrating Primary/Secondary/Tertiary/Destructive button styling
+and input rest/hover/focus/disabled states, captioned by the pack itself
+`Hover the live column · the rest are drawn states` -- never a real screen.
+All three rows sit inside this one frame's extent (lines 476-688); the prior
+section's own corpus greps (quoted above) already proved zero product hits
+for each.
+
+`test/desktop-control-floor.scan.test.ts` now excludes this frame's rows at
+the POPULATION step, not the grade step: `isStatesSwatchFrameTitle(title)`
+tests the frame's own title string (`title.startsWith('States · ')`), and
+`populatedFrames` applies it alongside the file's pre-existing `!isPhone`
+split, inside `drawnControlsInFile`'s frame-extent walk -- the SAME place
+that split already lives, never a hand-written line range. This drops ALL 19
+of the frame's drawn-control rows from `ALL_CONTROLS`, not merely the three
+that graded `offender` -- the other 16 (8 `ok`: "Save changes" x4, "Cancel"
+x4; 4 `unresolved`/`composed-unseen`: "Priya Raman" x2, "dana@example",
+"Talk, 30 min"; 4 `excluded`/`frame-content`: "Send 23 emails" x2, "Sending
+12 of 23…", "Uploading…") were never product copy either, and counting them
+toward this file's population was never correct.
+
+**Two negative controls**, per the task's own requirement, are asserted in
+`test/desktop-control-floor.scan.test.ts`'s
+`non-vacuity: WAVE 33 (DEC-651) States-swatch-frame population exclusion`
+test, over fabricated frame entries (never the real corpus):
+
+1. A synthetic frame whose title does NOT begin `States · ` still
+   contributes its rows to `populatedFrames`'s output -- the exclusion is
+   not a blanket "drop everything" escape.
+2. A row inside a badged extent is excluded -- asserted against TWO
+   fabricated `States · `-titled frames (not only the pack's one real
+   title), proving the derivation reads the title TOKEN and never a
+   hand-listed file:line coordinate.
+
+### The settled-exclusion entry (one row: "Upload a headshot")
+
+`docs/design/Chautauqua Speakers.dc.html:201` is already adjudicated.
+Verified directly against the source (not re-derived from this doc's prior
+wave-29 text): `app/src/pages/speakers/TaskModal.tsx`'s own header comment
+above `kindLabel` reads
+
+> `// DEC-746: the segmented control's labels/order per`
+> `// docs/design/Chautauqua Speakers.dc.html:186-216 -- Upload, Form,`
+> `// Acknowledge, mapping onto the existing kind values so every other kind`
+
+-- citing exactly the region (`186-216`) this row's line 201 sits inside --
+and `kindLabel`'s own body:
+
+> `export function kindLabel(kind: TaskKind): string {`
+> `  if (kind === 'file_request') return 'Upload';`
+> `  if (kind === 'form') return 'Form';`
+> `  return 'Acknowledge';`
+
+returns exactly `'Upload'` / `'Form'` / `'Acknowledge'`, confirming the
+ruling's own claim.
+
+This row now lives in `test/desktop-control-floor.scan.test.ts`'s
+`RULING_SETTLED_EXCLUSIONS` table -- a table SEPARATE from the label
+ledger's imported `FRAME_CONTENT_EXCLUSIONS` (FIXTURE/COMPOSED, a different
+file's adjudication), carrying `DEC-746` as this row's ruling id: **a row
+enters a settled table only carrying the ruling that settled it.** It grades
+`excluded`/`ruling-settled`, never `offender`. The `RULING_SETTLED_EXCLUSIONS`
+entry's `reason` string interpolates `DEC_746` (the compile-checked constant
+from `src/decisions.ts`, not a bare string), so a future rewording of the
+ruling's own text cannot silently drift out of sync with this table.
+
+A positive/negative fixture pair
+(`non-vacuity: WAVE 33 (DEC-651) DEC-746 ruling-settled exclusion`) asserts
+the real table coordinate grades `excluded`/`ruling-settled` carrying the
+exact reason string, and an unrelated coordinate is untouched by this table.
+
+### Final disposition of all four rows
+
+| row | citation (bare path + verbatim quote) | disposition |
+|---|---|---|
+| "Remind this task" | `docs/design/Chautauqua Overview.dc.html`, `>Remind this task<` | Excluded at the population step (States-swatch-frame title exclusion) -- no longer enters `ALL_CONTROLS` at all. |
+| "Archive this event" | `docs/design/Chautauqua Overview.dc.html`, `>Archive this event<` | Same States-swatch-frame population exclusion. |
+| "Hover me" | `docs/design/Chautauqua Overview.dc.html`, `>Hover me<` | Same States-swatch-frame population exclusion. |
+| "Upload a headshot" | `docs/design/Chautauqua Speakers.dc.html`, `>Upload a headshot<` | Moved to `RULING_SETTLED_EXCLUSIONS`, carrying `DEC-746`; grades `excluded`/`ruling-settled`. |
+
+### Is the States frame also claimed by `test/desktop-frame-ledger.scan.test.ts`'s `CLAIMED_FLOOR` population?
+
+**Yes -- and that is a DIFFERENT question, and this task does NOT touch that
+ledger.** `docs/design/audit/desktop-frame-ledger-v12.md`'s own printed
+claim list includes the line `Chautauqua Overview.dc.html :476 -- States ·
+hover, pending, drag`, and `docs/design/audit/overview-desktop-v12.md`
+adjudicates it: "`:476 States · hover, pending, drag | MATCHES for Buttons;
+DIVERGES by omission (no Pending/Drag controls exist on this page) --
+adjudicated, DEC-380 wave-130`". `desktop-frame-ledger.scan.test.ts`'s
+`CLAIMED_FLOOR` asks "does some test CITE this frame at all" (a coverage
+population over ALL 108 desktop frames, DEC-380-adjudicated content
+divergences included by design); `desktop-control-floor.scan.test.ts` asks
+"does this frame draw CONTROLS whose geometry the app's own product copy
+matches" (a min-height population, now excluding the swatch panel's rows
+entirely as never-product-copy). The same frame can be a legitimate member
+of one population and correctly excluded from the other -- this wave leaves
+`desktop-frame-ledger.scan.test.ts` and its `CLAIMED_FLOOR` untouched.
+
+### Re-measured
+
+Forcing both ceilings to `-1` before AND after the two changes above (this
+file's own required protocol):
+
+| | offenders | unresolved | excluded | ok | total |
+|---|---|---|---|---|---|
+| PRE (wave 29 tree) | 4 | 135 | (prior count) | (prior count) | 266 |
+| POST (wave 33: population exclusion + ruling-settled move) | 0 | 131 | +1 (DEC-746 row) | unchanged | 247 |
+
+`DESKTOP_FLOOR_DIVERGENCE_CEILING` lowered `4 -> 0`.
+`DESKTOP_FLOOR_UNRESOLVED_CEILING` **moves** `135 -> 131` -- contrary to this
+task's own "expect unchanged" prior, MEASURED rather than assumed: of the 19
+rows the population exclusion removes, 4 were themselves graded
+`unresolved`/`composed-unseen` (not `offender`), each individually verified
+by printing every States-frame row's pre-exclusion status (see
+`test/desktop-control-floor.scan.test.ts`'s own comment above the
+`DESKTOP_FLOOR_UNRESOLVED_CEILING` export for the full 8/3/4/4 breakdown).
+`ok + offender + unresolved + excluded = 247` still holds (the file's own
+accounting assertion, unchanged in shape, total lowered `266 -> 247` because
+the population itself shrank by 19 real rows, never by loosening the
+assertion). Zero product CSS bytes moved -- this wave is instrument-only.
