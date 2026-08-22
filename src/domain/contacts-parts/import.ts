@@ -99,17 +99,66 @@ export const STANDARD_IMPORT_FIELDS = ["email", "firstName", "lastName", "compan
 export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
 
 /**
+ * DEC-663 (wave-30 amendment): the mapping object validateImportMapping
+ * checks is keyed by CSV COLUMN NAME (Record<string,string>), so two CSV
+ * columns sharing a header text (e.g. two "Email" columns -- routine in CRM
+ * exports with primary/secondary addresses) collapse to ONE key before
+ * validateImportMapping ever runs. It cannot see a collision its own input
+ * has already lost. mapImportRow below is the one place that still holds
+ * the raw header ARRAY (both positions intact, by zero-based index) at the
+ * same time as the name-keyed mapping, so it is the one place that CAN
+ * detect this. This function does that detection and REFUSES -- naming
+ * every colliding column's one-based position, the shared header text, and
+ * the shared target -- rather than silently keeping whichever duplicate
+ * column happens to be rightmost (mapImportRow's own left-to-right
+ * assignment loop below is otherwise exactly that last-write-wins silent
+ * drop the house rule forbids: same header -> same mapping lookup ->
+ * every duplicate column overwrites the same result field in index order).
+ * Headers mapped to ""/undefined (skip) are exempt: no value is chosen
+ * from any of the duplicate columns, so there is nothing to silently drop.
+ */
+export function validateHeaderMappingInjectivity(mapping: Record<string, string>, header: string[]): void {
+  const positionsByName = new Map<string, number[]>();
+  for (let index = 0; index < header.length; index++) {
+    const name = header[index];
+    if (name === undefined) continue;
+    const positions = positionsByName.get(name);
+    if (positions) positions.push(index);
+    else positionsByName.set(name, [index]);
+  }
+
+  for (const [name, positions] of positionsByName) {
+    if (positions.length < 2) continue;
+    const target = mapping[name];
+    if (!target) continue;
+    const positionList = positions.map((p) => p + 1).join(", ");
+    throw new Error(
+      `Columns at positions ${positionList} share the header "${name}" and are all mapped to "${target}" -- ` +
+        `duplicate headers can't be safely mapped, one would silently overwrite the others -- rename the ` +
+        `columns so each header is unique and re-upload.`,
+    );
+  }
+}
+
+/**
  * Maps an already-parsed CSV row into a partial ContactRecord using a
  * csvColumn -> targetField mapping. Targets are STANDARD_IMPORT_FIELDS plus
  * 'custom.<key>'. Columns with no mapping entry are ignored. If the mapped
  * email column is missing or blank, returns {} so callers can reject the
  * row.
+ *
+ * DEC-663 (wave-30 amendment): calls validateHeaderMappingInjectivity above
+ * first on every invocation (it's cheap -- O(header length) -- and every
+ * row shares the same header/mapping) so a duplicate-header collision is
+ * refused loudly instead of silently collapsing (see that function's doc).
  */
 export function mapImportRow(
   mapping: Record<string, string>,
   header: string[],
   row: string[],
 ): Partial<ContactRecord> {
+  validateHeaderMappingInjectivity(mapping, header);
+
   const result: Partial<ContactRecord> = {};
   const customFields: Record<string, string> = {};
   let hasCustom = false;
