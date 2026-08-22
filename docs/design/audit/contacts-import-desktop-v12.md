@@ -18,7 +18,11 @@ stylesheet, even where a real divergence is found below.
 **DIVERGES**, in three ways, none of them new debt — the wizard is a
 multi-step React dialog reusing one shared `ModalFrame` chrome across all
 four of its steps, where the frame draws each step as an independently
-composed static mock.
+composed static mock. Adjudicated below: the escape count/location is
+blessed under DEC-902 (wave-8 amendment, floor-not-ceiling — an extra
+escape route is additive, not a missing control); the dedupe caption's
+source is already resolved under DEC-663 (wave-108 amendment); the
+column-mapping structure MATCHES outright.
 
 - **Escape count and location.** The frame draws exactly ONE escape for
   this step — a head-band `Cancel` link (`Chautauqua Contacts.dc.html:288`)
@@ -83,7 +87,7 @@ composed static mock.
 
 ## Frame :770 "Import CSV · the file will not do" (Modal)
 
-**DIVERGES** on heading wording (captioned ruling), **CLOSED** on identity, **MATCHES** on substance.
+**DIVERGES** on heading wording (captioned ruling, DEC-575 wave-28 amendment — kept deliberately, see below), **CLOSED** on identity (DEC-575, wave-8), **MATCHES** on substance.
 
 - **Dialog identity: CLOSED-with-receipt** (DEC-575, wave-8). `stepTitle`
   in `ImportWizard.tsx` now resolves to "Nothing was imported" whenever
@@ -108,7 +112,7 @@ composed static mock.
 
 ## Frame :546 "Bulk email" (Modal)
 
-**MATCHES** on header and footnote, **DIVERGES** (blessed) on the footer.
+**MATCHES** on header and footnote, **DIVERGES** (blessed, DEC-902) on the footer.
 
 - Header MATCHES: H1 "Email N contacts" (`:552`) over the recipient names
   sub-line (`:553`), sourced from the `recipientNames` prop (never a
@@ -121,13 +125,16 @@ composed static mock.
   what catches an unresolved merge-field token before anything goes out —
   before a confirm dialog ever offers `Send N emails`. Already named and
   reasoned about in `BulkEmailModal.tsx` itself; filed here as the
-  explicit per-frame verdict this task requires.
+  explicit per-frame verdict this task requires. Adjudicated under DEC-902
+  (wave-8 amendment, floor-not-ceiling): the preview step adds real
+  capability — catching an unresolved merge-field token before an
+  irreversible send — so it is blessed, not open debt.
 - Merge-fields footnote MATCHES verbatim (`:570`), literal placeholder
   tokens (`{first_name}`, `{company}`) never resolved client-side.
 
 ## Frame :582 "Add to an event" (Modal)
 
-**MATCHES** on header and footer, **DIVERGES** on the role vocabulary.
+**MATCHES** on header and footer, **DIVERGES** (blessed, DEC-714) on the role vocabulary.
 
 - Header and footer MATCH: H1 "Add to an event" / sub with the contact's
   name; footer draws exactly `Add them` then `Cancel`, in the frame's
@@ -148,11 +155,11 @@ composed static mock.
 
 | Frame | Verdict |
 | --- | --- |
-| :279 Import CSV · step 2 of 3 | DIVERGES (escape count/location; dedupe caption wording, blessed) |
+| :279 Import CSV · step 2 of 3 | DIVERGES (escape count/location, blessed per DEC-902 wave-8; dedupe caption wording, blessed per DEC-663 wave-108) |
 | :672 Import CSV · step 3 of 3 | RESOLVED-BY-RULING (chrome, DEC-575 wave-9) / RESOLVED (footer membership+order, DEC-575 wave-9) |
-| :770 Import CSV · the file will not do | DIVERGES (dialog identity; heading wording) |
-| :546 Bulk email | DIVERGES (footer: Send-direct vs. Preview-then-confirm, blessed) |
-| :582 Add to an event | DIVERGES (role vocabulary: 3 hardcoded chips vs. 4 real roles, blessed) |
+| :770 Import CSV · the file will not do | DIVERGES (dialog identity CLOSED per DEC-575 wave-8; heading wording kept deliberately per DEC-575 wave-28) |
+| :546 Bulk email | DIVERGES (footer: Send-direct vs. Preview-then-confirm, blessed per DEC-902 wave-8) |
+| :582 Add to an event | DIVERGES (role vocabulary: 3 hardcoded chips vs. 4 real roles, blessed per DEC-714) |
 
 0 of 5 frames MATCH in full at the time of the original measurement; every
 one carried at least one real, render-verified divergence. Four of the

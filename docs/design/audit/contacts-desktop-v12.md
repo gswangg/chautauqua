@@ -68,7 +68,10 @@ mounting `PipelineBoard`.
   to be reached some other way (a per-empty-stage tertiary link, frame
   :720's "Add someone to Confirmed ›", is the only in-frame trigger this
   pack draws for it) — the tree's header button is a reasonable additional
-  entry point, not a broken one, but it has no frame counterpart.
+  entry point, not a broken one, but it has no frame counterpart. Adjudicated
+  under DEC-902 (wave-8 amendment): a frame's control list is a floor, not a
+  ceiling, and this extra entry point adds real capability rather than
+  removing any — blessed, not open debt.
 
 ## Frame :720 "Pipeline · an empty stage"
 
@@ -126,7 +129,11 @@ per the mandate.
   with no subtitle at all (`EnrollDialog`'s `ModalFrame` call passes no
   `subtitle` prop, so `.chq-modal-sub` never renders): there is no contact
   context to name from this entry point, and the dialog's own Contact field
-  is a live search, never a pre-filled single target.
+  is a live search, never a pre-filled single target. Adjudicated under
+  DEC-902 (wave-14m amendment) disposition (b): the frame's subtitle implies
+  a pre-filled per-contact entry point this control's real invocation does
+  not have, so naming a contact here would fabricate context the dialog
+  cannot honestly show — the omission is blessed, not adopted.
 - The Stage chip row (all five `PIPELINE_STAGE_LABELS`, frame :627-635) and
   the Fit row (1-5 boxes with the "Ranks people within a stage · optional"
   helper, frame :637-643) both MATCH.
@@ -136,7 +143,11 @@ per the mandate.
   words. The tree's actual button text is "Add to the pipeline"
   (`EnrollDialog.tsx`'s submit `<button>`), matching the title/trigger
   register consistently rather than the frame's shorter footer label. A
-  minor, easily-missed word-count slip in the frame itself.
+  minor, easily-missed word-count slip in the frame itself. Adjudicated
+  under DEC-902 (wave-14m amendment) disposition (b): the tree's four-word
+  reading carries more information than the frame's three-word slip — it
+  stays internally consistent with this same dialog's own title and
+  trigger — so it is blessed, not adopted.
 - The footer's "Cancel" secondary and the "Adding writes a move to the
   activity feed · no email is sent" consequence line (frame :663) both
   MATCH.
@@ -167,7 +178,11 @@ since `MergePage` is never reached FROM `ContactsPage`).
   Contacts · Duplicates", not the frame's bare "‹ Duplicates". This is a
   genuine desktop divergence that the phone-only prior audit
   (`contacts-v12.md`'s "Merge · 390" row) could not have surfaced, since
-  the phone media block DOES hide the prefix there.
+  the phone media block DOES hide the prefix there. Adjudicated under
+  DEC-902 (wave-14m amendment) disposition (b): the tree's "Contacts ·
+  Duplicates" carries more information than the frame's bare "Duplicates"
+  — it names the parent section this back link actually returns to — so
+  it is blessed, not adopted.
 - The H1 "Merge two records" and the right-flushed "N of M pairs" caption
   (frame :360/:362) MATCH, with no trailing kept-record name — confirmed
   both structurally (`.chq-contacts-merge-pair-count-name` is present in
@@ -199,7 +214,13 @@ since `MergePage` is never reached FROM `ContactsPage`).
   drew the generic one — the code's own w2-c comment states this choice
   is deliberate (the head band already names the kept record, so desktop
   keeps naming it directly while phone alone swaps to the frame's generic
-  phrasing).
+  phrasing). **RETIRED under DEC-903 (wave-14m):** re-measured against the
+  tree this wave, this is not open debt — `MergePage.tsx`'s w2-c comment
+  (citing DEC-919, `contacts-v12.md` finding 3) and
+  `contacts-panels.css`'s matching w2-c comment both record this as the
+  already-landed, deliberate adjudication (desktop names the kept record,
+  phone alone swaps to the frame's generic phrasing); the row narrates a
+  divergence that is a landed ruling, not an unresolved one.
 - The footer — "Merge into `<name>`" primary, "Swap which is kept"
   secondary, "Not a duplicate" text link (frame :392-394) — MATCHES.
 
@@ -207,9 +228,9 @@ since `MergePage` is never reached FROM `ContactsPage`).
 
 | Frame | Verdict |
 | --- | --- |
-| :312 Pipeline · invitations for next year | MOSTLY MATCHES (1 additive DIVERGES: unframed header "Add to the pipeline" button) |
-| :352 Duplicates · merge | MOSTLY MATCHES (2 content DIVERGES: back-link prefix, impact-line naming; 1 already-adjudicated frame-silent addition) |
-| :617 Add to the pipeline | MOSTLY MATCHES (2 content DIVERGES: missing per-contact subtitle, footer button word count) |
+| :312 Pipeline · invitations for next year | MOSTLY MATCHES (1 additive DIVERGES: unframed header "Add to the pipeline" button, blessed per DEC-902 wave-8 amendment) |
+| :352 Duplicates · merge | MOSTLY MATCHES (2 content DIVERGES: back-link prefix blessed per DEC-902 wave-14m amendment disposition (b); impact-line naming RETIRED per DEC-903 wave-14m; 1 already-adjudicated frame-silent addition per DEC-663 wave-17) |
+| :617 Add to the pipeline | MOSTLY MATCHES (2 content DIVERGES: missing per-contact subtitle and footer button word count, both blessed per DEC-902 wave-14m amendment disposition (b)) |
 | :720 Pipeline · an empty stage | RESOLVED-BY-RULING (DEC-976, wave 9) — see DEVIATIONS.md §8; single-stage pill page is the phone register, desktop keeps the 5-column Kanban (MATCHES at :312); empty-body copy naming rule confirmed correct; empty-column heading/action text MATCHES |
 
 4 of 4 frames in this lane's scope were RENDERED, not merely cited. Every
