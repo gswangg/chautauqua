@@ -186,6 +186,12 @@ function mountUnscored() {
 
 describe('frame :934-979 "Scorecard · a criterion unscored" -- first markup-level verdict (task w29-c)', () => {
   it(':936/:937 the phone head band draws the plan-scoped back link then the submission title', async () => {
+    // w16-qi (DEC-998): pay for this file's header-block scope citation
+    // into docs/design/Chautauqua Review.dc.html (the file-header comment
+    // at :2) with a non-header, fully-receipted citation of the same
+    // frame -- backtick quote right here plus the `verbatimLine` call
+    // immediately below it, which itself asserts `expect(...).toBe(...)`.
+    // docs/design/Chautauqua Review.dc.html:936 `        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Wave 2 queue</a>`
     verbatimLine(936, '        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Wave 2 queue</a>');
     verbatimLine(
       937,

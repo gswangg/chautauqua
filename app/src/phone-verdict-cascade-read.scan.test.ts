@@ -140,18 +140,18 @@ function formatOffender(o: Offender): string {
 const MEMBERS = findPhoneVerdictMembers(PAGES_ROOT);
 const OFFENDERS = findOffenders(MEMBERS);
 
-// RE-MEASURED (task w13-xj) by forcing this constant to -1 and reading the
-// printed offender list: still 25 members, now 9 offenders -- three of the
-// original 12 (Comms.frame-verdicts, Contacts.frame-verdicts,
-// Content.frame-verdicts) gained a cascade read when sibling wave-12 lanes
-// w12-xa/xb/xc/xe landed, exactly as this file's own header predicted
-// ("EXPECT THE COMPANION TO FIRE IN THE MERGE TRAIN"). The two-sided
-// companion below caught the drop live (measured RED at 12 before this
-// edit) -- lowering the ceiling in this same commit is that companion's
-// contract, never a snapshot carried from a prior wave. Current offenders:
-// Agenda.frame-verdicts, Comms.frame390, Speakers.frame-verdicts,
-// content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
-// overview/Overview.frame390, review/PlanEditor.frame390,
+// RE-MEASURED (task w16-qi, DEC-994): forced to -1 and read the printed
+// offender list -- still 25 members, now 7 offenders. This task's own two
+// files (review/PlanEditor.frame390.render.test.tsx and
+// Speakers.frame-verdicts.render.test.tsx) each gained a real cascade read
+// consumed by an assertion, dropping the count 9 -> 7. The two-sided
+// companion below caught the drop live -- lowering the ceiling in this same
+// commit is that companion's contract, never a snapshot carried from a
+// prior wave. Note for the merge train: other w16 lanes may be draining
+// the same population concurrently, so this ceiling may need lowering
+// again once those land. Remaining offenders: Agenda.frame-verdicts,
+// Comms.frame390, content/DeliverableDetail.frame390,
+// content/FilesLibrary.frame390, overview/Overview.frame390,
 // settings/CallForPapersPanel.frame390, submissions/Submissions.frame390.
 export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 7;
 

@@ -102,31 +102,3 @@ export function flattenMediaRules(css: string): Array<{ selector: string; body: 
   }
   return rules;
 }
-
-/** w16-qg (DEC-994): the brace-matched body of every top-level
- * `@media (max-width: 700px)` block in `css`, in source order. Callers
- * strip comments first. Promoted from the brace-depth walk spelled inline
- * in `app/src/pages/Contacts.frame-verdicts.render.test.tsx`'s
- * `readContactsPhoneLayer()` (~lines 36-55) so every phone-verdict file
- * shares one instrument instead of re-deriving it. Matches by brace depth
- * from the opener, so a nested at-rule (e.g. `@media (hover: hover)`
- * inside the phone block) never truncates the body early. */
-export function phoneMediaBlocks(css: string): string[] {
-  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
-  const blocks: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = opener.exec(css)) !== null) {
-    let depth = 1;
-    let i = m.index + m[0].length;
-    const start = i;
-    while (i < css.length && depth > 0) {
-      if (css[i] === '{') depth += 1;
-      else if (css[i] === '}') depth -= 1;
-      i += 1;
-    }
-    if (depth !== 0) throw new Error('unbalanced @media (max-width: 700px) block in CSS input');
-    blocks.push(css.slice(start, i - 1));
-    opener.lastIndex = i;
-  }
-  return blocks;
-}
