@@ -215,10 +215,26 @@ function ProfilePage(props: {
                 (size/format hint) stays a separate line below. */}
             <h3 style="margin:0 0 4px">Headshot &middot; shown on the public speakers page</h3>
             {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
-            {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
-            <label>
-              Upload a new headshot
-              <input type="file" name="headshot" accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(",")} />
+            {/* DEC-576 wave-21: docs/design/Chautauqua Public and Portal.dc.html:541
+                draws the control as a bordered pill (1px border, radius 6px, the
+                surface-sunk fill, 44px floor, centred flex, 13px/600) reading
+                `Replace`. Legal at every width -- DESIGN-RULINGS.md item 6 rules
+                the portal has no separate desktop design, so this is not wrapped
+                in a DEC-385 max-width block. Label text branches on
+                profile.headshotUrl per clause (b): `Replace` when a headshot is
+                already on file, `Add a headshot` when none exists yet -- one
+                literal that is false for half the population is the DEC-029
+                precedent this control follows. Clause (c): the redundant
+                `No headshot uploaded yet.` paragraph the frame does not draw is
+                deleted; the label's own text now carries that state. */}
+            <label class="chq-portal-headshot-pick">
+              {profile.headshotUrl ? "Replace" : "Add a headshot"}
+              <input
+                class="chq-portal-headshot-pick-input"
+                type="file"
+                name="headshot"
+                accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(",")}
+              />
             </label>
             <p class="chq-portal-detail">{headshotHintText()}</p>
             <p class="chq-portal-sub">{HEADSHOT_HELP_TEXT}</p>

@@ -251,6 +251,19 @@ checks above do not name:
    missing Cancel only); recorded here as a control-shape gap for the
    planner, not fixed by this lane.
 
+   RESOLVED (wave-21, task w21-a, DEC-576 wave-21 amendment): the control
+   now adopts the frame's geometry verbatim. src/routes/portal/profile.tsx`class="chq-portal-headshot-pick"`
+   is the label, with the text branching on `profile.headshotUrl` —
+   `Replace` when a headshot is already on file, `Add a headshot` when none
+   exists yet — and the redundant `No headshot uploaded yet.` paragraph the
+   frame does not draw is deleted. src/routes/portal/portal.css.ts`.chq-portal-headshot-pick {`
+   carries the frame's bordered-pill declarations (1px border, 6px radius,
+   the surface-sunk fill, a 44px floor, centred flex, 13px/600), at top
+   level — not inside a DEC-385 max-width block — per DESIGN-RULINGS.md
+   item 6 (the portal has no separate desktop design).
+   test/portal-390-frame-verdicts.test.ts pins both label states with real
+   `app.request()` calls.
+
 ## Frames :502 "Portal · Hotel stay form" and :560 "Portal · Your session" — DIVERGES on the back-link literal (new, task w9-rc, DEC-967 wave-9 amendment)
 
 MEASUREMENT ONLY, via `test/portal-session-phone-frames.render.test.ts`'s
