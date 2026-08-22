@@ -19,9 +19,10 @@ found below. No Settings citations (DEC-032 wave-26).
 ## Frame :894 "Submit a talk · /submit/:slug" [894-1013]
 
 **DIVERGES** (label wording only -- a blessed deviation shared with the 390
-half of this surface, ruled `DEC_976`'s wave-25 amendment
-(`src/decisions-data/part4.ts:353`) -- not new debt; see the Format bullet
-below for the citation in full). Entered via `GET /submit/:eventSlug`
+half of this surface, ruled DEC-976's wave-25 amendment (compile-checked as
+`DEC_976` in `src/decisions.ts`, per `src/decisions-data/part4.ts:353`) --
+not new debt; see the Format bullet below for the citation in full). Entered
+via `GET /submit/:eventSlug`
 (`publicSubmitGetRoutes`), open-window state (`form.openDate`/`closeDate`
 both null).
 
