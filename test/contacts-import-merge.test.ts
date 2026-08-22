@@ -625,6 +625,53 @@ describe("POST /api/v1/contacts/import dryRun=true mergeLines preview (w10-ii)",
     expect(plan.updated).toBe(2); // ct_merge_target (merge), ct_plain_update (email match)
     expect(plan.skipped).toBe(1); // line 5, skipped by organizer
   });
+
+  // DEC-456 (wave-6 amendment): applyImportRows' fill branch refuses a merge
+  // fill when a `schema.user` row already owns the offered address under a
+  // DIFFERENT contact (import.ts:593-599) -- planImportRows must refuse the
+  // exact same line at dry-run time, per the file's own comment at :936
+  // ("a dry run must refuse what the real run refuses"). Before this fix,
+  // planImportRows never queried schema.user at all, so an organizer's
+  // approved dry-run preview ("N updated") could be rejected wholesale when
+  // they clicked commit.
+  it("planImportRows refuses a merge fill whose offered email already belongs to another account's login (dry run must refuse what the real run refuses)", async () => {
+    const { db } = makeFakeContactDb();
+    await seedContact(db, {
+      id: "ct_merge_target",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+    });
+    await seedUser(db, {
+      id: "user-other",
+      contactId: "ct_someone_else",
+      email: "ada.lovelace@newmail.example.com",
+    });
+
+    const rows = [{ line: 2, parsed: { email: "ada.lovelace@newmail.example.com", firstName: "Ada", lastName: "Lovelace" } }];
+    const opts = { mergeLines: [{ line: 2, contactId: "ct_merge_target" }] };
+
+    let caughtPlan: unknown;
+    try {
+      await repo.planImportRows(db, "org-1", rows, opts);
+    } catch (e) {
+      caughtPlan = e;
+    }
+    let caughtApply: unknown;
+    try {
+      await repo.applyImportRows(db, "org-1", rows, opts);
+    } catch (e) {
+      caughtApply = e;
+    }
+
+    expect(caughtApply).toBeInstanceOf(ApiError);
+    expect(caughtPlan).toBeInstanceOf(ApiError);
+    const planErr = caughtPlan as InstanceType<typeof ApiError>;
+    const applyErr = caughtApply as InstanceType<typeof ApiError>;
+    expect(planErr.message).toBe(applyErr.message);
+    expect(planErr.fields).toEqual(applyErr.fields);
+    expect(planErr.message).toBe("Line 2: this email already belongs to another account");
+  });
 });
 
 // w11-dd: a merge line minted a SECOND contact carrying an org-scoped email
