@@ -148,12 +148,20 @@ const OFFENDERS = findOffenders(MEMBERS);
 // ("EXPECT THE COMPANION TO FIRE IN THE MERGE TRAIN"). The two-sided
 // companion below caught the drop live (measured RED at 12 before this
 // edit) -- lowering the ceiling in this same commit is that companion's
-// contract, never a snapshot carried from a prior wave. Current offenders:
-// Agenda.frame-verdicts, Comms.frame390, Speakers.frame-verdicts,
-// content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
-// overview/Overview.frame390, review/PlanEditor.frame390,
-// settings/CallForPapersPanel.frame390, submissions/Submissions.frame390.
-export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 9;
+// contract, never a snapshot carried from a prior wave.
+//
+// RE-MEASURED AGAIN (task w16-qh): 9 -> 6. Comms.frame390,
+// content/DeliverableDetail.frame390 and content/FilesLibrary.frame390 each
+// gained a real cascade read (a `phoneMediaBlocks()` read of their
+// cluster's phone `@media` block consumed by an `expect(...)` on the rule
+// it governs, DEC-994) in this same task. Concurrent wave-16 lanes drain
+// this same population from other files -- the merge train must
+// re-measure by forcing this constant to -1 and reading OFFENDERS live
+// rather than summing per-lane deltas. Remaining offenders after this task:
+// Agenda.frame-verdicts, Speakers.frame-verdicts, overview/Overview.frame390,
+// review/PlanEditor.frame390, settings/CallForPapersPanel.frame390,
+// submissions/Submissions.frame390.
+export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 6;
 
 describe('phone-verdict cascade-read lens (DEC-808 wave-12, task w12-xf)', () => {
   it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {

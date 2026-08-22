@@ -35,9 +35,10 @@ import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
-import { DEC_825 } from '../../../../src/decisions';
+import { DEC_825, DEC_998 } from '../../../../src/decisions';
 
 void DEC_825;
+void DEC_998; // in-body citation below pairs with this file's header-block scope citation into the same frame
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -77,6 +78,7 @@ function phoneLayer(css: string): { layer: string; blockCount: number } {
 
 describe('content.css 390: Files library card fuses session · size onto one line (w11-tb, DEC-825)', () => {
   it('frame :354 draws the fused template this rule satisfies', () => {
+    // docs/design/Chautauqua Content.dc.html:354 `<span style="font-size:13px; color:#565A4B">{{ f.session }} · {{ f.size }}</span>` -- in-body receipt pairing with this file's header-block scope citation (DEC-998).
     verbatimLine(354, '            <span style="font-size:13px; color:#565A4B">{{ f.session }} · {{ f.size }}</span>');
   });
 

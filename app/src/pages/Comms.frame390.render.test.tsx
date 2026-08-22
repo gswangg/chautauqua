@@ -22,10 +22,13 @@ import { CommsPage } from './Comms';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
 import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../lib/useCurrentEvent';
 import { writeComposeDraft } from './comms/composeDraft';
-import { DEC_976, DEC_385 } from '../../../src/decisions';
+import { DEC_976, DEC_385, DEC_994 } from '../../../src/decisions';
+import { phoneMediaBlocks } from '../../../test/helpers/css-media-blocks';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
 
 void DEC_976; // this file's whole job is a frame verdict (DEC-976)
 void DEC_385; // fix rule scope: comms.css terminal block / Comms.tsx markup only (DEC-385 wave-30 amendment)
+void DEC_994; // the :189-193 card test below cascades its DOM verdict through comms.css's own phone rule, not jsdom alone
 
 // w15-ti (DEC-919 wave-159) pattern, copied verbatim from the sibling file:
 // jsdom implements no matchMedia at all, so seeing the phone landing MOUNT
@@ -43,6 +46,7 @@ function stubPhoneMatchMedia() {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Comms.dc.html');
+const COMMS_CSS_FILE = join(HERE, 'comms', 'comms.css');
 
 /** DEC-967 shape, copied from the sibling file's own `verbatimLine`. */
 function verbatimLine(lineNo: number, literal: string): void {
@@ -174,6 +178,26 @@ describe('COMMS 390 landing frame verdict (w30-e, DEC-976, DEC-621)', () => {
       192,
       '          <span style="font-size:13px; line-height:1.55; color:#3F4237">Better on a laptop</span>',
     );
+    // Frame :187 `border:1px solid #BAB6A6; border-radius:6px;
+    // background:#FAF8F2; padding:15px; display:flex; flex-direction:column;
+    // gap:9px` for the draft card -- cascaded through comms.css's ACTUAL
+    // phone media block (DEC-994), not asserted from jsdom's un-styled DOM
+    // alone. jsdom applies no @media, so this read is what turns the DOM
+    // assertions below into a genuine 390 verdict rather than a desktop
+    // claim wearing a phone title.
+    const commsPhoneCss = stripCssComments(readFileSync(COMMS_CSS_FILE, 'utf-8'));
+    const commsPhoneBlocks = phoneMediaBlocks(commsPhoneCss);
+    expect(commsPhoneBlocks.length).toBeGreaterThan(0);
+    const draftCardRule = commsPhoneBlocks
+      .map((block) => block.match(/\.chq-comms-phone-draft-card\s*\{([^}]*)\}/)?.[1] ?? '')
+      .find((body) => body.length > 0);
+    expect(draftCardRule).toBeDefined();
+    expect(draftCardRule).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(draftCardRule).toMatch(/border-radius:\s*6px/);
+    expect(draftCardRule).toMatch(/padding:\s*15px/);
+    expect(draftCardRule).toMatch(/display:\s*flex/);
+    expect(draftCardRule).toMatch(/flex-direction:\s*column/);
+    expect(draftCardRule).toMatch(/gap:\s*9px/);
     writeComposeDraft(EVENT_ID, {
       templateName: 'Acceptance',
       subject: 'Your talk has been accepted to DevFlow Conf 2027',

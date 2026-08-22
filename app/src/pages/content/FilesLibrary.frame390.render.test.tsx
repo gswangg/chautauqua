@@ -20,16 +20,21 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
-import { DEC_385, DEC_874, DEC_967, DEC_976 } from '../../../../src/decisions';
+import { DEC_385, DEC_874, DEC_967, DEC_976, DEC_994, DEC_998 } from '../../../../src/decisions';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_385;
 void DEC_874;
 void DEC_967;
 void DEC_976;
+void DEC_994; // the header-row assertion below cascades through content.css's own phone block, not jsdom alone
+void DEC_998; // this file's header-block citation (:338-368) is paired with the fully-receipted in-body one below
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Content.dc.html');
+const CONTENT_CSS_FILE = join(HERE, 'content.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -133,6 +138,17 @@ describe('v12 Content "Files · 390" frame (:338-368): first markup-level render
     expect(headerRow).not.toBeNull();
     const statLine = within(headerRow!).getByText(/^\d+ files · /);
     expect(headerRow!.contains(statLine)).toBe(true);
+
+    // docs/design/Chautauqua Content.dc.html:341 `<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Files</h1>` -- stacked over the stat line, not sharing its row; content.css's phone rule below is the cascade proof (DEC-994), pairing with this file's header-block scope citation (DEC-998).
+    const contentPhoneCss = stripCssComments(readFileSync(CONTENT_CSS_FILE, 'utf-8'));
+    const contentPhoneBlocks = phoneMediaBlocks(contentPhoneCss);
+    expect(contentPhoneBlocks.length).toBeGreaterThan(0);
+    const headerRowRule = contentPhoneBlocks
+      .map((block) => block.match(/\.chq-content-files-header-row\s*\{([^}]*)\}/)?.[1] ?? '')
+      .find((body) => body.length > 0);
+    expect(headerRowRule).toBeDefined();
+    expect(headerRowRule).toMatch(/flex-direction:\s*column/);
+    expect(headerRowRule).toMatch(/align-items:\s*stretch/);
 
     // :344 leading type-tab chip renders first, drawing "All" at the 390
     // register (accessible name stays pinned to "All types" at every

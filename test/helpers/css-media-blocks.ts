@@ -56,6 +56,35 @@ export function splitMediaBlocks(css: string): MediaSplit {
   return { outside, inside: inside.join('\n') };
 }
 
+/** Every top-level `@media (max-width: 700px)` block's BODY, in source
+ * order, brace-matched so a nested at-rule (e.g. `@media (hover: hover)`)
+ * inside one never truncates the slice early. Promoted (DEC-613/DEC-994
+ * wave-16) from the private `phoneBlock()`/`detailPhoneBlock()` helpers
+ * duplicated across Contacts.frame-verdicts.render.test.tsx,
+ * Content.frame-verdicts.render.test.tsx, DeliverableDetail.stack-390.
+ * render.test.tsx and ContentApp.download-all-flex.receipt.render.test.tsx
+ * -- those single-block callers took only the FIRST match; this returns
+ * ALL of them since a stylesheet may declare the same condition more than
+ * once ("the terminal block" is not a synonym for "the only block"). */
+export function phoneMediaBlocks(css: string): string[] {
+  const blocks: string[] = [];
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = opener.exec(css)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const bodyStart = i;
+    for (; i < css.length && depth > 0; i++) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') depth -= 1;
+    }
+    if (depth !== 0) throw new Error('unbalanced @media (max-width: 700px) block in CSS input');
+    blocks.push(css.slice(bodyStart, i - 1));
+    opener.lastIndex = i;
+  }
+  return blocks;
+}
+
 /** Every `selector { body }` rule in `css`, at ANY @media nesting depth --
  * the media openers themselves never survive to be read as selectors. */
 export function flattenMediaRules(css: string): Array<{ selector: string; body: string }> {
