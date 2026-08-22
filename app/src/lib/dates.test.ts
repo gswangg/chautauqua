@@ -226,6 +226,17 @@ describe('formatRelativeDays', () => {
     expect(formatRelativeDays(now - 86_400_000, now)).toBe('yesterday');
     expect(formatRelativeDays(now - 3 * 86_400_000, now)).toBe('3 days ago');
   });
+
+  // w8-g (DEC-874): DeliverableDetail's status band composes this helper's
+  // output into "<statusLabel> · Updated <label>" / "<statusLabel> · you
+  // asked for changes <label>" -- docs/design/Chautauqua Content.dc.html
+  // :124/:381 draw "Re-uploaded · you asked for changes 8 days ago" as the
+  // worked example, so an 8-day case is asserted here directly against the
+  // frame's own literal age.
+  it('renders the frame\'s "8 days ago" worked example (docs/design/Chautauqua Content.dc.html:381)', () => {
+    const now = Date.UTC(2027, 0, 19);
+    expect(formatRelativeDays(now - 8 * 86_400_000, now)).toBe('8 days ago');
+  });
 });
 
 describe('epochDayIndex', () => {
