@@ -132,6 +132,15 @@ function patternMatches(patternSegs: string[], hrefSegs: string[]): boolean {
 let registeredPatterns: string[] = [];
 let registeredPostPatterns: string[] = [];
 
+// KNOWN-SLOW (DEC-069, Amendment, wave 35): this hook dynamically imports every sub-app
+// src/index.ts mounts (route resolution, not a genuinely slow assertion) --
+// measured 6631-8591ms across repeat runs on this host, against vitest's
+// DEFAULT 10000ms beforeAll hook timeout (as low as 14% margin on the
+// worst-observed run) under the mandate's maxWorkers:2/maxForks:2 machine
+// -protection caps (vitest.config.ts), which is exactly the contention that
+// makes this hook's duration swing wave to wave. An explicit 20000ms floor
+// (~2.3x the worst measured run) turns "silently times out under load" into
+// a stated decision instead of a race against a shrinking default.
 beforeAll(async () => {
   const source = readFileSync(INDEX_PATH, "utf-8");
   const bindings = parseImportBindings(source);
@@ -185,7 +194,7 @@ beforeAll(async () => {
       app.routes.filter((r) => r.method === "POST" || r.method === "ALL").map((r) => r.path),
     ),
   ];
-});
+}, 20000);
 
 // ---------------------------------------------------------------------------
 // Literal hrefs, collected from src/routes/**/*.tsx (SSR surfaces only)

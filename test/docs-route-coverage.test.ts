@@ -142,13 +142,22 @@ async function resolveIndexMounts(): Promise<ResolvedMount[]> {
 describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from src/index.ts)", () => {
   let app: Hono<AppEnv>;
 
+  // KNOWN-SLOW (DEC-069, Amendment, wave 35): resolveIndexMounts() dynamically imports
+  // every sub-app src/index.ts mounts (route resolution, not a genuinely
+  // slow assertion) -- measured 6763ms on this host against vitest's
+  // DEFAULT 10000ms beforeAll hook timeout, under the mandate's
+  // maxWorkers:2/maxForks:2 machine-protection caps (vitest.config.ts) that
+  // make this duration swing with contention (test/ssr-link-targets-scan.test.ts's
+  // sibling hook, the same import pattern, was independently observed as
+  // high as 8591ms). An explicit 20000ms floor (~3x measured) states the
+  // decision instead of racing a default that can blow under load.
   beforeAll(async () => {
     const mounts = await resolveIndexMounts();
     app = new Hono<AppEnv>();
     for (const { prefix, subApp } of mounts) {
       app.route(prefix, subApp);
     }
-  });
+  }, 20000);
 
   it("resolved at least one app.route() call from src/index.ts's own source", () => {
     expect(app).toBeDefined();
