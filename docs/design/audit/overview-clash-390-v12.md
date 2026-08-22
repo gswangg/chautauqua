@@ -51,7 +51,7 @@ slot", that the desktop per-entry nodes are still present in the DOM
 both new CSS rules live only inside the terminal `@media (max-width:
 700px)` block, never at top level.
 
-## DIVERGES — §04's phone eyebrow line is one joined string; the built row splits it into two divs
+## MATCHES — §04's phone eyebrow line is one joined string (task w11-ta, DEC-919)
 
 **Frame**: `docs/design/Chautauqua Overview.dc.html:274` —
 
@@ -60,32 +60,61 @@ both new CSS rules live only inside the terminal `@media (max-width:
 ```
 
 One eyebrow span joins the weekday/day/time and the room into a single `·`
--separated string (`Tue 12, 10:00 · Room 2A`).
+-separated string.
 
-**Built anatomy** (`AgendaWorkSection.tsx`, unchanged by this task —
-outside the owned-files scope, which covers only the clash-line phone node
-and its CSS pair): two separate `<div>`s — `.chq-overview-row-title
-.chq-overview-row-title-sm` (`{formatDayLabel(conflict.day)}, {clockHHMM
-(conflict.startMin)}`) and `.chq-overview-row-meta`
-(`{publicRoomLabel(conflict.roomName)}`) directly beneath it. No CSS in
-this file collapses the two into one line, and no phone-only override
-exists for this pair — the split is identical at 1600 and 390.
+**What this task did**: added a `hidden` phone-only sibling node
+(`.chq-overview-clash-eyebrow-phone`) alongside the existing
+`.chq-overview-row-title.chq-overview-row-title-sm` /
+`.chq-overview-row-meta` desktop pair — same two-node idiom as the clash
+sentence above, joined with a template literal (day/time already come from
+two adjacent JSX expressions in this file; the room is a third, joined with
+`·`, no `joinSegments` — the task's own instruction). Wrapped the desktop
+pair in `.chq-overview-clash-eyebrow-group` so overview.css's terminal
+`@media (max-width: 700px)` block can hide only its two direct children
+(`.chq-overview-clash-eyebrow-group > .chq-overview-row-title-sm` /
+`> .chq-overview-row-meta`) — `.chq-overview-row-meta` is shared by three
+other, unrelated nodes in this file (the unplaced row's meta line, the
+clash entries' desktop byline, and the clash sentence's own muted tail), so
+a bare-class hide would have broken them; the child-combinator scopes the
+hide to just this pair. Reveals `.chq-overview-clash-eyebrow-phone` with the
+frame's exact face (`font-size:10px; font-weight:800; letter-spacing:0.1em;
+text-transform:uppercase`). Hidden at CSS top level with the same
+leak-guard idiom as `.chq-overview-clash-line-phone`. Desktop bytes above
+the terminal block are untouched.
 
-**Why not fixed here**: this task's owned files are `AgendaWorkSection.tsx`
-and `overview.css` (terminal block only), and its scope is the clash row's
-sessions/tail (DEC-919 wave-32 amendment) — the eyebrow is a distinct
-anatomical element the task instructions explicitly asked to be recorded,
-not fixed, in this pass. Left as a DIVERGES row for a future task.
+**Render receipt**: `AgendaWorkSection.clash390-eyebrow.render.test.tsx` —
+mounts `AgendaWorkSection` with a conflict row, asserts exactly one
+`.chq-overview-clash-eyebrow-phone` per conflict row and its joined text
+shape, that the desktop title/meta pair is still present (jsdom applies no
+`@media`, scoped with `within` per DEC-874), and source-scans `overview.css`
+to assert the new rules live only inside the terminal
+`@media (max-width: 700px)` block, never at top level.
 
-## DIVERGES — the resolution action button's frame styling (fill/shape) vs the built `.chq-overview-link-btn`
+## MATCHES — the resolution action button is a filled pill at 390 (task w11-ta, DEC-919)
 
 **Frame**: `docs/design/Chautauqua Overview.dc.html:276` draws the
 resolution action as a filled, centered, rounded pill:
 `background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px;
 display:flex; align-items:center; justify-content:center; font-size:13px;
-font-weight:700` ("Move DFC-047 to 11:30"). The built `<button
-className="chq-overview-link-btn">` (unchanged, outside this task's owned
-files) is not graded here — this row is a citation only, filed because the
-clash-row rebuild above touches the same visual cell; the button's own
-styling was not part of the owned-file diff and is left for a task that
-owns the button's CSS.
+font-weight:700` ("Move DFC-047 to 11:30").
+
+**What this task did**: added a modifier class
+(`chq-overview-clash-resolve`) to THIS button only — the shared
+`.chq-overview-link-btn` register (Remind / Mark complete / Open / Read the
+abstract) keeps its borderless styling everywhere else, unrestyled. Inside
+overview.css's terminal `@media (max-width: 700px)` block,
+`.chq-overview-link-btn.chq-overview-clash-resolve` sets `background:
+var(--chq-brand)` and `color: var(--chq-on-brand)` — the exact tokens for
+`#4E5C31`/`#F7F9F0` (`app/src/styles.css`), no new colour literal
+(`app/src/css-contract.scan.test.ts` resolves every var and grades button
+faces). `min-height:44px; display:flex; align-items:center;
+justify-content:center` and `border-radius:6px` already come from the
+shared class's own existing terminal-block and former-464-block
+declarations (`--chq-r-ctl-phone` resolves to `6px`), so only the fill is
+added here.
+
+**Render receipt**: `AgendaWorkSection.clash390-eyebrow.render.test.tsx` —
+asserts the button carries both `chq-overview-link-btn` and
+`chq-overview-clash-resolve`, that no top-level rule or `#4E5C31`/`#F7F9F0`
+literal exists outside the terminal block, and that the phone rule sets the
+fill via `var(--chq-brand)`/`var(--chq-on-brand)`.

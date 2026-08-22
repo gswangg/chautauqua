@@ -263,6 +263,18 @@
   display: none;
 }
 
+/* DEC-919 wave-32 amendment (task w11-ta): §04's clash row phone-only
+   joined eyebrow (see the terminal @media (max-width:700px) block below)
+   is markup-mounted with the native `hidden` attribute in
+   AgendaWorkSection.tsx but carries no top-level display:none of its own --
+   same leak risk .chq-overview-clash-line-phone above already guards
+   against. Hidden here at top level, same idiom; the terminal block
+   re-reveals it with a higher-source-order display, so phone behaviour is
+   unchanged. */
+.chq-overview-clash-eyebrow-phone {
+  display: none;
+}
+
 .chq-overview-row {
   display: grid;
   gap: 20px;
@@ -892,5 +904,47 @@
     display: block;
     font-size: 15px;
     line-height: 1.5;
+  }
+
+  /* DEC-919 wave-32 amendment (task w11-ta): §04's clash row eyebrow at 390
+     is ONE joined span (Chautauqua Overview.dc.html:274
+     `font-size:10px; font-weight:800; letter-spacing:0.1em;
+     text-transform:uppercase`), same two-node idiom as the clash-line pair
+     just above -- the desktop title/meta pair (scoped to direct children of
+     .chq-overview-clash-eyebrow-group so the shared .chq-overview-row-meta
+     class used elsewhere in this file, e.g. the unplaced row, is untouched)
+     hides here, the phone-only joined span reveals. */
+  .chq-overview-clash-eyebrow-group > .chq-overview-row-title-sm,
+  .chq-overview-clash-eyebrow-group > .chq-overview-row-meta {
+    display: none;
+  }
+
+  .chq-overview-clash-eyebrow-phone {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* DEC-919 wave-32 amendment (task w11-ta): §04's clash row resolution
+     action is a FILLED pill at 390 (Chautauqua Overview.dc.html:276
+     `background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px;
+     display:flex; align-items:center; justify-content:center;
+     font-size:13px; font-weight:700`). A modifier on THIS button only --
+     the shared `.chq-overview-link-btn` register (Remind / Mark complete /
+     Open / Read the abstract) keeps its borderless styling above
+     unrestyled. Existing brand tokens only, no new colour literal
+     (app/src/css-contract.scan.test.ts resolves every var on button
+     faces). min-height/display/align-items already match the shared
+     class's own terminal-block declaration above (the "former 602
+     (terminal) block" `.chq-overview-link-btn, .chq-overview-section-action`
+     rule), border-radius:var(--chq-r-ctl-phone) already resolves to the
+     frame's 6px (styles.css), and justify-content:center already ships
+     from the former-464 block -- only the fill is added here. */
+  .chq-overview-link-btn.chq-overview-clash-resolve {
+    background: var(--chq-brand);
+    color: var(--chq-on-brand);
+    border-color: var(--chq-brand);
   }
 }
