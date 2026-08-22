@@ -97,4 +97,27 @@ describe('ImportWizard: DEC-575 file-level "rows have no email address" block', 
     expect(screen.queryByText(/rows have no email address/)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  // w8-b (DEC-575, Chautauqua Contacts.dc.html:770-800): the refusal band
+  // is its own dialog identity -- 'Nothing was imported' -- not a variant
+  // of the match-columns title it would otherwise inherit from `step`.
+  it('the dialog heading reads "Nothing was imported" while the file-level refusal shows, and reverts once it clears', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV_WITH_MISSING_EMAILS } });
+
+    await screen.findByText('3 of 5 rows have no email address');
+    expect(screen.getByRole('heading', { name: 'Nothing was imported' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Match the columns' })).not.toBeInTheDocument();
+
+    // The subtitle still names the file (Pasted CSV -- no fileName here)
+    // and the row count, the frame's :778 register.
+    expect(document.querySelector('.chq-contacts-import-subtitle-desktop')?.textContent).toBe('Pasted CSV · 5 rows');
+
+    const primary = await screen.findByRole('button', { name: 'Import the 2 good rows' });
+    fireEvent.click(primary);
+
+    // The refusal clears -- the title reverts to the match-columns step.
+    expect(screen.getByRole('heading', { name: 'Match the columns' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Nothing was imported' })).not.toBeInTheDocument();
+  });
 });

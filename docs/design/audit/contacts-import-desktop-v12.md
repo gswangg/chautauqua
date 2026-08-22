@@ -78,20 +78,23 @@ composed static mock.
 
 ## Frame :770 "Import CSV · the file will not do" (Modal)
 
-**DIVERGES** on identity and heading wording, **MATCHES** on substance.
+**DIVERGES** on heading wording (captioned ruling), **CLOSED** on identity, **MATCHES** on substance.
 
-- **Dialog identity.** The frame gives this refusal its own dialog H1
-  ("Nothing was imported", `:777`) and its own Close control (`:780`) —
-  a distinct state. The tree shows this block as an overlay INSIDE step
-  2's dialog: the H2 still reads "Match the columns" (the wizard's `step`
-  computation resolves to 2 whenever a header has been parsed and neither
-  `plan` nor `result` exist yet, which is exactly this refusal's
-  condition) — the refusal has no title of its own.
-- **Heading wording.** The frame's heading is a bare count
-  ("9 rows have no email address", `:785`, no denominator). The tree names
-  both the offending count AND the total ("N of M rows have no email
-  address") — DEC-575's wave-28 amendment; arguably more informative, but
-  not the frame's literal wording.
+- **Dialog identity: CLOSED-with-receipt** (DEC-575, wave-8). `stepTitle`
+  in `ImportWizard.tsx` now resolves to "Nothing was imported" whenever
+  `showSizeRefusal || showFileWarning` is true, ahead of the `step`-based
+  ladder — the refusal owns its own H2, matching the frame's own H1
+  (`:777`). ModalFrame's existing Close control is reused, not duplicated
+  (the frame's own `:780`). Receipt:
+  `app/src/pages/contacts/ImportWizard.fileErrors.render.test.tsx`,
+  "the dialog heading reads 'Nothing was imported' while the file-level
+  refusal shows, and reverts once it clears".
+- **Heading wording: DIVERGES (captioned).** The frame's heading is a bare
+  count ("9 rows have no email address", `:785`, no denominator). The tree
+  names both the offending count AND the total ("N of M rows have no
+  email address") — DEC-575's wave-28 amendment deliberately added the
+  denominator the frame drops; ruled (wave-8) to keep it, so this is not
+  adopted.
 - **Explanatory sentence and three-action footer MATCH**: the sentence
   ("Email is how a contact is matched…", `:786`) renders verbatim, and the
   footer draws exactly the frame's three controls in the frame's order —
