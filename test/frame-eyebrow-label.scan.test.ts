@@ -320,7 +320,7 @@ function eyebrowsInFile(fileName: string): Eyebrow[] {
   return out;
 }
 
-const ALL_EYEBROWS: Eyebrow[] = designFiles().flatMap(eyebrowsInFile);
+export const ALL_EYEBROWS: Eyebrow[] = designFiles().flatMap(eyebrowsInFile);
 
 // -- Disjointness cross-check against the phone control-label ledger -------
 // Re-derived by calling THAT ledger's own imported `labelsInFrameText` over

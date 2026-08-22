@@ -371,7 +371,7 @@ function controlLabelsInFile(fileName: string): ControlLabel[] {
 }
 
 const ALL_FRAMES: DesktopFrame[] = designFiles().flatMap(framesInFile);
-const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
+export const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
 
