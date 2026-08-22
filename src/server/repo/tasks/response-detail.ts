@@ -29,6 +29,11 @@ export interface AssignmentResponseDetail {
   // named it, and ResponseModal.tsx renders taskTitle, never the kind.
   contact: { id: string; name: string; email: string };
   status: string;
+  // DEC-441 (wave-6 amendment): the assignment row's own createdAt -- when
+  // the task went OUT. Speakers.dc.html:235 draws "sent <date>", not the
+  // completion date; task_assignment carries no dedicated "sent" column and
+  // lastRemindedAt is a reminder, not the original send.
+  assignedAt: number;
   completedAt: number | null;
   fields: AssignmentResponseField[];
 }
@@ -48,6 +53,7 @@ export async function getAssignmentResponseDetail(
     .select({
       assignmentId: schema.taskAssignment.id,
       status: schema.taskAssignment.status,
+      assignedAt: schema.taskAssignment.createdAt,
       completedAt: schema.taskAssignment.completedAt,
       responseJson: schema.taskAssignment.responseJson,
       taskTitle: schema.task.title,
@@ -107,6 +113,7 @@ export async function getAssignmentResponseDetail(
       email: row.email,
     },
     status: row.status,
+    assignedAt: row.assignedAt.getTime(),
     completedAt: row.completedAt ? row.completedAt.getTime() : null,
     fields,
   };

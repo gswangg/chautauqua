@@ -123,6 +123,18 @@ describe("DEC-908 (wave-33 amendment): confirmation body edit-until sentence + w
     expect(html).toContain("Browse the sessions");
     expect(html).not.toContain("Browse the programme");
   });
+
+  // DEC-908 (wave-6 amendment): docs/design/Chautauqua Public and
+  // Portal.dc.html:1124 (pending-existing-contact) and :1147 (has-account)
+  // end at their login affordance -- neither the check-spam note nor the
+  // .chq-cfp-links tail row is drawn in either non-fresh state.
+  it("pending-existing-contact and has-account carry neither the check-spam note nor the .chq-cfp-links row", () => {
+    for (const state of ["pending-existing-contact", "has-account"] as const) {
+      const html = render(state);
+      expect(html).not.toContain('class="chq-cfp-confirm-note"');
+      expect(html).not.toContain('class="chq-cfp-links"');
+    }
+  });
 });
 
 describe("DEC-908 (wave-16 amendment): confirmation card speaker·company identity line", () => {

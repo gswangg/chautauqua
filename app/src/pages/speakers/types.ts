@@ -174,6 +174,9 @@ export interface AssignmentResponseDetail {
   // shape never named it, and ResponseModal.tsx renders taskTitle only.
   contact: { id: string; name: string; email: string };
   status: AssignmentStatus;
+  // DEC-441 (wave-6 amendment): the assignment row's own createdAt -- when
+  // the task went out. Speakers.dc.html:235 draws "sent <date>".
+  assignedAt: number;
   completedAt: number | null;
   fields: AssignmentResponseField[];
 }
