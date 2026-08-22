@@ -23,15 +23,19 @@
 //      imported -- that file is owned by a sibling lane), keeping only the
 //      frames whose extent carries NO `width:390px`+`height:844` line
 //      (that file's own `isPhone` split, derived, never by naming files).
-//      Inside each extent, a DRAWN CONTROL is any element whose attribute
-//      string carries `min-height:NNpx` AND `border-radius` AND
-//      (`border:` OR `background:`), plus any `<a ...min-height:NNpx...>`
-//      (the anchor case needs only the min-height, per the task's own
-//      grammar -- an anchor is a control shape DESIGN-RULINGS/DEC-393
-//      already treat specially, never requiring a painted face). Recorded
-//      as (fileName, line, drawnFloor, label). MEASURED: 266 drawn
-//      controls across 12 of the 13 files (docs/design/Chautauqua
-//      Docs.dc.html draws none of this shape).
+//      WAVE 33 (DEC-651) adds a second population-step filter, same
+//      derivation style: any frame whose title begins `States · ` is a
+//      component swatch panel, never a page, so its rows are dropped too
+//      (`isStatesSwatchFrameTitle`/`populatedFrames`). Inside each surviving
+//      extent, a DRAWN CONTROL is any element whose attribute string carries
+//      `min-height:NNpx` AND `border-radius` AND (`border:` OR
+//      `background:`), plus any `<a ...min-height:NNpx...>` (the anchor case
+//      needs only the min-height, per the task's own grammar -- an anchor is
+//      a control shape DESIGN-RULINGS/DEC-393 already treat specially, never
+//      requiring a painted face). Recorded as (fileName, line, drawnFloor,
+//      label). MEASURED: 266 drawn controls pre-WAVE-33 across 12 of the 13
+//      files (docs/design/Chautauqua Docs.dc.html draws none of this
+//      shape); 247 post-WAVE-33 (19 States-swatch rows excluded).
 //
 //   2. JOIN: for each drawn control, every boundary-anchored occurrence of
 //      its label (`allBoundaryMatches`, mirroring ./frame-source-corpus's
@@ -286,7 +290,7 @@ import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
-import { DEC_964 } from '../src/decisions';
+import { DEC_746, DEC_964 } from '../src/decisions';
 void DEC_964; // wave-26 amendment: a cross-surface own-text match (the join's ONLY match resolves into a source file that renders no frame in the same .dc.html cluster) grades UNRESOLVED, never OFFENDER -- gated on a positive receipt test, never a blanket escape.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
@@ -363,6 +367,32 @@ const DESKTOP_FRAMES: FrameExtent[] = designFiles().flatMap((f) =>
     .filter((e) => !e.isPhone)
     .map((e) => e.frame)
 );
+
+// -- WAVE 33 (DEC-651): States-swatch-frame population exclusion -----------
+// "States · hover, pending, drag" (Chautauqua Overview.dc.html:476) is the
+// only frame in the whole pack whose title begins `States · ` -- a component
+// swatch panel demonstrating Primary/Secondary/Tertiary/Destructive button
+// styling and input rest/hover/focus/disabled states, captioned by the pack
+// itself "Hover the live column · the rest are drawn states". Its labels
+// were never product copy: docs/design/audit/desktop-control-floor-v12.md
+// records zero corpus hits for each. Excluded at the population step,
+// DERIVED from the frame's own title token -- never a hand-written line
+// range -- at the same place this file already applies the `!isPhone` split
+// (`allFramesInFile`'s own extent walk), so a re-cut pack that adds or moves
+// a `States · ` frame is picked up automatically, never silently missed.
+export function isStatesSwatchFrameTitle(title: string): boolean {
+  return title.startsWith('States · ');
+}
+
+/** The population-step filter this file applies to every frame's extent
+ * before extracting drawn controls: drop phone extents (the file's
+ * pre-existing split) and drop `States · `-badged swatch-panel extents
+ * (WAVE 33, DEC-651). Exported so the non-vacuity fixture below can drive
+ * this exact function over fabricated frame entries, never a hand-listed
+ * line range. */
+export function populatedFrames(entries: { frame: FrameExtent; isPhone: boolean }[]): FrameExtent[] {
+  return entries.filter((e) => !e.isPhone && !isStatesSwatchFrameTitle(e.frame.title)).map((e) => e.frame);
+}
 
 // -- Drawn-control extraction ------------------------------------------------
 
@@ -446,9 +476,7 @@ function drawnControlsInFile(fileName: string): DrawnControl[] {
     lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
   }
 
-  const frames = allFramesInFile(fileName)
-    .filter((e) => !e.isPhone)
-    .map((e) => e.frame);
+  const frames = populatedFrames(allFramesInFile(fileName));
   const out: DrawnControl[] = [];
   for (const frame of frames) {
     const startOff = lineStartIndex[frame.line - 1]!;
@@ -940,6 +968,35 @@ function frameContentExclusionFor(control: DrawnControl): string | null {
   return hit ? hit.reason : null;
 }
 
+// -- WAVE 33 (DEC-651): ruling-settled exclusions ---------------------------
+// A SEPARATE table from FRAME_CONTENT_EXCLUSIONS above (that one is sourced
+// from the label ledger's own FIXTURE/COMPOSED tables -- a different file's
+// adjudication, imported never re-triaged). This table is for a row THIS
+// file's own grading pipeline settled by an explicit product ruling -- a row
+// enters it only carrying the ruling that settled it, never a hand-written
+// line range or a fresh judgment call. Keyed on fileName+line, same
+// construction-proof reasoning FRAME_CONTENT_EXCLUSIONS documents. The
+// ruling's own DEC_NNN constant is imported and referenced (never a bare
+// "DEC-746" string) so the dependency is compile-checked.
+const RULING_SETTLED_EXCLUSIONS: { fileName: string; line: number; ruling: string; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 201,
+    ruling: 'DEC-746',
+    reason:
+      `${DEC_746} -- app/src/pages/speakers/TaskModal.tsx's own header comment above ` +
+      `kindLabel cites "docs/design/Chautauqua Speakers.dc.html:186-216 -- Upload, Form, ` +
+      `Acknowledge" (this row's line 201 sits inside that exact cited region), and ` +
+      `kindLabel(kind) returns exactly those three strings, verified against the source. ` +
+      `"Upload a headshot" is the modal's own illustrative task name drawn in the same ` +
+      `cited region, not a fresh content gap the ruling left open.`,
+  },
+];
+
+function rulingSettledExclusionFor(control: DrawnControl): { ruling: string; reason: string } | null {
+  return RULING_SETTLED_EXCLUSIONS.find((e) => e.fileName === control.fileName && e.line === control.line) ?? null;
+}
+
 // -- WAVE 28 (DEC-393 + DEC-808): second match tier, an attribute/prop
 // label read. Consulted ONLY when the own-text tier above finds no match
 // for a label at all -- an occurrence of the label as the COMPLETE value of
@@ -1277,6 +1334,10 @@ export interface GradedRow {
     | 'no-rule'
     | 'no-control-shape'
     | 'frame-content'
+    /** WAVE 33 (DEC-651): the row's coordinate is already settled by a
+     * named product ruling -- a row enters this disposition only carrying
+     * the ruling that settled it, never a fresh judgment call. */
+    | 'ruling-settled'
     | 'cross-surface-match'
     /** WAVE 29 (DEC-808 amendment): the label resolves as a quoted string
      * literal SOMEWHERE in the corpus (e.g. a ternary's alternate branch)
@@ -1336,6 +1397,23 @@ function gradeControlPreCrossSurface(control: DrawnControl): { row: GradedRow; o
         tokens: [],
         declaredMinHeight: null,
         excludedReason: frameContentReason,
+        matchTier: null,
+        receiptPath: null,
+      },
+      ownTextSourceFiles,
+    };
+  }
+
+  const rulingHit = rulingSettledExclusionFor(control);
+  if (rulingHit !== null) {
+    return {
+      row: {
+        control,
+        status: 'excluded',
+        reason: 'ruling-settled',
+        tokens: [],
+        declaredMinHeight: null,
+        excludedReason: `RULING ${rulingHit.ruling}: ${rulingHit.reason}`,
         matchTier: null,
         receiptPath: null,
       },
@@ -1695,7 +1773,24 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 //   - Chautauqua Speakers.dc.html:201 "Upload a headshot" (DEC-746: the
 //     segmented control's real label is "Upload", an already-ruled
 //     simplification, not a fresh gap)
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 4;
+// WAVE 33 (DEC-651): none of the four was a divergence -- the audit's own
+// "recorded, not fixed" section said so. The three States-frame rows are
+// component-swatch-panel labels (never product copy) and the fourth is
+// already ruled: RE-DISPOSITIONED, never re-adjudicated. (a) The `States ·
+// hover, pending, drag` frame (Chautauqua Overview.dc.html:476-688) is now
+// excluded at the POPULATION step (`isStatesSwatchFrameTitle`), so its
+// three offender rows -- and all 19 of the frame's drawn-control rows,
+// which were never product copy either -- no longer enter ALL_CONTROLS at
+// all. (b) `Chautauqua Speakers.dc.html:201` moves into
+// `RULING_SETTLED_EXCLUSIONS` carrying DEC-746 as its ruling id, grading
+// `excluded`/`ruling-settled` instead of `offender`. Re-measured on this
+// branch (forcing both ceilings to -1 before AND after): 0 offenders (was
+// 4), ALL_CONTROLS drops 266 -> 247 (19 population-excluded rows), and
+// unresolved drops 135 -> 131 (4 of the removed States-frame rows were
+// themselves `unresolved`, not `offender` -- MEASURED, not assumed: see
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 33" section for
+// the full receipt). Zero product CSS bytes moved; desktop stays frozen.
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
 // WAVE 23 (DEC-393 amendment, task w23-g): the composed-label tier
 // (test/helpers/composed-label-resolve.ts, shared with the phone half)
@@ -1720,7 +1815,20 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 4;
 // see the no-token line below), 2 no-token, 10 no-control-shape, 2
 // cross-surface-match. Full per-row detail in
 // docs/design/audit/desktop-control-floor-v12.md's "WAVE 29" section.
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 135;
+// WAVE 33 (DEC-651): re-measured on this branch (forcing both ceilings to -1
+// before AND after the States-swatch population exclusion + DEC-746 ruling-
+// settled move above): 131 unresolved (was 135) -- this MOVES, contrary to
+// the task's own "expect unchanged" prior. Verified by printing every one of
+// the States frame's 19 rows' pre-exclusion disposition: 8 `ok` (Save
+// changes x4, Cancel x4), 3 `offender` (the three named above), 4
+// `unresolved`/`composed-unseen` ("Priya Raman" x2, "dana@example", "Talk,
+// 30 min" -- fixture/data-value shapes), 4 `excluded`/`frame-content`
+// ("Send 23 emails" x2, "Sending 12 of 23…", "Uploading…" -- already
+// FIXTURE/COMPOSED-excluded by the label ledger). 8+3+4+4 = 19, matching the
+// frame's own control count. The DEC-746 move is offender->excluded only and
+// moves zero unresolved rows; the 4-row unresolved delta is entirely the
+// population exclusion's own `composed-unseen` rows leaving the population.
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 131;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: digit-collapsed skeleton join -- fabricated positive (drawn digits differ from rendered digits) vs negative (no digit in label, skeleton never invoked)', () => {
@@ -1788,7 +1896,7 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(DESKTOP_FRAMES.length).toBe(108);
   });
 
-  it('non-vacuity: extracts exactly 266 drawn controls, with the exact per-file breakdown', () => {
+  it('non-vacuity: extracts exactly 247 drawn controls, with the exact per-file breakdown', () => {
     const perFile: Record<string, number> = {};
     for (const c of ALL_CONTROLS) perFile[c.fileName] = (perFile[c.fileName] ?? 0) + 1;
     expect(perFile).toEqual({
@@ -1798,14 +1906,14 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
       'Chautauqua Contacts.dc.html': 28,
       'Chautauqua Content.dc.html': 4,
       'Chautauqua Home.dc.html': 5,
-      'Chautauqua Overview.dc.html': 28,
+      'Chautauqua Overview.dc.html': 9,
       'Chautauqua Public and Portal.dc.html': 41,
       'Chautauqua Review.dc.html': 15,
       'Chautauqua Settings.dc.html': 67,
       'Chautauqua Speakers.dc.html': 20,
       'Chautauqua Submissions.dc.html': 27,
     });
-    expect(ALL_CONTROLS.length).toBe(266);
+    expect(ALL_CONTROLS.length).toBe(247);
     // Chautauqua Docs.dc.html draws none of this shape -- confirmed absent
     // rather than silently missing from the breakdown above.
     expect(perFile['Chautauqua Docs.dc.html']).toBeUndefined();
@@ -1815,7 +1923,7 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     const histogram: Record<number, number> = {};
     for (const c of ALL_CONTROLS) histogram[c.drawnFloor] = (histogram[c.drawnFloor] ?? 0) + 1;
     expect(histogram[46]).toBeGreaterThan(histogram[44] ?? 0);
-    expect(Object.values(histogram).reduce((a, b) => a + b, 0)).toBe(266);
+    expect(Object.values(histogram).reduce((a, b) => a + b, 0)).toBe(247);
   });
 
   it('non-vacuity: source population is large and spans both app/src and src', () => {
@@ -2093,6 +2201,81 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(gradedOutside.status).not.toBe('excluded');
     expect(gradedOutside.status).toBe('offender');
     expect(gradedOutside.reason).toBe(null);
+  });
+
+  it('non-vacuity: WAVE 33 (DEC-651) States-swatch-frame population exclusion -- fabricated negative (a non-States title still contributes its rows) vs the badged extent (excluded), derived from the frame title, never a hand-written line range', () => {
+    const plainFrame: FrameExtent = {
+      fileName: 'Zzy Fabricated.dc.html',
+      line: 10,
+      title: 'Zzy Ordinary Frame',
+      extentEnd: 20,
+    };
+    const statesFrame: FrameExtent = {
+      fileName: 'Zzy Fabricated.dc.html',
+      line: 30,
+      title: 'States · hover, pending, drag',
+      extentEnd: 40,
+    };
+    const otherStatesFrame: FrameExtent = {
+      fileName: 'Zzy Fabricated.dc.html',
+      line: 50,
+      title: 'States · some other swatch',
+      extentEnd: 60,
+    };
+
+    // NEGATIVE CONTROL: a synthetic frame whose title does NOT begin
+    // `States · ` still contributes its rows -- the exclusion is not a
+    // blanket "drop everything" escape.
+    const populated = populatedFrames([
+      { frame: plainFrame, isPhone: false },
+      { frame: statesFrame, isPhone: false },
+      { frame: otherStatesFrame, isPhone: false },
+    ]);
+    expect(populated).toContainEqual(plainFrame);
+
+    // POSITIVE CONTROL: a row inside the badged extent is excluded -- any
+    // frame titled `States · ...`, not merely the one real pack frame,
+    // proving the derivation reads the title token and never a hand-listed
+    // coordinate.
+    expect(populated).not.toContainEqual(statesFrame);
+    expect(populated).not.toContainEqual(otherStatesFrame);
+    expect(populated.length).toBe(1);
+
+    // The predicate itself, keyed purely on the title token.
+    expect(isStatesSwatchFrameTitle('States · hover, pending, drag')).toBe(true);
+    expect(isStatesSwatchFrameTitle('States · anything else')).toBe(true);
+    expect(isStatesSwatchFrameTitle('Not States · at all')).toBe(false);
+    expect(isStatesSwatchFrameTitle('States')).toBe(false);
+  });
+
+  it('non-vacuity: WAVE 33 (DEC-651) DEC-746 ruling-settled exclusion -- fabricated positive (the real coordinate grades excluded/ruling-settled) vs negative (an unrelated coordinate is untouched by this table)', () => {
+    const rulingEntry = RULING_SETTLED_EXCLUSIONS[0]!;
+    const fabricatedRulingControl: DrawnControl = {
+      fileName: rulingEntry.fileName,
+      line: rulingEntry.line,
+      drawnFloor: 46,
+      label: 'Zzy Fabricated Ruling Row',
+      frameTitle: 'Zzy Fabricated Frame',
+      frameLine: rulingEntry.line,
+    };
+    const gradedRuling = gradeControl(fabricatedRulingControl);
+    expect(gradedRuling.status).toBe('excluded');
+    expect(gradedRuling.reason).toBe('ruling-settled');
+    expect(gradedRuling.excludedReason).toBe(`RULING ${rulingEntry.ruling}: ${rulingEntry.reason}`);
+
+    // NEGATIVE: a coordinate this table was never told about grades
+    // normally -- the ruling-settled join never swallows a row it wasn't
+    // pointed at.
+    const fabricatedElsewhereControl: DrawnControl = {
+      fileName: rulingEntry.fileName,
+      line: 888888,
+      drawnFloor: 46,
+      label: 'Zzy Fabricated Elsewhere Row',
+      frameTitle: 'Zzy Fabricated Frame',
+      frameLine: 888888,
+    };
+    const gradedElsewhere = gradeControl(fabricatedElsewhereControl);
+    expect(gradedElsewhere.status).not.toBe('excluded');
   });
 
   it('non-vacuity: cross-surface-match disposition -- fabricated positive (cross-cluster + receipt) vs two negatives (same-cluster; cross-cluster with no receipt), over a fabricated cluster map, never the real corpus', () => {
