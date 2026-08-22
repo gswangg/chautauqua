@@ -22,7 +22,7 @@ first word).
 
 `src/routes/public/css/agenda.css.ts` `.chq-pub-agenda-day-footer a` — the
 receipt previously argued only typography ("a 44px box would break the line
-box"). Rewritten to also name the load-bearing premise: `agenda.tsx:196`
+box"). Rewritten to also name the load-bearing premise: `agenda.tsx`
 renders `<DaySwitcher`, whose `.chq-pub-day-pill` anchors
 (`src/routes/public/css/agenda.css.ts`, min-height:44px + flex +
 align-items:center + padding:0 8px) build their href from the same
@@ -34,7 +34,7 @@ resolves VERIFIED (see roster below).
 
 ## The one FALSE-PREMISE row: a predicate-grammar mismatch, not a missing rule
 
-`src/routes/public/css/cards.css.ts:239` `.chq-pub-headshot-link`'s
+`src/routes/public/css/cards.css.ts` `.chq-pub-headshot-link`'s
 `composition` receipt names `.chq-pub-headshot-fallback` as the floored
 companion, but that class's real claim is a REPLACED-CONTENT sizing one — the
 anchor "carries no size of its own"; its `<img>`/`.chq-pub-headshot-fallback`
@@ -55,7 +55,7 @@ with its own predicate.
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
-| FALSE-PREMISE | composition | `src/routes/public/css/cards.css.ts:239` | companion .chq-pub-headshot-fallback found (4 rule(s), merged) but does not satisfy the 44px floor grammar |
+| FALSE-PREMISE | composition | `src/routes/public/css/cards.css.ts` | companion .chq-pub-headshot-fallback found (4 rule(s), merged) but does not satisfy the 44px floor grammar |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css:1003` | no companion class named in reason text (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css:76` | no companion class named in reason text (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css:429` | no companion class named in reason text (distinct from the receipted selector itself) |
