@@ -684,6 +684,16 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-30 (task w30-b, DEC-393 amendment): a tap-floor-exempt reason is a
+  // premise about the tree, and its verifier must be named in the receipt
+  // and executable by a scan (test/tap-floor-exempt-premise.scan.test.ts).
+  // TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING grades receipts whose named
+  // companion is real but not actually floored (a real 44px defect);
+  // TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING grades receipts this
+  // wave's instrument cannot express a check for -- a roster count, not a
+  // defect count, per clause (c)'s "a row in the roster, not a silent pass".
+  "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
+  "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
 ];
 
 /**
@@ -782,6 +792,12 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // declared-but-unread knob (DEC-851/DEC-988).
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-30 (task w30-b): tap-floor-exempt receipt premise ratchet, wired
+  // into TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- a real 44px defect count, never a declared-but-unread knob
+  // (DEC-851/DEC-988). Its UNVERIFIABLE-PREMISE sibling is OUT_OF_CAMPAIGN_SCOPE
+  // instead (an instrument-completeness roster count, not a conformance fact).
+  "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
 ];
 
 /**
@@ -795,6 +811,13 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
  * accounted for; anything else is an ungraded ratchet and throws.
  */
 export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
+  TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING:
+    "measures how many tap-floor-exempt receipts this wave's premise-checking instrument " +
+    "cannot express a check for (no automated predicate for the reason family, or no " +
+    "companion class distinct from the receipted selector named in the reason text) -- an " +
+    "instrument-completeness fact about the checker's own coverage, not itself a v12 frame " +
+    "or 390-geometry conformance fact. Its sibling, TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING, " +
+    "grades the real defect count and is a TIER2 exit gate.",
   DESKTOP_FLOOR_DIVERGENCE_CEILING:
     "measures whether a desktop control's declared min-height reaches the height its OWN " +
     "v12 frame draws for it (a control-geometry fidelity fact, distinct from whether a " +
