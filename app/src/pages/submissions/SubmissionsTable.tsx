@@ -15,7 +15,7 @@ import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
 import { paginationSummary } from '../../lib/pagination-summary';
-import { capitalizeFirst, spellCount } from '../../lib/plural';
+import { capitalizeFirst, isAre, spellCount } from '../../lib/plural';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
@@ -505,9 +505,9 @@ export function SubmissionsTable() {
             what="Nothing left to triage"
             reason={
               awaitingContent !== null && awaitingContent > 0
-                ? `All ${allTotal} submissions have a decision. ${capitalizeFirst(spellCount(awaitingContent))} ${
-                    awaitingContent === 1 ? 'is' : 'are'
-                  } still waiting on content, if you want the next thing.`
+                ? `All ${allTotal} submissions have a decision. ${capitalizeFirst(spellCount(awaitingContent))} ${isAre(
+                    awaitingContent,
+                  )} still waiting on content, if you want the next thing.`
                 : `All ${allTotal} submissions have a decision.`
             }
             secondary={{ label: 'Go to content ›', to: '/content' }}

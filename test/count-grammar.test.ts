@@ -24,7 +24,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEC_374, DEC_957 } from "../src/decisions";
-import { capitalizeFirst, countOf, overBudgetBy, plural } from "../src/domain/count-copy";
+import { capitalizeFirst, countOf, isAre, overBudgetBy, plural } from "../src/domain/count-copy";
 import { stripSourceComments } from "./source-comments";
 
 void DEC_957; // this scan's whole reason to exist: one count grammar, no hand-copied `(s)`
@@ -169,5 +169,16 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
   it("overBudgetBy throws when the value does not exceed the max", () => {
     expect(() => overBudgetBy(200, 200)).toThrow();
     expect(() => overBudgetBy(100, 200)).toThrow();
+  });
+
+  // w25-h: the is/are verb-agreement counterpart to plural() -- every
+  // hand-copied `n === 1 ? 'is' : 'are'` ternary goes through here instead
+  // (app/src/pages/submissions/SubmissionsTable.tsx's triage-cleared
+  // EmptyState reason string was the last offender, per test/plural.test.ts).
+  it("isAre agrees 'is' for 1 and 'are' otherwise", () => {
+    expect(isAre(1)).toBe("is");
+    expect(isAre(0)).toBe("are");
+    expect(isAre(2)).toBe("are");
+    expect(isAre(11)).toBe("are");
   });
 });
