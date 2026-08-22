@@ -72,6 +72,17 @@ create table participant (
   created_at integer,
   updated_at integer
 );
+create table user (
+  id text primary key,
+  org_id text not null,
+  email text not null,
+  name text,
+  password_hash text not null,
+  role text not null,
+  contact_id text,
+  created_at integer not null,
+  updated_at integer not null
+);
 `;
 
 const T0 = 1_700_000_000_000;

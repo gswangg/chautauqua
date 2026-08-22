@@ -2,7 +2,7 @@
 // decomposition, no behavior change). See repo/contacts.ts for the
 // module-level contract notes.
 
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId, formatRef } from "../../../domain/ids";
@@ -167,10 +167,18 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       // conflict wording exactly ("<name> already uses this email") --
       // duplicated here rather than imported because the route file is out
       // of this change's scope.
+      // DEC-558: contact.email is deliberately a plain, non-unique index
+      // (DEC-755/contacts/merge.ts) -- more than one sibling row COULD
+      // theoretically match this org+lower(email) pair, so `.limit(1)` needs
+      // its own total order rather than relying on SQLite's unspecified row
+      // order to pick which sibling's name gets reported. id-asc is the
+      // house tiebreaker (matches findContactByEmail's own createdAt-asc/
+      // id-asc convention).
       const sibling = await db
         .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
         .from(schema.contact)
         .where(and(eq(schema.contact.orgId, current!.orgId), sql`lower(${schema.contact.email}) = ${newEmailLower}`, sql`${schema.contact.id} != ${id}`))
+        .orderBy(asc(schema.contact.id))
         .limit(1);
       const siblingContact = sibling[0];
       if (siblingContact) {

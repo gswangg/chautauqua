@@ -271,6 +271,12 @@ const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reas
     reason:
       "Persists a drag-and-drop reorder as one UPDATE per field position; each row commonly gets a distinct `position` value, so it isn't a shared-predicate set update -- bounded by one form's field count (a UI-driven list, not a bulk/import path).",
   },
+  {
+    file: "src/server/repo/contacts/import.ts",
+    functionOrNearestExport: "applyImportRows",
+    reason:
+      "DEC-456 merge-fill login cascade: fillLoginCascade carries one DIFFERENT email per contact (contactId -> filled address), so it cannot share one predicate/SET value the way chunkRowsForInsert's excluded-column upsert batches the earlier flushContactCreates/flushContactUpdates rows -- bounded by MAX_IMPORT_ROWS (domain/contacts-parts/import.ts; see test/import-row-cap-single-source.scan.test.ts), never by a schedule: fillLoginCascade's size cannot exceed the request's already-capped merge-line count.",
+  },
 ];
 
 describe("serial per-row D1 write scan (DEC-948 amendment, wave 19: walks all of src/, not just src/routes + src/server/repo)", () => {

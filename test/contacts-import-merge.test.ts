@@ -41,56 +41,88 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 const { contactsRoutes } = await import("../src/routes/api/contacts");
 const repo = await import("../src/server/repo/contacts");
 
-function colKey(col: unknown): string {
-  for (const [key, value] of Object.entries(schema.contact)) {
+function colKeyIn(schemaObj: Record<string, unknown>, col: unknown): string {
+  for (const [key, value] of Object.entries(schemaObj)) {
     if (value === col) return key;
   }
-  throw new Error("fake db: condition referenced a column not on schema.contact");
+  throw new Error("fake db: condition referenced a column not on the queried table's schema");
 }
 
-function fieldValue(colOrExpr: unknown, row: Record<string, unknown>): unknown {
+function fieldValue(colOrExpr: unknown, row: Record<string, unknown>, schemaObj: Record<string, unknown>): unknown {
   const m = colOrExpr as Marker;
   if (m && typeof m === "object" && "__marker" in m && m.__marker === "lower") {
-    return String(fieldValue(m.col, row)).toLowerCase();
+    return String(fieldValue(m.col, row, schemaObj)).toLowerCase();
   }
-  return row[colKey(colOrExpr)];
+  return row[colKeyIn(schemaObj, colOrExpr)];
 }
 
-function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
+function evalCond(cond: unknown, row: Record<string, unknown>, schemaObj: Record<string, unknown>): boolean {
   const m = cond as Marker;
-  if (m.__marker === "eq") return row[colKey(m.col)] === m.val;
-  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
-  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row));
-  if (m.__marker === "inArray") return m.val.includes(fieldValue(m.col, row));
+  if (m.__marker === "eq") return row[colKeyIn(schemaObj, m.col)] === m.val;
+  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row, schemaObj));
+  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row, schemaObj));
+  if (m.__marker === "inArray") return m.val.includes(fieldValue(m.col, row, schemaObj));
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
-function project(row: Record<string, unknown>, fields: Record<string, unknown>) {
+function project(row: Record<string, unknown>, fields: Record<string, unknown>, schemaObj: Record<string, unknown>) {
   const out: Record<string, unknown> = {};
-  for (const [outKey, col] of Object.entries(fields)) out[outKey] = row[colKey(col)];
+  for (const [outKey, col] of Object.entries(fields)) out[outKey] = row[colKeyIn(schemaObj, col)];
   return out;
 }
 
+// DEC-663 fill path (src/server/repo/contacts/import.ts:469): a merge FILL
+// reads schema.user by lowered email to enforce DEC-456's login-identity
+// conflict/cascade contract. The fake db models `user` as a SECOND table --
+// its own row store and its own schema object -- seeded per test only where
+// a case needs an account owner; every other test leaves it empty, matching
+// "no schema.user row owns this address" (the common, unowned case).
+// Tables this fake db does not model (schema.submission, schema.participant,
+// ...) fall through to an empty, schema-less stub rather than throwing --
+// mirrors the pre-existing lenient `.from()` behavior for a query whose
+// result is never actually read (e.g. touchSubmissionsForContacts' inArray
+// subquery, unread when its containing update() no-ops for an unmodeled
+// target table). Actually evaluating a condition against the stub still
+// fails loudly, via colKeyIn's own "column not found" throw.
+const UNMODELED_TABLE = { schema: {} as Record<string, unknown>, rows: [] as Record<string, unknown>[] };
+
+function tableFor(
+  tables: { contact: { schema: Record<string, unknown>; rows: Record<string, unknown>[] }; user: { schema: Record<string, unknown>; rows: Record<string, unknown>[] } },
+  table: unknown,
+) {
+  if (table === schema.contact) return tables.contact;
+  if (table === schema.user) return tables.user;
+  return UNMODELED_TABLE;
+}
+
 function makeFakeContactDb() {
-  let rows: Record<string, unknown>[] = [];
+  const tables = {
+    contact: { schema: schema.contact as unknown as Record<string, unknown>, rows: [] as Record<string, unknown>[] },
+    user: { schema: schema.user as unknown as Record<string, unknown>, rows: [] as Record<string, unknown>[] },
+  };
 
   const db = {
     select(fields?: Record<string, unknown>) {
+      let target = tables.contact;
       let whereCond: unknown = null;
       let limitN: number | null = null;
       let offsetN = 0;
       const run = () => {
-        const filtered = whereCond ? rows.filter((r) => evalCond(whereCond, r)) : rows.slice();
-        if (fields && Object.values(fields).some((v) => !Object.values(schema.contact).includes(v))) {
+        const schemaObj = target.schema;
+        const filtered = whereCond ? target.rows.filter((r) => evalCond(whereCond, r, schemaObj)) : target.rows.slice();
+        if (fields && Object.values(fields).some((v) => !Object.values(schemaObj).includes(v))) {
           const out: Record<string, unknown> = {};
           for (const key of Object.keys(fields)) out[key] = filtered.length;
           return [out];
         }
-        const projected = fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
+        const projected = fields ? filtered.map((r) => project(r, fields, schemaObj)) : filtered.map((r) => ({ ...r }));
         return limitN !== null ? projected.slice(offsetN, offsetN + limitN) : projected;
       };
       const chain: any = {
-        from: () => chain,
+        from: (table: unknown) => {
+          target = tableFor(tables, table);
+          return chain;
+        },
         where: (cond: unknown) => {
           whereCond = cond;
           return chain;
@@ -108,12 +140,13 @@ function makeFakeContactDb() {
       };
       return chain;
     },
-    insert(_table: unknown) {
+    insert(table: unknown) {
+      const target = tableFor(tables, table);
       return {
         values: (vals: Record<string, unknown> | Record<string, unknown>[]) => {
           const list = Array.isArray(vals) ? vals : [vals];
           const insertAll = async () => {
-            for (const v of list) rows.push({ ...v });
+            for (const v of list) target.rows.push({ ...v });
           };
           return {
             then: (resolve: (v: void) => void, reject?: (e: unknown) => void) =>
@@ -122,11 +155,11 @@ function makeFakeContactDb() {
               then: (resolve: (v: void) => void, reject?: (e: unknown) => void) => {
                 const upsertAll = async () => {
                   for (const v of list) {
-                    const idx = rows.findIndex((r) => r.id === v.id);
+                    const idx = target.rows.findIndex((r) => r.id === v.id);
                     if (idx < 0) continue;
                     const patch: Record<string, unknown> = {};
                     for (const key of Object.keys(opts.set)) patch[key] = v[key];
-                    rows[idx] = { ...rows[idx], ...patch };
+                    target.rows[idx] = { ...target.rows[idx], ...patch };
                   }
                 };
                 return upsertAll().then(resolve, reject);
@@ -142,19 +175,39 @@ function makeFakeContactDb() {
           where: async (cond: unknown) => {
             // DEC-299's attribution backfill (src/server/repo/attribution.ts)
             // issues its own update against schema.participant, a table this
-            // contact-only fake never models -- a no-op here, matching "no
-            // never-taken attribution snapshot exists to repair" in a store
-            // with no participant rows at all.
-            if (table !== schema.contact) return;
-            rows = rows.map((r) => (evalCond(cond, r) ? { ...r, ...vals } : r));
+            // fake never models -- a no-op here, matching "no never-taken
+            // attribution snapshot exists to repair" in a store with no
+            // participant rows at all.
+            if (table !== schema.contact && table !== schema.user) return;
+            const target = tableFor(tables, table);
+            target.rows = target.rows.map((r) => (evalCond(cond, r, target.schema) ? { ...r, ...vals } : r));
           },
         }),
       };
     },
   };
 
-  return { db: db as unknown as AppEnv["Variables"]["db"], rows: () => rows };
+  return {
+    db: db as unknown as AppEnv["Variables"]["db"],
+    rows: () => tables.contact.rows,
+    userRows: () => tables.user.rows,
+  };
 }
+
+/** Seeds a schema.user row -- the DEC-456 login-identity owner a merge FILL's
+ * pre-pass (import.ts:469) looks up by lowered email. Only used by tests that
+ * need an account already owning an address. */
+function seedUser(db: AppEnv["Variables"]["db"], overrides: Record<string, unknown>) {
+  return (db as any)
+    .insert(schema.user)
+    .values({
+      id: "seed-user-id",
+      contactId: null,
+      email: "seed-user@example.com",
+      ...overrides,
+    });
+}
+void seedUser;
 
 function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
   const app = new Hono<AppEnv>();
