@@ -11,7 +11,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { DEC_070, DEC_258, DEC_556, DEC_604 } from "../../decisions";
+import { DEC_070, DEC_258, DEC_556, DEC_604, DEC_725 } from "../../decisions";
 import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
 import { touchSubmissions } from "./submissions/touch";
 import {
@@ -38,6 +38,10 @@ void DEC_556;
 // pushContactsToEvent) against the cap the organizer-invite and
 // add-co-presenter doors already enforced.
 void DEC_604;
+// DEC_725: removeParticipantRow below stamps the owning submission before
+// the delete, closing the one participant writer that used to skip the
+// touch-on-write contract (submissions/touch.ts).
+void DEC_725;
 
 /** Sentinel returned by inviteParticipant when the (submissionId, contactId)
  * pair already has a participant row — callers surface this as an
@@ -431,12 +435,24 @@ export async function getParticipantRow(db: Db, participantId: string): Promise<
  * gate-8 cycle: the detail page's Remove shipped with no server half). The
  * lead-protection decision belongs to the ROUTE (same split as the role
  * retarget guard above) — this is the bare scoped delete. Returns the
- * number of rows removed (0 when the scope missed). */
+ * number of rows removed (0 when the scope missed).
+ *
+ * DEC-725 amendment (task-w10-tb): removing a participant changes the
+ * submission's published Speakers cell exactly like the writers above, so
+ * touchSubmissions is called BEFORE the delete — while submissionId is still
+ * derivable — per submissions/touch.ts's header contract (an after-the-fact
+ * EXISTS-style re-derivation cannot see a DELETE). This stamp is owed to two
+ * readers, both named in that header: src/sync/airtable.ts's DEC-725
+ * watermark (`gt(submission.updatedAt, mark)`) and
+ * src/server/repo/overview.ts's `desc(submission.updatedAt)` worklist. Same
+ * defect class DEC-981 closed for declines. */
 export async function removeParticipantRow(
   db: Db,
   participantId: string,
   submissionId: string,
 ): Promise<number> {
+  const now = new Date();
+  await touchSubmissions(db, [submissionId], now);
   const result = await db
     .delete(schema.participant)
     .where(and(eq(schema.participant.id, participantId), eq(schema.participant.submissionId, submissionId)));
