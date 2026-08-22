@@ -279,6 +279,24 @@ const reachable = walkReachable(ENTRY_POINTS);
 // ---------------------------------------------------------------------------
 
 const ENTRY_OR_ALLOWED: Record<string, string> = {
+  "app/src/frame-citation-core.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "1038-line app/src/frame-citation.scan.test.ts) -- its only importers are " +
+    "app/src/frame-citation.scan.test.ts, app/src/frame-citation-frames.ts, and " +
+    "app/src/frame-citation-receipts.ts, and test-file imports don't confer reachability (DEC-518). " +
+    "Holds path roots, file enumeration, and citation-matching helpers; it is scan vocabulary, never " +
+    "SPA bundle code.",
+  "app/src/frame-citation-frames.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "1038-line app/src/frame-citation.scan.test.ts) -- its only importer is " +
+    "app/src/frame-citation.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +
+    "Holds phone/desktop frame-extent computation; it is scan vocabulary, never SPA bundle code.",
+  "app/src/frame-citation-receipts.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "1038-line app/src/frame-citation.scan.test.ts) -- its only importer is " +
+    "app/src/frame-citation.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +
+    "Holds the quote+expect/helper-credit receipt-checking logic; it is scan vocabulary, never SPA " +
+    "bundle code.",
   "app/src/negative-margin-adjacency-ceiling.ts":
     "Ratchet-constant module for a brand-new instrument (DEC-919 wave-152 amendment, task w8-eg) -- its only " +
     "importer is app/src/negative-margin-adjacency.scan.test.ts, and test-file imports don't confer " +
