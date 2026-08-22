@@ -209,6 +209,82 @@ function allGreenFixture(): CampaignFile[] {
   });
 }
 
+// task w6-e (DEC-069, "this lane builds it"): the fixture corpus above is a
+// HAND-TYPED mirror of CAMPAIGN_CONSTANT_NAMES -- exactly the topology the
+// ruling calls out (WIDTH_FLOOR_OFFENDERS_CEILING joined the roster without
+// a fixture row, and the fixture's own comments record four earlier
+// instances of the identical failure). These two assertions make the next
+// such omission fail LOUDLY here, at fixture-registration time, instead of
+// silently downstream inside every resolveSingle call in buildCampaignReport.
+// Both reuse findConstantDeclarations (the module's own declaration finder)
+// rather than re-implementing a parser (DEC-613: never a second copy of a
+// vocabulary), so the two directions are:
+//   1. every CAMPAIGN_CONSTANT_NAMES entry has exactly one baseFixture() row
+//      (a name in the roster with zero or >1 fixture rows), and
+//   2. every declaration baseFixture() contains names a CAMPAIGN_CONSTANT_NAMES
+//      member (a fixture row nobody in the roster asked for -- an orphan).
+// CLAIMED_FLOOR is the one legitimate exception to "exactly one": it is
+// declared twice by design (desktop + phone ledgers), pinned separately by
+// the existing "resolves every campaign constant name" test above.
+describe("baseFixture/allGreenFixture two-directional derivation (DEC-069 w6-e)", () => {
+  function countByName(files: CampaignFile[]): Map<string, number> {
+    const matches = findConstantDeclarations(files, new Set(CAMPAIGN_CONSTANT_NAMES));
+    const counts = new Map<string, number>();
+    for (const m of matches) counts.set(m.name, (counts.get(m.name) ?? 0) + 1);
+    return counts;
+  }
+
+  it("baseFixture(): every CAMPAIGN_CONSTANT_NAMES entry has exactly one declaration (CLAIMED_FLOOR: exactly two)", () => {
+    const counts = countByName(baseFixture());
+    const missing: string[] = [];
+    const wrongCount: string[] = [];
+    for (const name of CAMPAIGN_CONSTANT_NAMES) {
+      const expected = name === "CLAIMED_FLOOR" ? 2 : 1;
+      const found = counts.get(name) ?? 0;
+      if (found === 0) missing.push(name);
+      else if (found !== expected) wrongCount.push(`${name} (found ${found}, expected ${expected})`);
+    }
+    expect(missing, `baseFixture() is missing a row for: ${missing.join(", ")}`).toEqual([]);
+    expect(wrongCount, `baseFixture() has the wrong declaration count for: ${wrongCount.join(", ")}`).toEqual([]);
+  });
+
+  it("baseFixture(): no declared row names a constant outside CAMPAIGN_CONSTANT_NAMES (no orphan fixture rows)", () => {
+    const roster = new Set(CAMPAIGN_CONSTANT_NAMES);
+    const candidateNames = new Set(findCampaignCeilingCandidates(baseFixture()));
+    // EXPECTED_TOTAL/EXPECTED_TOTAL_PRE_DEVIATION/EXPECTED_DEVIATION_DEFERRED
+    // are floor-population constants, not _CEILING/_FLOOR-shaped names, and
+    // fall outside findCampaignCeilingCandidates' own naming convention --
+    // check those directly against CAMPAIGN_CONSTANT_NAMES instead.
+    const nonCeilingShaped = ["CLAIMED_FLOOR", "EXPECTED_TOTAL", "EXPECTED_TOTAL_PRE_DEVIATION", "EXPECTED_DEVIATION_DEFERRED"];
+    const orphans = [...candidateNames].filter((n) => !roster.has(n));
+    expect(orphans, `baseFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES: ${orphans.join(", ")}`).toEqual([]);
+    for (const name of nonCeilingShaped) {
+      expect(roster.has(name), `${name} is declared in baseFixture() but absent from CAMPAIGN_CONSTANT_NAMES`).toBe(true);
+    }
+  });
+
+  it("allGreenFixture(): every CAMPAIGN_CONSTANT_NAMES entry has exactly one declaration (CLAIMED_FLOOR: exactly two)", () => {
+    const counts = countByName(allGreenFixture());
+    const missing: string[] = [];
+    const wrongCount: string[] = [];
+    for (const name of CAMPAIGN_CONSTANT_NAMES) {
+      const expected = name === "CLAIMED_FLOOR" ? 2 : 1;
+      const found = counts.get(name) ?? 0;
+      if (found === 0) missing.push(name);
+      else if (found !== expected) wrongCount.push(`${name} (found ${found}, expected ${expected})`);
+    }
+    expect(missing, `allGreenFixture() is missing a row for: ${missing.join(", ")}`).toEqual([]);
+    expect(wrongCount, `allGreenFixture() has the wrong declaration count for: ${wrongCount.join(", ")}`).toEqual([]);
+  });
+
+  it("allGreenFixture(): no declared row names a constant outside CAMPAIGN_CONSTANT_NAMES (no orphan fixture rows)", () => {
+    const roster = new Set(CAMPAIGN_CONSTANT_NAMES);
+    const candidateNames = new Set(findCampaignCeilingCandidates(allGreenFixture()));
+    const orphans = [...candidateNames].filter((n) => !roster.has(n));
+    expect(orphans, `allGreenFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES: ${orphans.join(", ")}`).toEqual([]);
+  });
+});
+
 describe("findConstantDeclarations", () => {
   it("resolves every campaign constant name from the fixture corpus (positive control)", () => {
     const matches = findConstantDeclarations(baseFixture(), new Set(CAMPAIGN_CONSTANT_NAMES));
