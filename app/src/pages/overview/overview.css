@@ -250,6 +250,19 @@
   display: none;
 }
 
+/* DEC-919 wave-109-style amendment: §04's clash row phone-only joined
+   sentence (see the terminal @media (max-width:700px) block below,
+   overview.css:875) is markup-mounted with the native `hidden` attribute in
+   AgendaWorkSection.tsx but carried no top-level display:none of its own --
+   a stylesheet-applied desktop render could leak it. Hidden here at top
+   level, same idiom as .chq-overview-section-label-phone and
+   .chq-overview-overflow-link just above; the terminal block re-reveals it
+   with a higher-source-order display:block, so phone behaviour is
+   unchanged. */
+.chq-overview-clash-line-phone {
+  display: none;
+}
+
 .chq-overview-row {
   display: grid;
   gap: 20px;

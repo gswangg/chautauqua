@@ -235,7 +235,18 @@ describe('DEC-889 (wave-32): per-criterion recuse hint CSS -- scorecard.css term
     expect(rule).toMatch(/color:\s*var\(--chq-ink\)/);
   });
 
-  it('no top-level (desktop) rule targets .chq-review-criterion-hint-phone -- DEC-385 single-direction, desktop bytes untouched', () => {
-    expect(() => topLevelRuleBody(SCORECARD_CSS, '.chq-review-criterion-hint-phone')).toThrow();
+  it('the top-level (desktop) rule for .chq-review-criterion-hint-phone is display:none only -- DEC-919 wave-109-style amendment, desktop bytes untouched', () => {
+    // DEC-919 wave-109 amendment (merge-train repair, extended here): a
+    // phone-named class mounted in TSX must resolve to a top-level
+    // display:none so a stylesheet-applied desktop render can never leak
+    // the phone copy -- the same shape already applied to
+    // .chq-review-overall-value-phone / .chq-review-recusal-label-phone
+    // just above in scorecard.css. The top-level rule sets display:none
+    // ONLY (no other declaration), so desktop rendering is unchanged from
+    // the native `hidden` attribute's own behaviour, and the terminal
+    // max-width:700px block's higher-source-order display:block rule still
+    // wins on phone.
+    const rule = topLevelRuleBody(SCORECARD_CSS, '.chq-review-criterion-hint-phone');
+    expect(rule.replace(/\s+/g, ' ').trim()).toBe('display: none;');
   });
 });
