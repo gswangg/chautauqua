@@ -192,3 +192,26 @@ Measured on branch `v12m-w34-g`, main at `da6cbbf51`, by `test/frame-control-flo
 - `UNRESOLVED_COUNT_TRIPWIRE`: **105 -> 106** (the "Draft" row moves from OFFENDERS into the `composed-unseen` bucket: 89 -> 90 `composed-unseen`, `no-token` and `no-control-shape` unchanged at 4/12).
 - Zero product CSS/TS bytes changed this wave (test + audit doc only).
 - The `### 3. The one offender: ...` heading AND its body (lines 127-129 above) are left byte-for-byte untouched per this task's own scope boundary -- a separate, concurrent open-divergence-ledger adjudication owns that section; this wave's finding and repair are recorded ONLY in this new section so the two edits do not collide.
+
+## Wave 37 amendment (DEC-903): the WAVE 31 `### 3.`/`### 5.` paragraphs above are SUPERSEDED-IN-PLACE
+
+`test/audit-ratchet-statement-drift.scan.test.ts` (new, DEC-903 wave-37)
+caught that this document's WAVE 31 section still reads, unqualified,
+"`FRAME_FLOOR_DIVERGENCE_CEILING`: **0 -> 1**" (its own `### 5. Net effect`
+heading) with "Not fixed this wave ... left for a future wave's repair
+lane" (its own `### 3. The one offender` body) -- both stale narrative
+claims once read on their own, out of document order. Read together with
+the WAVE 34 section immediately above this one, the doc's NEWEST statement
+about this constant is already correct: `FRAME_FLOOR_DIVERGENCE_CEILING`:
+**1 -> 0**, live value 0. The evidence the "Draft" offender was resolved by
+adjudication, not left open: `docs/design/DEVIATIONS.md`'s own row states
+"CFP wizard dock's `Save draft` vs the frame's `Draft` — ALREADY RULED,
+one control with one name at every width, and the frame's `Draft` is a
+drawing abbreviation" (DEC-613 wave-96 amendment), and
+`test/frame-control-floor.scan.test.ts` reads
+`export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;` today. The WAVE 31
+`### 3.`/`### 5.` paragraphs are marked SUPERSEDED-IN-PLACE by this
+amendment (DEC-069: appended, never deleted) -- a reader landing on either
+paragraph alone should follow the doc forward to the WAVE 34 and WAVE 37
+sections rather than treat "left for a future wave's repair lane" as
+still-open work.
