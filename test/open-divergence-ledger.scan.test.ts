@@ -218,7 +218,7 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
 const AUDIT_FILE_FLOOR = 110;
-const TOKEN_ROW_FLOOR = 178;
+const TOKEN_ROW_FLOOR = 182;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 15,
   table: 44,

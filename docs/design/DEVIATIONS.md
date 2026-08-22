@@ -900,6 +900,77 @@ carries this section's ruling in full; these five entries are its record.
   affordance, so "keeps three chips" is paid for by the mechanism that makes
   the third one reachable.
 
+### CFP display-only overrides (wave 30 amendment, `src/decisions-data/DEC-582.md`)
+
+`src/routes/public/submit-views.tsx`'s `displayFields` map (built around the
+locked-field `helpText`/`placeholder` overrides just above it) applies five
+display-only overrides to the CFP form's locked fields, plus one deliberate
+NON-override. Quoting DEC-613's ruling sentence VERBATIM, from
+`submit-views.tsx`'s own comment: "the bio field's stored label ships at
+every width -- a frame's abbreviated legend never renames stored data
+(DEC-613 wave-27)." That principle -- frame copy wins for display-only
+chrome the frame itself draws, stored data always wins over a frame's own
+abbreviation of it -- governs every row below, each measured against
+`docs/design/Chautauqua Public and Portal.dc.html`:
+
+- **Abstract helper text (`CFP_ABSTRACT_HELP_TEXT`).** The frame draws
+  `docs/design/Chautauqua Public and Portal.dc.html` `Shown on the public
+  sessions page if your talk is accepted` beneath the Abstract field. The
+  product ships the identical literal, overriding whatever helper text a
+  producer's own stored field carries. Frame-copy override, matches the
+  frame exactly. Guard: `test/submit-cfp-frame-copy.test.ts` "overrides the
+  abstract field's counter cap and helper text".
+- **Bio helper text (`CFP_BIO_HELP_TEXT`).** The frame draws
+  `docs/design/Chautauqua Public and Portal.dc.html` `Shown on the public
+  speakers page · you can edit it later in your portal` beneath the Bio
+  field. The product ships the identical literal. Frame-copy override,
+  matches the frame exactly. Guard: `test/submit-cfp-frame-copy.test.ts`
+  "ships the stored 'Speaker bio' label as-is … with its own display-only
+  helper, dropping the old helpText".
+- **Email helper text (`CFP_EMAIL_HELP_TEXT`) -- the one addition, not a
+  frame match.** The frame draws no helper text under Email at all:
+  `docs/design/Chautauqua Public and Portal.dc.html` labels the field
+  `Email` and shows only the stored value (`priya@example.com`) beneath it,
+  no third line. The product adds `We send your portal link here, so a
+  typo means you never get it`, stating a real, invisible cost (a typo here
+  strands the speaker with no other way to reach their portal) that the
+  frame's static mock has no room to draw. Guard:
+  `test/submit-cfp-frame-copy.test.ts` "adds an email helper the frame does
+  not draw, stating the portal-link cost of a typo".
+- **Notes-for-reviewers placeholder (`CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER`).**
+  The frame draws `docs/design/Chautauqua Public and Portal.dc.html` `Never
+  shown publicly` as example content INSIDE the textarea control itself
+  (DEC-380 wave-133), not a below-field caption. The product ships the
+  identical literal as the control's `placeholder` attribute -- the closest
+  DOM equivalent of "content drawn inside the box." Guard:
+  `test/submit-cfp-frame-copy.test.ts` "draws the notes-for-reviewers and
+  accessibility-needs empty state as placeholder text, not a below-field
+  caption".
+- **Accessibility-needs placeholder (`CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER`).**
+  Same pattern as Notes for reviewers: the frame draws
+  `docs/design/Chautauqua Public and Portal.dc.html` `Goes to the venue
+  team only` inside the control; the product ships it as `placeholder`.
+  Guard: the same "draws the notes-for-reviewers and accessibility-needs
+  empty state as placeholder text" test above (both fields asserted
+  together).
+- **Bio LABEL -- deliberately NOT overridden.** The frame draws
+  `docs/design/Chautauqua Public and Portal.dc.html` `Bio · optional` as
+  the field's legend/label. `submit-views.tsx`'s `displayFields` map
+  applies no label override for `bio` -- only `helpText` is touched -- so
+  the stored, producer-authored label ships as-is (seeded as "Speaker bio"
+  in the pin below; "Speaker biography · optional" in
+  `docs/design/audit/cfp-legend-register-v12.md`'s own register). This is
+  the DEC-613 wave-27 ruling itself, quoted verbatim above: a frame's
+  abbreviated legend never renames stored data. Guard: the same "ships the
+  stored 'Speaker bio' label as-is" test cited above, which also asserts no
+  `CFP_BIO_LABEL`-shaped override exists.
+
+Each row's guard is a RESOLUTION GUARD in the DEC-099 sense: if
+`submit-views.tsx` ever stops shipping one of these literals, the cited
+test fails and this entry is stale -- the entry cannot outlive the
+behaviour it blesses. `docs/design/audit/cfp-legend-register-v12.md`'s
+DIVERGES rows for this same population cite this subsection.
+
 ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
 
 - **A pack frame that documents a VOCABULARY is not a screen.** Two
