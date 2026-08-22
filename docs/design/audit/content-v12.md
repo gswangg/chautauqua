@@ -394,3 +394,25 @@ confirm it.
 
 No open clause remains against any of Content's four `width:390px`
 frames.
+
+## Update (wave 12, task w12-xc): the render-verdict receipt file caught up to this ledger
+
+`app/src/pages/Content.frame-verdicts.render.test.tsx` (the render RECEIPT
+each row above cites) still carried its ORIGINAL wave-157 titles for `:198`
+and `:373` -- `DIVERGES` `it()`s whose bodies asserted DOM order/containment,
+contradicting this file's own `:198`/`:373` rows above (both `CLOSED` since
+wave 25, task w25-h). Both `it()`s are retitled `MATCHES` and now read
+`content.css`'s terminal `@media (max-width: 700px)` block as TEXT --
+jsdom applies no `@media`, so a DOM-only assertion is a claim about the
+desktop cascade, never the phone one, and cannot receipt a screen-level
+verdict. `:198` asserts the `<thead>`-hidden / block-collapsed rule plus
+the six cells' `order` sequence (select < status < session <
+speaker/latest-file < actions); `:373` asserts `.chq-content-group-body`'s
+`display:flex; flex-direction:column`, the three `display:contents` hoists,
+and the five grandchildren's `order` sequence -- both modelled on
+`DeliverableDetail.stack-390.render.test.tsx`'s own `phoneBlock`/
+`phoneRule` idiom. Each `it()` keeps its original DOM-fact assertions
+alongside the new CSS-text ones (both are true; only the SCREEN-fact
+verdict changed). No table row above changes -- both were already
+`CLOSED` -- this update brings their cited receipt file into agreement
+with them.
