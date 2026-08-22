@@ -421,18 +421,6 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/review/PlanEditor.render.test.tsx",
     },
   },
-  {
-    key: "the-contacts-390-rule-chips-label-ink-resolves-to-chq-brand-not-a-third-olive-dec-367-amendment-wave-16-r5",
-    status: "honored",
-    reason:
-      "DEC-367 amendment, wave-16 r5: the palette has no third olive between --chq-brand and --chq-brand-hover, and spending a hover/active token as the chip's REST ink would make the label's own B8 hover state a no-op against the identical hover rule already declared on .chq-contacts-filter-rule-chip-edit. #2E3A16 resolves to --chq-brand instead, restoring a strictly monotone rest -> hover -> active ladder.",
-    honored: {
-      kind: "present",
-      file: "app/src/pages/contacts/contacts.css",
-      literal: ".chq-contacts-filter-rule-chip {",
-      testFile: "app/src/pages/contacts/contacts-chip-ink-390.test.ts",
-    },
-  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -581,18 +569,6 @@ const LEDGER: LedgerEntry[] = [
     },
   },
   {
-    key: "contacts-390-rule-chip",
-    status: "honored",
-    reason:
-      "DEC-393 wave-16 r4 amendment, task v12m-w16-ui-r4-a: .chq-contacts-filter-rule-chip carries the frame's gap:9px directly (docs/design/Chautauqua Contacts.dc.html:190), and its neighbouring .chq-contacts-filter-rule-chip-edit / -dismiss rules both meet the 44px width floor with outward-only cancelled padding, per the file's own header comments -- the hit-box separation is frame-exact even though the glyph-to-glyph reading widens.",
-    honored: {
-      kind: "present",
-      file: "app/src/pages/contacts/contacts.css",
-      literal: ".chq-contacts-filter-rule-chip {",
-      testFile: "app/src/pages/contacts/FilterRulesPanel.ruleChips.render.test.tsx",
-    },
-  },
-  {
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
     status: "honored",
     reason:
@@ -617,7 +593,7 @@ const LEDGER: LedgerEntry[] = [
     key: "contacts-390-rule-chip",
     status: "honored",
     reason:
-      "DEC-393 wave-16 r4 amendment (task v12m-w16-ui-r4-a): the frame's drawn gap:9px between the chip's edit label and its dismiss control is met as hit-box separation, not literal optical separation -- the 44px width floor and a literal 9px drawn gap between glyphs cannot both hold at this glyph size, and the floor wins per DEC-393.",
+      "DEC-393 wave-16 r4 amendment: the frame's drawn gap:9px between the chip's edit label and its dismiss control is met as hit-box separation, not literal optical separation -- the 44px width floor and a literal 9px drawn gap between glyphs cannot both hold at this glyph size, and the floor wins per DEC-393.",
     honored: {
       kind: "present",
       file: "app/src/pages/contacts/contacts.css",
