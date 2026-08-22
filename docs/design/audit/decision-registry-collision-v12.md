@@ -1,4 +1,4 @@
-# Decision-registry id collision (DEC-976 wave-155, task w11-pd)
+# Decision-registry id collision (DEC-976 wave-155, task w11-pd; drained wave w10, task w10-tf)
 
 Two directories hold `DEC-NNN.md` files and their ids COLLIDE: `decisions/`
 (the older, canonical directory for `test/decisions-parity.test.ts` and the
@@ -7,16 +7,40 @@ written since wave 5, the population `test/decision-doc-citation.scan.test.ts`
 checks under its two-directional citation grammar). Measured directly from
 the tree with a throwaway script (`readdirSync` over both directories,
 matched against `/^DEC-\d+\.md$/`, DEC-808 -- never a hand-listed manifest),
-re-derivable by `test/decision-registry-collision.scan.test.ts`:
+re-derivable by `test/decision-registry-collision.scan.test.ts`. The
+`src/decisions-data/` population grew from 77 to 92 files between task
+w11-pd and task w10-tf as later scribe waves wrote more decisions under
+existing ids; the counts below are RE-MEASURED at task w10-tf, not
+inherited from the original table:
 
-| Fact | Count |
-| --- | --- |
-| ids in `decisions/` | 999 |
-| ids in `src/decisions-data/` | 77 |
-| ids present in BOTH directories | 77 |
-| pairs byte-identical | 0 |
-| pairs with a different H1 title (different subject under one id) | 35 |
-| of those 35, this wave's registry note written | 11 |
+| Fact | Count (task w11-pd) | Count (re-measured, task w10-tf) |
+| --- | --- | --- |
+| ids in `decisions/` | 999 | 999 |
+| ids in `src/decisions-data/` | 77 | 92 |
+| ids present in BOTH directories | 77 | 92 |
+| pairs byte-identical | 0 | 0 |
+| pairs with a different H1 title (different subject under one id) | 35 | 48 |
+| of those, a registry note is written | 11 | 48 (all -- drained to 0 unnoted) |
+
+**Task w10-tf drained the ratchet to 0.** Every title-divergent id --
+the 24 left unnoted by task w11-pd (`DEC-013, DEC-018, DEC-024, DEC-029,
+DEC-144, DEC-238, DEC-380, DEC-441, DEC-582, DEC-621, DEC-660, DEC-663,
+DEC-700, DEC-727, DEC-730, DEC-777, DEC-781, DEC-851, DEC-865, DEC-908,
+DEC-926, DEC-929, DEC-937, DEC-986`), plus 7 more that surfaced as the
+`src/decisions-data/` population grew (`DEC-382, DEC-575, DEC-720,
+DEC-902, DEC-948, DEC-949, DEC-964`), plus whatever remainder of the
+now-48-wide divergent population was already noted by other in-flight
+work -- now carries a `> Registry note:` first line. `UNNOTED_REGISTRY_COLLISION_CEILING`
+in `test/decision-registry-collision.scan.test.ts` is set to the
+measured 0. **The registry note is now a PRECONDITION of creating any
+new `src/decisions-data/DEC-NNN.md` file, not a cleanup task for a later
+wave**: because `decisions/`'s 999-id space is closed (DEC-808) and the
+scribe keeps writing new rulings under existing ids, every new file
+collides with an existing `decisions/DEC-NNN.md` by construction. A
+scribe wave that writes a new `src/decisions-data/DEC-NNN.md` under an
+id whose `decisions/DEC-NNN.md` H1 differs MUST write the registry note
+in the same commit that creates the file -- deferring it re-inflates
+this ratchet exactly as it did across tasks w11-pd through w10-tf.
 
 `decisions/` holds 999 `DEC-NNN.md` files (out of 1000 entries in the
 directory; the remaining entry is `decisions/README.md`, which rules the
@@ -65,39 +89,39 @@ named subset and remains unresolved (counted by the scan test's ratchet).
 
 | id | `decisions/` H1 | `src/decisions-data/` H1 | Classification | Note |
 | --- | --- | --- | --- | --- |
-| DEC-013 | API conventions for /api/v1 and the SPA client contract | D21 amendment: the SWR read cache lives INSIDE the one API client and is opt-in per call site | AMENDS | |
-| DEC-018 | Review API contract, criteria kinds, reviewer UX, and /api/v1/me | The plan editor at 390 is two lists, not a narrowed grid, with its save pair docked | SUPERSEDES | |
-| DEC-024 | SPA shared modules for wave 3: useCurrentEvent, useMe, api.ts as sole wire | D21 amendment: URL-keying IS event scoping | AMENDS | |
-| DEC-029 | Portal self-serve contract: tasks, invitations, sessions, resources | The portal's last two phone frames: Resources opens rather than downloads, and a rejected co-presenter is told what survived | AMENDS | |
-| DEC-144 | Two permanent render gates: render-sweep + jsdom/RTL smokes | Wave-154 amendment: the route manifest carries tab and panel sub-states | AMENDS | |
-| DEC-238 | Mailer failure taxonomy: system vs organizer-triggered sends | A skipped recipient the send report counts owes a comms-history row | AMENDS | |
+| DEC-013 | API conventions for /api/v1 and the SPA client contract | D21 amendment: the SWR read cache lives INSIDE the one API client and is opt-in per call site | AMENDS | ✓ |
+| DEC-018 | Review API contract, criteria kinds, reviewer UX, and /api/v1/me | The plan editor at 390 is two lists, not a narrowed grid, with its save pair docked | SUPERSEDES | ✓ |
+| DEC-024 | SPA shared modules for wave 3: useCurrentEvent, useMe, api.ts as sole wire | D21 amendment: URL-keying IS event scoping | AMENDS | ✓ |
+| DEC-029 | Portal self-serve contract: tasks, invitations, sessions, resources | The portal's last two phone frames: Resources opens rather than downloads, and a rejected co-presenter is told what survived | AMENDS | ✓ |
+| DEC-144 | Two permanent render gates: render-sweep + jsdom/RTL smokes | Wave-154 amendment: the route manifest carries tab and panel sub-states | AMENDS | ✓ |
+| DEC-238 | Mailer failure taxonomy: system vs organizer-triggered sends | A skipped recipient the send report counts owes a comms-history row | AMENDS | ✓ |
 | DEC-253 | Mobile bar for public, submit and portal surfaces, enforced by render-sweep | Wave-154 amendment: the live 390 pass measures every interactive element, not a class vocabulary | AMENDS | ✓ |
 | DEC-367 | One design-token vocabulary for both runtimes; self-hosted variable fonts; no semantic red | An exemption is a grammar, not a punctuation mark -- repair `topLevelRulesWithExemption`'s exempt flag | SUPERSEDES | ✓ |
 | DEC-374 | SSR CSS is injected via dangerouslySetInnerHTML and must be value-free | Amendment (wave 147): SSR stylesheets are inlined COMMENT-STRIPPED | AMENDS | ✓ |
-| DEC-380 | Agenda phone flow: arm-then-tap over one room, 30-minute default placement | Amendment (wave 147): a live-count caption whose every input is already on the screen is buildable | AMENDS | |
+| DEC-380 | Agenda phone flow: arm-then-tap over one room, 30-minute default placement | Amendment (wave 147): a live-count caption whose every input is already on the screen is buildable | AMENDS | ✓ |
 | DEC-381 | The phone tab bar's five destinations are Overview, Submissions, Speakers, Content, More | The phone tab bar's fourth slot is contextual and every slot carries its dot above the label | AMENDS | ✓ |
 | DEC-385 | One phone switch (max-width: 700px) and one set of phone metrics | Amendment (wave 103): a shadow can be load-bearing | AMENDS | ✓ |
 | DEC-393 | 44px is the phone tap-target floor everywhere, MIN_TAP_TARGET_PX | Amendment (wave 147): a control's floor is the floor its OWN frame draws | AMENDS | ✓ |
-| DEC-441 | SPEC §10 #3 (assisted chasing) ships now; #2 waits one more wave | Amendment (wave 135): The reminder email is built to its frame | AMENDS | |
-| DEC-582 | GET / is an anonymous surface, styled from the public CSS family | A file split re-points every ledger row that cites it, in the splitting commit | SUPERSEDES | |
-| DEC-621 | Comms on a phone lands on a choice, and no input may clip the text it holds | The Comms phone landing's draft card renders from a real persisted draft | AMENDS | |
-| DEC-660 | One merge-field vocabulary: resolvable sets and the 100-recipient cap | Amendment (wave 147): the compose-time unresolvable-merge-field warning is built, not deferred | AMENDS | |
-| DEC-663 | A CSV import is PLANNED before it is applied: dry run, per-line skips | Amendment (wave 135): A dry run plans the SAME inputs the real run applies | AMENDS | |
-| DEC-700 | A badge is a live claim: exception counts refetch on navigation and mutation | D21 amendment: the mutation bump IS the cache's invalidation clock | AMENDS | |
-| DEC-727 | Test tiers are DERIVED by predicate, never hand-listed | A test that touches `window` is jsdom/SLOW -- composeDraft.test.ts leaves the fast tier | AMENDS | |
+| DEC-441 | SPEC §10 #3 (assisted chasing) ships now; #2 waits one more wave | Amendment (wave 135): The reminder email is built to its frame | AMENDS | ✓ |
+| DEC-582 | GET / is an anonymous surface, styled from the public CSS family | A file split re-points every ledger row that cites it, in the splitting commit | SUPERSEDES | ✓ |
+| DEC-621 | Comms on a phone lands on a choice, and no input may clip the text it holds | The Comms phone landing's draft card renders from a real persisted draft | AMENDS | ✓ |
+| DEC-660 | One merge-field vocabulary: resolvable sets and the 100-recipient cap | Amendment (wave 147): the compose-time unresolvable-merge-field warning is built, not deferred | AMENDS | ✓ |
+| DEC-663 | A CSV import is PLANNED before it is applied: dry run, per-line skips | Amendment (wave 135): A dry run plans the SAME inputs the real run applies | AMENDS | ✓ |
+| DEC-700 | A badge is a live claim: exception counts refetch on navigation and mutation | D21 amendment: the mutation bump IS the cache's invalidation clock | AMENDS | ✓ |
+| DEC-727 | Test tiers are DERIVED by predicate, never hand-listed | A test that touches `window` is jsdom/SLOW -- composeDraft.test.ts leaves the fast tier | AMENDS | ✓ |
 | DEC-728 | Settings is a read-only summary with drill-in editing, drilled section is URL state | Amendment (wave 147): the navigation snapshot is a single module-level slot keyed by search | AMENDS | ✓ |
-| DEC-730 | The onboarding grid's three status states are one control family | Status tokens pair by density and a banner never changes a status vocabulary | AMENDS | |
-| DEC-777 | The speaker's own session page: one fact per row, event-timezone dates | Amendment (wave 147): the portal placement grammar carries the session's shape | AMENDS | |
-| DEC-781 | Call for papers is a read-only summary with one drill-in | Settings' fixed grid tracks and field-width tokens are desktop geometry and collapse at 390 | SUPERSEDES | |
-| DEC-851 | One filter contract for a public surface: page, .json, .xml, embed builder | D21 amendment: the client half never lands alone -- apiGetCached/apiListCached/useCachedRead | SUPERSEDES | |
-| DEC-865 | The org user directory is organizer/reviewer only | Reviewer assignment resolves the user through the ORG_USER_ROLES vocabulary | AMENDS | |
-| DEC-908 | Submission detail is the frame's three-and-three | Amendment (wave 147): the CFP confirmation card's meta reads through the one session-display vocabulary | AMENDS | |
-| DEC-926 | Deleting a file version never leaves a task_assignment pointing at a hole | Amendment (wave 135): A repoint across a partial-unique link deletes the row before it re-links | AMENDS | |
-| DEC-929 | Deleting an evaluation plan states its blast radius from ONE read | Deleting an evaluation plan freezes server-side once any evaluation exists | AMENDS | |
-| DEC-937 | A stylesheet may only reference tokens that EXIST (em dash) | A stylesheet may only reference tokens that EXIST (double hyphen) | AMENDS (punctuation-only divergence) | |
+| DEC-730 | The onboarding grid's three status states are one control family | Status tokens pair by density and a banner never changes a status vocabulary | AMENDS | ✓ |
+| DEC-777 | The speaker's own session page: one fact per row, event-timezone dates | Amendment (wave 147): the portal placement grammar carries the session's shape | AMENDS | ✓ |
+| DEC-781 | Call for papers is a read-only summary with one drill-in | Settings' fixed grid tracks and field-width tokens are desktop geometry and collapse at 390 | SUPERSEDES | ✓ |
+| DEC-851 | One filter contract for a public surface: page, .json, .xml, embed builder | D21 amendment: the client half never lands alone -- apiGetCached/apiListCached/useCachedRead | SUPERSEDES | ✓ |
+| DEC-865 | The org user directory is organizer/reviewer only | Reviewer assignment resolves the user through the ORG_USER_ROLES vocabulary | AMENDS | ✓ |
+| DEC-908 | Submission detail is the frame's three-and-three | Amendment (wave 147): the CFP confirmation card's meta reads through the one session-display vocabulary | AMENDS | ✓ |
+| DEC-926 | Deleting a file version never leaves a task_assignment pointing at a hole | Amendment (wave 135): A repoint across a partial-unique link deletes the row before it re-links | AMENDS | ✓ |
+| DEC-929 | Deleting an evaluation plan states its blast radius from ONE read | Deleting an evaluation plan freezes server-side once any evaluation exists | AMENDS | ✓ |
+| DEC-937 | A stylesheet may only reference tokens that EXIST (em dash) | A stylesheet may only reference tokens that EXIST (double hyphen) | AMENDS (punctuation-only divergence) | ✓ |
 | DEC-967 | A send is irreversible, so it asks once and names what it is about to do | Amendment (wave 135): A frame coordinate quoted inside an exclusion REASON is not a claim | SUPERSEDES | ✓ |
 | DEC-976 | The app's CSS contract gains its second direction: a chq-* class must have a rule | Amendment (wave 135): The caption ledger's exclusion taxonomy is FOUR named classes | SUPERSEDES | ✓ |
-| DEC-986 | The public CFP picks ONE track; the many-to-many model and wire shape stay | The phone CFP wizard validates before it advances, and conditional visibility un-requires controls | AMENDS | |
+| DEC-986 | The public CFP picks ONE track; the many-to-many model and wire shape stay | The phone CFP wizard validates before it advances, and conditional visibility un-requires controls | AMENDS | ✓ |
 | DEC-989 | The v6 width system is three tokens and three classes applied at the PAGE ROOT | No phone surface may declare a horizontal extent wider than the 390 viewport minus its gutters | AMENDS | ✓ |
 | DEC-991 | A clip exception names the ELEMENT's nature... wave-27 amendment: line-height <= 1 on a display face is BANNED OUTRIGHT | A display-face line-height <= 1 is legal exactly where a v12 frame declares it | CONTRADICTS | ✓ |
 
@@ -171,9 +195,27 @@ prefix actually needs answered):
 
 ## Not resolved this wave
 
-24 of the 35 title-divergent ids (all rows above with a blank Note column)
-carry no registry note. `test/decision-registry-collision.scan.test.ts`
-ratchets this population directly off the tree (readdirSync both
-directories, DEC-808) and is seeded at 24; it may only be LOWERED, by
-writing a registry note into the `src/decisions-data/DEC-NNN.md` side of a
-divergent pair, never raised.
+Nothing remains: task w10-tf (DEC-976) measured 31 unnoted offenders on
+`main` at start (`DEC-013, DEC-018, DEC-024, DEC-029, DEC-144, DEC-238,
+DEC-380, DEC-382, DEC-441, DEC-575, DEC-582, DEC-621, DEC-660, DEC-663,
+DEC-700, DEC-720, DEC-727, DEC-730, DEC-777, DEC-781, DEC-851, DEC-865,
+DEC-902, DEC-908, DEC-926, DEC-929, DEC-937, DEC-948, DEC-949, DEC-964,
+DEC-986` -- one fewer than the task's own 32-id candidate list because
+DEC-558 had already been noted by other in-flight work), wrote a registry
+note into every one, repaired one malformed pre-existing note
+(`DEC-948`, which named "the existing `DEC_948` registry constant" and
+used lower-case `amends` instead of the scan's required
+`decisions/DEC-NNN.md holds a different ruling (...); this file
+AMENDS|SUPERSEDES it because ...` shape), and re-measured 0 unnoted
+title-divergent ids. `test/decision-registry-collision.scan.test.ts`'s
+`UNNOTED_REGISTRY_COLLISION_CEILING` is now 0 (two-sided ratchet: a
+future scan measuring below 0 is impossible, and a scan measuring above
+0 means a NEW `src/decisions-data/DEC-NNN.md` was created without its
+registry note -- see the PRECONDITION rule above). `DEC-018, DEC-582,
+DEC-781, DEC-851` were reclassified from this table's original AMENDS
+guess to SUPERSEDES: on inspection their `src/decisions-data` ruling has
+no narrative link to the `decisions/` founding subject (an entirely
+different screen or system), matching the "Classification legend"'s
+SUPERSEDES definition rather than AMENDS. `DEC-964` (Comms
+Templates/History self-contained screens vs. group-row column emphasis)
+was written as SUPERSEDES for the same reason.
