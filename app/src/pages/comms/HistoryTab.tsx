@@ -112,11 +112,12 @@ export function HistoryTab({
   // plain cookie-authed Export CSV anchor onto the SAME email-log export the
   // row-level exports already ship (src/routes/api/exports.ts,
   // kind=email-log), carrying only the filter this tab actually has (q).
-  // NOTE: Comms.tsx already renders its own "Comms" h1 unconditionally, and
-  // TemplatesTab already renders a second, page-scoped "Templates" h1 while
-  // mounted alongside it (see app/src/pages/comms/TemplatesTab.tsx:185) --
-  // there is no single-h1 rule on this page to reconcile with, so History
-  // follows the same two-h1 precedent rather than inventing a third pattern.
+  // NOTE (DEC-964 wave-8 amendment, task w8-a): Comms.tsx now stands its
+  // own "Comms" h1 + tab pills down whenever this tab (or Templates) is
+  // showing, at every width -- History is a self-contained screen with
+  // this H1 as its ONLY page-level heading, matching TemplatesTab's own
+  // "Templates" h1 (app/src/pages/comms/TemplatesTab.tsx:185). No stray
+  // second h1 to reconcile with any more.
   // DEC-603 amendment (wave 66, gate-11 sweep item 6): the FULL rhythm
   // sentence (formatSendRhythm(rhythm), "N sent in the last 7 days · last
   // <date>") was dropped from this line -- Comms.tsx already renders it,
@@ -174,12 +175,11 @@ export function HistoryTab({
             "Download CSV" links (app/src/pages/settings/ExportsPanel.tsx) -- no fetch, no blob. */}
         {/* Frame 07-comms--08: Export CSV + a filled Compose button,
             right-flushed in the page header. The frame draws ONE page
-            title here; Comms.tsx (app/src/pages/Comms.tsx, out of this
-            page's ownership under app/src/pages/comms/**) unconditionally
-            renders its own "Comms" H1 + tab pills above every tab's own
-            content, which this file cannot remove -- see the fidelity
-            report for that cross-file gap. This adds the Compose pairing
-            achievable from inside this file alone. */}
+            title here, and (DEC-964 wave-8 amendment, task w8-a) so does
+            the tree now -- Comms.tsx stands its "Comms" H1 + tab pills
+            down for this tab at every width, so this drill head really is
+            the only page-level heading above. This adds the Compose
+            pairing achievable from inside this file alone. */}
         <div className="chq-comms-history-head-actions">
           <a className="chq-btn chq-btn-secondary chq-comms-history-export" href={exportHref}>
             Export CSV

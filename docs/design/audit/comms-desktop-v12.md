@@ -140,24 +140,26 @@ seven-day totals (Comms.tsx's own `isFreshEmpty` two-signal check).
   choice (the tab strip is how an organizer reaches Templates/History from
   a fresh event), filed here as the mandate requires.
 
-## Frame `:589` "Comms · history" (1600)
+## Frame `:589` "Comms · history" (1600) — CLOSED-with-receipt (DEC-964 wave-8, task w8-a)
 
-**DIVERGES** on page chrome above the frame's own shell; **MATCHES** on
-every claim the frame draws inside it. Entered via `?tab=history`
-(`HistoryTab`'s real mount).
+**MATCHES** on page chrome above the frame's own shell, and on every claim
+the frame draws inside it. Entered via `?tab=history` (`HistoryTab`'s real
+mount).
 
-- **DIVERGES**: the frame draws exactly ONE page-level heading inside its
-  shell — the drill head's own `<h1>History</h1>` (frame :616), with no
-  second "Comms" H1 or tablist above it (Templates and History are each
-  drawn as a full, self-contained screen in the pack). The tree renders the
-  page-level "Comms" H1 + Compose/Templates/History tablist ABOVE the
-  History drill head at every desktop width — `Comms.tsx` only stands that
-  band down when `isPhone && (tab === 'templates' || tab === 'history')`,
-  and `isPhone` is always false at 1600px. This gap is already named in
-  `HistoryTab.tsx`'s own doc comment ("Comms.tsx… unconditionally renders
-  its own 'Comms' H1 + tab pills… which this file cannot remove") — a
-  known, pre-existing, cross-file divergence this render receipt confirms
-  rather than discovers.
+- **CLOSED** (was DIVERGES): the frame draws exactly ONE page-level heading
+  inside its shell — the drill head's own `<h1>History</h1>` (frame :616),
+  with no second "Comms" H1 or tablist above it (Templates and History are
+  each drawn as a full, self-contained screen in the pack). `Comms.tsx`'s
+  page-level head band (H1 + rhythm subtitle + Compose/Templates/History
+  tablist) now stands down whenever `tab === 'templates' || tab ===
+  'history'`, at every width — the `isPhone &&` guard that used to scope
+  this to phone only is gone. Receipt:
+  `app/src/pages/Comms.desktop-frame-verdicts.render.test.tsx`'s "MATCHES
+  (DEC-964 wave-8, task w8-a): the frame draws ONE 'History' H1 as its own
+  drill head; the tree no longer renders a page-level 'Comms' H1 or tablist
+  above it at any width". `HistoryTab.tsx`'s own doc comments (previously
+  naming this as a cross-file gap it "cannot remove") are updated in the
+  same commit.
 - The drill head itself (frame :616-621: breadcrumb, count line, Export
   CSV, Compose) MATCHES: "‹ Comms", a "N send(s)" count line, a bordered
   "Export CSV" anchor, and a filled "Compose" primary, all present and in
@@ -183,7 +185,7 @@ every claim the frame draws inside it. Entered via `?tab=history`
 | :222 Templates (1600) | MATCHES (one additive, cosmetic table-vs-div DIVERGES) |
 | :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3); structurally MATCHES |
 | :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop) |
-| :589 Comms · history (1600) | DIVERGES on page chrome (page-level Comms H1 + tablist always render above it); MATCHES inside the frame's own shell |
+| :589 Comms · history (1600) | CLOSED-with-receipt (DEC-964 wave-8, task w8-a): MATCHES on page chrome (no page-level Comms H1/tablist at any width) and inside the frame's own shell |
 
 All four frames render successfully through the real route with no
 fabricated fixture shortcuts; none of the divergences found are new debt —
