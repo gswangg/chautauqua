@@ -571,6 +571,42 @@ export function deriveInteractiveOffenders(
  * full classification. */
 export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
 
+/** DEC-996 wave-24 amendment: classification result for one printed offender
+ * line. `EXEMPT` names the receipt token (a class name) that reaches it —
+ * either a `tap-floor-exempt:` comment naming that literal class, or the
+ * `.chq-check-hit` wrapper idiom (both derived by the caller from the tree,
+ * never hand-listed here). `CANDIDATE` carries no receipt: nothing in the
+ * exempt set names any class token the offender's own selector carries. */
+export interface AdminMobileOffenderClassification {
+  readonly classification: "EXEMPT" | "CANDIDATE";
+  readonly receipt?: string;
+}
+
+/** DEC-996 wave-24 amendment: pure classifier for one already-printed
+ * offender line (the `${selector} w=${w}px h=${h}px` shape
+ * `evaluateMobileRoute` above produces). Takes the exempt token set as an
+ * ARGUMENT — never reads the filesystem, never imports anything beyond what
+ * this module already imports — so this file stays pure and
+ * playwright-free, callable from plain vitest. `exemptSelectors` holds bare
+ * class names (no leading `.`); every class token the offender's selector
+ * prefix carries (e.g. `input.chq-check.chq-taskview-check` -> `chq-check`,
+ * `chq-taskview-check`) is checked against it, first match wins and is
+ * reported as the receipt. A selector with no class token, or no token in
+ * the set, classifies CANDIDATE. */
+export function classifyAdminMobileOffender(
+  offenderLine: string,
+  exemptSelectors: ReadonlySet<string>,
+): AdminMobileOffenderClassification {
+  const selectorPart = offenderLine.split(/\s+w=/)[0] ?? offenderLine;
+  const classTokens = (selectorPart.match(/\.[a-zA-Z0-9_-]+/g) ?? []).map((t) => t.slice(1));
+  for (const token of classTokens) {
+    if (exemptSelectors.has(token)) {
+      return { classification: "EXEMPT", receipt: token };
+    }
+  }
+  return { classification: "CANDIDATE" };
+}
+
 /** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —
  * only the path and the offender roster, so the pure formatter never has to
  * import the full MobileRouteResult/RouteManifestEntry (or any playwright
@@ -591,7 +627,11 @@ export interface AdminMobileOffenderLedgerRow {
 export function formatAdminMobileOffenderLedger(
   results: readonly AdminMobileOffenderLedgerRow[],
   ceiling: number,
+  exemptSelectors: ReadonlySet<string> = new Set(),
 ): string {
+  void ceiling; // DEC-996 wave-24 amendment: the printed total classifies the
+  // population instead of comparing it to the raw ceiling — the ceiling
+  // itself is unchanged and still lives in ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING.
   const lines: string[] = [];
   lines.push("# Admin mobile tap-floor offender roster (390px, DEC-253/DEC-367/DEC-808/DEC-996)");
   lines.push("");
@@ -600,7 +640,7 @@ export function formatAdminMobileOffenderLedger(
   );
   lines.push("");
   lines.push(
-    "Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path.",
+    "Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path. Each line is classified EXEMPT (naming the receipt token that reaches it) or CANDIDATE (DEC-996 wave-24 amendment) — a bare count over this mixed population is not a measurement.",
   );
   lines.push("");
 
@@ -609,6 +649,9 @@ export function formatAdminMobileOffenderLedger(
     .slice()
     .sort((a, b) => a.path.localeCompare(b.path));
 
+  let exemptCount = 0;
+  let candidateCount = 0;
+
   if (offending.length === 0) {
     lines.push("No offenders measured on the last gate run.");
   } else {
@@ -616,14 +659,21 @@ export function formatAdminMobileOffenderLedger(
       lines.push(`## ${r.path}`);
       lines.push("");
       for (const offender of r.interactiveOffenders) {
-        lines.push(`- ${offender}`);
+        const c = classifyAdminMobileOffender(offender, exemptSelectors);
+        if (c.classification === "EXEMPT") {
+          exemptCount++;
+          lines.push(`- ${offender} — **EXEMPT** (receipt: \`${c.receipt}\`)`);
+        } else {
+          candidateCount++;
+          lines.push(`- ${offender} — **CANDIDATE**`);
+        }
       }
       lines.push("");
     }
   }
 
   const total = results.reduce((sum, r) => sum + r.interactiveOffenders.length, 0);
-  lines.push(`Measured total: ${total} (ceiling ${ceiling})`);
+  lines.push(`Measured total: ${total} (exempt: ${exemptCount}, candidate defects: ${candidateCount})`);
   return lines.join("\n") + "\n";
 }
 

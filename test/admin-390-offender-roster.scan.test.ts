@@ -11,17 +11,20 @@
 //     imported from scripts/render-sweep-lib.ts, never copied as a literal
 //   - a vacuity tripwire: the parsed roster is non-empty, so a row-format
 //     drift that silently parses to zero rows cannot pass by accident.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { DEC_851 } from "../src/decisions";
+import { DEC_180, DEC_851, DEC_996 } from "../src/decisions";
 import { ADMIN_MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
-import { ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING } from "../scripts/render-sweep-lib";
+import { ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING, classifyAdminMobileOffender } from "../scripts/render-sweep-lib";
+import { allCssFiles, hasExemptionForToken } from "../app/src/phone-tap-target-scan/core";
 
 void DEC_851; // this scan's whole reason to exist: naming the gate's 79/80 offenders
+void DEC_996; // DEC-996 wave-24 amendment: classifies every named offender EXEMPT/CANDIDATE
+void DEC_180; // the exempt set below is DERIVED from the tree's own receipts, never hand-listed
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -101,6 +104,169 @@ function routeMatchesManifest(route: string): boolean {
   }
   return false;
 }
+
+// DEC-996 wave-24 amendment -----------------------------------------------
+//
+// The roster above names every sighting; this half CLASSIFIES each one
+// EXEMPT (naming the receipt token that reaches it) or CANDIDATE, derived
+// from the tree's own receipts, never hand-listed (DEC-180):
+//   1. a `/* tap-floor-exempt: … */` CSS comment naming the class's own
+//      rule — app/src/phone-tap-target-scan/core.ts's `hasExemptionForToken`
+//      over every app/src/**/*.css and src/**/*.ts(x) file (the wordmark
+//      idiom-1 receipt lives inside a `src/**` TS module, not a `.css`
+//      file).
+//   2. the `.chq-check-hit` wrapper idiom — `chq-check` is EXEMPT whenever
+//      app/src/styles.css's own `.chq-check-hit` rule carries the 44px
+//      floor (it does, in its one terminal `@media (max-width:700px)`
+//      block).
+// Both idioms are checked structurally against the tree on every run, never
+// read from this roster's own prose — the roster's classification column is
+// the POPULATION this scan checks its independent derivation against, not
+// a source of truth it trusts.
+
+/** Every *.ts/*.tsx file under `root` (test files excluded) — the src/**
+ * counterpart to core.ts's allCssFiles, since some `tap-floor-exempt:`
+ * receipts (e.g. `.chq-wordmark`, DEC-382) live inside `src/**` TS/TSX
+ * modules' embedded CSS template strings, not `.css` files. */
+function allSrcTsSourceFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
+    if (entry.name.includes(".test.")) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** DEC-996/DEC-180: derives the exempt class-token set for the given
+ * candidate tokens by walking the tree's own receipts — never a hand-
+ * written array. */
+function deriveExemptSelectors(candidateTokens: ReadonlySet<string>): Set<string> {
+  const sourceTexts = [
+    ...allCssFiles(join(REPO_ROOT, "app", "src")),
+    ...allSrcTsSourceFiles(join(REPO_ROOT, "src")),
+  ].map((f) => readFileSync(f, "utf8"));
+
+  const exempt = new Set<string>();
+  for (const token of candidateTokens) {
+    if (sourceTexts.some((text) => hasExemptionForToken(text, token))) exempt.add(token);
+  }
+
+  if (candidateTokens.has("chq-check")) {
+    const stylesCss = readFileSync(join(REPO_ROOT, "app", "src", "styles.css"), "utf8");
+    if (/\.chq-check-hit\s*\{[^}]*min-height\s*:\s*44px/.test(stylesCss)) exempt.add("chq-check");
+  }
+
+  return exempt;
+}
+
+/** One row of the roster's "Roster (grouped ...)" markdown table, parsed
+ * for its Selector / Box / Classification columns (a different parse of
+ * the same table parseRosterRows above reads for Route(s)/Count — kept
+ * separate since the two halves check different things against different
+ * columns of the same table). */
+interface RosterClassificationRow {
+  selector: string;
+  width: number;
+  height: number;
+  count: number;
+  classification: "EXEMPT" | "CANDIDATE";
+}
+
+function parseRosterClassificationRows(markdown: string): RosterClassificationRow[] {
+  const lineRe =
+    /^\|\s*\d+\s*\|[^|]*\|\s*`([^`]+)`[^|]*\|\s*(\d+)×(\d+)\s*\|\s*(\d+)\s*\|\s*\*\*(EXEMPT|CANDIDATE)/gm;
+  const rows: RosterClassificationRow[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = lineRe.exec(markdown)) !== null) {
+    rows.push({
+      selector: m[1] ?? "",
+      width: Number(m[2]),
+      height: Number(m[3]),
+      count: Number(m[4]),
+      classification: (m[5] ?? "CANDIDATE") as "EXEMPT" | "CANDIDATE",
+    });
+  }
+  return rows;
+}
+
+const ROSTER_CLASSIFICATION_ROWS = parseRosterClassificationRows(ROSTER_TEXT);
+
+/** DEC-996/DEC-967 wave-24: two-sided ratchet on the CANDIDATE (non-exempt)
+ * count this scan's own derivation measures, forced to -1 and the printed
+ * rows read (DEC-967: a ceiling is measured by running the scan, never
+ * invented) — every one of the 103 admin-390 sightings is EXEMPT by an
+ * already-adjudicated receipt, so the honest candidate-defect count is 0. */
+export const ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING = 0;
+
+describe("admin-390-offender-roster classification (DEC-996 wave-24 amendment)", () => {
+  it("parses a non-empty set of classification rows from the hand roster (vacuity tripwire)", () => {
+    expect(ROSTER_CLASSIFICATION_ROWS.length).toBeGreaterThan(0);
+  });
+
+  it("the derived classification agrees row-for-row with the hand roster's own classification column", () => {
+    const candidateTokens = new Set<string>();
+    for (const row of ROSTER_CLASSIFICATION_ROWS) {
+      for (const m of row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)) candidateTokens.add(m[0].slice(1));
+    }
+    const exemptTokens = deriveExemptSelectors(candidateTokens);
+
+    const disagreements: string[] = [];
+    for (const row of ROSTER_CLASSIFICATION_ROWS) {
+      const line = `${row.selector} w=${row.width}px h=${row.height}px`;
+      const result = classifyAdminMobileOffender(line, exemptTokens);
+      if (result.classification !== row.classification) {
+        disagreements.push(
+          `${row.selector} (roster says ${row.classification}, derived ${result.classification})`,
+        );
+      }
+    }
+    expect(disagreements).toEqual([]);
+  });
+
+  it(
+    "the candidate-defect count this scan's own derivation measures is <= ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING " +
+      "(two-sided, forced to -1 and read)",
+    () => {
+      const candidateTokens = new Set<string>();
+      for (const row of ROSTER_CLASSIFICATION_ROWS) {
+        for (const m of row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)) candidateTokens.add(m[0].slice(1));
+      }
+      const exemptTokens = deriveExemptSelectors(candidateTokens);
+
+      let candidateCount = 0;
+      const candidateRows: string[] = [];
+      for (const row of ROSTER_CLASSIFICATION_ROWS) {
+        const line = `${row.selector} w=${row.width}px h=${row.height}px`;
+        const result = classifyAdminMobileOffender(line, exemptTokens);
+        if (result.classification === "CANDIDATE") {
+          candidateCount += row.count;
+          candidateRows.push(row.selector);
+        }
+      }
+      expect(candidateCount, `candidate rows: ${candidateRows.join(", ")}`).toBeLessThanOrEqual(
+        ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING,
+      );
+      expect(candidateCount, "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING is stale above the measured count").toBe(
+        ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING,
+      );
+    },
+  );
+
+  it("synthetic control: an unreceipted selector classifies CANDIDATE, a receipted one classifies EXEMPT", () => {
+    const exemptTokens = deriveExemptSelectors(new Set(["chq-check", "chq-w24i-never-receipted-anywhere"]));
+    expect(exemptTokens.has("chq-w24i-never-receipted-anywhere")).toBe(false);
+    expect(
+      classifyAdminMobileOffender("input.chq-w24i-never-receipted-anywhere w=18px h=18px", exemptTokens),
+    ).toEqual({ classification: "CANDIDATE" });
+    expect(exemptTokens.has("chq-check")).toBe(true);
+    expect(classifyAdminMobileOffender("input.chq-check w=18px h=18px", exemptTokens)).toEqual({
+      classification: "EXEMPT",
+      receipt: "chq-check",
+    });
+  });
+});
 
 describe("admin-390-offender-roster (DEC-851 amendment, wave 27)", () => {
   it("parses a non-empty roster (vacuity tripwire)", () => {

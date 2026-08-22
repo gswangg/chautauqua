@@ -165,7 +165,7 @@ string N separate times per route, e.g. `/admin/submissions` prints
 
 Anything that matches none of the four: `UNCLASSIFIED — candidate defect`.
 
-## Roster (grouped by matching selector/site — re-measured task v12m-w11-tc, 77 rows total)
+## Roster (grouped by matching selector/site — re-measured task v12m-w11-tc, widened by wave-23 task w23-f, 103 rows total)
 
 | # | Route(s) | Selector | Box (w×h) | Count | Classification |
 |---|----------|----------|-----------|-------|-----------------|
@@ -182,31 +182,37 @@ Anything that matches none of the four: `UNCLASSIFIED — candidate defect`.
 | 11 | `/admin/settings?section=portal&edit=1` | `input.chq-check` (PortalSettingsPanel "Show resources" toggle, `SettingsField`'s `<label>`) | 18×18 | 1 | **EXEMPT — idiom 3, FIXED task v12m-w11-tc** (`settings.css`: `.chq-settings-field label:has(> input.chq-check)` gained `min-height:44px`) |
 | 12 | `/dev/mailbox`, `/dev/mailbox/seed_email_log_0001` | `a.chq-wordmark` | 113×28 | 2 | **EXEMPT — idiom 1, DEC-382 (this task)** (`theme.ts`: operator-surface `tap-floor-exempt:` comment, `/dev/mailbox`/`/docs/api` chrome) |
 | 13 | `/admin/speakers/tasks/seed_task_0001` | `input.chq-check.chq-taskview-check` (TaskView.tsx select-all + per-row select) | 18×18 | 9 | **EXEMPT — idiom 2, RETIRED wave 21 (DEC-903 amendment).** app/src/pages/speakers/TaskView.tsx`<label className="chq-check-hit">` now wraps both real input sites, receipted by app/src/check-hit-receipt.scan.test.ts`taskViewSites.map((s) => s.line)).toEqual([568, 571, 591, 594])` — idiom 2 was widened to ARIA-role `columnheader`/`cell` tables by DEC-991 wave-w11-te (comment at app/src/styles.css`DEC-991 wave-w11-te`). The raw `<input>` box is unchanged (still 18×18); this reclassifies the sighting from a candidate defect to EXEMPT, it does not remove it from the printed total. |
+| 14 | `/admin/contacts?import=1` | `input.chq-check` (ContactsTable row-select under the import overlay, same `.chq-check-hit` wrap as row 2) | 18×18 | 25 | **EXEMPT — idiom 2, ADDED wave 23 (task w23-f, `route-substate-390-sweep-v12.md`).** Same DOM population as row 2, reachable at a second URL once `app/src/routeManifest.ts` widened to visit `?import=1` — not a new defect. |
+| 15 | `/admin/submissions/seed_submission_0001?history=0` | `input.chq-check` (same row-select idiom as rows 4-5, history-panel closed sub-state) | 18×18 | 1 | **EXEMPT — idiom 2, ADDED wave 23 (task w23-f, `route-substate-390-sweep-v12.md`).** Same DOM population as rows 4-5, reachable at a third URL once the manifest widened to visit `?history=0` — not a new defect. |
 
-**Row-count check: 25+30+1+1+1+1+3+1+1+2+9+1+1 = 77.** Matches the printed
-total exactly (the two `.chq-auth-back` sightings from the before-fix run
-are gone from this table entirely — fixed, not merely reclassified, so
-they are not rows at all any more).
+**Row-count check: 25+30+1+1+1+1+3+1+1+2+9+1+1+25+1 = 103.** Matches the
+printed total exactly (the two `.chq-auth-back` sightings from the
+before-fix run are gone from this table entirely — fixed, not merely
+reclassified, so they are not rows at all any more).
 
 ## Totals
 
-Measured total: **77**
+Measured total: **103**
 
-Exactly at the new ceiling of 77 (DEC-393). Ceiling lowered from 79 to 77 —
-the RE-MEASURED total after this task's (DEC-393, v12m-w11-tc)
-`.chq-auth-back` fix, never a guess or an arithmetic subtraction
-(scripts/render-sweep-lib.ts`ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`).
+77 (DEC-393, v12m-w11-tc) + 26 (wave 23, task w23-f's route-substate
+widening — see `docs/design/audit/route-substate-390-sweep-v12.md`) = 103,
+matching `scripts/render-sweep-lib.ts`'s
+`ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`, never a guess or an
+arithmetic subtraction.
 
-- **EXEMPT** (idioms 1-3, rows 1-10, 12): **67** (1+25+30+1+1+1+1+1+3+1+2).
+- **EXEMPT** (idioms 1-3, rows 1-10, 12, 14-15): **93** (1+25+30+1+1+1+1+1+3+1+2+25+1).
 - **FIXED, DEC-393 (v12m-w11-tc)** (row 11 — reclassified EXEMPT via idiom
-  3, no longer a candidate defect; still counted in the 77 since the raw
+  3, no longer a candidate defect; still counted in the 103 since the raw
   `<input>` box is unchanged): **1**.
 - **RETIRED, DEC-903 (wave 21 amendment)** (row 13 — reclassified EXEMPT
-  via idiom 2, no longer a candidate defect; still counted in the 77 since
-  the raw `<input>` box is unchanged): **9**.
+  via idiom 2, no longer a candidate defect; still counted in the 103
+  since the raw `<input>` box is unchanged): **9**.
 - **Genuinely retired, DEC-393 (v12m-w11-tc)** (`.chq-auth-back`, formerly
   2 sightings at `/account/password`, both dimensions now ≥44px): **2** —
   the whole reason the total moved from 79 to 77.
+- **ADDED, wave 23 (task w23-f)** (rows 14-15 — the manifest-widening's own
+  new sightings, both EXEMPT — idiom 2 on arrival, never a candidate
+  defect): **26** — the whole reason the total moved from 77 to 103.
 - Idiom 4 (`.chq-forms-field-drag`): 0 offenders in this roster.
 
 The 9 offenders in row 13 were previously classified as one code-level
