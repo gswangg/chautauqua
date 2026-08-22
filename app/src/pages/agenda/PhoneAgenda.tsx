@@ -4,7 +4,7 @@ import { buildPhoneSlots } from './phoneSlots';
 import { clockHHMM } from '../../lib/clock';
 import { formatDayLabel } from '../../lib/dates';
 import { useEscapeKey } from '../../lib/useEscapeKey';
-import { countOf } from '../../lib/plural';
+import { capitalizeFirst, plural, spellCount } from '../../lib/plural';
 import { usePendingLabel } from '../../components/PendingAction';
 
 interface Armed {
@@ -260,7 +260,20 @@ export function PhoneAgenda({
               <div key={key} className="chq-phone-slot">
                 <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
                 <div className="chq-panel chq-phone-slot-clash">
-                  <span className="chq-flag">{countOf(slot.sessions.length, 'session')} in this slot</span>
+                  {/* DEC-380 wave-32: docs/design/Chautauqua Agenda.dc.html:161
+                      draws this flag SPELLED ("Two sessions in this slot"),
+                      not the numeral countOf() form used by the data-dense
+                      registers elsewhere in this file. This one flag composes
+                      the pack's own spelled-count grammar (capitalizeFirst +
+                      spellCount + plural), already shipping in
+                      app/src/pages/overview/AgendaWorkSection.tsx,
+                      app/src/pages/overview/rows.ts and
+                      src/domain/scorecardLogic.ts, all re-exported from
+                      app/src/lib/plural.ts. countOf/count-copy.ts stay
+                      unchanged -- they remain the numeral helper. */}
+                  <span className="chq-flag">
+                    {capitalizeFirst(spellCount(slot.sessions.length))} {plural(slot.sessions.length, 'session')} in this slot
+                  </span>
                   {slot.sessions.map((sess, idx) => (
                     <div key={sess.submissionId}>
                       {idx > 0 && <div className="chq-panel-rule" />}

@@ -4,10 +4,14 @@
 //
 // iii. Phone agenda N-aware clash caption -- PhoneAgenda.tsx:186. CONFIRMED
 //      TRUE at this worker's own runtime: the clash block's flag text is
-//      `${countOf(slot.sessions.length, 'session')} in this slot`, so it
-//      reads "2 sessions in this slot" for a two-way clash and "3 sessions
-//      in this slot" for a three-way clash -- never a fixed string. Asserted
+//      derived from slot.sessions.length -- never a fixed string. Asserted
 //      at two different N.
+//      DEC-380 wave-32: the flag SPELLS its count
+//      (`docs/design/Chautauqua Agenda.dc.html:161` draws "Two sessions in
+//      this slot"), composed via capitalizeFirst(spellCount(n)) + plural(n,
+//      'session') -- not the numeral countOf() form this comment originally
+//      described. The assertions below were converted to the spelled forms
+//      in the same commit that landed the fix.
 // iv.  Phone agenda "Place here anyway" -- PhoneAgenda.tsx:167-176 (placed
 //      slot) and :199-208 (clash slot). CONFIRMED TRUE: while a session is
 //      armed, EVERY occupied slot (placed or clash) also renders a "Place
@@ -71,8 +75,8 @@ describe('item iii: phone agenda clash caption is N-aware (PhoneAgenda.tsx:186)'
   it('reads "2 sessions in this slot" for a two-way clash', () => {
     const placed = [session('s1', 'SES-1', 'Talk One', 540, 570), session('s2', 'SES-2', 'Talk Two', 555, 585)];
     render(<PhoneAgenda {...baseProps({ placed })} />);
-    expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();
-    expect(screen.queryByText('3 sessions in this slot')).not.toBeInTheDocument();
+    expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();
+    expect(screen.queryByText('Three sessions in this slot')).not.toBeInTheDocument();
   });
 
   it('reads "3 sessions in this slot" for a three-way clash -- not the same fixed string as the two-way case', () => {
@@ -82,8 +86,8 @@ describe('item iii: phone agenda clash caption is N-aware (PhoneAgenda.tsx:186)'
       session('s3', 'SES-3', 'Talk Three', 560, 590),
     ];
     render(<PhoneAgenda {...baseProps({ placed })} />);
-    expect(screen.getByText('3 sessions in this slot')).toBeInTheDocument();
-    expect(screen.queryByText('2 sessions in this slot')).not.toBeInTheDocument();
+    expect(screen.getByText('Three sessions in this slot')).toBeInTheDocument();
+    expect(screen.queryByText('Two sessions in this slot')).not.toBeInTheDocument();
   });
 });
 
