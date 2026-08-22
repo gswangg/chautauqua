@@ -85,19 +85,6 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "Validation failed", { mapping: "required, column -> field" });
     }
     const mapping = body.mapping as Record<string, string>;
-    // DEC-478 (amendment, wave 47): a mapping is INJECTIVE -- no two columns
-    // may target the same field. Checked before any parse/plan/write so a
-    // refused import touches no storage. validateImportMapping throws a
-    // plain Error (pure core, see its doc comment); wrapped here into the
-    // house ApiError envelope, naming the offending columns/target on the
-    // `mapping` field.
-    try {
-      validateImportMapping(mapping);
-    } catch (err) {
-      throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
-        mapping: err instanceof Error ? err.message : "invalid",
-      });
-    }
 
     // DEC-290: an optional eventId puts every imported/updated contact (not
     // already on the roster) onto the event, riding the existing add-to-event
@@ -197,6 +184,23 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (dataRows.length > MAX_IMPORT_ROWS) {
       throw new ApiError("invalid", `csvText must have at most ${MAX_IMPORT_ROWS} data rows`, {
         csvText: overCapCountMessage(dataRows.length, MAX_IMPORT_ROWS, "row"),
+      });
+    }
+
+    // DEC-478 (amendment, wave 47) / DEC-663 (wave 34): a mapping is
+    // INJECTIVE -- no two columns may target the same field, and no two
+    // identically-headed columns may silently collapse into one mapping key.
+    // Checked before any plan/write (not merely before any parse: header is
+    // needed to see duplicate column names, and parseCsv itself never
+    // touches storage, so parsing first is still safe) so a refused import
+    // touches no storage. validateImportMapping throws a plain Error (pure
+    // core, see its doc comment); wrapped here into the house ApiError
+    // envelope, naming the offending columns/target on the `mapping` field.
+    try {
+      validateImportMapping(mapping, header);
+    } catch (err) {
+      throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
+        mapping: err instanceof Error ? err.message : "invalid",
       });
     }
 
