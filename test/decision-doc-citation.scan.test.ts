@@ -764,7 +764,28 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // cited construct still exists, and re-anchored on its current home where
 // it had moved. Re-measured 1260 by re-running this scan on the repaired
 // tree.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1260;
+// Lowered 1260 -> 1234 (wave-26, task w26-c, DEC-518 amendment): re-measured
+// by forcing this constant to -1 and reading the printed offender list,
+// which confirmed the tree had drifted to 1265 (five rows OVER the declared
+// ceiling) -- so the repair was the citations, never a raise of the
+// constant. All 31 offenders in decisions/DEC-422.md (the wave's top
+// density row) were repaired: two isolated shape-(b) drifted-line citations
+// (save-draft's handler, since split out to submit-draft.tsx; a moved
+// MAX_CRITERION_GUIDANCE_LENGTH declaration), one shape-(a) coordinate
+// misread as its own PARENTHESISED quote's neighbour (`export` read out of
+// unrelated prose next to the pagination.ts citation, fixed by dropping the
+// backticks around the prose word rather than the citation), one plain
+// missing-prefix bare path (routes/api/views.ts), and four paragraphs that
+// had gone stale because the bug or gap they described had since been
+// CLOSED by a later amendment in the same file (the FIVE-refusal-grammar
+// audit, PlanEditor's hand-typed MAX_CRITERIA, the participant-cap overage
+// copy, and the repeated-single-value-answer merge) -- each reworded
+// past-tense and re-anchored on the construct that closed it (the DEC-010
+// wave-10 precedent), which also retired the seventeen comma-adjacent bare
+// `path:line` fragments the FIVE-refusal-grammar paragraph had accumulated
+// as its own citations misread each other's neighbouring quote. Re-measured
+// 1234 by re-running this scan on the repaired tree.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1234;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
