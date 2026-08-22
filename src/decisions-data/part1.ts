@@ -31,7 +31,7 @@ export const DEC_025 = "Wave-4 migrations: per-task reserved filenames 0005/0006
 export const DEC_026 = "CRM API contract: org-level contacts, CSV import mapping, merge repoints FKs, segments as stored rules, capped bulk email";
 export const DEC_027 = "Amendment (wave 10): The claim-token mint guard's population is DERIVED from the tree, and POST /events/:eventId/onboarding/remind is the one route that never got it";
 export const DEC_028 = "Portal splits into parallel sub-apps with a create-if-missing shared gate/layout; headshots get kind 'headshot' and a public /headshots route";
-export const DEC_029 = "wave-21: a portal drill's back link goes where the frame draws it going — the frame is authority over the DESTINATION, and DEC-914 keeps deriving the label from it";
+export const DEC_029 = "Wave-30 amendment: a control that joins a form via form= but whose name that form's handler never reads must be refused with a named message, never silently dropped";
 export const DEC_030 = "Overview is a worklist: one GET /api/v1/events/:eventId/overview payload, six cards, every number links to the screen that clears it";
 export const DEC_031 = "Saved views are server rows scoped to the event; Submissions toolbar gains Views dropdown, New submission modal, Clone row action";
 export const DEC_032 = "Amendment (wave 32): Settings hub · 390 (Settings.dc.html:275-312) gets its first real-mount verdict; the footer strip is the shell tab bar and the page mints no dock";
