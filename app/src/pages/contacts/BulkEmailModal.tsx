@@ -78,6 +78,17 @@ interface PreviewItem {
   bodyText: string;
 }
 
+// DEC-238 wave-17 amendment: the preview response now carries the SAME
+// dedupe plan the send route runs, over the WHOLE recipient set -- `items`
+// stays capped at the server's BULK_EMAIL_PREVIEW_LIMIT, but `willSend`/
+// `skipped` are the real batch counts, so this step can never promise a
+// count the send is about to contradict.
+interface PreviewResponse {
+  items: PreviewItem[];
+  willSend: number;
+  skipped: number;
+}
+
 type Step = 'compose' | 'preview' | 'sent';
 
 // DEC-856: modelled verbatim on the sibling splitter in ComposeWizard.tsx
@@ -122,6 +133,10 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('compose');
   const [preview, setPreview] = useState<PreviewItem[]>([]);
+  // DEC-238 wave-17 amendment: the real batch counts the preview response
+  // now carries, surfaced beside the capped `items` list -- null before the
+  // first successful preview response.
+  const [previewCounts, setPreviewCounts] = useState<{ willSend: number; skipped: number } | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
   // DEC-856 (wave 60 amendment): keyed by email -> "Name is missing {token}"
   // -- the server's own vocabulary, never re-derived client-side.
@@ -168,13 +183,14 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
     setMissingMergeFieldLines(null);
     setFieldErrors({});
     try {
-      const res = await apiPost<{ items: PreviewItem[] }>('/contacts/bulk-email/preview', {
+      const res = await apiPost<PreviewResponse>('/contacts/bulk-email/preview', {
         contactIds,
         eventId,
         subject,
         bodyText,
       });
       setPreview(res.items);
+      setPreviewCounts({ willSend: res.willSend, skipped: res.skipped });
       setStep('preview');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -416,6 +432,16 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
             Previewing {preview.length} of {countOf(contactIds.length, 'recipient')} with
             merge fields resolved.
           </p>
+          {/* DEC-238 wave-17 amendment: the real willSend/skipped counts for
+              the WHOLE batch, not just the capped items list above -- so a
+              recipient sharing a recently-sent (email, subject) pair (or
+              caught by the intra-batch collapse) is named here before the
+              organizer commits, never only after the send reports it. */}
+          {previewCounts && previewCounts.skipped > 0 && (
+            <p className="chq-bulk-email-preview-skip-note">
+              {countOf(previewCounts.willSend, 'email')} will send now · {countOf(previewCounts.skipped, 'recipient')} skipped (recently sent or duplicate)
+            </p>
+          )}
           <ul className="chq-bulk-email-preview-list">
             {preview.map((item) => (
               <li key={item.contactId} className="chq-bulk-email-preview-item">

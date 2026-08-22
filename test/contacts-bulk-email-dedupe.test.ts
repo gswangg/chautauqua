@@ -100,15 +100,18 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
-const mailerSendMock = vi.fn(async (message: { to: { email: string }; subject: string }) => {
-  loggedRows.push({ eventId: "ev1", toEmail: message.to.email, subject: message.subject, sentAt: Date.now() });
-});
+const mailerSendMock = vi.fn(
+  async (message: { to: { email: string }; subject: string; text: string; contactId: string }) => {
+    loggedRows.push({ eventId: "ev1", toEmail: message.to.email, subject: message.subject, sentAt: Date.now() });
+  },
+);
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: (message: unknown) => mailerSendMock(message as { to: { email: string }; subject: string }),
+      send: (message: unknown) =>
+        mailerSendMock(message as { to: { email: string }; subject: string; text: string; contactId: string }),
     })),
   };
 });
@@ -155,8 +158,16 @@ beforeEach(() => {
   vi.useFakeTimers();
 });
 
-describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14 amendment)", () => {
-  it("two contact rows sharing one email in a single batch produce exactly one send, with skipped===1", async () => {
+describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14/wave-17 amendments)", () => {
+  // DEC-238 wave-17 amendment: the intra-batch collapse is keyed on
+  // (contactId, rendered subject, rendered body), never the address alone
+  // -- CT_1 and CT_2 share an address but render DIFFERENT bodies
+  // ({speaker_name} differs), so both are distinct identities and both
+  // send. This replaces the wave-14 behaviour (address-alone collapse),
+  // which silently dropped the second contact's own claim link -- see
+  // test/contacts-bulk-email-skipped-log.route.test.ts for the case that
+  // still legitimately collapses (a literal duplicate contactId).
+  it("two contact rows sharing one email but rendering different bodies both send, with skipped===0", async () => {
     const app = buildApp();
     vi.setSystemTime(1_700_000_000_000);
 
@@ -169,8 +180,22 @@ describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14 amendment)", () 
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { sent: number; skipped: number; failed: unknown[] };
-    expect(body).toEqual({ sent: 1, skipped: 1, failed: [] });
-    expect(mailerSendMock).toHaveBeenCalledTimes(1);
+    expect(body).toEqual({ sent: 2, skipped: 0, failed: [] });
+    expect(mailerSendMock).toHaveBeenCalledTimes(2);
+    const sentTo = mailerSendMock.mock.calls.map((args) => args[0].to.email).sort();
+    expect(sentTo).toEqual(["shared@example.com", "shared@example.com"]);
+
+    // Each contact received THEIR OWN rendered body -- ct_1's own claim
+    // link is not silently replaced by ct_2's (the DEC-238 wave-17 defect:
+    // an address-only collapse dropped the second contact's own portal
+    // link entirely). Keyed by contactId, not delivery order.
+    const byContact = new Map(mailerSendMock.mock.calls.map((args) => [args[0].contactId, args[0]]));
+    const call1 = byContact.get("ct_1");
+    const call2 = byContact.get("ct_2");
+    if (!call1 || !call2) throw new Error("expected one send per contactId");
+    expect(call1.subject).toBe("Hi Ada Lovelace");
+    expect(call2.subject).toBe("Hi Ada L.");
+    expect(call1.subject).not.toBe(call2.subject);
   });
 
   it("an immediate second identical POST sends zero and reports skipped for every recipient", async () => {
