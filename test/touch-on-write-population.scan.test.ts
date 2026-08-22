@@ -166,7 +166,7 @@ describe("DEC-725 (wave-18): every participant-table writer, repo-wide, touches 
   // hasInCodeExemptionComment/the positive control above) for the next
   // writer that copies the same false premise into a new comment.
   it("participants.ts carries no live in-code touch exemption comment", () => {
-    const source = readFileSync(PARTICIPANTS_REPO_PATH, "utf8");
+    const source = readFileSync(join(SRC_ROOT, "server", "repo", "participants.ts"), "utf8");
     expect(source).not.toMatch(/No touchSubmissions call/);
   });
 
