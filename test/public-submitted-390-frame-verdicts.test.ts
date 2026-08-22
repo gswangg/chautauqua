@@ -320,7 +320,7 @@ describe("PUBLIC SSR Submitted 390 trio -- per-frame verdicts (task w30-a, DEC-9
     expect(html).not.toContain("/claim/");
   });
 
-  it("DIVERGES: the frames draw a state-specific confirmation-body sentence; submit-views.tsx renders one generic body for all three states", async () => {
+  it("CLOSED (DEC-908 wave-33 amendment): the frames' three state-specific confirmation-body sentences are exactly what submit-views.tsx renders -- see also confirmationBodySentence's unit-level source-of-truth comment", async () => {
     const freshHtml = await (await postSubmit({})).text();
     const knownHtml = await (
       await postSubmit({ existingContact: { id: "contact-1", title: null, company: null, bio: null } }, "dana@example.com")
@@ -332,27 +332,51 @@ describe("PUBLIC SSR Submitted 390 trio -- per-frame verdicts (task w30-a, DEC-9
       )
     ).text();
 
-    // submit-views.tsx:833's ONE generic body, byte-identical across all
-    // three states -- never the frames' three distinct sentences
-    // ("a portal link ... edit this talk until <date>" / "a confirmation,
-    // with a link to set a password" / "a confirmation.").
-    const genericBody = (html: string, email: string) =>
-      html.includes(`We&#39;ve emailed a confirmation for &quot;Taming 40-Minute CI: Incremental Builds at Monorepo Scale&quot; to ${email}.`);
-    expect(genericBody(freshHtml, "priya@example.com")).toBe(true);
-    expect(genericBody(knownHtml, "dana@example.com")).toBe(true);
-    expect(genericBody(acctHtml, "marcus@example.com")).toBe(true);
-
+    // confirmationBodySentence (submit-views.tsx:789-805) builds one
+    // sentence PER STATE -- SUBMIT_FORM_ROW.closeDate is null here, so the
+    // fresh sentence's optional close-date clause is dropped, matching
+    // :1083's base sentence with no clause appended.
     // docs/design/Chautauqua Public and Portal.dc.html:1132 `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed dana@example.com a confirmation, with a link to set a password.</span>`
     verbatimLine(1132, `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed dana@example.com a confirmation, with a link to set a password.</span>`);
-    // :1132's own distinct sentence never appears -- the generic body above
-    // is what the "email already known" state actually renders.
-    expect(knownHtml).not.toContain("a confirmation, with a link to set a password");
-
     // docs/design/Chautauqua Public and Portal.dc.html:1155 `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed marcus@example.com a confirmation.</span>`
     verbatimLine(1155, `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed marcus@example.com a confirmation.</span>`);
-    // :1155's own distinct (bare, no clause) sentence never appears either
-    // -- the "has an account" state renders the same generic body too.
-    expect(acctHtml).not.toMatch(/We emailed marcus@example\.com a confirmation\.[^,]/);
+
+    expect(freshHtml).toContain("We emailed priya@example.com a portal link.");
+    expect(knownHtml).toContain("We emailed dana@example.com a confirmation, with a link to set a password.");
+    expect(acctHtml).toContain("We emailed marcus@example.com a confirmation.");
+    // the generic single body sentence this pin used to hold the product to
+    // (DEC-908 wave-33 amendment closed it) never appears again.
+    expect(freshHtml).not.toMatch(/We&#39;ve emailed a confirmation for/);
+  });
+
+  it("DEC-908 (wave-5 amendment): the check-spam note and the tail-links row are fresh-ONLY -- :1074 draws both (:1084, :1090-1092); :1124 and :1147 draw neither", async () => {
+    const freshHtml = await (await postSubmit({})).text();
+    const knownHtml = await (
+      await postSubmit({ existingContact: { id: "contact-1", title: null, company: null, bio: null } }, "dana@example.com")
+    ).text();
+    const acctHtml = await (
+      await postSubmit(
+        { existingContact: { id: "contact-1", title: null, company: null, bio: null }, accountUser: { id: "user-1", contactId: "contact-1", email: "marcus@example.com" } },
+        "marcus@example.com",
+      )
+    ).text();
+
+    // :1074 fresh -- both present.
+    expect(freshHtml).toContain('class="chq-cfp-confirm-note"');
+    expect(freshHtml).toContain("If it hasn&#39;t arrived, check spam.");
+    expect(freshHtml).toContain('class="chq-cfp-links"');
+
+    // :1124 pending-existing-contact -- ends at "Already have a password?
+    // / Log in ›", neither element drawn.
+    expect(knownHtml).not.toContain('class="chq-cfp-confirm-note"');
+    expect(knownHtml).not.toContain("If it hasn&#39;t arrived, check spam.");
+    expect(knownHtml).not.toContain('class="chq-cfp-links"');
+
+    // :1147 has-account -- ends at "You already have an account here. /
+    // Log in to track it", neither element drawn.
+    expect(acctHtml).not.toContain('class="chq-cfp-confirm-note"');
+    expect(acctHtml).not.toContain("If it hasn&#39;t arrived, check spam.");
+    expect(acctHtml).not.toContain('class="chq-cfp-links"');
   });
 
   it("phone (max-width:700px terminal block) governs .chq-cfp-confirm / -card / -actions / -password geometry the frames require", () => {
