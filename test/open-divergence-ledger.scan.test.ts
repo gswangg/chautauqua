@@ -183,13 +183,13 @@ function rowsInFile(fileName: string): DivergenceRow[] {
 const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
 const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 
-const EXPECTED_AUDIT_FILE_COUNT = 101;
-const EXPECTED_TOTAL_TOKEN_COUNT = 152;
+const EXPECTED_AUDIT_FILE_COUNT = 102;
+const EXPECTED_TOTAL_TOKEN_COUNT = 158;
 const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
   heading: 15,
-  table: 38,
-  bullet: 27,
-  fallback: 72,
+  table: 42,
+  bullet: 26,
+  fallback: 75,
 };
 
 // -- Ratchet -------------------------------------------------------------
@@ -252,10 +252,18 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // residual gap the lane left open is closed by the batch, so the constant
 // stays at the integrated floor of 0 rather than regrowing to the lane's
 // in-worktree 1 -- a ratchet may only be LOWERED, never raised.
+// RE-BASELINED (THUNDERDOME wave-23 megabatch, merge-train reconciliation
+// per DEC-998 clause b): population re-measured live on the integrated tree
+// after 41 branches landed -- 101 -> 102 audit files, 152 -> 158 rows,
+// shape split 15/38/27/72 -> 15/42/26/75. The batch added one audit file
+// and several table rows; NO row was deleted and the OPEN count stays at
+// the floor of 0, so the ratchet below is untouched. Measured by the scan
+// itself (constants forced to -1 and the reported values read back), never
+// by arithmetic on any lane's own snapshot.
 export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
-  it('enumerates exactly 101 audit files and exactly 153 DIVERGES-token rows (vacuous-population guard)', () => {
+  it('enumerates exactly 102 audit files and exactly 158 DIVERGES-token rows (vacuous-population guard)', () => {
     const files = auditFiles();
     expect(files.length).toBe(EXPECTED_AUDIT_FILE_COUNT);
     expect(ALL_ROWS.length).toBe(EXPECTED_TOTAL_TOKEN_COUNT);

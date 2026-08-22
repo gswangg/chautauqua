@@ -341,7 +341,7 @@ describe('ComposeWizard recipient picker', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });

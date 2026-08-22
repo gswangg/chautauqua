@@ -182,7 +182,7 @@ describe('ComposeWizard attachIcs footer: names the exact unscheduled rows (DEC-
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
 
     fireEvent.click(screen.getByLabelText('Attach calendar invite'));
     await screen.findByText(/1 of 2 have no slot yet — those get no invite/);

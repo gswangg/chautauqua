@@ -181,8 +181,8 @@ carries information (a static reassurance) the organiser's own stored
 welcome message cannot supply, so clause (b) settled it as APP-OWNED CHROME
 — a separate node appended after the organiser's lede, never concatenated
 into it, rendering even when `welcomeMessage` is null — and
-`src/routes/portal/preview.tsx:139` now renders it verbatim: `Everything we
-need from you is on this page, in order.` **Back-link placement** and
+src/routes/portal/preview.tsx`Everything we need from you is on this page, in order.`
+ **Back-link placement** and
 **meta-sentence order** are GEOMETRY/ORDER residuals. DEC-902's wave-20
 amendment retires the reading that a geometry/order residual keeps a
 standing exemption from the desktop freeze — the wording-only scope guard
@@ -225,9 +225,8 @@ shown here" chip wording/count, disposition (b) BLESSED) is not a gap:
   copy) and stays data-driven; the frame's second sentence is APP-OWNED
   CHROME, appended as its own node after the organiser's lede — never
   concatenated into it, never replacing it — and rendered unconditionally,
-  even when `welcomeMessage` is null. `src/routes/portal/preview.tsx:139`
-  now renders `<p class="chq-portal-lede">Everything we need from you is
-  on this page, in order.</p>`, asserted off a real `GET /portal/preview`
+  even when `welcomeMessage` is null. src/routes/portal/preview.tsx`Everything we need from you is on this page, in order.`
+ , asserted off a real `GET /portal/preview`
   request in `test/portal-desktop-frame-verdicts.test.ts`.
 - **"To see a real speaker's portal..." sentence order** — RESOLVED task
   w20-g (frame :1523 `<span style="display:block; padding:14px 0 0;
