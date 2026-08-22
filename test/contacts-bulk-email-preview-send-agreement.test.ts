@@ -84,17 +84,17 @@ vi.mock("../src/server/repo/comms", async () => {
     loadRecentlySent: vi.fn(
       async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
+        // Mirrors src/server/repo/comms.ts's loadRecentlySent: match on
+        // dedupeKey (which normalizes a minted claim URL, DEC-397 wave-20),
+        // never on raw string equality — the row's bodyText was logged
+        // AFTER minting while a candidate key can be built from an UNMINTED
+        // render, and those must still agree.
+        const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.body)));
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
-          const hit = keys.some(
-            (k) =>
-              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
-              k.subject === row.subject &&
-              k.body === row.bodyText,
-          );
-          if (!hit) continue;
           const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
+          if (!wantedKeys.has(key)) continue;
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -181,11 +181,15 @@ describe("preview vs send agreement (DEC-238 wave-17 amendment)", () => {
       toEmail: "ct_1@example.com",
       subject: "Hi all",
       // DEC-936 wave-17 widened the cross-call key to (email, subject,
-      // body), so the primed row must carry the body the planner keys on.
-      // planBulkEmailSends computes its keys on the UNMINTED preflight
-      // render (DEC-397 wave-62), which is the template text itself here --
-      // this fixture's contacts resolve no merge tokens.
-      bodyText: "See you at {event_name}: {portal_link}",
+      // body), so the primed row must carry the body the planner keys on --
+      // the ACTUAL rendered+sent text (event_name substituted, {portal_link}
+      // spent on a real minted claim URL from that earlier send), not the
+      // raw template. Its claim token ("prior-token-xyz") deliberately
+      // differs from what THIS test's send will mint ("tok123" via the
+      // createClaimToken mock above) -- dedupeKey must still treat these as
+      // the same message (DEC-397 wave-20: a minted claim URL is normalized
+      // out of the dedupe identity, since the mint is downstream of it).
+      bodyText: "See you at DevCon: https://events.example.com/claim/prior-token-xyz",
       sentAt: t0 - 1_000,
     });
 

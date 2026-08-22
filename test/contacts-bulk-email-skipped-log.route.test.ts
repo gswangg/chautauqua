@@ -96,17 +96,17 @@ vi.mock("../src/server/repo/comms", async () => {
     loadRecentlySent: vi.fn(
       async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
+        // Mirrors src/server/repo/comms.ts's loadRecentlySent: match on
+        // dedupeKey (which normalizes a minted claim URL, DEC-397 wave-20),
+        // never on raw string equality — the row's bodyText was logged
+        // AFTER minting while a candidate key can be built from an UNMINTED
+        // render, and those must still agree.
+        const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.body)));
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
-          const hit = keys.some(
-            (k) =>
-              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
-              k.subject === row.subject &&
-              k.body === row.bodyText,
-          );
-          if (!hit) continue;
           const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
+          if (!wantedKeys.has(key)) continue;
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -191,9 +191,13 @@ describe("POST /contacts/bulk-email — skipped recipients get an email_log row 
     const t0 = 1_700_000_000_000;
     vi.setSystemTime(t0);
 
-    // A static (non-{speaker_name}) subject/body renders BYTE-IDENTICAL for
-    // every recipient, so ct_1's own prior send is a real cross-call
-    // dedupe match on a repeat POST naming just ct_1.
+    // A static (non-{speaker_name}) subject/body renders the SAME message
+    // for ct_1 across both calls once a minted {portal_link} claim URL is
+    // normalized out of the dedupe identity (DEC-397 wave-20) — the raw
+    // bytes differ (each call mints a fresh claim token, src/auth/claim.ts),
+    // but that is exactly the difference dedupeKey must not see, so ct_1's
+    // own prior send is a real cross-call dedupe match on a repeat POST
+    // naming just ct_1.
     const first = await postJson(app, {
       contactIds: ["ct_1", "ct_solo"],
       eventId: "ev1",
