@@ -34,6 +34,15 @@ interface ConfirmDialogProps {
   confirmPhrase?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  // DEC-781 (wave-9 amendment): no `subtitle` slot is added here. Frame
+  // :1400 (Chautauqua Settings.dc.html) is the only caller-visible demand
+  // for one -- a saved-embed delete confirm naming the embed's HOST -- and
+  // that data does not exist: the schema carries no referrer/host column
+  // and no endpoint tracks where an embed is pasted on the open web (see
+  // SavedEmbedsPanel.tsx's own comment near its `{{ e.used }}` field, which
+  // records the identical absence for that panel's read surface). Adding a
+  // slot this component's only relevant caller could never fill would be
+  // DEC-851/DEC-988's knob with no reader.
 }
 
 // DEC-631: the ONE dialog contract for confirmation prompts, replacing

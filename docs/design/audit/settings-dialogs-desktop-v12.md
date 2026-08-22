@@ -85,18 +85,20 @@ control.
 
 ## Frame :1414 "Confirm · irreversible"
 
-**DIVERGES** (three findings, one of them a filed deferral).
+**MATCHES** (title/object-naming; one finding remains a filed deferral,
+one is a settled ruling, not a gap).
 
 Entered at `/settings?section=portal&edit=1` (the editable `ResourcesPanel`
 lives inside its `SummarySection` "Change" drill), opened via the real
 "Delete" control on the resource row.
 
 - The frame folds the resource's file name directly into the header
-  TITLE — `Delete "Speaker handbook 2027.pdf"?` (frame :1421). The tree's
-  header title is the fixed, ungenericized `Delete this resource?`; the
-  file name instead appears in the confirm BODY sentence
-  (`Speakers lose the download from their portal. "Speaker handbook
-  2027.pdf" cannot be recovered.`).
+  TITLE — `Delete "Speaker handbook 2027.pdf"?` (frame :1421). **Wave-9
+  (DEC-941 amendment):** `ResourcesPanel.tsx`'s confirm now builds this
+  exact object-naming form (`title={\`Delete "${resource.title}"?\`}`); the
+  body sentence no longer repeats the quoted filename, keeping only the
+  consequence (`Speakers lose the download from their portal. This cannot
+  be recovered.`) — one copy of the name, in the title (DEC-613).
 - The frame's header subtitle (frame :1422, `Downloaded 18 times by 12
   speakers`) is **DEVIATIONS §6 deferred** — quoting DEVIATIONS.md
   verbatim: *"the `resource` table (`src/db/schema/content.ts`) carries no
@@ -109,8 +111,11 @@ lives inside its `SummarySection` "Change" drill), opened via the real
   confirm`) MATCHES: `weight="irreversible"`, primary disabled until the
   resource's own title is typed.
 - The frame's primary reads `Delete it` (frame :1432); the tree's reads
-  the narrower, more specific `Delete resource` — DIVERGES on label text,
-  same destructive-verb-on-primary contract otherwise.
+  the narrower, more specific `Delete resource` — **not adopted, by
+  ruling** (DEC-941 wave-9 amendment): `app/src/confirm-primary-object.
+  scan.test.ts` requires every destructive `ConfirmDialog` primary to name
+  its object, never a bare verb, and DEC-967 rules frame sample prose is
+  not product copy. Recorded at the call site, not a backlog item.
 
 ## Frame :1440 "Portal resource · add"
 
@@ -150,11 +155,11 @@ Entered at `/settings?section=people&edit=1`, "reached" via the real
 | :1319 Invite · the one-time password | MATCHES |
 | :1352 Invite · rejected | DIVERGES (title stays fixed; escape-route control reorders and renames) |
 | :1392 Confirm · reversible | DIVERGES (no subtitle slot on `ConfirmDialog`) |
-| :1414 Confirm · irreversible | DIVERGES (title/primary wording differ; subtitle line DEFERRED) |
+| :1414 Confirm · irreversible | MATCHES (title now object-naming, wave-9; primary label non-adoption is a ruling, not a gap; subtitle line DEFERRED) |
 | :1440 Portal resource · add | MATCHES |
 | :1477 Reset a password | DIVERGES (no dialog renders at all — fully inline) |
 
-3 of 7 frames MATCH as rendered; the other four are prose-filed divergences
+4 of 7 frames MATCH as rendered; the other three are prose-filed divergences
 per this task's measurement-only mandate — no desktop byte was moved and no
 component or stylesheet was edited to produce this verdict. Frame :1422's
 "Downloaded 18 times by 12 speakers" subtitle is separately DEFERRED under

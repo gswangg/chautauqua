@@ -292,19 +292,22 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // ?section=portal.
   // ---------------------------------------------------------------------
   describe('frame :1414 "Confirm · irreversible"', () => {
-    it('DIVERGES: the frame folds the file name into the header TITLE and states a (DEVIATIONS §6 deferred) download-count subtitle; the tree keeps a fixed title, states the file name in the BODY instead, and its primary reads "Delete resource" not "Delete it"', async () => {
+    it('MATCHES (DEC-941 wave-9 amendment): the confirm\'s TITLE names the resource, same object-naming form as the frame; the DEVIATIONS §6 deferred download-count subtitle and the frame\'s "Delete it" primary stay unbuilt/unadopted', async () => {
       renderSection('portal');
       await waitFor(() => expect(screen.getByText('Speaker handbook 2027.pdf')).toBeInTheDocument());
 
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
       const dialog = screen.getByRole('dialog');
 
-      // docs/design/Chautauqua Settings.dc.html:1421 -- title `Delete "Speaker handbook 2027.pdf"?`, the tree's is fixed instead.
+      // docs/design/Chautauqua Settings.dc.html:1421 -- title `Delete "Speaker handbook 2027.pdf"?`. Wave-9: ResourcesPanel.tsx now
+      // builds this exact object-naming form (DEC-941 wave-9 amendment) instead of a fixed generic title.
       verbatimLine(1421, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Delete “Speaker handbook 2027.pdf”?</span>');
-      expect(within(dialog).queryByText('Delete "Speaker handbook 2027.pdf"?')).not.toBeInTheDocument();
-      expect(within(dialog).getByText('Delete this resource?')).toBeInTheDocument();
+      expect(within(dialog).getByText('Delete "Speaker handbook 2027.pdf"?')).toBeInTheDocument();
+      expect(within(dialog).queryByText('Delete this resource?')).not.toBeInTheDocument();
+      // The body no longer repeats the quoted filename (DEC-613: one copy of the name, now in the title) --
+      // it keeps only the consequence sentence.
       expect(
-        within(dialog).getByText('Speakers lose the download from their portal. "Speaker handbook 2027.pdf" cannot be recovered.'),
+        within(dialog).getByText('Speakers lose the download from their portal. This cannot be recovered.'),
       ).toBeInTheDocument();
 
       // docs/design/Chautauqua Settings.dc.html:1422 -- subtitle `Downloaded 18 times by 12 speakers`, DEVIATIONS §6 deferred: no download-count column/endpoint exists. Verdict DIVERGES-by-deferral, build nothing.
@@ -315,7 +318,10 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       verbatimLine(1429, '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Type the file name to confirm</span>');
       expect(within(dialog).getByText(/Type "Speaker handbook 2027.pdf" to confirm/)).toBeInTheDocument();
 
-      // docs/design/Chautauqua Settings.dc.html:1432 -- primary `Delete it`; the tree's reads `Delete resource` instead (DIVERGES).
+      // docs/design/Chautauqua Settings.dc.html:1432 -- frame primary `Delete it`; the tree's `Delete resource` is a
+      // ruled, DELIBERATE non-adoption (DEC-941 wave-9 amendment): app/src/confirm-primary-object.scan.test.ts
+      // requires a destructive primary to name its object, and DEC-967 rules frame sample prose is not product
+      // copy -- so this is a settled ruling, not an open gap.
       verbatimLine(
         1432,
         '        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Delete it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>',
