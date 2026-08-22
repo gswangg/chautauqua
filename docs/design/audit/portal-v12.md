@@ -251,6 +251,36 @@ checks above do not name:
    missing Cancel only); recorded here as a control-shape gap for the
    planner, not fixed by this lane.
 
+## Frames :502 "Portal · Hotel stay form" and :560 "Portal · Your session" — DIVERGES on the back-link literal (new, task w9-rc, DEC-967 wave-9 amendment)
+
+MEASUREMENT ONLY, via `test/portal-session-phone-frames.render.test.ts`'s
+real `app.request()` calls against `GET /portal/tasks/:assignmentId/form`
+and `GET /portal/submissions/:id`. Both frames draw the identical back-link
+literal `‹ Your portal` (:507, :565) regardless of which page they sit
+behind. `PortalBackLink` (`src/routes/portal/shared.tsx`) resolves its
+label from `PORTAL_BACK_LINKS` (DEC-914) keyed on the link's actual `href`,
+not a frame-drawn constant — so `TaskFormPage`'s back link
+(`to="/portal/tasks"`) renders `‹ Your tasks`, and `SubmissionDetailPage`'s
+(`to="/portal/submissions"`) renders `‹ Your submissions`, both diverging
+from the frame's `‹ Your portal` byte-for-byte. The sibling frame "Portal ·
+Edit your session" (:597) draws a DIFFERENT literal, `‹ Your session`
+(:602) — and there `PortalBackLink`'s destination
+(`/portal/submissions/${id}`) resolves to the SAME label, `Your session`
+(DEC-914's per-submission shape rule), so that third frame MATCHES.
+
+Read as: the two-frame divergence is the mockup drawing one generic
+back-link placeholder across every drill screen, where DEC-914's contextual
+table (built specifically so a link's label can never drift from the route
+it lands on) intentionally names each screen's actual parent instead. Not
+fixed here — `PORTAL_BACK_LINKS` is a single shared table read by every
+`/portal/*` page at every width (not a phone-only or `@media`-scoped
+rule), so a fix would move desktop bytes too and is out of this
+measurement-only lane's scope (DEC-385). Filed for a planner ruling: either
+the frame's placeholder literal is illustrative (matching DEC-925's
+numeral-vs-word precedent above) and no fix is needed, or the two frames'
+own bytes should read their contextual destination the way :602 already
+does.
+
 ## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
 
 The frame (:1554-1580) draws: back link, H1 "Resources", subtitle "The same
