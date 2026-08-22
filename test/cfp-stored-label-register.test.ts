@@ -25,6 +25,9 @@ import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
+import { DEC_998 } from "../src/decisions";
+
+void DEC_998; // the Format-legend in-body citation below pairs with this file's header-block scope citation into the same frame
 
 const EVENT_ROW = {
   id: "event-1",
@@ -207,6 +210,7 @@ describe("GET /submit/:eventSlug — stored labels ship, frame abbreviations don
   );
 
   it("renders the Format group's legend as the stored label, not the frame's bare 'Format'", async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1051 `<span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>` -- in-body receipt pairing with this file's header-block scope citation (DEC-998).
     const body = await getSubmitPage();
     expect(body).toContain("<legend>Session format</legend>");
     expect(body).not.toContain("<legend>Format</legend>");

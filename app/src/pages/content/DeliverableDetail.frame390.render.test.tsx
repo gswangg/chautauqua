@@ -27,10 +27,16 @@ import { fileURLToPath } from 'node:url';
 import { DeliverableDetail } from './DeliverableDetail';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { formatRelativeDays } from '../../lib/dates';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+import { DEC_994 } from '../../../../src/decisions';
+
+void DEC_994; // the :380/:381 status-band test below cascades through content.css's own phone block, not jsdom alone
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Content.dc.html');
+const CONTENT_CSS_FILE = join(HERE, 'content.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- copied from DeliverableDetail.stack-390.
@@ -254,6 +260,19 @@ describe('DeliverableDetail 390 "Session · deliverable" (DEC-967 shape)', () =>
     expect(valueLine.textContent).toBe(
       `Re-uploaded · you asked for changes ${formatRelativeDays(UPDATED_AT, Date.now())}`,
     );
+    // The band's own wrap is content.css's phone rule for
+    // `.chq-content-status-band` -- jsdom evaluates no @media, so this read
+    // is what turns the DOM assertion above into a real 390 verdict
+    // (DEC-994) rather than a desktop-cascade claim wearing a phone title.
+    const contentPhoneCss = stripCssComments(readFileSync(CONTENT_CSS_FILE, 'utf-8'));
+    const contentPhoneBlocks = phoneMediaBlocks(contentPhoneCss);
+    expect(contentPhoneBlocks.length).toBeGreaterThan(0);
+    const statusBandRule = contentPhoneBlocks
+      .map((block) => block.match(/\.chq-content-status-band\s*\{([^}]*)\}/)?.[1] ?? '')
+      .find((body) => body.length > 0);
+    expect(statusBandRule).toBeDefined();
+    expect(statusBandRule).toMatch(/flex-wrap:\s*wrap/);
+    expect(statusBandRule).toMatch(/row-gap:\s*10px/);
   });
 
   it(':381 the changes_requested state (not yet re-uploaded) carries the same cause clause', async () => {
