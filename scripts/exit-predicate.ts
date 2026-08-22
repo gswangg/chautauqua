@@ -983,6 +983,20 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
     + "amendment).",
+
+  FRAME_COUNT_CAPTION_UNMATCHED_CEILING:
+    "measures a newly-derived word population (a v12 frame's digit-bearing muted-prose caption "
+    + "-- 'N recipients', 'N of M reviews in' -- the caption ledger's own header names as ungraded, "
+    + "'a COMPOSED-from-data render, graded by a different instrument were one to exist') against a "
+    + "grader that is DELIBERATELY narrower than the caption ledger's own (digit-collapse only, no "
+    + "merge-placeholder collapse), so it resolves far fewer composed rows than that ledger does by "
+    + "construction -- an instrument-completeness fact about this new, narrower technique, not a "
+    + "copy-fidelity claim about the app (the caption ledger's own FRAME_CAPTION_UNMATCHED_CEILING = "
+    + "0 already says every one of these rows resolves under ITS stronger grader). A newly measured, "
+    + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
+    + "promoted once its measurement technique is proven complete enough to gate on, the same "
+    + "disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING and FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment).",
 };
 
 /**
