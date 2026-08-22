@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { EmbedsPanel } from './EmbedsPanel';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 function renderPanel(initialEntries: string[] = ['/settings']) {
   return render(
@@ -539,5 +542,48 @@ describe('EmbedsPanel', () => {
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/api/v1/embeds/emb-1'))).toBe(false);
     });
+  });
+});
+
+// DEC-896 wave-24 amendment: pins the top-level (desktop)
+// `.chq-settings-embed-field-pair` rule to carry `max-width: 620px` while
+// the phone override inside the file's single terminal
+// @media (max-width: 700px) block does not -- a raw-text toContain over
+// un-stripped CSS would also match a comment quoting the same literal, so
+// this reads the rule bodies out of comment-stripped CSS via the shared
+// stripper (DEC-613: never a local copy).
+describe('EmbedsPanel field-pair max-width (DEC-896 wave-24)', () => {
+  const CSS_PATH = resolve(__dirname, 'settings.css');
+  const css = stripCssComments(readFileSync(CSS_PATH, 'utf8'));
+
+  function topLevelFieldPairRule(): string {
+    // The desktop rule is the one NOT nested inside the file's @media block:
+    // slice everything before the (single) @media opener and read the rule
+    // from that prefix only.
+    const mediaIndex = css.indexOf('@media (max-width: 700px)');
+    expect(mediaIndex).toBeGreaterThan(-1);
+    const desktopLayer = css.slice(0, mediaIndex);
+    const match = desktopLayer.match(/\.chq-settings-embed-field-pair\s*\{([^}]*)\}/);
+    expect(match, 'expected a top-level .chq-settings-embed-field-pair rule before the @media block').not.toBeNull();
+    return match![1]!;
+  }
+
+  function phoneFieldPairRule(): string {
+    const mediaIndex = css.indexOf('@media (max-width: 700px)');
+    expect(mediaIndex).toBeGreaterThan(-1);
+    const phoneLayer = css.slice(mediaIndex);
+    const match = phoneLayer.match(/\.chq-settings-embed-field-pair\s*\{([^}]*)\}/);
+    expect(match, 'expected a phone .chq-settings-embed-field-pair rule inside the @media block').not.toBeNull();
+    return match![1]!;
+  }
+
+  // docs/design/Chautauqua Settings.dc.html:1057
+  // `padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:620px`
+  it('the desktop rule carries the frame max-width', () => {
+    expect(topLevelFieldPairRule()).toMatch(/max-width:\s*620px/);
+  });
+
+  it('the phone override does not carry a max-width (column layout is full-width)', () => {
+    expect(phoneFieldPairRule()).not.toMatch(/max-width/);
   });
 });
