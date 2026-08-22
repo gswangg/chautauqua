@@ -57,7 +57,15 @@ visibility-gating divergences.**
   does not draw, not because it is wrong.
 - **DIVERGES**: the attachments panel title drops "and merge fields" —
   the frame draws "Attachments and merge fields" (frame :96); the tree
-  renders "Attachments" only.
+  renders "Attachments" only (`ComposeWizard.tsx`'s `.chq-comms-panel-title`
+  span). Governed by DEC-902 wave-14m: the tree's wording carries no more
+  information than the frame's (it is strictly shorter, not a richer or
+  live-derived label), so this row takes disposition (a) — the frame's
+  literal is the one to adopt — not disposition (b), and it is never filed
+  as "measurement only, desktop is frozen." Adopting the literal is a
+  one-line component edit outside this measurement-only lane's file scope
+  (`docs/design/audit/**` only); it is flagged here as the buildable
+  follow-on this row leaves for the next code lane, not left unclassified.
 - "Include reviewer feedback" and "Attach calendar invite" toggles (frame
   :99, :108) MATCH by text and order.
 - **DIVERGES**: the "From which plan" evaluation-plan selector is
@@ -68,7 +76,12 @@ visibility-gating divergences.**
   is checked, starting at an empty "Choose a plan…" placeholder — ruling
   A18's "a parameter of the checkbox it belongs to" design, per the code's
   own comment, but a genuine label AND visibility AND default-value
-  divergence from the frame's always-shown, preselected control.
+  divergence from the frame's always-shown, preselected control. The
+  visibility-and-default-value shape is the frame's own populated demo
+  state ("Wave 1 — first pass, all tracks" preselected) against the app's
+  real cold, unchecked start, governed by DEC-902 wave-9 (demo-state row)
+  and DEC-967 (frame sample data is not product copy); ruling A18 covers
+  the separate label/placement question and is not disturbed.
 - **DIVERGES**: the "N have no slot yet — those get no invite" advisory
   (frame :110) is drawn in the frame directly beneath an UNCHECKED "Attach
   calendar invite" box (frame :107's unfilled `border:1px solid #8E8A7A`,
@@ -78,7 +91,11 @@ visibility-gating divergences.**
   (`ComposeWizard.tsx:1461`): with the toggle unchecked (matching the
   frame's own drawn state) the tree shows nothing at all. Checking the
   toggle does then produce the exact matching text ("3 of 23 have no slot
-  yet — those get no invite").
+  yet — those get no invite"). Governed by DEC-902 wave-9 (demo-state row)
+  and DEC-967: the frame's own drawn demo state pairs the advisory with an
+  unchecked toggle, a static composition the app's real toggle-gated
+  behaviour does not need to reproduce — checking the toggle is the exact
+  state the frame's advisory answers to.
 - The Preview pane header ("Preview · <name>", frame :116) and its
   Prev/Next controls (frame :118-119) MATCH.
 - The preview card's "To" / "Subject" field labels (frame :124, :128)
@@ -93,7 +110,9 @@ visibility-gating divergences.**
   IS the confirmation (one ask, same click depth)." This is a real,
   deliberate product decision (not new debt), filed here per the
   mandate's instruction to record divergences even where they are already
-  ruled correct.
+  ruled correct — its authority is the code's own comment cited above,
+  under DEC-651 wave-26's measurement-only mandate (this lane records the
+  row, it does not move the desktop control that answers it).
 
 ## Frame :453 "Compose · step 4 of 4"
 
@@ -118,7 +137,12 @@ report, not a pre-send confirmation screen.
   the frame's OWN vocabulary changes across the two steps (a generic
   "Recipients" label whose DETAIL text tracks the step — a selection count
   early, an outcome population late); the tree's rail detail text never
-  makes that same transition.
+  makes that same transition. This is a behavioural gap, not a wording-only
+  residual (DEC-902 wave-14m's scope guard excludes it), and it is not an
+  additive control, a demo-state row, or a pill-count row either, so none
+  of DEC-902 waves 8/9/14m apply; no existing ruling governs the rail's
+  source switch. Left open, ungoverned, for a future ruling or code lane —
+  not self-blessed and not retired.
 - The send-report headline — "21 of 23 speakers were emailed" (frame
   :497-498, "Send complete" eyebrow + headline) — MATCHES exactly, with
   the same arithmetic (21 sent + 0 failed + 2 skipped = 23 total).
