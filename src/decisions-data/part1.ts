@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Amendment (wave 32): the campaign's critical path is now a verification wave — no lane wave can produce CAMPAIGN: DONE";
+export const DEC_069 = "Amendment (wave 35): a fast-tier guard that can time out enforces nothing — a hook or test within 25% of its limit gets an explicit, commented timeout";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Amendment (wave 29): the pack's COUNT-COMPOSED muted prose is a population — a digit is a discriminator for the caption ledger, never a licence to leave 145 rows ungraded";
+export const DEC_180 = "Amendment (wave 35): the BLOCKING public mobile gate grades the derived interactive population, and its vacuity count is a defect count";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";

@@ -502,13 +502,23 @@ describe('pack declaration vocabulary (DEC-937)', () => {
         else lineHeightOutOfGrammar++;
       }
     }
-    // Measured on this branch: 576 bare-integer font-weight declarations
+    // Measured on this branch: 577 bare-integer font-weight declarations
     // (400/500/600/700/800, all in-vocabulary) plus 15 out-of-grammar
     // (`var(--chq-type-*-weight)` design-token references and two bare
     // `inherit`), and 173 bare line-height declarations (172 in-vocabulary
     // plus the 2 SETTLED `1.63` occurrences) plus 2 out-of-grammar (one
     // `var(--chq-type-overview-headline-line-height)`, one `inherit`).
-    expect(weightBare).toBe(576);
+    //
+    // 576 -> 577 at the wave-31 merge train: task v12m-w31-a built the two
+    // unbuilt v12 phone frame elements on Review "Plan editor · 390"
+    // (DEC-745 wave-31 amendment) and its new phone-eyebrow rule in
+    // app/src/pages/review/review.css declares one `font-weight: 800` --
+    // an IN-vocabulary weight, so the total rises by exactly one and
+    // `weightOutOfGrammar` is unmoved. This total is a two-sided exact
+    // count by design (neither population may shrink silently), so it is
+    // re-measured, not relaxed, when a lane legitimately adds a
+    // declaration.
+    expect(weightBare).toBe(577);
     expect(weightOutOfGrammar).toBe(15);
     expect(lineHeightBare).toBe(173);
     expect(lineHeightOutOfGrammar).toBe(2);

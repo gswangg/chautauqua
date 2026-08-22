@@ -1415,8 +1415,17 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   {
     key: "review-criteria-scale-or-choice::8",
     status: "gap",
+    // The quoted ruling contains the words "once any evaluation exists",
+    // which test/exemption-reason-is-a-principle.scan.test.ts's
+    // `once X lands` schedule pattern matches. It is not a deferral: it is
+    // a verbatim quotation of DESIGN-RULINGS.md's own immutability rule,
+    // and the ruling's "once" is a data-lifecycle condition, not a
+    // schedule. That scan strips backtick-delimited spans before its
+    // schedule check for exactly this reason ("a quotation is not a claim
+    // by the author of the reason -- it is evidence about the code"), so
+    // the quotation is carried in backticks rather than double quotes.
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Type is immutable once any evaluation exists** — the same freeze rule as wording and weights, and for the same reason: changing a criterion from Scale to Choice would orphan every score already gi…\"",
+      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: `- **Type is immutable once any evaluation exists** — the same freeze rule as wording and weights, and for the same reason: changing a criterion from Scale to Choice would orphan every score already gi…`",
   },
   {
     key: "review-criteria-scale-or-choice::9",

@@ -10,10 +10,12 @@ transcribes the twenty newly-visible rows below.
 The two old exclusion reasons were both stale and are dropped rather than
 carried forward:
 
-- "`## v12 frame errata`" -- cited as being actively deleted by an in-flight
-  branch (v12m-w14-b). That branch landed; the heading no longer exists in
-  the file. A population derived from real headings can never resurrect a
-  deleted one, so no special case is needed.
+- "`## v12 frame errata`" -- the exclusion was justified by work that was
+  in flight at the time. That work has since landed and the heading no
+  longer exists anywhere in the file. The reason is therefore not a
+  schedule and names no lane: a population derived from the headings the
+  file actually contains can never resurrect a deleted one, so no special
+  case is needed (DEC-808: a derived population needs no exclusion list).
 - "`## 5. Pending adjudication`" -- cited as stale prose whose one entry was
   answered elsewhere. The section's own text now says exactly that ("No
   adjudication is currently open... recorded, resolved, in §6's
@@ -106,10 +108,14 @@ rather than hand-listed, the merge surfaced the seven as "derived bullet
 with no ledger row" -- the derivation working exactly as `v12m-w31-c` built
 it to. Each of the seven was graded here by the same rule the original ten
 were: open the cited artifact and confirm it carries the cited literal.
-All seven verified against the live tree (the five `CFP_*` constants at
-`src/routes/public/submit-views.tsx:48-63`, `WORKLIST_TABS` at
-`app/src/pages/content/worklist.ts:5`, and the deliberate absence of any
-`CFP_BIO_LABEL`), so all seven are `honored`; none is a gap.
+All seven verified against the live tree: the five display-only override
+constants declared in `src/routes/public/submit-views.tsx`, the tab list
+declared in `app/src/pages/content/worklist.ts`, and the deliberate
+absence of any bio-label override in that same submit-views file. So all
+seven are `honored`; none is a gap. (Each row's own table entry above
+carries the verbatim literal it was checked against, in the drift-proof
+bare-path shape DEC-967 wave-115 requires -- a path followed by the quote
+it must contain, never a `:line` a later edit would silently invalidate.)
 
 ### ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -- 4 rows, all honored
 
