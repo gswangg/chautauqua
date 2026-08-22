@@ -121,6 +121,8 @@ function baseProps(overrides: Partial<ComponentProps<typeof PhoneAgenda>> = {}) 
 
 describe('Agenda 390 frame :127-133 -- head band (wordmark handled by shell per DEC-919, counter, H1)', () => {
   it('docs/design/Chautauqua Agenda.dc.html:133 -- renders EXACTLY one <h1> reading "Agenda"', () => {
+    // frame :133 draws `>Agenda</h1>` (its `line-height:1` is DEC-991's
+    // band-geometry declaration, not asserted here -- see module header).
     render(<PhoneAgenda {...baseProps()} />);
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
@@ -128,6 +130,7 @@ describe('Agenda 390 frame :127-133 -- head band (wordmark handled by shell per 
   });
 
   it('docs/design/Chautauqua Agenda.dc.html:131 -- "6 unplaced · 2 clash" counter shape (numbers vary, grammar fixed)', () => {
+    // frame :131 draws `6 unplaced · 2 clash`
     render(<PhoneAgenda {...baseProps({ summary: { unplaced: 6, conflicts: 2, placed: 10, total: 18 } })} />);
     const counter = document.querySelector('.chq-phone-agenda-counts');
     expect(counter).not.toBeNull();
@@ -186,7 +189,7 @@ describe('Agenda 390 frame :140-142 -- room strip renders one column head per ro
     }
   });
 
-  it('docs/design/Chautauqua Agenda.dc.html:140 "Room 2A ... CLASH" -- the CLASH marker renders ONLY on the room that actually clashes, not on Main Stage or Room 2B', () => {
+  it('frame :140 "Room 2A ... CLASH" -- the CLASH marker renders ONLY on the room that actually clashes, not on Main Stage or Room 2B', () => {
     const a = placedSession('a1', 'DFC-014', 'Taming 40-Minute CI', 'Priya Raman', 'r1', 540, 570);
     const b = placedSession('a2', 'DFC-047', 'Onboarding in 30 Minutes', 'Ruth Adeyemi', 'r1', 555, 585);
     const conflicts: AgendaConflict[] = [
@@ -199,6 +202,7 @@ describe('Agenda 390 frame :140-142 -- room strip renders one column head per ro
     const mainStage = chips.find((c) => c.textContent?.startsWith('Main Stage'));
     const room2b = chips.find((c) => c.textContent?.startsWith('Room 2B'));
 
+    // docs/design/Chautauqua Agenda.dc.html:140 draws `CLASH`
     expect(room2a?.querySelector('.chq-flag')).not.toBeNull();
     expect(room2a?.textContent).toMatch(/CLASH/);
     expect(mainStage?.querySelector('.chq-flag')).toBeNull();

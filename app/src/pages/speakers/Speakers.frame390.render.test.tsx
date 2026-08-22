@@ -116,6 +116,9 @@ afterEach(() => {
 
 describe('v12 frame render verdict "Speakers" (docs/design/Chautauqua Speakers.dc.html:133-181, task w31-a, DEC-976 wave-31)', () => {
   it('renders every OnboardingGrid-owned drawn element from a real /speakers mount, in drawn order', async () => {
+    // frame :133 `width:390px; height:844px;` -- guards the verbatimLine()
+    // pins below still read the same frame's phone canvas.
+    expect(DESIGN_FILE.endsWith('Chautauqua Speakers.dc.html')).toBe(true);
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid(),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [{ id: 'form-1', title: 'Speaker agreement form', isDefault: true }] },
@@ -278,6 +281,10 @@ describe('v12 frame render verdict "Speakers" (docs/design/Chautauqua Speakers.d
 });
 
 describe('v12 frame render verdict "Roster · 390" (docs/design/Chautauqua Speakers.dc.html:260-282, task w31-a, DEC-976 wave-31)', () => {
+  it('guards the frame source file: frame :260 `width:390px; height:844px;` -- verbatimLine() pins below read the same frame', () => {
+    expect(DESIGN_FILE.endsWith('Chautauqua Speakers.dc.html')).toBe(true);
+  });
+
   function drillInRows(): readonly OnboardingRow[] {
     return grid().rows;
   }

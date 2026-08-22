@@ -80,6 +80,9 @@ function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
 
 describe('v12 frame render verdict "Templates · 390" (docs/design/Chautauqua Comms.dc.html:286-326, task w31-d, DEC-976 wave-31)', () => {
   it('renders every drawn body element from the real Templates tab', async () => {
+    // frame :286 `<div style="width:390px; height:844px;` -- guards the
+    // verbatimLine() pins below still read the same frame's phone canvas.
+    expect(DESIGN_FILE.endsWith('Chautauqua Comms.dc.html')).toBe(true);
     // :288 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Comms</a>`
     verbatimLine(
       288,
@@ -267,6 +270,9 @@ describe('v12 frame render verdict "Templates · 390" (docs/design/Chautauqua Co
 
 describe('v12 frame render verdict "Send history · 390" (docs/design/Chautauqua Comms.dc.html:335-354, task w31-d, DEC-976 wave-31)', () => {
   it('renders every drawn body element from the real History tab', async () => {
+    // frame :335 `<div style="width:390px; height:844px;` -- guards the
+    // verbatimLine() pins below still read the same frame's phone canvas.
+    expect(DESIGN_FILE.endsWith('Chautauqua Comms.dc.html')).toBe(true);
     // :337 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Comms</a>`
     verbatimLine(
       337,
