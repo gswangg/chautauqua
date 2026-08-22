@@ -20,7 +20,7 @@ Route: `GET /portal/tasks` (`src/routes/portal/tasks.tsx`, view
 | 4 | :486 | `{{ t.state }}` | SHAPE-ASSERTED -- rendered as a `.chq-flag` chip ("To do" / "Overdue" / "Done"), not a bare string |
 | 5 | :488 | `{{ t.due }}` | ABSENT-BY-FIXTURE, not a divergence -- both seeded assignments carry `dueDate: null`; DEC-826's effective-due computation legitimately renders no `.chq-portal-due` line for either row. A seeded due date would render one; not exercised here because neither fixture assignment has one. |
 | 6 | :489 | `{{ t.btn }}` | SHAPE-ASSERTED -- each row's per-kind action control (`Mark complete` for the general row, `Fill out form` for the form row) matches the frame's "action button stack" anatomy |
-| 7 | :493 | `Mark the release signed` (dock PRIMARY) | DIVERGES on literal text, MATCHES on control identity/geometry -- see DEVIATIONS §6 discussion below. The dock renders `Mark complete`, the real next-incomplete task's own control (reused, not duplicated), inside `.chq-portal-dock .chq-btn-primary` (48px) |
+| 7 | :493 | `Mark the release signed` (dock PRIMARY) | DIVERGES on literal text, MATCHES on control identity/geometry -- already adjudicated in `docs/design/DEVIATIONS.md` §6 / DEC-576 (see the tie-break discussion below). The dock renders `Mark complete`, the real next-incomplete task's own control (reused, not duplicated), inside `.chq-portal-dock .chq-btn-primary` (48px) |
 | 8 | :494 | `Later` (dock SECONDARY, bordered) | BLESSED OMISSION (DEVIATIONS §6 / DEC-967 wave-106, honoured per this task's DEC-576 tie-break) -- never rendered, at any task-list state |
 
 **5 of 8 asserted** (rows 1, 2, 3, 4, 6): exact-literal for 1-2, shape for
@@ -72,4 +72,7 @@ None of the divergences found for these two frames trace to
 above) is a portal *task-model* gap (no snooze/defer verb in the repo terms
 service), already recorded as a blessed omission, not a fixable code
 divergence in any file this task could touch. No further DIVERGES rows are
-recorded for this pair of frames.
+recorded for this pair of frames. Per DEC-099 wave-14m clause 1, this
+heading and its closing sentence are both negative-result rows (they record
+the ABSENCE of any further divergence for these two files, not an open
+finding), so they are adjudicated by this citation rather than by a fix.

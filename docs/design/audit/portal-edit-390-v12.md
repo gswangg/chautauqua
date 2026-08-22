@@ -97,4 +97,6 @@ lives inside that one block, appended in place per DEC-385 append-only:
 
 ## Unfixable findings
 
-None. Both frames verify MATCHES end to end; no DIVERGES row is filed.
+None. Both frames verify MATCHES end to end; no DIVERGES row is filed. This
+line's own occurrence of the token is a negative result under DEC-099
+wave-14m clause 1 (it records the absence of a divergence, not one).

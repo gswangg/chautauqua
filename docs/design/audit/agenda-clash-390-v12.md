@@ -16,7 +16,9 @@
 SPELLED. `PhoneAgenda.tsx`'s `slot.kind === 'clash'` branch previously
 rendered `${countOf(slot.sessions.length, 'session')} in this slot` — a
 numeral at every N — which `v12m-w29-g` correctly recorded as a DIVERGES
-row without inventing a ruling.
+row without inventing a ruling. FIXED by the very next paragraph's ruling
+(DEC-380 wave-32, below): this occurrence narrates the pre-fix state, not
+a currently-open row.
 
 **Ruling (DEC-380 wave-32, mine):** this one flag spells its count.
 `countOf`/`src/domain/count-copy.ts` are UNCHANGED and stay read-only —

@@ -56,7 +56,9 @@ identical span-vs-anchor gap on the Event hub frame's "Submit a talk"/
 route renders a functioning `.chq-home-action-primary` anchor to `/login`
 there, which is required for the control to do anything at all — dropping
 to a non-navigable span to chase byte-parity with the mockup chip would be
-a regression, not a fix. Not filed as a DIVERGES row.
+a regression, not a fix. Not filed as a DIVERGES row -- per DEC-099
+wave-14m clause 1, this sentence records the ABSENCE of a divergence (a
+pack-drawing convention, not a control gap), not an open finding.
 
 ## No DIVERGES rows filed
 
@@ -65,4 +67,6 @@ needs, was already present and correctly scoped inside `home.css.ts`'s one
 terminal `@media (max-width: 700px)` block before this task started. This
 task's `FILES YOU OWN` scope (`root.tsx`, `home.css.ts`'s terminal phone
 block) therefore lands with zero production-code bytes changed — only the
-new test file and this audit doc.
+new test file and this audit doc. Per DEC-099 wave-14m clause 1, this
+heading and paragraph record a negative result (no divergence found), not
+an open finding.

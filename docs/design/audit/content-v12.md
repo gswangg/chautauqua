@@ -415,4 +415,6 @@ and the five grandchildren's `order` sequence -- both modelled on
 alongside the new CSS-text ones (both are true; only the SCREEN-fact
 verdict changed). No table row above changes -- both were already
 `CLOSED` -- this update brings their cited receipt file into agreement
-with them.
+with them. Per DEC-099 wave-14m clause 1, this paragraph's marker
+occurrence quotes the RECEIPT file's stale original `it()` title -- it
+narrates a row this ledger already closed in wave 25, not a new open one.

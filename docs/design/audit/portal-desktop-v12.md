@@ -10,7 +10,9 @@ against the returned HTML STRING. This supersedes
 citation-only claims for these seven frames specifically: every MATCHES/
 DIVERGES row below was RENDERED off a real request, not merely cited against
 source text. Receipts live in
-`test/portal-submit-desktop-frame-verdicts.test.ts`.
+`test/portal-submit-desktop-frame-verdicts.test.ts`. (Per DEC-099 wave-14m
+clause 1, this sentence's own use of the word is a description of this
+file's row-grammar, not itself a finding.)
 
 **HARNESS RULE (DEC-613 wave-24 amendment):** every harness in that file is
 copied unchanged from an existing `buildApp` — the mock-free `Hono<AppEnv>` +
@@ -162,14 +164,35 @@ two more targets — `src/server/repo/events` (`getEventForOrg`) and
 style fake-`db` stack. `c.set("db", {} as never)` stays valid because these
 two additions are the only db reads `/portal/preview`'s handler makes. Any
 future frame needing a repo this harness doesn't yet mock should extend
-this same set again, never fork a new one.
+this same set again, never fork a new one. **Disposition of the four
+findings below, per DEC-902 wave-14m** (a wording-only residual against a
+v12 desktop frame is adjudicated, never deferred to the freeze — scope
+guard: WORDING only, geometry/order residuals keep their prior
+disposition): the **"Not shown here" chip wording/count** is a wording
+residual, disposition (b) BLESSED — the tree's three chips name the real
+domain concepts the route actually declines to load (submissions/tasks/
+files, per `preview.tsx`'s own header comment), where the frame's
+four-chip list includes two ("Their session", "Their notes") that
+correspond to nothing this route withholds, so the shipped wording carries
+MORE information than the frame's, not less. The **missing second Welcome
+lede sentence** is a wording residual too, but disposition (a) ADOPT — the
+frame's fixed second sentence carries information (a static reassurance)
+the organiser's own stored welcome message cannot supply, so the tree's
+version carries strictly less; this is genuine, still-open buildable work
+this doc-only adjudication lane has no code file in scope to land (no
+route module or `*.css.ts` is owned here), so it is named for a future
+lane rather than force-closed. **Back-link placement** and **meta-sentence
+order** are GEOMETRY/ORDER residuals, outside wave-14m's wording-only
+scope guard — they keep the pre-existing measurement-only disposition
+this section already states (named, not fixed, desktop frozen).
 
 **Now REACHED, and DIVERGES** off a real `GET /portal/preview` request
 (organizer auth), asserted in `test/portal-390-frame-verdicts.test.ts`'s
 own describe block for this frame. Structural anatomy matches (read-only
 banner, Welcome hero + lede, Resources section, Not-shown-here section, in
 that order), but three real divergences from
-`docs/design/Chautauqua Public and Portal.dc.html`:
+`docs/design/Chautauqua Public and Portal.dc.html` — each disposed under
+DEC-902 wave-14m, see the paragraph above:
 
 - **Back-link placement** (frame :1490 `<a href="#" style="margin-left:auto;
   font-size:13px; font-weight:700; white-space:nowrap">‹ Back to
@@ -224,7 +247,7 @@ render.
 | :1167 Public sessions · nothing published | MATCHES (reason-sentence divergence, DEC-745, previously filed) |
 | :1211 Submit a talk · rejected on submit | MATCHES |
 | :1373 Portal · Edit your session · desktop | MATCHES (DEC-029) |
-| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, one-sentence lede, meta-sentence order, "Not shown here" chip wording/count — see section above) |
+| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, one-sentence lede, meta-sentence order, "Not shown here" chip wording/count — DEC-902 wave-14m disposition, see section above) |
 
 5 of 7 frames MATCH as rendered off a real request; one previously-filed,
 already-adjudicated reason-sentence divergence (:1167, DEC-745/DEC-522)
