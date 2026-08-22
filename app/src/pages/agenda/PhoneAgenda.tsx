@@ -193,15 +193,28 @@ export function PhoneAgenda({
   useEscapeKey(sheetOpen, () => setSheetOpen(false));
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
-  const slots = buildPhoneSlots({ placed, day, roomId: activeRoomId, dayStartMin, dayEndMin, gridMin, conflicts });
-  // DEC-895 (wave 33): breaks -> BlockedInterval, the SAME shape
-  // nextFreeSlot's `blocked` scan tests against -- never defaulted to
-  // empty, a suggestion landing inside lunch is worse than none.
-  const blockedBreaks: BlockedInterval[] = breaks.map((b) => ({
+  // DEC-895 (wave 33 / wave-32 amendment): breaks -> BlockedInterval, the
+  // SAME shape nextFreeSlot's `blocked` scan tests against -- never
+  // defaulted to empty, a suggestion landing inside lunch is worse than
+  // none. Carries `note` too (`<label> · <duration> min`, frame :183) so the
+  // SAME array also feeds buildPhoneSlots's fourth `blocked` slot kind --
+  // one break reduction, not two.
+  const blockedBreaks: (BlockedInterval & { note: string })[] = breaks.map((b) => ({
     day: b.day,
     startMin: b.startMin,
     endMin: b.startMin + b.durationMin,
+    note: `${b.label} · ${b.durationMin} min`,
   }));
+  const slots = buildPhoneSlots({
+    placed,
+    day,
+    roomId: activeRoomId,
+    dayStartMin,
+    dayEndMin,
+    gridMin,
+    conflicts,
+    breaks: blockedBreaks,
+  });
 
   function armFromPlaced(session: PlacedAgendaSession) {
     setArmed({
@@ -340,6 +353,20 @@ export function PhoneAgenda({
                     <span className="chq-phone-slot-free-length">{lengthLabel}</span>
                   </button>
                 )}
+              </div>
+            );
+          }
+
+          // DEC-895 wave-32 amendment: the fourth slot kind -- a scheduled
+          // break, drawn as a bordered, non-tappable row (frame
+          // Agenda.dc.html:182-183). It is the ONE slot kind that is never
+          // a tap target, so unlike 'placed'/'clash' it takes NO
+          // "Place here anyway" sibling even while `armed`.
+          if (slot.kind === 'blocked') {
+            return (
+              <div key={key} className="chq-phone-slot">
+                <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
+                <div className="chq-phone-slot-blocked">{slot.note}</div>
               </div>
             );
           }

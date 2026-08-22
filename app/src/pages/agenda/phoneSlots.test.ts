@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPhoneSlots } from './phoneSlots';
+import { buildPhoneSlots, type PhoneBlockedInterval } from './phoneSlots';
 import type { PlacedAgendaSession } from './types';
 
 const DAY_START_MIN = 540;
@@ -23,7 +23,7 @@ function session(overrides: Partial<PlacedAgendaSession>): PlacedAgendaSession {
   };
 }
 
-function build(placed: PlacedAgendaSession[], roomId: string | null = ROOM) {
+function build(placed: PlacedAgendaSession[], roomId: string | null = ROOM, breaks: PhoneBlockedInterval[] = []) {
   return buildPhoneSlots({
     placed,
     day: DAY,
@@ -32,6 +32,7 @@ function build(placed: PlacedAgendaSession[], roomId: string | null = ROOM) {
     dayEndMin: DAY_END_MIN,
     gridMin: GRID_MIN,
     conflicts: [],
+    breaks,
   });
 }
 
@@ -109,5 +110,42 @@ describe('buildPhoneSlots', () => {
       { startMin: 600, endMin: 630, kind: 'placed', sessions: [tbd] },
       { startMin: 630, endMin: DAY_END_MIN, kind: 'free', sessions: [] },
     ]);
+  });
+
+  // docs/design/Chautauqua Agenda.dc.html:182-183 draws the frame's fourth
+  // slot kind -- `<sc-if value="{{ slot.blocked }}">` holding `{{ slot.note
+  // }}` -- and the frame's own demo data (same file) supplies
+  // `{ time: '12:00', blocked: true, note: 'Lunch · 60 min' }` as what
+  // populates it (DEC-895 wave-32 amendment).
+  it('a day with a break produces a blocked run carrying its note, with separate free runs either side (DEC-895 wave-32 amendment)', () => {
+    const lunch: PhoneBlockedInterval = { day: DAY, startMin: 720, endMin: 780, note: 'Lunch · 60 min' };
+    const slots = build([], ROOM, [lunch]);
+    expect(slots).toEqual([
+      { startMin: DAY_START_MIN, endMin: 720, kind: 'free', sessions: [] },
+      { startMin: 720, endMin: 780, kind: 'blocked', sessions: [], note: 'Lunch · 60 min' },
+      { startMin: 780, endMin: DAY_END_MIN, kind: 'free', sessions: [] },
+    ]);
+  });
+
+  it('a break carves out of the free run between two placed sessions, keeping the free runs on either side separate', () => {
+    const a = session({ submissionId: 'sub-1', startMin: 600, endMin: 630 });
+    const b = session({ submissionId: 'sub-2', startMin: 780, endMin: 810 });
+    const brk: PhoneBlockedInterval = { day: DAY, startMin: 690, endMin: 705, note: 'Break · 15 min' };
+    const slots = build([a, b], ROOM, [brk]);
+    expect(slots).toEqual([
+      { startMin: DAY_START_MIN, endMin: 600, kind: 'free', sessions: [] },
+      { startMin: 600, endMin: 630, kind: 'placed', sessions: [a] },
+      { startMin: 630, endMin: 690, kind: 'free', sessions: [] },
+      { startMin: 690, endMin: 705, kind: 'blocked', sessions: [], note: 'Break · 15 min' },
+      { startMin: 705, endMin: 780, kind: 'free', sessions: [] },
+      { startMin: 780, endMin: 810, kind: 'placed', sessions: [b] },
+      { startMin: 810, endMin: DAY_END_MIN, kind: 'free', sessions: [] },
+    ]);
+  });
+
+  it('a break outside the requested day is ignored', () => {
+    const other: PhoneBlockedInterval = { day: '2026-06-02', startMin: 720, endMin: 780, note: 'Lunch · 60 min' };
+    const slots = build([], ROOM, [other]);
+    expect(slots).toEqual([{ startMin: DAY_START_MIN, endMin: DAY_END_MIN, kind: 'free', sessions: [] }]);
   });
 });
