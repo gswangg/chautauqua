@@ -217,4 +217,17 @@
 // present). LOCAL_CSS_COMMENT_STRIPPER_CEILING re-measured the same way:
 // unchanged at 83 (none of this batch's edits declared a new local
 // stripper). Ceiling lowered to match the measured value: 20 -> 1.
+// v12m-w29-h (DEC-613 wave-29): population WIDENED (DEC-180/DEC-367) from
+// "every *.test.ts(x) file" to that set UNION every test/**/app/src/**
+// module reachable by static relative import from a test file -- a suffix
+// is not a population, and the widened half's own module,
+// app/src/test-utils/phoneBlock.ts, was exactly the kind of file that
+// widening exists to catch (see local-stripper-ceiling.ts's own history for
+// the repair). Re-measured this class over the widened population, ceiling
+// forced to -1: still EXACTLY 1, the same offender
+// (contacts-phone-standdown-receipts.test.ts) -- none of the newly-reached
+// non-test modules obtain a CSS source AND apply a match assertion to it in
+// the same file (they are pure scanning/stripping vocabulary, no `expect(`
+// calls of their own), so this class-1 ceiling is unaffected by the
+// widening. Ceiling stays at 1 (measured count sits AT the ceiling).
 export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 1;

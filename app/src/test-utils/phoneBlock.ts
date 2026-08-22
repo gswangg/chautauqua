@@ -18,11 +18,20 @@
 //
 // One copy of this vocabulary, imported by the pins that need it -- a second
 // copy is a trap with a delay fuse (field guide DEC-613).
+//
+// v12m-w29-h (DEC-613 wave-29 amendment): this file's own local
+// `stripCssComments` was itself exactly the trap its header warns about --
+// a naive `.replace(/\/\*[\s\S]*?\*\//g, '')` re-derivation of the shared,
+// string-aware test/helpers/strip-css-comments.ts, invisible to the
+// comment-blind-css-assertion instrument's LOCAL_CSS_COMMENT_STRIPPER_CEILING
+// purely because this file's name lacks `.test.`. Re-exports the shared
+// helper under the same name/signature (`stripCssComments(css: string):
+// string`) rather than duplicating it, so every existing call site --
+// including the two that import `stripCssComments` directly, not just
+// `phoneBlockText`/`phoneBlockRulesMentioning` -- keeps working unchanged.
 
-/** CSS comments carry no declarations; drop them before any structural scan. */
-export function stripCssComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
+export { stripCssComments };
 
 /** The text of the sheet's `@media (max-width: 700px)` block, braces
  * included, comments stripped. Throws if the sheet has no phone block --
