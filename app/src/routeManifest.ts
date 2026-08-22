@@ -102,6 +102,16 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     role: "organizer",
     params: { id: SUBMISSION_ID },
   },
+  // DEC-144 (wave-23 amendment): SubmissionDetailPage.tsx's
+  // `historyOpen = searchParams.get('history') !== '0'` drill -- History
+  // renders EXPANDED by default (DEC-908 wave-42 amendment), so `?history=0`
+  // is the one way to reach the collapsed state, and a bookmarked/shared
+  // link still round-trips through the toggle.
+  {
+    path: `/admin/submissions/${SUBMISSION_ID}?history=0`,
+    role: "organizer",
+    params: { id: SUBMISSION_ID },
+  },
   { path: "/admin/speakers", role: "organizer" },
   // DEC-930: per-speaker detail page (app/src/pages/speakers/SpeakerDetailPage.tsx).
   {
@@ -153,6 +163,11 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/contacts?tab=pipeline", role: "organizer" },
   { path: "/admin/contacts?tab=duplicates", role: "organizer" },
   { path: "/admin/contacts?tab=segments", role: "organizer" },
+  // DEC-144 (wave-23 amendment): app/src/pages/contacts/ContactsApp.tsx's
+  // `showImport = searchParams.get('import') === '1'` drill (DEC-827:
+  // Speakers links into the importer with ?import=1, the toolbar's
+  // "Import CSV" button shares this same opener/URL-state path).
+  { path: "/admin/contacts?import=1", role: "organizer" },
   { path: "/admin/settings", role: "organizer" },
   // DEC-144 (wave-154 amendment): Settings.tsx's `SECTIONS` panel keys --
   // the mandate counts NINE Settings width:390 frames (Chautauqua
@@ -192,6 +207,12 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/settings?section=portal&edit=1", role: "organizer" },
   { path: "/admin/settings?section=your-data&edit=1", role: "organizer" },
   { path: "/admin/settings?section=people&edit=1", role: "organizer" },
+  // DEC-144 (wave-23 amendment): app/src/pages/settings/ApiTokensPanel.tsx's
+  // `intent=new` third-level drill, nested under the your-data edit row
+  // above -- ApiTokensPanel only mounts non-readOnly inside YourDataPanel
+  // .tsx's edit view, and its own "New token" render site opens the edit
+  // drill with `intent=new` already set (DEC-919 wave-155 amendment).
+  { path: "/admin/settings?section=your-data&edit=1&intent=new", role: "organizer" },
 
   // --- Organizer review tree (app/src/pages/Review.tsx, me.role !== 'reviewer') ---
   { path: "/admin/review", role: "organizer" },

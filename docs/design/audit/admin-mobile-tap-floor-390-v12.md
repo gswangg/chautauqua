@@ -32,6 +32,34 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 - input.chq-check w=18px h=18px
 - input.chq-check w=18px h=18px
 
+## /admin/contacts?import=1
+
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px
+
 ## /admin/content/seed_submission_0001
 
 - input.chq-file.chq-content-upload-input w=1px h=44px
@@ -112,6 +140,10 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 - input.chq-check w=18px h=18px
 
+## /admin/submissions/seed_submission_0001?history=0
+
+- input.chq-check w=18px h=18px
+
 ## /dev/mailbox
 
 - a.chq-wordmark w=113px h=28px
@@ -120,4 +152,4 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 - a.chq-wordmark w=113px h=28px
 
-Measured total: 77 (ceiling 77)
+Measured total: 103 (ceiling 103)

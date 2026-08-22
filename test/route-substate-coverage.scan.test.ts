@@ -266,7 +266,11 @@ describe("route sub-state coverage (DEC-144 amendment, wave 27)", () => {
   // Re-measured at 3 in wave 5 (task w5-cb, DEC-271): the constant had
   // gone stale in the SLACK direction (declared 10, measured 3). Lowered
   // to the measured value in the same commit.
-  const ROUTE_SUBSTATE_UNVISITED_CEILING = 3;
+  // Wave 23 (task w23-f, DEC-144 wave-23 amendment): the manifest widened
+  // to visit the three prior survivors (`?section=your-data&edit=1&intent=
+  // new`, `/admin/contacts?import=1`, the submission-detail `?history=0`
+  // row) -- measured 0. Lowered to 0 in the same commit.
+  const ROUTE_SUBSTATE_UNVISITED_CEILING = 0;
 
   it(`no more than ${ROUTE_SUBSTATE_UNVISITED_CEILING} derived closed-set query sub-states are unvisited by ROUTE_MANIFEST`, () => {
     const unvisited = deriveUnvisitedRows();
