@@ -15,6 +15,7 @@ import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { capitalizeFirst, spellCount } from '../../lib/plural';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
@@ -95,6 +96,13 @@ export function SubmissionsTable() {
   // state) -- both null until their reads resolve.
   const [formOpenDate, setFormOpenDate] = useState<number | null>(null);
   const [allTotal, setAllTotal] = useState<number | null>(null);
+  // DEC-902 wave-19 clause (c): the triage-cleared reason line's second
+  // sentence needs the unfiltered count of submissions still waiting on
+  // content -- read off the same unfiltered list read as allTotal (below),
+  // whose envelope already carries contentStatusCounts (DEC-913). null
+  // while in flight or on failure, same discipline as allTotal -- never a
+  // fabricated number.
+  const [awaitingContent, setAwaitingContent] = useState<number | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [visibleFieldIds, setVisibleFieldIds] = useState<Set<string>>(new Set());
@@ -227,8 +235,17 @@ export function SubmissionsTable() {
     // "All N submissions have a decision" -- N is the UNFILTERED count,
     // which no other fetch on this page carries.
     apiList<SubmissionListItem>(`/events/${eventId}/submissions?perPage=1`)
-      .then((res) => setAllTotal(res.total))
-      .catch(() => setAllTotal(null));
+      .then((res) => {
+        setAllTotal(res.total);
+        // DEC-902 wave-19 clause (c): pending content status IS "still
+        // waiting on content" (the same vocabulary Content's worklist chips
+        // use for this field, DEC-913).
+        setAwaitingContent(res.contentStatusCounts?.pending ?? null);
+      })
+      .catch(() => {
+        setAllTotal(null);
+        setAwaitingContent(null);
+      });
   }, [eventId, refreshToken]);
 
   const pageIds = displayItems.map((item) => item.id);
@@ -486,7 +503,13 @@ export function SubmissionsTable() {
           <EmptyState
             variant="fresh"
             what="Nothing left to triage"
-            reason={`All ${allTotal} submissions have a decision.`}
+            reason={
+              awaitingContent !== null && awaitingContent > 0
+                ? `All ${allTotal} submissions have a decision. ${capitalizeFirst(spellCount(awaitingContent))} ${
+                    awaitingContent === 1 ? 'is' : 'are'
+                  } still waiting on content, if you want the next thing.`
+                : `All ${allTotal} submissions have a decision.`
+            }
             secondary={{ label: 'Go to content ›', to: '/content' }}
           />
         ) : activeFacet ? (
