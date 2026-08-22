@@ -821,6 +821,19 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "contract DEC-253 depends on. This constant lives beside that contract without "
     + "replacing it (scripts/render-sweep-lib.ts, DEC-253/DEC-367/DEC-808 wave-155 "
     + "amendment, task qf).",
+  FIELD_WIDTH_DIVERGENCE_CEILING:
+    "measures whether a Settings edit-view field's declared width (a --chq-field-w-* token, "
+    + "or the arithmetic a two-up field pair resolves to) reaches the width its OWN v12 "
+    + "'Settings · editing …' frame draws for it -- a control-geometry fidelity fact distinct "
+    + "from whether a frame is CITED or a control's WORDS match, the same disposition already "
+    + "given to DESKTOP_FLOOR_DIVERGENCE_CEILING. A new non-zero row in the exit gate would move "
+    + "the campaign's goalposts mid-convergence; it measures fidelity now and is promoted once "
+    + "its measurement technique is proven complete enough to gate on.",
+  FIELD_WIDTH_UNRESOLVED_CEILING:
+    "measures how many drawn Settings edit-view field-width rows the label-to-SettingsField "
+    + "join could not resolve to a matching component call site -- an instrument-completeness "
+    + "fact about the ledger's own join technique, not itself a v12 frame or 390-geometry "
+    + "conformance fact, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
 };
 
 /**
