@@ -407,7 +407,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
     // v1 keys, unchanged shape/values (nav badge + app/src/pages/overview/cards.ts).
     expect(payload["triage-counts"]).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
-    expect(payload.review).toEqual({ plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 });
+    expect(payload.review).toEqual({ plans: 0, evaluationsSubmitted: 0, evaluationsStarted: 0 });
     expect(payload.speakers).toEqual({ contactsOwing: 0, overdueAssignments: 0 });
     expect(payload.content).toEqual({ awaitingApproval: 0 });
     expect(payload.agenda).toEqual({ unplaced: 0, conflicts: 0 });

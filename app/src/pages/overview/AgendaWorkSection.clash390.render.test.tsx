@@ -99,7 +99,7 @@ function basePayload(): OverviewPayload {
       unplacedRemainderDurationMin: null,
     },
     'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
-    review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
+    review: { plans: 0, evaluationsSubmitted: 0, evaluationsStarted: 0 },
     speakers: { contactsOwing: 0, overdueAssignments: 0 },
     content: { awaitingApproval: 0 },
     agenda: { unplaced: 0, conflicts: 2 },
