@@ -33,7 +33,7 @@
 // see test/render-sweep-lib.test.ts.
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,6 +56,7 @@ import {
   evaluateRoute,
   evaluateTypeRoleResult,
   filterKnownClipExceptions,
+  formatAdminMobileOffenderLedger,
   FONT_FLOOR_BLOCKING,
   fontFloorErrorResult,
   formatFontFloorSummary,
@@ -1519,9 +1520,8 @@ async function main(): Promise<void> {
     // DEC-253/DEC-367/DEC-808 wave-155 amendment: print every interactive
     // offender per route (not just the shortest control's reason string
     // above), then wire the total count against
-    // ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING — the unfilled -1 sentinel
-    // fails loudly until a lane that actually runs this pass replaces it
-    // with a real measured total (see the constant's own comment).
+    // ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING, which is a real measured
+    // total (79, see the constant's own comment), not a sentinel.
     console.log("");
     console.log("render-sweep: admin mobile interactive offenders (DEC-253/DEC-367/DEC-808)...");
     let totalInteractiveOffenders = 0;
@@ -1534,6 +1534,22 @@ async function main(): Promise<void> {
     console.log(
       `render-sweep: admin mobile total interactive offenders: ${totalInteractiveOffenders} (ceiling ${ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING})`,
     );
+
+    // DEC-996: write the roster this pass just measured to a durable file —
+    // a gate that measures and discards to scrollback is DEC-851's
+    // declared-knob-with-no-reader shape, inverted (a measured value with no
+    // reader). Unconditional on every gate run, whether or not this pass
+    // fails, so the tree always reflects the last measurement.
+    const adminMobileLedgerPath = join(REPO_ROOT, "docs", "design", "audit", "admin-mobile-tap-floor-390-v12.md");
+    writeFileSync(
+      adminMobileLedgerPath,
+      formatAdminMobileOffenderLedger(
+        adminMobileResults.map((r) => ({ path: r.entry.path, interactiveOffenders: r.interactiveOffenders })),
+        ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
+      ),
+      "utf-8",
+    );
+    console.log(`render-sweep: wrote admin mobile offender roster to ${adminMobileLedgerPath}`);
 
     if (!allMobilePassed(adminMobileResults) && ADMIN_MOBILE_PASS_BLOCKING) {
       failed = true;
