@@ -7,7 +7,7 @@ import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { formatDate, formatDayLabel } from '../../lib/dates';
+import { formatDayLabel, formatRelativeDays } from '../../lib/dates';
 import { countOf } from '../../lib/plural';
 import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
@@ -319,6 +319,18 @@ export function DeliverableDetail({
   // row does -- headerDetail.reuploaded, absent (false) only while the
   // header fetch hasn't resolved yet, never a fabricated guess.
   const statusLabel = worklistStatusLabel(pill, headerDetail?.reuploaded ?? false);
+  // w8-g (DEC-874 wave-8): the cause clause ("you asked for changes") names
+  // WHY the item is back for review -- true whenever the status reads
+  // "Changes requested" (pill itself) OR "Re-uploaded" (pill still 'pending'
+  // but the speaker already addressed a change request, headerDetail.
+  // reuploaded), the SAME "needs you" boundary worklistStatusEmphasisClass
+  // already draws between these two labels and the other two ('Approved'/
+  // 'Not reviewed', which keep the neutral "Updated" clause). Frame
+  // docs/design/Chautauqua Content.dc.html:381's worked example is exactly
+  // the Re-uploaded case ("Re-uploaded · you asked for changes 8 days
+  // ago"), so a literal `pill === 'changes_requested'` condition alone would
+  // leave that frame's own row unfixed.
+  const statusNeedsCauseClause = pill === 'changes_requested' || (headerDetail?.reuploaded ?? false);
   const subtitleTrailer = headerDetail ? formatDetailTrailer(headerDetail) : null;
   // DEC-901/DEC-998: the shown speaker name (first participant, '+N' suffix
   // for the rest, unchanged from the prior plain-text form) is now a link
@@ -433,7 +445,11 @@ export function DeliverableDetail({
             <span className="chq-content-status-band-label">Content status</span>
             <span className={['chq-flag', worklistStatusEmphasisClass(statusLabel)].filter(Boolean).join(' ')}>
               {statusLabel}
-              {headerDetail ? ` · Updated ${formatDate(headerDetail.updatedAt)}` : ''}
+              {headerDetail
+                ? statusNeedsCauseClause
+                  ? ` · you asked for changes ${formatRelativeDays(headerDetail.updatedAt, Date.now())}`
+                  : ` · Updated ${formatRelativeDays(headerDetail.updatedAt, Date.now())}`
+                : ''}
             </span>
           </div>
         </div>

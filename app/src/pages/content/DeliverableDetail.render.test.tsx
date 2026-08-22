@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DeliverableDetail } from './DeliverableDetail';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
-import { formatDate, formatDayLabel } from '../../lib/dates';
+import { formatDayLabel, formatRelativeDays } from '../../lib/dates';
 
 const SUBMISSION_ID = 'sub-detail-1';
 const EVENT_ID = 'evt-detail-1';
@@ -452,10 +452,15 @@ describe('DeliverableDetail render smoke', () => {
     expect(screen.getByText('Content status')).toBeInTheDocument();
     // worklistStatusLabel('pending', false) === 'Not reviewed' -- the SAME
     // vocabulary the worklist row's status cell uses (DEC-989 wave 72), not
-    // the standalone CONTENT_STATUS_LABELS 'Pending'. w6-e: the value line
-    // is one span, '<STATUS> · Updated <date>' -- the existing honest
-    // 'Updated <date>' meta supplies the since clause.
-    expect(screen.getByText(`Not reviewed · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    // the standalone CONTENT_STATUS_LABELS 'Pending'. w6-e/w8-g: the value
+    // line is one span, '<STATUS> · Updated <relative age>' -- DEC-874
+    // wave-8: the frame draws the SAME relative-day register at both
+    // widths (docs/design/Chautauqua Content.dc.html :124 desktop == :381
+    // phone), so this desktop assertion reads through formatRelativeDays
+    // like the 390 companion, never an absolute date.
+    expect(
+      screen.getByText(`Not reviewed · Updated ${formatRelativeDays(1700000300000, Date.now())}`),
+    ).toBeInTheDocument();
     expect(screen.getByText('Deliverables')).toBeInTheDocument();
   });
 
@@ -724,7 +729,12 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    const value = await screen.findByText(`Re-uploaded · Updated ${formatDate(1700000300000)}`);
+    // w8-g (DEC-874): a re-uploaded row always addressed a prior change
+    // request, so it carries the cause clause too, not the neutral
+    // 'Updated' clause -- see DeliverableDetail.tsx's statusNeedsCauseClause.
+    const value = await screen.findByText(
+      `Re-uploaded · you asked for changes ${formatRelativeDays(1700000300000, Date.now())}`,
+    );
     expect(value).toHaveClass('chq-flag');
     expect(value).not.toHaveClass('chq-content-status-muted');
     expect(container.querySelector('.chq-content-status-band')).not.toBeNull();
@@ -791,7 +801,9 @@ describe('DeliverableDetail render smoke', () => {
     );
 
     await screen.findByText('slides-v2.pdf');
-    expect(screen.getByText(`Approved · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`Approved · Updated ${formatRelativeDays(1700000300000, Date.now())}`),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
 
     const input = screen.getByLabelText('Replace presentation') as HTMLInputElement;
@@ -799,7 +811,9 @@ describe('DeliverableDetail render smoke', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText(`Re-uploaded · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+      expect(
+        screen.getByText(`Re-uploaded · you asked for changes ${formatRelativeDays(1700000300000, Date.now())}`),
+      ).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
   });
@@ -837,11 +851,15 @@ describe('DeliverableDetail render smoke', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => {
-      expect(screen.getByText(`Approved · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+      expect(
+        screen.getByText(`Approved · Updated ${formatRelativeDays(1700000300000, Date.now())}`),
+      ).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      expect(screen.getByText(`Not reviewed · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+      expect(
+        screen.getByText(`Not reviewed · Updated ${formatRelativeDays(1700000300000, Date.now())}`),
+      ).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Status update failed: boom');

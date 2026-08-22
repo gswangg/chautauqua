@@ -54,36 +54,40 @@ does not:
 | :386/:387 | `Slides · 3 versions` / `Recording · 1 version` | Deliverable chip strip, `role="tab"`, shape `/ · \d+ versions?$/`, one entry per kind. Matches. |
 | :389 | scoping caption | One `.chq-content-chip-caption` element. Matches. |
 
-### DIVERGES — :381 status-line copy
+### CLOSED-with-receipt — :381 status-line copy (DEC-874 wave-8, task w8-g)
 
-- **Frame** (`docs/design/Chautauqua Content.dc.html:381`): `Re-uploaded ·
-  you asked for changes 8 days ago` — names the re-upload, then explains
-  *why* the session is back for review (an organizer-authored "you asked
-  for changes" framing) with an age in days.
-- **Product** (`DeliverableDetail.tsx`'s `.chq-content-status-band-copy`,
-  composed from `worklist.ts`'s `worklistStatusLabel` +
-  `` ` · Updated ${formatDate(...)}` ``): renders `Re-uploaded · Updated
-  <date>` — same underlying fact (a re-upload happened, and when the status
-  last changed), different vocabulary: a plain "Updated" timestamp instead
-  of the frame's "you asked for changes N days ago" narrative clause, and a
-  formatted date instead of a relative day count.
-- **Why this wasn't fixed here**: this lane is MEASUREMENT ONLY — "record
-  findings, change no product file" is explicit in the brief, and
-  `DeliverableDetail.tsx` is a product file outside this lane's OWNS list
-  (new test files + this doc only). The new render test
-  (`DeliverableDetail.frame390.render.test.tsx`) asserts the REAL rendered
-  shape (`/^Re-uploaded · Updated /`), not the frame's literal, so it is
-  green against the current tree and will fail loudly the next time either
-  side of this drifts further apart.
-- **Suggested resolution shape for whichever lane picks this up**: either
-  (a) compose the band's value line from a relative-days clause sourced
-  from `headerDetail.updatedAt` (the same field `formatDate` already reads)
-  instead of the absolute date, matching the frame's "N days ago" register,
-  or (b) treat this as a deliberate vocabulary divergence (absolute date
-  reads more honestly across long gaps than a rolling day count that ages
-  poorly) and land it in `docs/design/DEVIATIONS.md` instead. This audit
-  takes no position on which — that's a design decision, not a worker's to
-  make (per this campaign's own narrowest-interpretation instruction).
+- **Frame** (`docs/design/Chautauqua Content.dc.html:124` desktop status
+  band and `:381` the 390 drill — the SAME sentence at both widths, so this
+  was always a desktop-frame-demanded change, not a phone-only one):
+  `Re-uploaded · you asked for changes 8 days ago` — names the re-upload,
+  then explains *why* the session is back for review (an organizer-authored
+  "you asked for changes" framing) with an age in days.
+- **Ruling**: `DeliverableDetail.tsx`'s `.chq-content-status-band-copy` now
+  composes the value line as `<statusLabel> · you asked for changes <age>`
+  when the row's status "needs you" for a change-request reason — either
+  the pill itself reads `changes_requested`, or the pill is back to
+  `pending` but the header's own `reuploaded` flag is true (the speaker
+  already addressed a prior change request; `worklistStatusEmphasisClass`
+  draws this identical "Changes requested"/"Re-uploaded" boundary
+  elsewhere) — and `<statusLabel> · Updated <age>` otherwise (`Approved`,
+  plain `Not reviewed`). `<age>` is `formatRelativeDays(headerDetail.
+  updatedAt, Date.now())` (`app/src/lib/dates.ts`) at BOTH widths — the ONE
+  relative-time reader already in the SPA, not a new second copy of the
+  same vocabulary (DEC-613). A literal `pill === 'changes_requested'`
+  condition alone would have left this very frame's own worked example (a
+  `Re-uploaded` row) unfixed, since a re-uploaded row's pill has already
+  moved back to `pending` by the time the speaker's new version lands.
+- **Receipt**: `DeliverableDetail.frame390.render.test.tsx`'s `:380/:381`
+  block now asserts the exact composed sentence (`Re-uploaded · you asked
+  for changes <N> days ago`, with the fixture's `updatedAt` pinned 8 real
+  days before render time to match the frame's own worked example
+  byte-for-byte in substance), plus two new sibling cases: the
+  `changes_requested` pill (same cause clause) and the plain `pending`/
+  `Not reviewed` case (neutral "Updated" clause, no cause). The desktop
+  companion (`DeliverableDetail.render.test.tsx`) converts every
+  `formatDate(...)`-keyed status-band assertion to `formatRelativeDays(...)`
+  and updates the reuploaded-flag case to expect the cause clause, so
+  desktop and phone read the identical relative-day, cause-aware sentence.
 
 ## Citation integrity
 
