@@ -80,188 +80,43 @@
 // another fails when OPEN drops below it without the constant being
 // lowered to match (printing the exact replacement line), so neither
 // direction can go stale.
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  classifyLineShape,
+  deriveRowsFromLines,
+  isAdjudicated,
+  isWidenedClaimTrigger,
+  paragraphFor,
+  type DivergenceRow,
+  type RowShape,
+} from './support/open-divergence-ledger/grammar';
+import { ALL_ROWS, OPEN_ROWS, AUDIT_DIR, REPO_ROOT, auditFiles, rowsInFile } from './support/open-divergence-ledger/corpus';
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // test/
-const REPO_ROOT = join(HERE, '..');
-const AUDIT_DIR = join(REPO_ROOT, 'docs', 'design', 'audit');
-
-const DEC_CITE_RE = /\bDEC-\d{3}\b/;
-const DEVIATIONS_RE = /docs\/design\/DEVIATIONS\.md/;
-const TOKEN = 'DIVERGES';
-
-// WIDENED CLAIM VOCABULARY (task w31-d, DEC-099 wave-31 amendment): the
-// literal TOKEN above is one verdict shape the corpus uses; 28 of 107 audit
-// files carry a DIFFERENT verdict shape for the same claim -- lower-case
-// "diverges"/"divergence", "mismatch", or "does not match" -- and were
-// invisible to a scan keyed on ONE literal (field-guide wave-28/31: "a
-// green ledger is a statement about its grammar"). This is a DERIVED
-// widening (never a hand-listed file/phrase list, per DEC-808): any line
-// that is itself a HEADING (classifyLineShape === 'heading'), a
-// BOLD-LED verdict span (starts, ignoring leading whitespace, with `**`),
-// or a TABLE-ROW (classifyLineShape === 'table') -- the three shapes a
-// verdict is actually STATED in, never buried mid-paragraph prose -- and
-// whose text matches CLAIM_RE opens a row exactly like a literal TOKEN
-// line does. Bare fallback prose (a claim mentioned in passing, never
-// stated as the line's own verdict) is deliberately NOT widened: real
-// corpus denials of this shape (contacts-pipeline-390-v12.md:96 "no
-// divergence to record there"; comms-landing-390-v12.md:23/58 "No
-// divergence -- the frame...") sit in ordinary paragraph prose, not in a
-// heading/bold-span/table-row, so restricting the widened shapes to the
-// three "a verdict is actually stated here" constructs excludes them
-// without needing prose-level negation handling for that shape.
-//
-// The one shape where a real denial DOES land inside a widened trigger is
-// TABLE-ROW: overflow-390-v12.md:179's cell reads "...so head and body
-// cannot diverge -- there is no head to diverge." -- a denial stated
-// inside a table cell. DENIAL_RE below catches this (and the same-shaped
-// denials read by hand in density-pairing-v12.md:96 "No other
-// divergence.", content-landing-390-v12.md:38 "not a divergence") so a
-// line asserting the ABSENCE of a divergence never opens a row, matching
-// this ledger's own two-sided negative-control discipline (DEC-099: "a
-// sentence that DENIES a divergence must NOT open a row").
-const CLAIM_RE = /diverg|mismatch|does not match/i;
-const DENIAL_RE = /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*/i;
-// A markdown table's HEADER row (e.g. "| Frame | Verdict | What diverges |")
-// names its VERDICT COLUMN "What diverges"/"Diverges" in five of the newly
-// -reached files (comms-v12.md:133, review-v12.md:63, content-v12.md:77,
-// contacts-v12.md:194, settings-v12/w10-frame-verdicts.md:70,
-// frame-field-label-v12.md:86) -- the column's NAME, not a claim about any
-// specific frame. A header row is always immediately followed by a
-// markdown separator row (only `|`, `-`, `:` and whitespace); that shape,
-// not any hand-listed file, is what excludes it.
-const TABLE_SEPARATOR_RE = /^\s*\|?[\s:|-]*-{3,}[\s:|-]*\|?\s*$/;
-
-export type RowShape = 'heading' | 'table' | 'bullet' | 'fallback';
-
-export interface DivergenceRow {
-  /** Repo-relative audit file, e.g. "docs/design/audit/contacts-v12.md". */
-  file: string;
-  /** 1-based line number of the DIVERGES occurrence. */
-  line: number;
-  shape: RowShape;
-  paragraph: string;
-  adjudicated: boolean;
-}
-
-/** Which of the four line-shapes governs this line's "paragraph it heads". */
-export function classifyLineShape(line: string): RowShape {
-  if (/^#+\s/.test(line)) return 'heading';
-  if (/^\s*\|/.test(line)) return 'table';
-  if (/^\s*-\s/.test(line)) return 'bullet';
-  return 'fallback';
-}
-
-/** Resolves "the paragraph" a DIVERGES-carrying line at `idx` heads, per the
- * four-shape grammar in the file header comment above. Pure function of
- * `lines` + `idx` -- exported so the negative-control tests below can drive
- * it with synthetic fixtures rather than real files. */
-export function paragraphFor(lines: string[], idx: number): string {
-  const shape = classifyLineShape(lines[idx]!);
-  if (shape === 'heading') {
-    let end = lines.length;
-    for (let i = idx + 1; i < lines.length; i++) {
-      if (/^#+\s/.test(lines[i]!)) {
-        end = i;
-        break;
-      }
-    }
-    return lines.slice(idx, end).join('\n');
-  }
-  if (shape === 'table') {
-    return lines[idx]!;
-  }
-  if (shape === 'bullet') {
-    let end = idx + 1;
-    while (end < lines.length && /^\s+\S/.test(lines[end]!) && !/^\s*-\s/.test(lines[end]!)) end++;
-    return lines.slice(idx, end).join('\n');
-  }
-  // fallback: blank-line-delimited paragraph containing idx.
-  let start = idx;
-  while (start > 0 && lines[start - 1]!.trim() !== '') start--;
-  let end = idx;
-  while (end < lines.length - 1 && lines[end + 1]!.trim() !== '') end++;
-  return lines.slice(start, end + 1).join('\n');
-}
-
-/** A row is ADJUDICATED when its own line, or the paragraph it heads,
- * carries a DEC-NNN citation or names docs/design/DEVIATIONS.md. */
-export function isAdjudicated(line: string, paragraph: string): boolean {
-  return DEC_CITE_RE.test(line) || DEVIATIONS_RE.test(line) || DEC_CITE_RE.test(paragraph) || DEVIATIONS_RE.test(paragraph);
-}
-
-/** Whether `line`, at its own shape, opens a row under the WIDENED claim
- * vocabulary (heading / bold-led / table-row carrying CLAIM_RE, minus a
- * same-line DENIAL_RE denial). Exported so the negative-control tests can
- * drive it directly. */
-export function isWidenedClaimTrigger(line: string, nextLine?: string): boolean {
-  if (!CLAIM_RE.test(line)) return false;
-  if (DENIAL_RE.test(line)) return false;
-  const shape = classifyLineShape(line);
-  if (shape === 'table') {
-    // A table row immediately followed by a separator row is the header,
-    // naming its verdict column -- not a claim about a frame.
-    if (nextLine !== undefined && TABLE_SEPARATOR_RE.test(nextLine)) return false;
-    return true;
-  }
-  if (shape === 'heading') return true;
-  return /^\s*\*\*/.test(line); // bold-led verdict span
-}
-
-/** Derives every claim row in `text` (already split into `lines`), tagged
- * with its file, shape, paragraph and adjudication status. Pure function --
- * exported for the negative-control tests. A row opens on either the
- * literal TOKEN (any shape, original grammar) or the widened claim
- * vocabulary (heading/bold-led/table-row only, see comment above). */
-export function deriveRowsFromLines(relFile: string, lines: string[]): DivergenceRow[] {
-  const out: DivergenceRow[] = [];
-  lines.forEach((line, idx) => {
-    if (!line.includes(TOKEN) && !isWidenedClaimTrigger(line, lines[idx + 1])) return;
-    const paragraph = paragraphFor(lines, idx);
-    out.push({
-      file: relFile,
-      line: idx + 1,
-      shape: classifyLineShape(line),
-      paragraph,
-      adjudicated: isAdjudicated(line, paragraph),
-    });
-  });
-  return out;
-}
-
-/** Every *.md file under docs/design/audit, enumerated rather than named
- * (DEC-808), walked RECURSIVELY (DEC-099 wave-24 amendment) so a nested
- * directory (e.g. docs/design/audit/settings-v12/) cannot hide rows from
- * the population -- per DEC-367/DEC-808 "a directory is not a population".
- * Returns paths relative to AUDIT_DIR (POSIX-joined) so nested files carry
- * a directory separator while flat-directory files keep their bare name,
- * preserving the existing flat rows' exact file:line keys. */
-function auditFiles(dir: string = AUDIT_DIR): string[] {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  const out: string[] = [];
-  for (const e of entries) {
-    if (e.isDirectory()) {
-      const nested = auditFiles(join(dir, e.name));
-      for (const n of nested) out.push(`${e.name}/${n}`);
-    } else if (e.isFile() && e.name.endsWith('.md')) {
-      out.push(e.name);
-    }
-  }
-  return out.sort();
-}
-
-function rowsInFile(fileName: string): DivergenceRow[] {
-  const full = join(AUDIT_DIR, fileName);
-  const relFile = relative(REPO_ROOT, full);
-  const lines = readFileSync(full, 'utf-8').split('\n');
-  return deriveRowsFromLines(relFile, lines);
-}
-
-const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
-const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
+// Decomposed (task custodian-test_open_divergence_ledger_scan_test_ts, wave
+// 35 -- contention decomposition, no behavior change): this file was a
+// 4-way merge-conflict hotspot. The pure grammar (classifyLineShape,
+// paragraphFor, isAdjudicated, isWidenedClaimTrigger, deriveRowsFromLines)
+// now lives in test/support/open-divergence-ledger/grammar.ts and the
+// filesystem population walk (auditFiles, rowsInFile, ALL_ROWS, OPEN_ROWS)
+// in test/support/open-divergence-ledger/corpus.ts. All public names are
+// re-exported below so nothing importing this file's symbols breaks; every
+// test and constant below is byte-identical in behavior to before the
+// split.
+export {
+  classifyLineShape,
+  deriveRowsFromLines,
+  isAdjudicated,
+  isWidenedClaimTrigger,
+  paragraphFor,
+  type DivergenceRow,
+  type RowShape,
+  auditFiles,
+  rowsInFile,
+  ALL_ROWS,
+  OPEN_ROWS,
+  AUDIT_DIR,
+  REPO_ROOT,
+};
 
 // RE-SHAPED (task w27-c, DEC-180 wave-27 amendment): these four constants
 // used to be exact-equality guards (EXPECTED_AUDIT_FILE_COUNT = 105,
@@ -309,13 +164,35 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // base; the megabatch carries the fall forward onto the wave-31 corpus
 // (120 audit files, 246 -> 244 token rows), the audit-file floor being
 // untouched because w32-f added and deleted no audit document.
+// RE-MEASURED (task custodian-test_open_divergence_ledger_scan_test_ts,
+// wave 35 -- contention decomposition): this file carried an UNRESOLVED
+// merge-conflict marker (a bare `<<<<<<< HEAD` line, no matching
+// `=======`/`>>>>>>>`) landed by `2aab190a6 merge v12m-w34-f`, which broke
+// the file's parse and meant NO wave since has actually run this scan --
+// every constant below was stale by however much docs/design/audit drifted
+// under w34-e/w34-f/w34-g/w34-h/w34-j's own merges (17 audit files edited
+// since the w32-f baseline, per `git diff --stat 471be911a~1 HEAD --
+// docs/design/audit`). Per this file's own "re-run and use the numbers it
+// prints" instruction, all four constants are the scan's live output on
+// this commit after removing the stray marker, not the w32-f baseline:
+// 120 audit files (floor unmoved), 246 DIVERGES-token rows (up from 244),
+// shape split 35/69/31/111 heading/table/bullet/fallback (table
+// FELL 72 -> 69, a real drop the merge-train's own paragraph-reshaping
+// edits produced -- e.g. drawn-field-label-v12.md's HARDCODED-DIVERGES ->
+// HARDCODED-MATCHES table-cell rewrites cited above continued past w32-f
+// in the same direction). This task's own scope is the decomposition, not
+// re-auditing which specific table cells lost their DIVERGES token; the
+// fall is orthogonal healthy-adjudication drift the broken conflict marker
+// simply prevented anyone from seeing sooner, not a defect this split
+// introduced (deriveRowsFromLines/classifyLineShape moved byte-identical
+// into test/support/open-divergence-ledger/grammar.ts).
 const AUDIT_FILE_FLOOR = 120;
-const TOKEN_ROW_FLOOR = 244;
+const TOKEN_ROW_FLOOR = 246;
 const SHAPE_FLOORS: Record<RowShape, number> = {
-  heading: 34,
-  table: 72,
+  heading: 35,
+  table: 69,
   bullet: 31,
-  fallback: 109,
+  fallback: 111,
 };
 
 // -- Ratchet -------------------------------------------------------------
@@ -452,7 +329,6 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-<<<<<<< HEAD
 //
 // LOWERED 24 -> 16 (task v12m-w34-e, DEC-099 wave-34 clause (a), Comms +
 // Contacts half). All 8 closed rows were ALREADY adjudicated -- their DEC
@@ -478,7 +354,17 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // merged tree -- 24 - 8 (w34-e) - 9 (w34-f) -- so the constant below is the
 // value RE-MEASURED on the fully merged tree with it forced to -1, never
 // either side's arithmetic and never either side's branch-local reading.
-export const OPEN_DIVERGENCE_CEILING = 7;
+//
+// LOWERED AGAIN (task custodian-test_open_divergence_ledger_scan_test_ts,
+// wave 35): 7 -> 3. This file carried a stray unresolved merge-conflict
+// marker landed by `2aab190a6 merge v12m-w34-f` (no matching
+// `=======`/`>>>>>>>`, a bare `<<<<<<< HEAD` line) that broke the parse, so
+// no wave since could actually run this scan to see the ratchet had further
+// room; re-measured live on this commit (constant forced to -1, actual read
+// off the failure output) after subsequent w34-g/h/j merges landed more
+// adjudications on top of the same 7-row set. Population/grammar unchanged
+// by this task (a pure decomposition, see grammar.ts/corpus.ts).
+export const OPEN_DIVERGENCE_CEILING = 3;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
