@@ -94,6 +94,14 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     role: "organizer",
     params: { id: SUBMISSION_ID },
   },
+  // DEC-144 (wave-28 amendment): SubmissionDetailPage.tsx's own `edit=1`
+  // drill (its editor/history disclosure is URL state, DEC-998) -- the same
+  // path-with-id row as above, plus the query param.
+  {
+    path: `/admin/submissions/${SUBMISSION_ID}?edit=1`,
+    role: "organizer",
+    params: { id: SUBMISSION_ID },
+  },
   { path: "/admin/speakers", role: "organizer" },
   // DEC-930: per-speaker detail page (app/src/pages/speakers/SpeakerDetailPage.tsx).
   {
@@ -169,6 +177,21 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/settings?section=portal", role: "organizer" },
   { path: "/admin/settings?section=your-data", role: "organizer" },
   { path: "/admin/settings?section=people", role: "organizer" },
+  // DEC-144 (wave-28 amendment): the `edit=1` drill of each Settings section
+  // that declares its own SECTION_KEY and reads it -- verified readers
+  // EventSettingsPanel.tsx / CallForPapersPanel.tsx / TracksRoomsPanel.tsx's
+  // tracksRooms/useTracksRoomsPanel.ts / PortalSettingsPanel.tsx /
+  // PeopleRolesPanel.tsx / YourDataPanel.tsx, one row per section, all
+  // source-scanned by routeManifest.test.ts's edit-screen sub-state parity
+  // check below. 'public-pages' declares no SECTION_KEY and reads no `edit`
+  // param at all -- B10's own DROP (that section has no edit view) -- so its
+  // absence here is the derivation working, not a gap.
+  { path: "/admin/settings?section=event&edit=1", role: "organizer" },
+  { path: "/admin/settings?section=cfp&edit=1", role: "organizer" },
+  { path: "/admin/settings?section=tracks-rooms&edit=1", role: "organizer" },
+  { path: "/admin/settings?section=portal&edit=1", role: "organizer" },
+  { path: "/admin/settings?section=your-data&edit=1", role: "organizer" },
+  { path: "/admin/settings?section=people&edit=1", role: "organizer" },
 
   // --- Organizer review tree (app/src/pages/Review.tsx, me.role !== 'reviewer') ---
   { path: "/admin/review", role: "organizer" },
