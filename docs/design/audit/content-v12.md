@@ -241,20 +241,27 @@ byte-format clause that no longer holds).
     (`Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)`),
     so an integral byte count like 412 MB renders bare, exactly as the
     frame draws it.
-  - Header duplicate download control: still open, unchanged from w17-c —
-    `.chq-content-files-header-row` still mounts its own "Download …
-    (.zip)" secondary beside the stat line as well as the footer dock's
-    copy, which the frame reserves for the dock alone. This clause is
-    real and this task does not fix it (out of scope: DEC-901/DEC-967
-    bind this task to the `:373` phone-order fix, not `FilesLibrary.tsx`).
+  - Header duplicate download control: **RESOLVED** (wave 27, task w27-c;
+    DEC-976, the pin moves with the fix) — `app/src/pages/content
+    /content.css`'s phone block now gives `.chq-content-files-download-all-
+    wrap` (the header's own "Download … (.zip)" wrap: button, cap message,
+    and scope message alike) the rule `{ align-items: stretch; display:
+    none; }`, and that same rule's own comment records the re-lining: the
+    identical `handleDownloadAll` capability is reachable at 390 via
+    `.chq-phone-dock`'s primary `chq-btn-primary` "Download all" button
+    (`FilesLibrary.tsx`'s terminal `.chq-phone-dock` block), which the
+    frame itself reserves the dock for. Nothing the user could do at
+    desktop is unreachable at 390 — only the affordance's position moves,
+    from the header to the dock. This clause is no longer real.
 
   Receipt for the vocabulary fixes:
   `app/src/pages/Content.frame-verdicts.render.test.tsx`'s `:338` block,
   updated this task to assert the current (correct) chip vocabulary
   instead of the stale "Recording"/full-"All types"-text pin it used to
-  carry (DEC-976: the pin moves with the fix). The row stays **DIVERGES**
-  only for the still-real header-duplicate-control clause; the two
-  vocabulary clauses that motivated the original citation are retired.
+  carry (DEC-976: the pin moves with the fix). The row is now
+  **RESOLVED** in full: the two vocabulary clauses that motivated the
+  original citation are retired, and the header-duplicate-control clause
+  is retired above.
 
 <!-- w25-h (DEC-976 wave-25) -->
 
