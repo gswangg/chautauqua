@@ -133,6 +133,24 @@ describe("DEC-123 plan criteria/scale immutability guard (task w14-m)", () => {
     expect(results.status).toBe(200);
   });
 
+  // DEC-929 wave-34 amendment (task w34-d): the criteria/scale freeze
+  // (DEC-123) is UNCHANGED by the DELETE guard's wave-34 narrowing -- a
+  // draft already holds scores against the criteria shape, so
+  // planHasEvaluations (any evaluation, including drafts) still 409s here.
+  // The refusal copy changed: it no longer names "delete the evaluations
+  // first", a door with no endpoint -- it names only exits that exist.
+  it("still 409s on a draft-only plan (planHasEvaluations true), and the message no longer names 'delete the evaluations first'", async () => {
+    hasEvaluations = true;
+    const res = await patchPlan({
+      criteria: [{ id: "c2", label: "Different", kind: "rating", weight: 1 }],
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("conflict");
+    expect(body.error.message).not.toMatch(/delete the evaluations first/i);
+    expect(body.error.message).toMatch(/start a new wave/i);
+  });
+
   it("replacing scale on an evaluation-bearing plan returns 409", async () => {
     hasEvaluations = true;
     const res = await patchPlan({ scale: { min: 0, max: 10 } });

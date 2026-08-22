@@ -34,6 +34,17 @@ import {
 
 export const reviewPlansCrudRoutes = new Hono<AppEnv>();
 
+// DEC-929 wave-34 amendment (c): the criteria/scale freeze refusal names
+// only exits that exist -- "delete the evaluations first" named a door with
+// no endpoint (the only delete(schema.evaluation) call sites are
+// deletePlan's own cascade and submission-delete). A draft already holds
+// scores against the criteria shape (DEC-123 unchanged, keyed on
+// planHasEvaluations), so the two real exits are: submit a review and start
+// a new wave (DEC-709), or delete this plan while it still holds only
+// drafts (DEC-929's own submitted-only DELETE guard below).
+const CRITERIA_FROZEN_MESSAGE =
+  "Criteria and scale cannot change once evaluations exist — start a new wave once a review has been submitted, or delete this plan while only drafts exist";
+
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
 void DEC_015; // append-only migrations: migrations/0010_round_criteria.sql
 void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task must preserve
@@ -125,7 +136,12 @@ reviewPlansCrudRoutes.get("/api/v1/plans/:id", requireOrganizer, async (c) => {
   // DEC-676: the plan editor names DEC-213's freeze reason/count per round
   // instead of re-deriving listRoundsWithEvaluations' rule client-side.
   const evaluationCountsByRound = await repo.countEvaluationsByRound(c.var.db, plan.id);
-  return c.json({ ...plan, evaluationCountsByRound });
+  // DEC-929 wave-34 amendment: the DELETE freeze below keys on a SUBMITTED
+  // evaluation, not merely-drafted (evaluationCountsByRound above counts
+  // drafts too) -- the Delete plan affordance names this same predicate so
+  // it never disagrees with the server guard.
+  const hasSubmittedEvaluation = (await repo.countSubmittedEvaluationsForPlan(c.var.db, plan.id)) > 0;
+  return c.json({ ...plan, evaluationCountsByRound, hasSubmittedEvaluation });
 });
 
 reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
@@ -202,16 +218,10 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
   // full-object PATCHes from the admin SPA keep working.
   if ((body.criteria !== undefined || body.scale !== undefined) && (await repo.planHasEvaluations(c.var.db, plan.id))) {
     if (body.criteria !== undefined && !deepEqual(criteria, plan.criteria)) {
-      throw new ApiError(
-        "conflict",
-        "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
-      );
+      throw new ApiError("conflict", CRITERIA_FROZEN_MESSAGE);
     }
     if (body.scale !== undefined && !deepEqual(scale, plan.scale)) {
-      throw new ApiError(
-        "conflict",
-        "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
-      );
+      throw new ApiError("conflict", CRITERIA_FROZEN_MESSAGE);
     }
   }
 
@@ -228,10 +238,7 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
       const before = criteriaForRound(plan.criteria, beforeOverridesJson, r);
       const after = roundCriteria === null ? afterCriteria : (roundCriteria?.[String(r)] ?? afterCriteria);
       if (!deepEqual(before, after)) {
-        throw new ApiError(
-          "conflict",
-          "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
-        );
+        throw new ApiError("conflict", CRITERIA_FROZEN_MESSAGE);
       }
     }
   }
@@ -279,12 +286,17 @@ reviewPlansCrudRoutes.get("/api/v1/plans/:id/delete-preview", requireOrganizer, 
 
 // DEC-929: DESIGN-RULINGS A9's delete freeze, enforced server-side -- a
 // bearer-token organizer is CSRF-exempt, so the SPA's disabled affordance
-// alone (app/src/pages/review/PlanEditor.tsx) is not a rule. Same predicate
-// as DEC-123's criteria freeze above (repo.planHasEvaluations), never a
-// second count query.
+// alone (app/src/pages/review/PlanEditor.tsx) is not a rule. Wave-34
+// amendment: this predicate is NOT the same one DEC-123's criteria freeze
+// above uses. Ruling A9 keys the freeze on a review having LANDED, i.e. a
+// SUBMITTED evaluation (repo.countSubmittedEvaluationsForPlan, DEC-624's
+// existing submitted-only predicate) -- never repo.planHasEvaluations,
+// which also counts drafts and would permanently brick a plan the moment a
+// reviewer pressed Save draft (deletePlan's own cascade already removes
+// those drafts, so there was never anything for a guard to protect there).
 reviewPlansCrudRoutes.delete("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  if (await repo.planHasEvaluations(c.var.db, plan.id)) {
+  if ((await repo.countSubmittedEvaluationsForPlan(c.var.db, plan.id)) > 0) {
     throw new ApiError(
       "conflict",
       "This plan has recorded evaluations and cannot be deleted -- start a new wave instead",

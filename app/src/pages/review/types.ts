@@ -75,6 +75,12 @@ export interface EvaluationPlan {
   // server-side criteria freeze in the editor; the SPA reads this rather
   // than re-deriving the freeze rule itself.
   evaluationCountsByRound?: Record<string, number>;
+  // DEC-929 wave-34 amendment: GET /api/v1/plans/:id only -- whether any
+  // evaluation on this plan has been SUBMITTED (not merely drafted). Ruling
+  // A9's delete freeze keys on this, never on evaluationCountsByRound above
+  // (which counts drafts too) -- a plan holding only drafts stays deletable
+  // server-side, so the Delete plan affordance must agree.
+  hasSubmittedEvaluation?: boolean;
 }
 
 // PlanDraft keeps the SPA-internal field names (openAt/closeAt/trackIds/
