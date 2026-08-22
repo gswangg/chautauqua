@@ -25,7 +25,7 @@ scribe: `w13-ra`'s claim that Content was closing a "44 of 53 phone frames
 never rendered" gap should be cross-checked before any ledger counts this
 frame among the still-zero set again.
 
-## Verdict: MATCHES, with one frame-silent addition and one recorded divergence
+## Verdict: MATCHES, with one frame-silent addition (row 7 fused, task w11-tb)
 
 **Back control (:340)** — MATCHES. `‹ Content` renders as a real `<button>`
 whose text ends `Content`.
@@ -44,14 +44,22 @@ to `All types` at every width (DEC-833 shape, already recorded by
 `aria-label`, never by the shrunk visible text, and never asserted at both
 registers in the same file. Every remaining chip matches `Label · N`.
 
-**Row template (:351-356)** — DIVERGES (narrow, cosmetic). The frame draws
-one fused line, `{{ f.session }} · {{ f.size }}`; the product renders
-Session and Size as two adjacent `<td>` cells of the same `<tr>` (this
-component is a `<table>` at every width, not the frame's stacked phone
-card list — the same table-vs-card divergence `Content.frame-verdicts
-.render.test.tsx` already records for the worklist frame at :198). Name,
+**Row template (:351-356)** — MATCHES (fused, task w11-tb, DEC-825). The
+frame draws one fused line, `{{ f.session }} · {{ f.size }}` (verbatim at
+:354); content.css's terminal `@media (max-width: 700px)` block now places
+the session `<td>` (nth-child(2)) and the size `<td>` (nth-child(4)) on the
+SAME grid row of the file card (`.chq-content-files-library .chq-content
+-table tr.chq-content-row`, `grid-row: 2` for both, one column each), with
+the size cell's `::before { content: '· ' }` carrying the frame's separator
+as punctuation, never a label source. This component remains a `<table>`
+at every width, not the frame's stacked phone card list (the same
+table-vs-card shape `Content.frame-verdicts.render.test.tsx` already
+records for the worklist frame at :198, unaffected by this row). Name,
 version marker (`v{n}`), uploader, and a `Download {filename}` link all
-render per row, matching the frame's remaining four row fields.
+render per row, matching the frame's remaining four row fields. Receipt:
+`app/src/pages/content/FilesLibrary.session-size-fuse.receipt.render.test.tsx`
+(CSS source-scan over the terminal block + a render receipt over the real
+`<FilesLibrary>` mount asserting session and size share one row).
 
 **Pinned dock (:359-361)** — MATCHES structurally: exactly two controls,
 DOM order `['Download all…', 'Search']`, scoped to `.chq-phone-dock`
@@ -73,6 +81,6 @@ divergence.
 | 4 | `All` (leading chip) | 344 | MATCHES (visible text; a\c\c-name pinned to "All types") |
 | 5 | `Slides · 22` (chip shape) | 345 | MATCHES |
 | 6 | `Video · 4` (chip shape) | 346 | MATCHES |
-| 7 | `{{ f.name }}` / `{{ f.ver }}` / `{{ f.session }} · {{ f.size }}` / `{{ f.who }}` / `Download` (row template) | 351-356 | DIVERGES (session·size split into two cells; name/version/who/Download all match) |
+| 7 | `{{ f.name }}` / `{{ f.ver }}` / `{{ f.session }} · {{ f.size }}` / `{{ f.who }}` / `Download` (row template) | 351-356 | MATCHES (session·size fused onto one grid row, task w11-tb, DEC-825) |
 | 8 | `Download all` | 360 | MATCHES + frame-silent `N (.zip)` suffix (DEC-901) |
 | 9 | `Search` | 361 | MATCHES |
