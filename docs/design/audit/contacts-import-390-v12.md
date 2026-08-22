@@ -21,7 +21,15 @@ Literal-by-literal:
    scope. Not re-filed as a new divergence here — same root cause, same
    owner, already on record.
 
-2. **File summary line (:491) — DIVERGES (shape, not data).** The frame
+2. **File summary line (:491) — DIVERGES (shape, not data).** Re-verified
+   this wave (DEC-903 wave-14m procedure): `grep -n
+   "chq-contacts-import-match-head" app/src/pages/contacts/*.tsx
+   app/src/pages/contacts/*.css` still shows no middot join and no
+   column-position clause on this line — the finding below is still
+   accurate and left OPEN, since the fix needs a `contacts-panels.css`
+   change outside this task's FILES-I-OWN list (this adjudication lane
+   owns only the four `docs/design/audit/*.md` files listed in its brief)
+   and no existing DEC-NNN ruling covers it. The frame
    draws ONE line, `speakers.csv · 214 rows · 2 of 5` — filename, row
    count, and column position joined by ` · `. The product's
    `.chq-contacts-import-match-head` (`ImportWizard.tsx:867-870`) renders

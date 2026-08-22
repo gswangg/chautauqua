@@ -81,11 +81,14 @@ below.
   `Add to event`, `Cancel`, `Save` — the two secondary actions (Email, Add
   to event) sit BEFORE Cancel/Save rather than after. All five controls are
   present with identical labels; only their order within the right-hand
-  group differs from the frame's literal sequence. Narrowest reasonable
-  read: this is a real, un-adjudicated divergence, not a missing control —
-  flagged here per the task's own instruction to name a design gap rather
-  than resolve it. STRICTLY MEASUREMENT ONLY forbids moving this byte from
-  this lane regardless.
+  group differs from the frame's literal sequence. Adjudicated on the same
+  axis as DEC-902's wave-14m wording disposition, applied here to order
+  rather than wording: membership matches the frame exactly (the floor is
+  met), and the tree's order carries more information than the frame's flat
+  left-to-right sequence — it groups the two content-producing actions
+  (Email, Add to event) together and ahead of the form-commit pair
+  (Cancel, Save), a functional grouping the frame's list doesn't express —
+  so disposition (b) applies: blessed, not open debt.
 
 ## Frame :808 "New contact"
 
