@@ -113,19 +113,24 @@ against the whole file, never `path:NNN`.
     (`grid-template-columns: 1fr 1fr; gap: 12px;` --
     `app/src/pages/settings/settings.css`), never `SettingsField`/
     `SettingsFieldPair` -- so neither label resolves against any
-    `SettingsField` call site. **unresolved** (`no-label-match`). See
-    Adjudications: this is a genuinely different, fluid (non-token) width
-    register, not a B10 field-width divergence.
+    `SettingsField` call site. WAVE 26: the ledger's MATCH SIDE now also
+    tries a plain-`<label>` pair-wrapper tier for exactly this shape (see
+    WAVE 26 section below); `.chq-settings-embed-field-pair` itself carries
+    a literal (non-token) `max-width: 620px;`, and both "Name" and
+    "Surface" occur, in order, as plain `<label>` leading text inside its
+    one occurrence in `EmbedsPanel.tsx`. **matches** (620 == 620,
+    EQUIVALENT-AT-THE-DRAWN-WIDTH -- DEC-896 wave-24 amendment already
+    adjudicates this exact pairing in `settings.css`'s own comment).
 
 ## Grade totals
 
-- **matches: 7** (rows 1, 2, 3, 4, 5, 6, 7)
+- **matches: 8** (rows 1, 2, 3, 4, 5, 6, 7, 11)
 - **diverges: 0**
-- **unresolved: 4** (rows 8, 9, 10, 11)
+- **unresolved: 3** (rows 8, 9, 10)
 
-`FIELD_WIDTH_DIVERGENCE_CEILING = 0`, `FIELD_WIDTH_UNRESOLVED_CEILING = 4`,
-both re-measured on this branch (DEC-613 wave-24 amendment) by forcing to
-`-1` and reading the printed row list, both two-sided per
+`FIELD_WIDTH_DIVERGENCE_CEILING = 0`, `FIELD_WIDTH_UNRESOLVED_CEILING = 3`,
+both re-measured on this branch (wave-26 amendment) by forcing to `-1` and
+reading the printed row list, both two-sided per
 `test/campaign-ratchet-two-sided.scan.test.ts`.
 
 ## Adjudications
@@ -155,15 +160,17 @@ both re-measured on this branch (DEC-613 wave-24 amendment) by forcing to
   5's pair resolves the same arithmetic equivalence as row 1's CFP pair,
   200 + 18 + 200 = 418 ≈ 420 (**matches**, EQUIVALENT-AT-THE-DRAWN-WIDTH).
 
-- **Row 11 (saved-embed 2x2 grid) resolves to a DIFFERENT, non-token
-  register, not a B10 field-width divergence.** `EmbedsPanel.tsx` never
+- **Row 11 (saved-embed 2x2 grid) is EQUIVALENT-AT-THE-DRAWN-WIDTH, not a
+  B10 field-width divergence (wave-26 amendment).** `EmbedsPanel.tsx` never
   uses the shared `SettingsField`/`SettingsFieldPair` components this
-  ledger's MATCH SIDE is built from -- its own
+  ledger's SettingsField-based MATCH SIDE tier is built from -- but its own
   `.chq-settings-embed-field-pair` rule
-  (`app/src/pages/settings/settings.css`) is a fluid `1fr 1fr` grid with no
-  fixed px width at all, so there is no declared value to compare the
-  drawn 620px against. This is an honest absence of a comparable fact, not
-  a measured gap.
+  (`app/src/pages/settings/settings.css`) DOES carry a literal `max-width:
+  620px;` (a fluid `1fr 1fr` grid capped at a fixed px ceiling, not an
+  unbounded one). The wave-26 plain-label pair-wrapper tier resolves "Name"
+  and "Surface" as that class's own plain-`<label>` leading text and reads
+  its literal max-width directly (never through a `--chq-field-w-*`
+  token). 620 == 620. See the WAVE 26 section below.
 
 - **Rows 8, 9, 10 (tracks/rooms/resources list rows) are all the same
   shape: a repeated `<sc-for>` row's own name field, never adjacent to a
@@ -178,3 +185,50 @@ both re-measured on this branch (DEC-613 wave-24 amendment) by forcing to
   Filed as instrument-completeness UNRESOLVED, consistent with
   `test/desktop-control-floor.scan.test.ts`'s own precedent for the
   identical dynamic-list-row shape.
+
+## WAVE 26 (DEC-808 amendment, task w26-i): draining the 4 ungraded rows
+
+**Before:** `FIELD_WIDTH_UNRESOLVED_CEILING = 4` (rows 8, 9, 10, 11),
+`FIELD_WIDTH_DIVERGENCE_CEILING = 0`, forced to `-1` and re-measured on
+this branch to confirm.
+
+**MATCH SIDE widened:** a new PLAIN-LABEL PAIR WRAPPER tier
+(`test/desktop-field-width.scan.test.ts`'s `extractLiteralMaxWidthClasses`
+/ `resolvePlainLabelPair`) resolves a pair row whose SettingsField-pair
+tier fails by instead reading a class's own LITERAL (non
+`--chq-field-w-*`-token) `max-width:<N>px` in `settings.css`, when both
+member labels occur, in order, as a plain `<label>`'s own leading text
+inside exactly one occurrence of that class -- honesty-preserving: two
+occurrences of the class, or two different qualifying classes, both leave
+the row UNRESOLVED rather than picking a winner (mirrors the
+SettingsField-pair tier's own "either member fails -> UNRESOLVED, never a
+guessed partial sum" discipline).
+
+**Rows 8, 9, 10 (tracks/rooms/resources list-row names) were
+investigated and confirmed to have NO available widening.** Each is the
+repeated-`<sc-for>`-row shape the file's own LABEL SIDE (item 2, untouched
+this wave) already documents as honestly unresolvable: the frame draws no
+adjacent label span for these rows, so `forwardLabels` correctly finds the
+row's own nearest onward span (a "Remove" action link, not a field label)
+-- widening the MATCH side cannot repair a LABEL side miss. Traced each
+row's code counterpart to confirm no repair was available under any
+reasonable widening: `TracksRoomsPanel.tsx`'s existing-track/room name
+inputs live in `app/src/pages/settings/tracksRooms/TrackEditRow.tsx` /
+`RoomEditRow.tsx` (a subdirectory `settingsSourceFiles()` does not walk),
+each carrying a composed `aria-label` (`` `Track name for ${track.name}` ``
+/ `` `Room name for ${room.name}` ``) but a FLUID `width: 100%` (not a
+`--chq-field-w-*` token) -- even a composed-label match would still resolve
+to a non-numeric, incomparable width, same as this file's own existing
+`full`-kind handling. `PortalSettingsPanel.tsx`'s resource-name row
+delegates to `ResourcesPanel.tsx`'s `.chq-settings-portal-resource-name`,
+which carries no label at all (no `aria-label`, no adjacent `<label>`) and
+no width declaration of any kind in `settings.css`. Both are documented
+here so a later wave does not re-attempt the same investigation from zero.
+
+**After:** re-measured by forcing both ceilings to `-1` again on this
+branch: **0 divergences, 3 unresolved** (rows 8, 9, 10; row 11 now
+resolves **matches**). `FIELD_WIDTH_DIVERGENCE_CEILING` stays `0` (no row
+newly resolved to a divergence -- row 11 resolves to an exact 620==620
+match, consistent with DEC-896 wave-24's own already-adjudicated
+equivalence). `FIELD_WIDTH_UNRESOLVED_CEILING` lowered `4` -> `3`. No CSS
+byte touched; desktop stays frozen.
