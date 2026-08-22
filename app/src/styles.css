@@ -1948,17 +1948,31 @@ select,
 /* tap-floor-exempt: the 18px box is the control's VISUAL, unchanged from
    the browser-drawn size it replaces -- enlarging it to 44px is a
    system-wide redesign of every checkbox/radio in the product (field-modal
-   option lists, settings toggles, review criteria). The phone tap floor is
-   met by the LABEL wrapping the box, not by inflating the box: every
-   option-list/toggle site already renders its .chq-check inside its own
-   `<label>` (checked, not hand-listed, by check-hit-receipt.scan.test.ts's
-   `td`/`th`/`label`/ARIA-`role="cell"|"gridcell"|"columnheader"`
-   population walk of every .tsx file under app/src), and the population that had no
-   such label -- a bare table-cell checkbox sitting directly in a
-   `<td>`/`<th>` or ARIA-role cell, with no other reachable label -- is
-   wrapped in a `.chq-check-hit` label that carries the floor instead. This
-   is true, and checked: check-hit-receipt.scan.test.ts (DEC-393 wave-124
-   amendment; DEC-991 wave-w11-te widened the walk to ARIA tables). */
+   option lists, settings toggles, review criteria). Being wrapped in a
+   `<label>` is not on its own enough to reach the floor (DEC-393 wave-26
+   amendment: a label with no text and no other child is exactly the same
+   18x18 hit box as a bare, unwrapped input) -- what actually carries the
+   floor for a label-wrapped `.chq-check` site is EITHER the wrapping
+   label's own class resolving to a >=44px phone `min-height` rule (e.g.
+   `.chq-check-label`, speakers.css) OR the label rendering real
+   non-whitespace text/element content besides the input (every option-
+   list/toggle site in the tree -- "Required", "Include reviewer
+   feedback", a track/duplicate-contact name, ...), which itself supplies
+   the floor's width and is excluded from this scan's population as a
+   result. A label-wrapped site meeting NEITHER condition (bare box, no
+   floored class) is checked, not assumed, by
+   check-hit-receipt.scan.test.ts's `td`/`th`/`label`/ARIA-
+   `role="cell"|"gridcell"|"columnheader"` population walk of every .tsx
+   file under app/src (DEC-393 wave-26 amendment widened this walk after
+   finding SubmissionDetailPage.tsx's `.chq-visible-toggle` false), and the
+   population that had no reachable floor at all -- a bare table-cell
+   checkbox sitting directly in a `<td>`/`<th>` or ARIA-role cell, or a
+   bare-box label like `.chq-visible-toggle` -- is either wrapped in a
+   `.chq-check-hit` label or given its own phone floor rule, both carrying
+   the floor directly. This is true, and checked: check-hit-receipt.scan
+   .test.ts (DEC-393 wave-124 amendment; DEC-991 wave-w11-te widened the
+   walk to ARIA tables; DEC-393 wave-26 amendment widened the label
+   exemption itself). */
 input[type='checkbox'],
 input[type='radio'],
 .chq-check {
@@ -2945,5 +2959,22 @@ select:focus-visible,
      of being clipped. */
   .chq-chipstrip :focus-visible {
     outline-offset: -2px;
+  }
+
+  /* DEC-393 wave-26 amendment (check-hit-receipt.scan.test.ts widened
+     population): `.chq-visible-toggle` (SubmissionDetailPage.tsx's
+     participant Confirmed-visibility toggle) wraps ONLY the bare
+     `.chq-check` input -- no text sibling, no other element child -- so,
+     per this decision's wave-26 ruling, being inside a `<label>` does not
+     reach the floor on its own. Same idiom as `.chq-check-hit` above
+     (:2839): the 18px box (Chautauqua Speakers.dc.html:642's checkbox
+     geometry) must not shift, so the min-width/min-height grow OUTWARD
+     into physical padding absorbed by an equal, opposite-sign margin
+     rather than shrinking the visible control. */
+  .chq-visible-toggle {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 13px;
+    margin: -13px;
   }
 }
