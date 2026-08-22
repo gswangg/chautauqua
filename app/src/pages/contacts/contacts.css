@@ -1903,4 +1903,27 @@
   .chq-contacts-page:has(> .chq-contacts-title-row) {
     gap: 11px;
   }
+
+  /* Wave v12m-w16-ui-r5-a (src/decisions-data/DEC-383.md, wave-16-r5
+     amendment): the house ring (app/src/styles.css `:focus-visible {
+     outline: 2px solid var(--chq-brand); outline-offset: 2px; }`) is a
+     standing OUTWARD offset, but this file's two head strips --
+     `.chq-contacts-filter-chipstrip` (docs/design/Chautauqua
+     Contacts.dc.html:187 `display:flex; gap:7px; overflow-x:auto;
+     -webkit-overflow-scrolling:touch`) and `.chq-contacts-segment-pills`
+     (docs/design/Chautauqua Contacts.dc.html:194 `display:flex; gap:7px;
+     overflow-x:auto; -webkit-overflow-scrolling:touch`) -- are each
+     `overflow-x: auto` scroll containers whose computed overflow-y is
+     forced to `auto`, clipping the outward ring on every 44px-tall
+     focusable child (top/bottom always, and the first child's leading
+     edge at scrollLeft 0). Never `outline: none` (DEC-409: no rule may
+     remove an outline) and never a new ring colour/width -- only the
+     offset flips negative so the house ring draws inside the 44px box
+     instead of being clipped, same precedent as
+     app/src/pages/agenda/agenda.css `.chq-day-grid-cell-btn:focus-visible
+     { outline-offset: -2px; }`. */
+  .chq-contacts-filter-chipstrip :focus-visible,
+  .chq-contacts-segment-pills :focus-visible {
+    outline-offset: -2px;
+  }
 }
