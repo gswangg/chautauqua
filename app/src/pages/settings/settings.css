@@ -2832,7 +2832,7 @@
      conflict. */
   /* v12m-w11-tc/DEC-393/DEC-382 live tap-floor sweep: PortalSettingsPanel's
      "Show resources" toggle (SettingsEditForm.tsx `SettingsField`,
-     PortalSettingsPanel.tsx:380-388) renders `input.chq-check` inside a
+     PortalSettingsPanel.tsx) renders `input.chq-check` inside a
      bare, unstyled `<label htmlFor>` -- a real label (native click-through
      works), but unlike `.chq-check-hit` (styles.css:2818, the table-cell
      checkbox wrapper) or `.chq-review-checkbox-label` (review.css:2629,
