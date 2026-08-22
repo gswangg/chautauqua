@@ -6,7 +6,10 @@ against `app/src/pages/contacts/ImportWizard.tsx` +
 `app/src/pages/contacts/contacts-panels.css`, pinned by
 `app/src/pages/contacts/ImportWizard.frame390.render.test.tsx`.
 
-## Verdict: MATCHES, with one filed shape divergence (below)
+## Verdict: MATCHES
+
+The one filed shape divergence (below, row 2) is BUILT and retired as of
+task w16-qe (DEC-976); its heading marker is kept per DEC-099.
 
 Literal-by-literal:
 
@@ -21,38 +24,34 @@ Literal-by-literal:
    scope. Not re-filed as a new divergence here — same root cause, same
    owner, already on record.
 
-2. **File summary line (:491) — DIVERGES (shape, not data).** Re-verified
-   this wave (DEC-903 wave-14m procedure): `grep -n
-   "chq-contacts-import-match-head" app/src/pages/contacts/*.tsx
-   app/src/pages/contacts/*.css` still shows no middot join and no
-   column-position clause on this line — the finding below is still
-   accurate and left OPEN, since the fix needs a `contacts-panels.css`
-   change outside this task's FILES-I-OWN list (this adjudication lane
-   owns only the four `docs/design/audit/*.md` files listed in its brief)
-   and no existing DEC-NNN ruling covers it. The frame
-   draws ONE line, `speakers.csv · 214 rows · 2 of 5` — filename, row
-   count, and column position joined by ` · `. The product's
-   `.chq-contacts-import-match-head` (`ImportWizard.tsx:867-870`) renders
-   filename and row count as a `justify-content: space-between` pair with
-   no middot join, and the column-position clause (`Column i of n`) lives
-   entirely separately, in the phone-pager eyebrow further down
-   (`ImportWizard.tsx:1005-1007`). Filename and the row/column counts
-   themselves are DATA (correctly sourced, not hardcoded); what diverges
-   is the SHAPE — no `·` separator, and the column-position clause is
-   simply absent from this line.
+2. **File summary line (:491) — DIVERGES (shape, not data), now BUILT and
+   RETIRED (DEC-976, task w16-qe).** Task w16-qe (FILES-I-OWN:
+   `ImportWizard.tsx`, `contacts-panels.css`,
+   `ImportWizard.frame390.render.test.tsx`, this audit row) built the
+   frame's joined shape PHONE-ONLY, per DEC-385 single direction. The
+   frame draws ONE line, `speakers.csv · 214 rows · 2 of 5` — filename,
+   row count, and column position joined by ` · `.
+   `.chq-contacts-import-match-head` (`ImportWizard.tsx:940-951`) now
+   renders a third `.chq-contacts-import-match-position` span carrying the
+   `{phoneColumnIndex + 1} of {header.length}` clause, always present in
+   the DOM but `display: none` by default; `contacts-panels.css`'s
+   terminal `max-width:700px` layer (~:1543) shows that span and joins all
+   three with a CSS `::before { content: ' \00b7 ' }` separator — never a
+   text node in the markup, so the desktop head stays exactly the same two
+   spans with the same `justify-content: space-between` rule, byte-
+   identical outside the phone layer. Pinned by
+   `ImportWizard.frame390.render.test.tsx`'s "the file summary line" test
+   (asserts the three spans render, and the phone position clause's text)
+   and its companion "desktop stays byte-identical" / "the phone layer
+   joins the three spans" CSS-text tests (jsdom evaluates no `@media` or
+   `::before`, so the join and the desktop freeze are graded by reading
+   `contacts-panels.css`'s text, per the same technique
+   `ImportWizard.phoneColumns.render.test.tsx` established).
 
-   Not fixed in this task: the middot-join and the phone-only injection of
-   an `i of n` clause into `.chq-contacts-import-match-head` both require a
-   CSS change (the join is spacing/pseudo-content, not React state), and
-   `contacts-panels.css` is outside this task's FILES-I-OWN list — editing
-   it risks the shared match-head rule another lane (the desktop
-   `Contacts-import.desktop-frame-verdicts` pin, if it exists) depends on.
-   Per the wave-30 fix rule, this is filed rather than patched.
-   Pinned (as the current, un-fixed shape) by
-   `ImportWizard.frame390.render.test.tsx`'s "the file summary line"
-   test — falsifiable: it asserts both what the node DOES say (filename,
-   "N rows") and what it does NOT say (no `·`, no `N of N`), so a future
-   fix flips this test rather than silently going stale.
+   This row's heading marker (above) is retained per DEC-099 (adjudicate
+   by citation, never delete the marker, never re-verdict a row to make it
+   vanish): the shape gap this row named is now closed in the tree, and
+   this paragraph is that closing citation.
 
 3. **`Column i of n` eyebrow + column header name (ImportWizard.tsx:1006,
    :1008).** MATCHES the frame's `Column 2 of 5` / `email_address` shape
@@ -96,11 +95,11 @@ Literal-by-literal:
 
 ## Summary
 
-8/10 of the frame's drawn phone literals render exactly (back control,
-title text, column eyebrow, column name, samples line, target list incl.
+10/10 of the frame's drawn phone literals now render exactly (back control,
+title text, file summary line's `·`-joined shape with the column-position
+clause, column eyebrow, column name, samples line, target list incl.
 "Skip this column", dock labels, 44px dock floor). One (the match-summary
 slot) is a pre-existing, already-RESOLVED adjudicated substitution, not a
-fresh gap. One (the file summary line's `·`-joined shape with the
-column-position clause folded in) is a genuine, newly-filed shape
-divergence that needs a `contacts-panels.css` change outside this task's
-reach — left as a DIVERGES row rather than patched.
+fresh gap. The file summary line's shape gap (row 2) was BUILT this wave
+(task w16-qe, DEC-976) — its row's heading marker stays in place per
+DEC-099, closed by the paragraph beneath it rather than by deletion.
