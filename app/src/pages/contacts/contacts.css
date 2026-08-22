@@ -1569,12 +1569,16 @@
      outward cancel into the chip's 12px leading padding is unchanged --
      no glyph moves. `min-width: 44px` added: the width half of the 44px
      floor (docs/design/DESIGN-RULINGS.md:189) was unmet on a
-     one-character custom-key label. IN-FLIGHT NOTE for the merge agent:
-     if a second `.chq-contacts-filter-rule-chip-edit` rule lands here
-     from branch v12m-w16-ui-r3-c with `max-width: 46vw; min-width: 0`,
-     the correct merged value is `min-width: 44px`, not that rule's `0`
-     -- `max-width` (not `min-width`) is what forces its ellipsis, and
-     46vw at 390px is 179px, well above the 44px floor. */
+     one-character custom-key label. MERGE RECEIPT (task w5-cf): a second
+     `.chq-contacts-filter-rule-chip-edit` rule landed below (from branch
+     v12m-w16-ui-r3-c, now at the `max-width: 46vw` block) carrying
+     `min-width: 0`, which reopened the floor this rule declares -- same
+     specificity, later in the cascade, so `0` won. That block's
+     `min-width: 0` declaration has been removed; this rule is the sole
+     owner of `min-width: 44px` for `.chq-contacts-filter-rule-chip-edit`
+     in this terminal phone block. `max-width` (not `min-width`) is what
+     forces that rule's ellipsis, and 46vw at 390px is 179px, well above
+     this 44px floor. */
   .chq-contacts-filter-rule-chip-edit {
     min-height: 44px;
     min-width: 44px;
@@ -1827,7 +1831,13 @@
      `.chq-contacts-filter-rule-chip-edit` rule above (min-height:44px, the
      cancelled 4px inline padding pair, the 13px/600 type register) --
      DEC-385 single-direction, that rule is left untouched and this one
-     supersedes only the sizing/overflow behaviour on the cascade. The full
+     supersedes only the sizing/overflow behaviour on the cascade (task
+     w5-cf correction: this block originally also carried `min-width: 0`,
+     which was NOT sizing/overflow-only -- same specificity, later in the
+     cascade, it silently re-opened the earlier rule's `min-width: 44px`
+     floor. Removed; the earlier rule is this control's sole `min-width`
+     owner and this block owns `max-width`/`overflow`/`text-overflow`/
+     `white-space` only). The full
      text is not lost: `.chq-contacts-filter-rule-chip-edit`'s own
      `aria-label={`Edit ${ruleChipLabel(rule)}`}` (FilterRulesPanel.tsx)
      already carries the complete, untruncated rule text -- capability
@@ -1839,13 +1849,13 @@
      center`) so its single text node is vertically centred inside the
      44px-tall box; switching to `display: block` would drop that flex
      formatting context and the text would sit at the block's top instead
-     of centred, breaking the frame's `align-items:center` line. An
-     inline/flex box with `min-width:0` and `overflow:hidden` ellipsises
-     its own text content exactly like a block one, so the flex display is
-     kept and only the overflow/size properties are added. */
+     of centred, breaking the frame's `align-items:center` line. A flex
+     box with the earlier rule's `min-width: 44px` and this rule's
+     `overflow:hidden` ellipsises its own text content exactly like a
+     block one, so the flex display is kept and only the overflow/size
+     properties are added here. */
   .chq-contacts-filter-rule-chip-edit {
     max-width: 46vw;
-    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

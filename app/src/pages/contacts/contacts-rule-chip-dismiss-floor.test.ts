@@ -169,6 +169,75 @@ describe("contacts.css: rule-chip dismiss control's appended width-floor fix", (
   });
 });
 
+describe("contacts.css: rule-chip edit control's 44px WIDTH floor survives the full cascade (task w5-cf)", () => {
+  // Regression pin for DEC-393: an earlier `.chq-contacts-filter-rule-chip-edit`
+  // rule declares `min-width: 44px` (the width half of the 44px floor), and a
+  // LATER same-specificity rule in the same terminal phone block once
+  // re-declared `min-width: 0`, silently winning the cascade and reopening the
+  // floor. Asserting on ONE declaration in ONE block is exactly the shape of
+  // check that let that regression through -- this walks EVERY top-level
+  // `.chq-contacts-filter-rule-chip-edit { ... }` rule inside the terminal
+  // phone block, in source order, and asserts on the CASCADE-FINAL resolved
+  // `min-width`, not on any single rule in isolation.
+  const block = PHONE_BLOCKS[0]!;
+  const blockText = CSS_STRIPPED.slice(block.openIdx, block.closeIdx + 1);
+
+  function findEditRules(text: string): Array<{ start: number; end: number; body: string }> {
+    const selectorRe = /\.chq-contacts-filter-rule-chip-edit\s*\{/g;
+    const out: Array<{ start: number; end: number; body: string }> = [];
+    let m: RegExpExecArray | null;
+    while ((m = selectorRe.exec(text))) {
+      const openBraceIdx = m.index + m[0].length - 1;
+      let depth = 1;
+      let i = openBraceIdx + 1;
+      while (i < text.length && depth > 0) {
+        if (text[i] === "{") depth += 1;
+        else if (text[i] === "}") depth -= 1;
+        i += 1;
+      }
+      out.push({ start: m.index, end: i, body: text.slice(openBraceIdx + 1, i - 1) });
+    }
+    return out;
+  }
+
+  const editRules = findEditRules(blockText);
+
+  it("declares the selector at least twice inside the phone block (the floor rule and the sizing/overflow rule)", () => {
+    expect(editRules.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("exactly one rule declares min-width, and it is 44px -- no later same-specificity rule re-opens it below the floor", () => {
+    const minWidthDecls = editRules
+      .map((r) => /min-width:\s*([^;]+);/.exec(r.body)?.[1]?.trim())
+      .filter((v): v is string => v !== undefined);
+
+    // The cascade-final value for a repeated property, same specificity, is
+    // whichever declaration comes LAST in source order.
+    expect(minWidthDecls.length).toBeGreaterThan(0);
+    const cascadeFinal = minWidthDecls[minWidthDecls.length - 1];
+    expect(cascadeFinal).toBe("44px");
+
+    // And no declaration anywhere in the matching rules sets a value below
+    // the 44px floor (covers any future third rule too, not just two).
+    for (const decl of minWidthDecls) {
+      const px = /^([0-9.]+)px$/.exec(decl);
+      if (px) {
+        expect(Number(px[1])).toBeGreaterThanOrEqual(44);
+      } else {
+        // A non-`Npx` value (e.g. `0` unitless) is never a legal floor value.
+        expect(decl).not.toBe("0");
+      }
+    }
+  });
+
+  it("the sizing/overflow rule still declares max-width: 46vw and does not touch min-width", () => {
+    const sizingRule = editRules.find((r) => /max-width/.test(r.body));
+    expect(sizingRule).toBeDefined();
+    expect(sizingRule!.body).toMatch(/max-width:\s*46vw/);
+    expect(sizingRule!.body).not.toMatch(/min-width/);
+  });
+});
+
 describe("frame citation discipline: docs/design/Chautauqua Contacts.dc.html:190 quote is verbatim", () => {
   it("line 190 still contains the exact `gap:9px; padding:0 12px` span quoted in the appended rule's comment", () => {
     const line190 = FRAME_LINES[189]; // 0-indexed array, 1-indexed frame line numbers
