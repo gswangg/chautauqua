@@ -145,6 +145,12 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   // attachment's own identity, mirrored 1:1 in the fan-out loop's
   // `chq-<submissionId>.ics` filename below). Does not change the JSON wire
   // shape returned to the client — only the planner's internal input.
+  //
+  // DEC-936 (wave-17 amendment): `rendered` already carries `text` (the
+  // rendered body, from preflightRender) — both dedupe stages now key on it
+  // too (see comms-dedupe.ts), so a static subject that spends its
+  // per-submission merge vars only in the body no longer collapses to one
+  // row here.
   void DEC_936;
   const rendered = preflightResult.rendered.map((r) => ({
     ...r,
@@ -153,7 +159,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    rendered.map((r) => ({ email: r.email, subject: r.subject, body: r.text })),
     dedupeCutoff(now.getTime()),
   );
   const { toSend: toSendKeys, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);

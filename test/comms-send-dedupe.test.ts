@@ -68,7 +68,7 @@ const twoTalkSubmissions = [
 // repo.loadRecentlySent reader below reads from this array, so a second
 // route call sees the first call's "sent" row exactly as a real D1-backed
 // reader would.
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 const templatesById = new Map<string, { id: string; eventId: string; subject: string; bodyText: string }>();
 templatesById.set("tpl-own", { id: "tpl-own", eventId: EVENT_ID, subject: "From template", bodyText: "Hi {speaker_name}." });
@@ -91,16 +91,24 @@ vi.mock("../src/server/repo/comms", async () => {
     loadIcsScheduleData: vi.fn(async () => new Map()),
     findTemplateById: vi.fn(async (_db: unknown, id: string) => templatesById.get(id) ?? null),
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; body: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -123,9 +131,15 @@ vi.mock("../src/server/context", async () => {
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: vi.fn(async (attempt: { to: { email: string }; subject: string }) => {
+      send: vi.fn(async (attempt: { to: { email: string }; subject: string; text: string }) => {
         sentMails.push({ to: attempt.to.email, subject: attempt.subject });
-        loggedRows.push({ eventId: EVENT_ID, toEmail: attempt.to.email, subject: attempt.subject, sentAt: Date.now() });
+        loggedRows.push({
+          eventId: EVENT_ID,
+          toEmail: attempt.to.email,
+          subject: attempt.subject,
+          bodyText: attempt.text,
+          sentAt: Date.now(),
+        });
       }),
     })),
   };

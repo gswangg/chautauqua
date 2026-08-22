@@ -237,12 +237,12 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     const recentlySent = await loadRecentlySent(
       c.var.db,
       event.id,
-      afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+      afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject, body: r.text })),
       dedupeCutoff(Date.now()),
     );
     const toSendKeys: typeof preflightResult.rendered = [];
     for (const rendered of afterIntraBatch) {
-      if (recentlySent.has(dedupeKey(rendered.email, rendered.subject))) {
+      if (recentlySent.has(dedupeKey(rendered.email, rendered.subject, rendered.text))) {
         skippedRendered.push(rendered);
         continue;
       }

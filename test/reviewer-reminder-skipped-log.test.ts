@@ -80,23 +80,31 @@ vi.mock("../src/server/repo/events", async () => {
 // the two reviewers is inside the dedupe window when the single POST
 // /remind call under test fires.
 const REMINDER_SUBJECT = `Reminder: ${planRecord.name} review queue`;
-let priorSentRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let priorSentRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; body: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of priorSentRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -169,9 +177,30 @@ describe("DEC-238 (wave-132 amendment): POST /api/v1/plans/:id/remind writes a s
     const t0 = 1_700_000_000_000;
     vi.setSystemTime(t0);
 
+    // DEC-936 (wave-17 amendment): the dedupe key now includes the rendered
+    // body, so `priorSentRows`' bodyText must be BYTE-IDENTICAL to what
+    // production's reminderText(laggard) renders for rev-1's shape (one
+    // assignment, zero completed -- the same shape rev-2 has). A dry-run
+    // call (nothing in the window yet) captures that exact string from the
+    // real send, rather than this test re-deriving the formula itself.
+    const warmup = await app.request(`/api/v1/plans/${planRecord.id}/remind`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(warmup.status).toBe(200);
+    const warmupRev1Call = sendMock.mock.calls.find(
+      (call) => (call[0] as { to: { email: string } }).to.email === "rev1@example.test",
+    )!;
+    const rev1BodyText = (warmupRev1Call[0] as { text: string }).text;
+    vi.clearAllMocks();
+    writtenRows = [];
+
     // rev-1 already got this exact reminder 40s ago -- inside the dedupe
     // window -- so this call must report it skipped, not sent.
-    priorSentRows = [{ eventId: planRecord.eventId, toEmail: "rev1@example.test", subject: REMINDER_SUBJECT, sentAt: t0 - 40_000 }];
+    priorSentRows = [
+      { eventId: planRecord.eventId, toEmail: "rev1@example.test", subject: REMINDER_SUBJECT, bodyText: rev1BodyText, sentAt: t0 - 40_000 },
+    ];
 
     const res = await app.request(`/api/v1/plans/${planRecord.id}/remind`, {
       method: "POST",

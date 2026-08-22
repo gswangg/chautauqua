@@ -476,32 +476,42 @@ export async function loadIcsScheduleData(
 // Compose dedupe (DEC-238 wave-3 amendment)
 // ---------------------------------------------------------------------------
 
-/** For each (email, subject) pair, the most recent `sent_at` (ms) among this
- * event's `email_log` rows with status 'sent' whose sent_at is at or after
- * `cutoffMs` — keyed by src/domain/comms-dedupe.ts's dedupeKey so the route
- * layer's skip decision and this reader always agree on message identity.
- * A pair with no qualifying row is simply absent from the returned map.
- * Chunks the email inArray() through chunkIds (DEC-078) — the incoming
- * `keys` list is bounded by MAX_COMPOSE_RECIPIENTS, but this reader must not
- * itself assume any particular caller's cap. */
+/** For each (email, subject, body) triple, the most recent `sent_at` (ms)
+ * among this event's `email_log` rows with status 'sent' whose sent_at is at
+ * or after `cutoffMs` — keyed by src/domain/comms-dedupe.ts's dedupeKey so
+ * the route layer's skip decision and this reader always agree on message
+ * identity. A triple with no qualifying row is simply absent from the
+ * returned map. Chunks the email inArray() through chunkIds (DEC-078) — the
+ * incoming `keys` list is bounded by MAX_COMPOSE_RECIPIENTS, but this reader
+ * must not itself assume any particular caller's cap.
+ *
+ * DEC-936 (wave-17 amendment): the key includes the rendered body —
+ * `email_log.body_text` IS written on every send (src/routes/comms/send.ts),
+ * so this reader can honestly distinguish two messages that share a subject
+ * but differ in body (a static subject spending its per-submission merge
+ * vars in the body). This corrects an earlier excuse that email_log
+ * "records no attachment identity" — that is true of the .ics attachment
+ * (which this reader still cannot see), but false of the body, which is a
+ * plain column on the row selected below. */
 export async function loadRecentlySent(
   db: Db,
   eventId: string,
-  keys: { email: string; subject: string }[],
+  keys: { email: string; subject: string; body: string }[],
   cutoffMs: number,
 ): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   if (keys.length === 0) return result;
 
-  const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject)));
+  const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.body)));
   const emails = [...new Set(keys.map((k) => k.email.trim().toLowerCase()))];
 
-  const rows: { toEmail: string; subject: string; sentAt: Date }[] = [];
+  const rows: { toEmail: string; subject: string; bodyText: string; sentAt: Date }[] = [];
   for (const emailChunk of chunkIds(emails)) {
     const batchRows = await db
       .select({
         toEmail: schema.emailLog.toEmail,
         subject: schema.emailLog.subject,
+        bodyText: schema.emailLog.bodyText,
         sentAt: schema.emailLog.sentAt,
       })
       .from(schema.emailLog)
@@ -517,7 +527,7 @@ export async function loadRecentlySent(
   }
 
   for (const row of rows) {
-    const key = dedupeKey(row.toEmail, row.subject);
+    const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
     if (!wantedKeys.has(key)) continue;
     const sentAtMs = row.sentAt.getTime();
     const existing = result.get(key);

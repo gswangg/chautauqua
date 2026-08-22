@@ -167,7 +167,7 @@ const submissions = [
   },
 ];
 
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
@@ -196,16 +196,23 @@ vi.mock("../src/server/repo/comms", async () => {
     ),
     findTemplateById: vi.fn(async () => null),
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; body: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -228,9 +235,15 @@ vi.mock("../src/server/context", async () => {
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: vi.fn(async (attempt: { to: { email: string }; subject: string }) => {
+      send: vi.fn(async (attempt: { to: { email: string }; subject: string; text: string }) => {
         sentMails.push({ to: attempt.to.email, subject: attempt.subject });
-        loggedRows.push({ eventId: EVENT_ID, toEmail: attempt.to.email, subject: attempt.subject, sentAt: Date.now() });
+        loggedRows.push({
+          eventId: EVENT_ID,
+          toEmail: attempt.to.email,
+          subject: attempt.subject,
+          bodyText: attempt.text,
+          sentAt: Date.now(),
+        });
       }),
     })),
   };
