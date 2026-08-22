@@ -23,10 +23,7 @@ import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { PORTAL_CSS } from "../src/routes/portal/portal.css";
 import type { PortalTaskAssignment } from "../src/server/repo/portal";
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
+import { stripCssComments as stripComments } from "./helpers/strip-css-comments";
 
 function phoneLayer(css: string): string {
   const out: string[] = [];

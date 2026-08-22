@@ -42,6 +42,21 @@ const CSS_MODULE_FILES = [...walk(ROUTES_SRC, ".ts"), ...walk(VIEWS_SRC, ".ts")]
 
 type CssRule = { file: string; rel: string; selector: string; body: string };
 
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments. CSS_MODULE_FILES above is every raw `.ts` file under
+// src/routes/** and src/views/**, read whole-file (not just the CSS
+// template-literal body) -- the same tool-input-domain hazard recorded in
+// test/disabled-token-uses.scan.test.ts's carve-out note: a `//`-comment
+// with an unbalanced quote character desyncs the shared helper's
+// quote-tracking, silently disabling real `/* */` stripping downstream.
+// Verified directly against this file's own population (src/routes/**/*.ts,
+// src/views/**/*.ts): several members (e.g. src/routes/review/reviewer.ts)
+// collapse to a small fraction of their real length under the shared
+// stripper. The plain regex below has no quote-tracking to desync.
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 /** Pulls every top-level-or-nested `selector { body }` rule out of a plain
  * CSS-in-template-literal string, including rules nested inside an
  * `@media (...) { ... }` wrapper, WITHOUT assuming a fixed nesting depth:
@@ -73,14 +88,6 @@ function stripInterpolations(css: string): string {
     }
   }
   return out;
-}
-
-/** Strips `/* ... *\/` block comments -- a comment sitting immediately above
- * a rule would otherwise be swallowed into the "selector" capture by the
- * brace-counting extractor below (the comment text precedes the rule's `{`
- * with no brace of its own in between). */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 function extractRules(cssRaw: string): Array<{ selector: string; body: string }> {

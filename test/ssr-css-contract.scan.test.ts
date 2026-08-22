@@ -80,15 +80,24 @@ const SSR_STYLE_MODULES = [...CSS_TS_FILES, THEME_FILE].sort();
  * exclusion even though it isn't itself an inlined stylesheet. */
 const NON_STYLESHEET_CSS_SOURCES = [join(SRC, "routes", "public", "css", "accent-classes.ts")];
 
-/** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
- * text is never mistaken for a real rule. */
+/** Resolves a relative import specifier (e.g. "./css/accent-classes") from
+ * `fromFile` to an on-disk path, trying the extensions a `*.css.ts`
+ * fragment or its supporting module might use. */
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments. CSS_TS_FILES/THEME_FILE above are raw `.ts` source (not
+// extracted CSS-string content) -- the same tool-input-domain hazard
+// recorded in test/disabled-token-uses.scan.test.ts's carve-out note: a
+// `//`-comment prose sentence with an unbalanced quote character (an
+// ordinary English contraction) desyncs the shared helper's quote-tracking
+// state machine, silently disabling real `/* */` comment stripping for
+// everything after it in the file. Verified directly against
+// src/views/theme.ts (this file's own THEME_FILE): the shared stripper
+// ends the file still "inside a string". The plain regex below has no
+// quote-tracking to desync.
 function stripComments(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-/** Resolves a relative import specifier (e.g. "./css/accent-classes") from
- * `fromFile` to an on-disk path, trying the extensions a `*.css.ts`
- * fragment or its supporting module might use. */
 function resolveImportFile(fromFile: string, relSpecifier: string): string {
   const base = join(dirname(fromFile), relSpecifier);
   for (const ext of [".css.ts", ".ts", ".tsx", ""]) {

@@ -61,6 +61,16 @@ function parseRules(css: string): Array<{ selector: string; body: string }> {
   return rules;
 }
 
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments. This file calls stripComments on raw
+// src/views/theme.ts source (line ~128) -- the same tool-input-domain
+// hazard recorded in test/disabled-token-uses.scan.test.ts's carve-out
+// note: theme.ts's own `//`-comment prose contains an unbalanced quote
+// character that desyncs the shared helper's quote-tracking, verified
+// directly (stripCssComments(readFileSync('src/views/theme.ts')) ends the
+// file still "inside a string"). The plain regex below has no
+// quote-tracking to desync, and this file's other call site (styles.css, a
+// real .css file with no such prose) is unaffected either way.
 function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '');
 }

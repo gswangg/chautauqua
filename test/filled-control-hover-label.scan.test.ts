@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripCssComments as stripComments } from "./helpers/strip-css-comments";
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), "..", "app", "src");
 
@@ -28,10 +29,6 @@ function cssFiles(dir: string): string[] {
     else if (name.endsWith(".css")) out.push(p);
   }
   return out;
-}
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 // Parse rule blocks: selector -> concatenated declarations (a selector may

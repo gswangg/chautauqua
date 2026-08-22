@@ -62,8 +62,21 @@ function walkCssTsFiles(dir: string): string[] {
 // are added.
 const TARGET_FILES = [...walkCssTsFiles(ROUTES_ROOT), ...walkCssTsFiles(VIEWS_ROOT)].filter((f) => f !== TOOLS_CSS_FILE);
 
-// Strip /* ... */ comments so a comment preceding a rule never leaks into
-// the "selector" text captured by extractRules below.
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments -- discovered live: converting flipped this file's own
+// "every h1-ish selector has a REGISTER_TABLE row" assertion red, reporting
+// a phantom offender ".chq-auth-back" whose "selector" text was two whole
+// unstripped comment blocks concatenated with the real selector.
+// src/routes/auth.css.ts (a TARGET_FILES member) is raw TypeScript source,
+// and its own header `//`-comment prose (line 12: `a text child HTML-escapes
+// & < > " ', which would corrupt`) contains an unbalanced `"` that desyncs
+// the shared helper's quote-tracking state machine -- once "inside a
+// string", it stops recognising `/* */` as comments at all, so the two real
+// DEC-369/DEC-367 amendment comments immediately above .chq-auth-back leak
+// straight through into the captured selector text. NOT a false receipt (no
+// comment was hiding a real offender): reverting to the plain regex below,
+// which has no quoting to desync, restores the correct green result. See
+// this wave's DEC-374 amendment for the population-wide measurement.
 function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, "");
 }
