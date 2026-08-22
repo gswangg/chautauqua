@@ -21,6 +21,13 @@ export function countOf(n: number, singular: string, pluralForm?: string): strin
   return `${n} ${plural(n, singular, pluralForm)}`;
 }
 
+/** 'is' for n === 1, 'are' otherwise -- the verb-agreement counterpart to
+ * plural() above. Every hand-copied `n === 1 ? 'is' : 'are'` ternary goes
+ * through here instead (test/plural.test.ts bans the hand-copied form). */
+export function isAre(n: number): 'is' | 'are' {
+  return n === 1 ? 'is' : 'are';
+}
+
 // DEC-422 (amendment): the ONE overage-phrase helper -- every field-length
 // refusal ("N characters over the limit") goes through here instead of
 // hand-composing its own count phrase, so pluralization stays

@@ -248,12 +248,14 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       // Unchecked: the tree shows no plan selector at all (ComposeWizard.tsx
       // gates the whole `.chq-comms-panel-indent` block on `includeFeedback`).
       expect(screen.queryByText('From which plan')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
-      // Checking it reveals a DIFFERENTLY-labelled select with no
-      // preselected value -- "Evaluation plan", starting at the
-      // "Choose a plan…" placeholder, never the frame's own default text.
+      expect(screen.queryByLabelText('From which plan')).not.toBeInTheDocument();
+      // Checking it reveals the select, now labelled with the frame's own
+      // words (DEC-613, built w25-h) but still with no preselected value --
+      // starting at the "Choose a plan…" placeholder, never the frame's own
+      // default text. The label divergence is gone; the value divergence
+      // (ruling A18) remains.
       fireEvent.click(screen.getByRole('checkbox', { name: 'Include reviewer feedback' }));
-      const select = await screen.findByLabelText('Evaluation plan');
+      const select = await screen.findByLabelText('From which plan');
       expect(select).toHaveValue('');
       expect(screen.queryByText('Wave 1 — first pass, all tracks')).not.toBeInTheDocument();
     });

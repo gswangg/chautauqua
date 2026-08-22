@@ -1450,7 +1450,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               {includeFeedback && (
                 <div className="chq-comms-panel-indent">
                   <label className="chq-comms-template-label">
-                    Evaluation plan
+                    {/* DEC-613: docs/design/Chautauqua Comms.dc.html:102
+                        draws `From which plan` -- a drawn FIELD label is the
+                        product's field label, so the frame's own words ship
+                        verbatim (w25-h; the code-side "Evaluation plan"
+                        shortening was DEC-613's named second copy). */}
+                    From which plan
                     <select
                       className="chq-select"
                       value={feedbackPlanId}

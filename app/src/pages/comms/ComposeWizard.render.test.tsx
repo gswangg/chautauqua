@@ -705,11 +705,11 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
 
     await goToPreview(fetchMock);
 
-    expect(screen.queryByText(/Evaluation plan/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/From which plan/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
 
-    const select = await screen.findByLabelText('Evaluation plan');
+    const select = await screen.findByLabelText('From which plan');
     expect(select).toBeRequired();
 
     fireEvent.change(select, { target: { value: 'plan-a' } });
@@ -726,7 +726,7 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
 
     await goToPreview(fetchMock);
     fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
-    const select = await screen.findByLabelText('Evaluation plan');
+    const select = await screen.findByLabelText('From which plan');
 
     fireEvent.change(select, { target: { value: 'plan-b' } });
     await screen.findByText('Round 1 of Track B Review');
@@ -803,7 +803,7 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
     await screen.findByText('Choose a plan to merge its feedback.');
     const before = previewCallCount(fetchMock);
 
-    const select = screen.getByLabelText('Evaluation plan');
+    const select = screen.getByLabelText('From which plan');
     fireEvent.change(select, { target: { value: 'plan-a' } });
 
     await waitFor(() => {
@@ -821,13 +821,13 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
 
     await goToPreview(fetchMock);
     fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
-    const select = await screen.findByLabelText('Evaluation plan');
+    const select = await screen.findByLabelText('From which plan');
     fireEvent.change(select, { target: { value: 'plan-a' } });
     await waitFor(() => expect(previewCallCount(fetchMock)).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
 
-    expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('From which plan')).not.toBeInTheDocument();
     await waitFor(() => {
       const calls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
       const last = calls[calls.length - 1];
@@ -1567,11 +1567,11 @@ describe('ComposeWizard evaluation-plan select is a parameter of Include reviewe
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
     await screen.findByText('Attachments and merge fields');
 
-    expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('From which plan')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
 
-    const select = await screen.findByLabelText('Evaluation plan');
+    const select = await screen.findByLabelText('From which plan');
     expect(select.closest('.chq-comms-panel-indent')).not.toBeNull();
     expect(screen.getByText('Only submitted, non-recused reviews are merged.')).toBeInTheDocument();
   });

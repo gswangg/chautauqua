@@ -65,20 +65,26 @@ visibility-gating divergences.**
   buildable follow-on; the frame's literal is what ships.
 - "Include reviewer feedback" and "Attach calendar invite" toggles (frame
   :99, :108) MATCH by text and order.
-- **DIVERGES**: the "From which plan" evaluation-plan selector is
-  always-visible in the frame, sitting as a permanent sibling of the
-  "Include reviewer feedback" checkbox with a preselected value ("Wave 1 —
-  first pass, all tracks", frame :102-103). The tree instead reveals a
-  DIFFERENTLY-labelled select ("Evaluation plan") only once that checkbox
-  is checked, starting at an empty "Choose a plan…" placeholder — ruling
+- **CLOSED (label), still DIVERGES (visibility/default-value)**: the "From
+  which plan" evaluation-plan selector is always-visible in the frame,
+  sitting as a permanent sibling of the "Include reviewer feedback"
+  checkbox with a preselected value ("Wave 1 — first pass, all tracks",
+  frame :102-103). The label mismatch this row previously recorded — the
+  tree's code-side "Evaluation plan" shortening against the frame's drawn
+  "From which plan" — is discharged as of w25-h per DEC-613's ruling (a
+  drawn FIELD label is the product's field label; DEC-613's own RULED
+  paragraph names this exact row by coordinate). `ComposeWizard.tsx:1453`
+  now renders "From which plan" verbatim, with a frame-citation comment
+  above it. The tree still reveals the select only once the checkbox is
+  checked, starting at an empty "Choose a plan…" placeholder — ruling
   A18's "a parameter of the checkbox it belongs to" design, per the code's
-  own comment, but a genuine label AND visibility AND default-value
-  divergence from the frame's always-shown, preselected control. The
-  visibility-and-default-value shape is the frame's own populated demo
-  state ("Wave 1 — first pass, all tracks" preselected) against the app's
-  real cold, unchecked start, governed by DEC-902 wave-9 (demo-state row)
-  and DEC-967 (frame sample data is not product copy); ruling A18 covers
-  the separate label/placement question and is not disturbed.
+  own comment — a genuine visibility AND default-value divergence from the
+  frame's always-shown, preselected control. The visibility-and-default-
+  value shape is the frame's own populated demo state ("Wave 1 — first
+  pass, all tracks" preselected) against the app's real cold, unchecked
+  start, governed by DEC-902 wave-9 (demo-state row) and DEC-967 (frame
+  sample data is not product copy); ruling A18 covers the separate
+  label/placement question and is not disturbed.
 - **DIVERGES**: the "N have no slot yet — those get no invite" advisory
   (frame :110) is drawn in the frame directly beneath an UNCHECKED "Attach
   calendar invite" box (frame :107's unfilled `border:1px solid #8E8A7A`,
