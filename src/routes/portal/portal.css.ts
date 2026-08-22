@@ -24,7 +24,7 @@
 // public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
 // AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989, DEC_576, DEC_154 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989, DEC_576, DEC_154, DEC_393, DEC_996 } from "../../decisions";
 import { ERROR_STATES_CSS, ERROR_STATES_PHONE_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS, EMPTY_PHONE_CSS } from "../public/css/empty.css";
 
@@ -37,6 +37,8 @@ void DEC_919; // amendment (wave 52): the portal's zero-states compose the same 
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
 void DEC_576; // wave-110 amendment: the phone dock band's own children (.chq-portal-dock)
 void DEC_154; // wave-110 amendment: the footer's duplicate Sign out is stood down at 390 only
+void DEC_393; // wave-35 amendment: .chq-portal-version-link is the grounding twin for tasks/views.tsx's inline-in-prose file-download link
+void DEC_996; // wave-35 amendment: .chq-cfp-option's composition receipt names the wrapper that makes its bare checkbox/radio reachable by the roster classifier
 
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
@@ -567,6 +569,18 @@ export const PORTAL_CSS = `
   .chq-cfp-fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .chq-cfp-fieldset legend { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); padding: 0; }
   .chq-cfp-fieldset .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
+  /* tap-floor-exempt: composition -- the bare input type=checkbox a
+     roster keyed on an element's own class cannot see is never the tap
+     target: label.chq-cfp-option is the floored wrapper (min-height:46px,
+     centred flex, padding:0 14px, all four floor clauses at every width --
+     this rule is not gated by a media query) and its own label semantics
+     make the whole row, not the 18x18 control alone, the click/tap
+     surface. src/routes/portal/edit.tsx's Tracks fieldset renders every
+     input type=checkbox name=trackIds as the sole child of a label
+     class=chq-cfp-option; the codebase has no other input inside this
+     class, and no input of this shape (checkbox/radio bound to a
+     chq-cfp-option row) renders outside one, so the wrapper's floor is the
+     input's floor by construction. */
   .chq-cfp-option {
     display: flex;
     align-items: center;
@@ -1270,9 +1284,12 @@ ${EMPTY_PHONE_CSS}
      version number and a date -- a distinct row item, not a sentence
      phrase -- so it takes the same real floor. The sibling file-download
      link in the completed-task detail view IS a phrase inside a sentence
-     ("<filename> (version N, uploaded …)") and is marked
-     tap-floor-exempt: inline-in-prose at its call site instead, with no
-     declaration here. */
+     ("<filename> (version N, uploaded …)") and stays marked
+     tap-floor-exempt: inline-in-prose at its call site (no declaration
+     here) -- but per DEC-393 wave-35's grounding ladder, that anchor's
+     receipt now names THIS rule's selector, .chq-portal-version-link, as
+     its floored same-surface twin: for the current version, both anchors
+     resolve to the identical chain-latest file content. */
   .chq-portal-version-link {
     min-height: 44px;
     display: flex;
