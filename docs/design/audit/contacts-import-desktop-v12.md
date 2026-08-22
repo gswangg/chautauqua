@@ -167,5 +167,11 @@ five divergences (the :279 dedupe caption, the :546 Send-vs-Preview
 footer, the :582 role vocabulary, and — as of the DEC-575 wave-9
 amendment — the :672 chrome/footer findings) are now named and reasoned
 about as deliberate, ruled decisions, or built to match, not open debt.
-Only :770 (dialog-identity/heading wording) remains filed as an
-unadjudicated finding for a future wave.
+:770's own section above (RETIRED, not left open) already closes both
+parts: dialog identity is CLOSED-with-receipt in
+`app/src/pages/contacts/ImportWizard.tsx` `Nothing was imported` (DEC-575
+wave-8), and the heading-wording gap is a captioned ruling kept
+deliberately (DEC-575 wave-28 amendment). This summary line previously
+called :770 unadjudicated; it was stale prose contradicting its own
+section twelve lines above and is corrected here to agree with it (DEC-903
+wave-20 amendment).
