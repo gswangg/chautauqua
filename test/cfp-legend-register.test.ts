@@ -221,9 +221,10 @@ const REGISTER_FIELD_ROWS = [
   { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 8, optionsJson: null, ruleJson: null, role: null },
   { id: "job_title", section: "speaker", kind: "text", label: "Job title", helpText: null, required: false, position: 9, optionsJson: null, ruleJson: null, role: null },
   { id: "company", section: "speaker", kind: "text", label: "Company", helpText: null, required: false, position: 10, optionsJson: null, ruleJson: null, role: null },
-  // Bio's stored label is deliberately NOT "Bio" -- CFP_BIO_LABEL
-  // (submit-views.tsx) overwrites it unconditionally, which is exactly the
-  // PAGE-CHROME behaviour this seed is chosen to expose.
+  // Bio's stored label is deliberately NOT "Bio" -- DEC-613 wave-25 ruled
+  // Bio a STORED-FIELD-LABEL entry (no CFP_BIO_LABEL override exists; the
+  // seed's own label ships as-is), so this seed is chosen to prove the
+  // SEEDED label renders, never the frame's "Bio" abbreviation.
   { id: "bio", section: "speaker", kind: "long_text", label: "Speaker biography", helpText: null, required: false, position: 11, optionsJson: null, ruleJson: null, role: null },
 ];
 
@@ -342,6 +343,12 @@ describe("CFP legend/label register -- STORED-FIELD-LABEL entries render the SEE
     const html = await getRegisterPage();
     expect(html).toMatch(/<span class="chq-field-label">\s*Job title\s*<span class="chq-field-optional"> · optional<\/span>/);
   });
+
+  it('Bio -- seeded "Speaker biography" label ships as-is (no CFP_BIO_LABEL override exists), never the frame\'s "Bio" abbreviation (DEC-613 wave-25)', async () => {
+    const html = await getRegisterPage();
+    expect(html).toMatch(/<span class="chq-field-label">\s*Speaker biography\s*<span class="chq-field-optional"> · optional<\/span>/);
+    expect(html).not.toMatch(/<span class="chq-field-label">\s*Bio\s*</);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -358,12 +365,6 @@ describe("CFP legend/label register -- PAGE-CHROME entries render the route's ow
   it('Name -- NameField hardcodes "Name", ignoring any first_name/last_name FormFieldDef label', async () => {
     const html = await getRegisterPage();
     expect(html).toContain('<span class="chq-field-label">Name</span>');
-  });
-
-  it('Bio -- CFP_BIO_LABEL overwrites the stored label unconditionally: "Bio · optional" renders even though this seed\'s stored label is "Speaker biography"', async () => {
-    const html = await getRegisterPage();
-    expect(html).toMatch(/<span class="chq-field-label">\s*Bio\s*<span class="chq-field-optional"> · optional<\/span>/);
-    expect(html).not.toContain("Speaker biography");
   });
 
   it('Phone step chrome -- "Step 1 of 2 · your talk" renders verbatim (DEC-986, matches the frame exactly)', async () => {

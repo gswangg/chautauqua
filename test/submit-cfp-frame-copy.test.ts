@@ -179,12 +179,11 @@ describe("GET /submit/:eventSlug — frame 10--14 copy batch (w5-c)", () => {
     expect(body).toContain("0 / 1,200");
   });
 
-  it("relabels Bio as 'BIO' with its own helper, dropping the old helpText", async () => {
+  it("ships the stored 'Speaker bio' label as-is (no CFP_BIO_LABEL override exists, DEC-613 wave-25) with its own display-only helper, dropping the old helpText", async () => {
     const body = await getSubmitPage();
-    expect(body).toContain(">Bio<");
+    expect(body).toContain(">Speaker bio<");
     expect(body).toContain("Shown on the public speakers page · you can edit it later in your portal");
     expect(body).not.toContain("Old bio help");
-    expect(body).not.toContain(">Speaker bio<");
   });
 
   it("renders the email field as type=\"email\"", async () => {
