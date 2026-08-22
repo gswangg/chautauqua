@@ -5,8 +5,12 @@ Authority: docs/design/*.dc.html (v12 geometry), DESIGN-RULINGS.md (rulings),
 DEVIATIONS.md (user overrides). This file is the campaign mandate the planner
 works from, tiered.
 
-## TIER 0 (2026-08-19 meta-probe, VERIFIED reds — work these before all else)
-docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDES their open rows: docs/probes/metafid-round2-2026-08-20.md — work its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDES round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md records Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... CURRENT RED SET" section below records round 3's three-item red set as now CLOSED as well; no META lane remains in flight against WAVE B today. The two disproportionate root fixes plus the S1 breaks and S2 structure rows live in docs/probes/metafid-phoneA-2026-08-19.md, NOT the desktop file (docs/probes/metafid-desktop-2026-08-19.md contains no S1/S2/negative-margin/section-action rows at all — verified by grep, DEC-967 wave-154 amendment). Both root fixes there are already CLOSED: app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {` (bordered-control cancelled-padding removed) and app/src/pages/settings/settings.css`.chq-settings-section-action {` (44px phone floor added). Work phoneA's remaining open S1/S2 rows next.
+## TIER 0 (round 4 is newest — read this before anything below)
+docs/probes/metafid-round4-2026-08-22.md`CAMPAIGN COMPLETE — zero regressions, zero horizontal overflow anywhere.` — dated 2026-08-22, measured main @ 36332abc across 22 admin phone routes and 11 public/portal surfaces at 390×844 with desktop-1280 spot checks, and it also states "No open items remain from rounds 1-3. The campaign red set is empty." ROUND 4 SUPERSEDES rounds 1-3 below; every superseded row stays recorded beneath, CLOSED, never deleted (DEC-180 wave-20 amendment, hosted on DEC-180: a hand-maintained supersession chain goes stale silently unless the newest evidence is named first).
+
+BLUNT COMPANION CLAUSE (read together with the verdict above, DEC-180 wave-20 amendment clause (b)): a probe round's verdict is evidence about the SHA it measured, not about main, and it is not the campaign's exit predicate. `npm run test:fast` at main 4babe7ac2 measured 1376 files / 17,653 tests with 10 files and 14 tests RED on the same day round 4 declared the phone red set empty, and `npx tsx scripts/exit-predicate.ts --product-sha <sha>` still prints "DECLARED ONLY -- NOT MEASURED" for every row until a `--suite-verified-sha` ancestor is supplied. Anyone citing round 4's verdict must meet this fact in the same paragraph — do not treat "CAMPAIGN COMPLETE" as license to skip the fast tier or the exit predicate.
+
+Superseded chain, oldest to newest: docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDED their open rows: docs/probes/metafid-round2-2026-08-20.md — its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDED round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md recorded Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... SUPERSEDED, SEE ROUND 4" section below records round 3's three-item red set as CLOSED; no META lane was in flight against WAVE B by round 3. The two disproportionate root fixes plus the S1 breaks and S2 structure rows live in docs/probes/metafid-phoneA-2026-08-19.md, NOT the desktop file (docs/probes/metafid-desktop-2026-08-19.md`Meta-fidelity probe: desktop (speakers cluster + admin spot-checks).` contains no S1/S2/negative-margin/section-action rows at all — verified by grep, DEC-967 wave-154 amendment). Both root fixes there are already CLOSED: app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {` (bordered-control cancelled-padding removed) and app/src/pages/settings/settings.css`.chq-settings-section-action {` (44px phone floor added).
 
 ## Tier 0 — fidelity on landed work (verify first, then fix)
 
@@ -298,9 +302,11 @@ shell has no mid-page-footer surface to sweep — the sweep is complete.
    and a second comment block naming the "submissions -> recipients
    relationship, at the step where the" counts are produced.
 
-## Meta-fidelity round 3 (2026-08-20, main @ f7432267) — CURRENT RED SET
+## Meta-fidelity round 3 (2026-08-20, main @ f7432267) — SUPERSEDED, SEE ROUND 4
 
-Full report: docs/probes/metafid-round3-2026-08-20.md. This round SUPERSEDES
+SUPERSEDED by docs/probes/metafid-round4-2026-08-22.md`CAMPAIGN COMPLETE — zero regressions, zero horizontal overflow anywhere.` (DEC-180 wave-20 amendment): round 4 measured this section's three-item red set fixed and CLOSED. "CURRENT" is retired — round 3 is no longer the current red set — but its rows and their CLOSED receipts stay recorded beneath, never deleted (DEC-069).
+
+Full report: docs/probes/metafid-round3-2026-08-20.md. This round SUPERSEDED
 the round-2 backlog: Content cluster is DONE (sticky-dock order fix verified
 end-to-end), Wave B is CLOSED (all five items measured fixed, 0px overflow on
 21 routes), and four of five Wave-A docks pass live (CFP wizard, portal
