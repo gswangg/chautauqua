@@ -147,6 +147,13 @@ describe("scripts/seed.ts: the seed has ONE clock (DEC-591)", () => {
     };
   }
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 1633.55ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 3051.82ms. Headroom
+  // target ~4x standalone (6534ms) is below the 15000ms floor, so the floor
+  // would apply, but this test already carries an existing timeout above
+  // that floor (60000ms) which is kept.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it(
     "shifts every seeded instant by exactly the CHQ_SEED_NOW delta, leaving the event's fixed calendar dates untouched",
     () => {

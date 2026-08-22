@@ -69,6 +69,12 @@ describe("GET /api/v1/pipeline bounds (DEC-460/461)", () => {
     return makeApp((app) => app.route("/api/v1", pipelineRoutes), ORGANIZER_A);
   }
 
+  // Receipt (DEC-069 wave-23 amendment): measured standalone via the vitest
+  // JSON reporter at 793.84ms, sha 25cb7819 (worktree v12m-w23-a off main);
+  // under full-suite parallelism this test measured 2067.75ms. Headroom
+  // target ~4x standalone (3175ms) is below the 15000ms floor, so the
+  // 15000ms floor applies.
+  // src/decisions-data/DEC-069.md `"the tier's greenness is currently a function of how busy the machine is"`
   it("caps perPage=100000 at 200 items", async () => {
     const app = await buildPipelineApp();
     const res = await app.request("/api/v1/pipeline?perPage=100000");
@@ -76,7 +82,7 @@ describe("GET /api/v1/pipeline bounds (DEC-460/461)", () => {
     const body = (await res.json()) as { items: unknown[]; total: number; page: number; perPage: number };
     expect(body.items.length).toBeLessThanOrEqual(200);
     expect(body.perPage).toBe(200);
-  });
+  }, 15000);
 
   // DEC-465: pipeline.ts now uses the shared listPerPage helper, which
   // resolves an invalid perPage (like "abc") to MAX_PER_PAGE (200), not
