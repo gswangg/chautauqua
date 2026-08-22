@@ -37,6 +37,17 @@ function assertOneMainOneH1(html: string) {
 // DEC-740: the login door and the not-found page both query getHubOrg
 // (orderBy().limit(), no where()) for single-event context — always
 // resolves to no org here, keeping this suite about markup shape only.
+//
+// DEC-949 (wave-7 amendment): GET /claim/:token and GET /reset/:token now
+// spend a checkAndIncrementScopedLimit budget (D1-backed, DEC-948) before
+// resolving the token — an `insert ... onConflictDoUpdate ... returning`
+// against schema.rateLimit, followed by pruneExpired's `delete`. A fakeDb
+// that only stubs `select` throws (`db.insert is not a function`) on that
+// first anonymous request, surfacing as an unhandled 500 instead of this
+// suite's designed 410 — harness drift, not a route defect. insert/
+// delete/update are stubbed here purely to keep the rate-limit budget's
+// own atomic shape satisfied (a fresh in-memory counter starting at 1, well
+// under AUTH_RATE_LIMIT_MAX), not to test rate-limiting itself.
 function fakeDb(): Db {
   return {
     select: () => ({
@@ -46,6 +57,21 @@ function fakeDb(): Db {
         }
         return { where: () => ({ limit: async () => [] }) };
       },
+    }),
+    insert: () => ({
+      values: () => ({
+        onConflictDoUpdate: () => ({
+          returning: async () => [{ count: 1 }],
+        }),
+      }),
+    }),
+    update: () => ({
+      set: () => ({
+        where: async () => {},
+      }),
+    }),
+    delete: () => ({
+      where: async () => {},
     }),
   } as unknown as Db;
 }
