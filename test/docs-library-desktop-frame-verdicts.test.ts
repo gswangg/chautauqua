@@ -162,7 +162,7 @@ describe("Docs desktop frame verdict — Chautauqua Docs.dc.html:226 'Docs · th
     expect(softwareHtml).toContain('class="chq-docs-pager"'); // 09 Prev/next pager
   });
 
-  it("DIVERGES: the header's leaving-link glyph order is reversed — frame reads label-then-mark, the shipped header renders mark-then-label", async () => {
+  it("MATCHES: the header's leaving-link glyph order is label-then-mark, same as the frame's :238", async () => {
     verbatimLine(238, `          <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">API reference ↗</a>`);
     const app = buildApp();
     const res = await app.request("/docs/running-the-software");
@@ -171,14 +171,14 @@ describe("Docs desktop frame verdict — Chautauqua Docs.dc.html:226 'Docs · th
     expect(leavingOpen).toBeGreaterThan(-1);
     const leavingClose = html.indexOf("</a>", leavingOpen);
     const leavingMarkup = html.slice(leavingOpen, leavingClose);
-    // The frame's anchor text is "API reference ↗" (label, then mark). The
-    // shipped DocsHeader renders the aria-hidden mark span BEFORE the
-    // label text.
+    // The frame's anchor text is "API reference ↗" (label, then mark), and
+    // the shipped DocsHeader now renders the label before the aria-hidden
+    // mark span, matching it.
     const markIdx = leavingMarkup.indexOf("↗"); // the JSX &#8599; entity renders as the literal glyph, not the entity text
     const labelIdx = leavingMarkup.indexOf("API reference");
     expect(markIdx).toBeGreaterThan(-1);
     expect(labelIdx).toBeGreaterThan(-1);
-    expect(markIdx).toBeLessThan(labelIdx);
+    expect(labelIdx).toBeLessThan(markIdx);
   });
 
   it("MATCHES: the header row otherwise matches — wordmark, 'Docs' suffix baseline run, and a search box precede the leaving link, same as the frame's :237-238", async () => {
