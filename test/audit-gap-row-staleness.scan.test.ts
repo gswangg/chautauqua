@@ -43,8 +43,9 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEC_069, DEC_613, DEC_808, DEC_967, DEC_976 } from "../src/decisions";
-import { parseAllRules, stripComments, type ParsedRule } from "../app/src/cancelled-padding-gap.scan.test";
+import { parseAllRules, type ParsedRule } from "../app/src/cancelled-padding-gap.scan.test";
 import { enumerateSourceFiles, normalizeSource, labelIsMatched } from "./frame-source-corpus";
+import { stripCssComments as stripComments } from "./helpers/strip-css-comments";
 
 void DEC_976; // this file's whole reason to exist: grade audit gap rows against the tree
 void DEC_808; // population enumerated via readdirSync, never a hand-listed file list

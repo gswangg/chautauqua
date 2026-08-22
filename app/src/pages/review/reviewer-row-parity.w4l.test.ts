@@ -16,14 +16,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REVIEW_CSS_PATH = join(HERE, 'review.css');
-
-/** Strips CSS comments before any brace walk. Provenance comments in this
- * sheet quote CSS symbols (`@media`, selector-looking text) that would
- * desynchronise a naive brace/selector scan if left in. */
-const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Strips every @media block (one level of nested braces, all this sheet
  * uses) so a selector that also appears inside a phone block is never

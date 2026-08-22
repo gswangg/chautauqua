@@ -18,6 +18,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -35,10 +36,6 @@ function allCssFiles(root: string): string[] {
 }
 
 /** Strips /* ... *\/ block comments (which legitimately carry decimal prose). */
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 // A fractional-px literal (one or more digits, a decimal point, one or more
 // digits, then `px`) inside a geometry-property declaration. Matches
 // `padding: 4.2px 16px`, `gap: 11.5px`, `width: calc(100% - 3.5px)`,

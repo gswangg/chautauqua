@@ -18,14 +18,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'overview.css');
 const CSS = readFileSync(CSS_PATH, 'utf-8');
-
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 const STRIPPED = stripComments(CSS);
 

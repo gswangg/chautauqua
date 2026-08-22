@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DETAIL_CSS_PATH = join(HERE, '..', 'pages', 'submissions', 'detail.css');
@@ -118,7 +119,6 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
   // `@media` (detail.css:1094 reads "so this `@media` block always wins
   // ties"), which the block-header scan would mistake for a real block
   // opener. Comments carry no declarations, so dropping them first is safe.
-  const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, '');
   const detailCss = stripComments(readFileSync(DETAIL_CSS_PATH, 'utf-8'));
   const errorStatesCss = stripComments(readFileSync(ERROR_STATES_CSS_PATH, 'utf-8'));
 

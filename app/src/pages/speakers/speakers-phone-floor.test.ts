@@ -19,7 +19,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert";
-import { stripComments, parseAllRules } from "../../cancelled-padding-gap.scan.test";
+import { parseAllRules } from "../../cancelled-padding-gap.scan.test";
+import { stripCssComments as stripComments } from "../../../../test/helpers/strip-css-comments";
 
 // Does this rule's SELECTOR LIST name `className` as one of its (possibly
 // compound) selector entries -- e.g. `.chq-speakers-status-dense` matches

@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_383, DEC_393 } from '../../../../src/decisions';
+import { stripCssComments as stripComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_383; // Fix 2: bordered subjects drop the cancelled-padding pair
 void DEC_393; // Fix 1: .chq-settings-section-action gets the roomy floor
@@ -25,10 +26,6 @@ void DEC_393; // Fix 1: .chq-settings-section-action gets the roomy floor
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'settings.css');
 const CSS = readFileSync(CSS_PATH, 'utf-8');
-
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Brace-matched removal of every @media block (mirrors the sibling
  * scans' own idiom -- a linear scan, not a nested-quantifier regex). */

@@ -240,4 +240,61 @@
 // list). Ceiling stays at 81 (measured count sits AT the ceiling, not
 // below it) -- the widening plus the phoneBlock.ts conversion plus the
 // three carve-outs leaves this ratchet exactly where it was, never above.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 81;
+// v12m-w36-d (wave 36, task w36-d, DEC-613 migration wave): forced -1 and
+// measured RED at this branch's tree BEFORE any change: 82, one over the
+// declared 81. The new offender was test/public-390-width-floor.test.ts
+// (added since the last measurement, confirmed via `git log --diff-filter=A`
+// over the f5336772a..HEAD range and cross-checked against the printed
+// offender roster) -- migrated first, then 15 more of the campaign's own
+// instruments under app/src/*.scan.test.ts (plus a few sibling *.test.ts
+// files sharing the exact same CSS-file-reading shape) were converted to
+// import test/helpers/strip-css-comments.ts's shared, string-aware
+// stripCssComments in place of a local strip[Css]Comments declaration --
+// 16 files total: test/public-390-width-floor.test.ts,
+// app/src/cancelled-padding-gap.scan.test.ts (the CANONICAL origin this
+// ratchet's own module header names as the file the shared helper was
+// promoted FROM -- its own copy had never been deleted; its 3 real
+// importers, app/src/pages/speakers/speakers-phone-floor.test.ts,
+// app/src/pages/speakers/speakers-phone-tap-floor.test.ts and
+// test/audit-gap-row-staleness.scan.test.ts, were updated to import the
+// shared helper directly instead of re-exporting through
+// cancelled-padding-gap.scan.test.ts -- no re-export shim), app/src/
+// focus-treatment.scan.test.ts, app/src/interaction-states.scan.test.ts,
+// app/src/no-fitted-geometry.scan.test.ts, app/src/status-density-pairing.
+// scan.test.ts, app/src/table-column-contract.scan.test.ts, app/src/inline-
+// style-phone-override.scan.test.ts (its local copy was already named
+// `stripCssComments`, colliding in name with the shared symbol -- deleted
+// outright, no rename needed at call sites), test/state-band-inset.scan.
+// test.ts, test/phone-leak-guard-restore.scan.test.ts, app/src/components/
+// error-states-phone.test.ts, app/src/components/modal-frame-phone.test.ts,
+// app/src/components/modal-frame-title-phone-drill.test.ts, app/src/pages/
+// overview/overview-painted-face.test.ts, app/src/pages/review/reviewer-
+// row-parity.w4l.test.ts, app/src/pages/settings/settings-controls-390.w5o.
+// test.ts.
+//
+// Every migrated file's own local strip function was `/\*[\s\S]*?\*\//g`-
+// only (no `//` line-comment handling) and its only inputs were real `.css`
+// files, `.css.ts` template-literal bodies already extracted before
+// stripping, or CSS-string constants -- never a whole raw `.ts`/`.tsx`
+// module -- so none of them fall into the w26-f-documented third carve-out
+// class (a `//`-comment's own prose corrupting the shared stripper's
+// quote-tracking state machine over raw TypeScript source). Deliberately
+// left alone and NOT migrated: every remaining offender whose local
+// `stripComments` also strips `//` line comments (a real capability the
+// shared, CSS-only helper does not have) over raw `.ts`/`.tsx` source, and
+// app/src/pages/contacts/SegmentPillStrip.bound390.render.test.tsx /
+// app/src/page-measure.test.ts's inner scope-local function, both of which
+// depend on their local stripper's byte-length-preserving residue to keep
+// character offsets valid indices into the RAW (unstripped) source -- the
+// exact invariant class DEC-613's wave-19 amendment already carved out for
+// app/src/pages/contacts/contacts-segment-pills-390.test.ts.
+//
+// Every migrated file's own tests still passed once routed through the
+// real, string-aware stripper -- no assertion behaviour changed and no
+// false receipt was found in this batch (`npx vitest run --config
+// vitest.fast.config.ts` over all 19 touched files: 465 tests, all green).
+// Re-measured with the ceiling forced to -1 again: EXACTLY 66, matching
+// 82 - 16 (16 real offenders converted; the 3 importer updates were never
+// counted as offenders themselves, since they only ever imported, never
+// declared, a local stripper). Ceiling lowered to match: 81 -> 66.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 66;

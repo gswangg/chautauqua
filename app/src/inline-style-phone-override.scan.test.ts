@@ -25,6 +25,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const APP_SRC = dirname(fileURLToPath(import.meta.url));
 
@@ -46,14 +47,6 @@ function enumerateFiles(root: string, extensions: string[]): string[] {
 }
 
 // --- shared brace-matching helpers (CSS side) -------------------------------
-
-/** Strips /* ... *\/ comments -- the field guide's own warning (DEC-613
- * wave-106): a provenance comment that quotes CSS (`.chq-main{padding}`,
- * literal `@media`) desyncs a naive brace-walker unless comments are
- * stripped first. */
-function stripCssComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
 
 /** Index of the `}` matching the `{` at `openIdx`. */
 function matchBrace(text: string, openIdx: number): number {

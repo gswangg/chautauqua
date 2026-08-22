@@ -24,6 +24,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments as stripComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -74,10 +75,6 @@ function ssrCssLiteral(source: string): string {
 
 /** Strips /* ... *\/ block comments (comment prose legitimately names
  *  banned tokens while explaining why they're banned). */
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 const ALLOWED_TRANSITION_PROPERTIES = new Set(['background-color', 'border-color', 'color', 'opacity']);
 
 const TRANSITION_ALL_RE = /transition(?:-property)?\s*:\s*all\b/;

@@ -50,6 +50,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments as stripComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 const APP_SRC = join(REPO_ROOT, "app/src");
@@ -59,10 +60,6 @@ const APP_SRC = join(REPO_ROOT, "app/src");
  * second guard lands; never lower them to paper over a deletion. */
 const MIN_GUARDS = 1;
 const MIN_GUARDED_CLASSES = 30;
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
 
 /** Every .css file under app/src/, derived by walk -- never a file list. */
 function cssFiles(dir: string): string[] {

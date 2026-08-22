@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DOCS_SITE_CSS } from '../src/routes/docs-site.css';
 import { CHROME_CSS, CHROME_PHONE_CSS } from '../src/routes/public/css/chrome.css';
+import { stripCssComments } from './helpers/strip-css-comments';
 
 // CHROME_CSS is desktop-scope only (DEC-385 wave-143 split): the phone
 // @media block lives in the separate CHROME_PHONE_CSS export, split out so
@@ -23,12 +24,6 @@ const CHROME_CSS_COMPOSED = CHROME_CSS + CHROME_PHONE_CSS;
 // min-height:44px + centred flex, and ships a negative control so the
 // scan cannot pass vacuously.
 
-/** Strip CSS comments so a comment quoting a frame/roster literal never
- *  masquerades as a real declaration. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 interface FloorCheck {
   minHeight44: boolean;
   centredFlex: boolean;
@@ -38,7 +33,7 @@ interface FloorCheck {
 /** Extract the FIRST rule body for `selector` in `css` (comments already
  *  stripped) and grade it against the three width-floor requirements. */
 function checkSelectorFloor(css: string, selector: string): FloorCheck {
-  const stripped = stripComments(css);
+  const stripped = stripCssComments(css);
   // Match `<selector> {` (allowing the selector to be immediately followed
   // by whitespace/`{`, so `.chq-pub-activefilters-clear` never accidentally
   // matches a longer selector it is merely a prefix of). A selector can
@@ -126,7 +121,7 @@ describe('public 390 width-floor (DEC-393 wave-33)', () => {
     // .chq-pub-select-clear was not named as an offender in the roster
     // (docs/design/audit/public-390-interactive-offenders-v12.md) and its
     // arithmetic is unchanged by this wave's edit -- still padding: 0 4px.
-    const stripped = stripComments(CHROME_CSS_COMPOSED);
+    const stripped = stripCssComments(CHROME_CSS_COMPOSED);
     const matches = [...stripped.matchAll(/\.chq-pub-select-clear\s*\{([^}]*)\}/g)];
     expect(matches.length).toBeGreaterThan(0);
     const body = matches[matches.length - 1]?.[1];
