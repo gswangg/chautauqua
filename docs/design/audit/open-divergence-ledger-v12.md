@@ -426,6 +426,24 @@ row count, the shape split and the open ceiling are all unmoved by it.
 A new audit file that raises only the file floor is exactly the healthy
 corpus growth DEC-180 reshaped this guard from equality to a floor for.
 
+`v12m-w31-b` then added the 24th row and the FOURTH instance of the
+instrument-constant false positive: `frame-control-floor-390-v12.md:127`,
+the heading `### 3. The one offender: FRAME_FLOOR_DIVERGENCE_CEILING
+raised 0 -> 1`. Like `density-pairing-v12.md:203`,
+`desktop-control-floor-v12.md:185`/`:441` and
+`deviations-ledger-v12.md:134`, the matched word is another instrument's
+own ratchet constant, not a product claim. Counted and described, not
+special-cased, for the same reason as the other three.
+
+**Final constants for the wave-31 merge train**, re-measured after every
+branch landed: `AUDIT_FILE_FLOOR` **119**, `TOKEN_ROW_FLOOR` **246**,
+`SHAPE_FLOORS` **34 heading / 72 table / 31 bullet / 109 fallback**
+(summing to 246), `OPEN_DIVERGENCE_CEILING` **24** -- of which 20 are the
+real, already-narrated product debt this ledger exists to track and 4 are
+the documented instrument-constant over-approximation. A wave that drains
+the real 20 should expect this ceiling to bottom out at 4, not 0, until
+the grammar itself is narrowed by a future ruling.
+
 Two rows in the list above are this document's OWN prose -- the
 `**The ratchet question this raised**` paragraph and the bullet quoting
 `frame-conditional-state-v12.md`'s three `DIVERGES` bullets both match the

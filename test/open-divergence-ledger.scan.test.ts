@@ -285,9 +285,9 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
 const AUDIT_FILE_FLOOR = 119;
-const TOKEN_ROW_FLOOR = 245;
+const TOKEN_ROW_FLOOR = 246;
 const SHAPE_FLOORS: Record<RowShape, number> = {
-  heading: 33,
+  heading: 34,
   table: 72,
   bullet: 31,
   fallback: 109,
@@ -427,7 +427,7 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-export const OPEN_DIVERGENCE_CEILING = 23;
+export const OPEN_DIVERGENCE_CEILING = 24;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
