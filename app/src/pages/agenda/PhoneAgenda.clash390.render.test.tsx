@@ -79,12 +79,7 @@ function baseProps(placed: PlacedAgendaSession[]) {
 
 describe('v12 frame: Agenda 390 clash card flag spells its count (DEC-380 wave-32)', () => {
   it('a 2-session clash reads "Two sessions in this slot", not the numeral', () => {
-    // w16-qg (DEC-998): a fully-receipted, non-header citation into the
-    // same frame the file's header names -- the header-block scope
-    // citation above is now paid for. `verbatimLine` reads the design file
-    // and calls `expect(...).toBe(...)`, so it qualifies as a helper
-    // credit (frame-citation.scan.test.ts's `qualifyingHelperNames`).
-    // docs/design/Chautauqua Agenda.dc.html:161 receipted via verbatimLine below
+    // In-body receipt (DEC-998 wave-17, task w17-c): docs/design/Chautauqua Agenda.dc.html:161 draws `                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>`, checked byte-for-byte by verbatimLine() immediately below.
     verbatimLine(
       161,
       `                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>`,

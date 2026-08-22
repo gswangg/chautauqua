@@ -111,6 +111,12 @@ describe('DEC-895: clash card one-tap resolution', () => {
     const onPlace = vi.fn();
     render(<PhoneAgenda {...baseProps({ placed: [earlier, later], onPlace })} />);
 
+    // In-body receipt (DEC-998 wave-17, task w17-c): docs/design/Chautauqua Agenda.dc.html:171 draws `                <span style="background:#F4F1E8; color:#1B1D17; border-radius:5px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Move DFC-047 to 11:30</span>`, checked byte-for-byte by verbatimLine() immediately below.
+    verbatimLine(
+      171,
+      '                <span style="background:#F4F1E8; color:#1B1D17; border-radius:5px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Move DFC-047 to 11:30</span>',
+    );
+
     const controls = screen.getAllByRole('button', { name: /^Move / });
     expect(controls).toHaveLength(1);
     expect(controls[0]).toHaveTextContent('Move DFC-047 to 9:30');
