@@ -359,12 +359,15 @@ export const CHROME_PHONE_CSS = `
       padding: 6px 13px;
     }
     /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the "Clear" all-filters
-       link (filters.tsx) -- sole class on the element. */
+       link (filters.tsx) -- sole class on the element.
+       DEC-393 wave-33: measured at 40px wide, short of the 44px width
+       floor (public-390-interactive-offenders-v12.md). Widened to 6px
+       each side (32px label + 12px padding = 44px). */
     .chq-pub-activefilters-clear {
       min-height: 44px;
       display: flex;
       align-items: center;
-      padding: 0 4px;
+      padding: 0 6px;
     }
     /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the track-highlight
        select's own "Clear" link (agenda-controls.tsx) -- sole class on the
