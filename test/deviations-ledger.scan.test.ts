@@ -1,63 +1,93 @@
-// DEC-967 (wave 100 amendment): docs/design/DEVIATIONS.md is the third
-// authority the v12 mobile-campaign goal names (frames, DESIGN-RULINGS.md,
-// DEVIATIONS.md) and, until this file, the only one with no derived guard.
-// Every entry in it asserts something about the tree -- "the app keeps the
-// recorded A20 ruling", "the Sort <select>'s phone display:none was
-// DELETED", ".chq-submissions-columnpicker's phone display:none STANDS",
-// "NO STATUS CODE CHANGED" -- and fidelity audits are told to cite this file
-// INSTEAD of re-flagging, so a stale entry silently suppresses a real
-// finding. Modeled BYTE-FOR-BYTE on test/clarifications-ledger.scan.test.ts
-// and test/design-rulings-ledger.scan.test.ts's derived-population +
+// DEC-967 (wave 100 amendment, extended wave 31): docs/design/DEVIATIONS.md
+// is the third authority the v12 mobile-campaign goal names (frames,
+// DESIGN-RULINGS.md, DEVIATIONS.md). Every entry in it asserts something
+// about the tree -- "the app keeps the recorded A20 ruling", "the Sort
+// <select>'s phone display:none was DELETED", ".chq-submissions-columnpicker's
+// phone display:none STANDS", "NO STATUS CODE CHANGED" -- and fidelity
+// audits are told to cite this file INSTEAD of re-flagging, so a stale
+// entry silently suppresses a real finding. Modeled BYTE-FOR-BYTE on
+// test/clarifications-ledger.scan.test.ts and
+// test/design-rulings-ledger.scan.test.ts's derived-population +
 // transcribed-ledger + two-directional-assertion idiom -- same shape, same
 // falsifiability controls, no invention.
 //
-// This file does NOT edit docs/design/DEVIATIONS.md (an in-flight lane,
-// v12m-w14-b, owns it and deletes its "## v12 frame errata" section) and
-// does NOT transcribe rows out of "## v12 frame errata" or "## 5. Pending
-// adjudication" -- deliberately, and asserted below as its own test:
-//   - "## v12 frame errata" is being actively deleted by an in-flight
-//     branch; transcribing it here would make this ledger red the moment
-//     that branch lands, for a reason that has nothing to do with whether
-//     THIS ledger's claims are honored.
-//   - "## 5. Pending adjudication" is stale prose: its one entry
-//     ("Tracks-and-rooms save model") is answered verbatim by "## 6.
-//     Deferred post-deadline"'s "Adjudications recorded" sub-section
-//     (per-row dirty-reveal BLESSED, G13 srv1 adjudication) -- two prior
-//     waves misread §5 as open work because nothing pointed at its answer.
+// DEC-967 wave-31 amendment: the original wave-100 build graded only FOUR of
+// the file's NINE "## " headings (a hand-listed `INCLUDED_HEADINGS` literal
+// array, with a matching hand-listed `EXCLUDED_HEADINGS`). That hard-codes
+// the population DEC-180 forbids. This wave replaces both arrays with
+// `LEDGER_SECTIONS`, derived at test time from every `^## ` heading the file
+// actually contains -- so a heading added or removed from
+// docs/design/DEVIATIONS.md changes this test's population automatically,
+// never by hand-editing a list here.
 //
-// Population: every top-level bullet entry under "## 1. Ruled omissions",
-// "## 2. State-layer additions...", "## 3. Interpretations..." and "## 6.
-// Deferred post-deadline...", re-derived at test time, never hand-listed.
-// A "top-level" bullet is a line starting with "- " at column 0 (no leading
-// whitespace) -- this naturally excludes the nested sub-bullets under the
-// "Submissions 390 phone head" entry (section 3), which are indented and so
+// The two headings the wave-100 build's header comment gave reasons to
+// skip were BOTH stale by wave 31, and this file no longer repeats either
+// reason because neither reason is true any more:
+//   - "## v12 frame errata" was cited as "an in-flight branch (v12m-w14-b)
+//     is actively deleting it". That branch landed; the heading is GONE
+//     from docs/design/DEVIATIONS.md (confirmed: `grep -c '^## ' ...` finds
+//     nine headings, none of them errata). A derivation from real headings
+//     can never re-invent a deleted one, so no special-case is needed to
+//     keep skipping it.
+//   - "## 5. Pending adjudication" was cited as "stale prose, its one entry
+//     is answered by ## 6's Adjudications". The section's OWN TEXT has
+//     since been rewritten to say exactly that in the document itself: "No
+//     adjudication is currently open. ... was verdicted by the G13 srv1
+//     adjudication and is recorded, resolved, in §6's 'Adjudications
+//     recorded'." A section whose only content is a statement that nothing
+//     is open still asserts something about the tree -- so it is now
+//     GRADED, not skipped, as a single divider-style row (see "Divider
+//     rows" below) rather than a bulleted one, because it draws zero
+//     top-level bullets of its own.
+//
+// Population: every top-level bullet entry under EVERY "## " heading in
+// docs/design/DEVIATIONS.md, re-derived at test time, never hand-listed. A
+// "top-level" bullet is a line starting with "- " at column 0 (no leading
+// whitespace) -- this naturally excludes nested sub-bullets (e.g. under the
+// "Submissions 390 phone head" entry, section 3), which are indented and so
 // never match the top-level pattern; their text is still folded into their
 // parent bullet's joined text (harmless -- it only ever appears after the
 // parent's own lead-in has already been extracted).
 //
-// Lead-in extraction, in priority order, applied to the bullet's full
-// joined text (its first line plus every continuation line up to the next
-// top-level bullet, heading, or bold paragraph-header line):
+// Divider rows: a heading that draws ZERO top-level bullets (only "## 5.
+// Pending adjudication" currently qualifies -- confirmed by running the
+// same bullet-deriving function against all nine headings) still asserts
+// something about the tree via its own prose, so it still contributes
+// exactly ONE derived population entry, keyed off the HEADING TITLE itself
+// rather than off any bullet lead-in. This is the identical reasoning
+// test/design-rulings-ledger.scan.test.ts already applies to its own
+// section-divider headings ("## A. Extensions", "## B. Uncovered
+// surfaces") -- a divider or an empty-by-design section names no single
+// artifact of its own, so it is recorded "gap", never force-fit to a
+// borrowed citation from a sibling section. "## 4. Voice" is the second
+// case that reaches "gap", but for a different structural reason: it DOES
+// draw one top-level bullet (so it IS bullet-derived, normally), but that
+// bullet's claim -- "docs prose follows the STE-derived house rules" -- is
+// a broad style/voice policy governing all docs prose, not a fact any
+// single file discharges; the bullet mentions one real supporting file
+// (the technical-names glossary), but citing that file as though it proved
+// the WHOLE policy would be exactly the force-fit this scan's own "gap"
+// verdict exists to avoid. Both are flagged here as the narrowest
+// reasonable reading of "genuinely artifact-free prose" per the task's own
+// instruction to name a design gap rather than force a citation.
+//
+// Lead-in extraction, in priority order, applied to a bullet's full joined
+// text (its first line plus every continuation line up to the next
+// top-level bullet, heading, or bold paragraph-header line) -- unchanged
+// from the wave-100 build and verified by reading (not assumed) to also
+// cover sections 4a, 7 and 8's bullet shapes, all of which open on a bold
+// span like sections 1/2/3:
 //   1. If the joined text opens with a bold span ("**...**"), the lead-in
-//      is that span's contents (sections 1/2/3 -- and the bold span may
-//      itself span multiple source lines, e.g. the Speakers write-failed
-//      entry, which is why extraction runs on the JOINED text, not the
-//      bullet's first line alone).
+//      is that span's contents (the bold span may itself span multiple
+//      source lines, e.g. the Speakers write-failed entry, which is why
+//      extraction runs on the JOINED text, not the bullet's first line
+//      alone).
 //   2. Otherwise (every bullet under "## 6", none of which opens on a bold
-//      span -- confirmed by grep, see the section's own sub-headers being
-//      bold PARAGRAPHS, not bold-led bullets), the lead-in is the text
-//      before the first " — " (em dash) or ": " (colon-space), whichever
-//      occurs first.
+//      span -- confirmed by grep), the lead-in is the text before the
+//      first " — " (em dash) or ": " (colon-space), whichever occurs
+//      first.
 //   3. Otherwise (no delimiter found), the lead-in is the whole joined text
 //      with a trailing "." stripped.
-// This is the narrowest reasonable reading of "keyed by a slugify() of its
-// bolded lead phrase" that still covers "## 6", whose bullets are plain
-// prose sentences with no bold lead-in in the source file (verified by
-// grep: `grep -n '^- ' docs/design/DEVIATIONS.md` shows none of the 14
-// section-6 bullets open with "**"). Flagged here per the task's own
-// instruction to take the narrowest reasonable interpretation of a design
-// gap and name it, rather than force a bold-only rule that would either
-// throw on every section-6 bullet or silently zero the section out.
 //
 // Ledger verdicts:
 //   - "honored": the tree keeps the claim. Two sub-kinds, both under the
@@ -78,7 +108,9 @@
 //   - "gap": recorded openly, never faked with a citation that doesn't
 //     resolve. Section 6's "Unbuilt features" and "Reworks larger than the
 //     freeze window" bullets are legitimately "gap" -- the document's own
-//     words say these are deferred, not built, not disguised as done.
+//     words say these are deferred, not built, not disguised as done. The
+//     wave-31 divider rows ("## 5" itself, and "## 4"'s one bullet) are
+//     "gap" for the reason given above.
 //
 // Both directions are asserted: every derived bullet has exactly one ledger
 // row, and every ledger row names a live derived key -- so neither a new
@@ -98,6 +130,7 @@ void DEC_967;
 
 const ROOT = resolve(__dirname, "..");
 const DEVIATIONS_PATH = join(ROOT, "docs", "design", "DEVIATIONS.md");
+const DEVIATIONS_TEXT = readFileSync(DEVIATIONS_PATH, "utf8");
 
 // ---------------------------------------------------------------------------
 // Population -- derived at test time from docs/design/DEVIATIONS.md, never
@@ -109,23 +142,12 @@ interface DerivedBullet {
   heading: string;
 }
 
-const INCLUDED_HEADINGS = [
-  "## 1. Ruled omissions",
-  "## 2. State-layer additions (frames draw no row/selection states)",
-  "## 3. Interpretations where the frames underspecify",
-  "## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)",
-];
-
-// Deliberately excluded (see header comment for why): a section heading
-// listed here must NEVER appear in INCLUDED_HEADINGS, enforced by its own
-// test below.
-//
-// DEC-967 (wave-101 amendment): "## v12 frame errata" was dropped from this
-// list because v12m-w14-b CLOSED that section and DELETED the heading from
-// DEVIATIONS.md -- an exclusion that stops resolving is a work item that
-// closed, not a regression. The heading is never re-added to satisfy this
-// scan; a derived ledger's exclusion list is part of the derivation.
-const EXCLUDED_HEADINGS = ["## 5. Pending adjudication (not yet blessed — sweep should verdict)"];
+/** DEC-967 wave-31 amendment: every `## ` heading the file actually
+ * contains, in document order -- never a hand-listed array. Replaces the
+ * wave-100 build's `INCLUDED_HEADINGS`/`EXCLUDED_HEADINGS` literal arrays. */
+const LEDGER_SECTIONS: string[] = DEVIATIONS_TEXT.split("\n")
+  .filter((l) => l.startsWith("## "))
+  .map((l) => l.trim());
 
 /** Slugifies a lead-in phrase into a stable, deterministic key: lowercase,
  * curly/straight quotes and backticks stripped, every run of
@@ -202,11 +224,25 @@ function deriveSectionBullets(sectionText: string, heading: string): DerivedBull
   return out;
 }
 
+/** Strips the "## " marker off a heading line, leaving the bare title
+ * ("5. Pending adjudication (not yet blessed — sweep should verdict)"). */
+function headingTitle(heading: string): string {
+  return heading.replace(/^## /, "");
+}
+
 function deriveBullets(): DerivedBullet[] {
-  const text = readFileSync(DEVIATIONS_PATH, "utf8");
   const out: DerivedBullet[] = [];
-  for (const heading of INCLUDED_HEADINGS) {
-    out.push(...deriveSectionBullets(extractSection(text, heading), heading));
+  for (const heading of LEDGER_SECTIONS) {
+    const bullets = deriveSectionBullets(extractSection(DEVIATIONS_TEXT, heading), heading);
+    if (bullets.length > 0) {
+      out.push(...bullets);
+    } else {
+      // A heading with zero top-level bullets of its own is a divider row
+      // (see file header "Divider rows"): one derived entry keyed off the
+      // heading's own title, not off any bullet.
+      const title = headingTitle(heading);
+      out.push({ key: slugify(title), leadIn: title, heading });
+    }
   }
   return out;
 }
@@ -433,6 +469,55 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/review/PlanEditor.render.test.tsx",
     },
   },
+  // ---- ## 4. Voice (DEC-967 wave-31 amendment) --------------------------
+  {
+    key: "docs-prose-follows-the-ste-derived-house-rules-not-the-designs-house-voice-note",
+    status: "gap",
+    reason:
+      "a broad style/voice policy governing ALL docs prose (full ASD-STE100 applied 2026-08-16, then deliberately relaxed to writing-rules-plus-natural-rhythm), not a fact any single file discharges. The bullet names one real supporting artifact -- the declared technical-names glossary at src/routes/docs-content/technical-names.ts -- but that file only carries the domain-terms half of the policy (the should/might ambiguity and metaphor bans have no single artifact at all); citing it as though it proved the whole voice policy would be exactly the force-fit this scan's 'gap' verdict exists to avoid. Recorded gap under the same divider reasoning test/design-rulings-ledger.scan.test.ts already applies to its 'governing-principle-applied' row -- a cross-surface prose axiom, not a single-artifact claim.",
+  },
+  // ---- ## 4a. Docs screenshots: tall frames, prepared states, and focus -
+  {
+    key: "capture-is-fullpage-by-default-still-at-1600-wide",
+    status: "honored",
+    reason: "capture defaults to fullPage (grows the viewport to fit the real screen height) unless a row explicitly opts into the fixed 1600x900 frame capture for position:fixed overlays.",
+    honored: { kind: "present", file: "scripts/docs-shots.ts", literal: 'const fullPage = (entry.capture ?? "fullPage") === "fullPage";', testFile: "test/docs-shots-manifest.test.ts" },
+  },
+  {
+    key: "a-row-may-declare-prep-steps",
+    status: "honored",
+    reason: "DocsShotEntry carries an optional prep array of declarative click/fill/select/waitFor steps, run against the real app before the shutter fires.",
+    honored: { kind: "present", file: "scripts/docs-shots-lib.ts", literal: "readonly prep?: readonly DocsShotStep[];", testFile: "test/docs-shots-manifest.test.ts" },
+  },
+  {
+    key: "clip-selector-padding",
+    status: "honored",
+    reason: "a row may declare clip:{selector,padding} to become a vertical band around one element at the full 1600px width, generous context required (never a tight crop) -- a real row uses it for the agenda break-band figure.",
+    honored: {
+      kind: "present",
+      file: "scripts/docs-shots-lib.ts",
+      literal: 'clip: { selector: \'.chq-agenda-break-band:has-text("Afternoon break")\', padding: 300 },',
+      testFile: "test/docs-shots-manifest.test.ts",
+    },
+  },
+  {
+    key: "highlight-selectors-dim",
+    status: "honored",
+    reason: "a row may declare highlight:{selectors,dim} to draw a brand outline/glow on the caption's subject, optionally dimming the rest -- a real row uses it (with dim) for the agenda held-back/toast figure.",
+    honored: {
+      kind: "present",
+      file: "scripts/docs-shots-lib.ts",
+      literal: 'highlight: { selectors: [".chq-agenda-held-back", ".chq-toast"], dim: true },',
+      testFile: "test/docs-shots-manifest.test.ts",
+    },
+  },
+  // ---- ## 5. Pending adjudication -- divider row (DEC-967 wave-31) ------
+  {
+    key: "5-pending-adjudication-not-yet-blessed-sweep-should-verdict",
+    status: "gap",
+    reason:
+      "the section's own text says 'No adjudication is currently open' -- the one entry it used to list (tracks-and-rooms save model) was verdicted by the G13 srv1 adjudication and is recorded, resolved, under ## 6's Adjudications (see the 'tracks-and-rooms-save-model' row below, which cites that section, never this one). A section whose whole content is a statement that nothing is open draws zero top-level bullets, so it is recorded as a single divider-style gap row keyed to its own heading -- same reasoning test/design-rulings-ledger.scan.test.ts applies to its own section-divider headings -- never force-fit to the ## 6 row's citation.",
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -613,6 +698,137 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/contacts/contacts-rule-chip-geometry-390.test.ts",
     },
   },
+  // ---- ## 7. Settled frame divergences (wave 16 amendment, DEC-663) -----
+  {
+    key: "contacts-merge-390-picker-block",
+    status: "honored",
+    reason:
+      "the frame's 390 drill goes straight from the head band into the field-by-field compare rows, drawing no intervening control, but MergePage renders an additional radio list above those rows that selects WHICH duplicate pair is being merged -- a capability the frame's already-chosen-pair mock silently assumes; removing it would strand a 3+-member duplicate group's route to a usable merge.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/MergePage.tsx",
+      literal: "chq-contacts-merge-picks",
+      testFile: "app/src/pages/contacts/MergePage.frame390.render.test.tsx",
+    },
+  },
+  {
+    key: "speaker-portal-landings-fourth-section-and-its-resources-footer-link",
+    status: "honored",
+    reason:
+      "GET /portal renders a fourth section between 'Waiting on you' and 'Your session' ('Your submissions') and a footer Resources link that the frame's 390 landing cut, drawn before these features existed, omits -- both are shipped product ruled real by DEC-729 and DEC-988.",
+    honored: [
+      { kind: "present", file: "src/routes/portal/index.tsx", literal: '<section aria-label="Your submissions" class="chq-section">', testFile: "test/portal-390-frame-verdicts.test.ts" },
+      { kind: "present", file: "src/routes/portal/index.tsx", literal: '<a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>', testFile: "test/portal-390-frame-verdicts.test.ts" },
+    ],
+  },
+  {
+    key: "speakers-390-landings-roster-trigger",
+    status: "honored",
+    reason:
+      "no Speakers 390 landing frame draws an entry point into the roster drill, but the drill's own destination frame IS drawn -- without a trigger that destination would be unreachable dead code, so the app adds the narrowest possible entry point, already commented as scaffolding rather than a frame match.",
+    honored: { kind: "present", file: "app/src/pages/speakers/OnboardingGrid.tsx", literal: "chq-speakers-phone-roster-link", testFile: "app/src/pages/speakers/OnboardingGrid.render.test.tsx" },
+  },
+  {
+    key: "submit-a-talks-format-legend",
+    status: "honored",
+    reason:
+      "the frame draws the bare word 'Format' for the 390 submit form's format-choice group legend, but FormatChoices renders <legend>{field.label}</legend> and the seeded fixture's stored label is organizer-authored content ('Session format'), not a product string the frame is specifying -- hardcoding the frame's word would overwrite what an organizer typed into their own CFP form.",
+    honored: { kind: "present", file: "src/routes/public/submit-views.tsx", literal: "<legend>{field.label}</legend>", testFile: "test/cfp-stored-label-register.test.ts" },
+  },
+  {
+    key: "cfp-wizard-docks-save-draft-vs-the-frames-draft-already-ruled-recorded-here-only-so-the-ledger-stops-re-filing-it",
+    status: "honored",
+    reason:
+      "the accessible name stays 'Save draft' per DEC-613's wave-96 amendment, one control with one name at every width -- the frame's 'Draft' is a drawing abbreviation rather than a label to ship. The sheet states its own disposition inline; recorded here only so the ledger stops re-filing it.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/cfp.css.ts",
+      literal: 'the accessible name stays "Save draft" per DEC-613 wave-96 amendment',
+      testFile: "test/cfp-desktop-frame-verdicts.test.ts",
+    },
+  },
+  {
+    key: "plan-editors-v4-title-row-shell-name-as-input-duplicate-save-on-the-back-link-row-is-blessed-superseding-the-frames-separate-h1-footer-save-cancel-anatomy",
+    status: "honored",
+    reason:
+      "the frame's 390 plan-editor draws a standalone <h1> plus a docked footer Save/Cancel pair below the fields; the shipped shell instead renders the plan's name as an editable input with Duplicate/Save on the SAME row as the back link -- rebuilding the frame's separate anatomy would delete rename-in-place, a shipped capability the frame predates.",
+    honored: { kind: "present", file: "app/src/pages/review/PlanEditor.tsx", literal: "chq-review-editor-title-row", testFile: "app/src/pages/review/PlanEditor.render.test.tsx" },
+  },
+  {
+    key: "settings-events-read-drill-footer-has-no-cancel",
+    status: "honored",
+    reason:
+      "the frame draws a content+Save/Cancel-footer anatomy for the drilled Event screen; the read view instead stands the head's own 'Change' action down at 390 (a read view holds no form to submit, so no Cancel is manufactured to pair with it) because the read drill's own footer primary already carries the identical edit route. The frame's full Save/Cancel pair renders in the edit drill itself, where a form genuinely exists to submit or discard.",
+    honored: [
+      {
+        kind: "present",
+        file: "app/src/pages/settings/settings.css",
+        literal: ".chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action {",
+        testFile: "app/src/pages/settings/EventSettingsPanel.render.test.tsx",
+      },
+      {
+        kind: "present",
+        file: "app/src/pages/settings/EventSettingsPanel.tsx",
+        literal: 'className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>',
+        testFile: "app/src/pages/settings/EventSettingsPanel.render.test.tsx",
+      },
+    ],
+  },
+  {
+    key: "a-modalframe-dialogs-title-stays-an-h2-referenced-by-aria-labelledby-not-the-frames-h1",
+    status: "honored",
+    reason:
+      "every docs/design/*.dc.html 390 drill frame standing in for a ModalFrame-built dialog draws its head as an <h1>, because a static frame has no concept of 'this screen is a dialog layered over a page'. ModalFrame.tsx renders the dialog's title as an <h2> pointed at by aria-labelledby -- the correct document outline (one <h1> per document, dialogs labelled relative to their trigger) -- left as <h2> on purpose; only the tag name diverges.",
+    honored: { kind: "present", file: "app/src/components/ModalFrame.tsx", literal: '<h2 className="chq-modal-title">{title}</h2>', testFile: "app/src/components/modal-frame-title-phone-drill.test.ts" },
+  },
+  {
+    key: "contacts-390-stands-down-three-purely-informational-readings-with-no-surviving-path-wave-16-r5-amendment-src-decisions-data-dec-919-md",
+    status: "honored",
+    reason:
+      "two title-row summary clauses (returning speakers, reach across events) and the DirectoryRail's ranked top-companies aggregate are lost outright at 390, not re-lined -- all three are readings with no action attached, and the frame's phone head band has no slot left for any of them (fully spent on the wordmark row, the page title and the re-lined three-clause summary), with no rail slot at all in the body. Stood down as recorded deviations via the rail's own phone display:none rule, not silently dropped inside a receipt that claims re-lining.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: "  .chq-contacts-rail {\n    display: none;\n  }",
+      testFile: "app/src/pages/contacts/DirectoryRail.phone390.render.test.tsx",
+    },
+  },
+  {
+    key: "settings-events-slug-field-stays-slug-not-the-frames-public-url-dec-613-wave-24-amendment",
+    status: "honored",
+    reason:
+      "the frame's 'Public URL' label names a field whose drawn value is a full rendered origin+slug, but EventSettingsPanel.tsx's control edits the slug segment alone -- the panel's own PATCH payload and form state key are 'slug', never a composed URL, so adopting the frame's label without also building the origin-prefix presentation it implies would name the field something the input does not accept.",
+    honored: { kind: "present", file: "app/src/pages/settings/EventSettingsPanel.tsx", literal: "slug: 'Slug',", testFile: "app/src/pages/settings/EventSettingsPanel.render.test.tsx" },
+  },
+  // ---- ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -------
+  {
+    key: "a-pack-frame-that-documents-a-vocabulary-is-not-a-screen",
+    status: "honored",
+    reason:
+      "two pack frames document a VOCABULARY rather than a screen (Comms's 4-up template reference gallery, and Docs's element-library frame drawing nine block kinds); neither is built under the desktop freeze. docsSiteRoutes registers only /docs and /docs/:slug, and the nine block kinds the Docs frame draws live in DocsBlock's own closed union, confirming the vocabulary reading rather than a missed screen.",
+    honored: { kind: "present", file: "src/routes/docs-content/types.ts", literal: "DocsBlock's union is DEC-650's closed nine-block element library", testFile: "test/docs-block-vocabulary.test.ts" },
+  },
+  {
+    key: "confirmdialog-gains-no-subtitle-slot",
+    status: "honored",
+    reason:
+      "the frame's ConfirmDialog subtitle names an embed HOST the schema has never carried -- SavedEmbedsPanel.tsx's own comment records that the embeds repo and schema carry no referrer/host column, and DEC-781 already ruled the data-backed consequence lines unbuilt because DEC-380 governs (a frame's drawing does not create a data model). A slot with no reader is deferred on the same footing as the frame's other unbacked consequence line.",
+    honored: { kind: "present", file: "app/src/pages/settings/SavedEmbedsPanel.tsx", literal: "Copy rule 3 forbids asserting what no endpoint stores.", testFile: "app/src/pages/settings/SavedEmbedsPanel.render.test.tsx" },
+  },
+  {
+    key: "settings-950s-edit-footer-keeps-its-single-close",
+    status: "honored",
+    reason:
+      "the frame draws a Cancel/Save-changes pair, but this form has no fields to submit -- every role change and removal writes immediately from the row-level controls -- so there is nothing for Save to commit and nothing for Cancel to revert. The frame's 'Change your own password' link beside them IS built, as SettingsEditForm's destructive footer slot.",
+    honored: { kind: "present", file: "app/src/pages/settings/PeopleRolesPanel.tsx", literal: '<button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>', testFile: "app/src/pages/settings/PeopleRolesPanel.roleChange.render.test.tsx" },
+  },
+  {
+    key: "contacts-720s-single-stage-pill-page-is-the-phone-register",
+    status: "honored",
+    reason:
+      "the tree's .chq-contacts-pipeline-phone-stages IS the frame's pill strip, at the width it belongs to; desktop's five simultaneous Kanban columns are settled truth verdicted MATCHES at the frame's desktop cut. stageEmptyBody() naming the structurally immediately-preceding stage (not the frame copy's two-back reference) is the correct derivation of the frame's own sentence, not a defect.",
+    honored: { kind: "present", file: "app/src/pages/contacts/PipelineBoard.tsx", literal: "function stageEmptyBody(stage: PipelineStage, entries: PipelineEntry[]): string {", testFile: "app/src/pages/contacts/PipelineBoard.render.test.tsx" },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -657,8 +873,6 @@ function termAppearsInTree(term: string): boolean {
   }
   return false;
 }
-
-const DEVIATIONS_TEXT = readFileSync(DEVIATIONS_PATH, "utf8");
 
 function literalAppearsInDeviations(literal: string): boolean {
   return DEVIATIONS_TEXT.includes(literal);
@@ -801,7 +1015,7 @@ const realResolvers = {
   literalInDoc: literalAppearsInDeviations,
 };
 
-describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
+describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population extension)", () => {
   const derived = deriveBullets();
 
   it("tripwire: derived bullet population is non-empty and every key is stable/derived (never hardcoded)", () => {
@@ -812,35 +1026,35 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     }
   });
 
-  it("vacuous-population tripwire: exact entry count per included section", () => {
+  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all nine real headings", () => {
+    expect(LEDGER_SECTIONS.length).toBe(9);
+    for (const heading of LEDGER_SECTIONS) {
+      expect(DEVIATIONS_TEXT.includes(heading), `expected DEVIATIONS.md to contain "${heading}"`).toBe(true);
+    }
+  });
+
+  it("vacuous-population tripwire: exact entry count per section (re-measured wave-31, all nine headings now graded)", () => {
     const bySection = new Map<string, number>();
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(18);
+    expect(bySection.get("## 4. Voice")).toBe(1);
+    expect(bySection.get("## 4a. Docs screenshots: tall frames, prepared states, and focus (USER RULINGS 2026-08-16 / 2026-08-17)")).toBe(4);
+    expect(bySection.get("## 5. Pending adjudication (not yet blessed — sweep should verdict)")).toBe(1);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
-    expect(derived.length).toBe(49);
+    expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(10);
+    expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
+    expect(derived.length).toBe(69);
   });
 
-  it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
-    for (const excluded of EXCLUDED_HEADINGS) {
-      expect(INCLUDED_HEADINGS).not.toContain(excluded);
-    }
-    // §5's only bullet ("Tracks-and-rooms save model") would collide in
-    // TEXT with §6's differently-worded adjudication bullet if both were
-    // ever included -- confirming here that the derived population's single
-    // "tracks-and-rooms-save-model" key comes from §6 (which the ledger
-    // row above cites with a §6 artifact), never from the excluded §5.
+  it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {
+    const fromFive = derived.filter((d) => d.heading === "## 5. Pending adjudication (not yet blessed — sweep should verdict)");
+    expect(fromFive).toHaveLength(1);
+    expect(fromFive[0]!.key).toBe("5-pending-adjudication-not-yet-blessed-sweep-should-verdict");
     const trsmBullets = derived.filter((d) => d.key === "tracks-and-rooms-save-model");
     expect(trsmBullets).toHaveLength(1);
     expect(trsmBullets[0]!.heading).toBe("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)");
-  });
-
-  it("both excluded headings are genuinely present in the document (a moved/renamed heading would silently defeat the exclusion, not just skip it)", () => {
-    const text = readFileSync(DEVIATIONS_PATH, "utf8");
-    for (const heading of EXCLUDED_HEADINGS) {
-      expect(text.includes(heading), `expected DEVIATIONS.md to contain "${heading}"`).toBe(true);
-    }
   });
 
   it("every derived bullet has exactly one ledger row, and every ledger row names a live derived key", () => {
@@ -870,14 +1084,14 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
-  // DEC-808 wave-20 amendment: this file's DEC-996 bullet (line 416) names
-  // the Settings frame from inside the file's header block (above the
-  // first describe(), naming shorthand only) -- the header-block
-  // exemption's companion rule requires at least one fully-receipted,
-  // non-header citation into that same frame elsewhere in the file to pay
-  // for it. This is that citation: a backtick quote read verbatim from the
-  // frame line, immediately followed by a real expect(...).toBe(...)
-  // pinning it (DEC-967 verbatimLine idiom).
+  // DEC-808 wave-20 amendment: this file's DEC-996 bullet names the
+  // Settings frame from inside the file's header block (above the first
+  // describe(), naming shorthand only) -- the header-block exemption's
+  // companion rule requires at least one fully-receipted, non-header
+  // citation into that same frame elsewhere in the file to pay for it.
+  // This is that citation: a backtick quote read verbatim from the frame
+  // line, immediately followed by a real expect(...).toBe(...) pinning it
+  // (DEC-967 verbatimLine idiom).
   // docs/design/Chautauqua Settings.dc.html:1047 `              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>`
   it("DEC-996 citation is verbatim: the Settings frame's :1047 h1 draws the literal this ledger's bullet cites", () => {
     const settingsDesignFile = join(ROOT, "docs", "design", "Chautauqua Settings.dc.html");
