@@ -740,7 +740,8 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
 // on this branch the same way. See the audit doc for the wave-25
 // no-label-match/no-token/no-rule/no-control-shape breakdown.
-export const UNRESOLVED_COUNT_TRIPWIRE = 112;
+// Lowered wave-13-xb (DEC-613): re-measured at 111, was stale at 112.
+export const UNRESOLVED_COUNT_TRIPWIRE = 111;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

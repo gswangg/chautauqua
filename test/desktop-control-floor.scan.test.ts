@@ -1135,7 +1135,8 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
 export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 138;
+// Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 137;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
