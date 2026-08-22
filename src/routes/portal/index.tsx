@@ -43,7 +43,7 @@ import {
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
-import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895, DEC_590 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
@@ -60,6 +60,12 @@ void DEC_576; // wave-110 amendment: SubmissionDetailPage's primary+secondary mo
 // fabricated default when the answer/version is absent.
 void DEC_908;
 void DEC_895;
+// DEC-590 (task w30-c): PortalPage's headline (`{countOf(n, "thing")} to
+// do`, below) is n = worklist.length by construction -- the SAME array the
+// "Waiting on you" section maps over, never a second count -- and
+// PortalLayout (shared.tsx) demotes sign-out to a quiet chq-btn-tertiary
+// control rather than page chrome, matching this decision's two clauses.
+void DEC_590;
 import {
   parseCookies,
   newCsrfToken,
