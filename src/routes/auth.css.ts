@@ -733,5 +733,26 @@ ${BARE_PAGE_CSS}
       display: flex;
       align-items: center;
     }
+
+    /* v12m-w11-tc/DEC-393 live tap-floor sweep: render-sweep's live
+       admin-mobile pass measures a.chq-auth-back (the '‹ Back' link on
+       /account/password) at 37x44 -- the existing min-height:44px rule
+       (:356 above) clears the height floor but the anchor has no
+       min-width/horizontal padding, so its short label ('‹ Back') falls
+       6px short on the width axis, same shape the now-fixed
+       .chq-link-button/.chq-pill sites had (docs/design/audit/
+       admin-390-interactive-offenders-w27.md rows 11-13). DEC-385
+       append-only: the base display:inline-flex/align-self declaration
+       (:127-133 above) is left unedited; this later rule at the same
+       terminal block only adds the missing min-width + centring, per
+       DEC-393's real-floor grammar (min-height, centred flex, non-zero
+       horizontal padding). Appended as the LAST rule of this sheet's one
+       terminal @media (max-width: 700px) block. */
+    .chq-auth-back {
+      min-width: 44px;
+      align-items: center;
+      justify-content: center;
+      padding-inline: 4px;
+    }
   }
 ${ERROR_STATES_PHONE_CSS}`;
