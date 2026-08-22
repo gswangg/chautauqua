@@ -74,23 +74,31 @@ vi.mock("../src/auth/claim", async () => {
 // Stand-in email_log rows — the mocked repo.loadRecentlySent reader below
 // reads from this array, so a second POST sees the first call's 'sent' row
 // exactly as a real D1-backed reader would.
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; body: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -102,7 +110,13 @@ vi.mock("../src/server/repo/comms", async () => {
 
 const mailerSendMock = vi.fn(
   async (message: { to: { email: string }; subject: string; text: string; contactId: string }) => {
-    loggedRows.push({ eventId: "ev1", toEmail: message.to.email, subject: message.subject, sentAt: Date.now() });
+    loggedRows.push({
+      eventId: "ev1",
+      toEmail: message.to.email,
+      subject: message.subject,
+      bodyText: message.text,
+      sentAt: Date.now(),
+    });
   },
 );
 vi.mock("../src/server/context", async () => {
@@ -203,11 +217,20 @@ describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14/wave-17 amendmen
     const t0 = 1_700_000_000_000;
     vi.setSystemTime(t0);
 
+    // DEC-936 (wave-17 amendment): the dedupe key now includes the rendered
+    // body. This body deliberately does NOT reference {portal_link} -- the
+    // dedupe-key render always runs on the UNMINTED preflight pass (DEC-397
+    // MINT ONLY WHAT SHIPS), while a SENT message's persisted body_text is
+    // the post-mint render; a body containing {portal_link} would carry a
+    // freshly-minted, ever-changing token and could never byte-match across
+    // calls regardless of this fix. That mint/persisted-body mismatch is a
+    // pre-existing DEC-397 concern, orthogonal to DEC-936's PER_SUBMISSION_
+    // MERGE_VARS body term this wave adds.
     const first = await postJson(app, {
       contactIds: ["ct_1", "ct_solo"],
       eventId: "ev1",
       subject: "Hi {speaker_name}",
-      bodyText: "See you at {event_name}: {portal_link}",
+      bodyText: "See you at {event_name}.",
     });
     expect(first.status).toBe(200);
     const firstBody = (await first.json()) as { sent: number; skipped: number; failed: unknown[] };
@@ -218,7 +241,7 @@ describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14/wave-17 amendmen
       contactIds: ["ct_1", "ct_solo"],
       eventId: "ev1",
       subject: "Hi {speaker_name}",
-      bodyText: "See you at {event_name}: {portal_link}",
+      bodyText: "See you at {event_name}.",
     });
     expect(second.status).toBe(200);
     const secondBody = (await second.json()) as { sent: number; skipped: number; failed: unknown[] };

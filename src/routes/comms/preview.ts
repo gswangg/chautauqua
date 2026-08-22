@@ -101,7 +101,7 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    rendered.map((r) => ({ email: r.email, subject: r.subject, body: r.text })),
     dedupeCutoff(Date.now()),
   );
   const { toSend, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);

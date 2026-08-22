@@ -55,23 +55,30 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; body: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -87,9 +94,15 @@ vi.mock("../src/server/context", async () => {
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: vi.fn(async (attempt: { to: { email: string }; subject: string }) => {
+      send: vi.fn(async (attempt: { to: { email: string }; subject: string; text: string }) => {
         sentMails.push({ to: attempt.to.email, subject: attempt.subject });
-        loggedRows.push({ eventId: "ev1", toEmail: attempt.to.email, subject: attempt.subject, sentAt: Date.now() });
+        loggedRows.push({
+          eventId: "ev1",
+          toEmail: attempt.to.email,
+          subject: attempt.subject,
+          bodyText: attempt.text,
+          sentAt: Date.now(),
+        });
       }),
     })),
   };
@@ -155,6 +168,10 @@ describe("POST /contacts/bulk-email — MINT ONLY WHAT SHIPS (DEC-397 wave-62)",
     const t0 = 1_700_000_000_000;
     vi.setSystemTime(t0);
 
+    // DEC-936 (wave-17 amendment): the dedupe key now includes the rendered
+    // body, so the second call must render the SAME body as the first to be
+    // a genuine duplicate — a body change (e.g. adding {portal_link}) is a
+    // different message and must not be swallowed by the window.
     const first = await postJson(
       app,
       { contactIds: ["ct-1"], eventId: "ev1", subject: "Reminder", bodyText: "Hi {speaker_name}." },
@@ -168,7 +185,7 @@ describe("POST /contacts/bulk-email — MINT ONLY WHAT SHIPS (DEC-397 wave-62)",
     vi.setSystemTime(t0 + 40_000);
     const second = await postJson(
       app,
-      { contactIds: ["ct-1"], eventId: "ev1", subject: "Reminder", bodyText: "Hi {speaker_name}, see {portal_link}." },
+      { contactIds: ["ct-1"], eventId: "ev1", subject: "Reminder", bodyText: "Hi {speaker_name}." },
       kv,
     );
     expect(second.status).toBe(200);

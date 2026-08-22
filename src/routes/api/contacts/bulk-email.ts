@@ -211,12 +211,12 @@ async function planBulkEmailSends(
   const recentlySent = await loadRecentlySent(
     db,
     eventId,
-    afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+    afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject, body: r.text })),
     dedupeCutoff(nowMs),
   );
   const toSend: RenderedRecipientEmail[] = [];
   for (const r of afterIntraBatch) {
-    if (recentlySent.has(dedupeKey(r.email, r.subject))) {
+    if (recentlySent.has(dedupeKey(r.email, r.subject, r.text))) {
       skippedRendered.push(r);
       continue;
     }

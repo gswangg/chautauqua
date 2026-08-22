@@ -20,27 +20,47 @@ export function retryAtMs(lastSentAtMs: number): number {
   return lastSentAtMs + COMPOSE_DEDUPE_WINDOW_MS;
 }
 
-/** The dedupe key: (lower-cased, trimmed email, exact rendered subject) —
- * keyed on the MESSAGE, not templateId, per the DEC-238 wave-3 ruling. Event
- * scoping is applied by the caller (the reader is already scoped to one
- * eventId), not folded into this key. JSON-encoded so no separator
- * collision is possible between an email and a subject that happens to
- * contain the separator character. */
-export function dedupeKey(toEmail: string, subject: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject]);
+/** The dedupe key: (lower-cased, trimmed email, exact rendered subject,
+ * exact rendered body) — keyed on the MESSAGE, not templateId, per the
+ * DEC-238 wave-3 ruling (body term added by the DEC-936 wave-17 amendment,
+ * see below). Event scoping is applied by the caller (the reader is already
+ * scoped to one eventId), not folded into this key. JSON-encoded so no
+ * separator collision is possible between an email/subject/body that
+ * happens to contain the separator character.
+ *
+ * DEC-936 (wave-17 amendment): a static subject that spends a
+ * PER_SUBMISSION_MERGE_VARS token (talk_title/feedback/session_time, see
+ * src/domain/compose.ts) only in the BODY renders a DIFFERENT message per
+ * submission while keeping an IDENTICAL subject — email_log.body_text IS
+ * written on every send (src/routes/comms/send.ts), so the store can
+ * honestly judge the cross-call window at message granularity, not just
+ * (email, subject). Without the body term, stage 2 would treat two
+ * genuinely different messages (same subject, different body) as the same
+ * "already sent" message and refuse the second one. */
+export function dedupeKey(toEmail: string, subject: string, body: string): string {
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body]);
 }
 
-/** DEC-936 (wave-22 amendment): the stage-1 (intra-batch) key — (lower-cased, trimmed email,
- * exact rendered subject, attachmentKey). Stage 1 alone grows an
- * attachmentKey term beyond dedupeKey's (email, subject) pair: two rendered
- * rows for one contact can share an identical subject+body (no
- * PER_SUBMISSION_MERGE_VARS token spent) while still attaching two DIFFERENT
- * per-submission .ics invites, and stage 1 must not collapse them.  Stage 2
- * (already_sent_recently) stays on plain dedupeKey — email_log records no
- * attachment identity, so the cross-call window can only honestly be judged
- * at the granularity the store keeps. */
-export function intraBatchKey(toEmail: string, subject: string, attachmentKey: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject, attachmentKey]);
+/** DEC-936 (wave-22 amendment, widened wave-17): the stage-1 (intra-batch)
+ * key — (lower-cased, trimmed email, exact rendered subject, exact rendered
+ * body, attachmentKey). Stage 1 grows an attachmentKey term beyond
+ * dedupeKey's (email, subject, body) triple: two rendered rows for one
+ * contact can share an identical subject+body (no PER_SUBMISSION_MERGE_VARS
+ * token spent at all, or spent only via an attachment) while still
+ * attaching two DIFFERENT per-submission .ics invites, and stage 1 must not
+ * collapse them.
+ *
+ * DEC-936 (wave-17 amendment): the body term itself is what stops stage 1
+ * from undoing expandRecipients' non-collapse decision — a composed
+ * message that keeps a static subject and spends its per-submission merge
+ * vars in the BODY (with no .ics attachment, attachmentKey === "") used to
+ * collapse to one row here even though expandRecipients had just decided
+ * to keep all N of a speaker's submissions distinct. Stage 2
+ * (already_sent_recently) now keys on dedupeKey(email, subject, body) too
+ * — email_log.body_text IS written on every send, so this is no longer
+ * true only of stage 1. */
+export function intraBatchKey(toEmail: string, subject: string, body: string, attachmentKey: string): string {
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body, attachmentKey]);
 }
 
 /** A recipient the dedupe planner held back, named individually (never a
@@ -93,7 +113,7 @@ export function collapsedRecipientSkips(
  * multi-recipient batch is judged against one consistent read of
  * email_log, not interleaved with this call's own sends). */
 export function planComposeSends<
-  T extends { email: string; name: string; subject: string; submissionId: string; attachmentKey?: string },
+  T extends { email: string; name: string; subject: string; text: string; submissionId: string; attachmentKey?: string },
 >(
   rendered: readonly T[],
   recentlySent: ReadonlyMap<string, number>,
@@ -102,11 +122,12 @@ export function planComposeSends<
   const seenInBatch = new Set<string>();
   const afterIntraBatch: T[] = [];
   for (const r of rendered) {
-    // DEC-936 (wave-22 amendment): stage 1 keys on attachment identity too — see intraBatchKey.
+    // DEC-936 (wave-22 amendment, widened wave-17): stage 1 keys on the
+    // rendered body and attachment identity too — see intraBatchKey.
     // `attachmentKey` defaults to "" for a caller that never sets it (e.g. a
-    // non-ics compose), which reduces this to plain dedupeKey(email,subject)
-    // behaviour, unchanged from before this amendment.
-    const key = intraBatchKey(r.email, r.subject, r.attachmentKey ?? "");
+    // non-ics compose), which reduces this to plain dedupeKey(email,subject,body)
+    // behaviour.
+    const key = intraBatchKey(r.email, r.subject, r.text, r.attachmentKey ?? "");
     if (seenInBatch.has(key)) {
       skipped.push({ email: r.email, name: r.name, submissionId: r.submissionId, reason: "duplicate_in_batch" });
       continue;
@@ -116,7 +137,7 @@ export function planComposeSends<
   }
   const toSend: T[] = [];
   for (const r of afterIntraBatch) {
-    const lastSentAt = recentlySent.get(dedupeKey(r.email, r.subject));
+    const lastSentAt = recentlySent.get(dedupeKey(r.email, r.subject, r.text));
     if (lastSentAt !== undefined) {
       skipped.push({
         email: r.email,

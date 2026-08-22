@@ -372,14 +372,18 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // on (event, lower(email), the constant per-plan reminder subject) so a
   // second "Remind laggards" click inside the hour skips instead of
   // re-mailing.
+  // DEC-936 (wave-17 amendment): reminderText varies PER LAGGARD (it spends
+  // each recipient's own assignedCount/completed counts), so the dedupe key
+  // must be computed with each laggard's own rendered body, not a shared
+  // subject alone -- two laggards on the same plan never share a message.
   const recentlySent = await loadRecentlySent(
     c.var.db,
     plan.eventId,
-    capped.map((l) => ({ email: l.email, subject: reminderSubject })),
+    capped.map((l) => ({ email: l.email, subject: reminderSubject, body: reminderText(l) })),
     dedupeCutoff(Date.now()),
   );
-  const attempted = capped.filter((l) => !recentlySent.has(dedupeKey(l.email, reminderSubject)));
-  const skipped = capped.filter((l) => recentlySent.has(dedupeKey(l.email, reminderSubject)));
+  const attempted = capped.filter((l) => !recentlySent.has(dedupeKey(l.email, reminderSubject, reminderText(l))));
+  const skipped = capped.filter((l) => recentlySent.has(dedupeKey(l.email, reminderSubject, reminderText(l))));
 
   // DEC-238 (wave-132 amendment): ONE local, shared by the fan-out send
   // below AND the skipped-row write further down -- never two literals that
