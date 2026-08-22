@@ -137,4 +137,10 @@
 // confirmed by re-running the scan's own class-2 detector over the full
 // discovered population, never by arithmetic alone. Ceiling lowered to
 // match the measured value: 85 -> 84.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 84;
+// v12m-w16-qd (wave 16, DEC-374/DEC-613): two-sided companion went RED the
+// other way -- measured population had fallen to 83, one below the declared
+// 84. Re-measured with the ceiling forced to -1 and the offender list read
+// back: 83, confirmed. No file was converted for this class in this task
+// (drain was incidental to other lanes' work); lowered to match the real
+// number, never by arithmetic on any batch size. Ceiling lowered: 84 -> 83.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 83;

@@ -591,8 +591,9 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
         [
           "import { describe, expect, it } from 'vitest';",
           "import { readFileSync } from 'node:fs';",
+          "import { stripCssComments } from '../../test/helpers/strip-css-comments';",
           "const DESIGN_FILE = '/tmp/does-not-matter.dc.html';",
-          "const APP_CSS = readFileSync('/tmp/app.css', 'utf-8');",
+          "const APP_CSS = stripCssComments(readFileSync('/tmp/app.css', 'utf-8'));",
           "describe('v12 phone frame (390) -- docs/design/Fake Frame.dc.html:12', () => {",
           "  it('reads a design line and asserts the app css', () => {",
           "    const line = readFileSync(DESIGN_FILE, 'utf-8');",
