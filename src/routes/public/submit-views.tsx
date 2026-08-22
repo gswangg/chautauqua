@@ -22,7 +22,11 @@ import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
 import type { PublicEvent } from "../../server/repo/public";
 import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
-import { DEC_322, DEC_380, DEC_745 } from "../../decisions";
+import { DEC_322, DEC_380, DEC_745, DEC_908 } from "../../decisions";
+// DEC-908 (wave-5 amendment): the check-spam note and the tail-links row
+// below are gated on props.state === "fresh" -- void-referenced so the
+// dependency is compile-checked.
+void DEC_908;
 
 void DEC_322;
 void DEC_380;
@@ -846,7 +850,14 @@ export function ConfirmationPage(props: {
             check spam would be a falsehood the frame never asked for.
             The line is Chautauqua Public and Portal.dc.html:1084 and renders
             in the sibling class .chq-cfp-confirm-note (cfp.css.ts), per
-            DEC-380.md's own "Both captions this amendment named are built". */}
+            DEC-380.md's own "Both captions this amendment named are built".
+            DEC-908 (wave-5 amendment): the check-spam note is drawn ONLY by
+            the fresh frame (:1074, note at :1084) -- :1124
+            (pending-existing-contact) ends at "Already have a password? /
+            Log in ›" and :1147 (has-account) ends at "You already have an
+            account here. / Log in to track it"; neither frame draws this
+            line, so it is gated on props.state === "fresh" in addition to
+            the existing emailDelivered condition. */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
             <>{confirmationBodySentence(props)}</>
@@ -920,6 +931,12 @@ export function ConfirmationPage(props: {
             </>
           )}
         </div>
+        {/* DEC-908 (wave-5 amendment): this tail-links row is drawn ONLY by
+            the fresh frame (:1074, row at :1090-1092 -- "Submit another
+            talk" + "Browse the sessions ›"). :1124
+            (pending-existing-contact) and :1147 (has-account) both end at
+            their respective Log-in line and draw neither link, so the whole
+            block is gated on props.state === "fresh". */}
         {props.state === "fresh" ? (
           <div class="chq-cfp-links">
             <a href={`/submit/${props.eventSlug}`}>Submit another talk &rsaquo;</a>
