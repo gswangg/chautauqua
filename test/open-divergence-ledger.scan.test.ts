@@ -284,7 +284,19 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // diff `auditFiles()`/`ALL_ROWS` against the last-known-good list to find
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
-const AUDIT_FILE_FLOOR = 119;
+// Raised wave-31 (task v12m-w31-f): app/src/phone-hidden-drawn-text.scan.test.ts
+// adds docs/design/audit/phone-hidden-drawn-text-v12.md, growing both the
+// audit-file count and the DIVERGES-token row count -- a monotone-upward
+// floor guard, per its own failure message, is raised in the SAME commit
+// that grows the corpus, never left stale.
+//
+// MERGE-TRAIN NOTE: w31-f measured 119/189 against a main that predated
+// w31-d's widened claim vocabulary and the four other wave-31 audit docs.
+// Both figures below are the values re-measured live on the fully merged
+// tree, which is higher than either side's -- w31-f's own reasoning is
+// unchanged and still applies, only its arithmetic was superseded by the
+// larger corpus it landed into.
+const AUDIT_FILE_FLOOR = 120;
 const TOKEN_ROW_FLOOR = 246;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 34,

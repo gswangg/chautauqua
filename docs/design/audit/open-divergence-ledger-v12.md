@@ -436,13 +436,22 @@ own ratchet constant, not a product claim. Counted and described, not
 special-cased, for the same reason as the other three.
 
 **Final constants for the wave-31 merge train**, re-measured after every
-branch landed: `AUDIT_FILE_FLOOR` **119**, `TOKEN_ROW_FLOOR` **246**,
+branch landed: `AUDIT_FILE_FLOOR` **120**, `TOKEN_ROW_FLOOR` **246**,
 `SHAPE_FLOORS` **34 heading / 72 table / 31 bullet / 109 fallback**
 (summing to 246), `OPEN_DIVERGENCE_CEILING` **24** -- of which 20 are the
 real, already-narrated product debt this ledger exists to track and 4 are
 the documented instrument-constant over-approximation. A wave that drains
 the real 20 should expect this ceiling to bottom out at 4, not 0, until
 the grammar itself is narrowed by a future ruling.
+
+(`v12m-w31-f` landed last, adding
+`docs/design/audit/phone-hidden-drawn-text-v12.md` -- like
+`design-rulings-ledger-v12.md` it contributes zero claim rows, so it moved
+`AUDIT_FILE_FLOOR` to 120 and nothing else. That branch had raised the
+same two constants to 119/189 against a main predating the widened
+vocabulary; its REASONING is unchanged and still recorded in the scan
+file, only its arithmetic was superseded by the larger corpus it merged
+into.)
 
 Two rows in the list above are this document's OWN prose -- the
 `**The ratchet question this raised**` paragraph and the bullet quoting
