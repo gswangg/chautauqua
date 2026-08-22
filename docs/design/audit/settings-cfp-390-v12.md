@@ -68,7 +68,7 @@ grades:
    text.
 5. The 44px-floor class hooks on `Copy link` and every `Edit` control.
 
-## No DIVERGES rows filed
+## No DIVERGES rows filed (DEC-099 wave-14m clause 1: this heading records the absence of a divergence)
 
 No selector this lane would have needed to touch under the CSS hard-ban
 was found missing or misapplied — the existing `settings.css` phone rules

@@ -80,7 +80,8 @@ now conform). Receipt: `app/src/pages/Settings-dialogs.desktop-frame-verdicts.re
 
 ## Frame :1392 "Confirm · reversible"
 
-**DIVERGES** (additive — title and body text match).
+**DIVERGES** (additive — title and body text match). **Ruled a deferral,
+not open debt (DEC-781 wave-9 amendment)** — see below.
 
 Entered via `?section=public-pages&view=embeds` (`SavedEmbedsPanel` always
 renders its full Edit/Turn on-off/Delete/Build set there — DEC-896 B10
@@ -93,7 +94,13 @@ control.
   slot at all — every caller only supplies `title`/`body`/action labels.
   This is a structural gap in the shared dialog primitive, not a
   page-local choice, so it recurs identically at every `ConfirmDialog`
-  call site.
+  call site. **DEC-781 wave-9 amendment:** the subtitle's referent ("in
+  use on notion.so") is DEC-380-unbuildable — no schema column or
+  endpoint records where an embed is pasted (`SavedEmbedsPanel.tsx`'s own
+  comment records the same absence) — so `ConfirmDialogProps` stays
+  without a subtitle slot on purpose, and the ruling itself says the audit
+  row must record that, rather than filing an "add a subtitle prop" lane
+  against a slot no caller could ever fill.
 - Actions row (frame :1406) MATCHES: primary `Turn it off` precedes
   `Cancel`, and the body sentence ("The embed will render nothing wherever
   it is pasted, until you turn it back on. Nothing is deleted.") matches
@@ -163,6 +170,22 @@ Entered at `/settings?section=people&edit=1`, "reached" via the real
   reveal's own content (`New password · shown once`, the password itself)
   still renders, just without any dialog chrome around it.
 
+**Re-verdicted (DEC-099 wave-14m clause 1) — the finding above is stale;
+current tree MATCHES.** Grepped live: `PeopleRolesPanel.tsx` now wraps
+`PasswordRevealBlock` in a real `ModalFrame` for this exact reveal
+(`modalClassName="chq-people-reset-modal"`), carrying `title={\`${name}
+can sign in again\`}`, `subtitle={\`${email} · ${role}\`}`, and the shared
+Close control — a header comment there names this DEC-747 wave-7's own
+amendment ("the reset reveal is now its own Modal, the same dialog
+contract as the invite reveal"). The bullet above quotes an assertion
+(`expect(screen.queryByRole('dialog')).not.toBeInTheDocument()`) that no
+longer exists in that shape: the CURRENT
+`PeopleRolesPanel.resetPassword.render.test.tsx` instead calls
+`screen.getByRole('dialog')` and reads the title/subtitle/Close controls
+out of it. The reveal's own content (`New password · shown once`, the
+password itself) renders inside that modal body, matching the frame's
+header/body split, not fully inline.
+
 ## Summary
 
 | Frame | Verdict |
@@ -170,15 +193,16 @@ Entered at `/settings?section=people&edit=1`, "reached" via the real
 | :1271 Invite someone | MATCHES |
 | :1319 Invite · the one-time password | MATCHES |
 | :1352 Invite · rejected | RESOLVED (DEC-651 wave-9 amendment — title now retitles, escape control now third in the actions row) |
-| :1392 Confirm · reversible | DIVERGES (no subtitle slot on `ConfirmDialog`) |
+| :1392 Confirm · reversible | DIVERGES (no subtitle slot on `ConfirmDialog`) — ruled a filed deferral, not open debt (DEC-781 wave-9) |
 | :1414 Confirm · irreversible | MATCHES (title now object-naming, wave-9; primary label non-adoption is a ruling, not a gap; subtitle line DEFERRED) |
 | :1440 Portal resource · add | MATCHES |
-| :1477 Reset a password | DIVERGES (no dialog renders at all — fully inline) |
+| :1477 Reset a password | Re-verdicted MATCHES (was DIVERGES, DEC-099 — DEC-747 wave-7 built the real Modal, see above) |
 
-4 of 7 frames MATCH/RESOLVE as rendered; the other three are prose-filed
-divergences per this task's measurement-only mandate — no desktop byte was
-moved and no component or stylesheet was edited to produce this verdict
-beyond the wave-9 :1352 amendment above. Frame :1422's
+5 of 7 frames MATCH/RESOLVE as rendered as of this wave's re-verdicts;
+:1392 remains a prose-filed, ruled deferral per this task's
+measurement-only mandate — no desktop byte was moved and no component or
+stylesheet was edited to produce this verdict beyond the wave-9 :1352
+amendment above. Frame :1422's
 "Downloaded 18 times by 12 speakers" subtitle is separately DEFERRED under
 DEVIATIONS §6 ("Unbuilt features (no data model or endpoint behind the
 drawing)"): the resource table has no download-count column and no

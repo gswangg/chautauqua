@@ -61,8 +61,9 @@ after line 1215, never inside either deferred extent — so the absence of
 ## Frame :950 "Settings · editing people and roles"
 
 **Re-verdicted, correcting a stale prior finding — MATCHES on the specific
-point this task's brief expected DIVERGES.** Entered via `SettingsPage` at
-`/settings?section=people&edit=1`.
+point this task's brief expected DIVERGES.** (DEC-099 wave-14m clause 1:
+this paragraph narrates a finding already retired by this re-verdict.)
+Entered via `SettingsPage` at `/settings?section=people&edit=1`.
 
 - The task brief carried forward a known prior finding: "the edit footer
   draws a left-flush 'Change your own password' link that
@@ -116,6 +117,20 @@ nested-screen precedent for `:578`, its own phone-sibling entry).
   snippet" action and a "Preview" link, both present and both wired to the
   same URL the panel builds.
 
+**Re-verdicted (DEC-099 wave-14m clause 1) — both points above are stale;
+current tree MATCHES.** The two findings above describe `SavedEmbedsPanel
+.tsx`'s row list, not the real edit destination. Rendered against the
+current tree, editing a saved embed lands on `EmbedsPanel.tsx`
+(`editingId` set), whose edit head is `‹ Public pages` above `<h1>{name}
+</h1>` — the embed's own name verbatim as a real H1, not "Editing ·
+<name>" (`EmbedsPanel.tsx`'s own comment above that head names DEC-728 and
+records "never 'Editing · <name>'"), and whose footer is the three-control
+`.chq-settings-edit-footer` — a left-flush "Turn this embed off", then
+Cancel, then Save changes, in that DOM order (`EmbedsPanel.tsx`'s comment
+above the footer names DEC-728 and the frame's own `:1096-1101` line
+range). Both points this section originally filed are built; nothing
+remains open here.
+
 ## Frame :1215 "Settings · save rejected by the server"
 
 **MATCHES verbatim on the refusal band itself; DIVERGES-by-wording
@@ -145,6 +160,13 @@ component directly).
   more visible block than the frame draws, and with different prose on
   that second block. No component is restyled or the ErrorSummary
   suppressed to match; desktop is frozen and this wave measures only.
+  **Adjudicated (DEC-124 wave-134 amendment):** the ruling that built
+  `.chq-settings-refusal-panel` says so explicitly — the panel is "kept
+  alongside — never instead of — the existing Slug `chq-field-error` and
+  its `ErrorSummary` anchor: the panel names what was lost at the level of
+  the whole save, the field error still marks the one control the server
+  actually named." The second block is a deliberate, ruled keep, not
+  unfiled debt.
 - **MATCHES**: unsaved edits survive the refusal — no refetch, no reset;
   the Slug field still carries the value the organiser typed.
 
@@ -153,14 +175,19 @@ component directly).
 | Frame | Verdict |
 | --- | --- |
 | :869 Settings · editing the speaker portal | RESOLVED (wave 9, DEC-919): welcome-note readout box built above the field, caption re-lined below it; footer/section order MATCHES |
-| :950 Settings · editing people and roles | Re-verdicted MATCHES on the password link (was stale DIVERGES); Cancel/Save-changes footer shape RESOLVED-BY-RULING (wave 9) — no fields to submit, single Close primary stands |
-| :1021 Settings · editing one saved embed | DIVERGES (H1 wording; footer missing Cancel/Turn-off) |
-| :1215 Settings · save rejected by the server | MATCHES verbatim on the refusal band; DIVERGES additively (extra ErrorSummary block, different wording) |
+| :950 Settings · editing people and roles | Re-verdicted MATCHES on the password link (was stale DIVERGES, DEC-099); Cancel/Save-changes footer shape RESOLVED-BY-RULING (wave 9) — no fields to submit, single Close primary stands |
+| :1021 Settings · editing one saved embed | Re-verdicted MATCHES (was DIVERGES, DEC-099 — H1 and three-control footer both built via DEC-728, see re-verdict above) |
+| :1215 Settings · save rejected by the server | MATCHES verbatim on the refusal band; DIVERGES additively RESOLVED-BY-RULING (DEC-124 wave-134 — extra ErrorSummary block kept deliberately, see above) |
 | :1111 Settings · editing your data | DEFERRED — DEVIATIONS §6: `no schema column, no endpoint and no rubric back a retention setting` (DEC-032), un-citable this wave |
 
 As of wave 9, two of the four verdicted frames closed: :869's welcome-note
 readout was built (DEC-919 wave-9 amendment) and :950's Cancel/Save-changes
 footer gap was RESOLVED-BY-RULING (the form has nothing to commit). :1021
-and :1215 remain real, filed divergences, and one prior finding (the
-People-and-roles password link) was corrected from stale DIVERGES to
-MATCHES by wave 9's re-verdict.
+and :1215 remained filed divergences as of wave 9, and one prior finding
+(the People-and-roles password link) was corrected from stale DIVERGES to
+MATCHES by wave 9's re-verdict. As of wave 14m (DEC-099 clause 1), both
+:1021 and :1215 also closed on re-verdict: :1021's H1 and footer were
+built via DEC-728 (`EmbedsPanel.tsx`, not the row-list file the original
+finding read), and :1215's second block is RESOLVED-BY-RULING (DEC-124
+wave-134 — the refusal panel is kept deliberately alongside
+`ErrorSummary`, not a gap between them).
