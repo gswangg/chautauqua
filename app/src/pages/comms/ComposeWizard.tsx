@@ -25,11 +25,15 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { writeComposeDraft, clearComposeDraft } from './composeDraft';
 import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_317, DEC_660, DEC_752, DEC_793, DEC_825, DEC_939, DEC_967, DEC_993 } from '../../../../src/decisions';
+import { DEC_317, DEC_660, DEC_752, DEC_793, DEC_825, DEC_939, DEC_964, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 import { useIsPhone } from '../../lib/useIsPhone';
 
 void DEC_317;
+// DEC-964 (wave 21): backs the step-4 rail Recipients-row fix in `stepMeta`
+// below (names the recipient total a send actually addressed, never a
+// second source for that number).
+void DEC_964;
 // DEC-752/DEC-825 back the always-mounted bulk bar contract (DEC-967
 // wave-107 doc-integrity lens: this file previously imported DEC_919 for
 // the same purpose, which is the wave-105 unreceipted-phone-hides
@@ -728,12 +732,50 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   }
 
 
+  // Ruling B1 / DEC-964 (wave 21): the post-send report's headline audience
+  // count. `total` is every recipient the server actually attempted (sent +
+  // named failures + skipped) -- never the pre-send preview count, which
+  // can't see per-recipient failures the server hasn't reported yet. Hoisted
+  // above `stepMeta` (was declared further below) so the step-4 rail row can
+  // reuse this exact figure rather than recomputing it (DEC-613: one
+  // vocabulary, one owner).
+  const sentFailedCount = sendResult?.failed?.length ?? 0;
+  // DEC-238 amendment (wave 3): the ruling's three plain lines. `skipped`
+  // defaults to [] client-side (ComposeSendResult) so a server that hasn't
+  // landed the dedupe field yet reports zero, never a fabricated count.
+  // `remaining` is the failed set -- a recipient the product still owes a
+  // message, never a second server-posted field.
+  const skippedRecipients = sendResult?.skipped ?? [];
+  // wave-60 amendment (DEC-238, P1 cluster 4): the denominator must include
+  // every recipient the batch actually contained, not just sent+failed --
+  // otherwise a batch that skipped 30 of 36 reports "6 of 6", which reads
+  // as complete. sent + failed + skipped is the same arithmetic
+  // /compose/send's own toSend.length + skipped.length runs internally.
+  const sentTotal = sendResult ? sendResult.sent + sentFailedCount + skippedRecipients.length : 0;
+
   const stepMeta: StepMeta[] = [
     {
       step: 'select',
       title: 'Recipients',
-      detail:
-        selection.selectedIds.size === 0
+      // `Chautauqua Comms.dc.html:376` and `:469` both draw the rail's
+      // Recipients row (the row titled "Recipients", bound to THIS step
+      // entry -- the rail's row titles never change, only their step-scoped
+      // detail text does) as a PEOPLE count (`23 accepted speakers`), the
+      // identical literal at both step 1 and step 4 -- DEC-964. Once a send
+      // has run (`sendResult` exists), name the same recipient total the
+      // step-4 headline already computes above (`sentTotal`), in the same
+      // `speaker` noun via `countOf`, never a second source for the number
+      // (DEC-613). The frame's `accepted` qualifier describes its own
+      // fixture (a selection drawn from accepted submissions); compose can
+      // address any selection, so it is deliberately not adopted here.
+      // Steps 1-3 (no `sendResult` yet) are left untouched -- before a
+      // preview has run, expandRecipients has not resolved submissions to
+      // distinct speakers, so the recipient population is a value the
+      // server has not yet computed and DEC-652 says an uncomputed value is
+      // absent, never invented.
+      detail: sendResult
+        ? `${countOf(sentTotal, 'speaker')} emailed`
+        : selection.selectedIds.size === 0
           ? 'None selected yet'
           : `${countOf(selection.selectedIds.size, 'submission')} selected`,
     },
@@ -785,23 +827,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // back to the raw typed subject only when no preview row has rendered
   // yet.
   const resolvedSendSubject = preview[0]?.subject ?? subject;
-  // Ruling B1: the post-send report's headline audience count. `total` is
-  // every recipient the server actually attempted (sent + named failures) --
-  // never the pre-send preview count, which can't see per-recipient
-  // failures the server hasn't reported yet.
-  const sentFailedCount = sendResult?.failed?.length ?? 0;
-  // DEC-238 amendment (wave 3): the ruling's three plain lines. `skipped`
-  // defaults to [] client-side (ComposeSendResult) so a server that hasn't
-  // landed the dedupe field yet reports zero, never a fabricated count.
-  // `remaining` is the failed set -- a recipient the product still owes a
-  // message, never a second server-posted field.
-  const skippedRecipients = sendResult?.skipped ?? [];
-  // wave-60 amendment (DEC-238, P1 cluster 4): the denominator must include
-  // every recipient the batch actually contained, not just sent+failed --
-  // otherwise a batch that skipped 30 of 36 reports "6 of 6", which reads
-  // as complete. sent + failed + skipped is the same arithmetic
-  // /compose/send's own toSend.length + skipped.length runs internally.
-  const sentTotal = sendResult ? sendResult.sent + sentFailedCount + skippedRecipients.length : 0;
+  // Ruling B1 / DEC-964 (wave 21): `sentFailedCount` / `skippedRecipients` /
+  // `sentTotal` were declared here; hoisted above `stepMeta` so the step-4
+  // rail row can reuse the same values -- see the comment there.
 
   // Frame :757 (DEC-939, wave-148): the desktop 1600 header's own
   // "Comms · Compose · step N" breadcrumb -- portalled into the admin
