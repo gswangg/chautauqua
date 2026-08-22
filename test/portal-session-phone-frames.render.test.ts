@@ -225,7 +225,7 @@ describe('v12 phone frame "Portal · Hotel stay form" (:502-527, GET /portal/tas
     expect(h1Text(html)).toBe("Hotel stay form");
   });
 
-  it("back link renders once, DIVERGES on the literal (frame draws '‹ Your portal', the route's DEC-914 label table resolves the destination /portal/tasks to 'Your tasks')", async () => {
+  it("back link renders once, MATCHES the literal (DEC-029 wave-21: frame draws '‹ Your portal', the route's href now points at /portal so the DEC-914 label table resolves to the same 'Your portal')", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:507
     // `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>`
     expect(designLine(507)).toBe(
@@ -234,8 +234,8 @@ describe('v12 phone frame "Portal · Hotel stay form" (:502-527, GET /portal/tas
     const app = await buildApp();
     const res = await app.request("/portal/tasks/assign-form-1/form");
     const html = await res.text();
-    expect(html).toContain('class="chq-portal-back">‹ Your tasks<');
-    expect(html).not.toContain('class="chq-portal-back">‹ Your portal<');
+    expect(html).toContain('<a href="/portal" class="chq-portal-back">‹ Your portal<');
+    expect(html).not.toContain('class="chq-portal-back">‹ Your tasks<');
   });
 
   it("dock band renders exactly once, holding the frame's primary verb 'Send this in' -- the frame's bordered 'Save draft' secondary is unbuilt (already blessed in DEVIATIONS.md)", async () => {
@@ -290,7 +290,7 @@ describe('v12 phone frame "Portal · Your session" (:560-596, GET /portal/submis
     expect(h1Text(html)).toBe("Your session");
   });
 
-  it("back link renders once, DIVERGES on the literal (frame draws '‹ Your portal', the route's DEC-914 label table resolves the destination /portal/submissions to 'Your submissions')", async () => {
+  it("back link renders once, MATCHES the literal (DEC-029 wave-21: frame draws '‹ Your portal', the route's href now points at /portal so the DEC-914 label table resolves to the same 'Your portal')", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:565
     // `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>`
     expect(designLine(565)).toBe(
@@ -299,8 +299,8 @@ describe('v12 phone frame "Portal · Your session" (:560-596, GET /portal/submis
     const app = await buildApp();
     const res = await app.request("/portal/submissions/s1");
     const html = await res.text();
-    expect(html).toContain('class="chq-portal-back">‹ Your submissions<');
-    expect(html).not.toContain('class="chq-portal-back">‹ Your portal<');
+    expect(html).toContain('<a href="/portal" class="chq-portal-back">‹ Your portal<');
+    expect(html).not.toContain('class="chq-portal-back">‹ Your submissions<');
   });
 
   it("status eyebrow renders once, composing the fixture's status/date onto the frame's own badge register", async () => {

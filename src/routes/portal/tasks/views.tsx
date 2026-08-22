@@ -393,7 +393,12 @@ export function TaskFormPage(props: {
   );
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName} dock={taskFormDock}>
-      <PortalBackLink to="/portal/tasks" />
+      {/* DEC-029 wave-21: docs/design/Chautauqua Public and Portal.dc.html:507
+          `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>`
+          -- not '‹ Your tasks' -- fixed by repointing the href to /portal,
+          which PORTAL_BACK_LINKS (DEC-914) already maps to "Your portal",
+          never by adding a label override. */}
+      <PortalBackLink to="/portal" />
       {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
           register, docs/design/Chautauqua Public and Portal.dc.html:508
           `margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`

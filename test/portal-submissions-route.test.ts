@@ -127,13 +127,13 @@ describe("GET /portal/submissions/:id scoping (DEC-729)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("200s and renders the detail for an owned submission, with a back link to the submissions list", async () => {
+  it("200s and renders the detail for an owned submission, with a back link to the portal home (DEC-029 wave-21: frame :565 draws '‹ Your portal')", async () => {
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Mine");
-    expect(html).toContain('href="/portal/submissions"');
+    expect(html).toContain('href="/portal"');
   });
 });
 
