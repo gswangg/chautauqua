@@ -608,3 +608,79 @@ describe("formatCampaignReport", () => {
     expect(verified).toMatch(/\bDONE\b/);
   });
 });
+
+// DEC-069 wave-5 (task w5-ca): the roster/fixture mirror is a REGISTRATION,
+// not a memory exercise. Four separate lanes (wave-146 x2, wave-149,
+// wave-154) landed a new CAMPAIGN_CONSTANT_NAMES entry in
+// scripts/exit-predicate.ts and hand-added a matching row here in the same
+// commit -- but nothing enforced that pairing, so a fifth lane (the
+// WIDTH_FLOOR_OFFENDERS_CEILING ceiling, wired into CAMPAIGN_CONSTANT_NAMES/
+// TIER2_CEILING_NAMES on its own) landed with no fixture row at all: every
+// buildCampaignReport() case threw resolveSingle's "no declaration was
+// found" error, and the CLI printed all ceilings at 0 anyway because
+// nothing upstream of the throw ever ran (see docs/field-guide.md wave-35
+// finding). This derivation makes the mirror self-checking: it fails at
+// REGISTRATION time, in this file, the moment CAMPAIGN_CONSTANT_NAMES and
+// baseFixture() disagree in either direction -- a fixture that lags the
+// roster (a constant with no row) or a fixture that outlives it (a row for
+// a name no longer in the roster, which would silently hide a retired
+// ceiling's removal). Parses the same `[export ]const NAME = <int>;`
+// top-level-line grammar findConstantDeclarations() uses, applied to every
+// row's content without pre-filtering by name (unlike
+// findConstantDeclarations, which only reports hits for a name set handed
+// to it) so that names never registered are still visible to assertion (b).
+describe("CAMPAIGN_CONSTANT_NAMES / baseFixture() mirror (DEC-069 wave-5)", () => {
+  // Mirrors CONST_DECL_RE in scripts/exit-predicate.ts. Not imported because
+  // that regex is a private module-scoped constant; duplicating the shape
+  // here (rather than exporting it) keeps this a black-box registration
+  // check the same way the campaign functions above are exercised black-box.
+  const DECL_NAME_RE = /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+);[ \t]*$/gm;
+
+  /**
+   * Every constant NAME declared anywhere across `files`, as a set (a name
+   * legitimately declared by more than one row -- CLAIMED_FLOOR, by design,
+   * see findConstantDeclarations' own doc comment -- still counts as
+   * "declared" exactly once here; this derivation checks REGISTRATION
+   * membership, not per-row multiplicity, which resolveSingle already
+   * polices at report-build time).
+   */
+  function declaredNamesIn(files: readonly CampaignFile[]): Set<string> {
+    const names = new Set<string>();
+    for (const file of files) {
+      DECL_NAME_RE.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = DECL_NAME_RE.exec(file.content)) !== null) {
+        names.add(m[1] as string);
+      }
+    }
+    return names;
+  }
+
+  it("every CAMPAIGN_CONSTANT_NAMES entry is declared by some baseFixture() row", () => {
+    const declared = declaredNamesIn(baseFixture());
+    const missing = CAMPAIGN_CONSTANT_NAMES.filter((name) => !declared.has(name));
+    expect(
+      missing,
+      missing.length > 0
+        ? `CAMPAIGN_CONSTANT_NAMES declares ${missing.join(", ")} but baseFixture() has no row for ` +
+            `${missing.length === 1 ? "it" : "them"} -- add a baseFixture() row (and a matching ` +
+            `allGreenFixture() override) for each, following the STARVED_FLEX_TRACK_CEILING row as a ` +
+            `template. Never unregister the constant from CAMPAIGN_CONSTANT_NAMES to silence this.`
+        : undefined,
+    ).toEqual([]);
+  });
+
+  it("every constant baseFixture() declares is registered in CAMPAIGN_CONSTANT_NAMES", () => {
+    const declared = [...declaredNamesIn(baseFixture())];
+    const campaignSet = new Set(CAMPAIGN_CONSTANT_NAMES);
+    const orphaned = declared.filter((name) => !campaignSet.has(name));
+    expect(
+      orphaned,
+      orphaned.length > 0
+        ? `baseFixture() declares ${orphaned.join(", ")}, which CAMPAIGN_CONSTANT_NAMES does not list -- ` +
+            `either this ratchet was retired from scripts/exit-predicate.ts and its fixture row is now ` +
+            `stale (delete the row), or it belongs in CAMPAIGN_CONSTANT_NAMES and is missing there.`
+        : undefined,
+    ).toEqual([]);
+  });
+});
