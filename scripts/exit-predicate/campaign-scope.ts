@@ -176,6 +176,23 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // defect count, per clause (c)'s "a row in the roster, not a silent pass".
   "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+  // wave-36 (task w36-g, DEC-069 wave-36 promotion): both re-MEASURED 0 on
+  // this branch (test/frame-conditional-state.scan.test.ts). Promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE because its own count is 0 (clause a) and its
+  // instrument-completeness sibling, FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING,
+  // also reads 0 (clause b) -- the sibling itself stays OUT_OF_CAMPAIGN_SCOPE,
+  // an instrument-completeness fact rather than a v12 fidelity fact in its own
+  // right.
+  "FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING",
+  // wave-36 (task w36-g, DEC-069 wave-36 promotion): re-MEASURED 0 on this
+  // branch (test/desktop-field-width.scan.test.ts). Promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE because its own count is 0 (clause a) and its
+  // instrument-completeness sibling, FIELD_WIDTH_UNRESOLVED_CEILING (3), has
+  // every one of its three unresolved rows individually adjudicated in
+  // docs/design/audit/desktop-field-width-v12.md (clause b) -- the sibling
+  // itself stays OUT_OF_CAMPAIGN_SCOPE, an instrument-completeness fact
+  // rather than a v12 fidelity fact in its own right.
+  "FIELD_WIDTH_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -290,6 +307,14 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // (DEC-851/DEC-988). Its UNVERIFIABLE-PREMISE sibling is OUT_OF_CAMPAIGN_SCOPE
   // instead (an instrument-completeness roster count, not a conformance fact).
   "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
+  // wave-36 (task w36-g): wired into TIER2 in the same commit that promoted
+  // it out of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988, DEC-069 wave-36).
+  "FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING",
+  // wave-36 (task w36-g): wired into TIER2 in the same commit that promoted
+  // it out of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988, DEC-069 wave-36).
+  "FIELD_WIDTH_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -315,7 +340,12 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "v12 frame draws for it (a control-geometry fidelity fact, distinct from whether a " +
     "frame is CITED or whether a control's WORDS match) -- a new non-zero row in the exit " +
     "gate would move the campaign's goalposts mid-convergence; it measures fidelity now and " +
-    "is promoted once its measurement technique is proven complete enough to gate on.",
+    "is promoted once its measurement technique is proven complete enough to gate on. " +
+    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
+    "DESKTOP_FLOOR_UNRESOLVED_CEILING, is neither 0 nor individually row-adjudicated -- its " +
+    "unresolved population is bucketed by reason category over roughly half the total rows, " +
+    "so grading the divergence ceiling now would sell that instrument blindness as desktop " +
+    "proof.",
   DESKTOP_FLOOR_UNRESOLVED_CEILING:
     "measures how many desktop drawn-control rows the floor-divergence join could not " +
     "resolve to a source-code label match, a class token, or a CSS rule -- an instrument- " +
@@ -343,7 +373,11 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "existing tap-floor family already grades (whether a control clears the ruled minimum at " +
     "all). A new non-zero row in the exit gate for a fact this granular would move the " +
     "campaign's goalposts mid-convergence; it measures fidelity now and is promoted by a " +
-    "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING.",
+    "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING. " +
+    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
+    "UNRESOLVED_COUNT_TRIPWIRE, carries a non-zero unresolved population with no individual " +
+    "per-row adjudication, so grading the divergence ceiling now would assert fidelity over an " +
+    "unverified remainder.",
   COMMENT_BLIND_CSS_ASSERTION_CEILING:
     "measures TEST-INSTRUMENT SOUNDNESS -- whether a test file applies a raw-text match " +
     "assertion to an un-stripped CSS source, which can make a negative assertion fail on a " +
@@ -446,14 +480,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "a v12 frame or 390-geometry conformance fact, the same disposition already given to "
     + "FIELD_WIDTH_UNRESOLVED_CEILING (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task "
     + "w25-i).",
-  FIELD_WIDTH_DIVERGENCE_CEILING:
-    "measures whether a Settings edit-view field's declared width (a --chq-field-w-* token, "
-    + "or the arithmetic a two-up field pair resolves to) reaches the width its OWN v12 "
-    + "'Settings · editing …' frame draws for it -- a control-geometry fidelity fact distinct "
-    + "from whether a frame is CITED or a control's WORDS match, the same disposition already "
-    + "given to DESKTOP_FLOOR_DIVERGENCE_CEILING. A new non-zero row in the exit gate would move "
-    + "the campaign's goalposts mid-convergence; it measures fidelity now and is promoted once "
-    + "its measurement technique is proven complete enough to gate on.",
   FIELD_WIDTH_UNRESOLVED_CEILING:
     "measures how many drawn Settings edit-view field-width rows the label-to-SettingsField "
     + "join could not resolve to a matching component call site -- an instrument-completeness "
@@ -553,16 +579,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "own join technique, not itself a v12 frame or 390-geometry conformance fact, the same "
     + "disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment).",
-  FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING:
-    "measures a newly-derived STATE population (the pack's `sc-if value=\"{{ ... }}\"` blocks -- 23 "
-    + "rows across Agenda/Public and Portal/Review/Settings/Speakers/Comms, derived via readdirSync "
-    + "at test time) that no instrument previously graded -- every prior ledger in this campaign "
-    + "grades drawn WORDS, none grades whether the pack's TWO branches of one region both have a "
-    + "real product conditional. A real copy-fidelity fact about this specific population, but a "
-    + "newly measured, previously-uncounted population must not move the campaign's goalposts "
-    + "mid-convergence; it is promoted once its measurement technique is proven complete enough to "
-    + "gate on, the same disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING "
-    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
   FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING:
     "measures how many drawn conditional-state rows this join found real product EVIDENCE for (a "
     + "literal copy match or a structural discriminant match) but no `*.test.ts(x)` file anywhere in "
