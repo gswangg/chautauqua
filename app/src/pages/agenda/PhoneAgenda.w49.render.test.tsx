@@ -6,10 +6,10 @@
 //      TRUE at this worker's own runtime: the clash block's flag text is
 //      derived from slot.sessions.length -- never a fixed string. Asserted
 //      at two different N.
-//      DEC-380 wave-32: the flag SPELLS its count
-//      (`docs/design/Chautauqua Agenda.dc.html:161` draws "Two sessions in
-//      this slot"), composed via capitalizeFirst(spellCount(n)) + plural(n,
-//      'session') -- not the numeral countOf() form this comment originally
+//      DEC-380 wave-32: the flag SPELLS its count (frame :161 draws "Two
+//      sessions in this slot", receipted beside the assertion below),
+//      composed via capitalizeFirst(spellCount(n)) + plural(n, 'session')
+//      -- not the numeral countOf() form this comment originally
 //      described. The assertions below were converted to the spelled forms
 //      in the same commit that landed the fix.
 // iv.  Phone agenda "Place here anyway" -- PhoneAgenda.tsx:167-176 (placed
@@ -73,6 +73,7 @@ function baseProps(overrides: Partial<ComponentProps<typeof PhoneAgenda>> = {}) 
 
 describe('item iii: phone agenda clash caption is N-aware (PhoneAgenda.tsx:186)', () => {
   it('reads "2 sessions in this slot" for a two-way clash', () => {
+    // docs/design/Chautauqua Agenda.dc.html:161 draws `Two sessions in this slot`
     const placed = [session('s1', 'SES-1', 'Talk One', 540, 570), session('s2', 'SES-2', 'Talk Two', 555, 585)];
     render(<PhoneAgenda {...baseProps({ placed })} />);
     expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();

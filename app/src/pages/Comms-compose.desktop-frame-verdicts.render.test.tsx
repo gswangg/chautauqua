@@ -356,6 +356,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       await advanceToSendReport();
       // docs/design/Chautauqua Comms.dc.html:482-483 --
       // `Preview` / `One email per recipient`.
+      expect(DESIGN_FILE.endsWith('Chautauqua Comms.dc.html')).toBe(true);
       verbatimLine(
         483,
         '              <span style="font-size:11px; color:#565A4B">One email per recipient</span>',
@@ -371,6 +372,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       // `Recipients` / `23 accepted speakers`. The rail row, at step 4,
       // names WHO was actually emailed (an outcome population), never the
       // step-1 selection count.
+      expect(DESIGN_FILE.endsWith('Chautauqua Comms.dc.html')).toBe(true);
       verbatimLine(
         469,
         '              <span style="font-size:11px; color:#565A4B">23 accepted speakers</span>',
