@@ -115,6 +115,17 @@ describe('DEC-895: clash card one-tap resolution', () => {
     expect(controls).toHaveLength(1);
     expect(controls[0]).toHaveTextContent('Move DFC-047 to 9:30');
 
+    // w16-qg (DEC-998): a fully-receipted, non-header citation into the
+    // same frame the file's header names -- pays for the header-block
+    // scope citation above. docs/design/Chautauqua Agenda.dc.html:171
+    // receipted via verbatimLine below (the frame's own sample time
+    // "11:30" is not graded, DEC-967; this fixture's real computed time
+    // is asserted separately just above).
+    verbatimLine(
+      171,
+      '                <span style="background:#F4F1E8; color:#1B1D17; border-radius:5px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Move DFC-047 to 11:30</span>',
+    );
+
     fireEvent.click(controls[0]!);
     expect(onPlace).toHaveBeenCalledTimes(1);
     // moves the LATER session (later-id / DFC-047), into its own room, at

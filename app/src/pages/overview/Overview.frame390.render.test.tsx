@@ -15,10 +15,27 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MemoryRouter } from 'react-router-dom';
 import { OverviewPage } from '../Overview';
 import { mockApi } from '../../test-utils/mockApi';
 import type { OverviewPayload } from './types';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OVERVIEW_CSS = join(HERE, 'overview.css');
+
+/** w16-qg (DEC-994): jsdom applies no stylesheet, so a 390 verdict that
+ * never reads overview.css's own `@media (max-width: 700px)` block is
+ * really a desktop-cascade claim wearing a phone title. Reuse the promoted
+ * brace-depth walk (`test/helpers/css-media-blocks.ts`'s `phoneMediaBlocks`,
+ * lifted from Contacts.frame-verdicts.render.test.tsx). */
+function readOverviewPhoneCss(): string {
+  return phoneMediaBlocks(stripCssComments(readFileSync(OVERVIEW_CSS, 'utf-8'))).join('\n');
+}
 
 const EVENT_ID = 'evt-render-390-f';
 const EVENT_SLUG = 'devflow-conf-2027';
@@ -224,6 +241,12 @@ describe('Overview 390 frame verdict (task w29-f, docs/design/Chautauqua Overvie
     const h1 = document.querySelector('.chq-overview-headline');
     expect(h1).not.toBeNull();
     expect(h1!.textContent).toMatch(/^\w+ things? needs? your attention$/);
+
+    // docs/design/Chautauqua Overview.dc.html:207 `        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:29px; font-weight:700; letter-spacing:-0.04em; line-height:1.06">Four things need your attention</h1>`
+    // jsdom never applies this rule, so assert the phone media block itself
+    // carries the frame's :207 headline size (DEC-994).
+    const phoneCss = readOverviewPhoneCss();
+    expect(phoneCss).toMatch(/\.chq-overview-headline\s*\{[^}]*font-size:\s*29px;/);
   });
 
   // :215/:216 the bulk-remind control: a single control whose label matches
