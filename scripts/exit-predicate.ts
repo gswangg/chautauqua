@@ -893,6 +893,13 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "or 390-geometry conformance fact, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-control-floor.scan.test.ts, DEC-808 wave-24 "
     + "amendment).",
+  RAW_JSON_BODY_DOOR_CEILING:
+    "measures how many src/routes/** handlers still read a request body through the raw Hono "
+    + "`c.req.json(` API instead of src/server/http.ts's readJsonBody/readOptionalJsonBody, which "
+    + "refuse a literal `null` body with the house 400 `invalid` envelope rather than crashing the "
+    + "next dereference into an unhandled 500 -- a server-side request-parsing robustness fact "
+    + "about a route's error envelope, not itself a v12 frame or 390-geometry conformance fact "
+    + "(test/json-body-door.scan.test.ts, DEC-613 wave-23 amendment).",
 };
 
 /**
