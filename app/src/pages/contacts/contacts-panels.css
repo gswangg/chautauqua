@@ -2028,4 +2028,20 @@
   .chq-contacts-import .chq-modal-close-btn {
     display: none;
   }
+
+  /* DEC-999 (wave-28 amendment): the import-review table's per-row skip control
+     (`<label className="chq-contacts-import-review-skip">` wrapping only a bare
+     `.chq-check` -- no text, no other child, ImportWizard.tsx ~:1355) has no
+     min-height/padding anywhere at top level, so the painted hit box is the
+     18x18 checkbox itself at 390 -- under the Tier-2 44px floor (DESIGN-RULINGS.md
+     B8). `.chq-check-hit`'s own idiom (styles.css:2853): equal padding/negative-
+     margin pair so the 44px hit box centres on the unmoved 18px painted box.
+     Desktop is untouched -- this rule lives only inside this file's ONE terminal
+     max-width:700px block (DEC-385). */
+  .chq-contacts-import-review-skip {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 13px;
+    margin: -13px;
+  }
 }

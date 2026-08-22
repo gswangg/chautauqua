@@ -166,12 +166,54 @@ export function labelWrapDetails(content: string, checkIndex: number): { classNa
   return { className, inner };
 }
 
+/** Wave-28 (DEC-999 amendment): strips every self-closing `<input .../>` tag from `text`,
+ * brace-depth aware so a `>` inside a JSX attribute expression (e.g. `onChange={() =>
+ * handler()}`'s arrow, or any other `{...}` containing `>`) does not get mistaken for the tag's
+ * own closing `/>`. A naive `[^>]*` stops at the FIRST `>`, which for a real multi-line
+ * `<input ... onChange={() => ...} />` is the arrow's `>`, not the tag close -- leaving the
+ * rest of the real (empty) input tag's text in the label's "content", which made every such
+ * label read as non-bare. Walks forward from each `<input` looking for the first `/>` that
+ * occurs at brace-depth 0. */
+function stripInputTags(text: string): string {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf('<input', i);
+    if (start === -1) {
+      out += text.slice(i);
+      break;
+    }
+    out += text.slice(i, start);
+    let j = start;
+    let depth = 0;
+    let end = -1;
+    while (j < text.length) {
+      const ch = text[j];
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+      else if (depth === 0 && ch === '/' && text[j + 1] === '>') {
+        end = j + 2;
+        break;
+      }
+      j++;
+    }
+    if (end === -1) {
+      // Malformed/unterminated tag -- should not happen in real JSX; bail rather than loop.
+      out += text.slice(start);
+      break;
+    }
+    i = end;
+  }
+  return out;
+}
+
 /** True when a label's `inner` content (as returned by `labelWrapDetails`) carries at least one
  * non-whitespace text child or non-input element child besides the checkbox: strips every
- * self-closing `<input .../>` tag and every JSX comment (`{/* ... *\/}`), then checks whether
- * anything non-whitespace remains -- any surviving text OR any other tag's angle bracket counts. */
+ * self-closing `<input .../>` tag (brace-depth aware -- see `stripInputTags`) and every JSX
+ * comment (`{/* ... *\/}`), then checks whether anything non-whitespace remains -- any surviving
+ * text OR any other tag's angle bracket counts. */
 export function labelHasRealContent(inner: string): boolean {
-  const withoutInputs = inner.replace(/<input\b[^>]*\/>/g, '');
+  const withoutInputs = stripInputTags(inner);
   const withoutJsxComments = withoutInputs.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
   return withoutJsxComments.trim().length > 0;
 }
@@ -448,6 +490,75 @@ describe('check-hit receipt: every in-cell .chq-check is wrapped in .chq-check-h
     }
     // A bare label wrap (no floor, no content) is NOT vacuously excluded -- it takes the
     // population, per the synthetic controls in the `unit: labelIsBare` block below.
+  });
+
+  it('anti-vacuity (DEC-999 wave-28 amendment): the classifier finds both real bare-box labels named by class token, independent of whether they are floored', () => {
+    // The wave-27/28 `labelHasRealContent` vacuity: a naive `[^>]*` input-tag stripper stops at
+    // the FIRST `>` it meets, which for a real multi-line `<input ... onChange={() => ...} />`
+    // is the arrow's `>`, not the tag's own close -- so it always found "real content" left over
+    // and could never classify a real site as bare. This assertion is corpus-keyed (not a
+    // fixture): it looks the two known real bare-box labels up by their stable class token and
+    // requires labelIsBare to be reachable for the un-floored one, so a stripper regression that
+    // silently empties the population again fails loudly here instead of just going quiet.
+    // Looks up a site by the STABLE CLASS TOKEN of its own wrapping label (not merely "some
+    // non-check-hit label in this file" -- ImportWizard.tsx alone has several) -- keyed on
+    // content per DEC-999's own ruling (a scan's self-referential anchor is keyed on content,
+    // never a source line number that a legitimate edit can move).
+    function findSiteByLabelClassToken(fileSuffix: string, classToken: string): { site: CheckSite; content: string; checkIndex: number } {
+      const abs = allTsxFiles(HERE).find((f) => f.endsWith(fileSuffix));
+      expect(abs, `no .tsx file ending in ${fileSuffix} found under app/src`).toBeDefined();
+      const content = readFileSync(abs as string, 'utf-8');
+      const re = new RegExp(CHECK_CLASS_RE.source, 'g');
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(content)) !== null) {
+        const details = labelWrapDetails(content, m.index);
+        if (details?.className.split(/\s+/).includes(classToken)) {
+          const line = content.slice(0, m.index).split('\n').length;
+          const site = allSites.find((s) => s.file.endsWith(fileSuffix) && s.line === line);
+          expect(site, `${fileSuffix}:${line} (.${classToken}) must appear in allSites`).toBeDefined();
+          return { site: site as CheckSite, content, checkIndex: m.index };
+        }
+      }
+      throw new Error(`no .chq-check site found wrapped by a label carrying class token ${classToken} in ${fileSuffix}`);
+    }
+
+    // .chq-contacts-import-review-skip (ImportWizard.tsx) -- this task's own CSS change floors
+    // it (contacts-panels.css's terminal max-width:700px block), so at HEAD it is correctly OUT
+    // of `inCellPopulation` via the floor path (labelIsBare === false). The anti-vacuity claim is
+    // proved directly against the stripper instead: labelHasRealContent must return false for
+    // this site's own multi-line onChange input, independent of the floor.
+    {
+      const { site, content, checkIndex } = findSiteByLabelClassToken(
+        'pages/contacts/ImportWizard.tsx',
+        'chq-contacts-import-review-skip',
+      );
+      expect(site.labelIsBare, `${site.file}:${site.line} (.chq-contacts-import-review-skip) is now floored, so it must be OUT via the floor path`).toBe(false);
+      const details = labelWrapDetails(content, checkIndex);
+      expect(details, `${site.file}:${site.line} label wrap details must resolve`).not.toBeNull();
+      expect(
+        labelHasRealContent(details?.inner ?? 'unreachable'),
+        `${site.file}:${site.line} (.chq-contacts-import-review-skip) must strip its own multi-line onChange input to empty`,
+      ).toBe(false);
+    }
+
+    // .chq-visible-toggle (SubmissionDetailPage.tsx) -- already floored on main (wave-26 lane),
+    // so it is correctly OUT of population via the floor, not via content. The vacuity bug this
+    // amendment fixes is specifically that `labelHasRealContent` never returned false for either
+    // site's un-stripped multi-line `onChange={() => ...}` input; assert that directly here so a
+    // regression that re-breaks the stripper is caught even for an already-floored site.
+    {
+      const { site, content, checkIndex } = findSiteByLabelClassToken(
+        'pages/submissions/SubmissionDetailPage.tsx',
+        'chq-visible-toggle',
+      );
+      expect(site.labelIsBare, `${site.file}:${site.line} (.chq-visible-toggle) is floored on main, so it must be OUT via the floor path`).toBe(false);
+      const details = labelWrapDetails(content, checkIndex);
+      expect(details, `${site.file}:${site.line} label wrap details must resolve`).not.toBeNull();
+      expect(
+        labelHasRealContent(details?.inner ?? 'unreachable'),
+        `${site.file}:${site.line} (.chq-visible-toggle) must strip its own multi-line onChange input to empty`,
+      ).toBe(false);
+    }
   });
 
   it('every in-cell .chq-check site is wrapped in .chq-check-hit', () => {
