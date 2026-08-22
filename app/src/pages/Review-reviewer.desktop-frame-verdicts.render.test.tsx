@@ -147,14 +147,15 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
     it('SETTLED: the results-table track set is anchored on the FRAME\'s own grid (Chautauqua Review.dc.html:124), not DESIGN-RULINGS.md:191\'s paraphrase -- six of seven tracks carry a residual (three with a recorded gate-9 fit, three inherited from the paraphrase with no fit of their own), and the ruling\'s operative inheritance clause holds structurally', async () => {
       // docs/design/Chautauqua Review.dc.html:28 identifies this frame.
       verbatimLine(28, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Organiser view · 1600</span>');
-      // docs/design/Chautauqua Review.dc.html:124-125 -- the results table's
-      // own head row grid and its seven column labels. THIS is the geometry
-      // authority (DEC-902 wave-12): the frame draws
+      // The results table's own head row grid and its seven column labels.
+      // THIS is the geometry authority (DEC-902 wave-12): the frame draws
       // 44px 1fr 132px 118px 190px 84px auto, not DESIGN-RULINGS.md:191's
       // 44px 1fr 150px 130px 92px 92px auto -- the ruling's numbers are a
       // paraphrase written to explain a DIFFERENT rule (the expanded
       // reviews band's inheritance from this same grid), not a second
-      // pixel spec competing with the frame.
+      // pixel spec competing with the frame. The citation sits immediately
+      // above its receipt so the scan's proximity window reaches it:
+      // docs/design/Chautauqua Review.dc.html:124-125 -- both lines verbatim below.
       verbatimLine(124, '          <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">');
       verbatimLine(125, '            <span>Rank</span><span>Submission</span><span>Speaker</span><span>Track</span><span>Score</span><span>Reviews</span><span></span>');
       // DESIGN-RULINGS.md:191 -- kept as a receipt, but read for its VERB,

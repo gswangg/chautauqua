@@ -213,10 +213,29 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // never these"), all four constants below are the scan's live output on
 // this commit, not the brief's 100/146/{15,37,27,67}/85 figures, which
 // were already one branch-generation stale. 153 total DIVERGES-token rows
-// across 101 audit files, 90 OPEN. May only be LOWERED in a future wave as more
+// across 101 audit files, 4 OPEN. May only be LOWERED in a future wave as more
 // rows get adjudicated (a DEC ruling lands, or the row is fixed and the fix
 // cited); must never be raised to paper over new debt landing unadjudicated.
-export const OPEN_DIVERGENCE_CEILING = 90;
+//
+// RE-BASELINED (Thunderdome wave-14m megabatch, medic pass): 90 -> 4. The
+// POPULATION IS UNCHANGED -- 101 audit files, 153 DIVERGES-token rows, and
+// the 15/38/27/73 shape split are all byte-identical to the pre-megabatch
+// measurement at 542f93006, and all three vacuous-population guards above
+// still pass untouched. No audit file was added, deleted, or stripped of a
+// DIVERGES token. The drop is pure ADJUDICATION landed by lanes w14-f/g/h/i
+// (0c222beaa, 54c44e732, 828654280, 78766c114), which added in-cell and
+// in-paragraph DEC-NNN citations to 86 rows. Those lanes predicted this
+// exact red -- 45664f1aa's commit body says so outright -- but no lane owned
+// the re-baseline, so it fell through the batch. Re-measured live on the
+// integrated tree by the scan itself, never by arithmetic on a lane's
+// snapshot. The 4 rows still OPEN are cfp-desktop-v12.md:21,
+// contacts-import-390-v12.md:106, public-390-request-verdicts-v12.md:100 and
+// settings-dialogs-desktop-v12.md:154. Known safe-direction over-count, NOT
+// a defect: cfp-desktop-v12.md:22 adjudicates its row as `DEC_976` (the
+// underscore export-identifier idiom from src/decisions-data), which
+// DEC_CITE_RE's `/\bDEC-\d{3}\b/` cannot see -- a hyphenated citation in
+// that paragraph would take the true count to 3.
+export const OPEN_DIVERGENCE_CEILING = 4;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it('enumerates exactly 101 audit files and exactly 153 DIVERGES-token rows (vacuous-population guard)', () => {

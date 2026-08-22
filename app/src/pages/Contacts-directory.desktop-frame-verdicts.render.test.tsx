@@ -338,12 +338,11 @@ describe('v12 Contacts DESKTOP (1600) frames: per-frame render verdict receipts 
       const labels = within(dialog)
         .getAllByText(/^(First name|Last name|Email|Company(?: · optional)?|Title(?: · optional)?)$/)
         .map((el) => el.textContent);
-      // docs/design/Chautauqua Contacts.dc.html:821-838 -- First name/Last
-      // name paired, then Email, then Company/Title paired. The frame's own
-      // section labels have no "optional" suffix -- NewContactModal.tsx
-      // adds one (FormRow's `optional` prop, DEC-917's shared ' · optional'
-      // marker) via the shared form-row convention every other modal uses,
-      // additive text only, order unaffected.
+      // docs/design/Chautauqua Contacts.dc.html:821-838 -- First name/Last name
+      // paired, then Email, then Company/Title paired. The frame's own section
+      // labels have no "optional" suffix -- NewContactModal.tsx adds one (FormRow's
+      // `optional` prop, DEC-917's shared ' · optional' marker) via the shared
+      // form-row convention every other modal uses, additive text only, order unaffected.
       verbatimLine(821, '        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">');
       expect(labels).toEqual(['First name', 'Last name', 'Email', 'Company · optional', 'Title · optional']);
     });

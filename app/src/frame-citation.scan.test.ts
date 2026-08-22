@@ -608,7 +608,7 @@ const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 22;
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
     expect(TEST_PHONE_CITATIONS.length).toBeGreaterThan(0);
-    // app/src/phone-page-scaffold.test.ts:115 cites
+    // app/src/phone-page-scaffold.test.ts:116 cites
     // `docs/design/Chautauqua Speakers.dc.html:261` inside a comment that
     // also carries a backtick-quoted literal, followed within
     // EXPECT_PROXIMITY_LINES by a real `expect(` -- a fully-receipted claim,
@@ -616,7 +616,7 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
     const known = TEST_PHONE_CITATIONS.some(
       (c) =>
         c.file === 'app/src/phone-page-scaffold.test.ts' &&
-        c.sourceLine === 115 &&
+        c.sourceLine === 116 &&
         c.frameFile === 'Chautauqua Speakers.dc.html' &&
         c.firstLine === 261
     );

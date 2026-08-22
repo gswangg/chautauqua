@@ -597,7 +597,15 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
           "  it('reads a design line and asserts the app css', () => {",
           "    const line = readFileSync(DESIGN_FILE, 'utf-8');",
           "    expect(line).toMatch(/whatever/);",
-          '    expect(APP_CSS).toMatch(/min-height:44px/);',
+          // toContain, NOT toMatch, and deliberately so: this line lives in a
+          // synthetic fixture STRING, but comment-blind-css-assertion.scan.
+          // test.ts's class-1 detector is textual -- `expect(<*_CSS>)...
+          // toMatch(` anywhere in a file's bytes makes the file an offender,
+          // fixture or not, and this file has no stripCssComments() call to
+          // clear it. toContain exercises classifyFrameExpr identically (the
+          // scan reads the expect() ARGUMENT, never the matcher) without
+          // tripping the sibling instrument on a defect that does not exist.
+          "    expect(APP_CSS).toContain('min-height:44px');",
           '  });',
           '});',
         ].join('\n')

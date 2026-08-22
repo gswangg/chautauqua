@@ -137,4 +137,14 @@
 // confirmed by re-running the scan's own class-2 detector over the full
 // discovered population, never by arithmetic alone. Ceiling lowered to
 // match the measured value: 85 -> 84.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 84;
+// Thunderdome megabatch integration (medic pass, 2026-08-22): the two-sided
+// companion went red again the same way -- the integrated tree measures 83,
+// one BELOW the 84 the previous note derived. 84 was measured mid-integration,
+// before every lane's merge had landed; the scan re-run on the final merged
+// tree (`npx vitest run test/comment-blind-css-assertion.scan.test.ts`, whose
+// own failure text names the value) reports 83. No test file was changed by
+// this medic pass to produce the drop -- the three commits after the last
+// merge (scribe waves 15/16, the round-4 probe sweep) touch only
+// docs/probes, field-guide and src/decisions-data. Lowered 84 -> 83 from the
+// re-measured number, never by arithmetic on a batch size.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 83;

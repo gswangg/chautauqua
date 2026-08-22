@@ -281,8 +281,13 @@ describe('v12 frame render verdict "Speakers" (docs/design/Chautauqua Speakers.d
 });
 
 describe('v12 frame render verdict "Roster · 390" (docs/design/Chautauqua Speakers.dc.html:260-282, task w31-a, DEC-976 wave-31)', () => {
-  it('guards the frame source file: frame :260 `width:390px; height:844px;` -- verbatimLine() pins below read the same frame', () => {
+  it('guards the frame source file: frame :260 `width:390px; height:844px;` -- verbatimLine() pins below read the same frame, and that the tree still draws the drill-in surface those pins grade', () => {
     expect(DESIGN_FILE.endsWith('Chautauqua Speakers.dc.html')).toBe(true);
+    // DEC-967 wave-99: a receipt block whose every expect() resolves to a
+    // design-file read is the tautology shape tautological-assertion.scan.
+    // test.ts bans -- the guard has to touch the TREE it grades too, so it
+    // also names the roster drill-in surface speakers.css owns.
+    expect(stripCssComments(readFileSync(CSS_PATH, 'utf-8'))).toContain('.chq-speakers-roster-drillin');
   });
 
   function drillInRows(): readonly OnboardingRow[] {
