@@ -410,6 +410,18 @@ const LEDGER: LedgerEntry[] = [
     },
   },
   {
+    key: "settings-embed-edit-head-omits-the-frames-line-height-1-on-the-h1-dec-996",
+    status: "honored",
+    reason:
+      "DEC-996: commit bee981791 copied docs/design/Chautauqua Settings.dc.html:1047's line-height:1 verbatim onto .chq-settings-embed-edit-head h1, tripping the same display-face line-height<=1 ban the Agenda entry above resolves. The declaration is deleted outright (never substituted, never scan-exempted); the rule keeps normal (the font's own line box) to contain the glyphs, same disposition as the Agenda wordmark/h1 pair.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/settings/settings.css",
+      literal: "DEC-991 wave-27 amendment bans line-height:1 on the display face",
+      testFile: "test/display-heading-line-height.scan.test.ts",
+    },
+  },
+  {
     key: "plan-editors-v4-title-row-shell-is-blessed-not-the-unrecorded-divergence-the-audit-flagged-and-the-reviewers-who-reviews-what-section-heading-rename-ships-as-part-of-the-same-shell-dec-745-wave-20-amendment",
     status: "honored",
     reason:
@@ -805,9 +817,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(17);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(18);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
-    expect(derived.length).toBe(48);
+    expect(derived.length).toBe(49);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
