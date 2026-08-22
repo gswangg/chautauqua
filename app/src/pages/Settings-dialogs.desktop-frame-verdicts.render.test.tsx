@@ -331,11 +331,14 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       verbatimLine(1422, '          <span style="font-size:13px; color:#565A4B">Downloaded 18 times by 12 speakers</span>');
       expect(within(dialog).queryByText(/Downloaded \d+ times by \d+ speakers/)).not.toBeInTheDocument();
 
-      // docs/design/Chautauqua Settings.dc.html:1429 -- `Type the file name to confirm` MATCHES (DEC-613 wave-32
-      // amendment): the label is now the frame's generic instruction; the object's own name lives in the
-      // input's placeholder (the muted content inside the frame's value box), not composed into the label.
+      // docs/design/Chautauqua Settings.dc.html:1429 -- `Type the file name to confirm` MATCHES verbatim
+      // (DEC-613 wave-32 amendment; built twice, by tasks w32-f and w33-d -- the megabatch keeps w32-f's
+      // `confirmNoun` prop name and w33-d's strictly stronger assertions): the label is now the frame's
+      // generic instruction; the object's own name lives ONLY in the input's placeholder (the muted
+      // content inside the frame's value box), never composed into the label.
       verbatimLine(1429, '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Type the file name to confirm</span>');
       expect(within(dialog).getByText('Type the file name to confirm')).toBeInTheDocument();
+      expect(within(dialog).queryByText(/Type "Speaker handbook 2027.pdf" to confirm/)).not.toBeInTheDocument();
       expect(within(dialog).getByPlaceholderText('Speaker handbook 2027.pdf')).toBeInTheDocument();
 
       // docs/design/Chautauqua Settings.dc.html:1432 -- frame primary `Delete it`; the tree's `Delete resource` is a
