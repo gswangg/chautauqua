@@ -18,6 +18,22 @@ Event creation, dates/timezone, tracks, rooms, branding (logo/accent color), and
 public CFP form builder live under `/admin/settings`. `/admin/overview` is the producer's
 landing dashboard. Both fully built, no caps beyond the general list caps below.
 
+Six of `/admin/settings`'s `?section=` panels (`event`, `cfp`, `tracks-rooms`, `portal`,
+`your-data`, `people` — see the section rows further down this document) each declare their
+own `SECTION_KEY` and read a second query param, `&edit=1`
+(`/admin/settings?section=event&edit=1`, `/admin/settings?section=cfp&edit=1`,
+`/admin/settings?section=tracks-rooms&edit=1`, `/admin/settings?section=portal&edit=1`,
+`/admin/settings?section=your-data&edit=1`, `/admin/settings?section=people&edit=1`),
+opening that section's own inline editor in place of its summary
+readout — `EventSettingsPanel.tsx` / `CallForPapersPanel.tsx` /
+`TracksRoomsPanel.tsx`/`tracksRooms/useTracksRoomsPanel.ts` / `PortalSettingsPanel.tsx` /
+`YourDataPanel.tsx` / `PeopleRolesPanel.tsx`, one reader per section, all `organizer`-only
+like the hub itself. Each editor PATCHes only that section's own fields (event
+name/dates/timezone/branding; CFP copy/deadlines; tracks/rooms; portal
+copy/links; the organizer's own account fields; people/role assignments, respectively) —
+no cross-section writes. The seventh panel, `public-pages`, declares no `SECTION_KEY` and
+reads no `edit` param at all, so it has no `&edit=1` sub-state to document here.
+
 ## J2 — Submit without friction (`/submit/:eventSlug`)
 
 Public CFP form, built from the organizer's form schema (`src/forms/`), with per-field
@@ -40,6 +56,14 @@ other id's submission_answer, submission_track, participant, file-request task
 assignments, files (and their R2 objects), file_comment, review_recusal, revision,
 evaluation, and plan_reviewer rows are removed, then the submission row itself.
 `email_log` rows are historical fact and are never touched.
+
+`/admin/submissions/:id?edit=1` (`app/src/pages/submissions/SubmissionDetailPage.tsx`,
+DEC-998) is the same detail page with its title/abstract editor open — URL state, not
+local-only `useState`, so a deliverable-detail link can open it directly and it can be
+bookmarked/shared. Reachable by the same `organizer` role as the bare detail route above
+(no separate authz check: the page-level role gate covers both states). Saving PATCHes the
+submission's `title`/`description` through the same submission-update route the rest of
+this page's fields already use; it writes nothing else.
 
 ## J4 — Committee review (`/admin/review`, `/admin/review/plans/new`, `/admin/review/plans/:planId`, `/admin/review/plans/:planId/progress`, `/admin/review/plans/:planId/results`, `/admin/review/plans/:planId/submissions/:submissionId`)
 

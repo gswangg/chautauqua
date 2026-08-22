@@ -257,7 +257,13 @@ describe("route sub-state coverage (DEC-144 amendment, wave 27)", () => {
   // (a new closed-set sub-state landing with no manifest row) and an
   // unaccounted drop (this test's own population narrowing without the
   // roster doc being updated) both fail loudly.
-  const ROUTE_SUBSTATE_UNVISITED_CEILING = 10;
+  // Wave 4 (task w4-bc): dropped from 10 to 3 -- app/src/routeManifest.ts
+  // gained 7 rows (the submission-detail `?edit=1` drill and the six
+  // Settings `?section=<key>&edit=1` drills), closing every unvisited row
+  // this file used to derive for those sub-states. The 3 remaining rows
+  // (`?section=your-data&edit=1&intent=new`, `/admin/contacts?import=1`,
+  // `?history=0`) are unrelated sub-states this task did not touch.
+  const ROUTE_SUBSTATE_UNVISITED_CEILING = 3;
 
   it(`no more than ${ROUTE_SUBSTATE_UNVISITED_CEILING} derived closed-set query sub-states are unvisited by ROUTE_MANIFEST`, () => {
     const unvisited = deriveUnvisitedRows();
