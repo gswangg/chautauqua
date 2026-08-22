@@ -46,19 +46,36 @@ export const MAX_IMPORT_ROWS = 2000;
 export const MAX_POSSIBLE_DUPLICATES = 5;
 
 /**
- * DEC-478 (amendment, wave 47): an import column mapping is INJECTIVE -- no
- * two CSV columns may target the same destination field. mapImportRow below
- * walks the header left to right and assigns by plain assignment, so a
- * mapping with two columns pointed at one destination silently keeps the
- * RIGHTMOST value and drops the other -- last-write-wins, exactly the silent
- * fallback the house rule forbids, and invisible in the preview because the
- * preview runs the same fold. This is the ONE place the injectivity rule
- * lives (called from the server door AND the SPA's mapping step, never
- * duplicated) -- throws (never coerces, never silently drops, never
- * auto-renames) naming BOTH offending columns and the shared target.
- * custom.<key> targets are compared by their full target string ("custom.foo")
- * so two columns aimed at the same custom key are refused too. Keys mapped
- * to ""/undefined are ignored (they mean "skip this column", not a target).
+ * DEC-478 (amendment, wave 47) / DEC-663 (wave 34): an import column mapping
+ * is INJECTIVE in BOTH directions -- no two CSV columns may target the same
+ * destination field (column -> target), AND no two identically-named header
+ * columns may collapse into one mapping key before that check ever runs
+ * (target -> column, via the header-name-keyed `mapping` object itself).
+ * mapImportRow below walks the header left to right and assigns by plain
+ * assignment, so either failure silently keeps the RIGHTMOST value and drops
+ * the other -- last-write-wins, exactly the silent fallback the house rule
+ * forbids, and invisible in the preview because the preview runs the same
+ * fold. This is the ONE place BOTH injectivity rules live (called from the
+ * server door AND the SPA's mapping step, never duplicated) -- throws (never
+ * coerces, never silently drops, never auto-renames) naming the offending
+ * columns.
+ *
+ * The header-duplication pass (DEC-663, wave 34) runs FIRST: a CSV with two
+ * columns headed e.g. "Email" is routine in CRM exports, but because
+ * `mapping` is keyed by header NAME, both columns share one entry in
+ * `mapping` -- the column-target loop below would never see the collision
+ * because it only ever sees one key. This pass walks `header` directly (not
+ * `mapping`), so it sees both physical columns, and refuses by 1-based
+ * column position whenever a repeated name has a non-empty mapped target. A
+ * duplicated header that is unmapped, or mapped to "" ("skip this column"),
+ * is NOT an error -- both columns are skipped and nothing is lost.
+ *
+ * The column-target loop (byte-identical to the pre-DEC-663 version) then
+ * catches the remaining case: two DIFFERENTLY-named columns both pointed at
+ * the same target. custom.<key> targets are compared by their full target
+ * string ("custom.foo") so two columns aimed at the same custom key are
+ * refused too. Keys mapped to ""/undefined are ignored (they mean "skip this
+ * column", not a target).
  *
  * Throws a plain Error, not ApiError: this module is pure core (no node:/cf
  * imports, per the file header) and is imported directly by the SPA
@@ -68,10 +85,35 @@ export const MAX_POSSIBLE_DUPLICATES = 5;
  * the existing mapImportRow's own "throw Error, route wraps it" pattern
  * immediately below. The route layer (src/routes/api/contacts/import.ts)
  * catches this and wraps it in ApiError('invalid', message, { mapping:
- * message }); the message alone already names both offending columns and
- * the shared target for either caller.
+ * message }); the message alone already names the offending column(s) and
+ * (where applicable) the shared target for either caller.
  */
-export function validateImportMapping(mapping: Record<string, string>): void {
+export function validateImportMapping(mapping: Record<string, string>, header: string[]): void {
+  const positionsByName = new Map<string, number[]>();
+  for (let i = 0; i < header.length; i++) {
+    const name = header[i];
+    if (name === undefined) continue;
+    const positions = positionsByName.get(name);
+    if (positions) {
+      positions.push(i);
+    } else {
+      positionsByName.set(name, [i]);
+    }
+  }
+  for (const [name, positions] of positionsByName) {
+    if (positions.length < 2) continue;
+    const target = mapping[name];
+    if (!target) continue;
+    const oneBased = positions.map((p) => p + 1);
+    const named =
+      oneBased.length === 2
+        ? `${oneBased[0]} and ${oneBased[1]}`
+        : `${oneBased.slice(0, -1).join(", ")} and ${oneBased[oneBased.length - 1]}`;
+    throw new Error(
+      `Columns ${named} are both headed "${name}" and both map to "${target}" -- rename one in the file or skip it.`,
+    );
+  }
+
   const columnsByTarget = new Map<string, string>();
   for (const [column, target] of Object.entries(mapping)) {
     if (!target) continue;

@@ -323,12 +323,12 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // the organizer ever reaches the dry run.
   const mappingValidationError = useMemo(() => {
     try {
-      validateImportMapping(mapping);
+      validateImportMapping(mapping, header);
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : 'Invalid column mapping';
     }
-  }, [mapping]);
+  }, [mapping, header]);
 
   const dedupeCount = useMemo(() => {
     // DEC-011/DEC-478 (wave-65 amendment): same expand-then-map order as
