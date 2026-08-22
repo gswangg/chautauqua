@@ -50,24 +50,52 @@
 //           panel from a real screen by its title alone) -- each is asserted
 //           below to still resolve to its cited line, so this list rots
 //           loudly like any other citation the moment the pack is re-cut.
+//        c. DEVIATION-DEFERRED (DEC-976 wave-107 amendment, DERIVED from
+//           docs/design/DEVIATIONS.md's "## 6. Deferred post-deadline"
+//           section, never hand-listed) -- two frames the user has ruled
+//           deliberately out of scope for this build: Chautauqua
+//           Settings.dc.html:1111 ("Settings · editing your data") and
+//           :1507 ("Import from Sessionboard"). ALL_FRAMES (102, after
+//           exclusions a and b) still contains both of these -- they are
+//           real, citable frame labels -- but EXCLUDED removes them from the
+//           CLAIMABLE population (see REACHABLE_FRAMES below), because a
+//           user-deferred frame is not merely "not yet built", it is "not
+//           to be built", and no test may claim it (DEC-180 wave-25: a
+//           claim population must measure what its floor is pinned to, not
+//           the frame count the floor happens to share a name with).
 //
 //   3. CLAIM: identical to the phone ledger -- a frame is claimed when some
 //      *.test.ts/*.test.tsx under test/ or app/src/ (enumerated, never
 //      named) cites `docs/design/<file>.dc.html:<line>` with a line landing
-//      inside that frame's extent.
+//      inside that frame's extent. CLAIMS is scanned over REACHABLE_FRAMES
+//      (ALL_FRAMES minus EXCLUDED, i.e. the 100 frames a real test is
+//      actually allowed to claim), not over the full 102-wide ALL_FRAMES --
+//      DEC-180 wave-25. Before this fix CLAIMS scanned all 102, which meant
+//      a single stray citation landing inside either deviation-deferred
+//      frame's extent would push CLAIMS to 101: past CLAIMED_FLOOR (making
+//      the two-sided "never claims MORE" ratchet fail) and, worse, would
+//      silently record a user-deferred, deliberately-unbuilt feature as
+//      covered. Restricting the scan to REACHABLE_FRAMES makes 100 the
+//      structural ceiling of CLAIMS, so CLAIMED_FLOOR (100) is a floor on
+//      exactly the population it is pinned to, not on 102 minus an
+//      after-the-fact tripwire.
 //
 //   4. RATCHET, never an allowlist populated from the failure output (the
 //      house rule stated verbatim in app/src/phone-tap-target.scan.test.ts:
 //      30-32, and honoured identically by the phone ledger): CLAIMED_FLOOR is
 //      a single exported const, set to the count actually measured on this
-//      branch. It may only be RAISED in a future wave as more desktop frames
-//      get claimed by real desktop-parity tests; it must never be lowered to
-//      paper over a regression. Two-sided, mirroring the phone ledger's
-//      wave-85 amendment: a companion test FAILS when the measured claim
-//      count rises above CLAIMED_FLOOR, printing the exact replacement line,
-//      so a stale floor cannot survive a wave that actually lands coverage.
-//      The failure message names every unclaimed desktop frame as
-//      `<file> :<line> -- <title>` so a planner can schedule it.
+//      branch, against the REACHABLE (102 - 2 deviation-deferred = 100)
+//      population. It may only be RAISED in a future wave as more desktop
+//      frames get claimed by real desktop-parity tests; it must never be
+//      lowered to paper over a regression. Two-sided, mirroring the phone
+//      ledger's wave-85 amendment: a companion test FAILS when the measured
+//      claim count rises above CLAIMED_FLOOR, printing the exact replacement
+//      line, so a stale floor cannot survive a wave that actually lands
+//      coverage. The failure message names every unclaimed reachable desktop
+//      frame as `<file> :<line> -- <title>` so a planner can schedule it. A
+//      separate `it` additionally asserts, directly rather than by
+//      arithmetic, that the two deviation-deferred frames carry zero
+//      citations anywhere in the corpus this file scans.
 //
 //   5. A citation is not an assertion (DEC-976's frame-truth half, applied
 //      here to the ledger's own inputs, identical to the phone ledger): a
@@ -75,8 +103,9 @@
 //      resolves to a real line number in the named frame file.
 //
 // goalComplete for the desktop half of the v12 mobile campaign is
-// CLAIMED_FLOOR reaching the full desktop population -- every enumerated
-// desktop frame cited by some test.
+// CLAIMED_FLOOR reaching the full reachable desktop population (100 of 100),
+// which together with the 2 deviation-deferred frames accounts for the whole
+// 102-frame pack.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -320,12 +349,6 @@ interface Claim {
   citation: Citation;
 }
 
-const CLAIMS: Claim[] = [];
-for (const frame of ALL_FRAMES) {
-  const citation = ALL_CITATIONS.find((c) => citationClaims(c, frame));
-  if (citation) CLAIMS.push({ frame, citation });
-}
-
 // -- Deviation-deferred exclusion (DEC-976 wave-107 amendment) --------------
 // docs/design/DEVIATIONS.md's "## 6. Deferred post-deadline" section is a
 // USER RULING (2026-08-16, G13 sweep) that certain frames draw features or
@@ -401,6 +424,26 @@ const EXPECTED_DEVIATION_CITATIONS = [
   { fileName: 'Chautauqua Settings.dc.html', line: 1507 },
 ];
 
+// -- Claim population: REACHABLE, not the full 102 (DEC-180 wave-25) --------
+// CLAIMED_FLOOR is pinned to the reachable population (ALL_FRAMES minus the
+// DEVIATIONS §6 deviation-deferred EXCLUDED frames), so CLAIMS must be built
+// over that same population, not over ALL_FRAMES. Before this fix, CLAIMS
+// scanned all 102 frames -- structurally capable of reaching 101 the moment
+// a stray citation landed inside either deferred frame's extent, which would
+// fail the two-sided "never claims MORE than CLAIMED_FLOOR" ratchet AND
+// record a user-deferred, deliberately-unbuilt feature as covered. Restricting
+// the scan to REACHABLE_FRAMES makes 100 the structural ceiling of CLAIMS,
+// matching CLAIMED_FLOOR by construction rather than by the separate "no
+// deviation-deferred exclusion is claimed" tripwire alone.
+const EXCLUDED_KEYS: Set<string> = new Set(EXCLUDED.map((f) => `${f.file}:${f.line}`));
+const REACHABLE_FRAMES: Frame[] = ALL_FRAMES.filter((f) => !EXCLUDED_KEYS.has(`${f.file}:${f.line}`));
+
+const CLAIMS: Claim[] = [];
+for (const frame of REACHABLE_FRAMES) {
+  const citation = ALL_CITATIONS.find((c) => citationClaims(c, frame));
+  if (citation) CLAIMS.push({ frame, citation });
+}
+
 // -- Ratchet -----------------------------------------------------------------
 // Measured on this branch (v12m-w2-f): 16 of 102 desktop frames are cited by
 // an existing test. May only be RAISED in a future wave as more frames get
@@ -458,6 +501,22 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // ratchet to match a regression -- no regression occurred, no coverage was
 // lost, and the tripwire two `it`s below now makes the corrupt state
 // (CLAIMED_FLOOR above the derived maximum) structurally unenterable.
+//
+// STRUCTURAL FIX (DEC-180 wave-25, v12m-w25-c). The two guards above (the
+// "CLAIMED_FLOOR can never exceed the derived reachable maximum" and "no
+// deviation-deferred exclusion is claimed" tests) caught the 100->102 raise
+// AFTER it happened, but did nothing to stop CLAIMS itself from exceeding
+// 100: CLAIMS was built by `for (const frame of ALL_FRAMES)` -- all 102,
+// including the two deviation-deferred ones -- so a single stray citation
+// landing inside either deferred frame's extent would have pushed CLAIMS to
+// 101, failing the two-sided "never claims MORE than CLAIMED_FLOOR" ratchet
+// and silently crediting a user-deferred, deliberately-unbuilt feature as
+// covered. CLAIMS is now built over REACHABLE_FRAMES (ALL_FRAMES minus
+// EXCLUDED), so 100 is CLAIMS's structural ceiling, not merely its measured
+// value with a tripwire standing guard beside it. No behavioural change to
+// this measured 100 -- the re-measured CLAIMS.length on this branch is still
+// exactly 100 -- this closes the arithmetic accident, it does not move the
+// ratchet.
 export const CLAIMED_FLOOR = 100;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
@@ -509,29 +568,31 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
     expect(ALL_FRAMES.length).toBe(EXPECTED_TOTAL_PRE_DEVIATION);
   });
 
-  it(`claims at least CLAIMED_FLOOR (${CLAIMED_FLOOR}) of 102 desktop frames, and never fewer than the ratchet`, () => {
+  it(`claims at least CLAIMED_FLOOR (${CLAIMED_FLOOR}) of ${REACHABLE_FRAMES.length} reachable desktop frames, and never fewer than the ratchet`, () => {
     if (CLAIMS.length < CLAIMED_FLOOR) {
       const claimedKeys = new Set(CLAIMS.map((c) => `${c.frame.file}:${c.frame.line}`));
-      const unclaimed = ALL_FRAMES.filter((f) => !claimedKeys.has(`${f.file}:${f.line}`)).map(
+      const unclaimed = REACHABLE_FRAMES.filter((f) => !claimedKeys.has(`${f.file}:${f.line}`)).map(
         (f) => `${f.file} :${f.line} -- ${f.title}`
       );
       throw new Error(
-        `claimed ${CLAIMS.length} of ${ALL_FRAMES.length} desktop frames, below the ratchet ` +
-          `floor of ${CLAIMED_FLOOR}. CLAIMED_FLOOR may only be RAISED, never lowered -- ` +
+        `claimed ${CLAIMS.length} of ${REACHABLE_FRAMES.length} reachable desktop frames, below ` +
+          `the ratchet floor of ${CLAIMED_FLOOR}. CLAIMED_FLOOR may only be RAISED, never lowered -- ` +
           `schedule coverage for the unclaimed frames below (never shrink the floor to match ` +
           `a regression):\n${unclaimed.join('\n')}`
       );
     }
     expect(CLAIMS.length).toBeGreaterThanOrEqual(CLAIMED_FLOOR);
     // goalComplete for the desktop half of the v12 mobile campaign is this
-    // reaching 102 of 102.
+    // reaching CLAIMED_FLOOR = REACHABLE_FRAMES.length (100 of 100), which
+    // together with the 2 deviation-deferred frames accounts for the full
+    // 102-frame pack.
   });
 
   it(`never claims MORE than CLAIMED_FLOOR (${CLAIMED_FLOOR}) without the floor being raised to match (a stale floor licenses stagnation)`, () => {
     if (CLAIMS.length > CLAIMED_FLOOR) {
       throw new Error(
-        `claimed ${CLAIMS.length} of ${ALL_FRAMES.length} desktop frames, above the ratchet ` +
-          `floor of ${CLAIMED_FLOOR}. This is the ratchet working: coverage landed. Raise the ` +
+        `claimed ${CLAIMS.length} of ${REACHABLE_FRAMES.length} reachable desktop frames, above ` +
+          `the ratchet floor of ${CLAIMED_FLOOR}. This is the ratchet working: coverage landed. Raise the ` +
           `floor in the same commit (a merge-train act, never a worker's edit mid-lane) by ` +
           `replacing the line:\n  export const CLAIMED_FLOOR = ${CLAIMS.length};`
       );
@@ -596,6 +657,20 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
       (f) => `${f.file}:${f.line} -- ${f.title}`
     );
     expect(overtaken, overtaken.join('\n')).toEqual([]);
+  });
+
+  it('the two DEVIATIONS §6 deferred frames carry exactly zero path:line citations anywhere in the citation corpus this file scans (the exclusion means "the user deferred it, so nothing may claim it", made explicit rather than left to arithmetic)', () => {
+    const offenders: string[] = [];
+    for (const frame of EXCLUDED) {
+      for (const citation of ALL_CITATIONS) {
+        if (!citationClaims(citation, frame)) continue;
+        offenders.push(
+          `${citation.citingFile}: "${citation.matchText}" cites ${frame.file}:${citation.firstLine}, which ` +
+            `lands inside deviation-deferred frame ${frame.file} :${frame.line} -- "${frame.title}"`
+        );
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
   });
 
   it('desktop half of the v12 mobile campaign goal: claimed frames plus deviation-deferred frames reaches the full desktop population (ALL_FRAMES.length), derived from the population, never from CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED (that pairing double-counts the exclusion)', () => {

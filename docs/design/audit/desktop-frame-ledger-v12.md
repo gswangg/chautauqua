@@ -311,3 +311,47 @@ only the 7 non-portal frames above), but are claimed by
 `test/desktop-frames-portal.test.ts`, which asserts all six by line number
 (:1101, :1211, :1373, :1473, :1532, and :1167's 300px note) -- RESOLVED,
 not a gap in this ledger.
+
+## Wave 25 (DEC-180 amendment, task v12m-w25-c) -- claim population corrected to the reachable set
+
+**The defect.** `CLAIMS` was built by `for (const frame of ALL_FRAMES)` --
+scanning all 102 desktop frames -- while `CLAIMED_FLOOR = 100` and the
+two-sided ratchet's "never claims MORE than `CLAIMED_FLOOR`" companion
+assumed CLAIMS could never exceed 100. Both assumptions held only because no
+citation happened to land inside either DEVIATIONS §6 deviation-deferred
+frame's extent (`Chautauqua Settings.dc.html:1111` "Settings · editing your
+data" and `:1507` "Import from Sessionboard"). A single stray citation
+landing in either extent would have pushed `CLAIMS.length` to 101: past the
+floor (failing the "never claims MORE" ratchet) and, worse, silently
+recording a user-deferred, deliberately-unbuilt feature as covered -- exactly
+as three wave-24 lanes were, at plan time, working inside the Settings pack.
+
+**The fix.** `CLAIMS` is now built over `REACHABLE_FRAMES`
+(`ALL_FRAMES.filter` minus `EXCLUDED`, i.e. the 100 frames a real test is
+actually permitted to claim), not over `ALL_FRAMES`. This makes 100 the
+*structural* ceiling of `CLAIMS` -- a citation landing inside a
+deviation-deferred frame's extent can no longer be counted as a claim at
+all, because that frame is never a member of the population the scan walks.
+The "no deviation-deferred exclusion is claimed by any test file" and
+"`CLAIMED_FLOOR` can never exceed the derived reachable maximum" tests still
+stand as after-the-fact tripwires; a new `it` (`the two DEVIATIONS §6
+deferred frames carry exactly zero path:line citations anywhere in the
+citation corpus this file scans`) makes the exclusion's meaning explicit --
+"the user deferred it, so nothing may claim it" -- rather than leaving it as
+an emergent property of the population arithmetic. Its failure message
+prints the offending citing `path:line` and which deferred frame it lands
+in.
+
+**Re-measured on this branch:** `REACHABLE_FRAMES.length` = 100,
+`CLAIMS.length` = 100 (unchanged from the pre-fix measurement --
+`CLAIMED_FLOOR` stays at 100, no ratchet movement in either direction),
+`EXCLUDED.length` = 2. `TOTAL_LABELS` = 161, `ALL_DESKTOP_FRAMES_PRE_EXCLUSION.length`
+= 108, `ALL_FRAMES.length` (after the template-interpolation and
+explainer-panel exclusions, before the deviation-deferred one) = 102.
+100 claimed + 2 deviation-deferred = 102 of 102 -- the whole desktop
+population is now accounted for by a population the code, not just the
+comments, agrees is reachable.
+
+No desktop CSS, markup, or `*.desktop-frame-verdicts.render.test.tsx` file
+was touched by this task -- it is a ledger-instrument fix only, per its
+brief.
