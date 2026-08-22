@@ -230,6 +230,13 @@ export const FAKE_CSS = \`
     expect(findViolations("src/routes/portal/portal.css.ts", synthetic)).toEqual(["src/routes/portal/portal.css.ts:5"]);
   });
 
+  // docs/design/Chautauqua Public and Portal.dc.html:541 draws `min-height:44px`
+  it("the real portal sheet's receipted base-scope 44px floor is NOT flagged -- pays for this file's header-block scope citation into that frame with an assertion, not a comment (DEC-976)", () => {
+    const portal = sources.find((s) => s.path === "src/routes/portal/portal.css.ts");
+    expect(portal, "src/routes/portal/portal.css.ts must be in the swept SSR population").toBeDefined();
+    expect(findViolations(portal!.path, portal!.text)).toEqual([]);
+  });
+
   for (const { path, text } of sources) {
     it(`${path}: no min-height/min-width: 44px outside an @media (max-width: 700px) body or exempt comment`, () => {
       const violations = findViolations(path, text);
