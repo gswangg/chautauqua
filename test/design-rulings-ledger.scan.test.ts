@@ -1396,15 +1396,23 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "review-criteria-scale-or-choice::5",
-    status: "gap",
-    reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **The scorecard's overall says what it counts**: \"Weighted mean of the two scored criteria · Fit is recorded, not averaged\". A number whose denominator is invisible is the thing a reviewer misreads.\"",
+    status: "honored",
+    reason: "the scorecard's overall caption states its own denominator: the Choice criteria are named and marked recorded, not averaged, alongside the weighted-mean phrase for the Scale criteria.",
+    honored: {
+      file: "app/src/pages/review/Scorecard.tsx",
+      literal: "recorded, not averaged",
+      testFile: "app/src/pages/Review.frame-verdicts.render.test.tsx",
+    },
   },
   {
     key: "review-criteria-scale-or-choice::6",
-    status: "gap",
-    reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **The Choice row is a radio row of its options**, same fieldset/legend contract and 44px targets as the numeric scale — stacked rather than inline, because option labels are words of differing lengt…\"",
+    status: "honored",
+    reason: "the Choice row is rendered as a radiogroup, same fieldset/legend contract as the numeric scale.",
+    honored: {
+      file: "app/src/pages/review/Scorecard.tsx",
+      literal: "chq-review-choice-group",
+      testFile: "app/src/pages/review/Scorecard.render.test.tsx",
+    },
   },
   {
     key: "review-criteria-scale-or-choice::7",
@@ -1414,9 +1422,13 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "review-criteria-scale-or-choice::8",
-    status: "gap",
-    reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Type is immutable once any evaluation exists** — the same freeze rule as wording and weights, and for the same reason: changing a criterion from Scale to Choice would orphan every score already gi…\"",
+    status: "honored",
+    reason: "criterion type mutation is guarded by the same evaluation-existence predicate the ruling names: a criterion with recorded evaluations is frozen, so its Scale/Choice type can never orphan a score already given.",
+    honored: {
+      file: "src/server/repo/review/plans.ts",
+      literal: "export async function planHasEvaluations(db: Db, planId: string): Promise<boolean> {",
+      testFile: "test/plan-criteria-guard.test.ts",
+    },
   },
   {
     key: "review-criteria-scale-or-choice::9",
@@ -1432,27 +1444,43 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "password-reset::2",
-    status: "gap",
-    reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"1. **Ask** — one email field. \"We will email you a link to set a new one.\"\"",
+    status: "honored",
+    reason: "the Ask screen's subtitle is the ruling's own quoted sentence, verbatim.",
+    honored: {
+      file: "src/routes/auth-views.tsx",
+      literal: "We will email you a link to set a new one.",
+      testFile: "test/password-reset-flow.test.ts",
+    },
   },
   {
     key: "password-reset::3",
-    status: "gap",
-    reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"2. **Sent** — the security decision, and the reason this needs a designed screen rather than a toast: the confirmation must read **\"If that address has an account, a reset link is on its way.\"** A scr…\"",
+    status: "honored",
+    reason: "the Sent screen's subtitle is the ruling's own quoted sentence, verbatim, identical for a known and an unknown address.",
+    honored: {
+      file: "src/routes/auth-views.tsx",
+      literal: "If that address has an account, a reset link is on its way.",
+      testFile: "test/password-reset-flow.test.ts",
+    },
   },
   {
     key: "password-reset::4",
-    status: "gap",
-    reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"3. **Set** — new password twice, reached from the emailed link, **naming the account being changed** so a forwarded link cannot silently reset someone else's. The helper argues for a passphrase rather…\"",
+    status: "honored",
+    reason: "the Set screen names the account being changed so a forwarded link cannot silently reset someone else's.",
+    honored: {
+      file: "src/routes/auth-views.tsx",
+      literal: "Signing in as {props.email}.",
+      testFile: "test/desktop-frames-account.test.ts",
+    },
   },
   {
     key: "password-reset::5",
-    status: "gap",
-    reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"4. **No longer valid** — any expiring or supersedable token guarantees users meet this state, so it is a designed screen with a *Send a fresh link* primary, never a generic error. Its wording covers b…\"",
+    status: "honored",
+    reason: "the No-longer-valid screen is a designed screen with a fresh-link primary action, never a generic error.",
+    honored: {
+      file: "src/routes/auth-views.tsx",
+      literal: "Send a fresh link",
+      testFile: "test/password-reset-flow.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::1",
@@ -1665,16 +1693,9 @@ const KNOWN_UNIT_GAPS: string[] = [
   "review-criteria-scale-or-choice::2",
   "review-criteria-scale-or-choice::3",
   "review-criteria-scale-or-choice::4",
-  "review-criteria-scale-or-choice::5",
-  "review-criteria-scale-or-choice::6",
   "review-criteria-scale-or-choice::7",
-  "review-criteria-scale-or-choice::8",
   "review-criteria-scale-or-choice::9",
   "password-reset::1",
-  "password-reset::2",
-  "password-reset::3",
-  "password-reset::4",
-  "password-reset::5",
   "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::1",
   "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::2",
   "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::3",
@@ -1774,7 +1795,7 @@ const unitRealResolvers = {
 // and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: a newly-derived population no
 // instrument previously graded must not move the campaign's goalposts
 // mid-convergence.
-export const RULING_UNIT_GAP_CEILING = 137;
+export const RULING_UNIT_GAP_CEILING = 130;
 
 describe("design-rulings-ledger ruling-unit population (DEC-582 wave-31 amendment)", () => {
   const derivedUnits = deriveRulingUnits();
