@@ -2,9 +2,9 @@
 // surfaces. Split out of the former monolithic src/routes/public/agenda.tsx
 // (contention decomposition, wave 66) — no behavior change.
 
-import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
+import { MAX_ITINERARY_IDS, applyItineraryToggle, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { computeSavedOverlaps, joinOverlapTitles } from "../../lib/overlap-lanes";
-import { clockHMM } from "../../domain/clock";
+import { assertValidMinute, clockHMM } from "../../domain/clock";
 import { DEC_555 } from "../../decisions";
 void DEC_555;
 
@@ -24,15 +24,33 @@ export function ItineraryScript(props: { eventSlug: string }) {
   // would fail it once shipped inside the inline script.
   const js = `(function(){
   var MAX_ITINERARY_IDS = ${MAX_ITINERARY_IDS};
-  var __chqMerge = (${mergeItinerarySelection.toString()});
-  var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
+  // DEC-555 wave-29 amendment: mergeItinerarySelection and
+  // mirrorItineraryCheckboxes are embedded under their OWN names (not a
+  // __chq-prefixed alias) because applyItineraryToggle's own SOURCE TEXT
+  // below calls them by these exact free identifiers -- .toString() carries
+  // only source text, never a rename.
+  var mergeItinerarySelection = (${mergeItinerarySelection.toString()});
+  var mirrorItineraryCheckboxes = (${mirrorItineraryCheckboxes.toString()});
+  // DEC-555 wave-29 amendment: the ONE serialized write path (root cause
+  // fix, see itinerary-script-persistence.test.ts) -- every mutation goes
+  // through this single function, called with one storage snapshot and one
+  // DOM snapshot, and every subsequent redraw is driven from its RETURNED
+  // ids/boxes, never a second DOM read.
+  var applyItineraryToggle = (${applyItineraryToggle.toString()});
   var __chqOverlaps = (${computeSavedOverlaps.toString()});
   var __chqJoinOverlapTitles = (${joinOverlapTitles.toString()});
+  // assertValidMinute is embedded under its OWN name for the same reason as
+  // mergeItinerarySelection/mirrorItineraryCheckboxes above: clockHMM's own
+  // source text below calls it by this exact free identifier. Missing this
+  // embed is the w29-c root cause -- any /schedule page with two saved,
+  // time-overlapping sessions threw here on the very first render, before
+  // the change listener that persists Remove clicks ever got registered.
+  var assertValidMinute = (${assertValidMinute.toString()});
   // DEC-555 (wave 148 amendment): the overlaps panel's sentence range prints
   // through the SAME clock formatter (src/domain/clock.ts's clockHMM, the
   // DEC-900 ONE owner of clock formatting) every other public surface uses --
-  // embedded via .toString() exactly like __chqMerge/__chqMirror/__chqOverlaps
-  // above, never a second hand-rolled formatter (DEC-522's day-label hazard).
+  // embedded via .toString() exactly like the helpers above, never a second
+  // hand-rolled formatter (DEC-522's day-label hazard).
   var __chqClock = (${clockHMM.toString()});
   var key = ${JSON.stringify(storageKey)};
   var slug = ${JSON.stringify(props.eventSlug)};
@@ -43,11 +61,15 @@ export function ItineraryScript(props: { eventSlug: string }) {
   // '.chq-itinerary-toggle' for every session (one is display:none at a
   // time, but both stay in the DOM), so the SAME submission id appears
   // twice in the raw NodeList -- dedupe before this list reaches
-  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  // mergeItinerarySelection, or the itinerary is not the set of unique
+  // rendered ids.
   var allRenderedIds = [];
   Array.prototype.forEach.call(boxes, function(b){
     if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
   });
+  function boxStates(){
+    return Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+  }
   function currentIds(){
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
@@ -88,9 +110,13 @@ export function ItineraryScript(props: { eventSlug: string }) {
   var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
   var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
   var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
-  function applyScheduleView(){
+  // DEC-555 wave-29 amendment: takes ids as a parameter -- the caller's
+  // single write-path snapshot -- rather than re-deriving it via
+  // currentIds(). A second internal DOM read here is exactly the shape that
+  // let a cap-trimmed row keep showing checked/saved after
+  // applyItineraryToggle had already dropped it from storage.
+  function applyScheduleView(ids){
     if (scheduleRows.length === 0) return;
-    var ids = currentIds();
     var idSet = {};
     for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
     var saved = [];
@@ -171,23 +197,24 @@ export function ItineraryScript(props: { eventSlug: string }) {
   }
   Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
   updateLink(stored);
-  applyScheduleView();
+  applyScheduleView(stored);
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
-    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
-    // BOTH copies. Without mirroring first, unchecking only the visible
-    // copy leaves the hidden copy's box still checked, so the id never
-    // leaves currentIds() and the uncheck never persists. Mirror every box
-    // sharing the changed input's value to its new checked state first.
-    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
-    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
-    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
+    // DEC-555 wave-29 amendment (THE FIX): ONE storage snapshot
+    // (latestStored), ONE DOM snapshot (boxStates()), fed through the ONE
+    // serialized write function -- applyItineraryToggle already mirrors the
+    // changed value across every box sharing it (DEC-584: the desktop/phone
+    // duplicate trap), computes the merged+capped id list, and resolves
+    // every box's checked state to agree with what actually got persisted.
+    // Every redraw below is driven from its RETURNED values -- never a
+    // second DOM read.
     var latestStored = [];
     try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
-    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
-    localStorage.setItem(key, JSON.stringify(ids));
-    updateLink(ids);
-    applyScheduleView();
+    var result = applyItineraryToggle(latestStored, allRenderedIds, boxStates(), e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = result.boxes[i].checked; });
+    localStorage.setItem(key, JSON.stringify(result.ids));
+    updateLink(result.ids);
+    applyScheduleView(result.ids);
   });
 })();`;
   return <script dangerouslySetInnerHTML={{ __html: js }} />;

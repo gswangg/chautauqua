@@ -3,7 +3,12 @@
 exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterfall > pins the agenda surface title and rendered HTML byte-identical 1`] = `
 "<div class="chq-pub-title-row chq-pub-agenda-heading-row"><h1 class="chq-pub-surface-title">Agenda</h1><nav aria-label="Jump to day" class="chq-pub-day-switcher"><a class="chq-pub-day-pill chq-pub-day-pill-active" href="/e/ev/agenda?day=2026-08-10" aria-current="page">Mon 10</a><a class="chq-pub-day-pill" href="/e/ev/agenda?day=2026-08-11">Tue 11</a><a class="chq-pub-day-pill chq-pub-my-schedule-pill" href="/e/ev/schedule">My schedule · <span id="chq-my-schedule-pill-count">0</span></a></nav></div><div class="chq-pub-agenda-layout"><div class="chq-pub-agenda-col"><div class="chq-pub-filter-row"><form class="chq-pub-searchform" method="get" action="/e/ev/agenda" role="search"><label class="chq-visually-hidden" for="chq-pub-search-q">Search</label><input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="" placeholder="Search sessions or speakers…" maxlength="200"/><button class="chq-pub-search-submit" type="submit" aria-label="Search"><svg aria-hidden="true" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5"></circle><line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line></svg></button></form><form class="chq-pub-track-highlight" method="get" action="/e/ev/agenda"><label class="chq-visually-hidden" for="chq-pub-highlight-track">Highlight a track</label><select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()"><option value="">Highlight a track</option></select><button class="chq-visually-hidden" type="submit">Highlight</button></form></div><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">No sessions scheduled yet.</p></div></div><aside class="chq-pub-agenda-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0</span> saved in this browser · no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Print</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption">A one-page version of all three days.</span><a class="chq-pub-rail-programme-link" href="/e/ev/programme">Printable programme ›</a></div></section></aside></div><div class="chq-pub-agenda-dock"><a id="chq-ics-link-dock" class="chq-pub-itinerary-cta chq-pub-agenda-dock-ics" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a><a class="chq-pub-agenda-dock-cross" href="/e/ev/speakers">Speakers</a></div><script>(function(){
   var MAX_ITINERARY_IDS = 300;
-  var __chqMerge = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
+  // DEC-555 wave-29 amendment: mergeItinerarySelection and
+  // mirrorItineraryCheckboxes are embedded under their OWN names (not a
+  // __chq-prefixed alias) because applyItineraryToggle's own SOURCE TEXT
+  // below calls them by these exact free identifiers -- .toString() carries
+  // only source text, never a rename.
+  var mergeItinerarySelection = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
   const rendered = new Set(renderedIds);
   const kept = stored.filter((id) => !rendered.has(id));
   const seen = new Set(kept);
@@ -15,8 +20,21 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   };
   return merged.slice(0, MAX_ITINERARY_IDS);
 });
-  var __chqMirror = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
+  var mirrorItineraryCheckboxes = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
   return boxes.map((b) => b.value === changedValue && b.checked !== changedChecked ? { ...b, checked: changedChecked } : b);
+});
+  // DEC-555 wave-29 amendment: the ONE serialized write path (root cause
+  // fix, see itinerary-script-persistence.test.ts) -- every mutation goes
+  // through this single function, called with one storage snapshot and one
+  // DOM snapshot, and every subsequent redraw is driven from its RETURNED
+  // ids/boxes, never a second DOM read.
+  var applyItineraryToggle = (function applyItineraryToggle(stored, renderedIds, boxes, changedValue, changedChecked) {
+  const mirrored = mirrorItineraryCheckboxes(boxes, changedValue, changedChecked);
+  const checkedIds = mirrored.filter((b) => b.checked).map((b) => b.value);
+  const ids = mergeItinerarySelection(stored, renderedIds, checkedIds);
+  const idSet = new Set(ids);
+  const resolved = mirrored.map((b) => b.checked === idSet.has(b.value) ? b : { ...b, checked: idSet.has(b.value) });
+  return { ids, boxes: resolved };
 });
   var __chqOverlaps = (function computeSavedOverlaps(items) {
   const clashesById = {};
@@ -51,11 +69,24 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   const last = titles[titles.length - 1];
   return \`\${head}, and \${last}\`;
 });
+  // assertValidMinute is embedded under its OWN name for the same reason as
+  // mergeItinerarySelection/mirrorItineraryCheckboxes above: clockHMM's own
+  // source text below calls it by this exact free identifier. Missing this
+  // embed is the w29-c root cause -- any /schedule page with two saved,
+  // time-overlapping sessions threw here on the very first render, before
+  // the change listener that persists Remove clicks ever got registered.
+  var assertValidMinute = (function assertValidMinute(minutesFromMidnight) {
+  if (!Number.isInteger(minutesFromMidnight) || minutesFromMidnight < 0 || minutesFromMidnight > 1440) {
+    throw new Error(
+      \`clock: minutesFromMidnight must be an integer in 0..1440, got \${minutesFromMidnight}\`
+    );
+  }
+});
   // DEC-555 (wave 148 amendment): the overlaps panel's sentence range prints
   // through the SAME clock formatter (src/domain/clock.ts's clockHMM, the
   // DEC-900 ONE owner of clock formatting) every other public surface uses --
-  // embedded via .toString() exactly like __chqMerge/__chqMirror/__chqOverlaps
-  // above, never a second hand-rolled formatter (DEC-522's day-label hazard).
+  // embedded via .toString() exactly like the helpers above, never a second
+  // hand-rolled formatter (DEC-522's day-label hazard).
   var __chqClock = (function clockHMM(minutesFromMidnight) {
   assertValidMinute(minutesFromMidnight);
   const h = Math.floor(minutesFromMidnight / 60);
@@ -71,11 +102,15 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   // '.chq-itinerary-toggle' for every session (one is display:none at a
   // time, but both stay in the DOM), so the SAME submission id appears
   // twice in the raw NodeList -- dedupe before this list reaches
-  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  // mergeItinerarySelection, or the itinerary is not the set of unique
+  // rendered ids.
   var allRenderedIds = [];
   Array.prototype.forEach.call(boxes, function(b){
     if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
   });
+  function boxStates(){
+    return Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+  }
   function currentIds(){
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
@@ -116,9 +151,13 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
   var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
   var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
-  function applyScheduleView(){
+  // DEC-555 wave-29 amendment: takes ids as a parameter -- the caller's
+  // single write-path snapshot -- rather than re-deriving it via
+  // currentIds(). A second internal DOM read here is exactly the shape that
+  // let a cap-trimmed row keep showing checked/saved after
+  // applyItineraryToggle had already dropped it from storage.
+  function applyScheduleView(ids){
     if (scheduleRows.length === 0) return;
-    var ids = currentIds();
     var idSet = {};
     for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
     var saved = [];
@@ -199,23 +238,24 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   }
   Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
   updateLink(stored);
-  applyScheduleView();
+  applyScheduleView(stored);
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
-    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
-    // BOTH copies. Without mirroring first, unchecking only the visible
-    // copy leaves the hidden copy's box still checked, so the id never
-    // leaves currentIds() and the uncheck never persists. Mirror every box
-    // sharing the changed input's value to its new checked state first.
-    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
-    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
-    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
+    // DEC-555 wave-29 amendment (THE FIX): ONE storage snapshot
+    // (latestStored), ONE DOM snapshot (boxStates()), fed through the ONE
+    // serialized write function -- applyItineraryToggle already mirrors the
+    // changed value across every box sharing it (DEC-584: the desktop/phone
+    // duplicate trap), computes the merged+capped id list, and resolves
+    // every box's checked state to agree with what actually got persisted.
+    // Every redraw below is driven from its RETURNED values -- never a
+    // second DOM read.
     var latestStored = [];
     try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
-    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
-    localStorage.setItem(key, JSON.stringify(ids));
-    updateLink(ids);
-    applyScheduleView();
+    var result = applyItineraryToggle(latestStored, allRenderedIds, boxStates(), e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = result.boxes[i].checked; });
+    localStorage.setItem(key, JSON.stringify(result.ids));
+    updateLink(result.ids);
+    applyScheduleView(result.ids);
   });
 })();</script>"
 `;
@@ -223,7 +263,12 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
 exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterfall > pins the sessions surface title and rendered HTML byte-identical 1`] = `
 "<h1 class="chq-pub-surface-title">Sessions</h1><div class="chq-pub-sessions-layout"><div class="chq-pub-sessions-list"><div class="chq-pub-sessions-fresh-layout"><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">The programme is not out yet</p><p class="chq-pub-empty-reason">Sessions appear here once the schedule is published.</p></div></div></div><aside class="chq-pub-sessions-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0</span> saved in this browser · no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Two days</h2><div class="chq-pub-rail-body"><div class="chq-pub-rail-day-row"><a href="/e/ev/agenda?day=2026-08-10">Monday 10 August</a><span class="chq-pub-rail-day-count">0 sessions</span></div><div class="chq-pub-rail-day-row"><a href="/e/ev/agenda?day=2026-08-11">Tuesday 11 August</a><span class="chq-pub-rail-day-count">0 sessions</span></div></div></section></aside></div><script>(function(){
   var MAX_ITINERARY_IDS = 300;
-  var __chqMerge = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
+  // DEC-555 wave-29 amendment: mergeItinerarySelection and
+  // mirrorItineraryCheckboxes are embedded under their OWN names (not a
+  // __chq-prefixed alias) because applyItineraryToggle's own SOURCE TEXT
+  // below calls them by these exact free identifiers -- .toString() carries
+  // only source text, never a rename.
+  var mergeItinerarySelection = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
   const rendered = new Set(renderedIds);
   const kept = stored.filter((id) => !rendered.has(id));
   const seen = new Set(kept);
@@ -235,8 +280,21 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   };
   return merged.slice(0, MAX_ITINERARY_IDS);
 });
-  var __chqMirror = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
+  var mirrorItineraryCheckboxes = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
   return boxes.map((b) => b.value === changedValue && b.checked !== changedChecked ? { ...b, checked: changedChecked } : b);
+});
+  // DEC-555 wave-29 amendment: the ONE serialized write path (root cause
+  // fix, see itinerary-script-persistence.test.ts) -- every mutation goes
+  // through this single function, called with one storage snapshot and one
+  // DOM snapshot, and every subsequent redraw is driven from its RETURNED
+  // ids/boxes, never a second DOM read.
+  var applyItineraryToggle = (function applyItineraryToggle(stored, renderedIds, boxes, changedValue, changedChecked) {
+  const mirrored = mirrorItineraryCheckboxes(boxes, changedValue, changedChecked);
+  const checkedIds = mirrored.filter((b) => b.checked).map((b) => b.value);
+  const ids = mergeItinerarySelection(stored, renderedIds, checkedIds);
+  const idSet = new Set(ids);
+  const resolved = mirrored.map((b) => b.checked === idSet.has(b.value) ? b : { ...b, checked: idSet.has(b.value) });
+  return { ids, boxes: resolved };
 });
   var __chqOverlaps = (function computeSavedOverlaps(items) {
   const clashesById = {};
@@ -271,11 +329,24 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   const last = titles[titles.length - 1];
   return \`\${head}, and \${last}\`;
 });
+  // assertValidMinute is embedded under its OWN name for the same reason as
+  // mergeItinerarySelection/mirrorItineraryCheckboxes above: clockHMM's own
+  // source text below calls it by this exact free identifier. Missing this
+  // embed is the w29-c root cause -- any /schedule page with two saved,
+  // time-overlapping sessions threw here on the very first render, before
+  // the change listener that persists Remove clicks ever got registered.
+  var assertValidMinute = (function assertValidMinute(minutesFromMidnight) {
+  if (!Number.isInteger(minutesFromMidnight) || minutesFromMidnight < 0 || minutesFromMidnight > 1440) {
+    throw new Error(
+      \`clock: minutesFromMidnight must be an integer in 0..1440, got \${minutesFromMidnight}\`
+    );
+  }
+});
   // DEC-555 (wave 148 amendment): the overlaps panel's sentence range prints
   // through the SAME clock formatter (src/domain/clock.ts's clockHMM, the
   // DEC-900 ONE owner of clock formatting) every other public surface uses --
-  // embedded via .toString() exactly like __chqMerge/__chqMirror/__chqOverlaps
-  // above, never a second hand-rolled formatter (DEC-522's day-label hazard).
+  // embedded via .toString() exactly like the helpers above, never a second
+  // hand-rolled formatter (DEC-522's day-label hazard).
   var __chqClock = (function clockHMM(minutesFromMidnight) {
   assertValidMinute(minutesFromMidnight);
   const h = Math.floor(minutesFromMidnight / 60);
@@ -291,11 +362,15 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   // '.chq-itinerary-toggle' for every session (one is display:none at a
   // time, but both stay in the DOM), so the SAME submission id appears
   // twice in the raw NodeList -- dedupe before this list reaches
-  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  // mergeItinerarySelection, or the itinerary is not the set of unique
+  // rendered ids.
   var allRenderedIds = [];
   Array.prototype.forEach.call(boxes, function(b){
     if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
   });
+  function boxStates(){
+    return Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+  }
   function currentIds(){
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
@@ -336,9 +411,13 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
   var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
   var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
-  function applyScheduleView(){
+  // DEC-555 wave-29 amendment: takes ids as a parameter -- the caller's
+  // single write-path snapshot -- rather than re-deriving it via
+  // currentIds(). A second internal DOM read here is exactly the shape that
+  // let a cap-trimmed row keep showing checked/saved after
+  // applyItineraryToggle had already dropped it from storage.
+  function applyScheduleView(ids){
     if (scheduleRows.length === 0) return;
-    var ids = currentIds();
     var idSet = {};
     for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
     var saved = [];
@@ -419,23 +498,24 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
   }
   Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
   updateLink(stored);
-  applyScheduleView();
+  applyScheduleView(stored);
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
-    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
-    // BOTH copies. Without mirroring first, unchecking only the visible
-    // copy leaves the hidden copy's box still checked, so the id never
-    // leaves currentIds() and the uncheck never persists. Mirror every box
-    // sharing the changed input's value to its new checked state first.
-    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
-    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
-    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
+    // DEC-555 wave-29 amendment (THE FIX): ONE storage snapshot
+    // (latestStored), ONE DOM snapshot (boxStates()), fed through the ONE
+    // serialized write function -- applyItineraryToggle already mirrors the
+    // changed value across every box sharing it (DEC-584: the desktop/phone
+    // duplicate trap), computes the merged+capped id list, and resolves
+    // every box's checked state to agree with what actually got persisted.
+    // Every redraw below is driven from its RETURNED values -- never a
+    // second DOM read.
     var latestStored = [];
     try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
-    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
-    localStorage.setItem(key, JSON.stringify(ids));
-    updateLink(ids);
-    applyScheduleView();
+    var result = applyItineraryToggle(latestStored, allRenderedIds, boxStates(), e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = result.boxes[i].checked; });
+    localStorage.setItem(key, JSON.stringify(result.ids));
+    updateLink(result.ids);
+    applyScheduleView(result.ids);
   });
 })();</script>"
 `;

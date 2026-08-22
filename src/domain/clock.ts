@@ -10,7 +10,19 @@
 // in src/, or through app/src/lib/clock.ts's crossing for the SPA bundle)
 // so the two grammars can never drift into an eleventh copy.
 
-function assertValidMinute(minutesFromMidnight: number): void {
+// Exported (not just module-private) because ItineraryScript
+// (src/routes/public/agenda-itinerary-script.tsx) embeds `clockHMM` into its
+// inline IIFE via `.toString()` -- which carries only clockHMM's own SOURCE
+// TEXT, and that source text calls `assertValidMinute` as a free identifier.
+// `.toString()` never carries a closed-over dependency (the exact EMB-10/11
+// hazard this module's own callers already work around for
+// MAX_ITINERARY_IDS/mergeItinerarySelection), so this function must also be
+// embedded, under this EXACT name, into the same IIFE scope -- see
+// agenda-itinerary-script.tsx's own `assertValidMinute` embed. Without it,
+// every /schedule page with two saved, time-overlapping sessions throws a
+// ReferenceError on the FIRST render, before the change listener that
+// persists Remove clicks ever gets registered (DEC-555 wave-29 amendment).
+export function assertValidMinute(minutesFromMidnight: number): void {
   if (
     !Number.isInteger(minutesFromMidnight) ||
     minutesFromMidnight < 0 ||

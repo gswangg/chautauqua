@@ -156,7 +156,11 @@ describe("DEC-555: the schedule page ships the one implementation, not a copy", 
     const html = await res.text();
 
     expect(html).toContain(mergeItinerarySelection.toString());
-    expect(html).toContain("__chqMerge");
+    // DEC-555 wave-29 amendment: embedded under its OWN name now (not a
+    // __chq-prefixed alias) so applyItineraryToggle's embedded source text
+    // -- which calls mergeItinerarySelection by this exact free identifier
+    // -- resolves inside the same IIFE scope.
+    expect(html).toContain("var mergeItinerarySelection");
     vi.doUnmock("../src/server/repo/public");
   });
 });
