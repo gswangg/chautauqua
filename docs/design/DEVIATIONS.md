@@ -405,6 +405,24 @@ survives contact with state:
   `<h2 className="chq-section-label">Who reviews what</h2>` in place of
   the frame's `Reviewers`. `src/decisions-data/DEC-745.md`'s wave-20
   amendment rules both.
+- **The Contacts 390 rule chip's label ink resolves to `--chq-brand`, not a
+  third olive (DEC-367 amendment, wave-16 r5).**
+  `docs/design/Chautauqua Contacts.dc.html:190` draws the active-rule chip
+  with `border:1px solid #4E5C31; background:#EFF1E4; color:#2E3A16`, one
+  step darker than its own border. The palette has no third olive between
+  `--chq-brand` (#4e5c31) and `--chq-brand-hover` (#3c471f), and spending a
+  hover/active token as the chip's REST ink would make the label's own B8
+  hover state a no-op against the identical hover rule already declared on
+  `.chq-contacts-filter-rule-chip-edit`. So `#2E3A16` resolves to
+  `--chq-brand` instead — the app draws the chip's label and its border in
+  the same olive where the frame draws the label a step darker — which
+  restores a strictly monotone rest → hover → active ladder
+  (`--chq-brand` → `--chq-brand-hover` → `--chq-brand-active`). Two further
+  approximations on the same chip, neither byte-equal to the frame and
+  both now recorded as such rather than claimed `exactly`: the chip's
+  background `#EFF1E4` resolves to `--chq-surface-sunk` (#efebdf), and the
+  dismiss glyph's `#5E6B47` resolves to `--chq-muted` (#565a4b). All three
+  are the palette's nearest existing tokens; none mints a new hex literal.
 
 ## 4. Voice
 
