@@ -13,13 +13,14 @@
 // target.scan.test.ts:30-32).
 //
 // POPULATION (derived, never hand-listed, per DEC-808): readdirSync
-// docs/design/audit for *.md -- a FLAT listing, identical in shape to the
-// two frame ledgers' own designFiles(), and deliberately non-recursive: a
-// nested docs/design/audit/settings-v12/ directory holds three further .md
-// files that this scan does not reach, mirroring the literal task brief
-// ("readdirSync docs/design/audit for *.md") rather than inventing a wider
-// walk. Within each of the 100 files, every raw-text occurrence of the
-// token `DIVERGES` opens one row, keyed `file:line`.
+// docs/design/audit for *.md, walked RECURSIVELY (DEC-099 wave-24
+// amendment) so a nested directory cannot hide rows from the population --
+// per DEC-367/DEC-808 "a directory is not a population". The
+// docs/design/audit/settings-v12/ directory (three further .md files) is
+// now reached; a non-vacuity assertion below pins that at least one row
+// resolves from a nested path, so a future flattening cannot silently
+// re-open the blind spot. Within each of the 105 files, every raw-text
+// occurrence of the token `DIVERGES` opens one row, keyed `file:line`.
 //
 // ADJUDICATION GRAMMAR: a row is ADJUDICATED when its own line, or "the
 // paragraph it heads", carries a `DEC-NNN` citation or names
@@ -164,13 +165,25 @@ export function deriveRowsFromLines(relFile: string, lines: string[]): Divergenc
   return out;
 }
 
-/** Every *.md file directly under docs/design/audit, enumerated rather than
- * named (DEC-808), FLAT (non-recursive) per the file header comment above. */
-function auditFiles(): string[] {
-  return readdirSync(AUDIT_DIR, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.md'))
-    .map((e) => e.name)
-    .sort();
+/** Every *.md file under docs/design/audit, enumerated rather than named
+ * (DEC-808), walked RECURSIVELY (DEC-099 wave-24 amendment) so a nested
+ * directory (e.g. docs/design/audit/settings-v12/) cannot hide rows from
+ * the population -- per DEC-367/DEC-808 "a directory is not a population".
+ * Returns paths relative to AUDIT_DIR (POSIX-joined) so nested files carry
+ * a directory separator while flat-directory files keep their bare name,
+ * preserving the existing flat rows' exact file:line keys. */
+function auditFiles(dir: string = AUDIT_DIR): string[] {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const out: string[] = [];
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      const nested = auditFiles(join(dir, e.name));
+      for (const n of nested) out.push(`${e.name}/${n}`);
+    } else if (e.isFile() && e.name.endsWith('.md')) {
+      out.push(e.name);
+    }
+  }
+  return out.sort();
 }
 
 function rowsInFile(fileName: string): DivergenceRow[] {
@@ -183,11 +196,11 @@ function rowsInFile(fileName: string): DivergenceRow[] {
 const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
 const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 
-const EXPECTED_AUDIT_FILE_COUNT = 102;
-const EXPECTED_TOTAL_TOKEN_COUNT = 158;
+const EXPECTED_AUDIT_FILE_COUNT = 105;
+const EXPECTED_TOTAL_TOKEN_COUNT = 160;
 const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
   heading: 15,
-  table: 42,
+  table: 44,
   bullet: 26,
   fallback: 75,
 };
@@ -260,6 +273,22 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // the floor of 0, so the ratchet below is untouched. Measured by the scan
 // itself (constants forced to -1 and the reported values read back), never
 // by arithmetic on any lane's own snapshot.
+//
+// RE-BASELINED (task w24-a, DEC-099 wave-24 amendment): auditFiles() now
+// walks docs/design/audit RECURSIVELY instead of flat, reaching the
+// previously-unreached docs/design/audit/settings-v12/ directory (three
+// files: w10-frame-verdicts.md, w3-landing-drills.md,
+// w3f-cfp-public-portal.md). Population re-measured live on this branch
+// (constants forced to -1/-1 first, actuals read off the failure output,
+// never computed from this comment's own numbers): 102 -> 105 audit files,
+// 158 -> 160 DIVERGES-token rows, shape split 15/42/26/75 -> 15/44/26/75
+// (the settings-v12 addition is two table rows, both already carrying a
+// DEC-919 citation -- w10-frame-verdicts.md:73 and :79; the other two
+// nested files, w3-landing-drills.md and w3f-cfp-public-portal.md, carry
+// zero DIVERGES tokens). OPEN_DIVERGENCE_CEILING measured 0 both before
+// and after the walk widened -- both newly-reached rows are ADJUDICATED,
+// so per this task's own instruction the ceiling is left untouched rather
+// than raised.
 export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
@@ -285,6 +314,19 @@ describe('open-divergence ledger (DEC-099, task w11-td)', () => {
       );
     }
     expect(OPEN_ROWS.length).toBeLessThanOrEqual(OPEN_DIVERGENCE_CEILING);
+  });
+
+  it('reaches at least one row from a NESTED audit file (a directory separator below docs/design/audit) -- proves the walk is recursive, not flat (DEC-099 wave-24 amendment, DEC-367/DEC-808 "a directory is not a population")', () => {
+    const nestedRows = ALL_ROWS.filter((r) => r.file.slice('docs/design/audit/'.length).includes('/'));
+    if (nestedRows.length === 0) {
+      throw new Error(
+        'No row in ALL_ROWS resolves from a nested audit file -- the population walk has gone flat again, ' +
+          're-opening the blind spot DEC-099 wave-24 closed (docs/design/audit/settings-v12/ is currently ' +
+          'the only nested directory; if it was ever removed, this assertion must be updated to point at ' +
+          'whatever nested directory replaces it as the recursion witness, never simply deleted).'
+      );
+    }
+    expect(nestedRows.length).toBeGreaterThan(0);
   });
 
   it(`never drops below OPEN_DIVERGENCE_CEILING (${OPEN_DIVERGENCE_CEILING}) without the ceiling being lowered to match (a stale ceiling hides progress and licenses regrowth back up to it)`, () => {
