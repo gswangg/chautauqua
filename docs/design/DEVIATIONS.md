@@ -633,8 +633,8 @@ instead of re-flagging.
   ring is rounded with `var(--chq-r-ctl)`, the same corner `.chq-btn`
   already uses.
 - Contacts 390 rule chip: the frame's drawn `gap:9px` is now met as HIT-BOX
-  separation, not literal optical separation (DEC-393 wave-16 r4
-  amendment, task v12m-w16-ui-r4-a). `docs/design/Chautauqua
+  separation, not literal optical separation (DEC-393 wave-16 r4 amendment, task v12m-w16-ui-r4-a).
+  `docs/design/Chautauqua
   Contacts.dc.html:190` draws `gap:9px; padding:0 12px` between the chip's
   edit label and its `✕` dismiss control. Meeting the 44px width floor on
   both (DESIGN-RULINGS.md:189) makes each an outward-only cancelled-padding

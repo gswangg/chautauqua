@@ -421,6 +421,18 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/review/PlanEditor.render.test.tsx",
     },
   },
+  {
+    key: "the-contacts-390-rule-chips-label-ink-resolves-to-chq-brand-not-a-third-olive-dec-367-amendment-wave-16-r5",
+    status: "honored",
+    reason:
+      "DEC-367 amendment, wave-16 r5: the frame draws the rule chip's label one step darker than its own border (#2E3A16), but the palette has no third olive between --chq-brand and --chq-brand-hover, and a control's REST ink is never a state token -- spending the hover token as REST would make the label's own hover a no-op against the identical hover rule already declared. So the label ink resolves to --chq-brand, the same rest token the border already draws, restoring a monotone rest -> hover -> active ladder.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: "color: var(--chq-brand);",
+      testFile: "app/src/pages/contacts/FilterRulesPanel.ruleChips.render.test.tsx",
+    },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -555,6 +567,18 @@ const LEDGER: LedgerEntry[] = [
       },
       { kind: "absent", term: 'query("stage")' },
     ],
+  },
+  {
+    key: "contacts-390-rule-chip",
+    status: "honored",
+    reason:
+      "DEC-393 wave-16 r4 amendment: the frame's drawn gap:9px between the chip's edit label and its dismiss control is met as HIT-BOX separation, not literal optical separation -- meeting the 44px width floor on both controls (DESIGN-RULINGS.md:189) forces each into an outward-only cancelled-padding box, so the two 44px hit boxes sit edge-to-edge with a real 9px gap between them even though the READING between glyphs is optically wider. The width floor wins per DEC-393; the optical residual is recorded rather than left as a silent divergence.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: "min-width: 44px;",
+      testFile: "app/src/pages/contacts/FilterRulesPanel.ruleChips.render.test.tsx",
+    },
   },
   {
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
@@ -781,9 +805,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(16);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(46);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(17);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
+    expect(derived.length).toBe(48);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

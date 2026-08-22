@@ -18,9 +18,10 @@
 // that receipts it (DEC-976 wave-116's EXPECT_PROXIMITY_LINES window).
 //
 // The bulk bar's action set is authored by DEC-752/DEC-825 (the "which
-// moves does the bar offer for this status filter" ruling), NOT DEC-919 --
-// the mandate's citation-corrections section flags DEC-919 as a miscitation
-// for this surface, so it is not repeated here.
+// moves does the bar offer for this status filter" ruling) -- the phone-
+// hides amendment that governs a different question (unreceipted display:
+// none on interactive controls) is deliberately not cited on this surface,
+// per the mandate's "Citation corrections for the doc-integrity lens".
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
