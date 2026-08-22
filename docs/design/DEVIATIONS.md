@@ -438,6 +438,51 @@ survives contact with state:
   background `#EFF1E4` resolves to `--chq-surface-sunk` (#efebdf), and the
   dismiss glyph's `#5E6B47` resolves to `--chq-muted` (#565a4b). All three
   are the palette's nearest existing tokens; none mints a new hex literal.
+- **`.chq-submissions-table-wrap` (`app/src/pages/submissions/submissions.css`)
+  is BLESSED-DEFENSIVE for the organiser-toggled custom-column picker
+  content class (DEC-367 wave-34 amendment).**
+  `docs/design/Chautauqua Submissions.dc.html` draws the results table on a
+  fixed 1600px desktop canvas (`:32`/`:190`/`:402`/`:565`/`:609`) with no
+  `overflow-x` anywhere — the frame is a static mock of one fixed column
+  set, so it has no way to draw what happens when an organiser toggles
+  `.chq-submissions-columnpicker-panel`'s optional columns on. The wrapper
+  exists to hold that live-configured, wider-than-fixed-canvas table, not
+  to compensate for anything the frame drew and the app dropped. No frame
+  line is cited because none applies: a static canvas cannot depict a
+  column set the viewer chooses at runtime.
+- **`.chq-day-grid` (`app/src/pages/agenda/agenda.css`) is BLESSED-DEFENSIVE
+  for the live room-lane matrix content class (DEC-367 wave-34
+  amendment).** The day grid lays rooms across the top and time down the
+  left; the room count is live event data, not a fixed design-time
+  quantity, so no `docs/design/Chautauqua Agenda.dc.html` frame can draw
+  the matrix at every width a real room count could produce. The frame
+  draws one snapshot count on a fixed canvas; the scroller exists so the
+  matrix keeps working when an event's real room count exceeds whatever
+  count that snapshot happened to show. This is the same "deliberately
+  wide matrix that scrolls inside its own container" shape DEC-424 already
+  blesses for other data-sized layouts, applied here to room lanes instead
+  of columns.
+- **`.chq-docs-code` (`src/routes/docs-site.css.ts`) is BLESSED-DEFENSIVE
+  for the author-supplied markdown code-block content class (DEC-367
+  wave-34 amendment).** `docs/design/Chautauqua Docs.dc.html`'s "Docs · an
+  article" frame (`:27`) sets the article's reading measure to 680px but
+  never happens to render a fenced code block in its one captured article,
+  so no frame line draws this exact scroller. Docs articles are
+  markdown-sourced prose whose authors can paste code of any line length;
+  the scroll container exists so that content class does not blow out the
+  680px reading column, independent of which article the frame's mock
+  happened to snapshot.
+- **`table` / `pre` (`src/routes/portal/portal.css.ts`) are
+  BLESSED-DEFENSIVE for the embedded-content content class (DEC-367
+  wave-34 amendment).** "Chautauqua Public and Portal.dc.html" draws no
+  `<table>` and no preformatted block anywhere in its portal frames, so
+  neither selector has a literal frame citation. Portal pages render
+  organiser-authored embedded content (the same class of author-supplied
+  material `.chq-docs-code` guards above, on the portal side of the
+  product) whose shape the static frame set cannot enumerate in advance;
+  the rule gives any such embed its own scroll container instead of
+  letting it push the page wide, which is a property of the content class
+  and not of any one frame's drawn example.
 
 ## 4. Voice
 
