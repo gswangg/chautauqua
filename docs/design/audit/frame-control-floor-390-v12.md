@@ -151,3 +151,28 @@ Machine-derivable reason vocabulary used below: **COMPOSED-from-data** (a live r
 - `UNRESOLVED_COUNT_TRIPWIRE`: **106 -> 105** (106 old `no-label-match`/`no-control-shape` rows re-graded as 105 `composed-unseen`+`no-token`+`no-control-shape` plus 1 moved to OFFENDERS).
 - Zero product CSS/TS bytes changed this wave (test + audit doc only, per the task's own scope).
 - Every offender and every `composed-unseen` row is now individually named above by frame line + selector/citation, so a future wave can drain (fix "Draft", or re-litigate any BLESSED row) rather than re-derive the population from scratch.
+
+## Wave 33 (task w33-a, DEC-393): the width axis of the 44px floor -- two live roster rows closed
+
+`docs/design/audit/public-390-interactive-offenders-v12.md` names two live CANDIDATE rows that already carried `min-height:44px` plus centred flex but failed the ruling's width half -- no horizontal padding, so the hit box was only as wide as the text label:
+
+- `## /docs/start-here`: `a.chq-docs-phone-back w=38px h=44px` -- **CANDIDATE**
+- `## /embed/e/seed_embed_0001`: `a.chq-pub-activefilters-clear w=40px h=44px` -- **CANDIDATE**
+
+### Fix
+
+- `src/routes/docs-site.css.ts`, terminal phone `@media` block, `.chq-docs-phone-back`: added `padding: 0 6px` (label measures 38px; 38 + 12 = 50px, comfortably clear of the 44px width floor) and an equal `margin: 0 -6px` to absorb the padding so the `‹ Docs` label stays visually flush with the toolbar's 16px inset -- the wave-7 amendment's own sanctioned idiom for this exact tension. The base-scope rule at :103 (`display: none`) and the sibling `.chq-docs-contents-toggle` (already floored) were left untouched, per task scope.
+- `src/routes/public/css/chrome.css.ts`, terminal phone `@media` block, `.chq-pub-activefilters-clear`: widened `padding: 0 4px` to `padding: 0 6px` (label measures 32px; 32 + 12 = 44px, exactly clears the floor). Checked the two named siblings' arithmetic per the task's instruction: `.chq-pub-activefilters-chip` already carries `padding: 6px 13px` (well clear) and `.chq-pub-select-clear` still carries its original `padding: 0 4px` -- neither is named as a roster offender and neither measures short by the same arithmetic (their labels are longer/differently composed), so both were left alone.
+
+**Measured (arithmetic, not a live render sweep -- the task forbids running the render sweep or any live gate):**
+
+| selector | before (w x h) | after width | ruling |
+| --- | --- | --- | --- |
+| `.chq-docs-phone-back` | 38px x 44px | 50px (38 + 2x6 padding) | DEC-393 (44px floor, both axes) |
+| `.chq-pub-activefilters-clear` | 40px x 44px | 44px (32 + 2x6 padding) | DEC-393 (44px floor, both axes) |
+
+### Receipt
+
+`test/public-390-width-floor.test.ts` reads both CSS modules as source (`DOCS_SITE_CSS`, and `CHROME_CSS` composed with its sibling `CHROME_PHONE_CSS` -- imported constants, not globbed files; `chrome.css.ts`'s DEC-385 wave-143 split moved its terminal phone `@media` block into a separate export so every composing sheet can concatenate it as its own trailing phone region, so `.chq-pub-activefilters-clear`'s real rule is graded from the concatenation, exactly as every host composes them), strips comments before matching so a comment quoting a frame/roster literal can never masquerade as a real declaration, and grades each selector's terminal (last-occurring, i.e. phone-block) rule for `min-height:44px` + centred flex + non-zero horizontal padding. A synthetic `min-height:44px; padding:0` rule is asserted as a failing case (negative control), so the scan cannot pass vacuously. A third test pins that `.chq-pub-select-clear` was left at its original `padding: 0 4px`, matching the task's "leave the sibling rules alone unless they measure short" scope.
+
+This wave does not touch `docs/design/audit/public-390-interactive-offenders-v12.md` -- it is machine-written and overwritten unconditionally by the gate; a future render-sweep wave is expected to re-grade both rows off CANDIDATE once it runs.

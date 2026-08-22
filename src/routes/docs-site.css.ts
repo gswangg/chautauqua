@@ -315,10 +315,16 @@ export const DOCS_SITE_CSS = `
        .chq-docs-article-frame padding already supplies the 16px inset)
        so only the row's internal flex geometry is new. */
     .chq-docs-phone-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    /* DEC-393 wave-33: the label ('‹ Docs') measures 38px, short of the
+       44px tap-floor width. Padding carries the hit box past the floor;
+       the equal negative inline margin (the wave-7 amendment's own idiom)
+       absorbs it so the label stays flush with the toolbar's 16px inset. */
     .chq-docs-phone-back {
       display: flex;
       align-items: center;
       min-height: 44px;
+      padding: 0 6px;
+      margin: 0 -6px;
       font-size: 13px;
       font-weight: 700;
       color: var(--chq-ink);
