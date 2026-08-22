@@ -198,8 +198,12 @@ describe('w29-d: real render receipts (SettingsPage mounted at ?section=public-p
     expect(desktopHideMatches).toHaveLength(1);
     expect(desktopHideMatches[0]).toBe(plainTopHeading);
 
-    // :483 -- back control ends in "Settings" (Public pages has no nested
-    // drill of its own here, unlike Saved embeds -- see the sibling file).
+    // docs/design/Chautauqua Settings.dc.html:483 draws the back link
+    // verbatim as `‹ Settings` (Public pages has no nested drill of its
+    // own here, unlike Saved embeds -- see the sibling file). Proven
+    // rendered exactly that text by the expect() immediately below
+    // (in-body receipt, pays for this file's header-block scope citation
+    // at :2).
     const back = screen.getByRole('button', { name: /Settings$/ });
     expect(back.textContent).toBe('‹ Settings');
   });

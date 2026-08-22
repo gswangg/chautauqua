@@ -774,8 +774,17 @@ const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
 /** Ratchet ceiling, desktop half of HEADER_SCOPE_WITHOUT_RECEIPT_CEILING's
  * own contract exactly (task w14-a companion). Seeded at 2, measured on
  * THIS branch, not invented as 0 -- may only be LOWERED, never raised to
- * paper over a regression. */
-const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 2;
+ * paper over a regression.
+ *
+ * Lowered 2 -> 0 (task w17-e, DEC-998 wave-17): the sole desktop offender,
+ * app/src/pages/settings/PortalSettingsPanel.welcome-edit.render.test.tsx,
+ * now carries a fully-receipted in-body citation into
+ * `Chautauqua Settings.dc.html:906` (backtick-quoted literal + a real
+ * `expect(` within EXPECT_PROXIMITY_LINES), paying for its header-block
+ * scope citation at :2. Re-measured on this branch by forcing the
+ * constant to -1 and reading the offender list, not copied from any
+ * audit doc (DEC-989 clause a). */
+const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 0;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
