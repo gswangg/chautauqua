@@ -79,15 +79,15 @@ describe('EventSettingsPanel Dates row (DEC-896)', () => {
     expect(hintEl.textContent).toMatch(/days? away|Today/);
   });
 
-  it('the edit form still shows separate Start date and End date inputs', async () => {
+  it('the edit form still shows separate Starts and Ends inputs', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
       'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
     });
     renderPanel();
 
-    expect(await screen.findByLabelText('Start date')).toBeInTheDocument();
-    expect(screen.getByLabelText('End date')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Starts')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ends')).toBeInTheDocument();
   });
 });
 
@@ -111,7 +111,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     });
     renderPanel();
 
-    const endDateInput = await screen.findByLabelText('End date');
+    const endDateInput = await screen.findByLabelText('Ends');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -146,7 +146,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     });
     renderPanel();
 
-    const endDateInput = await screen.findByLabelText('End date');
+    const endDateInput = await screen.findByLabelText('Ends');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -174,7 +174,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     });
     renderPanel();
 
-    const endDateInput = await screen.findByLabelText('End date');
+    const endDateInput = await screen.findByLabelText('Ends');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -229,7 +229,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     });
     renderPanel();
 
-    const nameInput = await screen.findByLabelText('Name');
+    const nameInput = await screen.findByLabelText('Event name');
     fireEvent.change(nameInput, { target: { value: 'Renamed Con' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
@@ -250,7 +250,7 @@ describe('EventSettingsPanel edit view shell (DEC-896)', () => {
     });
     renderPanel();
 
-    await screen.findByLabelText('Name');
+    await screen.findByLabelText('Event name');
     expect(
       screen.getByText('Changing the slug breaks every link already shared, including saved embeds'),
     ).toBeInTheDocument();
@@ -272,17 +272,17 @@ describe('EventSettingsPanel edit view shell (DEC-896)', () => {
     }
   });
 
-  it('paints Start date and End date as a SettingsFieldPair', async () => {
+  it('paints Starts and Ends as a SettingsFieldPair', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
       'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
     });
     renderPanel();
 
-    const startInput = await screen.findByLabelText('Start date');
+    const startInput = await screen.findByLabelText('Starts');
     const pair = startInput.closest('.chq-settings-field-pair');
     expect(pair).not.toBeNull();
-    expect(within(pair as HTMLElement).getByLabelText('End date')).toBeInTheDocument();
+    expect(within(pair as HTMLElement).getByLabelText('Ends')).toBeInTheDocument();
   });
 });
 
@@ -299,7 +299,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     });
     renderPanel();
 
-    const nameInput = await screen.findByLabelText('Name');
+    const nameInput = await screen.findByLabelText('Event name');
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
     const slugInput = screen.getByLabelText('Slug');
     fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
@@ -324,7 +324,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(screen.queryByText(/invalid slug/i)).not.toBeInTheDocument();
 
     // Unsaved edits survive the refusal: no refetch, no reset.
-    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
+    expect(screen.getByLabelText('Event name')).toHaveValue('Edited Name');
     expect(screen.getByLabelText('Slug')).toHaveValue('taken-slug');
 
     // A field-scoped 409 (a real fields map) is NOT the whole-payload
@@ -347,7 +347,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     });
     renderPanel();
 
-    const nameInput = await screen.findByLabelText('Name');
+    const nameInput = await screen.findByLabelText('Event name');
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
     const slugInput = screen.getByLabelText('Slug');
     fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
@@ -377,7 +377,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(slugInput).toHaveClass('chq-field-invalid');
 
     // Unsaved edits still survive.
-    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
+    expect(screen.getByLabelText('Event name')).toHaveValue('Edited Name');
   });
 
   it('a generic 500 still renders the page banner, with no field-level error on Slug', async () => {
@@ -391,7 +391,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     });
     renderPanel();
 
-    const nameInput = await screen.findByLabelText('Name');
+    const nameInput = await screen.findByLabelText('Event name');
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
@@ -425,7 +425,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     });
     renderPanel();
 
-    const nameInput = await screen.findByLabelText('Name');
+    const nameInput = await screen.findByLabelText('Event name');
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
     const slugInput = screen.getByLabelText('Slug');
     fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
@@ -460,7 +460,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(screen.getByText('Nothing was lost. Your edits are still below.')).toBeInTheDocument();
     const links = within(summary).getAllByRole('link');
     expect(links).toHaveLength(3);
-    const startId = screen.getByLabelText('Start date').id;
+    const startId = screen.getByLabelText('Starts').id;
     expect(startId).not.toBe('');
     for (const link of links) {
       const targetId = (link.getAttribute('href') ?? '').replace('#', '');
@@ -473,7 +473,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
 
     // Every typed value -- including the untouched Location field's -- is
     // preserved: no refetch, no reset.
-    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
+    expect(screen.getByLabelText('Event name')).toHaveValue('Edited Name');
     expect(screen.getByLabelText('Slug')).toHaveValue('taken-slug');
     expect(screen.getByLabelText('Time zone')).toHaveValue('America/Denver');
     expect(screen.getByLabelText('Venue')).toHaveValue('Edited Venue');

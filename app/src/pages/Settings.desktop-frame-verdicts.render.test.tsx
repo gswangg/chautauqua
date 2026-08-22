@@ -256,10 +256,16 @@ describe('v12 Settings DESKTOP (1600) frames: per-frame render verdict receipts 
       expect(backBtn.compareDocumentPosition(drillTitle!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('MATCHES: Start date and End date fields render as a paired row', async () => {
+    it('MATCHES: Starts and Ends fields render as a paired row', async () => {
       await drillIntoEvent();
-      const startField = screen.getByLabelText('Start date');
-      const endField = screen.getByLabelText('End date');
+      // DEC-613 wave-24 amendment: docs/design/Chautauqua Settings.dc.html:752
+      // `Starts` -- the app's field label now reads the frame's own word.
+      verbatimLine(752, '                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Starts</span>');
+      // docs/design/Chautauqua Settings.dc.html:756 `Ends` -- same, for the
+      // paired field.
+      verbatimLine(756, '                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Ends</span>');
+      const startField = screen.getByLabelText('Starts');
+      const endField = screen.getByLabelText('Ends');
       // docs/design/Chautauqua Settings.dc.html:750 draws Starts/Ends as a
       // `grid-template-columns:1fr 1fr` pair; the app's own field pair is
       // asserted below.

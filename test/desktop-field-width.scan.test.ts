@@ -509,7 +509,7 @@ const UNRESOLVED: GradedFieldWidth[] = GRADED.filter((r) => r.status === 'unreso
 // own reasoning: a new non-zero row in the exit gate would move the
 // campaign's goalposts mid-convergence.
 export const FIELD_WIDTH_DIVERGENCE_CEILING = 0;
-export const FIELD_WIDTH_UNRESOLVED_CEILING = 6;
+export const FIELD_WIDTH_UNRESOLVED_CEILING = 4;
 
 describe('B10 desktop field-width ledger (DEC-896/DEC-808 wave-28, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 6 desktop "Settings · editing" frames, 2 excluded per DEVIATIONS §6', () => {
@@ -611,11 +611,13 @@ describe('B10 desktop field-width ledger (DEC-896/DEC-808 wave-28, v12 mobile ca
     const cfpPair = GRADED.find((r) => r.row.frameTitle === 'Settings · editing the call for papers' && r.row.isPair);
     expect(cfpPair?.status).toBe('matches');
     expect(cfpPair?.pairEquivalent).toBe(true);
-    // Event's pair frame labels ("Starts"/"Ends") do not literally match
-    // the code's SettingsField labels ("Start date"/"End date") -- an
-    // honest UNRESOLVED, never a fuzzy match.
+    // DEC-613 wave-24 amendment: EventSettingsPanel.tsx's SettingsField
+    // labels now read the frame's own words ("Starts"/"Ends"), so this
+    // pair resolves and grades matches too (200+18+200=418≈420,
+    // EQUIVALENT-AT-THE-DRAWN-WIDTH), same as CFP's pair.
     const eventPair = GRADED.find((r) => r.row.frameTitle === 'Settings · editing the event' && r.row.isPair);
-    expect(eventPair?.status).toBe('unresolved');
+    expect(eventPair?.status).toBe('matches');
+    expect(eventPair?.pairEquivalent).toBe(true);
   });
 
   it(`never exceeds FIELD_WIDTH_DIVERGENCE_CEILING (${FIELD_WIDTH_DIVERGENCE_CEILING}) resolved divergences`, () => {
