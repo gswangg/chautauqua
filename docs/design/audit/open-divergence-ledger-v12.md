@@ -56,7 +56,7 @@ documented in the scan file's own header comment.
   narration -- the audit corpus is append-only, per its own established
   convention).
 
-`OPEN_DIVERGENCE_CEILING = 133` is a two-sided ratchet (DEC-808): a
+`OPEN_DIVERGENCE_CEILING = 4` (commit `aa18c504e` lowered it from the superseded paraphrase `133` kept here only because 13-plus citations elsewhere in this corpus still quote that literal) is a two-sided ratchet (DEC-808): a
 companion test fails if the open count rises above it (printing every
 offending `file:line`) and another fails if it drops below it without the
 constant being lowered to match (printing the exact replacement line), so
