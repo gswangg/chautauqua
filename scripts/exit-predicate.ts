@@ -1112,6 +1112,20 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "about the join's own mounting check, not itself a v12 frame or 390-geometry conformance fact, "
     + "the same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
     + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  RULING_UNIT_GAP_CEILING:
+    "measures a newly-derived population (every top-level `- ` bullet, `\\d+. ` numbered item and "
+    + "`**`-led bold paragraph in docs/design/DESIGN-RULINGS.md, keyed `<heading-slug>::<n>` under "
+    + "its parent heading -- 137 rows) that no instrument previously graded: the pre-existing heading "
+    + "ledger honors one artifact per HEADING (DEC-100 'a coverage cap is not an identity' at file "
+    + "scope), this widens it to the RULING itself. Every one of the 137 is currently 'gap' -- design "
+    + "rationale prose (an argument, a cross-reference, a legend entry, a spec sub-rule), not a "
+    + "standalone claim with its own single code artifact; a borrowed citation from the parent "
+    + "heading's own honored row would misrepresent which fact the unit's own words assert, which "
+    + "this ledger's gap-verdict prose forbids. A newly measured, previously-uncounted population "
+    + "must not move the campaign's goalposts mid-convergence; it is promoted once later waves drain "
+    + "individual units to genuine 1:1 citations, the same disposition already given to "
+    + "FRAME_EYEBROW_DIVERGENCE_CEILING and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
+    + "(test/design-rulings-ledger.scan.test.ts, DEC-582 wave-31 amendment).",
 };
 
 /**
