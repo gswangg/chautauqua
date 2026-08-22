@@ -880,6 +880,23 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "require them to change; it only measures the idiom's current adoption' -- an adoption "
     + "meter over the whole call-site population, not a v12 frame or 390-geometry conformance "
     + "fact (DEC-808 wave-13m amendment).",
+  FRAME_FIELD_LABEL_DIVERGENCE_CEILING:
+    "measures whether a v12 frame's drawn FIELD label (an 11px/12px caption immediately "
+    + "preceding a `border:1px solid #BAB6A6` input-shaped box) is the exact text a real "
+    + "FormRow/SettingsField/<label>/aria-label call site renders -- a words-on-FIELDS fact "
+    + "distinct from the control-label ledgers (footer/anchor/painted-span CONTROLS) and from "
+    + "the field-width ledger (which uses a label only as a join key toward a WIDTH fact). A "
+    + "newly measured, previously-uncounted population (DEC-180 wave-24 amendment) -- a new "
+    + "non-zero row in the exit gate would move the campaign's goalposts mid-convergence; it "
+    + "measures fidelity now and is promoted once repair lanes have drained it.",
+  FRAME_FIELD_LABEL_UNRESOLVED_CEILING:
+    "measures how many drawn field-label rows this join's four static call-site shapes "
+    + "(FormRow/SettingsField label=, <label> text, complete aria-label=) cannot resolve at "
+    + "all -- a templated/repeated list-row VALUE the join has no single component instance "
+    + "to check against, never a real content divergence -- an instrument-completeness fact "
+    + "about the ledger's own join technique, the same disposition already given to "
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING and FIELD_WIDTH_UNRESOLVED_CEILING (DEC-180 wave-24 "
+    + "amendment).",
 };
 
 /**
