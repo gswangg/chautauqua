@@ -18,9 +18,10 @@
 // that receipts it (DEC-976 wave-116's EXPECT_PROXIMITY_LINES window).
 //
 // The bulk bar's action set is authored by DEC-752/DEC-825 (the "which
-// moves does the bar offer for this status filter" ruling), NOT DEC-919 --
-// the mandate's citation-corrections section flags DEC-919 as a miscitation
-// for this surface, so it is not repeated here.
+// moves does the bar offer for this status filter" ruling) -- a prior wave
+// cited a different, unrelated decision for this surface, so the mandate's
+// citation-corrections section flags that mismatch and it is not repeated
+// here.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
