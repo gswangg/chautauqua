@@ -100,6 +100,8 @@ that gap is a separate task's scope, not this one's.
 
 ## DIVERGES
 
-None found. Every element this task's scope enumerates renders in drawn
-order at the frame-cited geometry classes, with no fix required in either
-file this task may touch.
+None found (DEC-099 wave-14m clause 1: this heading and paragraph record
+the absence of a divergence, adjudicated by citing that ruling here).
+Every element this task's scope enumerates renders in drawn order at the
+frame-cited geometry classes, with no fix required in either file this
+task may touch.

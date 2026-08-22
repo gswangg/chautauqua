@@ -133,16 +133,21 @@ produce exactly the frame's two-error combination.
 | Frame | Verdict |
 | --- | --- |
 | :451 Plan editor · /review/plans/:id | MATCHES |
-| :675 Plan editor · criteria frozen | DIVERGES (2 additive: live count vs. static sentence; 6-track vs. 4-track locked row) |
+| :675 Plan editor · criteria frozen | DIVERGES — both pieces adjudicated (DEC-882 wave-8: live count is a deliberate ruling, not a gap to close; locked-row track count CLOSED-with-receipt wave 8/w8-c, `review.css` now ships the frame's four-track grid) |
 | :718 New plan · /review/plans/new | MATCHES |
 | :875 Plan editor · save rejected | MATCHES |
 
-3 of 4 frames MATCH as rendered; the one DIVERGES row carries two real,
-additive text/DOM divergences (a more-informative live count in place of a
-generic sentence, and a wider six-track locked-row grid kept for column
-alignment with the unlocked row above it) — neither is missing
-functionality, both are filed in prose per this task's mandate rather than
-fixed here. No desktop byte was moved to produce this verdict.
+3 of 4 frames MATCH as rendered; the one DIVERGES row's two items are both
+adjudicated, not open gaps: the eyebrow's live scored-review count in
+place of the frame's generic sentence is a deliberate, additive
+improvement ruled DEC-882 wave-8 (the frame's own sibling body-caption
+already carries the generic sentence verbatim, so nothing the frame states
+is lost); the locked-row track count is CLOSED-with-receipt (wave 8/w8-c)
+— `review.css`'s `.chq-review-criterion-row-readonly` now declares the
+frame's own four-track grid (`minmax(0, 1fr) 232px 128px 122px`, no
+drag/remove columns), so the "6-track vs. 4-track" reading is a superseded
+prior measurement, not the tree's current shape. No desktop byte was moved
+to produce this verdict.
 
 Not covered by this document: Review's other four desktop frames (:28
 Organiser view, :183 Reviewer scorecard, :351 Reviewer queue, :830 Your

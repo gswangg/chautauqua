@@ -61,7 +61,9 @@ the frame and `review-v12.md`'s own prior RESOLVED verdict.
 
 ## Net result
 
-No DIVERGES rows survive against the frame itself. `review-v12.md`'s own
+No DIVERGES rows survive against the frame itself (DEC-099 wave-14m clause
+1: this paragraph records the absence of a divergence, adjudicated by
+citing that ruling here). `review-v12.md`'s own
 `:793` row (RESOLVED, wave 19) already covers the row-anatomy and
 footnote-merge history this task's new file now also renders and cites at
 request level — this file's addition is a citation-format and coverage

@@ -46,8 +46,8 @@ component or stylesheet, even where a real divergence is found below.
 
 ## Frame :319 "Speaker detail · /admin/speakers/:contactId"
 
-**DIVERGES** (a real, pre-existing and BLESSED divergence — not new debt).
-Entered via `SpeakerDetailPage` at `/speakers/:contactId`.
+**DIVERGES** (a real, pre-existing and BLESSED divergence under DEC-936 —
+not new debt). Entered via `SpeakerDetailPage` at `/speakers/:contactId`.
 
 - The frame draws exactly ONE participation control: a header dropdown
   reading `Confirmed ▾` (frame :341, `<span ... cursor:pointer">Confirmed<span
@@ -199,24 +199,35 @@ into the search box that matches no speaker.
 
 ## Frame :491 "Review these reminders"
 
-**DIVERGES** on the email preview's presentation; otherwise MATCHES.
+**DIVERGES** on the email preview's presentation (DEC-903 wave-14m: this
+row is RETIRED — the claim below is a stale snapshot of a tree that no
+longer exists; see the retirement bullet); otherwise MATCHES.
 Entered via `SpeakersPage` at `/speakers`, opened from the `Remind all
 outstanding` head action.
 
 - Title (frame :498, `Review these reminders`) MATCHES.
 - `Send these N` / `Cancel` / `Logged in Comms history` (frame :540)
   MATCH, and the per-recipient row renders the fixture's name.
-- **DIVERGES.** The frame (:498-536) draws a fully rendered HTML email
-  card under the "What Marcus will read" eyebrow: a `DevFlow Conf 2027`
-  header, a greeting, a "Still to do" bulleted block, and a rendered CTA
-  button reading `Open your tasks` (frame :529). `RemindPreviewModal.tsx`
-  instead renders the SAME draft as plain text inside a bare `<pre
-  class="chq-speakers-remind-draft-text">` — no header band, no styled
-  button, `Open your tasks` present only as plain text inside the `<pre>`,
-  never as a link or button. The underlying text content (greeting, nudge,
-  "Still to do", portal link, signature) is present; the frame's RENDERED
-  card presentation is not. Filed here as measurement; not fixed (desktop
-  is frozen).
+- **DIVERGES — RETIRED with a code citation (DEC-903 wave-14m).** This row
+  previously claimed `RemindPreviewModal.tsx` renders the draft as plain
+  text inside a bare `<pre class="chq-speakers-remind-draft-text">` — no
+  header band, no styled button — against the frame's fully rendered HTML
+  email card (:498-536: a `DevFlow Conf 2027` header, a greeting, a "Still
+  to do" bulleted block, and a rendered CTA button reading `Open your
+  tasks`, frame :529). Re-measured against the tree per DEC-903's own
+  method (grep the construct before writing any verdict):
+  `RemindPreviewModal.tsx` ships the full card —
+  `.chq-speakers-remind-card-header` carrying the subject,
+  `.chq-speakers-remind-card-greeting`, `.chq-speakers-remind-card-nudge`,
+  the left-ruled `.chq-speakers-remind-card-todo` block, and a real
+  `<a className="chq-speakers-remind-card-cta">Open your tasks</a>`
+  anchor — and
+  `app/src/pages/Speakers-states.desktop-frame-verdicts.render.test.tsx`
+  asserts `dialog.querySelector('pre.chq-speakers-remind-draft-text')` is
+  NULL. The claim above is a snapshot of a tree that no longer exists;
+  this row is RETIRED, explicitly not BLESSED (DEC-903: "blessed" would
+  assert a divergence exists and was accepted, a second false claim on top
+  of the first), and no lane is scheduled.
 
 ## Frame :549 "Speakers · a write failed"
 
@@ -243,17 +254,25 @@ optimistic cell-status flip that the server's PATCH rejects.
 | --- | --- |
 | :28 Onboarding grid · 1600 | MATCHES |
 | :187 New task | MATCHES (+ blessed additive divergence, DEC-746) |
-| :228 Task response | DIVERGES (subtitle: sent vs. completed date) |
+| :228 Task response | DIVERGES — CLOSED, DEC-441 wave-6 amendment (subtitle now names the sent date) |
 | :288 Participation · open | MATCHES |
 | :319 Speaker detail · /admin/speakers/:contactId | DIVERGES (blessed, DEC-936) |
 | :442 Speakers · search found nothing | MATCHES |
-| :491 Review these reminders | DIVERGES (plain-text draft vs. rendered email card) |
+| :491 Review these reminders | DIVERGES — RETIRED, DEC-903 wave-14m (tree ships the frame's full rendered card; the plain-text claim was stale) |
 | :549 Speakers · a write failed | MATCHES |
 | :598 One task, every speaker | MATCHES |
 | :665 One task · still waiting | MATCHES |
 
-7 of 10 frames MATCH outright as rendered (an 8th, :187, matches with one
-previously-blessed additive divergence filed alongside it); the two
-DIVERGES rows found this wave (:228, :491) are real presentation/wording
-gaps, filed as measurement per the mandate's desktop freeze — no desktop
-byte was moved to produce any verdict in this document.
+9 of 10 frames MATCH outright as rendered (an 8th, :187, matches with one
+previously-blessed additive divergence filed alongside it). Of the summary
+table's three DIVERGES rows above, two are now resolved and cited in-cell:
+:228 closed under DEC-441's wave-6 amendment (its subtitle now names the
+sent date, not the completed date, matching the frame) and :491 retired
+under DEC-903 wave-14m (the tree already ships the frame's rendered card,
+so the row's plain-text-draft claim was a stale snapshot of a tree that no
+longer exists). The lone standing divergence is :319's per-session
+participation control, blessed under DEC-936 as pre-existing and correct
+(a header-level status cannot honestly represent sessions the speaker
+disagrees across) — per DEC-099 wave-14m clause 1, this closing paragraph
+narrates rows already retired/closed above, adjudicated by this citation.
+No desktop byte was moved to produce any verdict in this document.

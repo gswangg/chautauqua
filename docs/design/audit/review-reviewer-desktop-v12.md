@@ -32,7 +32,7 @@ lane's test file.
 ## Frame :28 "Organiser view · 1600"
 
 **DIVERGES** — a real, pre-existing, already-documented divergence, not new
-debt, re-anchored on the frame in wave-12 (see below: wave-9's
+debt, re-anchored on the FRAME per DEC-902 wave-12 (see below: wave-9's
 RESOLVED-BY-RULING caption still retires the three tracks that carry a
 recorded fit, but three further tracks carry none and are un-adjudicated).
 This lane's assigned checks cover the two pieces the brief
@@ -174,7 +174,7 @@ verdict a still-loading DOM.
 
 | Frame | Verdict |
 | --- | --- |
-| :28 Organiser view · 1600 (results-table track set + progress band) | DIVERGES (pre-existing, documented; re-anchored on the frame wave-12) |
+| :28 Organiser view · 1600 (results-table track set + progress band) | DIVERGES (pre-existing, documented; re-anchored on the FRAME, DEC-902 wave-12) |
 | :183 Reviewer scorecard | MATCHES |
 | :351 Reviewer queue | MATCHES |
 | :830 Your plans · /review | MATCHES (stale-await fixed wave-12) |
