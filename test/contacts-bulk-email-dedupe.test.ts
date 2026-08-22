@@ -1,6 +1,13 @@
-// DEC-238 wave-14 amendment (CRM bulk-email dedupe): POST /contacts/bulk-email
-// now shares compose/send's dedupe class — an intra-batch address collapse
-// plus a cross-call COMPOSE_DEDUPE_WINDOW_MS window against email_log.
+// DEC-238 wave-14 amendment (CRM bulk-email dedupe), superseded in its
+// intra-batch shape by the wave-17 amendment: POST /contacts/bulk-email's
+// two-stage dedupe is a stage-1 intra-batch collapse plus a stage-2
+// cross-call COMPOSE_DEDUPE_WINDOW_MS window against email_log. Wave-17
+// re-keys stage 1 on (contactId, rendered subject, rendered body) instead
+// of the bare address — an address is a delivery detail, never an identity
+// — so two DIFFERENT contact rows that happen to share an inbox no longer
+// collapse (see test/contacts-bulk-email-collapse-identity.test.ts for that
+// case). The cross-call stage (below) is unchanged: it is keyed on
+// (email, subject) because email_log carries no contactId concept.
 // Mirrors test/comms-send-dedupe.test.ts's loggedRows-backed
 // repo.loadRecentlySent mock and test/contacts-bulk-email-mailer-failure.
 // test.ts's contact/event mocking.
@@ -155,24 +162,15 @@ beforeEach(() => {
   vi.useFakeTimers();
 });
 
-describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14 amendment)", () => {
-  it("two contact rows sharing one email in a single batch produce exactly one send, with skipped===1", async () => {
-    const app = buildApp();
-    vi.setSystemTime(1_700_000_000_000);
-
-    const res = await postJson(app, {
-      contactIds: ["ct_1", "ct_2"],
-      eventId: "ev1",
-      subject: "Hi {speaker_name}",
-      bodyText: "See you at {event_name}: {portal_link}",
-    });
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { sent: number; skipped: number; failed: unknown[] };
-    expect(body).toEqual({ sent: 1, skipped: 1, failed: [] });
-    expect(mailerSendMock).toHaveBeenCalledTimes(1);
-  });
-
+describe("POST /contacts/bulk-email — dedupe (DEC-238 wave-14 amendment, cross-call stage)", () => {
+  // DEC-238 wave-17 amendment: two contact rows sharing one email no longer
+  // collapse at the intra-batch stage (identity is the CONTACT, not the
+  // address) — both send. See
+  // test/contacts-bulk-email-collapse-identity.test.ts for that case in
+  // detail; this suite exercises the STILL-UNCHANGED cross-call
+  // (email, subject) window, using ct_solo (a non-duplicated address) so the
+  // wave-17 identity change never interferes with the window assertions
+  // below.
   it("an immediate second identical POST sends zero and reports skipped for every recipient", async () => {
     const app = buildApp();
     const t0 = 1_700_000_000_000;

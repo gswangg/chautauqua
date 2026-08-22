@@ -12,7 +12,7 @@ import * as repo from "../../../server/repo/contacts";
 import { loadRecentlySent } from "../../../server/repo/comms";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
-import { preflightRender, MAX_COMPOSE_RECIPIENTS, type RenderTarget } from "../../../domain/compose";
+import { preflightRender, MAX_COMPOSE_RECIPIENTS, type RenderTarget, type RenderedRecipientEmail } from "../../../domain/compose";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
 import { templateUsesMergeField, BULK_EMAIL_MERGE_FIELDS } from "../../../mail/render";
 import { renderEmailHtml } from "../../../mail/shell";
@@ -164,6 +164,64 @@ function bulkEmailMergeFieldError(
 
 const BULK_EMAIL_PREVIEW_LIMIT = 5;
 
+/** DEC-238 wave-17 amendment: the intra-batch collapse key is
+ * `(contactId, rendered subject, rendered body)` — an address is a delivery
+ * detail, never an identity. A NON-unique index (`src/db/schema/org.ts`)
+ * lets two distinct contact rows share one email address (duplicate-merge's
+ * exact target state, reachable through sessionboard.ts's
+ * externalRef-keyed import create); collapsing on the address alone silently
+ * drops the second contact's own claim link. contactIds are already
+ * deduped by parseBoundedIdArray before this ever runs, so this key can
+ * only collide across genuinely repeated (contactId, subject, body)
+ * triples — which, by construction, no longer includes "two different
+ * people who happen to share an inbox". */
+function bulkEmailIntraBatchKey(r: RenderedRecipientEmail): string {
+  return JSON.stringify([r.contactId, r.subject, r.text]);
+}
+
+/** DEC-238 wave-17 amendment: the two-stage dedupe planner shared by
+ * POST /contacts/bulk-email (send) and POST /contacts/bulk-email/preview —
+ * one function, so the two doors can never disagree about who is skipped
+ * and why. Stage 1 (intra-batch) collapses on bulkEmailIntraBatchKey; stage
+ * 2 (cross-call) checks each stage-1 survivor against `recentlySent`, keyed
+ * by the unchanged (email, subject) dedupeKey (email_log has no contactId
+ * concept — src/server/repo/comms.ts, out of this lane's scope). Runs on
+ * the UNMINTED preflight render (mintClaimTokens=false) — a claim token is
+ * never part of the dedupe identity (DEC-397 wave-62 amendment). */
+async function planBulkEmailDedupe(
+  db: Db,
+  eventId: string,
+  rendered: readonly RenderedRecipientEmail[],
+): Promise<{ toSendKeys: RenderedRecipientEmail[]; skippedRendered: RenderedRecipientEmail[] }> {
+  const seen = new Set<string>();
+  const skippedRendered: RenderedRecipientEmail[] = [];
+  const afterIntraBatch: RenderedRecipientEmail[] = [];
+  for (const r of rendered) {
+    const key = bulkEmailIntraBatchKey(r);
+    if (seen.has(key)) {
+      skippedRendered.push(r);
+      continue;
+    }
+    seen.add(key);
+    afterIntraBatch.push(r);
+  }
+  const recentlySent = await loadRecentlySent(
+    db,
+    eventId,
+    afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+    dedupeCutoff(Date.now()),
+  );
+  const toSendKeys: RenderedRecipientEmail[] = [];
+  for (const r of afterIntraBatch) {
+    if (recentlySent.has(dedupeKey(r.email, r.subject))) {
+      skippedRendered.push(r);
+      continue;
+    }
+    toSendKeys.push(r);
+  }
+  return { toSendKeys, skippedRendered };
+}
+
 export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
   // DEC-027 wave-18 amendment: this route mints real claim tokens
   // indirectly via applyMintedPortalLinks below — a claim-token mint is a
@@ -203,51 +261,16 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw bulkEmailMergeFieldError(preflightResult.missing, targets, targets.length);
     }
 
-    // DEC-238 wave-14 amendment: bulk-email is the SAME dedupe class as
-    // compose/send (src/routes/comms/send.ts:110-139) — mirrored here, not
-    // reinvented. Stage 1 (intra-batch): collapse to the FIRST rendered
-    // entry per lower-cased trimmed address — a bulk email renders one
-    // subject for everyone, so two contact rows sharing an address would
-    // otherwise each get a byte-identical copy. Stage 2 (cross-call): drop
-    // any surviving entry whose (email, subject) was already sent within
-    // COMPOSE_DEDUPE_WINDOW_MS (src/domain/comms-dedupe.ts) — the one
-    // window, never a second literal.
-    //
-    // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): dedupe keys are
-    // computed on the UNMINTED render (preflightResult), never on a
-    // post-mint render — a claim token is never part of the dedupe
-    // identity.
-    void DEC_238;
-    const seenAddresses = new Set<string>();
-    // DEC-238 (this amendment): skipped recipients are collected as the
+    // DEC-238 wave-17 amendment: the collapse key is (contactId, rendered
+    // subject, rendered body) — an address is a delivery detail, never an
+    // identity — computed on the UNMINTED render (preflightResult), never on
+    // a post-mint render (DEC-397 wave-62 amendment: a claim token is never
+    // part of the dedupe identity). Skipped recipients are collected as the
     // SAME rendered records the sent path uses, not as two bare counters —
     // the returned `skipped` count below is `.length` of this one array, so
     // the response and the email_log rows it drives can never disagree.
-    const skippedRendered: typeof preflightResult.rendered = [];
-    const afterIntraBatch: typeof preflightResult.rendered = [];
-    for (const rendered of preflightResult.rendered) {
-      const addressKey = rendered.email.trim().toLowerCase();
-      if (seenAddresses.has(addressKey)) {
-        skippedRendered.push(rendered);
-        continue;
-      }
-      seenAddresses.add(addressKey);
-      afterIntraBatch.push(rendered);
-    }
-    const recentlySent = await loadRecentlySent(
-      c.var.db,
-      event.id,
-      afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
-      dedupeCutoff(Date.now()),
-    );
-    const toSendKeys: typeof preflightResult.rendered = [];
-    for (const rendered of afterIntraBatch) {
-      if (recentlySent.has(dedupeKey(rendered.email, rendered.subject))) {
-        skippedRendered.push(rendered);
-        continue;
-      }
-      toSendKeys.push(rendered);
-    }
+    void DEC_238;
+    const { toSendKeys, skippedRendered } = await planBulkEmailDedupe(c.var.db, event.id, preflightResult.rendered);
 
     // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): mint a claim
     // credential only for recipients that survived both dedupe stages —
@@ -359,9 +382,15 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json({ sent: toSend.length - failed.length, skipped: skippedRendered.length, failed });
   });
 
-  /** CRM-11 (DEC-150): preview uses the exact same merge-field rendering
-   * helper as the send path, capped to the first 5 recipients. Never
-   * writes email_log — no mailer call. */
+  /** CRM-11 (DEC-150) / DEC-238 wave-17 amendment: preview uses the exact
+   * same merge-field rendering helper AND the exact same two-stage dedupe
+   * planner as the send path, run over the WHOLE batch (never a 5-capped
+   * slice) — so preview's willSend/skipped can never disagree with what the
+   * send then reports for the same inputs. `items` stays capped to
+   * BULK_EMAIL_PREVIEW_LIMIT for display; willSend/skipped describe the
+   * full batch. Side-effect-free: mintClaimTokens=false throughout (DEC-397
+   * — no claim credential is ever minted here) and no email_log write (no
+   * mailer call). */
   contactsRoutes.post("/contacts/bulk-email/preview", csrfJson, async (c) => {
     const orgId = currentOrgId(c);
     const body = asRecord(await c.req.json().catch(() => {
@@ -372,17 +401,22 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
 
     const kv = c.env.KV as unknown as KVStore;
     const origin = resolveBaseUrl(c);
-    const previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT);
 
     // DEC-397: preview never mints credentials — renderBulkEmailTargets
     // always resolves links with mintClaimTokens=false now.
-    const { targets: previewTargets, result } = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
+    const { targets, result } = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText);
     if (!result.ok) {
-      throw bulkEmailMergeFieldError(result.missing, previewTargets, previewTargets.length);
+      throw bulkEmailMergeFieldError(result.missing, targets, targets.length);
     }
 
+    const { toSendKeys, skippedRendered } = await planBulkEmailDedupe(c.var.db, event.id, result.rendered);
+
     return c.json({
-      items: result.rendered.map((r) => ({ contactId: r.contactId, email: r.email, subject: r.subject, bodyText: r.text })),
+      items: result.rendered
+        .slice(0, BULK_EMAIL_PREVIEW_LIMIT)
+        .map((r) => ({ contactId: r.contactId, email: r.email, subject: r.subject, bodyText: r.text })),
+      willSend: toSendKeys.length,
+      skipped: skippedRendered.length,
     });
   });
 }

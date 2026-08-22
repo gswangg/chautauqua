@@ -1,6 +1,9 @@
-// DEC-238 (wave 131 amendment): POST /contacts/bulk-email's `skipped` count
-// must agree with the comms history — a skipped recipient (intra-batch
-// address collision or cross-call dedupe window) gets exactly one
+// DEC-238 (wave 131 amendment), re-verified against the wave-17 amendment:
+// POST /contacts/bulk-email's `skipped` count must agree with the comms
+// history — a skipped recipient (cross-call dedupe window; the intra-batch
+// stage is keyed on (contactId, subject, body) as of wave-17 and no longer
+// collapses two DIFFERENT contacts that share an address — see
+// test/contacts-bulk-email-collapse-identity.test.ts) gets exactly one
 // email_log row with status:"skipped" sharing the send's batchId, and the
 // sent recipients still get their own rows. Mirrors the mocking pattern in
 // test/contacts-bulk-email-dedupe.test.ts and
@@ -11,6 +14,7 @@ import { Hono } from "hono";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
 import type { ContactRow } from "../src/server/repo/contacts";
+import { dedupeKey } from "../src/domain/comms-dedupe";
 
 function contactRow(overrides: Partial<ContactRow> & { id: string }): ContactRow {
   return {
@@ -71,11 +75,14 @@ vi.mock("../src/auth/claim", async () => {
   };
 });
 
-// No prior sends recorded -- this test only exercises the intra-batch
-// address-collision dedupe stage, not the cross-call window.
+// Controllable "recently sent" stand-in -- set per-test so the cross-call
+// dedupe stage (the only stage that can still produce a skip after the
+// wave-17 identity fix) is exercised deterministically.
+let recentlySentMap = new Map<string, number>();
+
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
-  return { ...actual, loadRecentlySent: vi.fn(async () => new Map()) };
+  return { ...actual, loadRecentlySent: vi.fn(async () => recentlySentMap) };
 });
 
 const mailerSendMock = vi.fn(async (_message: unknown) => {});
@@ -130,6 +137,7 @@ function postJson(app: Hono<AppEnv>, body: unknown) {
 
 afterEach(() => {
   vi.clearAllMocks();
+  recentlySentMap = new Map();
   vi.useRealTimers();
 });
 
@@ -138,10 +146,16 @@ beforeEach(() => {
 });
 
 describe("POST /contacts/bulk-email — skipped recipients get an email_log row (DEC-238)", () => {
-  it("skipped:1 and exactly one 'skipped' email_log row sharing the sent row's batchId", async () => {
+  it("cross-call window skip: skipped:1 and exactly one 'skipped' email_log row sharing the sent row's batchId", async () => {
     const { db, inserts } = fakeDbWithInsertLog();
     const app = buildApp(db);
     vi.setSystemTime(1_700_000_000_000);
+    // ct_1's (email, RENDERED subject) was already sent inside the dedupe
+    // window -- the ONLY stage that can still produce a skip since the
+    // wave-17 amendment re-keyed the intra-batch stage off contact identity.
+    // "Hi {speaker_name}" renders as "Hi Ada Lovelace" for ct_1 (firstName
+    // "Ada", lastName "Lovelace").
+    recentlySentMap = new Map([[dedupeKey("shared@example.com", "Hi Ada Lovelace"), Date.now() - 1_000]]);
 
     const res = await postJson(app, {
       contactIds: ["ct_1", "ct_2", "ct_solo"],
@@ -152,6 +166,11 @@ describe("POST /contacts/bulk-email — skipped recipients get an email_log row 
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { sent: number; skipped: number; failed: unknown[] };
+    // ct_1 and ct_2 share an address, but the wave-17 intra-batch key is
+    // (contactId, subject, body) -- distinct contacts never collapse there.
+    // Only ct_1 is held back, by the cross-call window (its address was
+    // "recently sent"); ct_2, sharing that address but a DIFFERENT contact
+    // identity, still sends.
     expect(body).toEqual({ sent: 2, skipped: 1, failed: [] });
     expect(mailerSendMock).toHaveBeenCalledTimes(2);
 
@@ -160,7 +179,7 @@ describe("POST /contacts/bulk-email — skipped recipients get an email_log row 
     expect(skippedRows[0].toEmail).toBe("shared@example.com");
     expect(skippedRows[0].bodyHtml).toBe("");
     expect(skippedRows[0].eventId).toBe("ev1");
-    expect(["ct_1", "ct_2"]).toContain(skippedRows[0].contactId);
+    expect(skippedRows[0].contactId).toBe("ct_1");
 
     // The mailer's own d1EmailLogWriter isn't wired in this mock (makeMailer
     // is stubbed above, unlike test/contacts-bulk-email-mailer-failure.test.ts),
@@ -170,7 +189,12 @@ describe("POST /contacts/bulk-email — skipped recipients get an email_log row 
     expect(typeof skippedRows[0].batchId).toBe("string");
   });
 
-  it("two contact rows sharing one email skip the second and it still counts and logs when neither is CT_SOLO", async () => {
+  // DEC-238 wave-17 amendment: two contact rows sharing one email address —
+  // the exact state defect (a) mishandled — now BOTH send. An address is a
+  // delivery detail, never an identity; each contact still gets their own
+  // rendered {portal_link}. Superseded prior test asserted the wrong
+  // behaviour (sent:1, skipped:1) for this exact input.
+  it("two contact rows sharing one email address BOTH send — no intra-batch collapse across distinct contacts", async () => {
     const { db, inserts } = fakeDbWithInsertLog();
     const app = buildApp(db);
     vi.setSystemTime(1_700_000_000_000);
@@ -184,10 +208,11 @@ describe("POST /contacts/bulk-email — skipped recipients get an email_log row 
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { sent: number; skipped: number; failed: unknown[] };
-    expect(body).toEqual({ sent: 1, skipped: 1, failed: [] });
+    expect(body).toEqual({ sent: 2, skipped: 0, failed: [] });
+    expect(mailerSendMock).toHaveBeenCalledTimes(2);
 
     const skippedRows = inserts.filter((v) => v.status === "skipped");
-    expect(skippedRows).toHaveLength(1);
+    expect(skippedRows).toHaveLength(0);
     expect(body.skipped).toBe(skippedRows.length);
   });
 });
