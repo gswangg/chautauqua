@@ -985,11 +985,15 @@ const RULING_SETTLED_EXCLUSIONS: { fileName: string; line: number; ruling: strin
     ruling: 'DEC-746',
     reason:
       `${DEC_746} -- app/src/pages/speakers/TaskModal.tsx's own header comment above ` +
-      `kindLabel cites "docs/design/Chautauqua Speakers.dc.html:186-216 -- Upload, Form, ` +
-      `Acknowledge" (this row's line 201 sits inside that exact cited region), and ` +
-      `kindLabel(kind) returns exactly those three strings, verified against the source. ` +
-      `"Upload a headshot" is the modal's own illustrative task name drawn in the same ` +
-      `cited region, not a fresh content gap the ruling left open.`,
+      `kindLabel cites the Speakers frame (docs/design/Chautauqua Speakers.dc.html), lines ` +
+      `186-216 -- "Upload, Form, Acknowledge" (this row's line 201 sits inside that exact ` +
+      `cited region), and kindLabel(kind) returns exactly those three strings, verified ` +
+      `against the source. "Upload a headshot" is the modal's own illustrative task name ` +
+      `drawn in the same cited region, not a fresh content gap the ruling left open. (Wave-36 ` +
+      `note, DEC-976: this reason field is deliberately reworded so it no longer parses as ` +
+      `this test file's own docs/design/*.dc.html:NNN citation into Speakers.dc.html -- this ` +
+      `file, per DEC-651, asserts nothing against that frame, so it declares no scope into it; ` +
+      `the fact quoted above is TaskModal.tsx's citation, credited there, not here.)`,
   },
 ];
 
