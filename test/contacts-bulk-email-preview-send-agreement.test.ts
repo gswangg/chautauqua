@@ -188,7 +188,7 @@ describe("preview vs send agreement (DEC-238 wave-17 amendment)", () => {
       // claim URL a PRIOR call minted for ct_1. planBulkEmailSends keys the
       // current call on the UNMINTED preflight render (DEC-397 wave-50/62,
       // portal_link = .../claim/example-one-time-link), so the two bodies
-      // are deliberately NOT byte-equal: dedupeKey's normalizeClaimLinks
+      // are deliberately NOT byte-equal: dedupeKey's normalizeMintedClaimLinks
       // (DEC-397 this wave) is the single owner that collapses both
       // /claim/<token> paths to one placeholder and lets the window match.
       // The token below is a plausible base64url mint, deliberately NOT the

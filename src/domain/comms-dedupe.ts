@@ -20,6 +20,62 @@ export function retryAtMs(lastSentAtMs: number): number {
   return lastSentAtMs + COMPOSE_DEDUPE_WINDOW_MS;
 }
 
+/** DEC-397 (wave-20 amendment): the placeholder a minted claim URL's
+ * `/claim/<token>` segment collapses to before a body ever enters a dedupe
+ * key. A mint is downstream of identity — the token is a fresh credential
+ * every call (src/auth/claim.ts's createClaimToken), so it must never be
+ * part of what "the same message" means, while everything else about the
+ * message (subject, greeting, per-submission merge vars) must still be
+ * compared verbatim. */
+export const CLAIM_LINK_DEDUPE_PLACEHOLDER = "/claim/{claim-token}";
+
+/** Matches the `/claim/` path segment resolvePortalLinks
+ * (src/server/repo/portal-link.ts) writes into `vars.portal_link`, for
+ * both a real mint (src/auth/claim.ts's newClaimToken → base64url) and the
+ * fixed PREVIEW_CLAIM_TOKEN placeholder (src/domain/compose.ts) — both are
+ * `[A-Za-z0-9_-]+`, the only two shapes this code ever mints. */
+const CLAIM_URL_PATH_RE = /\/claim\//g;
+const CLAIM_TOKEN_SHAPE_RE = /^[A-Za-z0-9_-]+/;
+
+/** DEC-397 (wave-20 amendment, MINT IS DOWNSTREAM OF IDENTITY): replaces
+ * every minted claim URL's `/claim/<token>` segment with a stable
+ * placeholder so a dedupe key built from a body containing `{portal_link}`
+ * does not vary call-to-call just because resolvePortalLinks minted a
+ * fresh token. `applyMintedPortalLinks` (src/server/repo/portal-link.ts)
+ * overwrites vars.portal_link with a REAL minted link AFTER the preflight
+ * render that computed the stage-2 dedupe key, so without this
+ * normalization the render checked at stage 2 (unminted, still carrying
+ * PREVIEW_CLAIM_TOKEN) can never match the row `email_log` actually stored
+ * (minted) — the cross-call window silently never fires for any message
+ * that spends {portal_link}. email_log.body_text itself is NEVER
+ * normalized (DEC-397 wave-20: log fidelity is not traded for dedupe
+ * stability) — only the value fed into dedupeKey/intraBatchKey is.
+ *
+ * FAIL LOUDLY: a "/claim/" substring not immediately followed by a
+ * token-shaped segment means the minted URL shape drifted from what
+ * portal-link.ts/claim.ts produce — this throws rather than silently
+ * leaving an unnormalized (and therefore permanently unmatchable) claim
+ * link in the key. */
+export function normalizeMintedClaimLinks(body: string): string {
+  let result = "";
+  let cursor = 0;
+  CLAIM_URL_PATH_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = CLAIM_URL_PATH_RE.exec(body)) !== null) {
+    const tokenStart = match.index + match[0].length;
+    const tokenMatch = CLAIM_TOKEN_SHAPE_RE.exec(body.slice(tokenStart));
+    if (!tokenMatch) {
+      throw new Error(
+        `normalizeMintedClaimLinks: "/claim/" at index ${match.index} is not followed by a token-shaped segment — the minted claim-URL shape drifted from src/auth/claim.ts's newClaimToken/src/domain/compose.ts's PREVIEW_CLAIM_TOKEN`,
+      );
+    }
+    result += body.slice(cursor, match.index) + CLAIM_LINK_DEDUPE_PLACEHOLDER;
+    cursor = tokenStart + tokenMatch[0].length;
+  }
+  result += body.slice(cursor);
+  return result;
+}
+
 /** The dedupe key: (lower-cased, trimmed email, exact rendered subject,
  * exact rendered body) — keyed on the MESSAGE, not templateId, per the
  * DEC-238 wave-3 ruling (body term added by the DEC-936 wave-17 amendment,
@@ -38,47 +94,14 @@ export function retryAtMs(lastSentAtMs: number): number {
  * genuinely different messages (same subject, different body) as the same
  * "already sent" message and refuse the second one.
  *
- * DEC-397 (this wave's amendment): the body term is normalized through
- * normalizeClaimLinks below before it is hashed — see that function for
- * why. The normalization lives INSIDE this key function on purpose: both
- * sides of every cross-call comparison (a caller's wanted key and
- * src/server/repo/comms.ts's loadRecentlySent row key) already reach
- * identity through here, so neither side can re-derive the rule
- * independently and drift. */
+ * DEC-397 (wave-20 amendment): the body is normalized through
+ * normalizeMintedClaimLinks first — see that function's comment. This is
+ * the ONE key builder (DEC-613: no second copy of the rule), so every
+ * caller (src/server/repo/comms.ts's loadRecentlySent on the row side,
+ * every route on the candidate side) inherits the same normalization for
+ * free. */
 export function dedupeKey(toEmail: string, subject: string, body: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject, normalizeClaimLinks(body)]);
-}
-
-/** DEC-397 (this wave's amendment): what any `/claim/<token>` URL path
- * collapses to inside a dedupe key. It is NEVER rendered into an email and
- * never stored — it exists only inside the key. */
-export const DEDUPE_CLAIM_TOKEN_PLACEHOLDER = "<claim-token>";
-
-/** The claim-token URL path shape both sides of a dedupe comparison can
- * produce. `newClaimToken()` (src/auth/claim.ts) is base64url, charset
- * `[A-Za-z0-9_-]`, and PREVIEW_CLAIM_TOKEN ("example-one-time-link",
- * src/domain/compose.ts) is drawn from the same class, so both collapse to
- * the identical placeholder. */
-const CLAIM_URL_PATH_RE = /\/claim\/[A-Za-z0-9_-]+/g;
-
-/** DEC-397 (this wave's amendment): A MINT IS THE LAST THING A SEND DOES,
- * so a mint is DOWNSTREAM of message identity and identity must not read
- * it. POST /api/v1/contacts/bulk-email computes its dedupe plan on the
- * UNMINTED preflight render (portal_link resolves to the fixed
- * PREVIEW_CLAIM_TOKEN placeholder) and only then overwrites vars.portal_link
- * with a freshly minted per-recipient token via applyMintedPortalLinks — so
- * email_log.body_text stores `<origin>/claim/<real token>` while the NEXT
- * call keys on `<origin>/claim/example-one-time-link`. Without this
- * normalization the two bodies can never be byte-equal for any template
- * spending `{portal_link}`, and the one-hour cross-call window is silently
- * dead for every such message.
- *
- * Normalizing the KEY rather than the stored row is what keeps email_log
- * honest: the log keeps the real shipped body, and log fidelity is never
- * traded for dedupe stability. Dropping the body term instead would
- * re-open exactly the hole DEC-936's wave-17 amendment closed. */
-export function normalizeClaimLinks(body: string): string {
-  return body.replace(CLAIM_URL_PATH_RE, `/claim/${DEDUPE_CLAIM_TOKEN_PLACEHOLDER}`);
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, normalizeMintedClaimLinks(body)]);
 }
 
 /** DEC-936 (wave-22 amendment, widened wave-17): the stage-1 (intra-batch)
@@ -98,9 +121,15 @@ export function normalizeClaimLinks(body: string): string {
  * to keep all N of a speaker's submissions distinct. Stage 2
  * (already_sent_recently) now keys on dedupeKey(email, subject, body) too
  * — email_log.body_text IS written on every send, so this is no longer
- * true only of stage 1. */
+ * true only of stage 1.
+ *
+ * DEC-397 (wave-20 amendment): the body is normalized through
+ * normalizeMintedClaimLinks first, same as dedupeKey and for the same
+ * reason — stage 1 runs on the same unminted-then-minted render sequence
+ * as stage 2, so a minted token must not be able to split what would
+ * otherwise be one intra-batch identity into two. */
 export function intraBatchKey(toEmail: string, subject: string, body: string, attachmentKey: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body, attachmentKey]);
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, normalizeMintedClaimLinks(body), attachmentKey]);
 }
 
 /** A recipient the dedupe planner held back, named individually (never a

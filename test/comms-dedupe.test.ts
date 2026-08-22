@@ -3,11 +3,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CLAIM_LINK_DEDUPE_PLACEHOLDER,
   COMPOSE_DEDUPE_WINDOW_MS,
-  DEDUPE_CLAIM_TOKEN_PLACEHOLDER,
   dedupeCutoff,
   dedupeKey,
-  normalizeClaimLinks,
+  intraBatchKey,
+  normalizeMintedClaimLinks,
   planComposeSends,
   retryAtMs,
 } from "../src/domain/comms-dedupe";
@@ -45,37 +46,6 @@ describe("comms-dedupe (DEC-238 wave-3 amendment)", () => {
   // body is not mistaken for the same message twice.
   it("dedupeKey distinguishes two messages with the same subject but different bodies", () => {
     expect(dedupeKey("ada@example.com", "Hi", "Body A")).not.toBe(dedupeKey("ada@example.com", "Hi", "Body B"));
-  });
-
-  // DEC-397 (this wave's amendment): A MINT IS THE LAST THING A SEND DOES,
-  // so a mint is downstream of message identity and identity must not read
-  // it. A send mints a fresh per-recipient /claim/<token> AFTER the render
-  // the key is computed on, so email_log stores a MINTED link while the
-  // next call keys on the UNMINTED PREVIEW_CLAIM_TOKEN render. Without
-  // normalization the cross-call window is dead for every {portal_link}
-  // template.
-  it("dedupeKey collapses a minted claim URL to the unminted one it was rendered from", () => {
-    const minted = "See you at DevCon: https://events.example.com/claim/hK3q_lZ8vN-Ta1BxQe7Ry0dGmS4pC2wJ";
-    const unminted = "See you at DevCon: https://events.example.com/claim/example-one-time-link";
-    expect(dedupeKey("ada@example.com", "Hi", minted)).toBe(dedupeKey("ada@example.com", "Hi", unminted));
-  });
-
-  it("normalizeClaimLinks replaces EVERY claim path in a body, and touches nothing else", () => {
-    expect(normalizeClaimLinks("a https://x.test/claim/AAA b https://y.test/claim/B-b_9 c")).toBe(
-      `a https://x.test/claim/${DEDUPE_CLAIM_TOKEN_PLACEHOLDER} b https://y.test/claim/${DEDUPE_CLAIM_TOKEN_PLACEHOLDER} c`,
-    );
-    // Not a claim path: /portal and a bare word "claim" are left alone, so
-    // the normalizer cannot silently erase real body differences.
-    const untouched = "Your portal: https://x.test/portal — reclaim your seat";
-    expect(normalizeClaimLinks(untouched)).toBe(untouched);
-  });
-
-  // The normalizer must not become a blanket body-eraser: two genuinely
-  // different messages that merely both carry a claim link stay distinct.
-  it("dedupeKey still separates two different bodies that each carry a claim link", () => {
-    const a = "Talk A is confirmed: https://x.test/claim/AAA";
-    const b = "Talk B is confirmed: https://x.test/claim/BBB";
-    expect(dedupeKey("ada@example.com", "Hi", a)).not.toBe(dedupeKey("ada@example.com", "Hi", b));
   });
 });
 
@@ -168,5 +138,45 @@ describe("planComposeSends (wave-60, DEC-238)", () => {
     expect(toSend).toEqual([a]);
     expect(skipped.map((s) => s.submissionId)).toEqual(["sub-2", "sub-3"]);
     expect(skipped.map((s) => s.reason)).toEqual(["duplicate_in_batch", "already_sent_recently"]);
+  });
+});
+
+// DEC-397 (wave-20 amendment): a minted claim URL is downstream of message
+// identity, so it must never split a dedupe key. See src/domain/
+// comms-dedupe.ts's normalizeMintedClaimLinks for the full rationale.
+describe("normalizeMintedClaimLinks (DEC-397 wave-20 amendment)", () => {
+  it("collapses a real minted token to the same placeholder as PREVIEW_CLAIM_TOKEN", () => {
+    const minted = "See you at DevCon: https://events.example.com/claim/AbC-1_2xyz";
+    const preview = "See you at DevCon: https://events.example.com/claim/example-one-time-link";
+    expect(normalizeMintedClaimLinks(minted)).toBe(normalizeMintedClaimLinks(preview));
+    expect(normalizeMintedClaimLinks(minted)).toBe(`See you at DevCon: https://events.example.com${CLAIM_LINK_DEDUPE_PLACEHOLDER}`);
+  });
+
+  it("normalizes every occurrence when a body links the claim URL more than once", () => {
+    const body = "Link: https://a.example.com/claim/tok1 or https://a.example.com/claim/tok2";
+    const out = normalizeMintedClaimLinks(body);
+    expect(out).toBe(`Link: https://a.example.com${CLAIM_LINK_DEDUPE_PLACEHOLDER} or https://a.example.com${CLAIM_LINK_DEDUPE_PLACEHOLDER}`);
+  });
+
+  it("leaves a body with no claim link untouched", () => {
+    expect(normalizeMintedClaimLinks("Hi, see you at DevCon.")).toBe("Hi, see you at DevCon.");
+  });
+
+  it("fails loudly on a '/claim/' not followed by a token-shaped segment", () => {
+    expect(() => normalizeMintedClaimLinks("Go to https://events.example.com/claim/")).toThrow(/token-shaped segment/);
+  });
+
+  it("dedupeKey treats two bodies differing only in their minted claim token as the SAME key", () => {
+    const bodyA = "See you at DevCon: https://events.example.com/claim/mintedTokenOne";
+    const bodyB = "See you at DevCon: https://events.example.com/claim/mintedTokenTwo";
+    expect(dedupeKey("a@example.com", "Hi all", bodyA)).toBe(dedupeKey("a@example.com", "Hi all", bodyB));
+    // A genuinely different message (not just a different mint) still splits.
+    expect(dedupeKey("a@example.com", "Hi all", bodyA)).not.toBe(dedupeKey("a@example.com", "Hi all", "Something else entirely"));
+  });
+
+  it("intraBatchKey normalizes its body term the same way dedupeKey does", () => {
+    const bodyA = "See you at DevCon: https://events.example.com/claim/mintedTokenOne";
+    const bodyB = "See you at DevCon: https://events.example.com/claim/mintedTokenTwo";
+    expect(intraBatchKey("a@example.com", "Hi all", bodyA, "")).toBe(intraBatchKey("a@example.com", "Hi all", bodyB, ""));
   });
 });
