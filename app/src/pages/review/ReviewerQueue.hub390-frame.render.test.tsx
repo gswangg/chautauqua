@@ -82,6 +82,12 @@ afterEach(() => {
 
 describe('v12 frame verdict: Chautauqua Review.dc.html:793 "Your plans · /review" (390 reviewer hub, task w29-i)', () => {
   it('frame caption + drawn-literal citations (DEC-967 verbatimLine)', () => {
+    // w16-qi (DEC-998): pay for this file's header-block scope citation
+    // into docs/design/Chautauqua Review.dc.html (the file-header comment
+    // at :1-2) with a non-header, fully-receipted citation of the same
+    // frame -- backtick quote right here plus the `verbatimLine` call
+    // immediately below it, which itself asserts `expect(...).toBe(...)`.
+    // docs/design/Chautauqua Review.dc.html:793 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
     verbatimLine(
       793,
       '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',

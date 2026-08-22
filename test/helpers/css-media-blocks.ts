@@ -56,6 +56,34 @@ export function splitMediaBlocks(css: string): MediaSplit {
   return { outside, inside: inside.join('\n') };
 }
 
+/** The brace-matched BODY of every top-level `@media (max-width: 700px)`
+ * block in `css`, in source order -- promoted (DEC-613/DEC-994 wave-16m,
+ * task w16-qi) from the brace-depth walk several phone-verdict files each
+ * hand-rolled as their own `phoneBlock()` (canonical spelling at
+ * `app/src/pages/Contacts.frame-verdicts.render.test.tsx`, ~lines 36-55).
+ * Callers strip comments first (this module's own house rule, see the
+ * header note above) so a decision-note quoting `@media (max-width: 700px)`
+ * inside a comment is never mistaken for a real block opener. */
+export function phoneMediaBlocks(css: string): string[] {
+  const opener = /@media\s*\(\s*max-width:\s*700px\s*\)\s*\{/g;
+  const blocks: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = opener.exec(css)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < css.length && depth > 0) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') depth -= 1;
+      i += 1;
+    }
+    if (depth !== 0) throw new Error('unbalanced @media (max-width: 700px) block in CSS input');
+    blocks.push(css.slice(start, i - 1));
+    opener.lastIndex = i;
+  }
+  return blocks;
+}
+
 /** Every `selector { body }` rule in `css`, at ANY @media nesting depth --
  * the media openers themselves never survive to be read as selectors. */
 export function flattenMediaRules(css: string): Array<{ selector: string; body: string }> {

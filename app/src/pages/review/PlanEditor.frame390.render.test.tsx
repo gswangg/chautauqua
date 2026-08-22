@@ -38,10 +38,13 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PlanEditor } from './PlanEditor';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Review.dc.html');
+const REVIEW_CSS_FILE = join(HERE, 'review.css');
 
 /** DEC-967 shape, copied verbatim from PlanEditor.copy-390.render.test.tsx's
  * own `verbatimLine`: read the ACTUAL design-file line and assert it
@@ -479,5 +482,46 @@ describe('Plan editor · 390 DIVERGENCES from the frame (real gaps, not fixed he
 
     expect(await screen.findAllByRole('button', { name: 'Remove' })).not.toHaveLength(0);
     expect(screen.queryByText('Swap')).not.toBeInTheDocument();
+  });
+});
+
+// w16-qi (DEC-994/DEC-998): this file previously read no stylesheet at all
+// -- every assertion above is a claim about jsdom's un-cascaded DOM, which
+// can never see whether review.css's terminal @media (max-width: 700px)
+// block actually turns the title-row buttons into the frame's fixed bottom
+// dock. This block reads that cascade, and its citation (non-header, with
+// its own backtick-quoted literal + `verbatimLine` call) also pays for the
+// header-block scope this file already declares into
+// docs/design/Chautauqua Review.dc.html (DEC-998).
+describe('Plan editor · 390 dock cascade (docs/design/Chautauqua Review.dc.html:666, terminal @media (max-width: 700px) block)', () => {
+  it(':666 the docked Save/Cancel pair meets the frame\'s own min-height:48px floor via the shipped phone cascade -- not merely present in the un-cascaded DOM', () => {
+    // docs/design/Chautauqua Review.dc.html:666 `        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save the plan</span>`
+    verbatimLine(
+      666,
+      '        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save the plan</span>',
+    );
+
+    const css = stripCssComments(readFileSync(REVIEW_CSS_FILE, 'utf-8'));
+    const blocks = phoneMediaBlocks(css);
+    expect(blocks.length).toBeGreaterThan(0);
+    const dockBlock = blocks.find(
+      (b) => b.includes('.chq-review-editor-title-actions') && b.includes('position: fixed'),
+    );
+    expect(
+      dockBlock,
+      `no phone @media block pins .chq-review-editor-title-actions to the bottom:\n${blocks.join('\n---\n')}`,
+    ).toBeDefined();
+
+    // The frame's :666/:667 dock draws BOTH buttons at min-height:48px; the
+    // shipped phone cascade floors the same shipped dock's own
+    // `.chq-review-editor-title-actions .chq-btn` rule at the identical
+    // 48px -- the cascade rule that actually turns the title row's
+    // Duplicate/Save pair (asserted present, in order, in the "shipped
+    // anatomy" describe block above) into the frame's fixed bottom dock. A
+    // DOM-only render verdict can never see this: jsdom evaluates no
+    // `@media` (DEC-994).
+    const btnRule = /\.chq-review-editor-title-actions\s+\.chq-btn\s*\{([^}]*)\}/.exec(dockBlock as string);
+    expect(btnRule, 'no .chq-review-editor-title-actions .chq-btn rule in the phone block').not.toBeNull();
+    expect(btnRule![1]).toMatch(/min-height:\s*48px/);
   });
 });

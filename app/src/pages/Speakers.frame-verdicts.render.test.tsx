@@ -22,10 +22,13 @@ import { MemoryRouter } from 'react-router-dom';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
 import type { OnboardingGridResponse } from './speakers/types';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Speakers.dc.html');
+const SPEAKERS_CSS_FILE = join(HERE, 'speakers', 'speakers.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -176,5 +179,33 @@ describe('v12 Speakers 390 frames: per-frame render verdict receipts (w14-sc, DE
     const addBtn = screen.getByRole('button', { name: 'Add a speaker' });
     const importLink = screen.getByRole('link', { name: 'Import CSV' });
     expect(addBtn.compareDocumentPosition(importLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  // w16-qi (DEC-994): every assertion above reads only jsdom's un-cascaded
+  // DOM -- structural order, never the terminal @media (max-width: 700px)
+  // block that actually turns the shipped markup into the frame's phone
+  // column stack. This test reads that cascade and asserts a rule the
+  // frame's own phone geometry needs, so a phone verdict here is no longer
+  // a desktop claim wearing a phone title.
+  it(':260 the Roster drill-in\'s phone cascade actually stacks head/body/dock as ONE column, matching the frame\'s own container geometry -- not merely inferred from DOM order', () => {
+    // docs/design/Chautauqua Speakers.dc.html:260 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+    verbatimLine(
+      260,
+      '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
+    );
+
+    const css = stripCssComments(readFileSync(SPEAKERS_CSS_FILE, 'utf-8'));
+    const blocks = phoneMediaBlocks(css);
+    expect(blocks.length).toBeGreaterThan(0);
+    const drillInRule = blocks
+      .map((b) => /\.chq-speakers-roster-drillin\s*\{([^}]*)\}/.exec(b))
+      .find((m): m is RegExpExecArray => m !== null);
+    expect(drillInRule, 'no .chq-speakers-roster-drillin rule in any phone @media block').toBeDefined();
+    // The frame's own outer 390 container is `display:flex; flex-direction:
+    // column` (:260); the shipped drill-in's phone rule must carry the same
+    // column stack -- this is the cascade rule DOM-order assertions alone
+    // (the ":260 Roster" it() above) can never confirm in jsdom.
+    expect(drillInRule![1]).toMatch(/display:\s*flex/);
+    expect(drillInRule![1]).toMatch(/flex-direction:\s*column/);
   });
 });
