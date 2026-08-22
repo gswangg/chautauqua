@@ -17,7 +17,7 @@ import type { Conflict } from "../../../domain/schedule";
 
 export interface OverviewPayload {
   "triage-counts": { pending: number; accept_queue: number; decline_queue: number };
-  review: { plans: number; evaluationsSubmitted: number; evaluationsExpected: number };
+  review: { plans: number; evaluationsSubmitted: number; evaluationsStarted: number };
   speakers: { contactsOwing: number; overdueAssignments: number };
   content: { awaitingApproval: number };
   agenda: { unplaced: number; conflicts: number };

@@ -125,7 +125,7 @@ export interface TriageCountsAggregate {
 export interface ReviewAggregate {
   plans: number;
   evaluationsSubmitted: number;
-  evaluationsExpected: number;
+  evaluationsStarted: number;
 }
 
 export interface SpeakersAggregate {

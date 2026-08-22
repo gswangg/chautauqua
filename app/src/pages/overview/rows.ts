@@ -168,9 +168,9 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
     detail:
       payload.review.plans === 0
         ? 'No evaluation plans set up yet.'
-        : payload.review.evaluationsExpected === 0
-          ? 'No evaluations assigned yet.'
-          : joinSegments([`${payload.review.evaluationsSubmitted} of ${countOf(payload.review.evaluationsExpected, 'evaluation')} in`]),
+        : payload.review.evaluationsStarted === 0
+          ? 'No reviews started yet.'
+          : joinSegments([`${payload.review.evaluationsSubmitted} of ${countOf(payload.review.evaluationsStarted, 'evaluation')} submitted`]),
   });
 
   const daysSinceSend = payload.comms.lastSentAt !== null ? daysAgo(payload.comms.lastSentAt, now) : null;

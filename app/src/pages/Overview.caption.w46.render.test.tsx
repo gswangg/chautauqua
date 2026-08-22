@@ -40,7 +40,7 @@ function basePayload(): OverviewPayload {
     contentApproval: { total: 0, reuploadedCount: 0, rows: [] },
     agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null },
     'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
-    review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
+    review: { plans: 0, evaluationsSubmitted: 0, evaluationsStarted: 0 },
     speakers: { contactsOwing: 0, overdueAssignments: 0 },
     content: { awaitingApproval: 0 },
     agenda: { unplaced: 0, conflicts: 0 },
