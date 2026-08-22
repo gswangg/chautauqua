@@ -24,7 +24,7 @@
 // grammar, never a raw substring search, so a `//`-line comment or a JS
 // string/regex literal that merely mentions the token in prose (the
 // scan-library files above) can never be misread as a receipt.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEC_393 } from "../src/decisions";
@@ -68,7 +68,7 @@ function productFiles(): ProductFile[] {
     .sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export type ReasonFamily = "composition" | "inline" | "other";
+export type ReasonFamily = "composition" | "inline" | "modifier" | "scoped" | "render-gate" | "other";
 export type Verdict = "VERIFIED" | "UNVERIFIABLE-PREMISE" | "FALSE-PREMISE";
 
 export interface Receipt {
@@ -102,11 +102,26 @@ function extractReceipts(rel: string, text: string): Receipt[] {
     const receiptedClasses =
       selMatch && selMatch[1] ? [...selMatch[1].matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string) : [];
     const firstWord = reason.trim().split(/\s+/)[0]?.replace(/[,.:;]+$/, "") ?? "";
+    // DEC-393 wave-36 (task w36-f): three more named reason families beyond
+    // `composition`/`inline-*` are checkable today -- `modifier` and
+    // `scoped` both state the SAME premise shape as `composition` (a
+    // companion class carries the real floor) and are routed through the
+    // unchanged companion floor-grammar tiers below; `render-gate` states a
+    // different premise (the component never mounts at phone width) and
+    // gets its own two-tier predicate in judgeRenderGate. Everything else
+    // still falls to `other` (no predicate this wave, DEC-393 wave-30
+    // clause (c)) exactly as before.
     const family: ReasonFamily = /^composition$/i.test(firstWord)
       ? "composition"
       : /^inline/i.test(firstWord)
         ? "inline"
-        : "other";
+        : /^modifier$/i.test(firstWord)
+          ? "modifier"
+          : /^scoped$/i.test(firstWord)
+            ? "scoped"
+            : /^render-gate$/i.test(firstWord)
+              ? "render-gate"
+              : "other";
     out.push({ file: rel, line, reason, receiptedClasses, family });
   }
   return out;
@@ -210,9 +225,87 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// DEC-393 wave-36 (task w36-f): the two live 390 sweep rosters a
+// `render-gate` claim is falsified against -- read once at module load,
+// the same way ALL_TEXT/ALL_CHUNKS below are, so judgeRenderGate's real
+// callers never re-touch disk per receipt.
+const ADMIN_390_ROSTER = readFileSync(join(REPO_ROOT, "docs/design/audit/admin-390-interactive-offenders-w27.md"), "utf8");
+const PUBLIC_390_ROSTER = readFileSync(join(REPO_ROOT, "docs/design/audit/public-390-interactive-offenders-v12.md"), "utf8");
+
+export interface RenderGateDeps {
+  exists: (absPath: string) => boolean;
+  read: (absPath: string) => string;
+  rosterA: string;
+  rosterB: string;
+}
+
+const REAL_RENDER_GATE_DEPS: RenderGateDeps = {
+  exists: existsSync,
+  read: (p) => readFileSync(p, "utf8"),
+  rosterA: ADMIN_390_ROSTER,
+  rosterB: PUBLIC_390_ROSTER,
+};
+
+/** DEC-393 wave-36: a `render-gate` claim ("this component never mounts at
+ * phone width") is a claim about the TREE's runtime behaviour, not about a
+ * CSS floor -- the companion floor-grammar tiers below have nothing to say
+ * about it. Two tiers, BOTH required to reach VERIFIED:
+ *   (i)  the reason names a real receipt test file that exists on disk and
+ *        mentions the gated component by name -- an assertion that the
+ *        gate is pinned SOMEWHERE executable, not just asserted in prose;
+ *   (ii) FALSIFICATION -- the receipted selector's own class token must NOT
+ *        appear in either machine-written 390 roster. An element the live
+ *        390 sweep actually rendered contradicts a "never mounts" claim by
+ *        construction, so that grades FALSE-PREMISE, never a silent pass
+ *        (the task's own worked example: a render-gate whose token DOES
+ *        appear in a roster). Dependency-injected (`deps`) so synthetic
+ *        controls never have to touch a real file on disk (task's own
+ *        instruction: synthetic fixtures, never a live row identity). */
+export function judgeRenderGate(receipt: Receipt, deps: RenderGateDeps = REAL_RENDER_GATE_DEPS): RosterRow {
+  const testFileMatch = receipt.reason.match(/([\w./-]+\.test\.tsx?)/);
+  if (!testFileMatch || !testFileMatch[1]) {
+    return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "reason names no receipt test file" };
+  }
+  const testRelPath = testFileMatch[1];
+  const testAbsPath = join(REPO_ROOT, testRelPath);
+  if (!deps.exists(testAbsPath)) {
+    return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: `named receipt test file ${testRelPath} does not exist on disk` };
+  }
+  const componentMatch = receipt.reason.match(/\b([A-Z][A-Za-z0-9]+)\.tsx\b/);
+  const component = componentMatch?.[1];
+  if (!component) {
+    return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "reason names no gated component" };
+  }
+  const testText = deps.read(testAbsPath);
+  if (!testText.includes(component)) {
+    return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: `receipt test file ${testRelPath} does not mention ${component}` };
+  }
+  const selector = receipt.receiptedClasses[0];
+  if (!selector) {
+    return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "no receipted class token to falsify against the 390 rosters" };
+  }
+  const tokenRe = new RegExp(`\\b${escapeRe(selector)}\\b`);
+  if (tokenRe.test(deps.rosterA) || tokenRe.test(deps.rosterB)) {
+    const which = tokenRe.test(deps.rosterA) ? "admin-390-interactive-offenders-w27.md" : "public-390-interactive-offenders-v12.md";
+    return {
+      ...receipt,
+      verdict: "FALSE-PREMISE",
+      detail: `.${selector} appears in the live 390 roster ${which} -- the sweep actually rendered it at phone width, so "never mounts here" is false`,
+    };
+  }
+  return {
+    ...receipt,
+    verdict: "VERIFIED",
+    detail: `tier (i): ${testRelPath} exists and mentions ${component}; tier (ii): .${selector} does not appear in either live 390 roster`,
+  };
+}
+
 export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: string; body: string }>, allText: string): RosterRow {
   if (receipt.family === "other") {
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c))" };
+  }
+  if (receipt.family === "render-gate") {
+    return judgeRenderGate(receipt);
   }
   const mentioned = [...receipt.reason.matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string);
   const companion = mentioned.find((c) => !receipt.receiptedClasses.includes(c));
@@ -276,9 +369,38 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // tier for exactly that shape (a companion co-styled with an `img` element
 // selector whose own width/height rules put both axes at >=44px) -- forced
 // to -1 and re-measured, the row now resolves VERIFIED and the ceiling
-// drops to 0. Re-measured, unchanged: 86.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 86;
-export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
+// drops to 0. Re-measured wave-34, unchanged: 86.
+//
+// Wave 36 (task w36-f, DEC-393 wave-36 amendment) gives three more of the
+// 86 UNVERIFIABLE-PREMISE receipts a real predicate: `modifier` (5),
+// `scoped` (2) and `render-gate` (6), 13 receipts total, all previously
+// filed under `other` purely because classifyFamily's first-word regex
+// didn't recognise their reason's opening word. `modifier`/`scoped` route
+// through the SAME unchanged companion floor-grammar tiers; `render-gate`
+// gets its own two-tier predicate (named+existing receipt test, then
+// falsified against both live 390 rosters). Forced to -1 and re-measured:
+// 10 of the 13 resolve VERIFIED (the 6 agenda.css render-gate receipts, the
+// 2 docs-site.css.ts modifier receipts, the 2 theme.ts modifier receipts);
+// 2 stay UNVERIFIABLE-PREMISE (error-states.css.ts:46's modifier reason
+// names element types -- input/select/textarea/fieldset -- not a `.chq-*`
+// companion class, so the companion predicate has nothing to resolve;
+// submissions/detail.css:278's scoped reason names its OWN compound
+// selector's own receipted class, not a distinct companion, for the same
+// reason). Net: 86 - 11 (VERIFIED + FALSE-PREMISE, the two that actually
+// left the roster) = 75.
+//
+// One of the 13 -- contacts.css:596's `scoped` receipt -- resolves
+// FALSE-PREMISE: it names .chq-contacts-drawer-actions as the container
+// that "only ever renders <button> children", but that container itself
+// declares no min-height/padding floor (it is a pure flex layout wrapper;
+// the floor lives on its .chq-btn children, which the companion predicate
+// does not follow transitively). This is a REAL 44px-floor-grammar defect
+// in the receipt's premise, not an instrument bug -- recorded in
+// docs/design/audit/tap-floor-exempt-premise-v12.md with the offending
+// selector named, per the task's own instruction (do not repair product
+// CSS in this lane). FALSE-PREMISE ceiling moves 0 -> 1.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 75;
+export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
   it("this instrument is DEC-393's own wave-30 amendment build (durable decision doc, cited by directory per DEC-976 -- a DEC_NNN registry constant is mutable and asserts nothing durable)", () => {
@@ -390,6 +512,119 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     const chunks = [{ selector: ".chq-fake-text-companion", body: "width:100px; height:100px; font-size:14px;" }];
     const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-text-companion">Some label text</a>');
     expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  // DEC-393 wave-36 (task w36-f): three more reason families get a real
+  // predicate. `modifier` and `scoped` are routed through the SAME
+  // unchanged companion floor-grammar tiers exercised above -- these
+  // controls prove the family label alone (not the reason text) is what
+  // used to fall to `other`, and now doesn't. `render-gate` gets its own
+  // two-tier predicate (judgeRenderGate), exercised via dependency
+  // injection so no synthetic control ever touches a real file on disk.
+
+  it("positive control (modifier): a modifier receipt whose named base class IS floored resolves VERIFIED", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "modifier that composes onto .chq-fake-modifier-base, which already carries the 44px floor",
+      receiptedClasses: ["chq-fake-modifier-target"],
+      family: "modifier",
+    };
+    const chunks = [{ selector: ".chq-fake-modifier-base", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-modifier-base">x</a>');
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (modifier): a modifier receipt whose named base class is NOT floored resolves FALSE-PREMISE", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "modifier that composes onto .chq-fake-unfloored-base, which already carries the 44px floor",
+      receiptedClasses: ["chq-fake-modifier-target-2"],
+      family: "modifier",
+    };
+    const chunks = [{ selector: ".chq-fake-unfloored-base", body: "color: red;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-unfloored-base">x</a>');
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  it("positive control (scoped): a scoped receipt whose named container IS floored resolves VERIFIED", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-scoped-container, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-scoped-target"],
+      family: "scoped",
+    };
+    const chunks = [{ selector: ".chq-fake-scoped-container", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<div class="chq-fake-scoped-container">x</div>');
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (scoped): naming a nonexistent container stays UNVERIFIABLE, never VERIFIED by omission", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-nonexistent-container, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-scoped-target-2"],
+      family: "scoped",
+    };
+    const verdict = judgeReceipt(receipt, [], "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+  });
+
+  it("positive control (render-gate): a real test file mentioning the component, token absent from both rosters, resolves VERIFIED", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "render-gate -- FakeGate.tsx never mounts at phone width; verified by fake/fake-render-gate.receipt.test.ts.",
+      receiptedClasses: ["chq-fake-render-gate-target"],
+      family: "render-gate",
+    };
+    const verdict = judgeRenderGate(receipt, {
+      exists: () => true,
+      read: () => "describe('FakeGate.tsx never mounts on phone', () => {});",
+      rosterA: "some other selector .chq-unrelated-thing appears here",
+      rosterB: "another unrelated roster body",
+    });
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (render-gate): a real test file mentioning the component, but the token DOES appear in a live 390 roster, resolves FALSE-PREMISE", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "render-gate -- FakeGate.tsx never mounts at phone width; verified by fake/fake-render-gate.receipt.test.ts.",
+      receiptedClasses: ["chq-fake-render-gate-target"],
+      family: "render-gate",
+    };
+    const verdict = judgeRenderGate(receipt, {
+      exists: () => true,
+      read: () => "describe('FakeGate.tsx never mounts on phone', () => {});",
+      rosterA: "the 390 sweep found .chq-fake-render-gate-target rendered at phone width",
+      rosterB: "another unrelated roster body",
+    });
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  it("negative control (render-gate): a receipt test file that does not exist on disk stays UNVERIFIABLE, never VERIFIED by omission", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "render-gate -- FakeGate.tsx never mounts at phone width; verified by fake/nonexistent.receipt.test.ts.",
+      receiptedClasses: ["chq-fake-render-gate-target-3"],
+      family: "render-gate",
+    };
+    const verdict = judgeRenderGate(receipt, { exists: () => false, read: () => "", rosterA: "", rosterB: "" });
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+  });
+
+  it("the wave-36 worked example: all six agenda.css render-gate receipts (DayGrid/SessionCard) resolve VERIFIED against the real receipt test and the real live 390 rosters", () => {
+    const rows = ROSTER.filter((r) => r.file === "app/src/pages/agenda/agenda.css" && r.family === "render-gate");
+    expect(rows.length).toBe(6);
+    for (const row of rows) {
+      expect(row.verdict, `${row.file}:${row.line} -- ${row.detail}`).toBe("VERIFIED");
+    }
   });
 
   it(`FALSE-PREMISE ceiling: at most ${TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING} receipt(s) claim a companion floor that isn't real`, () => {
