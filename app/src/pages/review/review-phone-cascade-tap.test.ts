@@ -41,6 +41,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -48,7 +49,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * long explanatory comment (this file has several) would desynchronise a
  * naive depth counter. */
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 
 const REVIEW_CSS = read('review.css');

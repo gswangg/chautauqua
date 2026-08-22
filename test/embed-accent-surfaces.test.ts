@@ -16,6 +16,7 @@ import { AgendaContent, ScheduleContent } from "../src/routes/public/agenda";
 import { SessionDetailContent, BackLink } from "../src/routes/public/detail";
 import type { PublicEvent, PublicSession, PublicAgendaItem, PublicSessionDetail } from "../src/server/repo/public";
 import type { PublicSpeakerWithSessions } from "../src/server/repo/public/speakers";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const EVENT: PublicEvent = {
   id: "ev1",
@@ -158,7 +159,8 @@ describe("DEC-838: every isSurface value carries an accent-bound element on the 
   }
 
   it("every ACCENT_BOUND_CLASSES entry is actually declared in PUBLIC_CSS bound to --chq-brandable-accent", async () => {
-    const { PUBLIC_CSS } = await import("../src/routes/public/public.css");
+    const { PUBLIC_CSS: PUBLIC_CSS_RAW } = await import("../src/routes/public/public.css");
+    const PUBLIC_CSS = stripCssComments(PUBLIC_CSS_RAW);
     for (const cls of ACCENT_BOUND_CLASSES) {
       const re = new RegExp(`\\.${cls}\\s*\\{[^}]*var\\(--chq-brandable-accent\\)`);
       expect(PUBLIC_CSS).toMatch(re);

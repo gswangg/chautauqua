@@ -46,6 +46,7 @@ import { ApiTokensPanel } from './ApiTokensPanel';
 import { SettingsPage } from '../Settings';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { installConsoleErrorGuard, mockPeople, renderPanel, OTHER } from './PeopleRolesPanel.test-helpers';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 // DEC-919 wave-155/156: the "reads the frame's ... action" it()s below render
 // the real read-drill primaries -- the panel in isolation (wave-155), the whole
@@ -70,7 +71,7 @@ const TRACKS_ROOMS_TSX = readFileSync(join(HERE, 'TracksRoomsPanel.tsx'), 'utf-8
 /** Comments stripped before any brace scanning, mirroring
  * contacts-phone-frames.test.ts's `read` helper. */
 function readCss(path: string): string {
-  return readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(path, 'utf-8'));
 }
 
 const SETTINGS_CSS = readCss(join(HERE, 'settings.css'));

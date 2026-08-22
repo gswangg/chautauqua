@@ -20,6 +20,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilterRulesPanel } from './FilterRulesPanel';
 import type { SegmentRule } from './types';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 afterEach(() => {
   cleanup();
@@ -121,7 +122,7 @@ describe('FilterRulesPanel builder disclosure contract (src/decisions-data/DEC-9
   });
 
   it('desktop is frozen: the phone-only triggers/close control are display:none above 700px in contacts.css', () => {
-    const css = readFileSync(join(__dirname, 'contacts.css'), 'utf8');
+    const css = stripCssComments(readFileSync(join(__dirname, 'contacts.css'), 'utf8'));
     // .chq-contacts-filter-add-chip and .chq-contacts-filter-builder-done
     // each carry their own bare top-level display:none.
     for (const selector of ['.chq-contacts-filter-add-chip', '.chq-contacts-filter-builder-done']) {

@@ -16,10 +16,11 @@ import '@testing-library/jest-dom/vitest';
 import { FilterRulesPanel, FILTER_RULE_FIELDS } from './FilterRulesPanel';
 import { MAX_SEGMENT_RULES } from '../../../../src/domain/contacts';
 import type { SegmentRule } from './types';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, 'contacts.css'), 'utf-8');
-const SHARED_CSS = readFileSync(join(HERE, '../../styles.css'), 'utf-8');
+const CSS = stripCssComments(readFileSync(join(HERE, 'contacts.css'), 'utf-8'));
+const SHARED_CSS = stripCssComments(readFileSync(join(HERE, '../../styles.css'), 'utf-8'));
 
 /** Extracts a top-level (not inside an @media block) rule's declaration
  * body by selector — same helper as DuplicatesView.render.test.tsx and

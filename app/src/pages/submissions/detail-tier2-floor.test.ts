@@ -9,12 +9,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_393; // PART 2: anchor-floor trio (.chq-detail-back/-position-prev/-position-next)
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-const DETAIL_CSS = readFileSync(join(HERE, 'detail.css'), 'utf-8');
+const DETAIL_CSS = stripCssComments(readFileSync(join(HERE, 'detail.css'), 'utf-8'));
 const DESIGN_RULINGS = readFileSync(
   join(HERE, '..', '..', '..', '..', 'docs', 'design', 'DESIGN-RULINGS.md'),
   'utf-8',
@@ -24,7 +25,7 @@ const DESIGN_RULINGS = readFileSync(
  * comments stripped first, whose comma-split selector list includes
  * `selector` VERBATIM. */
 function phoneLayerRuleBodies(css: string, selector: string): string {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const withoutComments = stripCssComments(css);
   const opener = /@media\s*\(max-width:\s*\d+px\)\s*\{/g;
   let m: RegExpExecArray | null;
   const layers: string[] = [];
