@@ -236,7 +236,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       expect(icsIdx).toBeGreaterThan(feedbackIdx);
     });
 
-    it('DIVERGES: the "which plan" selector is always-visible with a preselected value in the frame, but reveal-on-check with an empty placeholder in the tree (ruling A18)', async () => {
+    it('DIVERGES: the "which plan" selector is always-visible with a preselected value in the frame, but reveal-on-check with an empty placeholder in the tree (ruling A18); MATCHES the field label (DEC-613 wave-24 amendment)', async () => {
       await advanceToPreviewStep();
       // docs/design/Chautauqua Comms.dc.html:102-103 -- the plan selector
       // sits as a permanent sibling of the checkbox, labelled "From which
@@ -248,12 +248,15 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       // Unchecked: the tree shows no plan selector at all (ComposeWizard.tsx
       // gates the whole `.chq-comms-panel-indent` block on `includeFeedback`).
       expect(screen.queryByText('From which plan')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
-      // Checking it reveals a DIFFERENTLY-labelled select with no
-      // preselected value -- "Evaluation plan", starting at the
-      // "Choose a plan…" placeholder, never the frame's own default text.
+      expect(screen.queryByLabelText('From which plan')).not.toBeInTheDocument();
+      // Checking it reveals the select, now labelled MATCHES the frame's
+      // own "From which plan" (DEC-613 wave-24 amendment: the frame's
+      // drawn field label is the product's field label) -- but still with
+      // no preselected value, starting at the "Choose a plan…" placeholder,
+      // never the frame's own default text (ruling A18 stands: that part
+      // of the divergence is unchanged).
       fireEvent.click(screen.getByRole('checkbox', { name: 'Include reviewer feedback' }));
-      const select = await screen.findByLabelText('Evaluation plan');
+      const select = await screen.findByLabelText('From which plan');
       expect(select).toHaveValue('');
       expect(screen.queryByText('Wave 1 — first pass, all tracks')).not.toBeInTheDocument();
     });
