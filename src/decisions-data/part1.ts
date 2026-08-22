@@ -31,7 +31,7 @@ export const DEC_025 = "Wave-4 migrations: per-task reserved filenames 0005/0006
 export const DEC_026 = "CRM API contract: org-level contacts, CSV import mapping, merge repoints FKs, segments as stored rules, capped bulk email";
 export const DEC_027 = "Amendment (wave 10): The claim-token mint guard's population is DERIVED from the tree, and POST /events/:eventId/onboarding/remind is the one route that never got it";
 export const DEC_028 = "Portal splits into parallel sub-apps with a create-if-missing shared gate/layout; headshots get kind 'headshot' and a public /headshots route";
-export const DEC_029 = "Amendment (wave 114): the co-presenter second submit echoes the WHOLE typed draft — tracks included, not just the answers";
+export const DEC_029 = "wave-21: a portal drill's back link goes where the frame draws it going — the frame is authority over the DESTINATION, and DEC-914 keeps deriving the label from it";
 export const DEC_030 = "Overview is a worklist: one GET /api/v1/events/:eventId/overview payload, six cards, every number links to the screen that clears it";
 export const DEC_031 = "Saved views are server rows scoped to the event; Submissions toolbar gains Views dropdown, New submission modal, Clone row action";
 export const DEC_032 = "Amendment (wave 32): Settings hub · 390 (Settings.dc.html:275-312) gets its first real-mount verdict; the footer strip is the shell tab bar and the page mints no dock";
@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Amendment (wave 13m): OPEN_DIVERGENCE_CEILING is a GRADED, GATING campaign ratchet — the campaign is not DONE while a recorded divergence is unadjudicated";
+export const DEC_069 = "wave-21: the campaign mandate cites its own newest evidence beside the measurement that bounds it — a probe verdict is evidence about a sha, never the exit predicate";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "DEC-099 wave-14m: the open-divergence ledger's grammar -- a negative-result or narration row is adjudicated by citation, and a summary-table row is atomic and carries its own";
+export const DEC_099 = "wave-21: the open-divergence ledger's own prose is re-baselined from the instrument, and a superseded figure is marked superseded in place rather than left as the document's headline";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
