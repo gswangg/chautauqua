@@ -34,7 +34,7 @@ export const DEC_656 = "A speaker-added co-presenter is RECORDED, not PUBLISHED:
 export const DEC_657 = "The speaker portal's file surface keeps no private upload vocabulary and ships no unlabelled byte stream; the DEC-551 nosniff guard enumerates the whole repo";
 export const DEC_658 = "Cacheability is a closed rule with one default: a response that does not set its own Cache-Control gets no-store, app-wide (supersedes the /api/v1-only noStoreApi scope)";
 export const DEC_659 = "A scope row carries its own LABEL from the server: GET /api/v1/plans/:id/reviewers emits trackName and submissionRef/submissionTitle beside the ids, and the plan editor never prints a ULID";
-export const DEC_660 = "Wave-148 amendment: the unresolvable-merge-field warning is PRE-EMPTIVE and ADVISORY on the compose step, and its consequence clause states the refusal the code performs — not the frame's literal-text claim";
+export const DEC_660 = "Amendment (wave 23): MAX_EMAIL_TEMPLATES_PER_EVENT = 50: the template mint door gets the cap every documented sibling already has";
 export const DEC_661 = "Every public surface has a guessable root: /e/:slug and /embed/:slug redirect to the sessions surface, and an unknown slug 404s rather than redirecting into one";
 export const DEC_662 = "The onboarding grid's per-cell affordance is CONDITIONAL and QUIET; a progress row names the person, not their inbox; and the roster's create actions live on the page's one action row";
 export const DEC_663 = "Amendment (wave 8): An import receipt counts CONTACTS, not CSV lines";
@@ -315,7 +315,7 @@ export const DEC_937 = "Amendment (wave 20): A chq-* class in a className positi
 export const DEC_938 = "The armed agenda grid quiets a clash card with INK, never with opacity; the armed lattice is a 1px inset ring";
 export const DEC_939 = "Wave-148 amendment: the admin header's page-owned portal slot carries a wizard's step breadcrumb, desktop-only, from the wizard's own step state";
 export const DEC_940 = "The participation trigger resets ONLY what a chip cannot inherit, and the test asserts the chip, not the reset";
-export const DEC_941 = "Amendment (wave 7): One comparator implies one input policy — no field cap may defeat the trim the comparator performs";
+export const DEC_941 = "Amendment (wave 23): A destructive confirm's title names the object it destroys — and the population is derived from the caller's own pending-row state, not asserted";
 export const DEC_942 = "The seed exercises the states the product can reach: a recusal, a spread of scores, and a rated pipeline";
 export const DEC_943 = "A hub event row's meta names its SHAPE while it is live and its SIZE once it is past";
 export const DEC_944 = "The auth family renders at the frames' own card metrics, and an expired claim link is a card, not a sentence";

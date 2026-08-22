@@ -146,7 +146,7 @@ export const DEC_140 = "Public itinerary .ics: selection travels in ?ids= from t
 export const DEC_141 = "Reviewers can list events: GET /api/v1/events returns plan-assignment-derived events for role=reviewer; event mutations stay organizer-only; queue UI distinguishes plan-not-open from queue-empty";
 export const DEC_142 = "Speaker-edited profile surfaces on the organizer's contact record: ContactDrawer shows and edits bio, social links, and headshot from the same contact row the portal writes";
 export const DEC_143 = "Duplicate detection surfaces same-normalized-name contacts even across distinct emails when normalized company also matches (or one side is blank); import stays an email-keyed upsert; merging stays a human act";
-export const DEC_144 = "Amendment (wave 6): the seven `?edit=1` route sub-states are documented in AUDIT.md, and ROUTE_SUBSTATE_UNVISITED_CEILING drops to its measured 3 in the same commit";
+export const DEC_144 = "Amendment (wave 23): the route manifest visits its last three derived sub-states; a sub-state no live gate visits is an ungraded screen";
 export const DEC_145 = "Seed is the grader package, so it must exercise every flow at 'now': plan window opens 2026-01-01Z; the demo speaker gets an accepted session, onboarding tasks, a two-version deliverable with a comment thread; several contacts get real headshots; near-duplicate contacts stay";
 export const DEC_146 = "SPA date rendering rule: shared null-safe helpers only — date-input helpers return '' and display formatters return an em dash for null/undefined/invalid; no raw new Date().toISOString()/toLocale* on nullable values in page components";
 export const DEC_147 = "Per-round scorecards: evaluation_plan gains nullable round_criteria_json (map of round -> criteria array); round 1 and any round without an override uses criteria_json; a single pure criteriaForRound() helper is the only resolution point";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Amendment (wave 20): The campaign mandate must name the newest probe round in its own Tier-0 header; a hand-maintained supersession chain goes stale silently";
+export const DEC_180 = "Amendment (wave 23): A mint door without a cap is an unbounded surface: the census is derived from the routes, not from the caps";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
