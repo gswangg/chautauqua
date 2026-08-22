@@ -214,8 +214,30 @@ export async function insertActiveParticipants(
     createdAt: now,
     updatedAt: now,
   }));
+  // DEC-909 wave-26 amendment: same uniqueIndex CONTRACT inviteParticipant
+  // above already honors -- onConflictDoNothing on the same
+  // (submissionId, contactId) target (participant_submission_id_contact_id_idx,
+  // migrations/0019), so a re-add of an already-attached contact (reached
+  // via attachOrCreateRosterSession's exact-title branch) never raises a
+  // raw DrizzleQueryError. Unlike inviteParticipant this door has no single
+  // sentinel return the caller checks -- when any row in the batch fails to
+  // insert because it already exists, this throws the SAME named refusal
+  // src/routes/api/submissions.ts gives for inviteParticipant's
+  // DUPLICATE_PARTICIPANT result (same message, same field key), rather
+  // than inventing a second copy of that vocabulary.
+  let insertedCount = 0;
   for (const chunk of chunkRowsForInsert(rows)) {
-    await db.insert(schema.participant).values(chunk);
+    const inserted = await db
+      .insert(schema.participant)
+      .values(chunk)
+      .onConflictDoNothing({ target: [schema.participant.submissionId, schema.participant.contactId] })
+      .returning({ id: schema.participant.id });
+    insertedCount += inserted.length;
+  }
+  if (insertedCount < rows.length) {
+    throw new ApiError("invalid", "This contact is already a participant on this submission", {
+      contactId: "Already invited",
+    });
   }
   // DEC-725 amendment (wave 18): the touch lands INSIDE this function so
   // every caller inherits it, the same shape DEC-725 already used for

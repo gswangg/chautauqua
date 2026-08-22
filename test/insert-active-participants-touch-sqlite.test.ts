@@ -45,6 +45,7 @@ create table participant (
   created_at integer,
   updated_at integer
 );
+create unique index participant_submission_id_contact_id_idx on participant (submission_id, contact_id);
 `;
 
 const T0 = 1_700_000_000_000;

@@ -89,6 +89,7 @@ create table participant (
   created_at integer,
   updated_at integer
 );
+create unique index participant_submission_id_contact_id_idx on participant (submission_id, contact_id);
 create table form (
   id text primary key,
   event_id text not null,

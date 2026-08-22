@@ -154,9 +154,14 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[], seedSubmissions:
           onConflictDoNothing: (_target?: unknown) => {
             const p = write();
             return Object.assign(p, {
+              // DEC-909 (wave-26 amendment): insertActiveParticipants now
+              // reads .returning()'s row COUNT to detect a duplicate, so
+              // this fake (no uniqueness of its own) must return one row
+              // per item in the batch, not always a single row regardless
+              // of list length.
               returning: async (_sel?: unknown) => {
                 await p;
-                return [{ id: (vals as any).id, order: 0 }];
+                return list.map((v) => ({ id: (v as any).id, order: 0 }));
               },
             });
           },
