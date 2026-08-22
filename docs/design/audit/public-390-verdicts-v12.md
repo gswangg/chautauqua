@@ -45,24 +45,30 @@ counts client-side once `localStorage` is read (DEC-555: picks live in
 localStorage, never server state). This is a structural match, not a byte
 match, and is expected of any SSR render of a client-computed line.
 
-## 3. Submit a talk (:1017-1065) — DIVERGES (label wording, one open item;
-one closed as already ruled, task v12m-w21-l, DEC-976)
+## 3. Submit a talk (:1017-1065) — CLOSED (both items; label wording ×2,
+both already ruled — task w25-h closes the Format legend, task v12m-w21-l
+closed the dock's second control label, DEC-976)
 
 `GET /submit/:eventSlug` (`submit-views.tsx`'s `SubmitPage`). The phone-only
 two-step wizard chrome (:1022 `"Step 1 of 2 · your talk"`, the progress bar)
 matches exactly (w14-f, DEC-986); the Track fieldset (:1042) matches
 exactly.
 
-- **Format legend text — OPEN, needs a ruling (narrowed, task v12m-w21-l,
-  DEC-976).** :1051 draws the bare legend `"Format"`. `FormatChoices`
+- **Format legend text — CLOSED (task w25-h, DEC-976 wave-25 ruling).**
+  :1051 draws the bare legend `"Format"`. `FormatChoices`
   (`src/routes/public/submit-views.tsx`) renders
   `<legend>{field.label}</legend>`, and the session-format field's stored
   label is `"Session format"` — the fixture value here matches the same
   seed data `test/submit-cfp-frame-copy.test.ts`'s `FIELD_ROWS` already
-  uses. The legend text is a STORED FIELD LABEL, not page chrome — shortening
-  it to the frame's bare "Format" would rename a real form field, which is
-  a content decision, not a CSS/copy fix this task can make. Recorded as
-  needing a ruling; no ruling is invented here.
+  uses. RULED: the legend is organizer-authored FORM DATA, not page
+  chrome — the pack has no authority over a value an organizer typed into
+  their own CFP form, and the frame's bare "Format" is an artifact of the
+  seed fixture it was drawn against, not a product string to ship.
+  `FormatChoices`'s field is NOT renamed. See `docs/design/DEVIATIONS.md`
+  §7's "Submit-a-talk's `Format` legend" entry for the ruling's full text
+  (already landed, commit `da786f33`, "DEVIATIONS: ledger five wave-16
+  settled frame divergences (DEC-663 amendment)" — this row is the audit
+  doc's own citation of that entry, not a second ruling).
 - **Dock's second control label — CLOSED (task v12m-w21-l, DEC-976).**
   :1063 draws the bordered control as `"Draft"`. The tree's equivalent
   control (`.chq-cfp-save-draft`, the same dock geometry per `cfp.css.ts`'s
@@ -74,9 +80,9 @@ exactly.
   every width — the frame's 'Draft' is a drawing abbreviation, not a label
   to ship)."
 
-The Format-legend item is the one surviving open question; the surrounding
-anatomy (two controls in the dock, filled primary "Next: about you" first,
-Track/Format fieldsets in frame order) matches.
+Both items are now ruled and closed; the surrounding anatomy (two controls
+in the dock, filled primary "Next: about you" first, Track/Format
+fieldsets in frame order) matches.
 
 ## 4. Submitted (:1074-1093) — RESOLVED (both items, DEC-908 wave-16 amendment)
 
@@ -145,7 +151,7 @@ no `/claim/` path is minted or rendered. No divergence found.
 |---|-------|------|---------|
 | 1 | Public agenda | :371 | MATCHES |
 | 2 | My schedule · /schedule | :864 | MATCHES |
-| 3 | Submit a talk | :1017 | DIVERGES (label wording ×2: "Session format" vs "Format", "Save draft" vs "Draft") |
+| 3 | Submit a talk | :1017 | CLOSED (both label-wording items ruled — Format legend: DEVIATIONS.md §7, task w25-h; Draft: DEC-613 wave-96) |
 | 4 | Submitted | :1074 | MATCHES (both findings resolved, DEC-908 wave-16 amendment) |
 | 5 | Submitted · email already known | :1124 | MATCHES |
 | 6 | Submitted · has an account | :1147 | MATCHES |
