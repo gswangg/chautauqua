@@ -444,9 +444,16 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
        * endpoint exists anywhere in the repo; recorded as a deliberate
        * non-build on DEC-032 (task w4-aq). */}
       {pendingDelete && (
+        // Chautauqua Settings.dc.html:1421 -- the irreversible confirm's TITLE
+        // names the resource ("Delete "Speaker handbook 2027.pdf"?"); the body
+        // keeps only the consequence sentence so the name appears once (DEC-613).
+        // confirmLabel stays "Delete resource", NOT the frame's "Delete it"
+        // (:1432) -- app/src/confirm-primary-object.scan.test.ts requires a
+        // destructive primary to name its object, and DEC-967 rules frame
+        // sample prose is not product copy (DEC-941 wave-9 amendment).
         <ConfirmDialog
-          title="Delete this resource?"
-          body={`Speakers lose the download from their portal. "${pendingDelete.title}" cannot be recovered.`}
+          title={`Delete "${pendingDelete.title}"?`}
+          body="Speakers lose the download from their portal. This cannot be recovered."
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase={pendingDelete.title}
