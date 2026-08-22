@@ -502,7 +502,7 @@ describe('pack declaration vocabulary (DEC-937)', () => {
         else lineHeightOutOfGrammar++;
       }
     }
-    // Measured on this branch: 577 bare-integer font-weight declarations
+    // Measured on this branch: 578 bare-integer font-weight declarations
     // (400/500/600/700/800, all in-vocabulary) plus 15 out-of-grammar
     // (`var(--chq-type-*-weight)` design-token references and two bare
     // `inherit`), and 173 bare line-height declarations (172 in-vocabulary
@@ -514,11 +514,17 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // (DEC-745 wave-31 amendment) and its new phone-eyebrow rule in
     // app/src/pages/review/review.css declares one `font-weight: 800` --
     // an IN-vocabulary weight, so the total rises by exactly one and
-    // `weightOutOfGrammar` is unmoved. This total is a two-sided exact
-    // count by design (neither population may shrink silently), so it is
-    // re-measured, not relaxed, when a lane legitimately adds a
-    // declaration.
-    expect(weightBare).toBe(577);
+    // `weightOutOfGrammar` is unmoved.
+    //
+    // 577 -> 578 (wave-36, task w36-b, DEC-937 amendment): re-measured while
+    // re-deriving DEC-937's own stale citations; the merge train landed a
+    // further in-vocabulary `font-weight` declaration somewhere in
+    // PRODUCT_SOURCES between the two waves. Read directly off the scan
+    // (`weightBare` above), never arithmetic from the prior pin. This total
+    // is a two-sided exact count by design (neither population may shrink
+    // silently), so it is re-measured, not relaxed, when a lane legitimately
+    // adds a declaration.
+    expect(weightBare).toBe(578);
     expect(weightOutOfGrammar).toBe(15);
     expect(lineHeightBare).toBe(173);
     expect(lineHeightOutOfGrammar).toBe(2);
