@@ -1,6 +1,6 @@
 // evaluations export (J12, DEC-027, DEC-529).
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -12,7 +12,7 @@ import {
   EvaluationScoresJsonError,
   type EvaluationCriterionDef,
 } from "../../../domain/evaluation";
-import { DEC_529, DEC_147, DEC_736 } from "../../../decisions";
+import { DEC_529, DEC_147, DEC_736, DEC_271, DEC_873 } from "../../../decisions";
 import { parsePlanCriteria, parsePlanScale } from "../../../domain/evaluation/plan-json";
 import { ApiError } from "../../http";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
@@ -41,6 +41,15 @@ void DEC_147;
 // two surfaces can only ever print the same name or the same email
 // fallback. The fixed column is named "reviewer", not "reviewerEmail".
 void DEC_736;
+// DEC-271 (wave-34/wave-110 amendments) + DEC-873 ("an export IS a read
+// side"): this CSV shipped a recused reviewer's per-criterion scores and
+// weightedScore while the same score was already excluded from the plan
+// mean (listEvaluationScoresForPlan). The query below anti-joins
+// review_recusal the same way that conforming reader does, so the export
+// and the ranked-results mean can never disagree about which reviewer's
+// row counts.
+void DEC_271;
+void DEC_873;
 
 // DEC-529: label lookup for a plan's criteria -- walks the plan's own
 // criteria_json array plus every array value of the parsed
@@ -200,6 +209,13 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
   // apply it) on row count, shipping in-progress reviewer drafts to
   // exporters.
   conditions.push(submittedEvaluationCondition());
+  // DEC-271 (wave-34 population ruling / wave-110 amendment) + DEC-873: a
+  // recusal retracts the score from every downstream read, including this
+  // export -- same set-based left-join-is-null anti-join against
+  // review_recusal on (planId, submissionId, reviewerId) as
+  // listEvaluationScoresForPlan (src/server/repo/review/evaluations.ts:88-105),
+  // copied in shape rather than re-derived.
+  conditions.push(isNull(schema.reviewRecusal.id));
 
   const rows = await db
     .select({
@@ -227,6 +243,17 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
     // (src/server/repo/review/evaluations.ts:400) does, so
     // resolveReviewerIdentity is fed the identical row shape on both sides.
     .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
+    // DEC-271 (wave-34 population ruling / wave-110 amendment): same shape as
+    // listEvaluationScoresForPlan's anti-join -- see the isNull condition
+    // pushed above.
+    .leftJoin(
+      schema.reviewRecusal,
+      and(
+        eq(schema.reviewRecusal.planId, schema.evaluation.planId),
+        eq(schema.reviewRecusal.submissionId, schema.evaluation.submissionId),
+        eq(schema.reviewRecusal.userId, schema.evaluation.reviewerId),
+      ),
+    )
     .where(and(...conditions))
     .orderBy(asc(schema.submission.seq), asc(schema.evaluation.reviewerId), asc(schema.evaluation.round), asc(schema.evaluation.id))
     .limit(EXPORT_MAX_ROWS + 1);
