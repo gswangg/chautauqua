@@ -98,6 +98,8 @@ const KNOWN_FILE_FOR_NAME: Readonly<Record<string, string>> = {
   // findCampaignCeilingCandidates' `*.test.ts(x)`-only scan, exactly as in
   // the real tree.
   WIDTH_FLOOR_OFFENDERS_CEILING: "app/src/phone-tap-target-scan/width-ceiling.ts",
+  // task w12-xf, DEC-808 amendment: phone-verdict cascade-read ratchet.
+  PHONE_VERDICT_CASCADE_BLIND_CEILING: "app/src/phone-verdict-cascade-read.scan.test.ts",
 };
 
 /**

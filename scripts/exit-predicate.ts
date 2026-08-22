@@ -633,6 +633,14 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // .ts + width-ceiling.ts, checked by
   // app/src/phone-tap-target-width-floor.scan.test.ts). Measured 0.
   "WIDTH_FLOOR_OFFENDERS_CEILING",
+  // wave-12 (task w12-xf, DEC-808 amendment): phone-verdict cascade-read
+  // lens -- grades whether a 390-frame render-verdict file (frame-verdicts/
+  // frame390, non-desktop) ever reads a stylesheet at all; jsdom evaluates
+  // no `@media`, so a verdict file that never reads CSS text can only ever
+  // be a claim about the un-cascaded desktop DOM, never about the terminal
+  // phone block that actually draws the frame
+  // (app/src/phone-verdict-cascade-read.scan.test.ts).
+  "PHONE_VERDICT_CASCADE_BLIND_CEILING",
 ];
 
 /**
@@ -718,6 +726,10 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988).
   "WIDTH_FLOOR_OFFENDERS_CEILING",
+  // wave-12 (task w12-xf): phone-verdict cascade-read ratchet, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PHONE_VERDICT_CASCADE_BLIND_CEILING",
 ];
 
 /**
