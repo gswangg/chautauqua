@@ -26,6 +26,7 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 const EVENT_ID = 'evt-content-landing-390';
 const DESIGN_FILE = join(process.cwd(), 'docs', 'design', 'Chautauqua Content.dc.html');
 const CSS_FILE = join(process.cwd(), 'app/src/pages/content/content.css');
+const STYLES_CSS_FILE = join(process.cwd(), 'app/src/styles.css');
 
 /** DEC-967 shape (copied from ContentApp.worklist-390.render.test.tsx's own
  * verbatimLine): read the ACTUAL line at assert time, fail loudly if the
@@ -243,16 +244,27 @@ describe('ContentApp 390 landing (docs/design/"Chautauqua Content.dc.html":198-2
     const chips = within(chipstrip as HTMLElement);
 
     // Frame's chip strip draws exactly two chips (Needs a decision,
-    // Approved) -- NARROWED, not MATCHES: the shipped chipstrip carries a
-    // third tab ('All accepted sessions', WORKLIST_TABS' third entry,
-    // DEC-825) the frame's :198 extent never draws. Recorded as a
-    // divergence in the companion audit file; not a product edit this
-    // measurement-only lane may make.
+    // Approved); the shipped chipstrip carries a third tab ('All accepted
+    // sessions', WORKLIST_TABS' third entry, DEC-825) the frame's :198
+    // extent never draws. RULED (DEC-919 wave-28 amendment,
+    // docs/design/DEVIATIONS.md §7 "Content 390 chip strip keeps its third
+    // chip"): the third chip STAYS -- DEC-919's re-line-never-remove
+    // governs controls, and the frame's own 390 chip row itself declares
+    // `overflow-x:auto; -webkit-overflow-scrolling:touch`, so a member past
+    // the drawn 390 viewport is a drawing boundary, not an omission. The
+    // strip's own overflow-x rule is what makes that third chip reachable,
+    // so "keeps three chips" is paid for below by asserting the affordance
+    // that carries it -- .chq-chipstrip is the frame's scrolling strip
+    // (app/src/styles.css, DEC-613's one shared token for this idiom).
     const needsDecisionChip = chips.getByRole('tab', { name: /^Needs a decision/ });
     const approvedChip = chips.getByRole('tab', { name: /^Approved/ });
     expect(needsDecisionChip).toHaveTextContent('Needs a decision · 3');
     expect(approvedChip).toHaveTextContent('Approved · 9');
     expect(chips.getAllByRole('tab')).toHaveLength(3);
+
+    const chipstripCss = readFileSync(STYLES_CSS_FILE, 'utf-8');
+    const chipstripBody = ruleBody(chipstripCss, '.chq-chipstrip');
+    expect(chipstripBody).toMatch(/overflow-x:\s*auto/);
   });
 
   it('draws every row (title/meta/status) and the Approve+Open verb pair, across ALL rows the fixture renders (frame :217-224, DEC-180)', async () => {
