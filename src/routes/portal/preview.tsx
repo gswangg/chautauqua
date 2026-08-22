@@ -109,17 +109,30 @@ function PreviewPage(props: {
           'Preview · read-only.' eyebrow stays first -- Ruling A22 requires
           this surface to state the read-only impersonation explicitly, and
           the frame's own first line doesn't say the word -- then the
-          frame's sentence follows verbatim. */}
-      <p class="chq-portal-preview-banner" role="note">
-        Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no
-        submissions, tasks or files here — only what you have written for everyone.
-      </p>
-      {/* Frame 10--24, clause 2: the honest sentence that this page is the
-          configuration, not a person's data — there is no way for an
-          organizer to actually stand inside a real speaker's portal. */}
-      <p class="chq-meta">
-        To see a real speaker's portal you would have to be them — this preview deliberately cannot.
-      </p>
+          frame's sentence follows verbatim.
+          DEC-902 wave-20 amendment (task w20-g): frame :1490 draws the
+          "Back to settings" link INSIDE this same card, right-aligned
+          beside the two sentences -- a geometry/order residual that took
+          the same disposition class DEC-902 wave-14m already gave the
+          card's wording (ADOPT: the frame's placement carries no
+          information the standalone bottom link's did not, so nothing is
+          lost moving it, and the card now matches the frame byte-for-byte
+          on structure). The link keeps `.chq-portal-standalone-link` so it
+          still gets the phone 44px floor (DEC-393 wave-142) wherever it
+          lands in the flex-wrap row; `.chq-portal-preview-banner-link`
+          only adds the desktop right-alignment. */}
+      <div class="chq-portal-preview-banner" role="note">
+        <span class="chq-portal-preview-banner-text">
+          Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no
+          submissions, tasks or files here — only what you have written for everyone.
+        </span>
+        <a
+          class="chq-portal-standalone-link chq-portal-preview-banner-link"
+          href={`/admin/settings?section=portal`}
+        >
+          &lsaquo; Back to settings
+        </a>
+      </div>
       {/* G13 (frame 10--24, MAJOR): the previewed portal opens the way the
           speaker's own portal opens -- an H1 'Welcome' with the configured
           welcome message as its lede, never a 13px meta line with no H1 on
@@ -168,14 +181,18 @@ function PreviewPage(props: {
           <li class="chq-portal-not-shown-chip">Their tasks</li>
           <li class="chq-portal-not-shown-chip">Their uploaded files</li>
         </ul>
+        {/* Frame 10--24, clause 2 (DEC-902 wave-20 amendment, task w20-g,
+            meta-sentence order): the frame trails this sentence at the very
+            END of the "Not shown here" section, after its chips (:1523) --
+            not right after the banner where it sat before. Disposition (a)
+            ADOPT: the frame's order reads as the closing word on "here is
+            what this preview withholds", which lands better once the chips
+            have already named those things than it does before them, and
+            adopting costs nothing the prior order supplied. */}
+        <p class="chq-meta">
+          To see a real speaker's portal you would have to be them — this preview deliberately cannot.
+        </p>
       </section>
-      {/* Frame 10--24, clause 4: a plain link, never a form or button — the
-          route's no-mutation invariant (comment block above) stands. */}
-      {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content of
-          its own <p>, not a sentence phrase) -- real floor. */}
-      <p class="chq-meta">
-        <a class="chq-portal-standalone-link" href={`/admin/settings?section=portal`}>&lsaquo; Back to settings</a>
-      </p>
     </PortalLayout>
   );
 }

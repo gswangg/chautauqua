@@ -361,25 +361,42 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     );
   });
 
-  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- MATCHES: 'Preview · read-only' banner, Welcome hero + welcome message, Resources section, 'Not shown here' chips, back-to-settings link", async () => {
+  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- MATCHES: 'Preview · read-only' banner carrying its own back-to-settings link, Welcome hero + welcome message, Resources section, 'Not shown here' chips + trailing sentence", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1473 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`
     verbatimLine(
       1473,
       `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`,
+    );
+    // docs/design/Chautauqua Public and Portal.dc.html:1490 `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`
+    // DEC-902 wave-20 amendment (task w20-g): the frame draws the back link
+    // INSIDE the read-only banner card, right-aligned beside its two
+    // sentences -- this test now asserts that placement, not the prior
+    // standalone-bottom-of-page one.
+    verbatimLine(
+      1490,
+      `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
+    );
+    // docs/design/Chautauqua Public and Portal.dc.html:1523 `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`
+    verbatimLine(
+      1523,
+      `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
     );
     const app = await buildPreviewApp();
     const res = await app.request("/portal/preview?eventId=evt-1");
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // :1481-1483 organiser identity slot; :1487-1490 the read-only banner;
+    // :1481-1483 organiser identity slot; :1487-1490 the read-only banner,
+    // now carrying the back link as its own right-aligned last child;
     // :1495-1496 Welcome + welcome-message lede; :1499-1509 Resources
-    // section; :1511-1519 "Not shown here" chips; :1523 the back link --
-    // the frame's own top-to-bottom order.
+    // section; :1511-1521 "Not shown here" chips + :1523 the trailing
+    // sentence -- the frame's own top-to-bottom order.
     expectInOrder(html, [
       'Preview · no speaker',
       'class="chq-portal-preview-banner" role="note"',
       'Preview · read-only.',
+      'class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal"',
+      '‹ Back to settings',
       '<h1 class="chq-portal-hero">Welcome</h1>',
       '<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>',
       // DEC-902 wave-19 clause (b): the frame's fixed second Welcome
@@ -393,9 +410,11 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
       'chq-portal-not-shown-chip">Their submissions</li>',
       'chq-portal-not-shown-chip">Their tasks</li>',
       'chq-portal-not-shown-chip">Their uploaded files</li>',
-      'class="chq-portal-standalone-link" href="/admin/settings?section=portal"',
-      '‹ Back to settings',
+      'To see a real speaker&#39;s portal you would have to be them',
     ]);
+    // Exactly one back-to-settings link on the page -- the frame draws no
+    // second copy, so the prior standalone bottom-of-page paragraph is gone.
+    expect((html.match(/Back to settings/g) ?? []).length).toBe(1);
     // No mutating control anywhere on the page -- the one Download control
     // is the frame's sanctioned disabled exception (DEC-747), and the only
     // <form> is PortalLayout's own shared footer sign-out (never content of

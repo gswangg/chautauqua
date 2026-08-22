@@ -183,28 +183,39 @@ welcome message cannot supply, so clause (b) settled it as APP-OWNED CHROME
 into it, rendering even when `welcomeMessage` is null — and
 `src/routes/portal/preview.tsx:139` now renders it verbatim: `Everything we
 need from you is on this page, in order.` **Back-link placement** and
-**meta-sentence order** are GEOMETRY/ORDER residuals, outside wave-14m's
-wording-only scope guard — they keep the pre-existing measurement-only
-disposition this section already states (named, not fixed, desktop
-frozen).
+**meta-sentence order** are GEOMETRY/ORDER residuals. DEC-902's wave-20
+amendment retires the reading that a geometry/order residual keeps a
+standing exemption from the desktop freeze — the wording-only scope guard
+was a scope limit on the wave-14m measurement lane, never a class
+exemption, and both residuals now take the same two dispositions a wording
+residual does. Both are DISCHARGED by task w20-g: **back-link placement**
+takes disposition (a) ADOPT and is built — `preview.tsx` now renders the
+link inside `.chq-portal-preview-banner` (`portal.css.ts`'s
+`.chq-portal-preview-banner-link`), right-aligned beside the two sentences,
+matching the frame's own placement, and the standalone bottom-of-page copy
+the frame does not draw is deleted. **Meta-sentence order** also takes
+disposition (a) ADOPT and is built — the "To see a real speaker's portal…"
+sentence now renders as the last child of the "Not shown here" section,
+after its chips, matching the frame's order.
 
 **Now REACHED, and DIVERGES** off a real `GET /portal/preview` request
 (organizer auth), asserted in `test/portal-390-frame-verdicts.test.ts`'s
 own describe block for this frame. Structural anatomy matches (read-only
 banner, Welcome hero + lede, Resources section, Not-shown-here section, in
-that order), but two real divergences from
+that order), but four real divergences were named against
 `docs/design/Chautauqua Public and Portal.dc.html` — each disposed under
-DEC-902 wave-14m, see the paragraph above (the former third divergence,
-the missing Welcome lede second sentence, is CLOSED per DEC-902 wave-19
-clause (b), see the bullet below):
+DEC-902 wave-14m/wave-20, see the paragraphs above. Three are now CLOSED
+(the Welcome lede's second sentence per wave-19 clause (b); back-link
+placement and meta-sentence order per task w20-g); the fourth (the "Not
+shown here" chip wording/count, disposition (b) BLESSED) is not a gap:
 
-- **Back-link placement** (frame :1490 `<a href="#" style="margin-left:auto;
-  font-size:13px; font-weight:700; white-space:nowrap">‹ Back to
-  settings</a>`): the frame draws this INSIDE the read-only banner card,
-  right-aligned beside its two sentences. `preview.tsx` instead renders it
-  as a standalone `<p class="chq-meta">` link at the very BOTTOM of the
-  page, after the "Not shown here" section — the banner paragraph itself
-  carries no link.
+- **Back-link placement** — RESOLVED task w20-g (frame :1490 `<a href="#"
+  style="margin-left:auto; font-size:13px; font-weight:700;
+  white-space:nowrap">‹ Back to settings</a>`, drawn INSIDE the read-only
+  banner card, right-aligned beside its two sentences): `preview.tsx` now
+  renders the link inside the same banner card via
+  `.chq-portal-preview-banner-link`; the standalone bottom-of-page copy is
+  deleted. No longer a divergence.
 - **Welcome lede is one sentence, not two** (frame :1495 `<span
   style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for
   speaking at DevFlow. Everything we need from you is on this page, in
@@ -218,14 +229,14 @@ clause (b), see the bullet below):
   now renders `<p class="chq-portal-lede">Everything we need from you is
   on this page, in order.</p>`, asserted off a real `GET /portal/preview`
   request in `test/portal-desktop-frame-verdicts.test.ts`.
-- **"To see a real speaker's portal..." sentence order** (frame :1523
-  `<span style="display:block; padding:14px 0 0; font-size:13px;
-  color:#565A4B; line-height:1.55">To see a real speaker's portal you
-  would have to be them — this preview deliberately cannot.</span>`): the
-  frame trails this sentence at the very END, after the "Not shown here"
-  chips. The route renders the identical sentence, but immediately after
-  the banner — before the Welcome h1, Resources, and Not-shown-here
-  sections it precedes there.
+- **"To see a real speaker's portal..." sentence order** — RESOLVED task
+  w20-g (frame :1523 `<span style="display:block; padding:14px 0 0;
+  font-size:13px; color:#565A4B; line-height:1.55">To see a real
+  speaker's portal you would have to be them — this preview deliberately
+  cannot.</span>`, trailed at the very END, after the "Not shown here"
+  chips): `preview.tsx` now renders the identical sentence as the last
+  child of the "Not shown here" `<section>`, after its chips, matching
+  the frame's order. No longer a divergence.
 - **"Not shown here" chip set** (frame :1518-1521, four chips: `Their
   tasks` / `Their session` / `Their files` / `Their notes`): the route
   renders three differently-worded chips instead — `Their submissions` /
@@ -293,19 +304,29 @@ verdict for the three of those six frames this task was assigned — :1373,
 dispatches a real request through a `Hono<AppEnv>` with the actual route
 sub-app mounted and asserts the returned HTML string's structure and order.
 
-**Sibling lanes**, per this same ledger's claim map:
+**Sibling lanes** — RETIRED task w20-g (DEC-902): the two bullets below
+used to read `:1101`/`:1211`/`:1532` "remain source-scan-only, still open
+for a future render-verdict lane" and `:28`/`:132`/`:249`/`:680`/`:730`/
+`:779`/`:894` "claimed by `test/desktop-frames-public.test.ts` (also a
+source scan)". Both are FALSE at main: `test/cfp-desktop-frame-verdicts.test.ts`
+dispatches real requests through a bare `Hono<AppEnv>` with
+`publicRoutes` and `publicSubmitRoutes` mounted (`app.request(...)`, no
+`readFileSync`) and verdicts :894/:1101/:1211/:1532; `test/public-desktop-frame-verdicts.test.ts`
+carries its own `PUBLIC SSR desktop (1600) frame
+render verdicts` describe block, likewise real requests, and verdicts
+:28/:132/:249/:680/:730/:779. Neither is a source scan any longer:
 
-- `:1101` (CFP closed), `:1211` (Submit a talk · rejected on submit), `:1532`
-  (CFP not open yet) — the other three of the six `test/desktop-frames-
-  portal.test.ts` cites — remain **source-scan-only**, still open for a
-  future render-verdict lane (out of this task's scope, which named exactly
-  :1373/:1473/:1167).
-- `:28, :132, :249, :680, :730, :779, :894` — the seven non-portal public
-  frames in this file — are claimed by `test/desktop-frames-public.test.ts`
-  (also a source scan; not touched here).
-- The remaining ten Public-and-Portal desktop frames (Agenda/Speakers/
-  Submit/Submitted states, :1017-1211 CFP flow, etc.) sit outside both this
-  task and the two source-scan files above.
+- `:1101` (CFP closed), `:1211` (Submit a talk · rejected on submit),
+  `:1532` (CFP not open yet), and `:894` (Submit a talk · open) are
+  render-verdicted by `test/cfp-desktop-frame-verdicts.test.ts`
+  (bare-path citation per DEC-967: no `:line`, resolved against the whole
+  file).
+- `:28, :132, :249, :680, :730, :779` — six of the seven non-portal public
+  frames in this file — are render-verdicted by `test/public-desktop-frame-verdicts.test.ts`
+  (bare-path citation, same reason).
+- The remaining Public-and-Portal desktop frames (:1017-1211's internal
+  CFP-flow states not named above, Submitted states, etc.) sit outside
+  both this task and the two render-verdict files above.
 
 MEASUREMENT ONLY (DEC-651 wave-26): this task fixed nothing, and touched no
 route module and no `.css.ts`.
