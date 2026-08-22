@@ -34,19 +34,23 @@ after line 1215, never inside either deferred extent — so the absence of
 
 ## Frame :869 "Settings · editing the speaker portal"
 
-**DIVERGES.** Entered via `SettingsPage` at `/settings?section=portal&edit=1`.
+**RESOLVED (wave 9, DEC-919 amendment).** Entered via `SettingsPage` at
+`/settings?section=portal&edit=1`.
 
-- The frame draws a boxed, static readout of the welcome text
+- The frame's boxed, static readout of the welcome text
   (`docs/design/Chautauqua Settings.dc.html:905`,
-  `border:1px solid #BAB6A6; ... min-height:96px ...`) sitting ABOVE the
-  actual editable field, with a persistent hint below it (`:906`, "Takes
-  the full measure · appears above the task list"). The tree ships a plain
-  `.chq-textarea` in that field's place, with no separate readout box —
-  `PortalSettingsPanel.tsx`'s own STILL-OPEN comment (near line 133)
-  already records this exact gap as a desktop item no wave has spent yet.
-  This verdict confirms the gap still stands: no element carrying a
-  readout class exists anywhere in the edit form, and the hint text
-  survives, reused as the textarea's own field hint.
+  `border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2;
+  padding:13px; min-height:96px; font-size:15px; line-height:1.65;
+  color:#3F4237`) now mounts above the editable field —
+  `PortalSettingsPanel.tsx`'s `WelcomeNoteReadout` (already built for the
+  read drill, DEC-919 wave-157 clause (a)) is reused with a
+  `chq-settings-portal-welcome-readout-edit` modifier class
+  (`settings-drill-rows.css`) that carries the frame's desktop box
+  unconditionally, fed by the STORED `welcomeMessage`, never the
+  in-progress `form.welcomeMessage`. `:906`'s persistent caption ("Takes
+  the full measure · appears above the task list") now renders once, as a
+  sibling paragraph directly below the readout, no longer doubled as the
+  textarea's own field hint (DEC-613).
 - **MATCHES**: "What speakers may edit" (the pill strip, closing consequence
   sentence) and "Resources · N" (frame :924) render in the edit form, in
   that order — the section headings and their content both land in the
@@ -73,12 +77,14 @@ point this task's brief expected DIVERGES.** Entered via `SettingsPage` at
   per the campaign's own recurring lesson that a scribe or brief finding is
   a claim about the tree at a point in time, not a receipt of the tree
   today.
-- **DIVERGES** (a different, real gap the re-verdict surfaces): the frame's
-  edit footer also draws a Cancel/Save-changes pair (`:1009`-`:1010`,
-  alongside the password link). The tree's edit footer instead carries a
-  single "Close" primary and no Cancel, no Save changes — this form has no
-  fields to submit (every role change and removal writes immediately, per
-  the row-level controls), so there is nothing for a Save action to commit.
+- **RESOLVED-BY-RULING (wave 9)**: the frame's edit footer also draws a
+  Cancel/Save-changes pair (`:1009`-`:1010`, alongside the password link).
+  The tree's edit footer instead carries a single "Close" primary and no
+  Cancel, no Save changes — this form has no fields to submit, every role
+  change and removal writes immediately from the row-level controls, so
+  there is nothing for a Save action to commit and no unsaved state for a
+  Cancel to discard. The single "Close" primary stands; this is not filed
+  as buildable debt.
 - **MATCHES**: a non-self row carries its own "Reset password" action
   (frame :998) and a "Remove" control (disabled, org-scoped accounts are
   never removable from here), and "Invite someone" heads the People
@@ -146,14 +152,15 @@ component directly).
 
 | Frame | Verdict |
 | --- | --- |
-| :869 Settings · editing the speaker portal | DIVERGES (welcome-note readout box not built; footer/section order MATCHES) |
-| :950 Settings · editing people and roles | Re-verdicted MATCHES on the password link (was stale DIVERGES); DIVERGES on Cancel/Save-changes footer shape |
+| :869 Settings · editing the speaker portal | RESOLVED (wave 9, DEC-919): welcome-note readout box built above the field, caption re-lined below it; footer/section order MATCHES |
+| :950 Settings · editing people and roles | Re-verdicted MATCHES on the password link (was stale DIVERGES); Cancel/Save-changes footer shape RESOLVED-BY-RULING (wave 9) — no fields to submit, single Close primary stands |
 | :1021 Settings · editing one saved embed | DIVERGES (H1 wording; footer missing Cancel/Turn-off) |
 | :1215 Settings · save rejected by the server | MATCHES verbatim on the refusal band; DIVERGES additively (extra ErrorSummary block, different wording) |
 | :1111 Settings · editing your data | DEFERRED — DEVIATIONS §6: `no schema column, no endpoint and no rubric back a retention setting` (DEC-032), un-citable this wave |
 
-None of the four verdicted frames is a clean, unqualified MATCH — each
-carries at least one real, filed divergence — and one prior finding (the
-People-and-roles password link) is corrected from stale DIVERGES to
-MATCHES by this wave's re-verdict. No desktop byte was moved and no
-component or stylesheet was edited to produce any of the above.
+As of wave 9, two of the four verdicted frames closed: :869's welcome-note
+readout was built (DEC-919 wave-9 amendment) and :950's Cancel/Save-changes
+footer gap was RESOLVED-BY-RULING (the form has nothing to commit). :1021
+and :1215 remain real, filed divergences, and one prior finding (the
+People-and-roles password link) was corrected from stale DIVERGES to
+MATCHES by wave 9's re-verdict.
