@@ -437,6 +437,26 @@ export async function listEvaluationsForSubmission(
     .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
     .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
+    // DEC-271 (wave-34 amendment, src/decisions-data/DEC-271.md): "every
+    // downstream read anti-joins review_recusal" -- this read is this
+    // response's OTHER half, sitting beside countAssignedReviewersForSubmission
+    // (src/server/repo/review/reviewers.ts:292-308) which already deletes
+    // recused (planId,userId) pairs from `assigned`. Before this fix the two
+    // halves of one JSON response disagreed on the same predicate: `assigned`
+    // dropped a recused reviewer but `items` still carried their retracted
+    // score as live. Same anti-join shape as listEvaluationScoresForPlan
+    // above (:88-105 in this file): left-join review_recusal on
+    // (planId, submissionId, reviewerId) + isNull(review_recusal.id).
+    // Restores the invariant: items.length <= assigned, because both halves
+    // of the response now filter on the identical predicate.
+    .leftJoin(
+      schema.reviewRecusal,
+      and(
+        eq(schema.reviewRecusal.planId, schema.evaluation.planId),
+        eq(schema.reviewRecusal.submissionId, schema.evaluation.submissionId),
+        eq(schema.reviewRecusal.userId, schema.evaluation.reviewerId),
+      ),
+    )
     .where(
       // DEC-873 (wave 46 amendment): the organiser's Reviews section shows
       // only recorded evaluations -- a reviewer's draft-in-progress is not
@@ -446,8 +466,13 @@ export async function listEvaluationsForSubmission(
             eq(schema.evaluation.submissionId, submissionId),
             eq(schema.evaluation.planId, planId),
             submittedEvaluationCondition(),
+            isNull(schema.reviewRecusal.id),
           )
-        : and(eq(schema.evaluation.submissionId, submissionId), submittedEvaluationCondition()),
+        : and(
+            eq(schema.evaluation.submissionId, submissionId),
+            submittedEvaluationCondition(),
+            isNull(schema.reviewRecusal.id),
+          ),
     )
     .orderBy(
       asc(schema.evaluationPlan.name),
