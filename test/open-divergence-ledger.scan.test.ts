@@ -216,7 +216,11 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // across 101 audit files, 90 OPEN. May only be LOWERED in a future wave as more
 // rows get adjudicated (a DEC ruling lands, or the row is fixed and the fix
 // cited); must never be raised to paper over new debt landing unadjudicated.
-export const OPEN_DIVERGENCE_CEILING = 90;
+// RE-MEASURED (task w16-qf): 3 open rows remain on this branch after
+// closing public-390-request-verdicts-v12.md:100 (this task, DEC-902
+// wave-12m amendment). merge train: re-measure after v12m-w15-q,
+// v12m-w15-r and v12m-w16-qe land; this must reach 0.
+export const OPEN_DIVERGENCE_CEILING = 3;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it('enumerates exactly 101 audit files and exactly 153 DIVERGES-token rows (vacuous-population guard)', () => {
