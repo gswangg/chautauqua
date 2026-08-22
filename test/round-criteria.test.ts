@@ -83,6 +83,10 @@ vi.mock("../src/server/repo/review", async () => {
     // DEC-676: GET /api/v1/plans/:id surfaces this alongside the plan --
     // no evaluations recorded in these fixtures.
     countEvaluationsByRound: vi.fn(async () => ({})),
+    // DEC-929 (wave-34 amendment): GET /api/v1/plans/:id surfaces
+    // hasSubmittedEvaluation alongside the plan -- no submitted
+    // evaluations in these fixtures.
+    countSubmittedEvaluationsForPlan: vi.fn(async () => 0),
     advancePlanRound: vi.fn(async (_db: unknown, planId: string) => {
       if (planId !== plan.id) throw new Error("unknown plan");
       plan = { ...plan, currentRound: plan.currentRound + 1 };
@@ -201,8 +205,12 @@ describe("round-scoped criteria + free-text criterion (task w2-a)", () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { roundCriteria: Record<string, unknown> };
+    const body = (await res.json()) as {
+      roundCriteria: Record<string, unknown>;
+      hasSubmittedEvaluation: boolean;
+    };
     expect(body.roundCriteria).toEqual(plan.roundCriteria);
+    expect(body.hasSubmittedEvaluation).toBe(false);
   });
 
   it("POST create validates roundCriteria the same way as base criteria (rating needs weight > 0)", async () => {

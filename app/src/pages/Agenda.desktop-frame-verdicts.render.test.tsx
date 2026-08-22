@@ -254,7 +254,6 @@ describe('v12 Agenda DESKTOP (1600) frames: per-frame render verdict receipts (w
       expect(within(dialog).getByLabelText('Label')).toBeInTheDocument();
       expect(within(dialog).getByLabelText('Starts')).toBeInTheDocument();
       expect(within(dialog).getByLabelText('Minutes')).toBeInTheDocument();
-      // docs/design/Chautauqua Agenda.dc.html:244 (the outside-window hint) --
       // DIVERGES, blessed: docs/design/DEVIATIONS.md §9 (DEC-021 wave-34
       // amendment, task w34-b). The frame's sentence promises a greyed band
       // for EVERY out-of-window break; DEC-021 wave-34 disproved that for a
@@ -264,6 +263,9 @@ describe('v12 Agenda DESKTOP (1600) frames: per-frame render verdict receipts (w
       // frame's prose asserted behaviour the code correctly forbids, so the
       // frame line is still pinned verbatim as the DRAWN text, and the
       // shipped copy is asserted as the blessed divergence beside it.
+      // docs/design/Chautauqua Agenda.dc.html:244 (the outside-window hint) --
+      // `A break outside the day's window is kept but flagged — the grid
+      // shows it greyed rather than dropping it.`
       verbatimLine(244, '        <span style="font-size:13px; color:#565A4B; line-height:1.55">A break outside the day\'s window is kept but flagged — the grid shows it greyed rather than dropping it.</span>');
       expect(
         within(dialog).getByText(
