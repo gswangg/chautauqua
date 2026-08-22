@@ -193,6 +193,16 @@ describe("GET /submit/:eventSlug — frame 10--14 copy batch (w5-c)", () => {
     expect(emailInputs[0]![0]).toContain('type="email"');
   });
 
+  // DEC-582 wave-30 amendment / DEVIATIONS.md §7 "CFP display-only
+  // overrides": the frame draws no helper text under Email at all
+  // (`docs/design/Chautauqua Public and Portal.dc.html:983`-:984 is
+  // label+value only) -- this line is a pure product addition, not a
+  // frame-copy match, and is the RESOLUTION GUARD for that row.
+  it("adds an email helper the frame does not draw, stating the portal-link cost of a typo", async () => {
+    const body = await getSubmitPage();
+    expect(body).toContain("We send your portal link here, so a typo means you never get it");
+  });
+
   it("draws the notes-for-reviewers and accessibility-needs empty state as placeholder text, not a below-field caption (Public and Portal.dc.html:963/:968, DEC-380 wave-133)", async () => {
     const body = await getSubmitPage();
     const notesTextarea = body.match(/<textarea[^>]*name="field__field_notes_for_reviewers"[^>]*>/);

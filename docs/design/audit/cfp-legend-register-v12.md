@@ -62,14 +62,42 @@ even though they are drawn at both widths); every one pinned by a real
 
 ## DIVERGES rows
 
-None (DEC-099 wave-14m clause 1: this heading and paragraph record the
-absence of a divergence, adjudicated by citing that ruling here). Every
-PAGE-CHROME entry's shipped value matches the frame's own drawn literal
-exactly (`Track`, `Name`, `Step 1 of 2 · your
-talk`); every STORED-FIELD-LABEL entry, including Bio, ships the SEEDED
-label per DEC-613 wave-25. No fix was required or made — this task is
-measurement-only and touched no route module or `.css.ts` (per its own
+None in this register's own label population (DEC-099 wave-14m clause 1:
+this heading and paragraph record the absence of a divergence, adjudicated
+by citing that ruling here). Every PAGE-CHROME entry's shipped value
+matches the frame's own drawn literal exactly (`Track`, `Name`, `Step 1 of
+2 · your talk`); every STORED-FIELD-LABEL entry, including Bio, ships the
+SEEDED label per DEC-613 wave-25. No fix was required or made — this task
+is measurement-only and touched no route module or `.css.ts` (per its own
 scope).
+
+## DIVERGES 1 -- CFP display-only helper/placeholder overrides (settled, wave 30)
+
+A SEPARATE, ADJACENT population from the label register above: the same
+`displayFields` map (`src/routes/public/submit-views.tsx`) that leaves the
+Bio LABEL unoverridden also overrides `helpText`/`placeholder` on four
+locked/named fields (Abstract, Bio, Email, Notes for reviewers) plus
+Accessibility needs. DIVERGES from a naive "ship exactly what's stored"
+reading in both directions — three rows adopt the frame's own copy over
+whatever a producer's stored field carries (Abstract/Bio helper text,
+Notes-for-reviewers/Accessibility-needs placeholder), and one row (Email
+helper text) is a pure product addition the frame draws nothing for. Every
+row is now settled and recorded, with a resolution-guard pin per row, in
+`docs/design/DEVIATIONS.md` §7's "CFP display-only overrides (wave 30
+amendment, `src/decisions-data/DEC-582.md`)" subsection — ADJUDICATED
+there, not reopened here.
+
+## DIVERGES 2 -- Bio LABEL non-override cross-reference (settled, wave 30)
+
+The register's own Bio row above (`D:995, P: (desktop-only)` / shipped
+`Speaker biography · optional`) already carries its DEC-613 wave-25
+disposition inline; this entry exists only so the open-divergence ledger's
+`DIVERGES`-token grammar can see it as a typed row rather than prose
+embedded inside a table cell. Same subsection, same citation:
+`docs/design/DEVIATIONS.md` §7 "CFP display-only overrides (wave 30
+amendment, `src/decisions-data/DEC-582.md`)" — the Bio LABEL row there
+quotes DEC-613's ruling sentence verbatim and cites the frame by bare path.
+ADJUDICATED.
 
 ## Notes on classification boundaries
 
