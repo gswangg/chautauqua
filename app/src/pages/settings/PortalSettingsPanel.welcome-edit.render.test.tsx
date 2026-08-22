@@ -129,6 +129,10 @@ describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC
     await waitFor(() =>
       expect(section.querySelector('.chq-settings-portal-welcome-readout-edit')).toBeInTheDocument(),
     );
+    // docs/design/Chautauqua Settings.dc.html:906 draws the caption verbatim
+    // as `Takes the full measure · appears above the task list` -- proven
+    // rendered exactly once by the expect() immediately below (in-body
+    // receipt, pays for this file's header-block scope citation at :2).
     const captions = within(section).getAllByText('Takes the full measure · appears above the task list');
     expect(captions).toHaveLength(1);
     const readout = section.querySelector('.chq-settings-portal-welcome-readout-edit') as HTMLElement;

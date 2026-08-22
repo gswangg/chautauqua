@@ -197,6 +197,10 @@ describe('w29-d: real render receipts (SettingsPage mounted at ?section=public-p
       ".chq-settings-page:has(.chq-settings-layout[data-drilled='true']) > .chq-page-title",
     );
     expect(desktopHideMatches).toHaveLength(1);
+    // docs/design/Chautauqua Settings.dc.html:581 draws the H1 verbatim as
+    // `Saved embeds` -- proven rendered exactly that text by the expect()
+    // immediately below (in-body receipt, pays for this file's
+    // header-block scope citation at :2).
     expect(desktopHideMatches[0]!.textContent).toBe('Saved embeds');
   });
 
