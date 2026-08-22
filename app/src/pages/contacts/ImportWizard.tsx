@@ -939,7 +939,19 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
         <div className="chq-contacts-import-match">
           <div className="chq-contacts-import-match-head">
             <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>
+            {/* v12m-w18-a (DEC-385 amendment, frame :491): the middot join
+                and column-position clause are PHONE-ONLY -- hidden at base
+                via contacts-panels.css, revealed inside the existing
+                max-width phone layer alongside the head's row-wrap switch.
+                Position reads phoneColumnIndex/header.length, the SAME
+                state the "Column i of n" eyebrow below reads -- no second
+                derivation (DEC-613/DEC-180). */}
+            <span className="chq-contacts-import-match-sep" aria-hidden="true">·</span>
             <span className="chq-contacts-import-match-count">{countOf(dataRows.length, 'row')}</span>
+            <span className="chq-contacts-import-match-sep" aria-hidden="true">·</span>
+            <span className="chq-contacts-import-match-position">
+              {Math.min(phoneColumnIndex, header.length - 1) + 1} of {header.length}
+            </span>
           </div>
 
           {parseError && <div className="chq-error">{parseError}</div>}

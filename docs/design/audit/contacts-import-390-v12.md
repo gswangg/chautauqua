@@ -21,38 +21,31 @@ Literal-by-literal:
    scope. Not re-filed as a new divergence here — same root cause, same
    owner, already on record.
 
-2. **File summary line (:491) — DIVERGES (shape, not data).** Re-verified
-   this wave (DEC-903 wave-14m procedure): `grep -n
-   "chq-contacts-import-match-head" app/src/pages/contacts/*.tsx
-   app/src/pages/contacts/*.css` still shows no middot join and no
-   column-position clause on this line — the finding below is still
-   accurate and left OPEN, since the fix needs a `contacts-panels.css`
-   change outside this task's FILES-I-OWN list (this adjudication lane
-   owns only the four `docs/design/audit/*.md` files listed in its brief)
-   and no existing DEC-NNN ruling covers it. The frame
-   draws ONE line, `speakers.csv · 214 rows · 2 of 5` — filename, row
-   count, and column position joined by ` · `. The product's
-   `.chq-contacts-import-match-head` (`ImportWizard.tsx:867-870`) renders
-   filename and row count as a `justify-content: space-between` pair with
-   no middot join, and the column-position clause (`Column i of n`) lives
-   entirely separately, in the phone-pager eyebrow further down
-   (`ImportWizard.tsx:1005-1007`). Filename and the row/column counts
-   themselves are DATA (correctly sourced, not hardcoded); what diverges
-   is the SHAPE — no `·` separator, and the column-position clause is
-   simply absent from this line.
+2. **File summary line (:491) — DIVERGES (shape, not data); CLOSED
+   (DEC-385 wave-18).** Was left OPEN across several waves pending a
+   `contacts-panels.css` change outside earlier lanes' FILES-I-OWN lists.
+   `v12m-w18-a` (DEC-385 wave-18 amendment) built it: `ImportWizard.tsx`'s
+   `.chq-contacts-import-match-head` now additionally renders
+   `.chq-contacts-import-match-sep` (the `·` glyph, twice) and
+   `.chq-contacts-import-match-position` (`{i} of {n}`, reading the SAME
+   `phoneColumnIndex`/`header.length` state the `Column i of n` eyebrow
+   already reads — no second derivation). Both new nodes are `display:
+   none` at base (desktop byte-identical to before) and revealed to
+   `display: inline` inside the SAME `@media (max-width: …)` block that
+   switches the head from a column stack to the frame's single wrapping
+   row (`contacts-panels.css`). The frame's `speakers.csv · 214 rows · 2
+   of 5` shape — filename, row count, and column position joined by ` ·
+   ` — now renders at phone width; desktop is unchanged (DEC-385
+   single-direction). Filename and the row/column counts remain DATA
+   (sourced, not hardcoded); what previously diverged was the SHAPE, and
+   the shape now matches.
 
-   Not fixed in this task: the middot-join and the phone-only injection of
-   an `i of n` clause into `.chq-contacts-import-match-head` both require a
-   CSS change (the join is spacing/pseudo-content, not React state), and
-   `contacts-panels.css` is outside this task's FILES-I-OWN list — editing
-   it risks the shared match-head rule another lane (the desktop
-   `Contacts-import.desktop-frame-verdicts` pin, if it exists) depends on.
-   Per the wave-30 fix rule, this is filed rather than patched.
-   Pinned (as the current, un-fixed shape) by
-   `ImportWizard.frame390.render.test.tsx`'s "the file summary line"
-   test — falsifiable: it asserts both what the node DOES say (filename,
-   "N rows") and what it does NOT say (no `·`, no `N of N`), so a future
-   fix flips this test rather than silently going stale.
+   Pinned by `ImportWizard.frame390.render.test.tsx`'s "the file summary
+   line" test, rewritten this wave to assert the joined shape renders AND
+   to prove the phone cascade governs the reveal (brace-depth-selecting
+   the governing `@media` block and asserting its reveal declarations,
+   per DEC-994) — a future regression flips this test rather than
+   silently going stale.
 
 3. **`Column i of n` eyebrow + column header name (ImportWizard.tsx:1006,
    :1008).** MATCHES the frame's `Column 2 of 5` / `email_address` shape
@@ -96,11 +89,10 @@ Literal-by-literal:
 
 ## Summary
 
-8/10 of the frame's drawn phone literals render exactly (back control,
+9/10 of the frame's drawn phone literals render exactly (back control,
 title text, column eyebrow, column name, samples line, target list incl.
-"Skip this column", dock labels, 44px dock floor). One (the match-summary
-slot) is a pre-existing, already-RESOLVED adjudicated substitution, not a
-fresh gap. One (the file summary line's `·`-joined shape with the
-column-position clause folded in) is a genuine, newly-filed shape
-divergence that needs a `contacts-panels.css` change outside this task's
-reach — left as a DIVERGES row rather than patched.
+"Skip this column", dock labels, 44px dock floor, and now the file
+summary line's `·`-joined shape with the column-position clause folded
+in). One (the match-summary slot) is a pre-existing, already-RESOLVED
+adjudicated substitution, not a fresh gap. The file summary line's
+DIVERGES row is CLOSED as of DEC-385 wave-18 — see finding 2 above.

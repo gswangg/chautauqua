@@ -898,6 +898,15 @@
   text-overflow: ellipsis;
 }
 
+/* v12m-w18-a (DEC-385 amendment, frame :491): the middot separator and the
+   column-position clause are phone-only additions to the file-summary
+   line -- hidden at base (desktop keeps its unjoined filename/count pair,
+   byte-identical), revealed inside the max-width:700px phone layer below. */
+.chq-contacts-import-match-sep,
+.chq-contacts-import-match-position {
+  display: none;
+}
+
 /* G13 (frame 08-contacts--03): the match step is a full-width row list --
    column name over its sample on the left, an → glyph mid-row, one select
    right-flushed -- never a two-up grid of bordered cards. */
@@ -1540,10 +1549,20 @@
     padding-top: 16px;
   }
 
+  /* v12m-w18-a (DEC-385 amendment, frame :491): switches the head from the
+     column stack to the frame's single wrapping row -- filename, ·, row
+     count, ·, "i of n" -- and reveals the two phone-only nodes above. */
   .chq-contacts-import-match-head {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
     gap: 4px;
+  }
+
+  .chq-contacts-import-match-sep,
+  .chq-contacts-import-match-position {
+    display: inline;
   }
 
   /* Frame footer: the step's actions are full-width 48px targets stacked

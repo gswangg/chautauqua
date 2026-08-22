@@ -94,28 +94,38 @@ describe('ImportWizard: "Import CSV · 390" frame verdict (v12m-w30-d, docs/desi
   });
 
   // Frame :491 draws ONE line: `speakers.csv · 214 rows · 2 of 5` --
-  // filename, row count, and column position joined by ` · `. The product
-  // renders filename and row count as a `justify-content: space-between`
-  // pair with NO middot join, and the column-position clause lives in a
-  // separate `Column i of n` eyebrow further down -- not on this line at
-  // all. Filename/row-count are DATA; the SHAPE (separator, whether the
-  // column-position clause is present) is structural and does diverge --
-  // see DIVERGES row in docs/design/audit/contacts-import-390-v12.md. This
-  // test pins what the product actually renders so the divergence is
-  // falsifiable, not asserted from the frame's prose.
-  it('the file summary line: filename and row count render, but NOT joined by " · " and with no column-position clause (frame :491 shape gap)', async () => {
+  // filename, row count, and column position joined by ` · `. v12m-w18-a
+  // (DEC-385 amendment) closed the shape gap: the product now renders the
+  // same three fields joined by the middot, with the column-position
+  // clause reading the SAME phoneColumnIndex/header.length state as the
+  // "Column i of n" eyebrow further down -- no second derivation
+  // (DEC-613/DEC-180). The join is phone-only (DEC-385 single-direction);
+  // this test also proves the phone cascade governs it by reading the
+  // reveal declarations out of the SAME @media block that switches the
+  // head to a wrapping row, never a bare CSS substring match (DEC-994).
+  it('the file summary line: filename, row count and column position join with " · " inside the phone cascade (frame :491, DEC-385 wave-18)', async () => {
     await renderAtColumnMapping();
     const filename = document.querySelector('.chq-contacts-import-match-filename');
     const count = document.querySelector('.chq-contacts-import-match-count');
-    if (!filename || !count) throw new Error('match head filename/count not found');
+    const position = document.querySelector('.chq-contacts-import-match-position');
+    if (!filename || !count || !position) throw new Error('match head filename/count/position not found');
     expect(filename.textContent).toBe('Pasted CSV');
     expect(count.textContent).toBe('3 rows');
+    expect(position.textContent).toBe('1 of 5');
     const head = document.querySelector('.chq-contacts-import-match-head');
     if (!head) throw new Error('match head not found');
-    // The frame's `·` separator and `i of n` clause are absent from this
-    // node's rendered text -- confirms the gap rather than assuming it.
-    expect(head.textContent).not.toContain('·');
-    expect(head.textContent).not.toMatch(/\d+ of \d+/);
+    expect(head.textContent).toBe('Pasted CSV·3 rows·1 of 5');
+
+    // The governing @media block (the one that switches the head to a
+    // wrapping row) must be the SAME block that reveals the two new nodes
+    // -- proves the phone cascade actually gates the reveal, not merely
+    // that a rule with these selectors exists somewhere in the file.
+    const headRule = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-head');
+    expect(headRule).toMatch(/flex-direction:\s*row/);
+    const sepRule = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-sep');
+    const positionRule = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-position');
+    expect(sepRule).toMatch(/display:\s*inline/);
+    expect(positionRule).toMatch(/display:\s*inline/);
   });
 
   it('"Column i of n" eyebrow and the current column\'s header name (ImportWizard.tsx:1006, :1008)', async () => {
