@@ -1408,22 +1408,38 @@
     text-align: right;
   }
 
-  /* session */
+  /* session — shares row 2 with size below: frame :351 draws them as ONE
+     fused line, `{{ f.session }} · {{ f.size }}` (w11-tb, DEC-825). The
+     card already runs a two-column grid for the name+version line above
+     (minmax(0,1fr) auto); reusing that same column split here gets the
+     fusion with no new flex-break machinery — session takes the growing
+     first column exactly as name does. */
   .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(2) {
     grid-row: 2;
-    grid-column: 1 / span 2;
+    grid-column: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
-  /* size */
+  /* size — same row as session, second column. The leading `·` carries the
+     frame's fused separator as punctuation with no letter in it (the
+     worklist card's identical `td:nth-child(4)::before` above, and the
+     documented submissions.css precedent), so nothing positional ever
+     sources a LABEL (phone-label-source.scan.test.ts). */
   .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(4) {
-    grid-row: 3;
-    grid-column: 1 / span 2;
+    grid-row: 2;
+    grid-column: 2;
     text-align: left;
   }
 
-  /* Download, full measure */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(4)::before {
+    content: '· ';
+    color: var(--chq-muted);
+  }
+
+  /* Download, full measure — row 3 now that session/size share row 2. */
   .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(5) {
-    grid-row: 4;
+    grid-row: 3;
     grid-column: 1 / span 2;
   }
 

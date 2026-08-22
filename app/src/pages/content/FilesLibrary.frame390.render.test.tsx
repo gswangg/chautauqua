@@ -154,9 +154,10 @@ describe('v12 Content "Files · 390" frame (:338-368): first markup-level render
     // :351-:356 row template -- each row carries a name, a version marker,
     // a session cell and a size cell (the frame draws them fused as one
     // "{{ f.session }} · {{ f.size }}" line; the product renders them as
-    // two adjacent table cells instead -- a DIVERGENCE recorded in the
-    // audit file, not asserted as a fused string here), an uploader, and a
-    // Download control.
+    // two adjacent table cells sharing one grid row -- w11-tb, DEC-825,
+    // recorded MATCHES in the audit file; the structural fusion itself is
+    // asserted by FilesLibrary.session-size-fuse.receipt.render.test.tsx,
+    // not here), an uploader, and a Download control.
     for (const item of items) {
       expect(screen.getByText(item.filename)).toBeInTheDocument();
       const openButtons = screen.getAllByRole('button', {
