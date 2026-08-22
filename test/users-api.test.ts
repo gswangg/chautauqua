@@ -224,6 +224,10 @@ describe("POST /api/v1/users/:id/reset-password", () => {
     // DEC-948: the login door's rate limiter now reads/writes a D1
     // rate_limit row instead of KV.
     ...buildColumnMap(schema.rateLimit as unknown as Record<string, unknown>),
+    // DEC-949: reset-password now also sweeps the target's bearer api_token
+    // rows (repo.deleteApiTokensForUser), so the fake db needs to resolve
+    // that table's columns too.
+    ...buildColumnMap(schema.apiToken as unknown as Record<string, unknown>),
   ]);
 
   function colKey(col: unknown): string {
@@ -249,7 +253,7 @@ describe("POST /api/v1/users/:id/reset-password", () => {
   }
 
   const COLUMN_TABLES = new Map<unknown, unknown>();
-  for (const t of [schema.user, schema.authSession, schema.rateLimit]) {
+  for (const t of [schema.user, schema.authSession, schema.rateLimit, schema.apiToken]) {
     buildTableMap(t as unknown as Record<string, unknown>, t, COLUMN_TABLES);
   }
 
@@ -304,12 +308,32 @@ describe("POST /api/v1/users/:id/reset-password", () => {
     return out;
   }
 
+  // NOTE: this fake db is one of ~10 copy-pasted clones (grep -rln 'fake db
+  // test helper' test/) -- test/auth-rate-limit-atomicity.test.ts,
+  // test/users-speaker-scope.test.ts, test/users-role-change.test.ts,
+  // test/account-desktop-frame-verdicts.test.ts,
+  // test/account-password.test.ts, test/session-rotation.test.ts,
+  // test/account-password-phone.test.ts,
+  // test/account-docs-phone-frames.render.test.ts,
+  // test/home-account-docs-390-frame-verdicts.test.ts, and
+  // test/users-reset-password.test.ts. Only this file and
+  // test/users-reset-password.test.ts needed the DEC-949 api_token table
+  // this wave; the others were not red and were left untouched.
   function makeFakeDb() {
-    const state: { users: Row[]; sessions: Row[]; rateLimits: Row[] } = { users: [], sessions: [], rateLimits: [] };
+    const state: { users: Row[]; sessions: Row[]; rateLimits: Row[]; apiTokens: Row[] } = {
+      users: [],
+      sessions: [],
+      rateLimits: [],
+      apiTokens: [],
+    };
     function rowsFor(table: unknown): Row[] {
       if (table === schema.user) return state.users;
       if (table === schema.authSession) return state.sessions;
       if (table === schema.rateLimit) return state.rateLimits;
+      // DEC-949: reset-password sweeps the target's bearer api_token rows
+      // (repo.deleteApiTokensForUser) via db.delete(schema.apiToken)...
+      // .returning({ id }) -- without this branch the sweep 500s.
+      if (table === schema.apiToken) return state.apiTokens;
       // DEC-740: the login door also queries getHubOrg (orderBy().limit(),
       // no where()) -- always empty here, so loadSingleEventContext
       // short-circuits before ever querying schema.event.
@@ -407,10 +431,22 @@ describe("POST /api/v1/users/:id/reset-password", () => {
         return {
           where(cond: unknown) {
             const rows = rowsFor(table);
+            const deleted = rows.filter((r) => evalCond(cond, r));
             const remaining = rows.filter((r) => !evalCond(cond, r));
             rows.length = 0;
             rows.push(...remaining);
-            return Promise.resolve();
+            return {
+              // DEC-949/DEC-948: deleteApiTokensForUser counts
+              // `.returning({ id }).length` rather than a `.meta.changes`
+              // stat the sqlite-proxy test driver never forwards -- the
+              // fake db has to actually return the deleted rows' ids.
+              returning(fields?: Record<string, unknown>) {
+                return Promise.resolve(deleted.map((r) => project(r, fields)));
+              },
+              then(resolve: (v: undefined) => void) {
+                resolve(undefined);
+              },
+            };
           },
         };
       },

@@ -35,6 +35,10 @@ const COLUMN_KEYS = new Map<unknown, string>([
   // DEC-948: the login door's rate limiter now reads/writes a D1
   // rate_limit row instead of KV.
   ...buildColumnMap(schema.rateLimit as unknown as Record<string, unknown>),
+  // DEC-949: reset-password now also sweeps the target's bearer api_token
+  // rows (repo.deleteApiTokensForUser), so the fake db needs to resolve
+  // that table's columns too.
+  ...buildColumnMap(schema.apiToken as unknown as Record<string, unknown>),
 ]);
 
 function colKey(col: unknown): string {
@@ -60,7 +64,7 @@ function buildTableMap(table: Record<string, unknown>, tableRef: unknown, into: 
 }
 
 const COLUMN_TABLES = new Map<unknown, unknown>();
-for (const t of [schema.user, schema.authSession, schema.rateLimit]) {
+for (const t of [schema.user, schema.authSession, schema.rateLimit, schema.apiToken]) {
   buildTableMap(t as unknown as Record<string, unknown>, t, COLUMN_TABLES);
 }
 
@@ -115,12 +119,31 @@ function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {
   return out;
 }
 
+// NOTE: this fake db is one of ~10 copy-pasted clones (grep -rln 'fake db
+// test helper' test/) -- test/auth-rate-limit-atomicity.test.ts,
+// test/users-speaker-scope.test.ts, test/users-role-change.test.ts,
+// test/account-desktop-frame-verdicts.test.ts, test/account-password.test.ts,
+// test/session-rotation.test.ts, test/account-password-phone.test.ts,
+// test/account-docs-phone-frames.render.test.ts,
+// test/home-account-docs-390-frame-verdicts.test.ts, and
+// test/users-api.test.ts. Only this file and test/users-api.test.ts needed
+// the DEC-949 api_token table this wave; the others were not red and were
+// left untouched.
 function makeFakeDb() {
-  const state: { users: Row[]; sessions: Row[]; rateLimits: Row[] } = { users: [], sessions: [], rateLimits: [] };
+  const state: { users: Row[]; sessions: Row[]; rateLimits: Row[]; apiTokens: Row[] } = {
+    users: [],
+    sessions: [],
+    rateLimits: [],
+    apiTokens: [],
+  };
   function rowsFor(table: unknown): Row[] {
     if (table === schema.user) return state.users;
     if (table === schema.authSession) return state.sessions;
     if (table === schema.rateLimit) return state.rateLimits;
+    // DEC-949: reset-password sweeps the target's bearer api_token rows
+    // (repo.deleteApiTokensForUser) via db.delete(schema.apiToken)...
+    // .returning({ id }) -- without this branch the sweep 500s.
+    if (table === schema.apiToken) return state.apiTokens;
     throw new Error("unexpected table in fake db test helper");
   }
   const db = {
@@ -207,10 +230,22 @@ function makeFakeDb() {
       return {
         where(cond: unknown) {
           const rows = rowsFor(table);
+          const deleted = rows.filter((r) => evalCond(cond, r));
           const remaining = rows.filter((r) => !evalCond(cond, r));
           rows.length = 0;
           rows.push(...remaining);
-          return Promise.resolve();
+          return {
+            // DEC-949/DEC-948: deleteApiTokensForUser counts
+            // `.returning({ id }).length` rather than a `.meta.changes`
+            // stat the sqlite-proxy test driver never forwards -- the
+            // fake db has to actually return the deleted rows' ids.
+            returning(fields?: Record<string, unknown>) {
+              return Promise.resolve(deleted.map((r) => project(r, fields)));
+            },
+            then(resolve: (v: undefined) => void) {
+              resolve(undefined);
+            },
+          };
         },
       };
     },
@@ -250,6 +285,20 @@ async function seedTargetUser(state: { users: Row[] }, orgId = ORG_A) {
   };
   state.users.push(user);
   return user;
+}
+
+function seedApiToken(state: { apiTokens: Row[] }, id: string, createdByUserId: string, orgId = ORG_A) {
+  state.apiTokens.push({
+    id,
+    orgId,
+    name: `token-${id}`,
+    tokenHash: `hash-${id}`,
+    tokenPrefix: `pfx-${id}`,
+    createdByUserId,
+    lastUsedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 }
 
 function buildFullApp(db: AppEnv["Variables"]["db"]) {
@@ -361,6 +410,26 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
 
     const postCheck = await app.request("/api/v1/reviewer-ping", { headers: { cookie: targetSessionCookie } }, env);
     expect(postCheck.status).toBe(401);
+  });
+
+  it("(2b) DEC-949: sweeps every api_token the target minted (revokedApiTokens counted from the real delete), and leaves a different user's token alone", async () => {
+    const { db, state } = makeFakeDb();
+    const target = await seedTargetUser(state);
+    const otherUser = await seedTargetUser(state, ORG_A);
+    otherUser.id = "other-user-1";
+    otherUser.email = "other-user@example.test";
+    seedApiToken(state, "token-1", target.id as string);
+    seedApiToken(state, "token-2", target.id as string);
+    seedApiToken(state, "token-3", otherUser.id as string);
+    const { app: org, env: orgEnv } = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+
+    const res = await resetPassword(org, target.id as string, undefined, orgEnv);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { revokedApiTokens: number };
+    expect(body.revokedApiTokens).toBe(2);
+
+    const remainingTokenIds = state.apiTokens.map((t) => t.id);
+    expect(remainingTokenIds).toEqual(["token-3"]);
   });
 
   it("(3) 404s for a cross-org target and an unknown id — existence-hiding, same status either way", async () => {
