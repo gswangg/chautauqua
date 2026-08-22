@@ -225,7 +225,7 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // Frame :1352 "Invite · rejected"
   // ---------------------------------------------------------------------
   describe('frame :1352 "Invite · rejected"', () => {
-    it('DIVERGES: the frame retitles the header to "Nobody was invited"; the tree keeps the SAME "Invite someone" title and swaps only the subtitle + an inline field message', async () => {
+    it('CONFORMS (DEC-651 wave-9 amendment): the header retitles to "Nobody was invited" on a duplicate-email refusal, and the actions row draws primary -> Cancel -> escape in one row, matching frame :1384', async () => {
       renderSection('people', {
         'POST /api/v1/users': {
           status: 409,
@@ -235,6 +235,8 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       await waitFor(() => expect(screen.getByText('self@example.com')).toBeInTheDocument());
 
       fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
+      expect(screen.getByRole('dialog').querySelector('.chq-modal-title')).toHaveTextContent('Invite someone');
+
       fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
       fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
       fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'sbek-reviewer@example.com' } });
@@ -243,19 +245,23 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       await screen.findByRole('button', { name: /Open .*'s row/ });
       const dialog = screen.getByRole('dialog');
 
-      // docs/design/Chautauqua Settings.dc.html:1359 -- rejected-state title `Nobody was invited`, which the tree never renders.
+      // docs/design/Chautauqua Settings.dc.html:1359 -- rejected-state title `Nobody was invited`. CONFORMS.
       verbatimLine(1359, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Nobody was invited</span>');
-      expect(within(dialog).queryByText('Nobody was invited')).not.toBeInTheDocument();
-      expect(within(dialog).getByText('Invite someone')).toBeInTheDocument();
+      expect(within(dialog).getByText('Nobody was invited')).toBeInTheDocument();
+      expect(within(dialog).queryByText('Invite someone')).not.toBeInTheDocument();
 
-      // docs/design/Chautauqua Settings.dc.html:1360 -- subtitle `The address is already in use` DOES swap, MATCHING.
+      // docs/design/Chautauqua Settings.dc.html:1360 -- subtitle `The address is already in use`. MATCHES.
       verbatimLine(1360, '          <span style="font-size:13px; color:#565A4B">The address is already in use</span>');
       expect(within(dialog).getByText('The address is already in use')).toBeInTheDocument();
 
       // docs/design/Chautauqua Settings.dc.html:1384 -- ONE row: `Create the account`, `Cancel`, `Open Sam's row`, in that
-      // order. DIVERGES (additively): the tree renders the escape route ABOVE the actions row instead, so it's FIRST.
+      // order. CONFORMS: the tree now renders the escape route as the actions row's THIRD control, matching DOM order.
+      // The frame's literal names the contact by first name only ("Sam"); the tree names by the SAME `personLabel`
+      // helper every other row uses (full name, falling back to email when a row carries no name) -- an intentional,
+      // consistent vocabulary choice, not a divergence (DEC-757).
       verbatimLine(1384, '        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Create the account</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span><a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Open Sam\'s row</a></div>');
-      expect(within(dialog).getAllByRole('button', { name: /Create the account|Cancel|Open .*'s row/ }).map((b) => b.textContent)).toEqual(["Open Sam Whitfield's row", 'Create the account', 'Cancel']);
+      const actionsRow = screen.getByRole('button', { name: "Open Sam Whitfield's row" }).closest('.chq-modal-actions') as HTMLElement;
+      expect(within(actionsRow).getAllByRole('button', { name: /Create the account|Cancel|Open .*'s row/ }).map((b) => b.textContent)).toEqual(['Create the account', 'Cancel', "Open Sam Whitfield's row"]);
     });
   });
 
