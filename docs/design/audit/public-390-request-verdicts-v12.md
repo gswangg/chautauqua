@@ -110,11 +110,10 @@ table below — not a third copy of the request assertions themselves.
    public-site request coverage; six of six frames already covered). Both
    corrected above with re-derivation, not by editing the brief.
 2. **RETIRED (wave-8, DEC-976): both label pairs are already ruled, not an
-   open gap.** `Format`/`Session format` is ruled by
-   `docs/design/audit/cfp-legend-register-v12.md:46`: `| D:942, P:1051 |
-   'Format' | STORED-FIELD-LABEL | 'Session format' (seed deliberately
-   differs — the DEC-613 wave-27 finding this whole register generalises)
-   |` — the tree's `<legend>{field.label}</legend>` renders the organiser's
+   open gap.** `Format`/`Session format` is ruled by the row in
+   docs/design/audit/cfp-legend-register-v12.md (D:942, P:1051,
+   STORED-FIELD-LABEL, `Format` vs `Session format`) — the tree's
+   `<legend>{field.label}</legend>` renders the organiser's
    own stored field label, and the frame's bare word is a sampled fixture
    value, not a string to ship (DEC-613 wave-27). `Save draft`/`Draft` is
    ruled at `docs/design/DEVIATIONS.md:765`: "CFP wizard dock's `Save

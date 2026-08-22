@@ -85,8 +85,8 @@ task already closed):
   its own DEC-895 wave-33 comment.
 - `docs/design/audit/review-v12.md`'s `:964` recuse-hint row -- was open,
   now MATCHES/RESOLVED. `unscoredCriterionHint()` (DEC-889 wave-32
-  amendment) in `app/src/pages/review/Scorecard.tsx:908`, pinned by
-  `app/src/pages/review/Scorecard.recuseHint390.render.test.tsx`.
+  amendment) in `app/src/pages/review/Scorecard.tsx:908` -- confirmed by
+  the render test at `app/src/pages/review/Scorecard.recuseHint390.render.test.tsx`.
 
 All three rows are edited in place in their source files, in the
 append-only voice those files already use -- the original finding prose is
