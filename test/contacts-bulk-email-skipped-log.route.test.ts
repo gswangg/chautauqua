@@ -96,17 +96,18 @@ vi.mock("../src/server/repo/comms", async () => {
     loadRecentlySent: vi.fn(
       async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
+        // DEC-397 (this wave's amendment): mirror the REAL reader
+        // (src/server/repo/comms.ts loadRecentlySent) exactly -- build the
+        // wanted set through dedupeKey and match each row's own dedupeKey
+        // against it. A hand-rolled field-by-field comparison here would
+        // bypass dedupeKey's claim-link normalization and so make this
+        // double disagree with production about who is already-sent.
+        const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.body)));
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
-          const hit = keys.some(
-            (k) =>
-              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
-              k.subject === row.subject &&
-              k.body === row.bodyText,
-          );
-          if (!hit) continue;
           const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
+          if (!wantedKeys.has(key)) continue;
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }

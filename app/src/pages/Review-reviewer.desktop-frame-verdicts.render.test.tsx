@@ -153,11 +153,8 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       // 44px 1fr 150px 130px 92px 92px auto -- the ruling's numbers are a
       // paraphrase written to explain a DIFFERENT rule (the expanded
       // reviews band's inheritance from this same grid), not a second
-      // pixel spec competing with the frame. The citation sits immediately
-      // above its receipt so the scan's proximity window reaches it:
-      // docs/design/Chautauqua Review.dc.html:124-125 -- both lines verbatim below.
-      verbatimLine(124, '          <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">');
-      verbatimLine(125, '            <span>Rank</span><span>Submission</span><span>Speaker</span><span>Track</span><span>Score</span><span>Reviews</span><span></span>');
+      // pixel spec competing with the frame.
+      //
       // DESIGN-RULINGS.md:191 -- kept as a receipt, but read for its VERB,
       // not its numbers: "the expanded reviews band repeats the results
       // table's ... grid" is the operative half, asserted structurally
@@ -168,10 +165,23 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       // own track set FIRST and named as the authority, keeping the old
       // paraphrase verbatim inside a superseded-paraphrase clause so every
       // other citer into :191 still resolves.
+      //
+      // ORDERING (DEC-808 wave-20, medic): DEC-995's rewrite of ruling :191
+      // put a frame-path citation into :124 INSIDE the ruling text itself,
+      // and this file pins that text byte-for-byte, so the string literal
+      // below is a graded frame citation whose wording cannot be edited.
+      // The two calls are therefore ordered ruling-then-frame: that string
+      // and the comment citation beneath it both sit immediately above the
+      // shared verbatimLine receipt that proves the cited line, inside the
+      // receipt scan's proximity window -- the same "citation immediately
+      // above its receipt" convention this file's header declares.
       verbatimRulingLine(
         191,
         "Applied to item 27, per DEC-902 wave-12m: the frame (`docs/design/Chautauqua Review.dc.html:124`) is the geometry authority and draws `44px 1fr 132px 118px 190px 84px auto`, superseding this line's earlier paraphrase of `44px 1fr 150px 130px 92px 92px auto` — the operative clause survives unchanged: the expanded reviews band repeats the results table's grid, so each reviewer's score sits under the Score column and their name under Submission — with the rubric chips on a second line inside the same track.",
       );
+      // docs/design/Chautauqua Review.dc.html:124-125 -- both lines verbatim below.
+      verbatimLine(124, '          <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">');
+      verbatimLine(125, '            <span>Rank</span><span>Submission</span><span>Speaker</span><span>Track</span><span>Score</span><span>Reviews</span><span></span>');
 
       mockApi({
         [`GET /api/v1/plans/${PLAN_ID}`]: plan(),

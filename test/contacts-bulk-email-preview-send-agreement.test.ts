@@ -84,17 +84,18 @@ vi.mock("../src/server/repo/comms", async () => {
     loadRecentlySent: vi.fn(
       async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
+        // DEC-397 (this wave's amendment): mirror the REAL reader
+        // (src/server/repo/comms.ts loadRecentlySent) exactly -- build the
+        // wanted set through dedupeKey and match each row's own dedupeKey
+        // against it. A hand-rolled field-by-field comparison here would
+        // bypass dedupeKey's claim-link normalization and so make this
+        // double disagree with production about who is already-sent.
+        const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.body)));
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
-          const hit = keys.some(
-            (k) =>
-              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
-              k.subject === row.subject &&
-              k.body === row.bodyText,
-          );
-          if (!hit) continue;
           const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
+          if (!wantedKeys.has(key)) continue;
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -182,10 +183,18 @@ describe("preview vs send agreement (DEC-238 wave-17 amendment)", () => {
       subject: "Hi all",
       // DEC-936 wave-17 widened the cross-call key to (email, subject,
       // body), so the primed row must carry the body the planner keys on.
-      // planBulkEmailSends computes its keys on the UNMINTED preflight
-      // render (DEC-397 wave-62), which is the template text itself here --
-      // this fixture's contacts resolve no merge tokens.
-      bodyText: "See you at {event_name}: {portal_link}",
+      // email_log stores what was actually SHIPPED, so this row is the
+      // RENDERED body -- {event_name} -> "DevCon", {portal_link} -> the
+      // claim URL a PRIOR call minted for ct_1. planBulkEmailSends keys the
+      // current call on the UNMINTED preflight render (DEC-397 wave-50/62,
+      // portal_link = .../claim/example-one-time-link), so the two bodies
+      // are deliberately NOT byte-equal: dedupeKey's normalizeClaimLinks
+      // (DEC-397 this wave) is the single owner that collapses both
+      // /claim/<token> paths to one placeholder and lets the window match.
+      // The token below is a plausible base64url mint, deliberately NOT the
+      // "tok123" this file's createClaimToken mock returns -- a stale mint
+      // from an earlier call is exactly the case the window must catch.
+      bodyText: "See you at DevCon: https://events.example.com/claim/hK3q_lZ8vN-Ta1BxQe7Ry0dGmS4pC2wJ",
       sentAt: t0 - 1_000,
     });
 

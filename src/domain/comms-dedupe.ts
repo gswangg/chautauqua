@@ -36,9 +36,49 @@ export function retryAtMs(lastSentAtMs: number): number {
  * honestly judge the cross-call window at message granularity, not just
  * (email, subject). Without the body term, stage 2 would treat two
  * genuinely different messages (same subject, different body) as the same
- * "already sent" message and refuse the second one. */
+ * "already sent" message and refuse the second one.
+ *
+ * DEC-397 (this wave's amendment): the body term is normalized through
+ * normalizeClaimLinks below before it is hashed — see that function for
+ * why. The normalization lives INSIDE this key function on purpose: both
+ * sides of every cross-call comparison (a caller's wanted key and
+ * src/server/repo/comms.ts's loadRecentlySent row key) already reach
+ * identity through here, so neither side can re-derive the rule
+ * independently and drift. */
 export function dedupeKey(toEmail: string, subject: string, body: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body]);
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, normalizeClaimLinks(body)]);
+}
+
+/** DEC-397 (this wave's amendment): what any `/claim/<token>` URL path
+ * collapses to inside a dedupe key. It is NEVER rendered into an email and
+ * never stored — it exists only inside the key. */
+export const DEDUPE_CLAIM_TOKEN_PLACEHOLDER = "<claim-token>";
+
+/** The claim-token URL path shape both sides of a dedupe comparison can
+ * produce. `newClaimToken()` (src/auth/claim.ts) is base64url, charset
+ * `[A-Za-z0-9_-]`, and PREVIEW_CLAIM_TOKEN ("example-one-time-link",
+ * src/domain/compose.ts) is drawn from the same class, so both collapse to
+ * the identical placeholder. */
+const CLAIM_URL_PATH_RE = /\/claim\/[A-Za-z0-9_-]+/g;
+
+/** DEC-397 (this wave's amendment): A MINT IS THE LAST THING A SEND DOES,
+ * so a mint is DOWNSTREAM of message identity and identity must not read
+ * it. POST /api/v1/contacts/bulk-email computes its dedupe plan on the
+ * UNMINTED preflight render (portal_link resolves to the fixed
+ * PREVIEW_CLAIM_TOKEN placeholder) and only then overwrites vars.portal_link
+ * with a freshly minted per-recipient token via applyMintedPortalLinks — so
+ * email_log.body_text stores `<origin>/claim/<real token>` while the NEXT
+ * call keys on `<origin>/claim/example-one-time-link`. Without this
+ * normalization the two bodies can never be byte-equal for any template
+ * spending `{portal_link}`, and the one-hour cross-call window is silently
+ * dead for every such message.
+ *
+ * Normalizing the KEY rather than the stored row is what keeps email_log
+ * honest: the log keeps the real shipped body, and log fidelity is never
+ * traded for dedupe stability. Dropping the body term instead would
+ * re-open exactly the hole DEC-936's wave-17 amendment closed. */
+export function normalizeClaimLinks(body: string): string {
+  return body.replace(CLAIM_URL_PATH_RE, `/claim/${DEDUPE_CLAIM_TOKEN_PLACEHOLDER}`);
 }
 
 /** DEC-936 (wave-22 amendment, widened wave-17): the stage-1 (intra-batch)
