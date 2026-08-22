@@ -46,23 +46,25 @@ single-direction).
 (render, DOM-scoped per criterion via `within`, DEC-874) +
 `app/src/pages/review/scorecardLogic.test.ts` (pure copy pin).
 
-## DIVERGES — a pre-existing verdict test now asserts the opposite of the built copy
+## RESOLVED — the pre-existing verdict test that asserted the opposite of the built copy
 
-**File**: `app/src/pages/Review.frame-verdicts.render.test.tsx:345`
-(read-only to this task; not in w32-a's owned-files list and not run by
-this task's targeted suite).
+**File**: `app/src/pages/Review.frame-verdicts.render.test.tsx`
+(read-only to w32-a; outside that task's owned-files list, so w32-a
+recorded the gap here rather than reaching into it).
 
-That test's own comment (lines 337-343) reads the :957-964 gap exactly as
-v12m-w29-c's audit did — "the frame's own caption ... does not exist as
-separate copy on this scorecard" — and asserts
+That test's own comment read the :957-964 gap exactly as the earlier audit
+(DEC-976) did — "the frame's own caption ... does not exist as separate
+copy on this scorecard" — and asserted
 `expect(screen.queryByText(/Pick a score, or recuse yourself/)).not.toBeInTheDocument()`.
-That fixture (two criteria, one unscored) will now find the hint this task
-ships (`@testing-library`'s `queryByText` does not filter on the native
-`hidden` attribute the way `*ByRole` queries do), so the assertion at :345
-is stale against the newly-built product and needs a follow-up edit
-(swap `.not.toBeInTheDocument()` for a `within`-scoped presence check
+Its fixture (two criteria, one unscored) finds the hint this task ships
+(`@testing-library`'s `queryByText` does not filter on the native `hidden`
+attribute the way `*ByRole` queries do), so the assertion was stale
+against the newly-built product.
+
+Closed at megabatch integration, exactly as predicted above: the
+`.not.toBeInTheDocument()` clause is now a `within`-scoped presence check
 inside the unscored criterion's own fieldset, mirroring this task's own
-test) once a lane owns that file. Recorded here per this task's
-narrowest-interpretation/flag-the-gap instruction; not fixed, since
-`Review.frame-verdicts.render.test.tsx` is outside w32-a's owned-files
-list.
+test. `app/src/pages/review/Scorecard.unscored390.render.test.tsx` carried
+the identical stale receipt and moved the same way. Neither product byte
+changed — the divergence was closed by DEC-889 wave-32 building the hint,
+and only the two receipts were stale.

@@ -143,12 +143,23 @@ function namesUniqueIndexOrOrdering(context: string): boolean {
 // or carries an explicit `.orderBy(...)`.
 const MAX_UNORDERED_LIMIT_ONE = 0;
 
+// DEC-558: "The decision registry is prose ABOUT code and is never scanned
+// AS code -- the .limit(1) total-order population excludes
+// src/decisions-data/". The registry's entries are string constants whose
+// TEXT quotes the very patterns this file hunts for, so scanning them reads
+// a decision's own description of a rule as an instance of breaking it --
+// DEC_558 itself, whose prose contains the literal ".limit(1)", is the
+// self-referential proof. Excluded by directory name here rather than at
+// the SRC_ROOT call site so the rule holds for every walk in this file.
+const REGISTRY_PROSE_DIR = "decisions-data";
+
 function listSourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
+      if (entry === REGISTRY_PROSE_DIR) continue;
       out.push(...listSourceFiles(full));
     } else if (
       (entry.endsWith(".ts") || entry.endsWith(".tsx")) &&

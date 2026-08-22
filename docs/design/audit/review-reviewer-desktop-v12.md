@@ -1,9 +1,10 @@
 # Review v12 DESKTOP (1600) reviewer-facing frames — per-frame render verdicts (w26-e)
 
-4 of Review's 8 desktop frames — the four v12m-w23-d's PlanEditor-family
-ledger names as not its own ("a later wave's reviewer-facing-family lane
-owns those"). This file is that lane's audit doc; its sibling render
-receipts live in
+4 of Review's 8 desktop frames. Per DEC-976 a per-frame verdict belongs to
+whichever file actually renders and asserts that frame, so coverage is
+partitioned by file: the PlanEditor-family ledger (`v12m-w23-d`, DEC-976)
+records the other four as not its own, and this file is the audit doc for
+the reviewer-facing four. Its sibling render receipts live in
 `app/src/pages/Review-reviewer.desktop-frame-verdicts.render.test.tsx`.
 
 STRICTLY MEASUREMENT ONLY (DEC-651 wave-26): every row below was RENDERED

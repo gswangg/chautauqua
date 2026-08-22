@@ -2,12 +2,17 @@
 
 **Coverage: 3 of Contacts' 12 desktop frames.** This file owns the three
 directory/record frames waves 23-25 did NOT claim: `:28` "Directory · 1600",
-`:229` "Contact · drawer", `:808` "New contact". Sibling lane `v12m-w23-g`
-owns the other four rendered so far — `:312` (Duplicates), `:352`
-(Segments), `:617` (Pipeline), `:720` (Import CSV) — per its own coverage
-line in `contacts-desktop-v12.md`. The remaining five desktop frames in
-`docs/design/Chautauqua Contacts.dc.html` are still unclaimed by any
-per-frame render-verdict lane.
+`:229` "Contact · drawer", `:808` "New contact".
+
+Per DEC-976, a per-frame verdict is owned by whichever file actually
+renders and asserts that frame, so coverage is partitioned by file rather
+than by whoever happened to write it: `v12m-w23-g` (DEC-976) records the
+other four rendered so far — `:312` (Duplicates), `:352` (Segments),
+`:617` (Pipeline), `:720` (Import CSV) — in its own coverage line in
+`contacts-desktop-v12.md`. The remaining five desktop frames in
+`docs/design/Chautauqua Contacts.dc.html` carry no per-frame render
+verdict in any file; this coverage line states that, and claims nothing
+about when one might appear.
 
 Per-frame render VERDICTS, entered through the app's real routes
 (`ContactsPage` at `/contacts`) and asserted against jsdom DOM
