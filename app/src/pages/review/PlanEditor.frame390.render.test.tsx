@@ -147,6 +147,9 @@ afterEach(() => {
 });
 
 describe('Plan editor · 390 frame citations (Chautauqua Review.dc.html:594-673, strict form)', () => {
+  // docs/design/Chautauqua Review.dc.html:596 `        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Review</a>`
+  // -- fully-receipted in-body citation (DEC-808 header-block pay-for-it):
+  // the `verbatimLine` call below reads the design file itself.
   it(':596 back link "‹ Review"', () => {
     verbatimLine(
       596,

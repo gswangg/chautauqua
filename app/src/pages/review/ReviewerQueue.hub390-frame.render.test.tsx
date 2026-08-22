@@ -81,6 +81,9 @@ afterEach(() => {
 });
 
 describe('v12 frame verdict: Chautauqua Review.dc.html:793 "Your plans · /review" (390 reviewer hub, task w29-i)', () => {
+  // docs/design/Chautauqua Review.dc.html:793 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+  // -- fully-receipted in-body citation (DEC-808 header-block pay-for-it):
+  // the `verbatimLine` call below reads the design file itself.
   it('frame caption + drawn-literal citations (DEC-967 verbatimLine)', () => {
     verbatimLine(
       793,

@@ -198,6 +198,12 @@ describe('frame :934-979 "Scorecard · a criterion unscored" -- first markup-lev
     expect(screen.getByRole('link', { name: '‹ Wave 2 queue' })).toBeInTheDocument();
   });
 
+  // docs/design/Chautauqua Review.dc.html:942 `          <span style="font-size:14px; font-weight:700; line-height:1.4">One criterion still needs a score</span>`
+  // -- a fully-receipted in-body citation paying for the :934-979
+  // header-block scope declared above (DEC-808): the `verbatimLine(942, ...)`
+  // call two lines below reads the design file itself and fails this
+  // OWNING test if the frame is re-cut, which the comment quote alone
+  // cannot do (DEC-976 wave-107 helper-credit shape).
   it(':942/:943 the unscored refusal band renders both the heading and the explanation sentence, byte-for-byte off the frame\'s own copy', async () => {
     verbatimLine(942, '          <span style="font-size:14px; font-weight:700; line-height:1.4">One criterion still needs a score</span>');
     verbatimLine(
