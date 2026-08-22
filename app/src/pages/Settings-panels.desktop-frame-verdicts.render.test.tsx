@@ -254,10 +254,12 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       // props.
       const editLink = await screen.findByRole('link', { name: 'Edit' });
       fireEvent.click(editLink);
-      await screen.findByRole('heading', { name: 'Editing · AI track sessions', level: 2 });
+      await screen.findByRole('heading', { name: 'AI track sessions', level: 1 });
     }
 
-    it('DIVERGES: the frame\'s H1 is the embed\'s own name ("AI track sessions"); the tree heads the edit form "Editing · <name>" instead', async () => {
+    // w7-b/DEC-728 (wave-7 amendment): the H1 is now the embed's own name,
+    // matching the frame -- no more "Editing · <name>" h2.
+    it('MATCHES: the frame\'s H1 is the embed\'s own name ("AI track sessions"), with the back link and On status above/beside it', async () => {
       verbatimLine(
         1021,
         '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Settings · editing one saved embed</span>',
@@ -266,16 +268,22 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       // docs/design/Chautauqua Settings.dc.html:1047 --
       // `<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>`
       verbatimLine(1047, '              <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>');
-      expect(screen.queryByRole('heading', { name: 'AI track sessions', level: 1 })).not.toBeInTheDocument();
+      const heading = screen.getByRole('heading', { name: 'AI track sessions', level: 1 });
+      expect(heading).toBeInTheDocument();
+      const panel = heading.closest('.chq-embeds-panel') as HTMLElement;
+      expect(within(panel).getByRole('link', { name: '‹ Public pages' })).toBeInTheDocument();
+      expect(within(panel).getByText('On')).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s footer is "Turn this embed off" + Cancel + Save changes; the tree ships only a Save-changes primary -- no Cancel, no off-switch', async () => {
+    // w7-b/DEC-728 (wave-7 amendment): the footer now carries all three
+    // frame-drawn controls.
+    it('MATCHES: the frame\'s footer is "Turn this embed off" + Cancel + Save changes', async () => {
       await driveIntoEmbedEdit();
       // docs/design/Chautauqua Settings.dc.html:1097 --
       // `<a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Turn this embed off</a>`
       verbatimLine(1097, '            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Turn this embed off</a>');
-      expect(screen.queryByRole('link', { name: 'Turn this embed off' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Turn this embed off' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
     });
 

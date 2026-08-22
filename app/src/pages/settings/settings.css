@@ -817,6 +817,43 @@
   flex-direction: column;
 }
 
+/* w7-b/DEC-728 (:1030-1036): the editing view's own head, replacing the
+   at-rest .chq-settings-panel h2 eyebrow -- a "‹ Public pages" back link
+   stacked above an H1 that IS the embed's own name, with a right-flushed
+   On/Off status sharing the row's own baseline. */
+.chq-settings-embed-edit-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.chq-settings-embed-edit-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-settings-embed-edit-head h1 {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.chq-settings-embed-back {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-settings-embed-edit-status {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 
 /* w15-e/DEC-691, w5-e amendment: People and roles -- Chautauqua Settings.dc.html
    :978-1001 4-track row (identity, role, scope, actions). */
