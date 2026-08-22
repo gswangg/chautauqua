@@ -116,13 +116,20 @@ describe("GET /portal/profile — current headshot preview", () => {
     expect(html).not.toContain('alt=""');
   });
 
-  it("shows a no-headshot placeholder when none is on file", async () => {
+  // DEC-576 wave-21 clause (c): the redundant "No headshot uploaded yet."
+  // paragraph the frame does not draw was deleted -- the pick label's own
+  // text ("Add a headshot" vs "Replace", clause (b)) now carries that state.
+  // The empty-headshot branch renders the frame's hatched empty avatar
+  // circle instead (a bare div, no <img>).
+  it("shows the empty avatar placeholder (no paragraph) when none is on file", async () => {
     currentProfile = PROFILE_NO_HEADSHOT;
     const app = buildApp();
     const res = await app.request("/portal/profile");
     const html = await res.text();
     expect(html).not.toContain("<img");
-    expect(html).toContain("No headshot uploaded yet.");
+    expect(html).toContain('<div class="chq-portal-avatar"></div>');
+    expect(html).not.toContain("No headshot uploaded yet.");
+    expect(html).toContain(">Add a headshot<input");
   });
 });
 
