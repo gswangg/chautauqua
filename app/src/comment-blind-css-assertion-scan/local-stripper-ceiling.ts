@@ -104,4 +104,15 @@
 // (forms-phone-390) and 6f0b5d48 (contacts head-band-face / rule-builder /
 // rule-chip-dismiss) all land inside this batch. Lowered 88 -> 86 from the
 // re-measured number, never by arithmetic on the batch size.
+// v12m-w6-f (wave-6 amendment, DEC-374/DEC-613): measured RED at this
+// branch's tree (forced -1, offender list read back) before any change: 87,
+// one above the declared 86 -- another lane's local stripper landed without
+// lowering this constant. Migrated one file to the shared helper:
+// test/wordmark-optical-nudge.scan.test.ts, whose own local `stripComments`
+// was the same two-line naive `.replace(/\/\*[\s\S]*?\*\//g, '')` regex
+// this ratchet exists to drain. Every assertion in the file still passed
+// once routed through the real stripper -- no vacuous receipt was found.
+// Re-measured offender count after conversion: 86, confirmed by forcing
+// this ceiling to -1 again and reading the offender list (the converted
+// file absent). Ceiling lowered to match: 87(measured) -> 86.
 export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 86;

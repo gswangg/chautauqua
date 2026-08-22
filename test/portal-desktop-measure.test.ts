@@ -12,11 +12,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const THEME = readFileSync(join(__dirname, "..", "src", "views", "theme.ts"), "utf8");
-const PORTAL_CSS = readFileSync(
-  join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"),
-  "utf8",
+const PORTAL_CSS = stripCssComments(
+  readFileSync(join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"), "utf8"),
 );
 
 /** Extracts a top-level (not inside any @media block) rule's declaration

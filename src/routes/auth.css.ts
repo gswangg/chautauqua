@@ -698,9 +698,10 @@ ${BARE_PAGE_CSS}
       gap: 14px;
     }
 
-    /* DEC-393 wave-142 (task w17-e): "Submit a talk ›" / "Browse the
-       sessions ›" (LoginPage) and "Log in ›" (the expired-claim bare page)
-       are standalone nav links inside .chq-auth-footer-links, not a
+    /* DEC-393 wave-142 (task w17-e): each of LoginPage's two chevron-suffixed
+       .chq-auth-footer-links nav links (the CFP link and the sessions
+       link), plus the expired-claim bare page's own such link, is a
+       standalone nav link inside .chq-auth-footer-links, not a
        sentence phrase -- DEC-393's real-floor grammar (min-height, centred
        flex, non-zero horizontal padding). The existing
        .chq-auth-footer-links a rule above already carries the 44px
@@ -719,9 +720,10 @@ ${BARE_PAGE_CSS}
        phone-tap-target-ssr-classless-anchor.scan.test.ts's flex-centred
        lens only reads rules INSIDE an <=700px block, so an unconditional
        base rule is invisible to it even though it reaches every width.
-       "Submit a talk ›" / "Browse the sessions ›" (LoginPage) and
-       "Log in ›" (the expired-claim bare page) are each the sole content
-       of their own row inside .chq-auth-footer-links, not a sentence
+       each of LoginPage's two chevron-suffixed footer nav links (the CFP
+       link and the sessions link), plus the expired-claim bare page's own
+       such link, is the sole content of its own row inside
+       .chq-auth-footer-links, not a sentence
        phrase, so DEC-393's standalone disposition (real floor) applies --
        restated here as the literal \`display: flex\` token the scan parses,
        same selector, DEC-385 append-only (the base rule's inline-flex

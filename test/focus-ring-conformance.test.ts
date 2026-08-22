@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 // DEC-409: every interactive element gets a designed focus ring — 2px olive
 // outline, 2px offset — via `:focus-visible`, on both stylesheet roots
@@ -133,11 +134,21 @@ describe("focus ring conformance (DEC-409)", () => {
   it("no scanned stylesheet silences the focus ring with `outline: none` or `outline: 0`", () => {
     const violations: string[] = [];
     for (const file of scannedFiles) {
-      const src = readFileSync(file, "utf8");
+      const src = stripCssComments(readFileSync(file, "utf8"));
       if (src.includes("outline: none") || src.includes("outline: 0")) {
         violations.push(file);
       }
     }
     expect(violations, `banned outline suppression found in: ${violations.join(", ")}`).toEqual([]);
+  });
+
+  // Positive control: the predicate above must still catch a REAL
+  // `outline: none` that isn't inside a comment -- proves stripCssComments
+  // doesn't mask a genuine violation, since no scanned file currently has one.
+  it("positive control: a real (non-commented) `outline: none` is still caught", () => {
+    const src = stripCssComments(
+      "/* Never `outline: none` here */\n.chq-example:focus-visible { outline: none; }",
+    );
+    expect(src.includes("outline: none")).toBe(true);
   });
 });

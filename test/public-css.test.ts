@@ -8,10 +8,15 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import { validAccent } from "../src/routes/public/shell";
-import { PUBLIC_CSS } from "../src/routes/public/public.css";
-import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
-import { THEME_CSS } from "../src/views/theme";
+import { PUBLIC_CSS as PUBLIC_CSS_RAW } from "../src/routes/public/public.css";
+import { AGENDA_CSS as AGENDA_CSS_RAW } from "../src/routes/public/css/agenda.css";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
 import type { AppEnv } from "../src/server/env";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const PUBLIC_CSS = stripCssComments(PUBLIC_CSS_RAW);
+const AGENDA_CSS = stripCssComments(AGENDA_CSS_RAW);
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 function makeChain(rows: unknown[]) {
   const chain: any = {

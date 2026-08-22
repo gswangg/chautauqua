@@ -96,4 +96,24 @@
 // receipt (a comment-satisfied assertion) was found in this batch.
 // Ceiling lowered by exactly 1, 33 -> 32; v12m-w13-rf drains N more of the
 // same 38 in this batch; the merge train re-measures.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 29;
+// v12m-w6-f (wave-6 amendment, DEC-374/DEC-518): measured RED at this
+// branch's tree (forced -1, offender list read back) before any change: 34,
+// not the 29 the ceiling declared -- other lanes' phone-frame/tier2-gap
+// receipts landed without touching this constant (same shape as the
+// sibling LOCAL_CSS_COMMENT_STRIPPER_CEILING drift below), so re-derive
+// from the real number, never trust the declared value. Migrated 6 files
+// to route their CSS source through the shared, string-aware
+// test/helpers/strip-css-comments.ts instead of asserting raw text:
+// app/src/shell-geometry.test.ts, test/theme.test.ts,
+// test/portal-desktop-measure.test.ts, test/public-css.test.ts,
+// test/ssr-public-measure.test.ts, app/src/phone-page-scaffold.test.ts
+// (the last replacing a local naive `.replace(/\/\*[\s\S]*?\*\//g, '')`
+// with the shared call). Every assertion in all six still passed once
+// routed through the real stripper -- no vacuous (comment-satisfied)
+// receipt was found in this batch, and each converted file's own suite
+// was re-run standalone to confirm no verdict changed. Re-measured
+// offender count after conversion: 28, exactly 34-6, confirmed by forcing
+// this ceiling to -1 again and reading the offender list (the six
+// converted files absent). Ceiling lowered to match: 29 -> 28 (below the
+// stale 29, since the real pre-drain count of 34 was already above it).
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 28;

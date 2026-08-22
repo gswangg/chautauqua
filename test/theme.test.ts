@@ -4,7 +4,10 @@
 // attribute-selector convention (see src/routes/public/shell.tsx:65-72).
 
 import { describe, expect, it } from "vitest";
-import { THEME_CSS } from "../src/views/theme";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 const TOKEN_NAMES = [
   "--chq-paper",
