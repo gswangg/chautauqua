@@ -404,7 +404,21 @@ function findGrepNegativeOffenders(): GrepNegativeOffender[] {
 // true -- this grammar grades the row's own literal search, not its
 // nuance, by design (DEC-518's self-describing-predicate principle: no
 // allowlist for "but the row meant something narrower").
-const AUDIT_GREP_NEGATIVE_STALE_CEILING = 1;
+//
+// DEC-808 wave-24 amendment, clause 2: re-measured (forced to -1, offenders
+// printed, read back) -- the repair lane that closed
+// `frame-caption-residue-v12.md:55` emptied the population to zero grep-
+// negative claim LINES entirely (not merely zero offenders among a
+// surviving population), so the ceiling is lowered from 1 to its measured
+// value, 0. Registered in scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE
+// (out-of-scope: this is DEC-808's own governance instrument, not a v12
+// frame/390-geometry conformance fact). The BELOW-direction companion the
+// header above named as owed is the second `it` immediately below the
+// existing ratchet `it`, using the throw-message idiom
+// test/campaign-ratchet-two-sided.scan.test.ts's classifier recognises (a
+// thrown Error naming the exact `export const NAME = ${measured};`
+// replacement line).
+const AUDIT_GREP_NEGATIVE_STALE_CEILING = 0;
 
 let _normalizedSourceBlobs: string[] | null = null;
 function normalizedSourceBlobs(): string[] {
@@ -609,14 +623,26 @@ describe("audit-gap-row-staleness", () => {
 });
 
 describe("audit-gap-row-staleness: grep-negative claims (DEC-069 wave-19 clause (b))", () => {
-  it("VACUOUS-POPULATION TRIPWIRE: the real corpus contains a non-zero number of grep-negative claim lines (path + needle + zero-hit phrase)", () => {
-    let total = 0;
-    for (const abs of auditMarkdownFiles()) {
-      const rel = relative(REPO_ROOT, abs);
-      const text = readFileSync(abs, "utf-8");
-      total += extractGrepNegativeClaims(rel, text).length;
-    }
-    expect(total).toBeGreaterThan(0);
+  // DEC-808 wave-24 amendment, clause 1: the LIVE-corpus tripwire that used
+  // to sit here ("the real corpus contains a non-zero number of
+  // grep-negative claim lines") is RETIRED, not weakened. The repair lane
+  // that closed AUDIT_GREP_NEGATIVE_STALE_CEILING's last offender
+  // (docs/design/audit/frame-caption-residue-v12.md:55, named by the
+  // ceiling's own comment below) rewrote that row RESOLVED, and no other
+  // audit file has ever carried this grammar's shape -- the live corpus now
+  // measures exactly zero grep-negative claim lines. A tripwire asserting
+  // ">0 on the live tree" therefore fails for SUCCEEDING: the population it
+  // grades emptied by design, not by drift. Per this task's own brief, an
+  // assertion nothing can falsify (toBeGreaterThanOrEqual(0)) is worse than
+  // a deleted one, so this describe block keeps proving the detector is not
+  // vacuous the only honest way left: against the verbatim pre-repair
+  // fixture text the sibling `it` immediately below already carries. That
+  // sibling `it` (unchanged) is this tripwire's replacement.
+  it("VACUOUS-POPULATION TRIPWIRE: the extractor still returns a non-zero number of grep-negative claim lines on the verbatim pre-repair fixture text (the live corpus itself now measures zero -- see the retirement note above)", () => {
+    const fixtureLine =
+      "| Chautauqua Comms.dc.html | 769 | \"...\" | Re-verified: `session_time` is a real merge field (`src/mail/render.ts`'s `MERGE_FIELDS`/`MERGE_FIELD_SAMPLES`, DEC-660 wave-142) and `src/routes/comms/compose-core.ts:347-349` resolves it per-recipient from the same `icsScheduleMap` the compose table's Slot column uses, `null` for an unscheduled recipient. Still missing: the compose-time warning **banner** naming `{session_time}` usage against unscheduled recipients — grepped `app/src/pages/comms/ComposeWizard.tsx` for any `session_time`/banner reference naming it: zero hits; the nearest analogue (`{feedback}`-needs-a-plan reveal) is a different mechanism for a different merge field. |";
+    const claims = extractGrepNegativeClaims("fixture.md", fixtureLine);
+    expect(claims.length).toBeGreaterThan(0);
   });
 
   it("VACUOUS-POPULATION TRIPWIRE: the real fossil row this task was named for (frame-caption-residue-v12.md:55, quoted verbatim) is extracted with the correct nearest path/needle pairing, ignoring earlier unrelated backtick citations on the same row", () => {
@@ -669,5 +695,22 @@ describe("audit-gap-row-staleness: grep-negative claims (DEC-069 wave-19 clause 
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(AUDIT_GREP_NEGATIVE_STALE_CEILING);
+  });
+
+  // DEC-808 wave-24 amendment, clause 2: BELOW-direction companion (the
+  // header above named this as owed). Fails when the measured offender
+  // count drops BELOW the pinned ceiling, forcing the constant down in the
+  // same batch that landed the fix rather than letting it sit stale.
+  it("ratchet (BELOW-direction companion): the ceiling is not stale -- the measured grep-negative offender count must not have dropped below AUDIT_GREP_NEGATIVE_STALE_CEILING without the constant being lowered to match", () => {
+    const offenders = findGrepNegativeOffenders();
+    if (offenders.length < AUDIT_GREP_NEGATIVE_STALE_CEILING) {
+      throw new Error(
+        `${offenders.length} grep-negative offender(s) measured, below AUDIT_GREP_NEGATIVE_STALE_CEILING = ` +
+          `${AUDIT_GREP_NEGATIVE_STALE_CEILING} -- the ceiling is stale (a fix landed since it was last set). ` +
+          `Lower it to match:\n` +
+          `  const AUDIT_GREP_NEGATIVE_STALE_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(AUDIT_GREP_NEGATIVE_STALE_CEILING);
   });
 });
