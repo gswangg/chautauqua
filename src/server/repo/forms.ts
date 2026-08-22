@@ -9,9 +9,11 @@ import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/typ
 import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
 import { parseFormTracks } from "../../forms/form-tracks";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
-import { DEC_050, DEC_398, DEC_592 } from "../../decisions";
+import { DEC_050, DEC_398, DEC_592, DEC_909 } from "../../decisions";
 import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
 import { getFieldOptionsByRole } from "./form-roles";
+import { isUniqueViolation } from "./constraints";
+import { ApiError } from "../http";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
 void DEC_592; // wave-10 amendment: createDefaultForm mints the two role-tagged
@@ -345,19 +347,37 @@ export interface FormPatch {
   tracks?: string[] | null;
 }
 
+// Compile-checked dependency marker: patchForm below translates
+// form_event_id_title_idx's unique-violation into a named ApiError, the
+// same uniqueIndex CONTRACT DEC-909's wave-26 amendment also gives
+// insertActiveParticipants above (src/server/repo/participants.ts) --
+// neither door raises a raw 500 for a write its own schema forbids.
+void DEC_909;
+
 export async function patchForm(db: Db, formId: string, patch: FormPatch): Promise<FormRow> {
-  await db
-    .update(schema.form)
-    .set({
-      title: patch.title !== undefined ? patch.title : undefined,
-      description: patch.intro !== undefined ? patch.intro : undefined,
-      openDate: patch.openDate !== undefined ? (patch.openDate === null ? null : new Date(patch.openDate)) : undefined,
-      closeDate: patch.closeDate !== undefined ? (patch.closeDate === null ? null : new Date(patch.closeDate)) : undefined,
-      tracksJson:
-        patch.tracks !== undefined ? (patch.tracks && patch.tracks.length > 0 ? JSON.stringify(patch.tracks) : null) : undefined,
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.form.id, formId));
+  try {
+    await db
+      .update(schema.form)
+      .set({
+        title: patch.title !== undefined ? patch.title : undefined,
+        description: patch.intro !== undefined ? patch.intro : undefined,
+        openDate: patch.openDate !== undefined ? (patch.openDate === null ? null : new Date(patch.openDate)) : undefined,
+        closeDate: patch.closeDate !== undefined ? (patch.closeDate === null ? null : new Date(patch.closeDate)) : undefined,
+        tracksJson:
+          patch.tracks !== undefined ? (patch.tracks && patch.tracks.length > 0 ? JSON.stringify(patch.tracks) : null) : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.form.id, formId));
+  } catch (err) {
+    // form_event_id_title_idx (migrations/0033): UNIQUE(event_id, title).
+    // Same sibling shape as src/server/repo/tasks/crud.ts's "task.title"
+    // handling -- translate to a named field-level refusal instead of
+    // letting a raw DrizzleQueryError reach the CFP settings panel as a 500.
+    if (isUniqueViolation(err, "form.title")) {
+      throw new ApiError("invalid", "A form with this title already exists for this event", { title: "Already in use" });
+    }
+    throw err;
+  }
 
   const updated = await findFormById(db, formId);
   if (!updated) throw new Error(`form ${formId} not found after update`);

@@ -73,9 +73,29 @@ function statusCountingDb() {
     },
     insert(table: unknown) {
       return {
-        values: async (vals: unknown) => {
-          if (table === schema.submission) submissions.push(vals as { id: string });
-          return undefined;
+        values: (vals: unknown) => {
+          const list = Array.isArray(vals) ? (vals as Record<string, unknown>[]) : [vals as Record<string, unknown>];
+          const write = async () => {
+            if (table === schema.submission) submissions.push(...(list as { id: string }[]));
+            return undefined;
+          };
+          return {
+            then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+            // DEC-909 (wave-26 amendment): insertActiveParticipants now
+            // chains .onConflictDoNothing(...).returning(...) on its
+            // insert -- this fake has no uniqueness of its own, so it
+            // always "succeeds" and returns one row per item in the
+            // batch, matching real drizzle's .returning() shape.
+            onConflictDoNothing: (_target?: unknown) => {
+              const p = write();
+              return Object.assign(p, {
+                returning: async (_sel?: unknown) => {
+                  await p;
+                  return list.map((v) => ({ id: (v as any).id, order: 0 }));
+                },
+              });
+            },
+          };
         },
       };
     },
@@ -144,9 +164,24 @@ describe("pushContactsToEvent (DEC-357, DEC-810 amendment wave 59): ONE session 
       insert(table: unknown) {
         const real = (db as any).insert(table);
         return {
-          values: async (vals: any) => {
-            if (table === schema.submission) insertedTitles.push(vals.title);
-            return real.values(vals);
+          values: (vals: any) => {
+            const list = Array.isArray(vals) ? vals : [vals];
+            const write = async () => {
+              if (table === schema.submission) insertedTitles.push(vals.title);
+              return real.values(vals);
+            };
+            return {
+              then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+              onConflictDoNothing: (_target?: unknown) => {
+                const p = write();
+                return Object.assign(p, {
+                  returning: async (_sel?: unknown) => {
+                    await p;
+                    return list.map((v: any) => ({ id: v.id, order: 0 }));
+                  },
+                });
+              },
+            };
           },
         };
       },
@@ -175,12 +210,29 @@ describe("pushContactsToEvent (DEC-357, DEC-810 amendment wave 59): ONE session 
       insert(table: unknown) {
         const real = (db as any).insert(table);
         return {
-          values: async (vals: any) => {
-            if (table === schema.participant) {
-              const list = Array.isArray(vals) ? vals : [vals];
-              insertedParticipants.push(...list);
-            }
-            return real.values(vals);
+          values: (vals: any) => {
+            const list = Array.isArray(vals) ? vals : [vals];
+            const write = async () => {
+              if (table === schema.participant) insertedParticipants.push(...list);
+              return real.values(vals);
+            };
+            return {
+              then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+              // DEC-909 (wave-26 amendment): insertActiveParticipants now
+              // chains .onConflictDoNothing(...).returning(...) on its
+              // insert -- this fake has no uniqueness of its own, so it
+              // always "succeeds" and returns one row per item in the
+              // batch, matching real drizzle's .returning() shape.
+              onConflictDoNothing: (_target?: unknown) => {
+                const p = write();
+                return Object.assign(p, {
+                  returning: async (_sel?: unknown) => {
+                    await p;
+                    return list.map((v: any) => ({ id: v.id, order: v.order }));
+                  },
+                });
+              },
+            };
           },
         };
       },
@@ -419,9 +471,14 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
           onConflictDoNothing: (_target?: unknown) => {
             const p = write();
             return Object.assign(p, {
+              // DEC-909 (wave-26 amendment): insertActiveParticipants now
+              // reads .returning()'s row COUNT to detect a duplicate, so
+              // this fake (no uniqueness of its own) must return one row
+              // per item in the batch, not always a single row regardless
+              // of list length.
               returning: async (_sel?: unknown) => {
                 await p;
-                return [{ id: (vals as any).id, order: 0 }];
+                return list.map((v) => ({ id: (v as any).id, order: 0 }));
               },
             });
           },
