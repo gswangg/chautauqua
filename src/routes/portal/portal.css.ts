@@ -262,6 +262,12 @@ export const PORTAL_CSS = `
     line-height: 1.5;
     color: var(--chq-muted);
   }
+  /* tap-floor-exempt: composition -- this class only ever appears beside
+     the floored .chq-portal-standalone-link base (src/routes/portal/
+     preview.tsx renders \`class="chq-portal-standalone-link
+     chq-portal-preview-banner-link"\` on the one <a> that carries it) and
+     adds desktop right-alignment only; the phone 44px floor is
+     .chq-portal-standalone-link's, declared at the tail of this module. */
   .chq-portal-preview-banner-link {
     margin-left: auto;
     font-size: 13px;
@@ -337,6 +343,7 @@ export const PORTAL_CSS = `
      <input> stays inside the <label> so the label is the whole tap anchor;
      .chq-portal-headshot-pick-input below visually hides it the way
      app/src/pages/content/content.css's .chq-content-upload-input does. */
+  /* tap-floor-base-scope: DESIGN-RULINGS.md item 6 -- the portal has no separate desktop design, so this top-level min-height:44px is this control's only floor, restating the DEC-576 citation above in receipt form. */
   .chq-portal-headshot-pick {
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl-phone);
@@ -350,10 +357,9 @@ export const PORTAL_CSS = `
     cursor: pointer;
   }
   /* tap-floor-exempt: a visually-hidden input whose operable target is its
-     label -- never display:none, stays in the tab order and reachable by
-     keyboard via the <label> above, so the label supplies the whole tap
-     floor (same idiom as app/src/pages/content/content.css's
-     .chq-content-upload-input). */
+     own <label> above (.chq-portal-headshot-pick) -- never display:none,
+     stays in the tab order and reachable by keyboard, so the label
+     supplies the whole tap floor and this box itself carries none. */
   .chq-portal-headshot-pick-input {
     position: absolute;
     width: 1px;
@@ -1272,6 +1278,17 @@ ${EMPTY_PHONE_CSS}
     display: flex;
     align-items: center;
     padding-inline: 8px;
+  }
+
+  /* DEC-367 wave-24 amendment: .chq-portal-preview-banner's row is
+     display:flex; flex-wrap:wrap (base scope above), so at 390 the text
+     span and this link can already drop to their own line -- but the
+     link's own base-scope white-space:nowrap (added for the desktop
+     right-aligned single line) would still force IT to stay one line and
+     push the row wide if its text ever ran long. DEC-385 single-direction
+     override: let it wrap here, same as the row already does. */
+  .chq-portal-preview-banner-link {
+    white-space: normal;
   }
 }
 ${ERROR_STATES_PHONE_CSS}`;
