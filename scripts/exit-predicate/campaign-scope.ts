@@ -646,4 +646,13 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "this ledger's own join technique, not itself a v12 frame or 390-geometry conformance fact, the "
     + "same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
     + "(app/src/phone-hidden-drawn-text.scan.test.ts, DEC-725 wave-31 amendment).",
+  GATE_TIMEOUT_MARGIN_UNGUARDED_CEILING:
+    "measures HARNESS ROBUSTNESS -- how many `beforeAll`/`beforeEach`/`it` call sites carrying a "
+    + "KNOWN-SLOW marker comment (a hook/test a prior wave measured close to its effective vitest "
+    + "timeout under the mandate's maxWorkers:2/maxForks:2 machine-protection caps) lack an explicit "
+    + "numeric timeout argument -- a fact about whether the fast tier's OWN gate can silently time out "
+    + "under load, not a v12 frame or 390-geometry conformance fact about any screen the product "
+    + "draws. The fast tier is the only instrument that can ever supply the exit predicate's "
+    + "--suite-verified-sha, so this measures the gate's integrity, never product convergence "
+    + "(test/gate-timeout-margin.scan.test.ts, DEC-069 wave-35 amendment).",
 };
