@@ -661,6 +661,22 @@ export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = false;
  * docs/design/audit/public-390-interactive-offenders-v12.md). */
 export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
 
+/** DEC-808 wave-35 amendment: two-sided ratchet on the public/portal 390
+ * roster's CANDIDATE (non-exempt) half -- PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING
+ * above stays a mixed EXEMPT+CANDIDATE total kept OUT_OF_CAMPAIGN_SCOPE
+ * (a newly-derived population must not move the campaign's goalposts
+ * mid-convergence, wave-30's own rationale), but the CANDIDATE half is a
+ * defect count on a 390 route -- exactly what Tier 2 exists to close, the
+ * same disposition ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING already carries
+ * for its admin twin. MEASURED (DEC-967: never invented) by
+ * test/public-390-offender-roster.scan.test.ts, which parses
+ * docs/design/audit/public-390-interactive-offenders-v12.md's own bullet
+ * rows through classifyAdminMobileOffender (the SAME predicate the admin
+ * roster scan uses, DEC-613) with the exempt-token set derived from this
+ * tree's receipts, never from the roster's own printed
+ * "candidate defects: N" prose line -- 22. */
+export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 22;
+
 /** DEC-808 wave-30 amendment clause (d), the vacuity clause: a route whose
  * NARROW MOBILE_CONTROL_SELECTOR population produced zero matched elements
  * (minControlHeight === null) has been passing the BLOCKING public mobile

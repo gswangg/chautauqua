@@ -24,21 +24,37 @@
 //     the same way
 //   - a vacuity tripwire: the parsed roster is non-empty, so a row-format
 //     drift that silently parses to zero rows cannot pass by accident.
-import { readFileSync } from "node:fs";
+//
+// DEC-808 wave-35 amendment adds a second describe block below (appended,
+// the original wave-30 block above untouched): the roster's mixed
+// EXEMPT+CANDIDATE total above is graded (PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
+// OUT_OF_CAMPAIGN_SCOPE), but its CANDIDATE half never had a campaign
+// sibling at all. The wave-35 block re-classifies every offender line
+// through classifyAdminMobileOffender (the SAME predicate the admin roster
+// scan uses, DEC-613) with the exempt-token set derived from this tree's
+// receipts (DEC-180), and grades the CANDIDATE count against
+// PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING two-sided -- never against the
+// roster's own printed "candidate defects: N" prose, which is a sibling
+// reader of the constant, not a second independently-typed source.
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { DEC_180, DEC_808 } from "../src/decisions";
+import { DEC_180, DEC_613, DEC_808 } from "../src/decisions";
 import { MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
 import {
+  PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING,
   PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
   PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR,
+  classifyAdminMobileOffender,
 } from "../scripts/render-sweep-lib";
+import { allCssFiles, hasExemptionForToken } from "../app/src/phone-tap-target-scan/core";
 
 void DEC_808; // this scan's whole reason to exist: grading the public/portal 390 population for the first time
 void DEC_180; // every route named below is a REAL member of MOBILE_ROUTE_MANIFEST, never hand-listed
+void DEC_613; // classifyAdminMobileOffender is imported, never re-authored here (wave-35 amendment)
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -169,5 +185,176 @@ describe("public-390-offender-roster (DEC-808 wave-30 amendment)", () => {
         `the roster's recorded vacuous-narrow count dropped to ${RECORDED_VACUITY.vacuous}. Lower the constant in ` +
         `scripts/render-sweep-lib.ts in the same commit that closed the gap.`,
     ).toBeGreaterThanOrEqual(PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-808 wave-35 amendment: the CANDIDATE-defect half, mirroring
+// test/admin-390-offender-roster.scan.test.ts's own classification block.
+// ---------------------------------------------------------------------------
+
+/** One offender line from the roster's `## /route` + bullet-list shape
+ * (formatAdminMobileOffenderLedger's own output, via
+ * formatPublicMobileOffenderRoster). Reads only the selector/width/height
+ * this block needs to re-derive a classification -- the roster's own
+ * printed `**EXEMPT**`/`**CANDIDATE**` label is read by nobody here; this
+ * block re-classifies from scratch and only checks the CANDIDATE total
+ * against PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING. */
+interface RosterOffenderLine {
+  readonly route: string;
+  readonly selector: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+function parseRosterOffenderLines(markdown: string): RosterOffenderLine[] {
+  const lines = markdown.split("\n");
+  const rows: RosterOffenderLine[] = [];
+  let route = "";
+  const routeRe = /^##\s+(\/\S*)/;
+  const offenderRe = /^-\s+(.+?)\s+w=(\d+)px\s+h=(\d+)px\s+—\s+\*\*(EXEMPT|CANDIDATE)\*\*/;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const routeMatch = routeRe.exec(trimmed);
+    if (routeMatch) {
+      route = routeMatch[1] ?? "";
+      continue;
+    }
+    const offenderMatch = offenderRe.exec(trimmed);
+    if (!offenderMatch) continue;
+    rows.push({
+      route,
+      selector: offenderMatch[1] ?? "",
+      width: Number(offenderMatch[2]),
+      height: Number(offenderMatch[3]),
+    });
+  }
+  return rows;
+}
+
+const OFFENDER_LINES = parseRosterOffenderLines(ROSTER_TEXT);
+
+/** Every *.ts/*.tsx file under `root` (test files excluded) -- the src/**
+ * counterpart to core.ts's allCssFiles, since some `tap-floor-exempt:`
+ * receipts (e.g. `.chq-wordmark`, DEC-382) live inside `src/**` TS/TSX
+ * modules' embedded CSS template strings, not `.css` files. Byte-for-byte
+ * the same helper test/admin-390-offender-roster.scan.test.ts defines --
+ * kept as its own copy here rather than exported from a shared module,
+ * since both callers already read it identically off the same tree and a
+ * shared export would touch that in-flight test file for a lane that only
+ * needs to read, never widen, its behaviour. */
+function allSrcTsSourceFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
+    if (entry.name.includes(".test.")) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** DEC-996/DEC-180: derives the exempt class-token set for the given
+ * candidate tokens by walking the tree's own receipts -- never a hand-
+ * written array. Same derivation the admin roster scan runs, over this
+ * roster's own selector population. */
+function deriveExemptSelectors(candidateTokens: ReadonlySet<string>): Set<string> {
+  const sourceTexts = [
+    ...allCssFiles(join(REPO_ROOT, "app", "src")),
+    ...allSrcTsSourceFiles(join(REPO_ROOT, "src")),
+  ].map((f) => readFileSync(f, "utf8"));
+
+  const exempt = new Set<string>();
+  for (const token of candidateTokens) {
+    if (sourceTexts.some((text) => hasExemptionForToken(text, token))) exempt.add(token);
+  }
+
+  if (candidateTokens.has("chq-check")) {
+    const stylesCss = readFileSync(join(REPO_ROOT, "app", "src", "styles.css"), "utf8");
+    if (/\.chq-check-hit\s*\{[^}]*min-height\s*:\s*44px/.test(stylesCss)) exempt.add("chq-check");
+  }
+
+  return exempt;
+}
+
+function candidateTokensOf(rows: readonly RosterOffenderLine[]): Set<string> {
+  const tokens = new Set<string>();
+  for (const row of rows) {
+    for (const m of row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)) tokens.add(m[0].slice(1));
+  }
+  return tokens;
+}
+
+function classifyRows(
+  rows: readonly RosterOffenderLine[],
+  exemptTokens: ReadonlySet<string>,
+): { candidateCount: number; candidateRows: string[] } {
+  let candidateCount = 0;
+  const candidateRows: string[] = [];
+  for (const row of rows) {
+    const line = `${row.selector} w=${row.width}px h=${row.height}px`;
+    const result = classifyAdminMobileOffender(line, exemptTokens);
+    if (result.classification === "CANDIDATE") {
+      candidateCount++;
+      candidateRows.push(`${row.route} ${row.selector}`);
+    }
+  }
+  return { candidateCount, candidateRows };
+}
+
+describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)", () => {
+  it("parses a non-empty set of offender lines (vacuity tripwire)", () => {
+    expect(OFFENDER_LINES.length).toBeGreaterThan(0);
+  });
+
+  it(
+    "the candidate-defect count this scan's own derivation measures is <= " +
+      "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING (two-sided, forced to -1 and read)",
+    () => {
+      const exemptTokens = deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES));
+      const { candidateCount, candidateRows } = classifyRows(OFFENDER_LINES, exemptTokens);
+
+      expect(candidateCount, `candidate rows: ${candidateRows.join(", ")}`).toBeLessThanOrEqual(
+        PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING,
+      );
+      expect(candidateCount, "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING is stale above the measured count").toBe(
+        PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING,
+      );
+    },
+  );
+
+  // Two-sided companion, restated in single-line form: the ratchet-two-sided
+  // enforcer reads `it` bodies through its own brace-matching mask and its
+  // direction regexes end `\s*\)`, which a multi-line pin with a trailing
+  // comma before the close paren cannot satisfy -- both directions are
+  // restated here in single-line form the enforcer reads, appended rather
+  // than weakening the pin above.
+  it("does not fall stale above PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING (two-sided companion)", () => {
+    const exemptTokens = deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES));
+    const { candidateCount } = classifyRows(OFFENDER_LINES, exemptTokens);
+    if (candidateCount < PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING) {
+      throw new Error(
+        `Measured ${candidateCount} candidate defects, below the declared ceiling of ` +
+          `${PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING}. A ratchet may only be LOWERED; replace the line:\n` +
+          `  export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = ${candidateCount};`,
+      );
+    }
+    expect(candidateCount).toBeLessThanOrEqual(PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING);
+    expect(candidateCount).toBeGreaterThanOrEqual(PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING);
+  });
+
+  it("synthetic control: an unreceipted selector classifies CANDIDATE, a receipted one classifies EXEMPT", () => {
+    const exemptTokens = deriveExemptSelectors(
+      new Set(["chq-wordmark", "chq-w35c-never-receipted-anywhere"]),
+    );
+    expect(exemptTokens.has("chq-w35c-never-receipted-anywhere")).toBe(false);
+    expect(
+      classifyAdminMobileOffender("a.chq-w35c-never-receipted-anywhere w=41px h=19px", exemptTokens),
+    ).toEqual({ classification: "CANDIDATE" });
+    expect(exemptTokens.has("chq-wordmark")).toBe(true);
+    expect(classifyAdminMobileOffender("a.chq-wordmark w=113px h=28px", exemptTokens)).toEqual({
+      classification: "EXEMPT",
+      receipt: "chq-wordmark",
+    });
   });
 });
