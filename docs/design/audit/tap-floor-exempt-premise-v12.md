@@ -6,7 +6,7 @@ real `/* tap-floor-exempt: ... */` (or JSX `{/* ... */}`) comment under
 scan-library directories, `app/src/phone-tap-target-scan/` and
 `app/src/phone-overflow-scan/`, whose prose ABOUT the token is not a real
 receipt — verified by hand against `app/src/phone-tap-target-scan/
-undeclared.ts:30`'s literal `<reason>` grammar placeholder). Measured: **98
+undeclared.ts`'s literal `<reason>` grammar placeholder). Measured: **98
 receipts** — 19 `composition`, 11 `inline-*`, 68 `other` (by the reason's own
 first word).
 
@@ -23,7 +23,7 @@ first word).
 `src/routes/public/css/agenda.css.ts` `.chq-pub-agenda-day-footer a` — the
 receipt previously argued only typography ("a 44px box would break the line
 box"). Rewritten to also name the load-bearing premise: `agenda.tsx:196`
-renders `<DaySwitcher>`, whose `.chq-pub-day-pill` anchors
+renders `<DaySwitcher`, whose `.chq-pub-day-pill` anchors
 (`src/routes/public/css/agenda.css.ts`, min-height:44px + flex +
 align-items:center + padding:0 8px) build their href from the same
 `agendaQs(current, {day})` helper with the same `nextDay`, reaching the

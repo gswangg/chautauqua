@@ -188,12 +188,16 @@ rule that a dependency on DEC-NNN must reference its constant).
 
 The words-only field-label ledger `desktop-field-width-v12.md`'s own
 Adjudications had named as missing has since landed (DEC-180 wave-24
-amendment, `test/frame-field-label.scan.test.ts`; population also carried
-in `docs/design/audit/frame-field-label-v12.md` and
-`docs/design/audit/drawn-field-label-v12.md`, DEC-613) and now counts this
-row directly: `docs/design/audit/frame-field-label-v12.md:130` grades
+amendment; `test/frame-field-label.scan.test.ts` and
+`docs/design/audit/frame-field-label-v12.md` are RETIRED pointers, and
+`test/drawn-field-label.scan.test.ts` with
+`docs/design/audit/drawn-field-label-v12.md` is the surviving instrument
+for this population, DEC-613) and now counts this
+row directly: `docs/design/audit/drawn-field-label-v12.md` grades
 `Chautauqua Comms.dc.html:102` "From which plan" against
-`app/src/pages/comms/ComposeWizard.tsx`. This document's own row above
+`app/src/pages/comms/ComposeWizard.tsx` (cited by bare path, never by
+line -- a coordinate written into a citation becomes a broken citation
+the moment the file moves, DEC-613/DEC-967). This document's own row above
 (`Comms.dc.html:102`) is the desktop verdict for the same field; the two
 are cross-checked, not duplicated.
 

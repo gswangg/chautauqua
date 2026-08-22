@@ -25,7 +25,7 @@ export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not
 export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
 export const DEC_439 = "The three measured SPEC §7 budget misses are stage-1 product defects, and each is fixed by shrinking what one request loads";
 export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmission's fail-loudly throws must not be laundered into SQL";
-export const DEC_441 = "Amendment (wave 7): The reminder preview renders a structured card built from the send's own parts — and its header is the SUBJECT, never a fabricated letterhead";
+export const DEC_441 = "Amendment (wave 32): the email shell's highlighted-fact block is drawn on every email the pack depicts, and the product ships none of them";
 export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
 export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
 export const DEC_444 = "The last WCAG AA offender is remedied by re-pointing the rule to --chq-muted; --chq-disabled's value and the contrast checker are both untouchable";
@@ -197,7 +197,7 @@ export const DEC_609 = "The content worklist is four columns: a row is a session
 export const DEC_610 = "Saving a view is a dialog like every other dialog, and on a phone the decision lives on the card";
 export const DEC_611 = "Overview names the public surfaces it produces, and links to them by the event's own slug";
 export const DEC_612 = "External record identity is one namespaced external_ref column per imported table, unique inside its own owner scope";
-export const DEC_613 = "Amendment (wave 29): a duplicate vocabulary living in a non-\`.test.\` helper is invisible to the ratchet built to catch it — the population is every module a test imports, not every test file";
+export const DEC_613 = "Amendment (wave 32): adopt the four drawn field labels the product still shortens or re-punctuates";
 export const DEC_614 = "Layer 2 (their REST API) is named in prose, never shown as a dead control";
 export const DEC_615 = "Auto-schedule reports a reason per unplaced session, from a closed vocabulary with one renderer";
 export const DEC_616 = "The contact drawer is a record, not a form: labelled facts, one history section, one action bar";
