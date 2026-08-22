@@ -63,7 +63,7 @@ const submissions = [
 const templatesById = new Map<string, { id: string; eventId: string; subject: string; bodyText: string }>();
 templatesById.set("tpl-foreign", { id: "tpl-foreign", eventId: "evt-other", subject: "Foreign", bodyText: "Nope" });
 
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
@@ -80,16 +80,24 @@ vi.mock("../src/server/repo/comms", async () => {
     loadIcsScheduleData: vi.fn(async () => new Map()),
     findTemplateById: vi.fn(async (_db: unknown, id: string) => templatesById.get(id) ?? null),
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (
+        _db: unknown,
+        eventId: string,
+        keys: { email: string; subject: string; bodyText?: string }[],
+        cutoffMs: number,
+      ) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              (k.bodyText ?? "") === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -112,9 +120,15 @@ vi.mock("../src/server/context", async () => {
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: vi.fn(async (attempt: { to: { email: string }; subject: string }) => {
+      send: vi.fn(async (attempt: { to: { email: string }; subject: string; text: string }) => {
         sentMails.push({ to: attempt.to.email, subject: attempt.subject });
-        loggedRows.push({ eventId: EVENT_ID, toEmail: attempt.to.email, subject: attempt.subject, sentAt: Date.now() });
+        loggedRows.push({
+          eventId: EVENT_ID,
+          toEmail: attempt.to.email,
+          subject: attempt.subject,
+          bodyText: attempt.text,
+          sentAt: Date.now(),
+        });
       }),
     })),
   };
@@ -171,7 +185,10 @@ describe("POST /api/v1/events/:eventId/compose/send — MINT ONLY WHAT SHIPS (DE
     vi.setSystemTime(t0);
 
     // First send: no {portal_link}, mints nothing, just logs the send so
-    // the second call's cross-call dedupe fires.
+    // the second call's cross-call dedupe fires. DEC-936 (wave-17
+    // amendment): stage 2 now keys on body too, so the second send below
+    // uses the SAME bodyText template — a different rendered body would be
+    // a genuinely different message and must NOT dedupe.
     const first = await send(app, kv, { submissionIds: ["sub-1"], subject: "Reminder", bodyText: "Hi {speaker_name}." });
     expect(first.status).toBe(200);
 
@@ -184,7 +201,7 @@ describe("POST /api/v1/events/:eventId/compose/send — MINT ONLY WHAT SHIPS (DE
     const second = await send(app, kv, {
       submissionIds: ["sub-1"],
       subject: "Reminder",
-      bodyText: "Hi {speaker_name}, see {portal_link}.",
+      bodyText: "Hi {speaker_name}.",
     });
     expect(second.status).toBe(200);
     const body = (await second.json()) as { sent: number; skipped: { reason: string }[] };

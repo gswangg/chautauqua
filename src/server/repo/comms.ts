@@ -487,21 +487,28 @@ export async function loadIcsScheduleData(
 export async function loadRecentlySent(
   db: Db,
   eventId: string,
-  keys: { email: string; subject: string }[],
+  keys: { email: string; subject: string; bodyText?: string }[],
   cutoffMs: number,
 ): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   if (keys.length === 0) return result;
 
-  const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject)));
+  // DEC-936 (wave-17 amendment): the body term is ADDITIVE to the (email,
+  // subject) shape this signature has always had — `bodyText` is optional
+  // (dedupeKey defaults it to "") so v12m-w18-e's bulk-email.ts and
+  // plans-progress.ts's reminder mail, neither of which name a body here,
+  // keep their pre-wave-17 (email, subject) behaviour unchanged, and this
+  // lane can land without touching either call site.
+  const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject, k.bodyText ?? "")));
   const emails = [...new Set(keys.map((k) => k.email.trim().toLowerCase()))];
 
-  const rows: { toEmail: string; subject: string; sentAt: Date }[] = [];
+  const rows: { toEmail: string; subject: string; bodyText: string; sentAt: Date }[] = [];
   for (const emailChunk of chunkIds(emails)) {
     const batchRows = await db
       .select({
         toEmail: schema.emailLog.toEmail,
         subject: schema.emailLog.subject,
+        bodyText: schema.emailLog.bodyText,
         sentAt: schema.emailLog.sentAt,
       })
       .from(schema.emailLog)
@@ -517,8 +524,17 @@ export async function loadRecentlySent(
   }
 
   for (const row of rows) {
-    const key = dedupeKey(row.toEmail, row.subject);
-    if (!wantedKeys.has(key)) continue;
+    // wantedKeys was built with bodyText defaulted to "" for any caller
+    // that omitted it — a caller who never asked for body-scoping must
+    // still match, so the lookup key here ALSO tries the bare (email,
+    // subject) form (body "") in addition to the exact stored body. This
+    // keeps stage 2 correct for compose (body-scoped) and for bulk-email /
+    // plans-progress (not body-scoped) from the SAME stored rows, with no
+    // second query.
+    const exactKey = dedupeKey(row.toEmail, row.subject, row.bodyText);
+    const bareKey = dedupeKey(row.toEmail, row.subject);
+    const key = wantedKeys.has(exactKey) ? exactKey : wantedKeys.has(bareKey) ? bareKey : null;
+    if (key === null) continue;
     const sentAtMs = row.sentAt.getTime();
     const existing = result.get(key);
     if (existing === undefined || sentAtMs > existing) result.set(key, sentAtMs);

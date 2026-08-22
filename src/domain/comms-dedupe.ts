@@ -20,27 +20,43 @@ export function retryAtMs(lastSentAtMs: number): number {
   return lastSentAtMs + COMPOSE_DEDUPE_WINDOW_MS;
 }
 
-/** The dedupe key: (lower-cased, trimmed email, exact rendered subject) —
- * keyed on the MESSAGE, not templateId, per the DEC-238 wave-3 ruling. Event
- * scoping is applied by the caller (the reader is already scoped to one
- * eventId), not folded into this key. JSON-encoded so no separator
- * collision is possible between an email and a subject that happens to
- * contain the separator character. */
-export function dedupeKey(toEmail: string, subject: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject]);
+/** The dedupe key: (lower-cased, trimmed email, exact rendered subject,
+ * exact rendered body) — keyed on the MESSAGE, not templateId, per the
+ * DEC-238 wave-3 ruling. DEC-936 (wave-17 amendment): the body term is
+ * required because `email_log.body_text` is written on every send
+ * (src/db/schema/email.ts, src/routes/comms/send.ts), so stage 2's
+ * cross-call window CAN be judged at message granularity, not just
+ * (email, subject) — and a static subject with per-submission content in
+ * the body would otherwise collapse two genuinely different letters into
+ * one "already sent" verdict. Event scoping is applied by the caller (the
+ * reader is already scoped to one eventId), not folded into this key.
+ * JSON-encoded so no separator collision is possible between an email,
+ * subject or body that happens to contain the separator character.
+ * `body` defaults to "" for callers whose composed message has no
+ * per-submission body content to distinguish (e.g. plans-progress.ts's
+ * constant-text review reminder) — this is additive, not a narrowing: a
+ * caller that never passes `body` gets exactly its pre-wave-17 (email,
+ * subject) behaviour, unchanged. */
+export function dedupeKey(toEmail: string, subject: string, body: string = ""): string {
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body]);
 }
 
-/** DEC-936 (wave-22 amendment): the stage-1 (intra-batch) key — (lower-cased, trimmed email,
- * exact rendered subject, attachmentKey). Stage 1 alone grows an
- * attachmentKey term beyond dedupeKey's (email, subject) pair: two rendered
- * rows for one contact can share an identical subject+body (no
- * PER_SUBMISSION_MERGE_VARS token spent) while still attaching two DIFFERENT
- * per-submission .ics invites, and stage 1 must not collapse them.  Stage 2
- * (already_sent_recently) stays on plain dedupeKey — email_log records no
- * attachment identity, so the cross-call window can only honestly be judged
- * at the granularity the store keeps. */
-export function intraBatchKey(toEmail: string, subject: string, attachmentKey: string): string {
-  return JSON.stringify([toEmail.trim().toLowerCase(), subject, attachmentKey]);
+/** DEC-936 (wave-22, wave-17 amendments): the stage-1 (intra-batch) key —
+ * (lower-cased, trimmed email, exact rendered subject, exact rendered body,
+ * attachmentKey). Stage 1 grows an attachmentKey term beyond dedupeKey's
+ * (email, subject, body) triple: two rendered rows for one contact can
+ * share identical subject+body (no PER_SUBMISSION_MERGE_VARS token spent)
+ * while still attaching two DIFFERENT per-submission .ics invites, and
+ * stage 1 must not collapse them. The body term (wave-17) is required for
+ * the opposite case: a STATIC subject with a per-submission token (e.g.
+ * {talk_title}) spent only in the body, and no attachment, must NOT
+ * collapse — the rendered bodies differ even though subject and
+ * attachmentKey do not. Stage 2 (already_sent_recently) uses plain
+ * dedupeKey (email, subject, body) — email_log records no attachment
+ * identity, so the cross-call window can only honestly be judged at the
+ * granularity the store keeps, which is subject+body but not attachment. */
+export function intraBatchKey(toEmail: string, subject: string, body: string, attachmentKey: string): string {
+  return JSON.stringify([toEmail.trim().toLowerCase(), subject, body, attachmentKey]);
 }
 
 /** A recipient the dedupe planner held back, named individually (never a
@@ -93,7 +109,14 @@ export function collapsedRecipientSkips(
  * multi-recipient batch is judged against one consistent read of
  * email_log, not interleaved with this call's own sends). */
 export function planComposeSends<
-  T extends { email: string; name: string; subject: string; submissionId: string; attachmentKey?: string },
+  T extends {
+    email: string;
+    name: string;
+    subject: string;
+    text: string;
+    submissionId: string;
+    attachmentKey?: string;
+  },
 >(
   rendered: readonly T[],
   recentlySent: ReadonlyMap<string, number>,
@@ -102,11 +125,11 @@ export function planComposeSends<
   const seenInBatch = new Set<string>();
   const afterIntraBatch: T[] = [];
   for (const r of rendered) {
-    // DEC-936 (wave-22 amendment): stage 1 keys on attachment identity too — see intraBatchKey.
-    // `attachmentKey` defaults to "" for a caller that never sets it (e.g. a
-    // non-ics compose), which reduces this to plain dedupeKey(email,subject)
-    // behaviour, unchanged from before this amendment.
-    const key = intraBatchKey(r.email, r.subject, r.attachmentKey ?? "");
+    // DEC-936 (wave-22, wave-17 amendments): stage 1 keys on attachment
+    // identity AND rendered body — see intraBatchKey. `attachmentKey`
+    // defaults to "" for a caller that never sets it (e.g. a non-ics
+    // compose).
+    const key = intraBatchKey(r.email, r.subject, r.text, r.attachmentKey ?? "");
     if (seenInBatch.has(key)) {
       skipped.push({ email: r.email, name: r.name, submissionId: r.submissionId, reason: "duplicate_in_batch" });
       continue;
@@ -116,7 +139,7 @@ export function planComposeSends<
   }
   const toSend: T[] = [];
   for (const r of afterIntraBatch) {
-    const lastSentAt = recentlySent.get(dedupeKey(r.email, r.subject));
+    const lastSentAt = recentlySent.get(dedupeKey(r.email, r.subject, r.text));
     if (lastSentAt !== undefined) {
       skipped.push({
         email: r.email,

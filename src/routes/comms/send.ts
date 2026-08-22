@@ -153,7 +153,9 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    // DEC-936 (wave-17 amendment): bodyText joins the key so stage 2 is
+    // judged at the same granularity email_log actually stores.
+    rendered.map((r) => ({ email: r.email, subject: r.subject, bodyText: r.text })),
     dedupeCutoff(now.getTime()),
   );
   const { toSend: toSendKeys, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);

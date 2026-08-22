@@ -101,7 +101,9 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    // DEC-936 (wave-17 amendment): bodyText joins the key so preview's plan
+    // matches send's — same rendered rows, same call shape.
+    rendered.map((r) => ({ email: r.email, subject: r.subject, bodyText: r.text })),
     dedupeCutoff(Date.now()),
   );
   const { toSend, skipped: plannedSkips } = planComposeSends(rendered, recentlySent);
