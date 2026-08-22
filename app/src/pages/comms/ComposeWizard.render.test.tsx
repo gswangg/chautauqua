@@ -308,6 +308,53 @@ describe('ComposeWizard recipient picker', () => {
     expect(screen.getByText('bounced')).toBeInTheDocument();
   });
 
+  // DEC-964 (wave 21): `Chautauqua Comms.dc.html:469` draws the step rail's
+  // Recipients row as a PEOPLE count (`23 accepted speakers`), the same
+  // vocabulary the frame already uses at :376 -- after a send, the rail must
+  // stop reporting the step-1 submission-selection count and instead name
+  // the recipient total the send actually addressed (sent + failed +
+  // skipped), the same arithmetic the step-4 headline uses.
+  it("names the recipient total on the rail's Recipients row once a send has run (DEC-964)", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: {
+        sent: 2,
+        failed: [{ email: 'bad@example.com', message: 'bounced' }],
+        items: [],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    await screen.findByText('2 of 3 speakers were emailed');
+
+    const recipientsRow = screen.getByText('Recipients').closest('.chq-step');
+    expect(recipientsRow).not.toBeNull();
+    expect(within(recipientsRow as HTMLElement).getByText('3 speakers emailed')).toBeInTheDocument();
+    expect(within(recipientsRow as HTMLElement).queryByText(/selected$/)).not.toBeInTheDocument();
+  });
+
   it('carries chq-input/chq-textarea on step 2 subject/body and shell classes on its buttons', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),

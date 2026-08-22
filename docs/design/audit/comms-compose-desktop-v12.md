@@ -125,24 +125,28 @@ report, not a pre-send confirmation screen.
 
 - The step rail's "Preview" row detail — "One email per recipient" (frame
   :482-483) — MATCHES verbatim.
-- **DIVERGES**: the step rail's "Recipients" row names the population "23
-  accepted speakers" in the frame (frame :468-469) — an outcome
-  population, who was actually reached. The tree's own rail
-  (`ComposeWizard.tsx:734-738`) recomputes this same row's detail off
+- **DIVERGES (fixed wave 21, DEC-964)**: the step rail's "Recipients" row
+  names the population "23 accepted speakers" in the frame at BOTH :376
+  (step 1 of 4) and :469 (step 4 of 4) — the literal is IDENTICAL at both
+  citations. Correcting this row's earlier premise: the frame's own
+  vocabulary does NOT change across steps (a prior reading of this bullet
+  asserted it did); the divergence was always that the TREE names
+  submissions where the frame names people, at every step. The tree's rail
+  (`ComposeWizard.tsx:734-738` pre-wave-21) recomputed the row's detail off
   `selection.selectedIds.size` on EVERY render regardless of step, so at
-  step 4 it still reads "23 submissions selected" — the step-1 selection
-  count, never switched over to name the sent/recipient population the
-  frame's step-4 rail names. This is exactly the "submissions selected vs
-  recipients" vocabulary reconciliation this task asked to be verdicted:
-  the frame's OWN vocabulary changes across the two steps (a generic
-  "Recipients" label whose DETAIL text tracks the step — a selection count
-  early, an outcome population late); the tree's rail detail text never
-  makes that same transition. This is a behavioural gap, not a wording-only
-  residual (DEC-902 wave-14m's scope guard excludes it), and it is not an
-  additive control, a demo-state row, or a pill-count row either, so none
-  of DEC-902 waves 8/9/14m apply; no existing ruling governs the rail's
-  source switch. Left open, ungoverned, for a future ruling or code lane —
-  not self-blessed and not retired.
+  step 4 it still read "23 submissions selected". Wave 21 fixes step 4
+  only: once `sendResult` exists, the row now names the recipient total the
+  send actually addressed (sent + failed + skipped, the same arithmetic the
+  already-matching :497-498 headline uses), worded "N speakers emailed" via
+  the shared `countOf` helper — deliberately not the frame's own "accepted"
+  qualifier, which describes the frame's fixture (a selection drawn from
+  accepted submissions) and not compose's general case. Steps 1-3 are an
+  ADJUDICATED LIMIT, not open debt: before a preview runs, `expandRecipients`
+  has not resolved submissions to distinct speakers (one speaker can carry
+  several submissions), so the recipient population is a value the server
+  has not yet computed, and DEC-652's standing rule holds an uncomputed
+  value absent, never invented — there is no code lane pending for steps
+  1-3.
 - The send-report headline — "21 of 23 speakers were emailed" (frame
   :497-498, "Send complete" eyebrow + headline) — MATCHES exactly, with
   the same arithmetic (21 sent + 0 failed + 2 skipped = 23 total).

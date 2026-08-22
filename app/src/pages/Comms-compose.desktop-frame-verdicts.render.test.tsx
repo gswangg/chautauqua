@@ -356,28 +356,30 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       expect(previewStep?.querySelector('.chq-comms-step-detail')?.textContent).toBe('One email per recipient');
     });
 
-    it('DIVERGES: the step rail\'s "Recipients" row names the population "N accepted speakers" in the frame, but stays "N submissions selected" in the tree even after send', async () => {
+    it('MATCHES (population, not the frame\'s "accepted" qualifier): the step rail\'s "Recipients" row names the recipient total once a send has run (DEC-964, wave 21)', async () => {
       await advanceToSendReport();
       // docs/design/Chautauqua Comms.dc.html:468-469 --
-      // `Recipients` / `23 accepted speakers`. The rail row, at step 4,
-      // names WHO was actually emailed (an outcome population), never the
-      // step-1 selection count.
+      // `Recipients` / `23 accepted speakers`.
       expect(DESIGN_FILE.endsWith('Chautauqua Comms.dc.html')).toBe(true);
       verbatimLine(
         469,
         '              <span style="font-size:11px; color:#565A4B">23 accepted speakers</span>',
       );
+      // The rail row, at step 4, now names WHO was actually emailed
+      // (sent + failed + skipped, the same arithmetic the step-4 headline
+      // uses), never the step-1 selection count. `accepted` is the frame's
+      // own fixture qualifier (a selection drawn from accepted
+      // submissions) -- compose can address any selection, so the tree
+      // deliberately says `speakers emailed` instead of adopting `accepted
+      // speakers` verbatim. sent (21) + failed (0) + skipped (2) = 23,
+      // matching this fixture's own RECIPIENT_COUNT.
       const steps = document.querySelectorAll('.chq-steps .chq-step');
       const recipientsStep = [...steps].find(
         (s) => s.querySelector('.chq-comms-step-title')?.textContent === 'Recipients',
       );
       const detail = recipientsStep?.querySelector('.chq-comms-step-detail')?.textContent;
-      // The tree's own rail (ComposeWizard.tsx:734-738) recomputes this
-      // detail off `selection.selectedIds.size` on every render, regardless
-      // of step -- it never switches to naming the sent/recipient
-      // population the frame's step-4 rail names.
-      expect(detail).toBe(`${RECIPIENT_COUNT} submissions selected`);
-      expect(detail).not.toBe('23 accepted speakers');
+      expect(detail).toBe('23 speakers emailed');
+      expect(detail).not.toBe(`${RECIPIENT_COUNT} submissions selected`);
     });
 
     it('MATCHES (exact numbers): the send-report headline "N of M speakers were emailed"', async () => {
