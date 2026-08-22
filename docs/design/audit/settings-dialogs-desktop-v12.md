@@ -151,7 +151,7 @@ control.
 
 ## Frame :1477 "Reset a password"
 
-**DIVERGES** (structural — no dialog at all).
+**DIVERGES** (structural — no dialog at all). **RETIRED, not open debt (DEC-903 wave-14m)** — this line's own claim is stale; app/src/pages/settings/PeopleRolesPanel.tsx `ModalFrame` wraps the reset reveal under its own DEC-747 wave-7 comment ("the reset-password reveal is now its own Modal, the same dialog contract as the invite reveal"); see the re-verdict paragraph below.
 
 Entered at `/settings?section=people&edit=1`, "reached" via the real
 "Reset password" → "Confirm reset" controls on a teammate's row.
