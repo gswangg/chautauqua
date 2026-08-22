@@ -109,14 +109,19 @@ string N separate times per route, e.g. `/admin/submissions` prints
   the "never restyle into the design system" DEC-382 forbids. Left as
   measured, real, unfixed operator chrome.
 
-**Left uncounted-toward-fix, out of this task's scope:**
+**RETIRED wave 21 (DEC-903 amendment) — reclassified EXEMPT, not left uncounted:**
 
 - `input.chq-check.chq-taskview-check` (`/admin/speakers/tasks/
   seed_task_0001`, 9 sightings): TaskView.tsx's select-all + per-row
-  select controls, owned by lane v12m-w11-te per this task's brief.
-  Excluded from this task's fixes; counted in the measurement and in the
-  roster below (their exclusion from scope does not exempt them from the
-  count).
+  select controls. This roster previously classified them
+  UNCLASSIFIED — candidate defect on the ground that no `<label>` wrapped
+  them; app/src/pages/speakers/TaskView.tsx`<label className="chq-check-hit">`
+  now wraps both real input sites (app/src/check-hit-receipt.scan.test.ts's
+  exact line list `[568, 571, 591, 594]`, `nearestLabelIsCheckHit` true for
+  the two real inputs) — idiom 2, widened to ARIA-role
+  `columnheader`/`cell` tables by DEC-991 wave-w11-te. Reclassified EXEMPT
+  in row 13 below; the raw `<input>` box stays 18×18 (unchanged offender
+  count), still counted in the measurement and in the roster.
 
 ## The exemption idioms
 
@@ -176,7 +181,7 @@ Anything that matches none of the four: `UNCLASSIFIED — candidate defect`.
 | 10 | `/admin/review/plans/seed_evaluation_plan_0001/submissions/seed_submission_0002` | `input.chq-check` (same PlanEditor `.chq-review-checkbox-label` idiom, submission-scoped route) | 18×18 | 1 | **EXEMPT — idiom 3** |
 | 11 | `/admin/settings?section=portal&edit=1` | `input.chq-check` (PortalSettingsPanel "Show resources" toggle, `SettingsField`'s `<label>`) | 18×18 | 1 | **EXEMPT — idiom 3, FIXED task v12m-w11-tc** (`settings.css`: `.chq-settings-field label:has(> input.chq-check)` gained `min-height:44px`) |
 | 12 | `/dev/mailbox`, `/dev/mailbox/seed_email_log_0001` | `a.chq-wordmark` | 113×28 | 2 | **EXEMPT — idiom 1, DEC-382 (this task)** (`theme.ts`: operator-surface `tap-floor-exempt:` comment, `/dev/mailbox`/`/docs/api` chrome) |
-| 13 | `/admin/speakers/tasks/seed_task_0001` | `input.chq-check.chq-taskview-check` (TaskView.tsx select-all + per-row select) | 18×18 | 9 | **UNCLASSIFIED — candidate defect, OUT OF SCOPE.** Bare inside `<span role="columnheader">`/`<span role="cell">`, not `<td>`/`<th>`, not wrapped in any `<label>` — none of the four idioms reach it. Owned by lane v12m-w11-te per this task's brief; not fixed here, counted here. |
+| 13 | `/admin/speakers/tasks/seed_task_0001` | `input.chq-check.chq-taskview-check` (TaskView.tsx select-all + per-row select) | 18×18 | 9 | **EXEMPT — idiom 2, RETIRED wave 21 (DEC-903 amendment).** app/src/pages/speakers/TaskView.tsx`<label className="chq-check-hit">` now wraps both real input sites, receipted by app/src/check-hit-receipt.scan.test.ts`taskViewSites.map((s) => s.line)).toEqual([568, 571, 591, 594])` — idiom 2 was widened to ARIA-role `columnheader`/`cell` tables by DEC-991 wave-w11-te (comment at app/src/styles.css`DEC-991 wave-w11-te`). The raw `<input>` box is unchanged (still 18×18); this reclassifies the sighting from a candidate defect to EXEMPT, it does not remove it from the printed total. |
 
 **Row-count check: 25+30+1+1+1+1+3+1+1+2+9+1+1 = 77.** Matches the printed
 total exactly (the two `.chq-auth-back` sightings from the before-fix run
@@ -192,17 +197,21 @@ the RE-MEASURED total after this task's (DEC-393, v12m-w11-tc)
 `.chq-auth-back` fix, never a guess or an arithmetic subtraction
 (scripts/render-sweep-lib.ts`ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`).
 
-- **EXEMPT** (idioms 1-3, rows 1-10, 12): **66** (1+25+30+1+1+1+1+1+3+1+2).
+- **EXEMPT** (idioms 1-3, rows 1-10, 12): **67** (1+25+30+1+1+1+1+1+3+1+2).
 - **FIXED, DEC-393 (v12m-w11-tc)** (row 11 — reclassified EXEMPT via idiom
   3, no longer a candidate defect; still counted in the 77 since the raw
   `<input>` box is unchanged): **1**.
-- **UNCLASSIFIED — candidate defect, out of scope** (row 13): **9**.
+- **RETIRED, DEC-903 (wave 21 amendment)** (row 13 — reclassified EXEMPT
+  via idiom 2, no longer a candidate defect; still counted in the 77 since
+  the raw `<input>` box is unchanged): **9**.
 - **Genuinely retired, DEC-393 (v12m-w11-tc)** (`.chq-auth-back`, formerly
   2 sightings at `/account/password`, both dimensions now ≥44px): **2** —
   the whole reason the total moved from 79 to 77.
 - Idiom 4 (`.chq-forms-field-drag`): 0 offenders in this roster.
 
-The 9 remaining out-of-scope offenders are one code-level gap, not 9
-independent defects — **TaskView.tsx's `.chq-check` selects** have no
-wrapping `<label>` at all, a markup gap (not a floor gap), left to lane
-v12m-w11-te (DEC-393) per this task's brief.
+The 9 offenders in row 13 were previously classified as one code-level
+gap, not 9 independent defects — **TaskView.tsx's `.chq-check` selects**
+had no wrapping `<label>` at all. RETIRED wave 21 (DEC-903 amendment):
+`<label className="chq-check-hit">` now wraps both real input sites (see
+row 13 above), so idiom 2 reaches them and they are EXEMPT, still counted
+in the 77.

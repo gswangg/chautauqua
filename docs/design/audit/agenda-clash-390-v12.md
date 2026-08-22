@@ -101,8 +101,18 @@ the clash card:
 ```
 
 `v12m-w29-g` grepped `app/src/pages/agenda/` and found no `moveTo` /
-`suggestedMove` / `resolveClash` identifier — the control does not exist
-in the phone agenda. Confirmed again this task: still absent.
+`suggestedMove` / `resolveClash` identifier and filed the control as
+absent from the phone agenda. RETIRED (DEC-903): the tree now satisfies
+it — app/src/pages/agenda/PhoneAgenda.tsx`function computeClashMove(`
+defines the resolution, it is called at
+app/src/pages/agenda/PhoneAgenda.tsx`computeClashMove(slot.sessions, day, placed, dayStartMin, dayEndMin, gridMin, blockedBreaks)`,
+and the control renders as
+app/src/pages/agenda/PhoneAgenda.tsx`className="chq-phone-slot-clash-move"`,
+labelled via src/domain/schedule-copy.ts`export function conflictMoveLabel(`
+and styled at app/src/pages/agenda/agenda.css`.chq-phone-slot-clash-move`.
+Not blessed — this citation records what the tree already ships, per
+DEC-903's wave-21 amendment (a re-confirmation sentence with no named
+grep/sha is retired with the rest of the row).
 
 **(a) Frame line:** `docs/design/Chautauqua Agenda.dc.html:171` (inside
 the `slot.clash` `sc-if` block, `:155-172`).
