@@ -294,27 +294,52 @@ function isInsideAPhoneFrame(frameFile: string, firstLine: number): boolean {
  * `flatten` (a wrapped comment) by falling back to a regex that rejoins
  * words with the same connector flatten() would have collapsed. */
 function locateSourceIndex(raw: string, matchText: string, searchFrom: number): number {
-  const direct = raw.indexOf(matchText, searchFrom);
-  if (direct !== -1) return direct;
   // matchText came out of flatten(), which collapses a wrapped comment's
   // line break AND its continuation marker (`* `/`// `) to one space -- so
   // the raw text may have `// ` or `* ` sitting where matchText has a bare
   // space. Rejoin each space with the same connector flatten() would have
   // collapsed, so a name split across a wrapped `//` comment (e.g.
   // "...Chautauqua\n// Comms.dc.html:177") still resolves.
+  //
+  // The connector is all-optional, so this pattern also matches the ordinary
+  // unwrapped spelling -- it is a SUPERSET of a literal indexOf, and the
+  // earliest position it reports is the true next occurrence of this
+  // citation in either form.
+  //
+  // That superset relationship is the whole point, and why the literal
+  // indexOf below is only allowed to WIN A TIE rather than short-circuit.
+  // Citations are resolved in flattened-source order against a rolling
+  // cursor, which is only sound if each lookup returns the EARLIEST
+  // remaining occurrence. Preferring a literal hit outright breaks that:
+  // when a file cites the same frame span twice -- once wrapped across a
+  // comment line break, once contiguous further down -- the wrapped first
+  // citation finds no literal match at its own position and silently
+  // resolves to the CONTIGUOUS one instead, leapfrogging it. The cursor
+  // then advances past that stolen position and the second, genuinely
+  // contiguous citation can no longer be found at all, so a file with
+  // perfectly well-formed citations throws "flatten() and the raw file
+  // disagree on its text". test/portal-edit-390-frames.test.ts is exactly
+  // this shape: its header comment wraps
+  // "docs/design/Chautauqua Public\n// and Portal.dc.html:600-674" across
+  // lines 2-3 and its describe() repeats the same span contiguously.
   const CONNECTOR = String.raw`\s*(?:\/\/|\*\/?)?\s*`;
   const pattern = matchText
     .split(' ')
     .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join(CONNECTOR);
   const m = raw.slice(searchFrom).match(new RegExp(pattern));
-  if (!m || m.index === undefined) {
+  const wrapped = m?.index === undefined ? -1 : searchFrom + m.index;
+  const direct = raw.indexOf(matchText, searchFrom);
+
+  if (wrapped === -1 && direct === -1) {
     throw new Error(
       `could not locate citation "${matchText}" in its own source file to check line adjacency -- ` +
         `flatten() and the raw file disagree on its text`
     );
   }
-  return searchFrom + m.index;
+  if (wrapped === -1) return direct;
+  if (direct === -1) return wrapped;
+  return Math.min(direct, wrapped);
 }
 
 function lineNumberAt(raw: string, index: number): number {
