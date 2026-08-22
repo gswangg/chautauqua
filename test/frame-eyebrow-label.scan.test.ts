@@ -117,7 +117,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_099, DEC_180, DEC_613, DEC_808, DEC_976 } from '../src/decisions';
+import { DEC_099, DEC_180, DEC_613, DEC_808, DEC_976, DEC_993 } from '../src/decisions';
 import { ALL_CAPTIONS } from './frame-caption-ledger/population';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
 import { labelsInFrameText } from './frame-control-label.scan.test';
@@ -130,6 +130,7 @@ void DEC_808; // population derived from the tree at test time, never hand-liste
 void DEC_180; // an eyebrow discriminator (control-face / input-box / digit) narrows the POPULATION or the MISS classification, never hides a real offender after classification.
 void DEC_613; // the match-side stripper/matcher and the control-label extraction walk are imported, never re-implemented.
 void DEC_099; // OUT_OF_CAMPAIGN_SCOPE reasons below are principles, not schedules.
+void DEC_993; // wave-28 amendment: the :303 row is a settled divergence, not an open one -- SETTLED_EXCLUSIONS below.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -402,13 +403,53 @@ function isNoDigitComposed(e: Eyebrow): boolean {
 
 const DIGIT_RE = /\d/;
 
+// -- SETTLED exclusions (DEC-993 wave-28 amendment) --------------------------
+// A row a STANDING RULING has already adjudicated as a settled divergence --
+// never a real, open copy gap, and never re-derived as DIVERGES each wave a
+// new ledger happens to walk over it. Modelled EXACTLY on
+// test/phone-dock-ledger.scan.test.ts's own NON_BUILD_EXCLUSIONS: each entry
+// quotes the governing ruling VERBATIM, by file:line, so the exclusion rots
+// loudly the day that ruling is reversed rather than lands silently; a
+// companion assertion below re-resolves every entry against the current pack
+// so a stale entry (the cited text no longer at the cited line) fails
+// loudly instead of silently over-excluding a future real offender. This
+// table is for a row a standing ruling has SETTLED -- it may never carry a
+// "the app spells this differently" claim (DEC-613 wave-27 clause (d));
+// that is the COMPOSED/exclusion shape other ledgers already use for wording
+// drift, not this one.
+interface SettledExclusion {
+  fileName: string;
+  line: number;
+  text: string;
+  reason: string;
+}
+
+const SETTLED_EXCLUSIONS: SettledExclusion[] = [
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 303,
+    text: 'Insert a field · open',
+    reason:
+      'src/decisions-data/DEC-993.md (wave-12m amendment): "the closed `Insert a field ▾` trigger IS the ruled ' +
+      "shape; the frame's permanently-open merge-field palette is a settled divergence recorded on the row, not " +
+      're-derived each wave... Ruling: DEC-993\'s shape is final (a permanently-open palette duplicates the ' +
+      'vocabulary the menu already carries and cannot satisfy the one-control-per-composer clause), and the ' +
+      'divergence is recorded as SETTLED on the Comms row with the DEC cited, so it stops buying triage."',
+  },
+];
+
+function isSettled(e: Eyebrow): boolean {
+  return SETTLED_EXCLUSIONS.some((s) => s.fileName === e.fileName && s.line === e.line && s.text === e.text);
+}
+
 interface Classified {
   eyebrow: Eyebrow;
-  verdict: 'MATCHED' | 'DIVERGES' | 'UNRESOLVED';
+  verdict: 'MATCHED' | 'DIVERGES' | 'UNRESOLVED' | 'SETTLED';
 }
 
 const CLASSIFIED: Classified[] = ALL_EYEBROWS.map((eyebrow) => {
   if (eyebrowIsMatched(eyebrow.text)) return { eyebrow, verdict: 'MATCHED' as const };
+  if (isSettled(eyebrow)) return { eyebrow, verdict: 'SETTLED' as const };
   if (DIGIT_RE.test(eyebrow.text)) return { eyebrow, verdict: 'UNRESOLVED' as const };
   if (isNoDigitComposed(eyebrow)) return { eyebrow, verdict: 'UNRESOLVED' as const };
   return { eyebrow, verdict: 'DIVERGES' as const };
@@ -417,18 +458,20 @@ const CLASSIFIED: Classified[] = ALL_EYEBROWS.map((eyebrow) => {
 const MATCHED = CLASSIFIED.filter((c) => c.verdict === 'MATCHED');
 const DIVERGES = CLASSIFIED.filter((c) => c.verdict === 'DIVERGES');
 const UNRESOLVED = CLASSIFIED.filter((c) => c.verdict === 'UNRESOLVED');
+const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 
 // -- Ratchets -----------------------------------------------------------
-// Measured on this branch (v12m-w27-e) by forcing both to -1 and reading
-// the printed offender lists back: 1 real divergence ('Insert a field ·
-// open' -- Chautauqua Comms.dc.html:303, the merge-field panel's own static
-// header row, never rendered by app/src/pages/comms/InsertFieldMenu.tsx,
-// which renders no header text above its menu items at all), 18 unresolved
-// (16 digit-bearing composed-from-data misses + the 2 digit-free
-// NO_DIGIT_COMPOSED rows above). See
+// Measured on this branch (v12m-w28-b) by forcing both to -1 and reading
+// the printed offender lists back: 0 real divergences -- the one candidate
+// this ledger's first measurement (v12m-w27-e) had classified DIVERGES
+// ('Insert a field · open' -- Chautauqua Comms.dc.html:303) is SETTLED by
+// DEC-993's own wave-12m amendment (see SETTLED_EXCLUSIONS above) and no
+// longer counts here at all -- and 18 unresolved (16 digit-bearing
+// composed-from-data misses + the 2 digit-free NO_DIGIT_COMPOSED rows
+// above, unchanged by this wave's exclusion). See
 // docs/design/audit/frame-eyebrow-label-390-v12.md for the full per-row
 // breakdown.
-export const FRAME_EYEBROW_DIVERGENCE_CEILING = 1;
+export const FRAME_EYEBROW_DIVERGENCE_CEILING = 0;
 export const FRAME_EYEBROW_UNRESOLVED_CEILING = 18;
 
 describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', () => {
@@ -534,8 +577,15 @@ describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', ()
     }
   });
 
-  it('classification totals partition the population exactly (MATCHED + DIVERGES + UNRESOLVED = population)', () => {
-    expect(MATCHED.length + DIVERGES.length + UNRESOLVED.length).toBe(ALL_EYEBROWS.length);
+  it('classification totals partition the population exactly (MATCHED + DIVERGES + UNRESOLVED + SETTLED = population)', () => {
+    expect(MATCHED.length + DIVERGES.length + UNRESOLVED.length + SETTLED.length).toBe(ALL_EYEBROWS.length);
+  });
+
+  it('SETTLED exclusions each resolve to their cited file:line:text in the current pack', () => {
+    for (const s of SETTLED_EXCLUSIONS) {
+      const hit = ALL_EYEBROWS.find((e) => e.fileName === s.fileName && e.line === s.line && e.text === s.text);
+      expect(hit, `${s.fileName}:${s.line} -- "${s.text}" no longer resolves in the pack`).toBeDefined();
+    }
   });
 
   it(`never exceeds FRAME_EYEBROW_DIVERGENCE_CEILING (${FRAME_EYEBROW_DIVERGENCE_CEILING}) real eyebrow divergences`, () => {

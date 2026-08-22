@@ -98,29 +98,42 @@ disjointness rules below (88 raw candidates → 62 population).
   - `Chautauqua Content.dc.html:406` "Notes on the slides" —
     `` Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()} ``
     (`app/src/pages/content/DeliverableDetail.tsx:595`).
-- **DIVERGES**: 1 — a real, unfixed product gap, adjudicated under DEC-976
-  as RECORDED-not-repaired and held at its own ceiling
-  (`FRAME_EYEBROW_DIVERGENCE_CEILING = 1`, which may only be lowered), since
-  this lane MEASURES AND RATCHETS ONLY:
-  - `Chautauqua Comms.dc.html:303` "Insert a field · open" — the frame
-    draws this as a static header row above the merge-field list panel
-    when the panel is open. `app/src/pages/comms/InsertFieldMenu.tsx`
-    renders a trigger button (`Insert a field ▾`), a live count hint
-    (`{fields.length} available · dropped in at the cursor`), and the
-    `role="menu"` item list itself — but no header text at all above the
-    item list. The frame's caption is not reproduced anywhere in source.
+- **DIVERGES**: 0. This wave's own first measurement (`v12m-w27-e`) had
+  classified `Chautauqua Comms.dc.html:303` "Insert a field · open" as a
+  real, unfixed DIVERGES row — the frame draws this as a static header row
+  above the merge-field list panel when the panel is open, and
+  `app/src/pages/comms/InsertFieldMenu.tsx` renders a trigger button
+  (`Insert a field ▾`), a live count hint (`{fields.length} available ·
+  dropped in at the cursor`), and the `role="menu"` item list itself, but
+  no header text at all above the item list. That subject is SETTLED,
+  per `src/decisions-data/DEC-993.md`'s own wave-12m amendment: the closed
+  `Insert a field ▾` trigger IS the ruled shape, and the frame's
+  permanently-open merge-field palette is a recorded, settled divergence,
+  not a live copy gap this lane owes a fix for. Moved into
+  `SETTLED_EXCLUSIONS` in `test/frame-eyebrow-label.scan.test.ts` (DEC-993
+  wave-28 amendment) and dropped from the DIVERGES count accordingly.
+- **SETTLED**: 1 — `Chautauqua Comms.dc.html:303` "Insert a field · open",
+  per `src/decisions-data/DEC-993.md`'s wave-12m amendment as described
+  above; excluded from DIVERGES by the ledger's `SETTLED_EXCLUSIONS` table,
+  never counted as a live product gap.
 
-MATCHED + UNRESOLVED + DIVERGES = 43 + 18 + 1 = 62 = population, asserted
-directly in the test suite (DEC-976: the partition is exact, so no row can
-drop out of the population unnoticed).
+MATCHED + UNRESOLVED + DIVERGES + SETTLED = 43 + 18 + 0 + 1 = 62 =
+population, asserted directly in the test suite. `src/decisions-data/
+DEC-993.md`'s wave-12m amendment is the ruling that moves the one
+population row this ledger's first measurement had misclassified from
+DIVERGES to SETTLED.
 
 ## Ratchets
 
-- `FRAME_EYEBROW_DIVERGENCE_CEILING = 1`
+- `FRAME_EYEBROW_DIVERGENCE_CEILING = 0`
 - `FRAME_EYEBROW_UNRESOLVED_CEILING = 18`
 
-Both measured on branch `v12m-w27-e` by forcing each to `-1` and reading the
-printed offender list back; both two-sided
+`FRAME_EYEBROW_DIVERGENCE_CEILING` re-measured on branch `v12m-w28-b`
+(DEC-993 wave-28 amendment) by forcing it to `-1` and reading the printed
+offender list back: empty, once `Chautauqua Comms.dc.html:303` moved into
+`SETTLED_EXCLUSIONS`. `FRAME_EYEBROW_UNRESOLVED_CEILING` is unchanged from
+its `v12m-w27-e` measurement — the SETTLED move touches only the DIVERGES
+side. Both two-sided
 (`test/campaign-ratchet-two-sided.scan.test.ts` verified green); both
 registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE` with a
 principle reason (DEC-099) — a newly measured, previously-uncounted
