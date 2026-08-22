@@ -273,8 +273,22 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         named group -- its visible caption ("All of") IS the group's
         accessible name via aria-labelledby, never a duplicated aria-label
         string that would fork the name from the ink. */}
-    <div className="chq-contacts-filter-chipstrip" role="group" aria-labelledby={chipstripCaptionId}>
-      <span className="chq-contacts-filter-chipstrip-caption" id={chipstripCaptionId}>All of</span>
+    <div
+      className="chq-contacts-filter-chipstrip"
+      role="group"
+      aria-labelledby={activeRules(rules).length > 0 ? chipstripCaptionId : undefined}
+    >
+      {/* src/decisions-data/DEC-919.md (wave-16 amendment): the caption slot
+          carries the truth about the strip -- it stands down when
+          `activeRules(rules)` is empty rather than asserting "All of" over
+          nothing, per docs/design/Chautauqua Contacts.dc.html:188-189
+          (`All of` heads a non-empty `sc-for` run over `{{ activeRules }}`,
+          never an empty one). When it stands down the group's
+          aria-labelledby stands down with it, so the name never points at
+          an absent node (DEC-930's "name from the ink" rule). */}
+      {activeRules(rules).length > 0 && (
+        <span className="chq-contacts-filter-chipstrip-caption" id={chipstripCaptionId}>All of</span>
+      )}
       {rules.map((rule, i) =>
         activeRules([rule]).length === 0 ? null : (
           <span className="chq-contacts-filter-rule-chip" key={i}>
@@ -300,13 +314,21 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
           </span>
         )
       )}
-      {/* src/decisions-data/DEC-919.md: while the builder is CLOSED this
-          control's job is
-          disclosure, so it is never inert here -- otherwise a user who
-          fills the cap with blank rules (which render no chip) and closes
-          the builder has no path back in. Only inert once the builder is
-          open AND the cap is reached, matching the desktop
-          `.chq-contacts-filter-add-full` button's own disabled state. */}
+      {/* src/decisions-data/DEC-919.md (wave-16 amendment): at the cap with
+          the builder CLOSED, `.chq-contacts-filter-add-chip` stays enabled
+          by design (its job here is disclosure, not adding) but the ONLY
+          cap explanation -- `.chq-contacts-filter-rules-cap` -- lives
+          inside `.chq-contacts-filter-rules-row`, which is display:none at
+          390 while the builder is closed. This second cap caption is the
+          chip strip's own member of that same capability, gated on the
+          same `rules.length >= MAX_SEGMENT_RULES` bound so the strip never
+          reads a control with no reason on screen. Capability
+          substitution, not removal -- the desktop cap copy is untouched. */}
+      {rules.length >= MAX_SEGMENT_RULES && (
+        <span className="chq-contacts-filter-chipstrip-cap">
+          Up to {MAX_SEGMENT_RULES} rules.
+        </span>
+      )}
       <button
         type="button"
         className="chq-contacts-filter-add-chip"
