@@ -1,0 +1,573 @@
+// DEC-069 wave-116+ campaign exit predicate: constant-name REGISTRIES.
+//
+// Extracted from scripts/exit-predicate.ts (custodian decomposition,
+// contention-hotspot split -- NO behavior change; see that file's header
+// for the module's overall shape). Pure data: the three lists that
+// classify every `*_CEILING`/`*_FLOOR` ratchet constant declared anywhere
+// in the tree as graded-and-gating (CAMPAIGN_CONSTANT_NAMES /
+// TIER2_CEILING_NAMES) or deliberately excused
+// (OUT_OF_CAMPAIGN_SCOPE), consumed by scripts/exit-predicate/campaign.ts's
+// grading functions. Isolated on its own so the frequent churn of adding a
+// newly-discovered ratchet name touches only this file, never the grading
+// logic beside it (mirrors app/src/phone-overflow-scan/starved-track-ceiling
+// .ts's precedent of isolating pure ratchet-name data from its checker).
+
+/** Every constant name the campaign's exit predicate depends on. */
+export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
+  "CLAIMED_FLOOR",
+  "EXPECTED_TOTAL_PRE_DEVIATION",
+  "EXPECTED_DEVIATION_DEFERRED",
+  "EXPECTED_TOTAL",
+  "CEILING",
+  "ANCHOR_FLOOR_OFFENDERS_CEILING",
+  "SSR_TAP_FLOOR_OFFENDERS_CEILING",
+  "SSR_UNFLOORED_TOKENS_CEILING",
+  // wave-142 (task w17-c, DEC-808): SSR_UNFLOORED_TOKENS_CEILING is keyed
+  // on class TOKENS taken from markup -- a classless `<a>` under
+  // src/routes/** contributes no token and was ungradeable by
+  // construction. This ceiling grades that population instead, keyed on
+  // the anchor's nearest enclosing element's chq- token
+  // (app/src/phone-tap-target-ssr-classless-anchor.scan.test.ts).
+  "SSR_CLASSLESS_ANCHOR_CEILING",
+  // wave-154 (task w10-na, DEC-180 amendment): SPA mirror of
+  // SSR_CLASSLESS_ANCHOR_CEILING above -- every SPA tap-target ratchet is
+  // keyed on class TOKENS taken from markup, so an
+  // {a,Link,NavLink,button,select,textarea,input} tag with no `className=`
+  // contributes no token and was ungradeable by construction until this
+  // ceiling (app/src/phone-tap-target-spa-classless-control.scan.test.ts).
+  "SPA_CLASSLESS_CONTROL_CEILING",
+  "OVERFLOW_OFFENDERS_CEILING",
+  "CROSS_BUNDLE_CITATION_CEILING",
+  "PHONE_HIDDEN_UNRECEIPTED_CEILING",
+  "DESKTOP_UNRECEIPTED_CLAIM_CEILING",
+  // wave-118 (task w7-b): population made total instead of hand-listed --
+  // these nine were declared in the real corpus and ungraded before this
+  // change (see the DEC-069 amendment on this file's history).
+  "MARKUP_PHONE_UNHIDDEN_CEILING",
+  "DIVERGENCE_CEILING",
+  "ORPHAN_CEILING",
+  "SHADOWED_CEILING",
+  "UNRECEIPTED_CLAIM_CEILING",
+  "FRAME_RECEIPT_OFFENDER_CEILING",
+  "UNRESOLVED_CITATION_CEILING",
+  "WIDENED_UNRESOLVED_CITATION_CEILING",
+  // wave-120 (task w9-l, DEC-367 PREDICATE REPAIR): the base tap-target
+  // scan's `findOffenders()` drops any control rule with NO declared
+  // height/min-height before ever testing it against the floor -- this
+  // constant grades the population that blind spot has always hidden.
+  "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
+  "PAINTED_CANCELLED_PADDING_CEILING",
+  // wave-121 (task w10-l): cancelled-padding companion-gap lens
+  // (DEC-393 amendment, DEVIATIONS.md:346-351 rider instrument).
+  "CANCELLED_PADDING_GAP_CEILING",
+  // wave-128 (task w3-j, DEC-976/DEC-967): frame control-label ledger --
+  // grades whether the app's own source contains, verbatim, the words each
+  // v12 phone frame's footer/anchor controls draw (test/frame-control-label
+  // .scan.test.ts).
+  "FOOTER_LABEL_CEILING",
+  // wave-131 (task w6-b, DEC-919 amendment): the FIRST control-label ledger
+  // over the pack's non-390 (desktop/modal) card frames -- 101 frames the
+  // phone-only FOOTER_LABEL_CEILING population never covered
+  // (test/desktop-control-label.scan.test.ts).
+  "DESKTOP_CONTROL_LABEL_CEILING",
+  // wave-133 (task w8-a, DEC-976): frame caption/consequence ledger --
+  // grades whether the app's own source contains, verbatim, each v12
+  // frame's muted-prose caption/consequence text (test/frame-caption-ledger
+  // .scan.test.ts).
+  "FRAME_CAPTION_UNMATCHED_CEILING",
+  // wave-136 (task w11-aa, DEC-967 doc-integrity lens widened to CODE
+  // comments): grades whether every `path:line` citation inside a src/**
+  // or app/src/** code comment resolves to a real file/line and, where a
+  // backtick quote immediately follows, matches it verbatim near the cited
+  // line (test/code-comment-citation.scan.test.ts).
+  "CODE_COMMENT_CITATION_CEILING",
+  // wave-144/w19-c (task w19-c, DEC-976): phone dock MEMBERSHIP ledger --
+  // grades whether some single non-test source file both declares a docked
+  // band's geometry and renders every one of that band's drawn labels,
+  // catching the gap FOOTER_LABEL_CEILING's match-anywhere-in-corpus test
+  // cannot (a dock split across a CSS declaration and a separate renderer
+  // that never spells all of its copy). test/phone-dock-ledger.scan.test.ts.
+  "PHONE_DOCK_UNCLAIMED_CEILING",
+  // wave-146 (task w20-a, DEC-937): pack declaration vocabulary ratchet --
+  // grades every product font-style/border-radius declaration against the
+  // value set the 13 frame files actually draw
+  // (test/pack-declaration-vocabulary.scan.test.ts).
+  "PACK_VOCABULARY_OFFENDERS_CEILING",
+  // wave-146 (task w21-d, DEC-613/DEC-989 amendment): brand-new
+  // one-sided-only instrument -- grades whether any src/routes/**/*.css.ts
+  // comment quotes a >=16-char run of real src/routes/**/*.tsx copy
+  // verbatim (a server-rendered stylesheet comment leaking product copy
+  // onto the page a second time, test/css-comment-copy-leak.scan.test.ts).
+  "CSS_COMMENT_COPY_LEAK_CEILING",
+  // wave-149 (task w5-bf, DEC-919 amendment): starved flex-track ratchet --
+  // grades whether a grid rule effective at the 390 phone frame yields a
+  // flexible track narrower than the grid's own widest fixed track
+  // (app/src/phone-overflow-scan/starved-track-ceiling.ts, checked by
+  // app/src/phone-horizontal-overflow.scan.test.ts).
+  "STARVED_FLEX_TRACK_CEILING",
+  // wave-26 (task w26-j, DEC-393/DEC-808 amendment): width-half tap-floor
+  // ratchet -- DESIGN-RULINGS.md:189 rules the 44px floor as min-height
+  // PLUS horizontal padding ("without padding the hit box is only as wide
+  // as the text"), a clause every other tap-floor ceiling grades with
+  // `horizontalPaddingNonZero`, which any non-zero padding value passes.
+  // Grades every glyph-only/empty-with-aria-label button/a/select/
+  // input[type=button|submit] against a >=44px min-width/width declared
+  // somewhere effective at 390 (app/src/phone-tap-target-scan/width-floor
+  // .ts + width-ceiling.ts, checked by
+  // app/src/phone-tap-target-width-floor.scan.test.ts). Measured 0.
+  "WIDTH_FLOOR_OFFENDERS_CEILING",
+  // wave-12 (task w12-xf, DEC-808 amendment): phone-verdict cascade-read
+  // lens -- grades whether a 390-frame render-verdict file (frame-verdicts/
+  // frame390, non-desktop) ever reads a stylesheet at all; jsdom evaluates
+  // no `@media`, so a verdict file that never reads CSS text can only ever
+  // be a claim about the un-cascaded desktop DOM, never about the terminal
+  // phone block that actually draws the frame
+  // (app/src/phone-verdict-cascade-read.scan.test.ts).
+  "PHONE_VERDICT_CASCADE_BLIND_CEILING",
+  // wave-13m (task w13-xa, DEC-069 amendment): open-divergence ledger --
+  // grades how many of the audit corpus's own recorded `**DIVERGES**` rows
+  // (docs/design/audit/*.md) are still OPEN (no DEC-NNN citation or
+  // docs/design/DEVIATIONS.md reference in the row's own line or the
+  // paragraph it heads) rather than adjudicated, the population the two
+  // saturated frame-coverage ledgers (CLAIMED_FLOOR) never measure -- a
+  // GRADED, GATING conformance ratchet, not a citation-form or
+  // instrument-soundness fact (test/open-divergence-ledger.scan.test.ts).
+  "OPEN_DIVERGENCE_CEILING",
+  // wave-16 (task w16-qa, DEC-998 clause a): these two constants were
+  // declared by task w14-a (app/src/frame-citation.scan.test.ts:606/:778)
+  // but never added to this list, so assertCampaignPopulationTotal threw
+  // and NOT ONE campaign row could be read. Receipt-integrity conformance
+  // facts of exactly the kind UNRECEIPTED_CLAIM_CEILING /
+  // DESKTOP_UNRECEIPTED_CLAIM_CEILING already gate at their own non-zero
+  // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
+  "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (DEC-808 wave-28 amendment, clauses b/c). Both landed in the
+  // wave-24..27 merge train registered nowhere, which made this module THROW
+  // before printing a single campaign row. Both read 0, so verdict.tier2Done
+  // is unaffected; both are also listed in TIER2_CEILING_NAMES below, because
+  // assertEveryGradedCeilingIsGated leaves no third state for a graded
+  // `_CEILING`.
+  //
+  // (b) ROLE_LABEL_SPELLING_CEILING counts v12 copy-fidelity offences in the
+  //     words the app draws for a role and is seeded at 0 -- a campaign fact.
+  // (c) ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING counts 390 tap-floor sightings
+  //     carrying no adjudicated exemption receipt -- Tier-2 geometry.
+  "ROLE_LABEL_SPELLING_CEILING",
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
+  // wave-30 (task v12m-w30-d, DEC-367 amendment): grounds the mobile
+  // overflow probe's two escape hatches (inHorizontalScroller's ancestor
+  // exclusion, KNOWN_CLIP_EXCEPTIONS) in the design pack --
+  // UNGROUNDED_SCROLLER_CEILING grades every `overflow-x/overflow:
+  // auto|scroll` declaration with no docs/design/*.dc.html frame drawing
+  // that scrolling region; STALE_CLIP_EXCEPTION_CEILING re-verifies each
+  // KNOWN_CLIP_EXCEPTIONS member still names a real, genuinely-truncating
+  // rule (DEC-725: an in-code exemption's premise rots like an allowlist)
+  // (test/horizontal-scroller-premise.scan.test.ts).
+  "UNGROUNDED_SCROLLER_CEILING",
+  "STALE_CLIP_EXCEPTION_CEILING",
+  // wave-30 (task w30-b, DEC-393 amendment): a tap-floor-exempt reason is a
+  // premise about the tree, and its verifier must be named in the receipt
+  // and executable by a scan (test/tap-floor-exempt-premise.scan.test.ts).
+  // TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING grades receipts whose named
+  // companion is real but not actually floored (a real 44px defect);
+  // TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING grades receipts this
+  // wave's instrument cannot express a check for -- a roster count, not a
+  // defect count, per clause (c)'s "a row in the roster, not a silent pass".
+  "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
+  "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+];
+
+/**
+ * Tier-2 ceiling constant names: campaign is done only once every one reads
+ * 0. Exported (DEC-808, task w7-dc) so test/campaign-ratchet-two-sided.scan
+ * .test.ts can derive its graded population from the same three lists this
+ * module already treats as the campaign's total accounting, rather than
+ * hand-listing a fourth copy.
+ */
+export const TIER2_CEILING_NAMES: readonly string[] = [
+  "CEILING",
+  "ANCHOR_FLOOR_OFFENDERS_CEILING",
+  "SSR_TAP_FLOOR_OFFENDERS_CEILING",
+  "SSR_UNFLOORED_TOKENS_CEILING",
+  "SSR_CLASSLESS_ANCHOR_CEILING",
+  // wave-154 (task w10-na, DEC-180 amendment): SPA mirror of
+  // SSR_CLASSLESS_ANCHOR_CEILING above -- every SPA tap-target ratchet is
+  // keyed on class TOKENS taken from markup, so an
+  // {a,Link,NavLink,button,select,textarea,input} tag with no `className=`
+  // contributes no token and was ungradeable by construction until this
+  // ceiling (app/src/phone-tap-target-spa-classless-control.scan.test.ts).
+  "SPA_CLASSLESS_CONTROL_CEILING",
+  "OVERFLOW_OFFENDERS_CEILING",
+  "CROSS_BUNDLE_CITATION_CEILING",
+  "PHONE_HIDDEN_UNRECEIPTED_CEILING",
+  "DESKTOP_UNRECEIPTED_CLAIM_CEILING",
+  "MARKUP_PHONE_UNHIDDEN_CEILING",
+  "DIVERGENCE_CEILING",
+  "ORPHAN_CEILING",
+  "SHADOWED_CEILING",
+  "UNRECEIPTED_CLAIM_CEILING",
+  "FRAME_RECEIPT_OFFENDER_CEILING",
+  "UNRESOLVED_CITATION_CEILING",
+  "WIDENED_UNRESOLVED_CITATION_CEILING",
+  "PAINTED_CANCELLED_PADDING_CEILING",
+  // wave-121 (task w10-l): cancelled-padding companion-gap lens.
+  "CANCELLED_PADDING_GAP_CEILING",
+  // wave-122 (task w11-s, DEC-851 amendment): docs/mobile-campaign.md's
+  // Tier 2 requires the 44px sweep to cover BOTH evasion modes
+  // DESIGN-RULINGS names -- a floored-but-too-short control, and a
+  // control with no declared height/min-height at all, which the base
+  // tap-target scan's `findOffenders()` drops before it is ever tested
+  // against the floor. UNDECLARED_HEIGHT_OFFENDERS_CEILING grades the
+  // second mode; it was already in CAMPAIGN_CONSTANT_NAMES (wave-120,
+  // task w9-l) but never wired into TIER2_CEILING_NAMES, so it was
+  // graded but never printed and never gated DONE -- a declared knob
+  // with no reader (DEC-851).
+  "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
+  // wave-128 (task w3-j): frame control-label ledger, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "FOOTER_LABEL_CEILING",
+  // wave-131 (task w6-b): desktop (non-390) control-label ledger, wired
+  // into TIER2 in the same commit that declared it in
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988).
+  "DESKTOP_CONTROL_LABEL_CEILING",
+  // wave-133 (task w8-a): frame caption/consequence ledger, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "FRAME_CAPTION_UNMATCHED_CEILING",
+  // wave-136 (task w11-aa): code-comment citation scan, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "CODE_COMMENT_CITATION_CEILING",
+  // wave-144/w19-c (task w19-c): phone dock membership ledger, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PHONE_DOCK_UNCLAIMED_CEILING",
+  // wave-146 (task w20-a): pack declaration vocabulary ratchet, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PACK_VOCABULARY_OFFENDERS_CEILING",
+  // wave-146 (task w21-d): CSS comment copy-leak scan, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "CSS_COMMENT_COPY_LEAK_CEILING",
+  // wave-149 (task w5-bf): starved flex-track ratchet, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "STARVED_FLEX_TRACK_CEILING",
+  // wave-26 (task w26-j): width-half tap-floor ratchet, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "WIDTH_FLOOR_OFFENDERS_CEILING",
+  // wave-12 (task w12-xf): phone-verdict cascade-read ratchet, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PHONE_VERDICT_CASCADE_BLIND_CEILING",
+  // wave-13m (task w13-xa): open-divergence ledger, wired into TIER2 in the
+  // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "OPEN_DIVERGENCE_CEILING",
+  // wave-16 (task w16-qa, DEC-998 clause a): wired into TIER2 in the same
+  // commit that declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-28 (DEC-808 wave-28 amendment, clauses b/c): wired into TIER2 in the
+  // same commit that declared these in CAMPAIGN_CONSTANT_NAMES above -- never
+  // a declared-but-unread knob (DEC-851/DEC-988). Both read 0.
+  "ROLE_LABEL_SPELLING_CEILING",
+  "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
+  // wave-30 (task v12m-w30-d): wired into TIER2 in the same commit that
+  // declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "UNGROUNDED_SCROLLER_CEILING",
+  "STALE_CLIP_EXCEPTION_CEILING",
+  // wave-30 (task w30-b): tap-floor-exempt receipt premise ratchet, wired
+  // into TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- a real 44px defect count, never a declared-but-unread knob
+  // (DEC-851/DEC-988). Its UNVERIFIABLE-PREMISE sibling is OUT_OF_CAMPAIGN_SCOPE
+  // instead (an instrument-completeness roster count, not a conformance fact).
+  "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
+];
+
+/**
+ * Names that match the `<NAME>_CEILING` / `<NAME>_FLOOR` (or bare `CEILING`)
+ * shape in the real corpus but are deliberately NOT part of the v12 mobile
+ * campaign's own exit predicate. Each value is a PRINCIPLE -- a fact about
+ * what the constant measures that stays true with every branch name and
+ * wave number deleted (DEC-099's shape) -- never a schedule note ("later
+ * wave", "in flight", a branch token). `assertCampaignPopulationTotal`
+ * treats any candidate name here, or in `CAMPAIGN_CONSTANT_NAMES`, as
+ * accounted for; anything else is an ungraded ratchet and throws.
+ */
+export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
+  TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING:
+    "measures how many tap-floor-exempt receipts this wave's premise-checking instrument " +
+    "cannot express a check for (no automated predicate for the reason family, or no " +
+    "companion class distinct from the receipted selector named in the reason text) -- an " +
+    "instrument-completeness fact about the checker's own coverage, not itself a v12 frame " +
+    "or 390-geometry conformance fact. Its sibling, TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING, " +
+    "grades the real defect count and is a TIER2 exit gate.",
+  DESKTOP_FLOOR_DIVERGENCE_CEILING:
+    "measures whether a desktop control's declared min-height reaches the height its OWN " +
+    "v12 frame draws for it (a control-geometry fidelity fact, distinct from whether a " +
+    "frame is CITED or whether a control's WORDS match) -- a new non-zero row in the exit " +
+    "gate would move the campaign's goalposts mid-convergence; it measures fidelity now and " +
+    "is promoted once its measurement technique is proven complete enough to gate on.",
+  DESKTOP_FLOOR_UNRESOLVED_CEILING:
+    "measures how many desktop drawn-control rows the floor-divergence join could not " +
+    "resolve to a source-code label match, a class token, or a CSS rule -- an instrument- " +
+    "completeness fact about the ledger's own join technique, not itself a v12 frame or " +
+    "390-geometry conformance fact.",
+  UNCLAIMED_CEILING:
+    "measures tsconfig project-include coverage (every .ts/.tsx file typechecked by " +
+    "some tsconfig project or a named exclusion) -- a build/typecheck-tooling health " +
+    "check, not a v12 frame or DEC-069 conformance ratchet.",
+  LINE_KEYED_CITATION_CEILING:
+    "measures citation FORM (line-keyed vs drift-proof), an integrity property of the " +
+    "decision-registry ledger's own durability -- whether a citation is written in a shape " +
+    "that survives an edit to the file it points at. Citation RESOLUTION (whether a " +
+    "citation is currently true) is already an exit gate under UNRESOLVED_CITATION_CEILING " +
+    "and WIDENED_UNRESOLVED_CITATION_CEILING; this constant is a distinct, non-overlapping " +
+    "concern from the same population, not a v12 frame or 390-geometry conformance fact.",
+  UNNOTED_REGISTRY_COLLISION_CEILING:
+    "measures how many decisions/DEC-NNN.md / src/decisions-data/DEC-NNN.md id pairs carry a " +
+    "different H1 title (a genuine subject collision under one id) with no registry note " +
+    "resolving which document governs -- a fact about the decision-registry ledger's own " +
+    "internal consistency and citability, not a v12 frame or 390-geometry conformance fact.",
+  FRAME_FLOOR_DIVERGENCE_CEILING:
+    "measures fidelity of a control's DECLARED min-height against the height its OWN phone " +
+    "frame draws (which may exceed the ruled 44px minimum), a finer-grained fact than the " +
+    "existing tap-floor family already grades (whether a control clears the ruled minimum at " +
+    "all). A new non-zero row in the exit gate for a fact this granular would move the " +
+    "campaign's goalposts mid-convergence; it measures fidelity now and is promoted by a " +
+    "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING.",
+  COMMENT_BLIND_CSS_ASSERTION_CEILING:
+    "measures TEST-INSTRUMENT SOUNDNESS -- whether a test file applies a raw-text match " +
+    "assertion to an un-stripped CSS source, which can make a negative assertion fail on a " +
+    "defect that doesn't exist in the tree (or, undetected, make a positive assertion pass " +
+    "vacuously on a comment quoting the real declaration -- DEC-374). It is a fact about the " +
+    "test corpus's own reliability, not about a v12 frame or 390-geometry conformance fact; a " +
+    "newly non-zero row here would move the campaign's goalposts mid-convergence.",
+  EQUAL_SPECIFICITY_SHADOWED_CEILING:
+    "measures a DIFFERENT-SELECTOR cascade-order exposure (DEC-385 single-direction) -- how " +
+    "many max-width declarations are beaten by a different, equal-or-higher-specificity " +
+    "top-level selector, targeting the same component (a shared chq- class token), declared " +
+    "after the max-width block closes. It is a fidelity fact narrower than the identical-" +
+    "selector SHADOWED_CEILING measures, not a v12 frame citation or geometry fact; a newly " +
+    "non-zero row here would move the campaign's goalposts mid-convergence.",
+  LOCAL_CSS_COMMENT_STRIPPER_CEILING:
+    "measures VOCABULARY DUPLICATION (DEC-613) -- how many test files re-derive their own " +
+    "comment-stripping function instead of importing test/helpers/strip-css-comments.ts's " +
+    "shared one. A fact about the test corpus's maintainability, not a v12 frame or " +
+    "390-geometry conformance fact.",
+  DECISIONS_REGISTRY_CITATION_CEILING:
+    "measures citation resolvability (a path:line resolving to a real file/line, and an " +
+    "immediately-following backtick quote matching verbatim) across the OLDER, disjoint " +
+    "decisions/ registry (1000 files) that this campaign never previously checked beyond bare " +
+    "path existence -- a registry-hygiene fact about whether that directory's own citations " +
+    "are internally trustworthy, not a v12 frame or 390-geometry conformance fact. A newly " +
+    "measured, previously-uncounted population must not move the campaign's goalposts " +
+    "mid-convergence; it is promoted once its measurement technique is proven complete enough " +
+    "to gate on, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
+  NEGATIVE_MARGIN_ADJACENCY_CEILING:
+    "measures a STATIC, authoring-time property of every CSS rule in the tracked tree -- " +
+    "whether a negative top/all-sides margin's preceding-comment receipt names an external " +
+    "sibling whose display:none base is revealed by some @media block in the same sheet -- " +
+    "not a live-pixel overlap a render sweep would catch. It grades every rule in every " +
+    "sheet, including surfaces no route sweep visits, deliberately distinct from any " +
+    "live-pixel superimposition detector the campaign's render lane might carry, so it is " +
+    "not a v12 frame or 390-geometry conformance fact in the campaign's own sense " +
+    "(app/src/negative-margin-adjacency.scan.test.ts, DEC-919 wave-152 amendment).",
+  ROUTE_SUBSTATE_UNVISITED_CEILING:
+    "measures how many derived (route, query-key, value) triples a page's own closed-set " +
+    "query-param reads mint that ROUTE_MANIFEST -- the population every live gate (render " +
+    "sweep, overflow probe, tap-floor pass, contrast pass) walks -- carries no row for. It is " +
+    "an INSTRUMENT-COMPLETENESS/POPULATION fact (whether the graded surface area is complete), " +
+    "not itself a v12 frame or 390-geometry conformance fact about any one screen; widening " +
+    "ROUTE_MANIFEST to close a row is a separate act from rostering the gap, so a newly " +
+    "nonzero count here would move the campaign's own convergence goalposts mid-stream " +
+    "(test/route-substate-coverage.scan.test.ts, DEC-144 amendment).",
+  ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING:
+    "measures the admin mobile pass's own OFFENDER COUNT for a population "
+    + "(INTERACTIVE_CONTROL_SELECTOR under MIN_TAP_TARGET_PX) that is ADVISORY, not "
+    + "blocking, the same disposition DEC-393 wave-147/151 already gave the desktop/phone "
+    + "drawn-floor ledgers: a new non-zero row in the exit gate for this count would move "
+    + "the campaign's own convergence goalposts mid-stream, when minControlHeight/"
+    + "minControlWidth (the population's SHORTEST offender) already carry the public-pass "
+    + "contract DEC-253 depends on. This constant lives beside that contract without "
+    + "replacing it (scripts/render-sweep-lib.ts, DEC-253/DEC-367/DEC-808 wave-155 "
+    + "amendment, task qf).",
+  PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING:
+    "same disposition as "
+    + "ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING immediately above -- measures the "
+    + "public/portal mobile pass's own OFFENDER COUNT for the widened INTERACTIVE_CONTROL_"
+    + "SELECTOR population under MIN_TAP_TARGET_PX, ADVISORY not blocking "
+    + "(PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = false), because minControlHeight/"
+    + "minControlWidth over the narrow MOBILE_CONTROL_SELECTOR population already carry "
+    + "the BLOCKING public-pass contract DEC-253 depends on. A new non-zero row in the "
+    + "exit gate for this count would move the campaign's own convergence goalposts "
+    + "mid-stream the first time this population is ever measured. This constant lives "
+    + "beside that contract without replacing it (scripts/render-sweep-lib.ts, DEC-253/"
+    + "DEC-367/DEC-808 wave-30 amendment).",
+  PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR:
+    "a POPULATION-COMPLETENESS "
+    + "fact -- how many public/portal 390 routes' narrow MOBILE_CONTROL_SELECTOR pass "
+    + "matched zero elements, so the BLOCKING public mobile gate's height/width check has "
+    + "been passing on them vacuously -- not itself a v12 frame or 390-geometry "
+    + "conformance fact about any one screen's controls; closing it means widening "
+    + "MOBILE_CONTROL_SELECTOR (a separate act, DEC-253's own contract) rather than fixing "
+    + "a rendered defect, the same INSTRUMENT-COMPLETENESS disposition "
+    + "ROUTE_SUBSTATE_UNVISITED_CEILING already has (scripts/render-sweep-lib.ts).",
+  BACKTICK_PARITY_CEILING:
+    "measures how many decision documents carry an ODD number of backtick characters, i.e. a code "
+    + "span left open so that every citation after it is read inside a quote that was never closed -- "
+    + "a MARKDOWN-HYGIENE fact about the decision registry's own prose, and an instrument-completeness "
+    + "guard on the citation scans that read it, never a v12 frame or 390-geometry conformance fact "
+    + "about any screen the product draws. Grading it would put a documentation-formatting count in "
+    + "the campaign's exit total, where a prose repair would read as product convergence "
+    + "(test/citation-form-drift.scan.test.ts, DEC-967).",
+  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING:
+    "measures whether a drawn v12 FIELD label (an 11px/800-weight/0.1em-tracking eyebrow span "
+    + "over an input-shaped box) matches the WORDS the app's hardcoded label actually renders -- "
+    + "a fidelity fact distinct from whether a frame is CITED or a control's declared WIDTH "
+    + "matches (test/desktop-field-width.scan.test.ts), the same disposition already given to "
+    + "FIELD_WIDTH_DIVERGENCE_CEILING and DESKTOP_FLOOR_DIVERGENCE_CEILING. A newly measured "
+    + "population's non-zero row would move the campaign's goalposts mid-convergence; it "
+    + "measures fidelity now (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task w25-i) "
+    + "and is promoted once its measurement technique is proven complete enough to gate on.",
+  DRAWN_FIELD_LABEL_UNRESOLVED_CEILING:
+    "measures how many drawn v12 FIELD-label rows this ledger's join could not resolve to any "
+    + "grade (STORED-FIELD-LABEL, HARDCODED-MATCHES or HARDCODED-DIVERGES) -- an "
+    + "instrument-completeness fact about the ledger's own join technique (here, a single row "
+    + "whose feature is a recorded, deferred non-build per DEVIATIONS.md §6/DEC-032), not itself "
+    + "a v12 frame or 390-geometry conformance fact, the same disposition already given to "
+    + "FIELD_WIDTH_UNRESOLVED_CEILING (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task "
+    + "w25-i).",
+  FIELD_WIDTH_DIVERGENCE_CEILING:
+    "measures whether a Settings edit-view field's declared width (a --chq-field-w-* token, "
+    + "or the arithmetic a two-up field pair resolves to) reaches the width its OWN v12 "
+    + "'Settings · editing …' frame draws for it -- a control-geometry fidelity fact distinct "
+    + "from whether a frame is CITED or a control's WORDS match, the same disposition already "
+    + "given to DESKTOP_FLOOR_DIVERGENCE_CEILING. A new non-zero row in the exit gate would move "
+    + "the campaign's goalposts mid-convergence; it measures fidelity now and is promoted once "
+    + "its measurement technique is proven complete enough to gate on.",
+  FIELD_WIDTH_UNRESOLVED_CEILING:
+    "measures how many drawn Settings edit-view field-width rows the label-to-SettingsField "
+    + "join could not resolve to a matching component call site -- an instrument-completeness "
+    + "fact about the ledger's own join technique, not itself a v12 frame or 390-geometry "
+    + "conformance fact, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
+  CONFIRM_TITLE_OBJECT_CEILING:
+    "measures the whole app's `<ConfirmDialog title=` idiom ADOPTION -- the scan's own header "
+    + "(app/src/confirm-title-object.scan.test.ts) declares its population is every "
+    + "ConfirmDialog call site, not only irreversible/destructive ones, and states it 'does not "
+    + "require them to change; it only measures the idiom's current adoption' -- an adoption "
+    + "meter over the whole call-site population, not a v12 frame or 390-geometry conformance "
+    + "fact (DEC-808 wave-13m amendment).",
+  AUDIT_GREP_NEGATIVE_STALE_CEILING:
+    "measures TEST-INSTRUMENT SOUNDNESS -- how many of docs/design/audit/**/*.md's own "
+    + "hand-run 'grepped X for Y: zero hits' claims no longer hold against the tree. It grades "
+    + "the audit corpus's own claim hygiene (DEC-069 wave-19 clause (b)), not itself a v12 frame "
+    + "or 390-geometry conformance fact about any one screen (test/audit-gap-row-staleness.scan.test.ts, "
+    + "DEC-808 wave-24 amendment).",
+  UNRESOLVED_COUNT_TRIPWIRE:
+    "measures how many drawn phone controls the frame-control-floor ledger's own label/token/rule "
+    + "join could not resolve (no-label-match/no-token/no-rule/no-control-shape) -- an "
+    + "instrument-completeness fact about that ledger's own join technique, not itself a v12 frame "
+    + "or 390-geometry conformance fact, the same disposition already given to "
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-control-floor.scan.test.ts, DEC-808 wave-24 "
+    + "amendment).",
+  RAW_JSON_BODY_DOOR_CEILING:
+    "measures how many src/routes/** handlers still read a request body through the raw Hono "
+    + "`c.req.json(` API instead of src/server/http.ts's readJsonBody/readOptionalJsonBody, which "
+    + "refuse a literal `null` body with the house 400 `invalid` envelope rather than crashing the "
+    + "next dereference into an unhandled 500 -- a server-side request-parsing robustness fact "
+    + "about a route's error envelope, not itself a v12 frame or 390-geometry conformance fact "
+    + "(test/json-body-door.scan.test.ts, DEC-613 wave-23 amendment).",
+  MINT_DOOR_UNCAPPED_CEILING:
+    "measures how many mint doors (route handlers that insert a new domain row) reference no "
+    + "batch/count MAX_* bound in their own handler body or named repo/** insert function, and "
+    + "carry no `mint-cap-exempt:` comment -- a server-side write-door robustness fact about "
+    + "whether a mint can be flooded with unbounded rows, not itself a v12 frame or 390-geometry "
+    + "conformance fact (test/mint-door-cap-census.scan.test.ts, DEC-180 wave-23 amendment).",
+
+  FRAME_EYEBROW_DIVERGENCE_CEILING:
+    "measures a newly-derived word population (a phone frame's drawn text-transform:uppercase "
+    + "eyebrow, disjoint by construction from the caption ledger, both control-label ledgers and the "
+    + "field-label ledgers) that no instrument previously graded -- a real copy-fidelity fact about "
+    + "this specific population, but a newly measured, previously-uncounted population must not move "
+    + "the campaign's goalposts mid-convergence; it is promoted once its measurement technique is "
+    + "proven complete enough to gate on, the same disposition already given to "
+    + "DESKTOP_FLOOR_DIVERGENCE_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
+    + "amendment).",
+  FRAME_EYEBROW_UNRESOLVED_CEILING:
+    "measures how many drawn phone eyebrow rows the eyebrow ledger's own verbatim join could not "
+    + "resolve (a value composed from live data at render time, which a static substring join can "
+    + "never verify) -- an instrument-completeness fact about that ledger's own join technique, not "
+    + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
+    + "amendment).",
+
+  AUDIT_FILE_FLOOR:
+    "measures a MONOTONE-UPWARD non-vacuity minimum -- how many audit documents the "
+    + "open-divergence ledger's own recursive enumerator must still reach before its walk may be "
+    + "trusted -- over a corpus that GROWS every time a ledger appends a document. A floor whose "
+    + "honest direction of travel is upward can never converge to zero, so grading it would make "
+    + "ordinary corpus growth read as campaign regression; it is a population-vacuity guard on "
+    + "that ledger's own enumerator, not a v12 frame or 390-geometry conformance fact "
+    + "(test/open-divergence-ledger.scan.test.ts, DEC-808 wave-28 amendment).",
+  TOKEN_ROW_FLOOR:
+    "measures the same MONOTONE-UPWARD non-vacuity minimum one level in -- how many raw "
+    + "DIVERGES-token rows that enumerator must still open across the corpus before an empty walk "
+    + "can be told apart from a genuinely drained one -- and rises with every divergence a new "
+    + "audit document records, whether or not any of them is open. It guards the ledger's own "
+    + "population against silently going vacuous; the conformance question is asked by "
+    + "OPEN_DIVERGENCE_CEILING, which is graded (test/open-divergence-ledger.scan.test.ts, "
+    + "DEC-808 wave-28 amendment).",
+  FRAME_COUNT_CAPTION_UNMATCHED_CEILING:
+    "measures a newly-derived word population (a v12 frame's digit-bearing muted-prose caption "
+    + "-- 'N recipients', 'N of M reviews in' -- the caption ledger's own header names as ungraded, "
+    + "'a COMPOSED-from-data render, graded by a different instrument were one to exist') against a "
+    + "grader that is DELIBERATELY narrower than the caption ledger's own (digit-collapse only, no "
+    + "merge-placeholder collapse), so it resolves far fewer composed rows than that ledger does by "
+    + "construction -- an instrument-completeness fact about this new, narrower technique, not a "
+    + "copy-fidelity claim about the app (the caption ledger's own FRAME_CAPTION_UNMATCHED_CEILING = "
+    + "0 already says every one of these rows resolves under ITS stronger grader). A newly measured, "
+    + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
+    + "promoted once its measurement technique is proven complete enough to gate on, the same "
+    + "disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING and FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment).",
+  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING:
+    "measures a newly-derived size-unit population (every product font-size/gap declaration whose "
+    + "COMPUTED px value at the 16px root sits outside the pack's own drawn px vocabulary for that "
+    + "property) that no instrument previously graded -- a real conformance fact about this "
+    + "population, but a freshly measured, previously-uncounted population must not move the "
+    + "campaign's goalposts mid-convergence; it is promoted once a later lane drains it, the same "
+    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING and FRAME_EYEBROW_DIVERGENCE_CEILING "
+    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment).",
+  PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING:
+    "measures how many of that same population are `em` literals, whose computed px depends on an "
+    + "inherited size this scan cannot resolve -- an instrument-completeness fact about the ratchet's "
+    + "own join technique, not itself a v12 frame or 390-geometry conformance fact, the same "
+    + "disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING "
+    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment).",
+  FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING:
+    "measures a newly-derived STATE population (the pack's `sc-if value=\"{{ ... }}\"` blocks -- 23 "
+    + "rows across Agenda/Public and Portal/Review/Settings/Speakers/Comms, derived via readdirSync "
+    + "at test time) that no instrument previously graded -- every prior ledger in this campaign "
+    + "grades drawn WORDS, none grades whether the pack's TWO branches of one region both have a "
+    + "real product conditional. A real copy-fidelity fact about this specific population, but a "
+    + "newly measured, previously-uncounted population must not move the campaign's goalposts "
+    + "mid-convergence; it is promoted once its measurement technique is proven complete enough to "
+    + "gate on, the same disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING "
+    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING:
+    "measures how many drawn conditional-state rows this join found real product EVIDENCE for (a "
+    + "literal copy match or a structural discriminant match) but no `*.test.ts(x)` file anywhere in "
+    + "the repo also contains that same evidence -- an instrument-completeness/test-coverage fact "
+    + "about the join's own mounting check, not itself a v12 frame or 390-geometry conformance fact, "
+    + "the same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+};
