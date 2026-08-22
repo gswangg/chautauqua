@@ -21,6 +21,7 @@ import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { DEC_385, DEC_874, DEC_967, DEC_976 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_385;
 void DEC_874;
@@ -30,6 +31,34 @@ void DEC_976;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Content.dc.html');
+const CONTENT_CSS = join(HERE, 'content.css');
+
+/** DEC-976 wave-12 / phone-verdict-cascade-read lens (task w15-w): jsdom
+ * applies no stylesheet, so this file's DOM-only assertions above are
+ * really a claim about the un-cascaded desktop tree -- they would pass
+ * whether or not the terminal `@media (max-width: 700px)` block actually
+ * turns the header row into the stacked column the frame draws. content.css
+ * has SIX `max-width: 700px` substrings (five are prose inside comments
+ * that only MENTION the block; this is the one real
+ * `@media (max-width: 700px) {` opener) -- extracted by brace-depth walk,
+ * same idiom as Contacts.frame-verdicts.render.test.tsx's
+ * `readContactsPhoneLayer()`. */
+function readContentPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(CONTENT_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('content.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('content.css phone block never closes');
+  return css.slice(start, i - 1);
+}
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -133,6 +162,17 @@ describe('v12 Content "Files · 390" frame (:338-368): first markup-level render
     expect(headerRow).not.toBeNull();
     const statLine = within(headerRow!).getByText(/^\d+ files · /);
     expect(headerRow!.contains(statLine)).toBe(true);
+
+    // jsdom never evaluates @media, so the DOM assertion above (H1 and the
+    // stat line sharing one parent) proves only that they share a parent --
+    // NOT that the frame's :338-357 stacked header actually renders at 390.
+    // Read the terminal phone cascade's own text and assert it turns that
+    // SAME shared parent into the column stack the frame draws (back link
+    // over title over stat line, :338-342), closing the cascade-blind gap
+    // this file's DOM-only assertions leave open.
+    const phoneLayer = readContentPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-content-files-header-row\s*\{[^}]*flex-direction:\s*column;/);
+    expect(phoneLayer).toMatch(/\.chq-content-files-header-row\s*\{[^}]*align-items:\s*stretch;/);
 
     // :344 leading type-tab chip renders first, drawing "All" at the 390
     // register (accessible name stays pinned to "All types" at every

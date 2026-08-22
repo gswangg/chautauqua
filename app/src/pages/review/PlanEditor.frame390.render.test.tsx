@@ -38,10 +38,39 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PlanEditor } from './PlanEditor';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Review.dc.html');
+const REVIEW_CSS = join(HERE, 'review.css');
+
+/** DEC-976 wave-12 / phone-verdict-cascade-read lens (task w15-w): jsdom
+ * applies no stylesheet, so this file's DOM-only assertions (below) about
+ * the shipped ".chq-review-editor-title-actions" dock prove only that the
+ * dock's un-cascaded DOM carries Duplicate/Save -- never that the terminal
+ * `@media (max-width: 700px)` block actually stacks the title row the way
+ * the frame's :594-673 phone extent draws it. review.css has SIX
+ * `max-width: 700px` substrings (five are prose inside comments that only
+ * MENTION the block; this is the one real `@media (max-width: 700px) {`
+ * opener) -- extracted by brace-depth walk, same idiom as
+ * Contacts.frame-verdicts.render.test.tsx's `readContactsPhoneLayer()`. */
+function readReviewPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(REVIEW_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('review.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('review.css phone block never closes');
+  return css.slice(start, i - 1);
+}
 
 /** DEC-967 shape, copied verbatim from PlanEditor.copy-390.render.test.tsx's
  * own `verbatimLine`: read the ACTUAL design-file line and assert it
@@ -319,6 +348,17 @@ describe('Plan editor · 390 shipped anatomy (matches the frame)', () => {
     // a defect this file re-opens.
     expect(screen.queryByText('Save the plan')).not.toBeInTheDocument();
     expect(within(dock as HTMLElement).queryByText('Cancel')).not.toBeInTheDocument();
+
+    // jsdom never evaluates @media -- the assertions above prove only that
+    // the un-cascaded DOM carries the shipped Duplicate/Save pair, not that
+    // the terminal phone cascade actually stacks the title row the frame's
+    // :594-673 extent draws (rather than the desktop baseline row the two
+    // buttons sit on at every width below 700px, unless overridden). Read
+    // the terminal phone cascade's own text and assert it stacks the SAME
+    // title row/actions this dock lives in.
+    const phoneLayer = readReviewPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-review-editor-title-row\s*\{[^}]*flex-direction:\s*column;/);
+    expect(phoneLayer).toMatch(/\.chq-review-editor-title-actions\s*\{[^}]*width:\s*100%;/);
   });
 
   it('page section order: "Criteria" (phone eyebrow) precedes "Who reviews what"', async () => {
