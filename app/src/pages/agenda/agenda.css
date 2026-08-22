@@ -1150,6 +1150,7 @@
 .chq-phone-slot-free-label,
 .chq-phone-slot-free-length,
 .chq-phone-slot-place-anyway,
+.chq-phone-slot-blocked,
 .chq-phone-footer,
 .chq-phone-footer-armed,
 .chq-phone-footer-armed-info,
@@ -1763,5 +1764,27 @@
     display: flex;
     align-items: center;
     padding: 0 12px;
+  }
+
+  /* DEC-895 wave-32 amendment: the phone agenda's fourth slot kind -- a
+     scheduled break, drawn as a bordered, non-tappable row.
+     docs/design/Chautauqua Agenda.dc.html:183 `border:1px solid #E1DDCE;
+     border-radius:6px; min-height:44px; display:flex; align-items:center;
+     padding:0 12px; font-size:11px; font-weight:600; letter-spacing:0.06em;
+     text-transform:uppercase; color:#6B6F5C`. Appended at the TRUE END of
+     the file per the block header above -- never inserted beside
+     .chq-phone-slot-free, which the DEC-385 wave-90 block already owns. */
+  .chq-phone-slot-blocked {
+    border: 1px solid var(--chq-hairline);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
   }
 }

@@ -45,6 +45,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import '@testing-library/jest-dom/vitest';
 import type { ComponentProps } from 'react';
 import { PhoneAgenda } from './PhoneAgenda';
+import type { ScheduleBreakRow } from './BreaksPanel';
 import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
 // compile-checked provenance markers only (DEC-976 wave-126 idiom, see
 // PhoneAgenda.dock-membership.render.test.tsx): the DEC_NNN constants in
@@ -96,6 +97,20 @@ function placedSession(
 
 function unscheduledSession(id: string, ref: string, title: string): UnscheduledAgendaSession {
   return { submissionId: id, ref, title, trackIds: [], speakers: [{ contactId: `c-${id}`, name: 'Someone Speaker' }] };
+}
+
+function breakRow(day: string, label: string, startMin: number, durationMin: number): ScheduleBreakRow {
+  return {
+    id: `brk-${startMin}`,
+    eventId: 'evt-1',
+    day,
+    label,
+    location: null,
+    startMin,
+    durationMin,
+    createdAt: 0,
+    updatedAt: 0,
+  };
 }
 
 function baseProps(overrides: Partial<ComponentProps<typeof PhoneAgenda>> = {}) {
@@ -292,6 +307,44 @@ describe('Agenda 390 frame :177-178 -- empty-slot placement control reads "Place
     expect(within(freeButton as HTMLElement).getByText('Place here')).toBeInTheDocument();
     const lengthLabel = within(freeButton as HTMLElement).getByText(/^\d+ min free$/);
     expect(lengthLabel).toBeInTheDocument();
+  });
+});
+
+describe('Agenda 390 frame :182-183 -- blocked slot (a scheduled break), the fourth slot kind (DEC-895 wave-32 amendment)', () => {
+  it('renders the break as a bordered, non-button row carrying "<label> · <duration> min"', () => {
+    const breaks = [breakRow(DAY, 'Lunch', 720, 60)];
+    render(<PhoneAgenda {...baseProps({ dayStartMin: 660, dayEndMin: 840, breaks })} />);
+
+    // frame :183 draws `{{ slot.note }}` -- the frame's own demo data
+    // (docs/design/Chautauqua Agenda.dc.html:308) composes this as
+    // `Lunch · 60 min`.
+    const blocked = document.querySelector('.chq-phone-slot-blocked');
+    expect(blocked).not.toBeNull();
+    expect(blocked!.textContent).toBe('Lunch · 60 min');
+    // frame :182-183 draws a plain `<div>`, not a control -- unlike
+    // 'placed'/'clash'/'free', a blocked row is never a tap target.
+    expect(blocked!.tagName).not.toBe('BUTTON');
+    expect(blocked!.closest('button')).toBeNull();
+  });
+
+  it('renders NO "Place here anyway" sibling next to a blocked row even while a session is armed', () => {
+    const breaks = [breakRow(DAY, 'Lunch', 720, 60)];
+    const unscheduled = [unscheduledSession('u1', 'DFC-099', 'A Talk Looking For A Room')];
+    render(<PhoneAgenda {...baseProps({ dayStartMin: 660, dayEndMin: 840, breaks, unscheduled })} />);
+
+    // arm a session (mirrors the :177-178 test's own arming flow)
+    fireEvent.click(screen.getByText('Unscheduled 1'));
+    fireEvent.click(screen.getByText('A Talk Looking For A Room').closest('button')!);
+
+    const blockedRow = document.querySelector('.chq-phone-slot-blocked');
+    expect(blockedRow).not.toBeNull();
+    // the blocked row's own .chq-phone-slot wrapper carries no
+    // "Place here anyway" control, unlike a placed/clash slot while armed
+    // (PhoneAgenda.tsx's `{armed && (...)}` sibling on those two kinds only).
+    const wrapper = blockedRow!.closest('.chq-phone-slot');
+    expect(wrapper).not.toBeNull();
+    expect(within(wrapper as HTMLElement).queryByText('Place here anyway')).not.toBeInTheDocument();
+    expect(within(wrapper as HTMLElement).queryAllByRole('button')).toHaveLength(0);
   });
 });
 

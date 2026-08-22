@@ -4,13 +4,24 @@
 // so this stays unit-testable in isolation.
 
 import type { AgendaConflict, PlacedAgendaSession } from './types';
+import type { BlockedInterval } from '../../lib/schedule-vocabulary';
 
 export interface PhoneSlot {
   startMin: number;
   endMin: number;
-  kind: 'placed' | 'clash' | 'free';
+  kind: 'placed' | 'clash' | 'free' | 'blocked';
   sessions: PlacedAgendaSession[];
+  /** Populated for `kind: 'blocked'` runs only (docs/design/Chautauqua
+   * Agenda.dc.html:183 `{{ slot.note }}`), e.g. "Lunch · 60 min". */
+  note?: string;
 }
+
+/** A break's blocked interval carrying the note its bordered phone row
+ * draws (DEC-895 wave-32 amendment). Reuses BlockedInterval's day/startMin/
+ * endMin shape rather than minting a second one -- PhoneAgenda.tsx already
+ * builds a BlockedInterval[] from `breaks` for computeClashMove's `blocked`
+ * scan; this is that same array with the note the same break row carries. */
+export type PhoneBlockedInterval = BlockedInterval & { note: string };
 
 export interface BuildPhoneSlotsArgs {
   placed: PlacedAgendaSession[];
@@ -20,6 +31,9 @@ export interface BuildPhoneSlotsArgs {
   dayEndMin: number;
   gridMin: number;
   conflicts: AgendaConflict[];
+  /** The day's breaks, already reduced to blocked intervals + note. Defaults
+   * to `[]` so existing callers/tests with no breaks fixture are unaffected. */
+  breaks?: PhoneBlockedInterval[];
 }
 
 /**
@@ -41,7 +55,7 @@ export interface BuildPhoneSlotsArgs {
  * which is guaranteed to agree with the server's room_overlap conflicts.
  */
 export function buildPhoneSlots(args: BuildPhoneSlotsArgs): PhoneSlot[] {
-  const { placed, day, roomId, dayStartMin, dayEndMin } = args;
+  const { placed, day, roomId, dayStartMin, dayEndMin, breaks = [] } = args;
 
   const roomSessions = placed
     .filter((s) => s.day === day && s.roomId === roomId)
@@ -64,19 +78,42 @@ export function buildPhoneSlots(args: BuildPhoneSlotsArgs): PhoneSlot[] {
     }
   }
 
+  // Sessions and breaks share ONE run-in-start-order sweep (a break is a
+  // fourth occupied run, carved out of the free time exactly as a placed/
+  // clash cluster is -- so consecutive free time still collapses to one
+  // target either side, both before and after a break).
+  type Run =
+    | { kind: 'placed' | 'clash'; startMin: number; endMin: number; sessions: PlacedAgendaSession[]; note?: undefined }
+    | { kind: 'blocked'; startMin: number; endMin: number; sessions?: undefined; note: string };
+
+  const runs: Run[] = [
+    ...clusters.map(
+      (c): Run => ({
+        kind: c.sessions.length >= 2 ? 'clash' : 'placed',
+        startMin: c.startMin,
+        endMin: c.endMin,
+        sessions: c.sessions,
+      }),
+    ),
+    ...breaks
+      .filter((b) => b.day === day)
+      .map((b): Run => ({ kind: 'blocked', startMin: b.startMin, endMin: b.endMin, note: b.note })),
+  ].sort((a, b) => a.startMin - b.startMin);
+
   const slots: PhoneSlot[] = [];
   let cursor = dayStartMin;
-  for (const cluster of clusters) {
-    if (cluster.startMin > cursor) {
-      slots.push({ startMin: cursor, endMin: cluster.startMin, kind: 'free', sessions: [] });
+  for (const run of runs) {
+    if (run.startMin > cursor) {
+      slots.push({ startMin: cursor, endMin: run.startMin, kind: 'free', sessions: [] });
     }
     slots.push({
-      startMin: cluster.startMin,
-      endMin: cluster.endMin,
-      kind: cluster.sessions.length >= 2 ? 'clash' : 'placed',
-      sessions: cluster.sessions,
+      startMin: run.startMin,
+      endMin: run.endMin,
+      kind: run.kind,
+      sessions: run.sessions ?? [],
+      ...(run.note !== undefined ? { note: run.note } : {}),
     });
-    cursor = cluster.endMin;
+    cursor = Math.max(cursor, run.endMin);
   }
   if (cursor < dayEndMin) {
     slots.push({ startMin: cursor, endMin: dayEndMin, kind: 'free', sessions: [] });
