@@ -140,20 +140,62 @@ function formatOffender(o: Offender): string {
 const MEMBERS = findPhoneVerdictMembers(PAGES_ROOT);
 const OFFENDERS = findOffenders(MEMBERS);
 
-// RE-MEASURED (task w16-qi, DEC-994): forced to -1 and read the printed
-// offender list -- still 25 members, now 7 offenders. This task's own two
-// files (review/PlanEditor.frame390.render.test.tsx and
-// Speakers.frame-verdicts.render.test.tsx) each gained a real cascade read
-// consumed by an assertion, dropping the count 9 -> 7. The two-sided
-// companion below caught the drop live -- lowering the ceiling in this same
-// commit is that companion's contract, never a snapshot carried from a
-// prior wave. Note for the merge train: other w16 lanes may be draining
-// the same population concurrently, so this ceiling may need lowering
-// again once those land. Remaining offenders: Agenda.frame-verdicts,
-// Comms.frame390, content/DeliverableDetail.frame390,
-// content/FilesLibrary.frame390, overview/Overview.frame390,
-// settings/CallForPapersPanel.frame390, submissions/Submissions.frame390.
-export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 7;
+// RE-MEASURED (task w19-f, DEC-994): forced to -1 and read the printed
+// offender list -- 25 members, 0 offenders. All seven members the wave-16
+// audit last left blind (Agenda.frame-verdicts, Comms.frame390,
+// content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
+// overview/Overview.frame390, settings/CallForPapersPanel.frame390,
+// submissions/Submissions.frame390) gained a `.css` literal in the
+// interim (four wave-16 receipt lanes: 4ae7d2f1b, 1788d6a18, 384cc63bd,
+// 2753344ff). DEC-994 requires proving each new read is CONSUMED by an
+// assertion, not a dead literal -- audited every one of the seven against
+// the actual `.css` source in this worktree:
+//   - Agenda.frame-verdicts: readAgendaPhoneLayer() brace-walks
+//     agenda.css's one `@media (max-width:700px)` opener (:1176, sole
+//     match in the file); consumed by
+//     `expect(phoneLayer).toMatch(/\.chq-phone-agenda-head\s*\{...
+//     flex-direction:\s*column/)`, backing frame :127's stacked head band.
+//   - Comms.frame390: readCommsPhoneLayer() brace-walks comms.css's one
+//     real opener (:1448 -- the file's other two "max-width: 700px"
+//     sightings, :1221/:1424, are comment prose stripped by
+//     stripCssComments before the walk); consumed by
+//     `expect(phoneLayer).toMatch(/\.chq-comms-phone-recent-row\s*\{...
+//     flex-direction:\s*column/)`, backing the :196-203 stacked row card.
+//   - content/DeliverableDetail.frame390 and content/FilesLibrary.frame390
+//     both read content.css, which has SIX "max-width: 700px" substrings
+//     (five are comment prose, one real opener at :1077, brace-balanced to
+//     :2106 -- verified in this worktree). DeliverableDetail pulls
+//     `.chq-content-status-band`'s body (defined only at :1508, inside the
+//     700px span) via the shared `phoneMediaBlocks` walk and asserts
+//     `flex-wrap:\s*wrap` + `row-gap:\s*10px`, backing the :380/:381
+//     status-band wrap. FilesLibrary's readContentPhoneLayer() brace-walks
+//     the same single real opener directly and asserts
+//     `.chq-content-files-header-row`'s `flex-direction:\s*column` +
+//     `align-items:\s*stretch`.
+//   - overview/Overview.frame390: readOverviewPhoneCss() joins every
+//     top-level `@media` block via `phoneMediaBlocks` (overview.css also
+//     carries six `@media (hover: hover)` blocks and one `(max-width:
+//     900px)`), then asserts `.chq-overview-headline{...font-size:\s*29px}`
+//     -- verified `.chq-overview-headline` is defined ONLY at the base
+//     rule (a CSS-var font-size, not a 29px literal) and inside the one
+//     `(max-width:700px)` block (:592), so no hover/900px block can supply
+//     a false match; backs frame :207's phone headline size.
+//   - settings/CallForPapersPanel.frame390: copyBtnPhoneRule() joins the
+//     phone blocks and asserts `.chq-settings-cfp-copy-btn`'s
+//     `width:\s*100%` (settings.css's one real 700px opener is :1480; the
+//     rule lives at :1838, inside it), backing frame :453's full-width
+//     Copy link pill.
+//   - submissions/Submissions.frame390: rowTriagePhoneRules() joins the
+//     phone blocks (submissions.css's one real opener is :643) and asserts
+//     the `.chq-submissions-row-triage .chq-btn:nth-child(1),(2)` pair's
+//     `flex:\s*1` and `:nth-child(3)`'s `padding:\s*0 14px`, backing frame
+//     :165/:167's Accept/Decline/Read triple.
+// Every one of the seven is a real, consumed read against a genuine
+// `@media (max-width:700px)` rule cited to a frame line -- none is a dead
+// `const X = 'foo.css'` DEC-994 warns against. Lowering the ceiling to the
+// measured floor in this same commit is the two-sided companion's
+// contract.
+export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 0;
 
 describe('phone-verdict cascade-read lens (DEC-808 wave-12, task w12-xf)', () => {
   it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {
