@@ -84,6 +84,19 @@ function listCssFiles(root: string): string[] {
 
 /** Strips /* ... *\/ block comments so a comment quoting CSS-shaped text is
  * never mistaken for a real declaration. */
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments. productSources() composes ssrCssSources(), which reads
+// every SSR `*_CSS`-exporting module whole-file -- raw TypeScript source,
+// not extracted CSS-string content -- the same tool-input-domain hazard
+// recorded in test/disabled-token-uses.scan.test.ts's carve-out note.
+// Converting this call site was tried live: PACK_VOCAB (derived only from
+// docs/design/*.dc.html, unaffected by this hazard) stayed correct, but the
+// hazard is real and unmeasured for the PRODUCT side (src/routes/**/*.ts
+// via ssrCssSources) -- several members of that population (e.g.
+// src/routes/review/reviewer.ts) collapse to a small fraction of their real
+// length under the shared stripper, per this wave's population-wide
+// measurement. Left as the plain regex, which has no quote-tracking to
+// desync, rather than risk a silent false negative in OFFENDERS.
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
@@ -205,7 +218,6 @@ function findOffenders(sources: readonly ProductSources[], vocab: Vocabulary): O
 const PACK_VOCAB = deriveVocabulary(packSources());
 const PRODUCT_SOURCES = productSources();
 const OFFENDERS = findOffenders(PRODUCT_SOURCES, PACK_VOCAB);
-
 /** Two-sided ratchet (DEC-976/DEC-967 shape used by every prior ledger in
  * this campaign): raised only by a merge-train act, never a worker's edit
  * mid-lane; a stale ceiling below the measured count licenses stagnation

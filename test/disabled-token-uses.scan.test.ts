@@ -53,10 +53,6 @@ function collectStylesheets(): string[] {
   return files;
 }
 
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 /** Same `{selector, body}` parser the sibling stylesheet scans use. Rules
  * nested in an @media block are picked up as their own inner rule. */
 function parseRules(css: string): Array<{ selector: string; body: string }> {
@@ -148,6 +144,26 @@ const KNOWN_ESCAPES_OTHER_LANE: Record<string, string> = {};
 interface Hit {
   file: string;
   selector: string;
+}
+
+// v12m-w26-f (DEC-374 amendment): NOT converted to the shared, string-aware
+// stripCssComments. This file's collectStylesheets() includes
+// src/views/theme.ts, read as RAW TypeScript source (not just its CSS
+// template-literal content). theme.ts's own `//`-comment prose contains
+// ordinary English contractions/quotes the shared helper's quote-tracking
+// treats as CSS string delimiters (it understands `/* */` and quoted
+// strings, never `//`), and an unbalanced quote inside a `//` comment
+// desyncs the state machine for everything downstream -- verified directly:
+// stripCssComments(readFileSync('src/views/theme.ts')) ends the file still
+// "inside a string" and silently fails to strip real `/* */` CSS comments
+// for long stretches of the file. See this wave's DEC-374 amendment note
+// for the full population-wide measurement (nearly every raw-.ts reader in
+// this ratchet's offender list hits the same corruption, several far more
+// severely). This is a tool-input-domain carve-out, not the documented (a)/
+// (b) shapes: the plain regex below is safe here specifically because it
+// has no notion of quoting to desync in the first place.
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 function scan(): Hit[] {

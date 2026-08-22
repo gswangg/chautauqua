@@ -147,4 +147,57 @@
 // merge (scribe waves 15/16, the round-4 probe sweep) touch only
 // docs/probes, field-guide and src/decisions-data. Lowered 84 -> 83 from the
 // re-measured number, never by arithmetic on a batch size.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 83;
+// v12m-w26-f (wave 26, task w26-f, DEC-374 wave-26 amendment, v12-frame-
+// evidence drain): measured RED at this branch's tree (forced -1, offender
+// list read back) BEFORE any change: 83, matching the ceiling. Attempted 8
+// of the 10 files this task's brief named as confirmed candidates.
+// CONVERTED (2), both genuinely CSS-only content -- a real .css-file
+// population or an already-extracted CSS-string constant, with no raw
+// TypeScript prose in the input: test/portal-w6-h-dock.test.ts (strips the
+// imported PORTAL_CSS string constant) and
+// test/filled-control-hover-label.scan.test.ts (strips real app/src/**/*.css
+// file text only). Every assertion in both files still passed once routed
+// through the real stripper -- no false receipt was found in this batch.
+// NOT CONVERTED (6), a newly-discovered THIRD carve-out class, distinct
+// from the two this ratchet's module header documents: test/helpers/
+// strip-css-comments.ts's stripCssComments is quote-tracking (it recognises
+// `"`/`'` string delimiters so a CSS `content: "/*";` isn't mistaken for a
+// real comment) but has no notion of `//` line comments at all. Fed a WHOLE
+// raw `.ts`/`.css.ts` module (as opposed to just its extracted CSS
+// template-literal body), an ordinary English contraction or quoted phrase
+// inside the file's own `//`-comment prose (e.g. auth.css.ts's header
+// "which would corrupt any quoted font-family name") is read as a string
+// OPEN with no corresponding close, desyncing the state machine for
+// everything downstream in the file -- real `/* */` CSS comments stop being
+// recognised as comments at all. Caught live: converting
+// test/public-page-title-register.scan.test.ts flipped its own
+// "every h1-ish selector has a REGISTER_TABLE row" assertion red, reporting
+// a phantom offender whose "selector" text was two whole DEC-369/DEC-367
+// comment blocks concatenated with the real .chq-auth-back selector --
+// not a hidden offender, a corrupted parse. A population-wide direct diff
+// (naive-regex-stripped length vs shared-stripper-stripped length) across
+// every src/routes/**/*.ts and src/views/**/*.ts file confirmed this is
+// severe and widespread, not one file's fluke: src/routes/review/
+// reviewer.ts collapses from 31647 real characters to 641 under the shared
+// stripper, and roughly two-thirds of that population ends the file still
+// "inside a string". Left unconverted, each with its own carve-out comment
+// at its declaration site: test/disabled-token-uses.scan.test.ts and
+// test/display-heading-line-height.scan.test.ts (both read raw
+// src/views/theme.ts), test/on-brand-anchor-hover.scan.test.ts and
+// test/ssr-css-contract.scan.test.ts (both read raw .ts modules under
+// src/routes/**, src/views/**), test/public-page-title-register.scan.test.ts
+// (reads raw .css.ts modules) and test/pack-declaration-vocabulary.scan.
+// test.ts (its findDeclarations is shared between the pack docs/design/
+// *.dc.html population, unaffected, and the product population via test/
+// helpers/ssr-css-sources.ts's ssrCssSources(), which reads raw .ts -- the
+// two populations share one function, so the whole file was left alone
+// rather than partially converting). This third carve-out class likely
+// blocks converting a large fraction of the ratchet's remaining offenders
+// (most touch theme.ts or another raw .ts module) until either
+// stripCssComments itself is taught `//`-line-comment awareness or each
+// call site is changed to extract only the CSS template-literal body before
+// stripping -- both out of this task's scope. Re-measured with the ceiling
+// forced to -1 again: 81, exactly 83-2, confirmed by reading the offender
+// list (the two converted files absent, all others -- including the six
+// left alone -- present as before). Ceiling lowered to match: 83 -> 81.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 81;
