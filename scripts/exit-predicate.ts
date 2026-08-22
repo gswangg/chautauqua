@@ -1126,12 +1126,15 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "individual units to genuine 1:1 citations, the same disposition already given to "
     + "FRAME_EYEBROW_DIVERGENCE_CEILING and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
     + "(test/design-rulings-ledger.scan.test.ts, DEC-582 wave-31 amendment).",
-  BACKTICK_PARITY_CEILING:
-    "measures how many decisions-data/decisions doc files carry an ODD backtick count (an "
-    + "unclosed markdown code span) -- a citation-hygiene fact about the decision registry's own "
-    + "prose, not itself a v12 frame or 390-geometry conformance fact (test/citation-form-drift.scan.test.ts, "
-    + "DEC-967 wave-28 amendment; registered wave-31 -- landed unregistered by the same commit that "
-    + "introduced it).",
+  // NOTE (wave-31 merge train): v12m-w31-f also registered
+  // BACKTICK_PARITY_CEILING here, believing it had "landed unregistered".
+  // It was in fact already registered above (see the BACKTICK_PARITY_CEILING
+  // entry in this same object), with the same UNGRADED disposition, the same
+  // test/citation-form-drift.scan.test.ts citation and the same DEC-967
+  // basis -- w31-f was cut from a main that predated that registration. The
+  // duplicate literal is dropped rather than merged: two keys with one name
+  // is a TS1117 error, and the surviving entry is the fuller statement of
+  // the identical ruling.
   PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING:
     "measures a newly-derived population (a phone `display:none` rule whose hidden `chq-` token "
     + "carries a STATIC text child the pack draws verbatim inside some width:390 frame extent -- the "
