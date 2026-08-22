@@ -46,14 +46,105 @@ export function appliesAt390(condition: string): boolean {
   return !minWidths.some((y) => y > PHONE_FRAME_WIDTH_PX);
 }
 
-export function phoneMediaBlocks(css: string): Array<{ condition: string; body: string }> {
-  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
-  const out: Array<{ condition: string; body: string }> = [];
+/**
+ * Length-preserving comment blanking, used ONLY to drive `mediaBlockSpans`'s
+ * scan below -- every returned `condition`/`body` string and every returned
+ * offset is still sliced out of the CALLER's original `css`, so nothing
+ * downstream (extractRules' `EXEMPT_COMMENT_RE` probe of the text preceding
+ * a rule, the `index` recorded on every Rule) sees a blanked character or a
+ * shifted offset.
+ *
+ * Two distinct hazards, both real in this repo, both fixed by blanking:
+ *
+ *  1. A literal `@media` sitting in COMMENT PROSE (contacts.css:622 and
+ *     styles.css both do this, describing the sheet's own block layout)
+ *     otherwise starts a match, so the captured `condition` becomes an
+ *     18-line comment with the real `(max-width: 700px)` glued on the end.
+ *     styles.css only ever parsed correctly by accident -- `isPhoneCondition`
+ *     found a `max-width: 700px` substring buried in the prose.
+ *  2. Braces inside comments desynchronise brace counting. `population.ts`'s
+ *     `sanitizeCommentBraces` already neutralises those, but it is applied
+ *     by CALLERS and not by every one of them (the fixtures below call
+ *     `mediaSpans` on raw text), so the scan must not depend on it having
+ *     run. Blanking whole comments subsumes it.
+ *
+ * `\n` is preserved so any line-based diagnostics keep their line numbers.
+ */
+function blankComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '));
+}
+
+export interface MediaBlock {
+  condition: string;
+  body: string;
+  start: number; // offset of the `@` of `@media` in the ORIGINAL css
+  end: number; // offset one past the block's matching `}`
+}
+
+/**
+ * Every TOP-LEVEL `@media (...) { ... }` block, located by brace BALANCE.
+ *
+ * Replaces the flat `@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}` that
+ * both `phoneMediaBlocks` and `mediaSpans` used to carry. That pattern could
+ * only describe brace nesting exactly ONE level deep, and it was ambiguous:
+ * the `[^{}]*` runs on either side of each rule boundary give a failed
+ * attempt an exponential number of ways to split the same text. Once
+ * `contacts.css` grew a third level -- three `@media (hover: hover)` blocks
+ * (:1777, :1803, :1913) nested inside its single DEC-385 terminal
+ * `<=700px` block (:637-:1996) -- no match starting at that block was
+ * POSSIBLE, so the engine backtracked over every split of ~350 rule gaps and
+ * a single `exec` call never returned. That is a 100%-CPU spin that hangs
+ * the whole vitest worker, taking `frame-citation.scan.test.ts` and
+ * `submissions-table-columns.render.test.tsx` down with it and suppressing
+ * the run summary entirely.
+ *
+ * The CSS is not at fault: DEC-385 requires phone overrides to live inside
+ * the sheet's one terminal `<=700px` block, so nesting a capability query
+ * in there is the only legal place to put it. The instrument was.
+ *
+ * Nested at-rules are skipped rather than reported: `lastIndex` jumps past
+ * the whole balanced block, so a rule inside `@media (hover: hover)` inside
+ * the terminal phone block resolves (via `extractRules`' containment
+ * lookup) to the OUTER phone block, which is the span whose condition
+ * governs whether it applies at the 390 frame. This mirrors the
+ * already-correct scanner in `phone-capability-removal.scan.test.ts`.
+ */
+export function mediaBlockSpans(css: string): MediaBlock[] {
+  const scan = blankComments(css);
+  const out: MediaBlock[] = [];
+  const openRe = /@media([^{]*)\{/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    out.push({ condition: (m[1] ?? '').trim(), body: m[2] ?? '' });
+  while ((m = openRe.exec(scan)) !== null) {
+    const bodyStart = m.index + m[0].length;
+    let depth = 1;
+    let i = bodyStart;
+    for (; i < scan.length && depth > 0; i++) {
+      const ch = scan[i];
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+    }
+    if (depth !== 0) {
+      // Unbalanced input. Fail loudly rather than silently reporting a block
+      // that runs to EOF -- a truncated span would mis-scope every rule
+      // after it and the resulting offender list would be quietly wrong.
+      throw new Error(
+        `unbalanced braces in @media block opened at offset ${m.index}: reached end of input at depth ${depth}`,
+      );
+    }
+    out.push({
+      // Sliced out of the ORIGINAL css, never the blanked copy.
+      condition: css.slice(m.index + '@media'.length, bodyStart - 1).trim(),
+      body: css.slice(bodyStart, i - 1),
+      start: m.index,
+      end: i,
+    });
+    openRe.lastIndex = i;
   }
   return out;
+}
+
+export function phoneMediaBlocks(css: string): Array<{ condition: string; body: string }> {
+  return mediaBlockSpans(css).map(({ condition, body }) => ({ condition, body }));
 }
 
 export function ruleBodyIn(fragment: string, selector: string): string {
@@ -84,13 +175,7 @@ export const EXEMPT_COMMENT_RE = /\/\*\s*overflow-exempt:\s*[^*]*\*\//;
  * `isCandidateRule` and `effectiveBodyFor`'s cascade merge in ./cascade.ts.
  */
 export function mediaSpans(css: string): Array<{ start: number; end: number; isPhone: boolean }> {
-  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
-  const out: Array<{ start: number; end: number; isPhone: boolean }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    out.push({ start: m.index, end: m.index + m[0].length, isPhone: appliesAt390((m[1] ?? '').trim()) });
-  }
-  return out;
+  return mediaBlockSpans(css).map(({ start, end, condition }) => ({ start, end, isPhone: appliesAt390(condition) }));
 }
 
 /**

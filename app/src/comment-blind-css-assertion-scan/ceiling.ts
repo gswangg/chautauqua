@@ -131,5 +131,16 @@
 // live). Ceiling lowered to match the measured value: 29 -> 28.
 // Thunderdome megabatch integration: w4-bg and w5-cd drained DISJOINT
 // offender sets in the same batch, so neither lane's declared value is the
-// integrated count. Re-derived on the merged tree at megabatch validation.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 28;
+// integrated count. Re-derived on the merged tree at megabatch validation
+// (2026-08-22): 23 offenders. Both lanes measured the same pre-batch
+// population of 34; w4-bg converted 5 (Comms.phone.render.test.tsx,
+// comms-phone-floor.test.ts, PlanEditor.render.test.tsx,
+// SettingsPanels.frame390.render.test.tsx,
+// speakers-pager-button-tap-floor.test.ts) and left the constant at 29,
+// w5-cd converted 6 (theme, design-system, auth-card-shape,
+// auth-card-geometry, auth-card-rhythm-w6, public-css) and lowered
+// 29 -> 28. The two sets are disjoint, so the integrated tree carries both
+// drains: 34 - 5 - 6 = 23 -- confirmed by re-running the scan's own class-1
+// detector over the full discovered population, never by arithmetic alone.
+// Ceiling lowered to match the measured value: 28 -> 23.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 23;

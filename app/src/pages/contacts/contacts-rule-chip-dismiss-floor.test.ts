@@ -230,11 +230,31 @@ describe("contacts.css: rule-chip edit control's 44px WIDTH floor survives the f
     }
   });
 
-  it("the sizing/overflow rule still declares max-width: 46vw and does not touch min-width", () => {
+  // DEC-393 "Amendment (wave 6)" supersedes this file's original wave-5/36
+  // pin. That earlier ruling said the sizing/overflow rule should DELETE
+  // `min-width` outright (letting the earlier :1578 rule own the floor
+  // alone); the wave-6 amendment re-ruled that "the later rule takes
+  // `min-width: 44px`" and named this very assertion as one of the two
+  // "stale receipts [that] move to the newer shape while still proving the
+  // same property". The property was never "the string `min-width` is
+  // absent" -- it was "this rule does not cancel the 44px width floor",
+  // which `min-width: 44px` satisfies just as surely as omitting it. So the
+  // clause below pins the property, not the shape: if the sizing rule
+  // declares min-width at all, it must be AT the floor. (The sibling
+  // assertion above independently proves the cascade-final value is 44px
+  // across every matching rule, so a regression to `min-width: 0` here is
+  // caught twice over.) Reverting the CSS instead would only move the red:
+  // contacts-rule-chip-label-bound-390.test.ts:61 pins this rule verbatim,
+  // `min-width:\s*44px` included.
+  it("the sizing/overflow rule still declares max-width: 46vw and never re-opens min-width below the 44px floor", () => {
     const sizingRule = editRules.find((r) => /max-width/.test(r.body));
     expect(sizingRule).toBeDefined();
     expect(sizingRule!.body).toMatch(/max-width:\s*46vw/);
-    expect(sizingRule!.body).not.toMatch(/min-width/);
+
+    const minWidth = /min-width:\s*([^;]+);/.exec(sizingRule!.body)?.[1]?.trim();
+    if (minWidth !== undefined) {
+      expect(minWidth).toBe("44px");
+    }
   });
 });
 

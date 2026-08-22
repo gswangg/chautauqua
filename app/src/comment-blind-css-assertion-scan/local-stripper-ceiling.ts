@@ -128,5 +128,13 @@
 // offenders remain (down from 87). Ceiling lowered to match: 86 -> 85.
 // Thunderdome megabatch integration: w4-bg and w5-cd drained DISJOINT
 // offender sets in the same batch, so neither lane's declared value is the
-// integrated count. Re-derived on the merged tree at megabatch validation.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 85;
+// integrated count. Re-derived on the merged tree at megabatch validation
+// (2026-08-22): 84 offenders. Both lanes measured the same pre-batch
+// population of 87; w4-bg converted 1 (agenda-painted-face.test.ts) and
+// left the constant at 86, w5-cd converted 2 (css-contract.scan.test.ts,
+// error-vocabulary.test.ts) and lowered 86 -> 85. The two sets are
+// disjoint, so the integrated tree carries both drains: 87 - 3 = 84 --
+// confirmed by re-running the scan's own class-2 detector over the full
+// discovered population, never by arithmetic alone. Ceiling lowered to
+// match the measured value: 85 -> 84.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 84;
