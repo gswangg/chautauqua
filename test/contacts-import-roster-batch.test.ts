@@ -107,8 +107,22 @@ describe("pushContactsToEvent (DEC-357, DEC-810 amendment wave 59): ONE session 
     // ONE submission created for the whole batch -- not one per contact
     // (DEC-810 amendment, wave 59).
     expect(submissionSelectCalls).toHaveLength(1);
-    expect(submissionUpdateCalls).toHaveLength(1);
-    for (const call of submissionUpdateCalls) {
+    // DEC-725 (wave-22 amendment): insertActiveParticipants now calls
+    // touchSubmissions for the submission it just attached participants to
+    // -- its former in-code exemption ("this function's one caller always
+    // calls it in the same request that just createSubmission'd
+    // submissionId") was false (attachOrCreateRosterSession is a second
+    // caller that attaches to a pre-existing submission). Here that touch
+    // is idempotent (createSubmission's own INSERT already stamped
+    // updatedAt moments earlier), but it IS a second real UPDATE statement
+    // against schema.submission -- the acceptance-status update (status/
+    // acceptedAt) plus the touch-on-write updatedAt-only update.
+    expect(submissionUpdateCalls).toHaveLength(2);
+    const statusUpdates = submissionUpdateCalls.filter(
+      (call) => (call.setValue as { status?: string }).status !== undefined,
+    );
+    expect(statusUpdates).toHaveLength(1);
+    for (const call of statusUpdates) {
       const setValue = call.setValue as { status: string; acceptedAt: Date };
       expect(setValue.status).toBe("accepted");
       expect(setValue.acceptedAt).toBeInstanceOf(Date);

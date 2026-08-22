@@ -90,6 +90,23 @@ describe("DEC-725 (task-w10-tb): every participant-table writer in participants.
     expect(offenders).toEqual([]);
   });
 
+  // DEC-725 wave-22 amendment: insertActiveParticipants' in-code exemption
+  // premise ("this function's one caller ... always calls it in the same
+  // request that just createSubmission'd submissionId") was FALSE --
+  // attachOrCreateRosterSession (src/server/repo/contacts/push.ts) is a
+  // second caller that attaches to a PRE-EXISTING submission, exactly the
+  // case the premise excluded. The exemption is now gone from the file
+  // (insertActiveParticipants calls touchSubmissions like every other
+  // writer here). This assertion makes sure the file has zero LIVE
+  // exemption comments -- a scan whose one real exemption disappears must
+  // say so, rather than silently continuing to hold the door open (via
+  // hasInCodeExemptionComment/the positive control above) for the next
+  // writer that copies the same false premise into a new comment.
+  it("participants.ts carries no live in-code touch exemption comment", () => {
+    const source = readFileSync(PARTICIPANTS_REPO_PATH, "utf8");
+    expect(source).not.toMatch(/No touchSubmissions call/);
+  });
+
   it("removeParticipantRow itself is present, writes schema.participant, and calls touchSubmissions", () => {
     const source = readFileSync(PARTICIPANTS_REPO_PATH, "utf8");
     const fns = extractExportedFunctions(source);

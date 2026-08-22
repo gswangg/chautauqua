@@ -217,13 +217,7 @@ export async function insertActiveParticipants(
   for (const chunk of chunkRowsForInsert(rows)) {
     await db.insert(schema.participant).values(chunk);
   }
-  // DEC-725 amendment: unlike the invite/visibility/status writers below,
-  // this function's one caller (pushContactsToEvent, src/server/repo/
-  // contacts/push.ts) always calls it in the same request that just
-  // createSubmission'd submissionId — that INSERT already stamped
-  // updatedAt to `now` moments earlier, so there is no stale stamp to
-  // correct here. No touchSubmissions call (see submissions/touch.ts
-  // header for the general contract this deliberately doesn't need).
+  await touchSubmissions(db, [submissionId], now);
 }
 
 export interface ParticipantScope {
