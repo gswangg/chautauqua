@@ -6,6 +6,7 @@
 import type { BlockedInterval, Conflict, PlacedSession } from "../../../domain/schedule";
 import { nextFreeSlot } from "../../../domain/schedule";
 import { clockHMM } from "../../../domain/clock";
+import { conflictMoveLabel } from "../../../domain/schedule-copy";
 import { DEC_010, DEC_652, DEC_900 } from "../../../decisions";
 import type { ConflictResolution, ConflictRow, ConflictSessionInfo, NextFreeSlotParams, PlacementSuggestion } from "./types";
 
@@ -189,6 +190,6 @@ export function buildConflictResolutionFor(
     startMin: slot.startMin,
     roomId: slot.roomId,
     roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
-    label: `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}`,
+    label: conflictMoveLabel(laterInfo.ref, slot.startMin),
   };
 }

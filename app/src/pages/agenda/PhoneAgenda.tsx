@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import type { AgendaConflict, AgendaRoom, AgendaSummary, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
 import { buildPhoneSlots } from './phoneSlots';
+import type { ScheduleBreakRow } from './BreaksPanel';
 import { clockHHMM } from '../../lib/clock';
 import { formatDayLabel } from '../../lib/dates';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { capitalizeFirst, plural, spellCount } from '../../lib/plural';
 import { usePendingLabel } from '../../components/PendingAction';
+import {
+  nextFreeSlot,
+  conflictMoveLabel,
+  type PlacedSession,
+  type BlockedInterval,
+} from '../../lib/schedule-vocabulary';
+import { DEC_895 } from '../../../../src/decisions';
+
+void DEC_895;
 
 interface Armed {
   submissionId: string;
@@ -38,6 +48,14 @@ interface PhoneAgendaProps {
   dayStartMin: number;
   dayEndMin: number;
   gridMin: number;
+  /** DEC-895 (wave 33): the active day's breaks, threaded down from
+   * Agenda.tsx's own `dayBreaks` (already day-scoped) -- the clash card's
+   * one-tap resolution must never suggest a slot inside one. Agenda.tsx,
+   * the only production caller, always passes this; optional only so
+   * pre-existing render tests exercising unrelated slices of this
+   * component don't all need a breaks fixture -- computeClashMove's own
+   * `blocked` argument is never defaulted, only this prop is. */
+  breaks?: ScheduleBreakRow[];
   onPlace: (submissionId: string, roomId: string | null, startMin: number, endMin: number) => void;
   onUnschedule: (submissionId: string) => void;
   onAutoSchedule: () => void;
@@ -73,6 +91,68 @@ function roomHasConflict(roomId: string | null, day: string, placed: PlacedAgend
   return conflicts.some((c) => c.kind !== 'break_overlap' && c.submissionIds.some((id) => roomSessionIds.has(id)));
 }
 
+interface ClashMove {
+  submissionId: string;
+  ref: string;
+  roomId: string;
+  startMin: number;
+  durationMin: number;
+}
+
+/** DEC-895 (wave 33): the phone clash card's one-tap "Move X to hh:mm"
+ * resolution -- the SAME candidate scan buildConflictResolutionFor runs
+ * server-side (src/server/repo/overview/scheduling.ts, DEC-652), computed
+ * client-side here off the page's already-loaded placed sessions/breaks so
+ * the clash card doesn't need a new endpoint. Picks the LATER of the
+ * clashing pair (same rule as pickLaterConflictEntry: larger startMin
+ * wins, a tie keeps the pair's last entry), searches only the room it
+ * currently occupies, and excludes it from `existing` so it can't block
+ * its own search. Returns null whenever nextFreeSlot finds nothing, or the
+ * later session is unplaced into a room at all (TBD has no room to search
+ * into -- no control renders for a TBD clash). */
+function computeClashMove(
+  sessions: PlacedAgendaSession[],
+  day: string,
+  allPlaced: PlacedAgendaSession[],
+  dayStartMin: number,
+  dayEndMin: number,
+  gridMin: number,
+  blocked: BlockedInterval[],
+): ClashMove | null {
+  let later = sessions[0]!;
+  for (const s of sessions.slice(1)) {
+    if (s.startMin >= later.startMin) later = s;
+  }
+  if (later.roomId === null) return null;
+  const laterRoomId = later.roomId;
+
+  const existing: PlacedSession[] = allPlaced
+    .filter((p) => p.submissionId !== later.submissionId)
+    .map((p) => ({
+      submissionId: p.submissionId,
+      roomId: p.roomId,
+      day: p.day,
+      startMin: p.startMin,
+      endMin: p.endMin,
+      speakerContactIds: p.speakers.map((sp) => sp.contactId),
+    }));
+
+  const durationMin = later.endMin - later.startMin;
+  const slot = nextFreeSlot({
+    session: { durationMin, speakerContactIds: later.speakers.map((sp) => sp.contactId) },
+    rooms: [laterRoomId],
+    days: [day],
+    dayStartMin,
+    dayEndMin,
+    gridMin,
+    existing,
+    blocked,
+  });
+  if (!slot) return null;
+
+  return { submissionId: later.submissionId, ref: later.ref, roomId: slot.roomId, startMin: slot.startMin, durationMin };
+}
+
 /** Phone tap-to-place agenda (DEC-380): one room at a time, arm a session
  * (from the unscheduled sheet or by tapping a placed/clashed card) then tap
  * a free run to write its slot via the SAME onPlace/onUnschedule handlers
@@ -92,6 +172,7 @@ export function PhoneAgenda({
   dayStartMin,
   dayEndMin,
   gridMin,
+  breaks = [],
   onPlace,
   onUnschedule,
   onAutoSchedule,
@@ -113,6 +194,14 @@ export function PhoneAgenda({
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const slots = buildPhoneSlots({ placed, day, roomId: activeRoomId, dayStartMin, dayEndMin, gridMin, conflicts });
+  // DEC-895 (wave 33): breaks -> BlockedInterval, the SAME shape
+  // nextFreeSlot's `blocked` scan tests against -- never defaulted to
+  // empty, a suggestion landing inside lunch is worse than none.
+  const blockedBreaks: BlockedInterval[] = breaks.map((b) => ({
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+  }));
 
   function armFromPlaced(session: PlacedAgendaSession) {
     setArmed({
@@ -256,6 +345,11 @@ export function PhoneAgenda({
           }
 
           if (slot.kind === 'clash') {
+            // DEC-895 (wave 33): the ONE resolution for THIS clash card,
+            // computed from its own sessions -- never re-derived per
+            // session, matching the card's single control (frame
+            // Agenda.dc.html:171, last child of the card).
+            const move = computeClashMove(slot.sessions, day, placed, dayStartMin, dayEndMin, gridMin, blockedBreaks);
             return (
               <div key={key} className="chq-phone-slot">
                 <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
@@ -285,6 +379,15 @@ export function PhoneAgenda({
                       </button>
                     </div>
                   ))}
+                  {move && (
+                    <button
+                      type="button"
+                      className="chq-phone-slot-clash-move"
+                      onClick={() => onPlace(move.submissionId, move.roomId, move.startMin, move.startMin + move.durationMin)}
+                    >
+                      {conflictMoveLabel(move.ref, move.startMin)}
+                    </button>
+                  )}
                 </div>
                 {armed && (
                   <button

@@ -6,6 +6,10 @@
 // (see Agenda.tsx's auto-schedule summary).
 import type { ConflictKind, UnplacedReason } from "./schedule";
 import { capitalizeFirst, plural, spellCount } from "./count-copy";
+import { clockHMM } from "./clock";
+import { DEC_895 } from "../decisions";
+
+void DEC_895;
 
 export function unplacedReasonLabel(reason: UnplacedReason): string {
   switch (reason) {
@@ -43,4 +47,21 @@ export function conflictKindLabel(kind: ConflictKind, count = 2): string {
 // capitalize-the-result pattern root.tsx and ErrorSummary.tsx use.
 function numberWord(n: number): string {
   return capitalizeFirst(spellCount(n));
+}
+
+// DEC-895 (wave 33): the ONE renderer for a conflict-resolution "move it"
+// control's label — shared by Overview's buildConflictResolutionFor (desktop
+// worklist) and PhoneAgenda's client-side clash-card resolution (DEC-895
+// wave 33), so the two surfaces never drift into two spellings of the same
+// suggestion. Mirrors buildConflictResolutionFor's prior inline template.
+export function conflictMoveLabel(ref: string, startMin: number): string {
+  return `Move ${ref} to ${clockHMM(startMin)}`;
+}
+
+// DEC-895 (wave 33): the caption under a conflict-resolution control,
+// naming the room the suggested slot was found in — see
+// AgendaWorkSection.tsx's "Next free slot in {roomName}" caption and
+// PhoneAgenda's clash-card control.
+export function conflictMoveCaption(roomName: string): string {
+  return `Next free slot in ${roomName}`;
 }

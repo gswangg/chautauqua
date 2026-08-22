@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { DEC_833 } from '../../../../src/decisions';
 import { apiPut, ApiError } from '../../lib/api';
 import { formatDayLabel } from '../../lib/dates';
-import { conflictKindLabel } from '../../lib/schedule-vocabulary';
+import { conflictKindLabel, conflictMoveCaption } from '../../lib/schedule-vocabulary';
 import { joinSegments } from './rows';
 import { plural, spellCount } from '../../lib/plural';
 import { publicRoomLabel } from '../../lib/room-label';
@@ -167,7 +167,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
               >
                 {conflict.resolution.label}
               </button>
-              <span className="chq-overview-caption">Next free slot in {conflict.resolution.roomName}</span>
+              <span className="chq-overview-caption">{conflictMoveCaption(conflict.resolution.roomName)}</span>
             </div>
           ) : (
             <div />
