@@ -435,3 +435,18 @@ viewport), its two buttons measure 48px tall (`Add someone` 285.6x48,
 own "Add to the pipeline" button is hidden at 390 and visible unchanged at
 1440 (desktop byte-identical, no dock mounted). Nothing to build; this
 correction only retires the contradiction.
+
+## Cut-4 eval triage (2026-08-22 run, 91.1% — artifact-depressed; diagnosis: cut4-eval-diagnosis.md, meta tmp)
+
+The score drop vs Cut-3 is judge drift plus one stochastic find; do NOT chase
+CFP/Abstract/Speaker-mgmt "regressions" — behavior was near-verbatim identical
+across runs and the code deltas are unrelated.
+
+One REAL item (new public-widgets MAJOR, pre-existing race, code byte-identical
+across both candidates): on the public /schedule (itinerary) view, the per-
+session "Remove" control toggles visually but the removal does not persist —
+the shared localStorage itinerary handler's read-modify-write can race with a
+concurrent write/reload, dropping the mutation. Task: make the itinerary
+change-handler atomic against its own reads (single serialized write path),
+and add a test covering remove-then-reload persistence plus rapid
+toggle-toggle-reload. No UI change.
