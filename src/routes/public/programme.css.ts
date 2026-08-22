@@ -45,7 +45,10 @@ export const PROGRAMME_CSS = `
   .chq-prog-note {
     margin: 0 0 32px;
     color: var(--chq-muted);
-    font-size: 0.85rem;
+    /* DEC-937 wave-35 amendment: 0.85rem computes to 13.6px, off the
+       pack's font-size grid; repaired to the nearest on-grid computed
+       value, 14px, expressed as 0.875rem to keep user font scaling. */
+    font-size: 0.875rem;
   }
   .chq-prog-day {
     margin: 0 0 32px;
@@ -54,7 +57,10 @@ export const PROGRAMME_CSS = `
     margin: 0 0 8px;
     padding-bottom: 4px;
     border-bottom: 2px solid var(--chq-ink);
-    font-size: 1.1rem;
+    /* DEC-937 wave-35 amendment: 1.1rem computes to 17.6px, off the
+       pack's font-size grid; repaired to the nearest on-grid computed
+       value, 18px, expressed as 1.125rem to keep user font scaling. */
+    font-size: 1.125rem;
   }
   .chq-prog-row {
     display: flex;
@@ -74,7 +80,10 @@ export const PROGRAMME_CSS = `
   }
   .chq-prog-row-sub {
     color: var(--chq-muted);
-    font-size: 0.9rem;
+    /* DEC-937 wave-35 amendment: 0.9rem computes to 14.4px, off the
+       pack's font-size grid; repaired to the nearest on-grid computed
+       value, 14px, expressed as 0.875rem to keep user font scaling. */
+    font-size: 0.875rem;
   }
   .chq-prog-break {
     font-variant: small-caps;

@@ -93,7 +93,10 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     color: var(--chq-ink);
     background: var(--chq-surface);
     border: 1px solid var(--chq-hairline);
-    font-size: 0.8rem;
+    /* DEC-937 wave-35 amendment: 0.8rem computes to 12.8px, off the pack's
+       font-size grid; repaired to the nearest on-grid computed value,
+       13px, expressed as 0.8125rem to keep user font scaling. */
+    font-size: 0.8125rem;
     margin-right: 0.25rem;
   }
   .chq-pub-track-chip::before {
@@ -219,7 +222,10 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     color: var(--chq-muted);
     font-family: var(--chq-font-display);
     font-weight: 600;
-    font-size: 1.3rem;
+    /* DEC-937 wave-35 amendment: 1.3rem computes to 20.8px, off the pack's
+       font-size grid; repaired to the nearest on-grid computed value,
+       21px, expressed as 1.3125rem to keep user font scaling. */
+    font-size: 1.3125rem;
     letter-spacing: 0.02em;
   }
   .chq-pub-speaker-name {

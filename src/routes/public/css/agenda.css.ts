@@ -89,7 +89,11 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     border-left: 1px solid var(--chq-hairline);
     border-radius: var(--chq-r-card);
     padding: 0.5rem 0.7rem;
-    font-size: 0.85rem;
+    /* DEC-937 wave-35 amendment: 0.85rem computes to 13.6px, off the pack's
+       font-size grid; repaired to the nearest on-grid computed value,
+       14px, expressed as 0.875rem to keep user font scaling (rem is not
+       banned -- the offender is the off-grid SIZE). */
+    font-size: 0.875rem;
   }
   /* DEC-584 (wave 64): the block's top row -- the room eyebrow label left,
      the Save/Saved toggle right -- needs the full card width to split the
@@ -421,7 +425,10 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     color: var(--chq-ink);
     background: var(--chq-surface);
     border: 1px solid var(--chq-hairline);
-    font-size: 0.8rem;
+    /* DEC-937 wave-35 amendment: 0.8rem computes to 12.8px, off the pack's
+       font-size grid; repaired to the nearest on-grid computed value,
+       13px, expressed as 0.8125rem to keep user font scaling. */
+    font-size: 0.8125rem;
     margin-right: 0.25rem;
   }
 

@@ -119,7 +119,7 @@ vocabulary rather than this ratchet's px-grid classifier, and a
 unregistered; a later lane should treat this as a NEW ratchet with its own
 vocabulary-derivation shape, not an extension of this one.
 
-## Ratchet disposition
+## Ratchet disposition (wave 29)
 
 Both ceilings (`PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = 13`,
 `PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING = 6`) are two-sided (measured by
@@ -130,3 +130,63 @@ measured, previously-uncounted population (the same disposition already
 given to `DESKTOP_FLOOR_DIVERGENCE_CEILING` and
 `FRAME_EYEBROW_DIVERGENCE_CEILING`), promoted to a gating ceiling once a
 later, separately-ruled lane drains the offenders.
+
+## Wave 35 repair (task w35-e, `DEC-937.md` wave-35 amendment)
+
+Re-measured on branch `v12m-w35-e`, forcing `PACK_UNIT_GRAMMAR_OFFENDERS_CEILING`
+to `-1`: the same 13 offenders as wave 29 (no drift). Repaired 7 of 13 (all
+`font-size`); the remaining 6 (all `gap`) are LEFT and adjudicated below —
+see the "gap" table's rationale column for why the wave-35 procedure's
+"phone `@media` register repairs unconditionally" clause does not clear 5
+of them. `PACK_UNIT_GRAMMAR_OFFENDERS_CEILING` lowered from 13 to 6
+(re-measured, not snapshotted — re-ran the scan standalone after every
+edit). `PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING` did not move (no `em`
+declaration touched); stays at 6.
+
+### `font-size` (7 of 7 repaired — desktop-visible, none touching a
+frame-verdict-pinned selector; checked `test/public-desktop-frame-verdicts.test.ts`
+and `test/cfp-desktop-frame-verdicts.test.ts` — neither asserts these
+selectors' `font-size` text, both stayed green)
+
+| coordinate | old | new (computed px) | rationale |
+| --- | --- | --- | --- |
+| `src/routes/public/css/agenda.css.ts` `.chq-pub-agenda-block` | `0.85rem` | `0.875rem` (14px) | nearest on-grid; kept `rem` for user font scaling |
+| `src/routes/public/css/agenda.css.ts` `.chq-pub-format-chip` | `0.8rem` | `0.8125rem` (13px) | nearest on-grid |
+| `src/routes/public/css/cards.css.ts` `.chq-pub-track-chip` | `0.8rem` | `0.8125rem` (13px) | nearest on-grid |
+| `src/routes/public/css/cards.css.ts` (headshot-fallback initial) | `1.3rem` | `1.3125rem` (21px) | nearest on-grid (20.8 rounds to 21, not 20) |
+| `src/routes/public/programme.css.ts` `.chq-prog-note` | `0.85rem` | `0.875rem` (14px) | nearest on-grid |
+| `src/routes/public/programme.css.ts` `.chq-prog-day-heading` | `1.1rem` | `1.125rem` (18px) | nearest on-grid (17.6 rounds to 18, not 17) |
+| `src/routes/public/programme.css.ts` `.chq-prog-row-sub` | `0.9rem` | `0.875rem` (14px) | nearest on-grid (14.4 rounds to 14) |
+
+### `gap` (0 of 6 repaired, all 6 adjudicated LEFT)
+
+An initial pass repaired the 5 phone-register sites to the nearest on-grid
+value (`30px`, tie-broken up) under the wave-35 procedure's "a declaration
+inside a `@media (max-width: …)` phone register is repaired
+unconditionally" clause. Running the wider targeted test set surfaced a
+conflict this procedure did not anticipate: DEC-937's OWN wave-123
+amendment already rules the exact arithmetic for this idiom ("the declared
+phone gap becomes the frame's own rendered gap PLUS 2N, never a bare 2N")
+and three test files pin the resulting `29px` byte-for-byte. All five
+sites were reverted to `29px` and reclassified as adjudicated LEFT rather
+than repaired — a "phone register repairs unconditionally" default does
+not override an existing DEC-937 ruling that already fixed this exact
+value for a different, still-valid reason (frame-separation preservation).
+
+| coordinate | value | rationale |
+| --- | --- | --- |
+| `app/src/pages/comms/comms.css` `.chq-comms-editor-actions` | `29px` | inside this file's trailing phone `@media (max-width: 700px)` block. `29px` = desktop's own 9px + 2×10px (cancelled-padding compensation, DEC-937 wave-123). `app/src/pages/comms/comms-tier2-floor.test.ts:82-86` pins `gap:\s*29px` for this selector byte-for-byte. Rounding to the pack's px grid (28 or 30, a tie) would shrink or overstate the frame's own rendered separation and redden that test — ADJUDICATED LEFT. |
+| `app/src/pages/speakers/speakers.css` `.chq-speakers-write-failure-actions` | `29px` | same idiom, same file's `@media (max-width: 700px)` block. `app/src/pages/speakers/speakers-tier2-gap.test.ts:91-94` pins `gap:\s*29px` — ADJUDICATED LEFT for the same reason. |
+| `app/src/pages/speakers/speakers.css` `.chq-speakers-head-actions` | `29px` | ditto; pinned by `speakers-tier2-gap.test.ts:81-84` — ADJUDICATED LEFT. |
+| `app/src/pages/speakers/speakers.css` `.chq-speakers-pager-actions` | `29px` | ditto; pinned by `speakers-tier2-gap.test.ts:86-89` AND `app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts:76-79` — ADJUDICATED LEFT. (Sibling `.chq-speaker-detail-logistics-actions`'s `28px` was already on-grid and needed no adjudication.) |
+| `app/src/pages/speakers/task-view.css` `.chq-taskview-actions` | `29px` | same idiom, this file's terminal `@media (max-width: 700px)` block. `speakers-tier2-gap.test.ts:96-99` pins `gap:\s*29px` — ADJUDICATED LEFT. |
+| `app/src/pages/submissions/detail.css` `.chq-detail-layout` | `92px` | desktop-visible (line 102, before this file's first `@media (max-width: 900px)` at line 108). The comment at this site cites `DEC-989` wave-42: "gate-3 measured frame 02 at 1600 — body rules x=244->944 (700px), rail x=1036->1356 (320px), 92px gutter between — 1112 total, centred on the page". `92px` is a DIRECTLY MEASURED frame coordinate (not a drawn `gap:` literal any `*.dc.html` frame declares — hence it reads off-grid against this ratchet's inline-`gap:`-literal vocabulary), and it is the pin the `.chq-detail-layout` desktop geometry depends on. Repairing it to the pack's nearest drawn gap literal (60px) would shrink the rail gutter by 32px and move the desktop frame's measured layout — DESKTOP IS FROZEN. ADJUDICATED LEFT. |
+
+### Result
+
+`PACK_UNIT_GRAMMAR_OFFENDERS_CEILING`: 13 → 6 (all 6 adjudicated `gap`
+rows above; every `font-size` offender is drained).
+`PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING`: unchanged at 6. Both ceilings
+remain registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`
+— that disposition is a separate, unruled decision this task does not
+touch.

@@ -2489,7 +2489,14 @@
      the row's own separation to add that cancelled padding back so the
      rendered gap the frame draws does not close -- desktop's own 9px
      (top level, this file) plus 2*10px (both sides of the cancelled
-     pair) = 29px. */
+     pair) = 29px. This computes off the pack's px-only gap grid (DEC-937
+     wave-35 amendment), but DEC-937 wave-123's own ruling requires this
+     exact value ("the declared phone gap becomes the frame's own
+     rendered gap PLUS 2N, never a bare 2N") and app/src/pages/comms/
+     comms-tier2-floor.test.ts pins it byte-for-byte -- rounding to the
+     grid would silently redraw the frame's own separation away from
+     what it draws. ADJUDICATED LEFT (wave-35), not repaired: see
+     docs/design/audit/pack-unit-grammar-v12.md. */
   .chq-comms-editor-actions {
     gap: 29px;
   }

@@ -2234,7 +2234,17 @@ button.chq-speakers-status-overdue:hover {
      to keep that drawn gap visually unchanged (DESIGN-RULINGS.md's "The
      44px floor, and how it gets evaded"). Declared gaps below are each
      the top-level desktop gap (:45-58/:1053-1056/:1574-1577) plus 20:
-     write-failure 9->29, head 9->29, pager 9->29, logistics 8->28. */
+     write-failure 9->29, head 9->29, pager 9->29, logistics 8->28.
+     write-failure/head/pager's 29 computes off the pack's px-only gap
+     grid (DEC-937 wave-35 amendment), but DEC-937 wave-123's own ruling
+     requires this exact value ("the declared phone gap becomes the
+     frame's own rendered gap PLUS 2N, never a bare 2N") and
+     app/src/pages/speakers/speakers-tier2-gap.test.ts /
+     speakers-pager-button-tap-floor.test.ts pin it byte-for-byte --
+     rounding to the grid would silently redraw the frame's own
+     separation away from what it draws. ADJUDICATED LEFT (wave-35), not
+     repaired: see docs/design/audit/pack-unit-grammar-v12.md.
+     logistics's 28 is already on-grid. */
   .chq-speakers-write-failure-actions {
     gap: 29px;
   }
