@@ -186,9 +186,16 @@ rule that a dependency on DEC-NNN must reference its constant).
 | `Chautauqua Comms.dc.html:108` | `Attach calendar invite` | MATCHES |
 | `Chautauqua Comms.dc.html:110` | `3 of 23 have no slot yet — those get no invite` | MATCHES (app composes `{noSlotCount} of {preview.length} have no slot yet — those get no invite` from real counts, confirmed at `ComposeWizard.tsx:1494`; gating divergence unchanged and separately tracked above, DEC-902 wave-9). |
 
-Note for the next wave: `v12m-w24-h` is building a field-label ledger
-(a words-only instrument, the shape `desktop-field-width-v12.md`'s own
-Adjudications named as missing) that will count this row once it lands.
+The words-only field-label ledger `desktop-field-width-v12.md`'s own
+Adjudications had named as missing has since landed (DEC-180 wave-24
+amendment, `test/frame-field-label.scan.test.ts`; population also carried
+in `docs/design/audit/frame-field-label-v12.md` and
+`docs/design/audit/drawn-field-label-v12.md`, DEC-613) and now counts this
+row directly: `docs/design/audit/frame-field-label-v12.md:130` grades
+`Chautauqua Comms.dc.html:102` "From which plan" against
+`app/src/pages/comms/ComposeWizard.tsx`. This document's own row above
+(`Comms.dc.html:102`) is the desktop verdict for the same field; the two
+are cross-checked, not duplicated.
 
 ## What this document does NOT cover
 
