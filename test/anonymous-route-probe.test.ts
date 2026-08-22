@@ -304,20 +304,30 @@ function enumerateGetPaths(app: Hono<AppEnv>): string[] {
 // ---------------------------------------------------------------------------
 
 describe("anonymous-GET authz probe (DEC-550)", () => {
-  it("enumerates at least the routes this task expects to exist (composition sanity)", async () => {
-    const { app, mountCount } = await buildAnonymousApp();
-    const getPaths = enumerateGetPaths(app);
-    // A loose sanity floor, not the authz assertion itself -- proves the
-    // composed app actually mounted every sub-app rather than silently
-    // enumerating zero/few routes.
-    expect(getPaths.length).toBeGreaterThan(40);
-    expect(getPaths).toContain("/health");
-    expect(getPaths).toContain("/api/v1/me");
-    // The parsed mount count itself must never silently narrow again (it
-    // was 29 in the wave-16 hand list vs. the real 35 -- see DEC-550
-    // amendment, wave 18).
-    expect(mountCount).toBeGreaterThanOrEqual(35);
-  });
+  it(
+    "enumerates at least the routes this task expects to exist (composition sanity)",
+    async () => {
+      const { app, mountCount } = await buildAnonymousApp();
+      const getPaths = enumerateGetPaths(app);
+      // A loose sanity floor, not the authz assertion itself -- proves the
+      // composed app actually mounted every sub-app rather than silently
+      // enumerating zero/few routes.
+      expect(getPaths.length).toBeGreaterThan(40);
+      expect(getPaths).toContain("/health");
+      expect(getPaths).toContain("/api/v1/me");
+      // The parsed mount count itself must never silently narrow again (it
+      // was 29 in the wave-16 hand list vs. the real 35 -- see DEC-550
+      // amendment, wave 18).
+      expect(mountCount).toBeGreaterThanOrEqual(35);
+    },
+    // v12m-w16-qd (DEC-069): buildAnonymousApp mounts 35 sub-apps; under
+    // load this passed on one fast-tier run and timed out on the next
+    // against vitest's default 5000ms -- a load-dependent flake, not a
+    // product regression. Explicit generous timeout, same numeric-third-
+    // argument idiom as app/src/phone-verdict-cascade-read.scan.test.ts's
+    // 20000. No assertion or mount-count floor changed.
+    20000,
+  );
 
   it("every enumerated GET route is authz-gated or an exact, justified PUBLIC_BY_DESIGN entry", async () => {
     const { app, touched, reset } = await buildAnonymousApp();

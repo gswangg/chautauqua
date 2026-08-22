@@ -145,4 +145,24 @@
 // Ceiling lowered to match the measured value: 28 -> 23.
 // v12m-w13-xb (DEC-613): re-measured 20 on this branch's tree (forced -1,
 // offender list read back). Ceiling lowered to match: 23 -> 20.
+// v12m-w16-qd (wave 16, DEC-374 amendment): population regressed to 21 --
+// app/src/tautological-assertion.scan.test.ts's DEC-374 wave-14m amendment
+// commit (d1bb721bf, landed AFTER v12m-w13-xb's merge at 16dab59e1) added a
+// NEGATIVE-control fixture whose synthetic source text builds a
+// `const APP_CSS = readFileSync(...)` / `expect(APP_CSS).toMatch(...)` pair
+// as plain string literals -- this scan's regexes are blind to string vs.
+// code context, so that fixture text alone made the file a class-1
+// candidate with no stripping call anywhere in the real file. Routed the
+// fixture's synthetic source through a real `stripCssComments(` call
+// (mirrors the real house pattern: `const APP_CSS =
+// stripCssComments(readFileSync(...))`), which both makes the fixture a
+// more faithful example of compliant code and gives the file's raw text a
+// genuine `stripCssComments(` token, satisfying this scan's (also raw-text,
+// comment/string-blind by design) stripping-step check. No real offender
+// was fixed here -- this was a false positive of the detector's own
+// crudeness, not a vacuous receipt in product code; the file's other
+// assertions (POSITIVE/NEGATIVE controls, offender population, its own
+// ceiling) are untouched and still pass. Re-measured with the ceiling
+// forced to -1: 20 offenders remain, back at the pre-regression population.
+// Ceiling stays at 20 (measured count sits AT the ceiling, not below it).
 export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 20;
