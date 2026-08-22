@@ -112,14 +112,14 @@ describe('buildPhoneSlots', () => {
     ]);
   });
 
-  // docs/design/Chautauqua Agenda.dc.html:182-183 draws the frame's fourth
-  // slot kind -- `<sc-if value="{{ slot.blocked }}">` holding `{{ slot.note
-  // }}` -- and the frame's own demo data (same file) supplies
-  // `{ time: '12:00', blocked: true, note: 'Lunch · 60 min' }` as what
-  // populates it (DEC-895 wave-32 amendment).
   it('a day with a break produces a blocked run carrying its note, with separate free runs either side (DEC-895 wave-32 amendment)', () => {
     const lunch: PhoneBlockedInterval = { day: DAY, startMin: 720, endMin: 780, note: 'Lunch · 60 min' };
     const slots = build([], ROOM, [lunch]);
+    // docs/design/Chautauqua Agenda.dc.html:182-183 draws the frame's fourth
+    // slot kind -- `<sc-if value="{{ slot.blocked }}">` holding `{{ slot.note
+    // }}` -- and the frame's own demo data (same file) supplies
+    // `{ time: '12:00', blocked: true, note: 'Lunch · 60 min' }` as what
+    // populates it (DEC-895 wave-32 amendment).
     expect(slots).toEqual([
       { startMin: DAY_START_MIN, endMin: 720, kind: 'free', sessions: [] },
       { startMin: 720, endMin: 780, kind: 'blocked', sessions: [], note: 'Lunch · 60 min' },

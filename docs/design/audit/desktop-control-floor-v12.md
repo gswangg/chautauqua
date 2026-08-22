@@ -153,9 +153,11 @@ at line 603 -- a different control, "Guest", on an adjacent line -- and no
 Submissions entry exists in either table at all). Both offender rows remain
 exactly the mis-attributions described in "Offenders: 2" below; this wave
 changes their grading population, not their verdict. `DESKTOP_FLOOR_DIVERGENCE_CEILING`
-stays `2`; `DESKTOP_FLOOR_UNRESOLVED_CEILING` moves from `166` to `141`, both
-re-measured directly (never read from this prose). Not one product CSS byte
-changed this wave -- desktop stays frozen, per this task's own scope.
+stayed `2` as of this wave (later lowered to `0` by wave 33, see "WAVE 33"
+below); `DESKTOP_FLOOR_UNRESOLVED_CEILING` moved from `166` to `141` here
+(later `131` as of wave 33), both re-measured directly (never read from this
+prose). Not one product CSS byte changed this wave -- desktop stays frozen,
+per this task's own scope.
 
 The "Draining the no-label-match/no-token buckets is ... left to a later
 wave" sentence in "Unresolved" below is now FALSE for the slice this wave's
@@ -388,7 +390,7 @@ different, unclosed tag than its class, or a DOM-aware nested-element
 reader — out of this wave's narrow scope, which adds exactly one same-tag
 attribute tier and re-seeds the ceilings.
 
-## Unresolved: 135 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 135`, was 139 pre-wave-29 -- this heading's own prior `138` text was one row stale against the code constant, see "WAVE 29" below)
+## Unresolved: 131 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 131` as of wave 33 -- see "WAVE 33" below for the disposition of the four rows this heading named `135` for through wave 29; that count is now stale, corrected here)
 
 (Re-measured on the merged tree with BOTH wave-27's frame-content exclusions
 and wave-28's attribute/prop tier applied: 166 -> 141 by w27-b alone, 166 ->
