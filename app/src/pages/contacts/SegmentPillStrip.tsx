@@ -20,6 +20,15 @@ interface Props {
 }
 
 export function SegmentPillStrip({ segments, segmentsLoaded, segmentId, onApplySegment }: Props) {
+  // src/decisions-data/DEC-678.md (Amendment wave-16 r4): a settled-empty
+  // single-option filter strip stands down rather than rendering a lone
+  // inert control -- a chooser with exactly one option (the already-
+  // pressed `All` pill) asserts a choice the data cannot offer. Gated on
+  // BOTH `segmentsLoaded` and `segments.length === 0`, never length alone,
+  // so a momentarily-empty array during a load never blanks the head band.
+  if (segmentsLoaded && segments.length === 0) {
+    return null;
+  }
   return (
     // src/decisions-data/DEC-930.md (amendment): this narrowing strip draws
     // no caption of its own, so the group takes an aria-label naming what
