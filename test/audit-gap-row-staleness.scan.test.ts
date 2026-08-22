@@ -42,7 +42,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEC_613, DEC_808, DEC_967, DEC_976 } from "../src/decisions";
+import { DEC_069, DEC_613, DEC_808, DEC_967, DEC_976 } from "../src/decisions";
 import { parseAllRules, stripComments, type ParsedRule } from "../app/src/cancelled-padding-gap.scan.test";
 import { enumerateSourceFiles, normalizeSource, labelIsMatched } from "./frame-source-corpus";
 
@@ -50,6 +50,7 @@ void DEC_976; // this file's whole reason to exist: grade audit gap rows against
 void DEC_808; // population enumerated via readdirSync, never a hand-listed file list
 void DEC_613; // reuses the canonical stripComments/parseAllRules rather than a sixth copy
 void DEC_967; // wave-27 amendment: one gap grammar certifies every OTHER stale-row shape as fresh -- widened below
+void DEC_069; // wave-19 clause (b): a third gap grammar over grep-negative rows, one-sided ratchet only
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, "..");
@@ -253,6 +254,158 @@ function isTokenHiddenOnPhone(rules: ParsedRule[], token: string): boolean {
   return hasHide && !hasShow;
 }
 
+// -- Third detector class (DEC-069 wave-19 clause (b); task w19-j): a
+// GREP-NEGATIVE claim. `frame-caption-residue-v12.md` fossilized eleven of
+// its thirteen rows (field guide, wave-19) while GAP_PHRASES and the
+// absence/persistence grammars above stayed green, because its rows'
+// wording is neither the tap-floor idiom nor "there is no `X`" -- it is a
+// hand-run grep the auditor describes narratively: "grepped `<path>` for
+// `<needle>`: zero hits" / "... : none exists" / "... of any kind". This
+// class re-runs exactly that grep. It is intentionally LINE-scoped (not
+// paragraph-joined like the absence/persistence classes above): every real
+// member found in the corpus is a single unwrapped `| ... |` table-row
+// line, so paragraph-joining would only pull in unrelated backtick
+// literals from neighbouring table rows once markdown's blank-line block
+// splitter (which does not treat "one row" as a block boundary inside a
+// table) merges the whole table into one paragraph.
+//
+// PAIRING: a table row frequently carries several backtick literals before
+// the phrase (a citation trail: merge-field docs, an unrelated helper, the
+// actual grepped path, the actual grepped needle). Taking the NEAREST
+// path-shaped and NEAREST needle-shaped backtick literal before the phrase
+// -- not just any pair on the line -- is what the two real examples this
+// grammar was built against actually need:
+// `frame-caption-residue-v12.md:55`'s claim is "grepped
+// `app/src/pages/comms/ComposeWizard.tsx` for any `session_time`/banner
+// reference naming it: zero hits" despite THREE earlier unrelated backtick
+// paths/tokens in the same row's citation trail (`src/mail/render.ts`,
+// `MERGE_FIELDS`, `src/routes/comms/compose-core.ts:347-349`,
+// `icsScheduleMap`); the "any earlier pair on the line" reading tried
+// first paired the wrong path/needle and was rejected.
+const ZERO_HIT_PHRASES = ["zero hits", "no such", "does not exist", "none exists", "of any kind"];
+
+/** A backtick literal that names a repo-relative source file: contains a
+ * `/` path separator, ends in a recognised source/doc extension, and may
+ * carry a trailing `:NNN` or `:NNN-NNN` line locator (stripped before the
+ * file is read). */
+const REPO_PATH_RE = /^[\w./-]+\/[\w.-]+\.(ts|tsx|js|jsx|css|scss|md|mdx|json|html)(:\d+(?:-\d+)?)?$/;
+
+function stripLineLocator(pathToken: string): string {
+  return pathToken.replace(/:\d+(?:-\d+)?$/, "");
+}
+
+interface GrepNegativeClaim {
+  file: string;
+  lineNo: number;
+  line: string;
+  path: string;
+  needle: string;
+}
+
+/** Every distinct (path, needle) grep-negative claim on `text`'s lines. */
+function extractGrepNegativeClaims(file: string, text: string): GrepNegativeClaim[] {
+  const out: GrepNegativeClaim[] = [];
+  const seen = new Set<string>();
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    for (const phrase of ZERO_HIT_PHRASES) {
+      const phraseIdx = line.indexOf(phrase);
+      if (phraseIdx === -1) continue;
+      const before = line.slice(0, phraseIdx);
+      const backtickRe = /`([^`]+)`/g;
+      let m: RegExpExecArray | null;
+      let path: string | null = null;
+      let needle: string | null = null;
+      while ((m = backtickRe.exec(before)) !== null) {
+        const token = m[1]!;
+        if (REPO_PATH_RE.test(token)) {
+          path = token; // nearest-before-phrase wins -- keep overwriting
+        } else {
+          needle = token; // nearest-before-phrase wins -- keep overwriting
+        }
+      }
+      if (path === null || needle === null) continue;
+      const key = `${file}:${i + 1}:${path}:${needle}`;
+      if (seen.has(key)) continue; // same (path, needle) claim, >1 phrase hit on the line
+      seen.add(key);
+      out.push({ file, lineNo: i + 1, line: line.trim(), path, needle });
+    }
+  }
+  return out;
+}
+
+interface GrepNegativeOffender {
+  file: string;
+  lineNo: number;
+  path: string;
+  needle: string;
+  line: string;
+}
+
+/** True when `needle` (raw substring, the same check a hand-run `grep`
+ * performs) now occurs in the file `repoRelativePath` names. Files that do
+ * not resolve are not offenders -- a REPO_PATH_RE match that is not
+ * actually a real repo file is not this grammar's population to grade
+ * (its member requirement is a claim the tree can check, and an
+ * unresolvable path is not such a claim). */
+function claimIsStale(repoRelativePath: string, needle: string): boolean {
+  const abs = join(REPO_ROOT, stripLineLocator(repoRelativePath));
+  let content: string;
+  try {
+    content = readFileSync(abs, "utf-8");
+  } catch {
+    return false;
+  }
+  return content.includes(needle);
+}
+
+function findGrepNegativeOffenders(): GrepNegativeOffender[] {
+  const offenders: GrepNegativeOffender[] = [];
+  for (const abs of auditMarkdownFiles()) {
+    const rel = relative(REPO_ROOT, abs);
+    const text = readFileSync(abs, "utf-8");
+    for (const claim of extractGrepNegativeClaims(rel, text)) {
+      if (claimIsStale(claim.path, claim.needle)) {
+        offenders.push({ file: claim.file, lineNo: claim.lineNo, path: claim.path, needle: claim.needle, line: claim.line });
+      }
+    }
+  }
+  return offenders;
+}
+
+// RATCHET SHAPE (DEC-069 wave-19 clause (b), deliberate): ONE-SIDED only --
+// "may only fall" -- with NO two-sided (BELOW-direction) companion in this
+// batch. `v12m-w19-g` and `v12m-w19-h` are draining this exact fossil-row
+// population by hand in parallel this same wave; a two-sided companion
+// here would turn their repair commits into a red at merge time (the
+// measured count dropping BELOW a pinned floor). The ceiling below is
+// seeded from what this worktree measures on its own branch point, not
+// copied from any other lane's report. Because this constant is not
+// registered in scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES /
+// TIER2_CEILING_NAMES / OUT_OF_CAMPAIGN_SCOPE (out of this task's owned
+// files), test/campaign-ratchet-two-sided.scan.test.ts's population walk
+// does not see it and cannot flag it one-sided -- that walk's population is
+// derived from those three lists, never a manual scan of every `*_CEILING`
+// name in the tree. A future wave (recommended: the wave that lands after
+// w19-g/w19-h both merge and this population stabilises) should both
+// register this constant in scripts/exit-predicate.ts and add the
+// BELOW-direction companion `it` this file's own convention uses elsewhere
+// (see test/decisions-orphan-ratchet.test.ts's "may only fall" ratchet for
+// the same one-sided shape, and campaign-ratchet-two-sided.scan.test.ts's
+// header for the throw-message idiom a two-sided companion should use).
+// Measured on this worktree's branch point (main at checkout time): 2 total
+// grep-negative claims in docs/design/audit/**/*.md, 1 offender --
+// `frame-caption-residue-v12.md:55`'s "grepped `app/src/pages/comms/
+// ComposeWizard.tsx` for any `session_time`/banner reference naming it:
+// zero hits" row, whose named needle (`session_time`) now occurs in that
+// file (e.g. `SLOT_DEPENDENT_MERGE_FIELDS`'s `['session_time']` entry) even
+// though the row's narrower claim (no *banner* referencing it) may still be
+// true -- this grammar grades the row's own literal search, not its
+// nuance, by design (DEC-518's self-describing-predicate principle: no
+// allowlist for "but the row meant something narrower").
+const AUDIT_GREP_NEGATIVE_STALE_CEILING = 1;
+
 let _normalizedSourceBlobs: string[] | null = null;
 function normalizedSourceBlobs(): string[] {
   if (_normalizedSourceBlobs === null) {
@@ -452,5 +605,69 @@ describe("audit-gap-row-staleness", () => {
   it("zero-tolerance: no gap-verdict row in docs/design/audit/**/*.md names a token that is now floored, absent-but-present, or hidden-but-persistent in the tree", () => {
     const offenders = findOffenders();
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("audit-gap-row-staleness: grep-negative claims (DEC-069 wave-19 clause (b))", () => {
+  it("VACUOUS-POPULATION TRIPWIRE: the real corpus contains a non-zero number of grep-negative claim lines (path + needle + zero-hit phrase)", () => {
+    let total = 0;
+    for (const abs of auditMarkdownFiles()) {
+      const rel = relative(REPO_ROOT, abs);
+      const text = readFileSync(abs, "utf-8");
+      total += extractGrepNegativeClaims(rel, text).length;
+    }
+    expect(total).toBeGreaterThan(0);
+  });
+
+  it("VACUOUS-POPULATION TRIPWIRE: the real fossil row this task was named for (frame-caption-residue-v12.md:55, quoted verbatim) is extracted with the correct nearest path/needle pairing, ignoring earlier unrelated backtick citations on the same row", () => {
+    const fixtureLine =
+      "| Chautauqua Comms.dc.html | 769 | \"...\" | Re-verified: `session_time` is a real merge field (`src/mail/render.ts`'s `MERGE_FIELDS`/`MERGE_FIELD_SAMPLES`, DEC-660 wave-142) and `src/routes/comms/compose-core.ts:347-349` resolves it per-recipient from the same `icsScheduleMap` the compose table's Slot column uses, `null` for an unscheduled recipient. Still missing: the compose-time warning **banner** naming `{session_time}` usage against unscheduled recipients — grepped `app/src/pages/comms/ComposeWizard.tsx` for any `session_time`/banner reference naming it: zero hits; the nearest analogue (`{feedback}`-needs-a-plan reveal) is a different mechanism for a different merge field. |";
+    const claims = extractGrepNegativeClaims("fixture.md", fixtureLine);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]!.path).toBe("app/src/pages/comms/ComposeWizard.tsx");
+    expect(claims[0]!.needle).toBe("session_time");
+  });
+
+  it("POSITIVE control: a fabricated grep-negative claim naming a needle that DOES occur in the named repo file is detected as an offender", () => {
+    // `src/decisions-data/part3.ts` really does declare `DEC_613` -- a
+    // fabricated "zero hits" claim about it is false on the tree today, so
+    // this is a real positive control, not a fixture that merely resembles
+    // one.
+    expect(claimIsStale("src/decisions-data/part3.ts", "DEC_613")).toBe(true);
+    const fixture = "grepped `src/decisions-data/part3.ts` for `DEC_613`: zero hits.";
+    const claims = extractGrepNegativeClaims("fixture.md", fixture);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]!.path).toBe("src/decisions-data/part3.ts");
+    expect(claims[0]!.needle).toBe("DEC_613");
+    expect(claimIsStale(claims[0]!.path, claims[0]!.needle)).toBe(true);
+  });
+
+  it("NEGATIVE control: a fabricated grep-negative claim naming a needle that does NOT occur in the named repo file is not detected as an offender", () => {
+    const fabricatedNeedle = "chq_nonexistent_fixture_needle_w19j";
+    expect(claimIsStale("src/decisions.ts", fabricatedNeedle)).toBe(false);
+    const fixture = `grepped \`src/decisions.ts\` for \`${fabricatedNeedle}\`: zero hits.`;
+    const claims = extractGrepNegativeClaims("fixture.md", fixture);
+    expect(claims).toHaveLength(1);
+    expect(claimIsStale(claims[0]!.path, claims[0]!.needle)).toBe(false);
+  });
+
+  it("NEGATIVE control: a claim whose named path does not resolve in the tree is not an offender (its member requirement is a claim the tree can check)", () => {
+    const fixture = "grepped `app/src/pages/does/not/exist-w19j.tsx` for `anything`: zero hits.";
+    const claims = extractGrepNegativeClaims("fixture.md", fixture);
+    expect(claims).toHaveLength(1);
+    expect(claimIsStale(claims[0]!.path, claims[0]!.needle)).toBe(false);
+  });
+
+  it("ratchet (one-sided, DEC-069 wave-19 clause (b) -- deliberately no BELOW companion this batch): the measured grep-negative offender count may only fall toward zero", () => {
+    const offenders = findGrepNegativeOffenders();
+    if (offenders.length > AUDIT_GREP_NEGATIVE_STALE_CEILING) {
+      throw new Error(
+        `${offenders.length} grep-negative offender(s) exceed AUDIT_GREP_NEGATIVE_STALE_CEILING = ` +
+          `${AUDIT_GREP_NEGATIVE_STALE_CEILING} -- a row's own "zero hits"/"no such"/"does not exist"/` +
+          `"none exists"/"of any kind" claim about a named backtick path+needle no longer holds:\n` +
+          offenders.map((o) => `  ${o.file}:${o.lineNo} -- \`${o.needle}\` now occurs in \`${o.path}\`: ${o.line}`).join("\n"),
+      );
+    }
+    expect(offenders.length).toBeLessThanOrEqual(AUDIT_GREP_NEGATIVE_STALE_CEILING);
   });
 });
