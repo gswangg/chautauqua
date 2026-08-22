@@ -175,24 +175,28 @@ files, per `preview.tsx`'s own header comment), where the frame's
 four-chip list includes two ("Their session", "Their notes") that
 correspond to nothing this route withholds, so the shipped wording carries
 MORE information than the frame's, not less. The **missing second Welcome
-lede sentence** is a wording residual too, but disposition (a) ADOPT — the
-frame's fixed second sentence carries information (a static reassurance)
-the organiser's own stored welcome message cannot supply, so the tree's
-version carries strictly less; this is genuine, still-open buildable work
-this doc-only adjudication lane has no code file in scope to land (no
-route module or `*.css.ts` is owned here), so it is named for a future
-lane rather than force-closed. **Back-link placement** and **meta-sentence
-order** are GEOMETRY/ORDER residuals, outside wave-14m's wording-only
-scope guard — they keep the pre-existing measurement-only disposition
-this section already states (named, not fixed, desktop frozen).
+lede sentence** was a wording residual too, disposition (a) ADOPT, and is
+now CLOSED (DEC-902 wave-19 clause (b)): the frame's fixed second sentence
+carries information (a static reassurance) the organiser's own stored
+welcome message cannot supply, so clause (b) settled it as APP-OWNED CHROME
+— a separate node appended after the organiser's lede, never concatenated
+into it, rendering even when `welcomeMessage` is null — and
+`src/routes/portal/preview.tsx:139` now renders it verbatim: `Everything we
+need from you is on this page, in order.` **Back-link placement** and
+**meta-sentence order** are GEOMETRY/ORDER residuals, outside wave-14m's
+wording-only scope guard — they keep the pre-existing measurement-only
+disposition this section already states (named, not fixed, desktop
+frozen).
 
 **Now REACHED, and DIVERGES** off a real `GET /portal/preview` request
 (organizer auth), asserted in `test/portal-390-frame-verdicts.test.ts`'s
 own describe block for this frame. Structural anatomy matches (read-only
 banner, Welcome hero + lede, Resources section, Not-shown-here section, in
-that order), but three real divergences from
+that order), but two real divergences from
 `docs/design/Chautauqua Public and Portal.dc.html` — each disposed under
-DEC-902 wave-14m, see the paragraph above:
+DEC-902 wave-14m, see the paragraph above (the former third divergence,
+the missing Welcome lede second sentence, is CLOSED per DEC-902 wave-19
+clause (b), see the bullet below):
 
 - **Back-link placement** (frame :1490 `<a href="#" style="margin-left:auto;
   font-size:13px; font-weight:700; white-space:nowrap">‹ Back to
@@ -204,10 +208,16 @@ DEC-902 wave-14m, see the paragraph above:
 - **Welcome lede is one sentence, not two** (frame :1495 `<span
   style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for
   speaking at DevFlow. Everything we need from you is on this page, in
-  order.</span>`): the route renders only the organiser's stored welcome
-  message (`<p class="chq-portal-lede">`); no fixed second sentence
-  ("Everything we need from you is on this page, in order.") exists
-  anywhere in `preview.tsx`.
+  order.</span>`) — **CLOSED (DEC-902 wave-19 clause (b))**: the frame's
+  first sentence is the organiser's own stored welcome message in the
+  frame's fictional world (DEC-967: frame sample data is not product
+  copy) and stays data-driven; the frame's second sentence is APP-OWNED
+  CHROME, appended as its own node after the organiser's lede — never
+  concatenated into it, never replacing it — and rendered unconditionally,
+  even when `welcomeMessage` is null. `src/routes/portal/preview.tsx:139`
+  now renders `<p class="chq-portal-lede">Everything we need from you is
+  on this page, in order.</p>`, asserted off a real `GET /portal/preview`
+  request in `test/portal-desktop-frame-verdicts.test.ts`.
 - **"To see a real speaker's portal..." sentence order** (frame :1523
   `<span style="display:block; padding:14px 0 0; font-size:13px;
   color:#565A4B; line-height:1.55">To see a real speaker's portal you
@@ -247,7 +257,7 @@ render.
 | :1167 Public sessions · nothing published | MATCHES (reason-sentence divergence, DEC-745, previously filed) |
 | :1211 Submit a talk · rejected on submit | MATCHES |
 | :1373 Portal · Edit your session · desktop | MATCHES (DEC-029) |
-| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, one-sentence lede, meta-sentence order, "Not shown here" chip wording/count — DEC-902 wave-14m disposition, see section above) |
+| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, meta-sentence order — one-sentence lede CLOSED wave-19 clause (b), "Not shown here" chip wording/count BLESSED — DEC-902 wave-14m/wave-19 disposition, see section above) |
 
 5 of 7 frames MATCH as rendered off a real request; one previously-filed,
 already-adjudicated reason-sentence divergence (:1167, DEC-745/DEC-522)
