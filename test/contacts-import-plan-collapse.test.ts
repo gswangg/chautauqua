@@ -183,7 +183,7 @@ function seedContact(db: AppEnv["Variables"]["db"], overrides: Record<string, un
 }
 
 describe("CSV import plan/apply: within-file email collapse (DEC-663 amendment, wave 61)", () => {
-  it("plans created:1, updated:1 for a two-row file with one repeated new email, second row an update with no contactId and the fixed reason", async () => {
+  it("plans created:1, updated:0 for a two-row file with one repeated new email, second row an update with no contactId and the fixed reason", async () => {
     const { db, rows } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
 
@@ -205,8 +205,13 @@ describe("CSV import plan/apply: within-file email collapse (DEC-663 amendment, 
       updated: number;
       skipped: number;
     };
+    // DEC-663 (wave-8 amendment, w8-d): both rows resolve to the SAME
+    // deduped contact -- the plan's action for row 2 is still "update" (it
+    // patches the pending create, not a fresh row), but that contact was
+    // already counted as created by row 1, so it must not also inflate
+    // updated.
     expect(body.created).toBe(1);
-    expect(body.updated).toBe(1);
+    expect(body.updated).toBe(0);
     expect(body.skipped).toBe(0);
     expect(body.rows).toHaveLength(2);
     expect(body.rows[0]?.action).toBe("create");
@@ -234,8 +239,10 @@ describe("CSV import plan/apply: within-file email collapse (DEC-663 amendment, 
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { created: number; updated: number; skipped: unknown[] };
+    // DEC-663 (wave-8 amendment, w8-d): one contact created and patched by
+    // this file, never also counted as updated.
     expect(body.created).toBe(1);
-    expect(body.updated).toBe(1);
+    expect(body.updated).toBe(0);
     expect(body.skipped).toEqual([]);
     expect(rows()).toHaveLength(1);
     const row = rows()[0] as { firstName: string; lastName: string };
@@ -269,8 +276,10 @@ describe("CSV import plan/apply: within-file email collapse (DEC-663 amendment, 
       created: number;
       updated: number;
     };
+    // DEC-663 (wave-8 amendment, w8-d): the same existing contact touched by
+    // both rows counts once, not once per line.
     expect(body.created).toBe(0);
-    expect(body.updated).toBe(2);
+    expect(body.updated).toBe(1);
     expect(body.rows[0]?.action).toBe("update");
     expect(body.rows[0]?.contactId).toBe("ct_existing");
     expect(body.rows[0]?.reason).toBeUndefined();
