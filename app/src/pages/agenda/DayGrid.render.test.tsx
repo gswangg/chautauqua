@@ -285,4 +285,54 @@ describe('DayGrid breaks (DEC-021 amendment, w67-b)', () => {
     expect(band.classList.contains('chq-agenda-break-band-flagged')).toBe(false);
     expect(band.textContent).not.toContain("outside the day's hours");
   });
+
+  // DEC-021 wave-34: a break whose full extent does not intersect the day
+  // window must render NO band at all (never an inverted or negative
+  // grid-row) -- it is a correctness fix, not a new drop rule, so no
+  // `.chq-agenda-break-band` for this row should exist anywhere in the grid.
+  it('renders no band for a break entirely before the day window (07:00-08:00 vs a 09:00-18:00 grid)', () => {
+    const { container } = render(
+      <DayGrid
+        {...BASE_PROPS}
+        placed={[]}
+        conflicts={[]}
+        breaks={[breakRow({ startMin: 420, durationMin: 60 })]} // 7:00-8:00, grid starts at 9:00
+      />,
+    );
+    expect(container.querySelector('.chq-agenda-break-band')).toBeNull();
+  });
+
+  it('renders no band for a break entirely after the day window (19:00-20:00 vs a 09:00-18:00 grid)', () => {
+    const { container } = render(
+      <DayGrid
+        {...BASE_PROPS}
+        placed={[]}
+        conflicts={[]}
+        breaks={[breakRow({ startMin: 1140, durationMin: 60 })]} // 19:00-20:00, grid ends at 18:00
+      />,
+    );
+    expect(container.querySelector('.chq-agenda-break-band')).toBeNull();
+  });
+
+  it('never renders a break band whose grid-row end is <= its start or negative, across a spread of break windows', () => {
+    const spread = [
+      breakRow({ id: 'b-before', startMin: 300, durationMin: 60 }), // fully before
+      breakRow({ id: 'b-after', startMin: 1300, durationMin: 60 }), // fully after
+      breakRow({ id: 'b-straddle-start', startMin: 480, durationMin: 90 }), // 8:00-9:30
+      breakRow({ id: 'b-straddle-end', startMin: 1050, durationMin: 60 }), // 17:30-18:30
+      breakRow({ id: 'b-inside', startMin: 720, durationMin: 30 }), // 12:00-12:30
+    ];
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={spread} />);
+    const bands = container.querySelectorAll('.chq-agenda-break-band');
+    // Exactly the 3 intersecting breaks get a band; the 2 fully-outside ones get none.
+    expect(bands.length).toBe(3);
+    for (const band of bands) {
+      const parts = (band as HTMLElement).style.gridRow.split(' / ').map(Number);
+      const start = parts[0]!;
+      const end = parts[1]!;
+      expect(start).toBeGreaterThan(0);
+      expect(end).toBeGreaterThan(0);
+      expect(end).toBeGreaterThan(start);
+    }
+  });
 });

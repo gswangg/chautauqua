@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampBreakToWindow,
   gridRowEnd,
   gridRowToMinutes,
   minutesToGridRow,
@@ -50,6 +51,51 @@ describe('snapToGrid', () => {
   it('clamps below dayStartMin and above dayEndMin', () => {
     expect(snapToGrid(100, DAY_START, DAY_END, GRID)).toBe(DAY_START);
     expect(snapToGrid(2000, DAY_START, DAY_END, GRID)).toBe(DAY_END);
+  });
+});
+
+describe('clampBreakToWindow (DEC-021 wave-34)', () => {
+  it('returns null for a break fully before the day window (07:00-08:00 vs 09:00-18:00)', () => {
+    expect(clampBreakToWindow(420, 480, DAY_START, DAY_END, GRID)).toBeNull();
+  });
+
+  it('returns null for a break fully after the day window (19:00-20:00 vs 09:00-18:00)', () => {
+    expect(clampBreakToWindow(1140, 1200, DAY_START, DAY_END, GRID)).toBeNull();
+  });
+
+  it('returns a well-ordered rowStart < rowEnd for a break partially overlapping the start of the window', () => {
+    // 08:30-09:30 overlaps the first 30 minutes of the day.
+    const result = clampBreakToWindow(510, 570, DAY_START, DAY_END, GRID);
+    expect(result).not.toBeNull();
+    expect(result!.rowStart).toBeLessThan(result!.rowEnd);
+    expect(result!.rowStart).toBe(minutesToGridRow(DAY_START, DAY_START, GRID));
+    expect(result!.rowEnd).toBe(gridRowEnd(570, DAY_START, GRID));
+  });
+
+  it('returns a well-ordered rowStart < rowEnd for a break partially overlapping the end of the window', () => {
+    // 17:30-18:30 overlaps the last 30 minutes of the day.
+    const result = clampBreakToWindow(1050, 1110, DAY_START, DAY_END, GRID);
+    expect(result).not.toBeNull();
+    expect(result!.rowStart).toBeLessThan(result!.rowEnd);
+    expect(result!.rowEnd).toBe(gridRowEnd(DAY_END, DAY_START, GRID));
+  });
+
+  it('handles an exactly-abutting break at the start boundary as no overlap (zero-width intersection)', () => {
+    // Ends exactly when the day starts -> touches but does not intersect.
+    expect(clampBreakToWindow(480, DAY_START, DAY_START, DAY_END, GRID)).toBeNull();
+  });
+
+  it('handles an exactly-abutting break at the end boundary as no overlap (zero-width intersection)', () => {
+    // Starts exactly when the day ends -> touches but does not intersect.
+    expect(clampBreakToWindow(DAY_END, DAY_END + 60, DAY_START, DAY_END, GRID)).toBeNull();
+  });
+
+  it('returns the full unclamped span for a break entirely inside the window', () => {
+    const result = clampBreakToWindow(600, 630, DAY_START, DAY_END, GRID);
+    expect(result).toEqual({
+      rowStart: minutesToGridRow(600, DAY_START, GRID),
+      rowEnd: gridRowEnd(630, DAY_START, GRID),
+    });
   });
 });
 

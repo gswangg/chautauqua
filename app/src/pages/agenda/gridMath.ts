@@ -37,6 +37,27 @@ export function gridRowEnd(endMin: number, dayStartMin: number, gridMin: number)
   return minutesToGridRow(endMin, dayStartMin, gridMin);
 }
 
+/** DEC-021 wave-34: clamps a [startMin, endMin) interval to the day window as
+ * a single interval operation, not two independently-clamped bounds. An
+ * interval that does not intersect [dayStartMin, dayEndMin) returns null (no
+ * band should be drawn); an intersecting interval returns a well-ordered
+ * rowStart < rowEnd, clipped to the window edges when it spills past them. */
+export function clampBreakToWindow(
+  startMin: number,
+  endMin: number,
+  dayStartMin: number,
+  dayEndMin: number,
+  gridMin: number,
+): { rowStart: number; rowEnd: number } | null {
+  if (endMin <= dayStartMin || startMin >= dayEndMin) return null;
+  const clampedStart = Math.max(startMin, dayStartMin);
+  const clampedEnd = Math.min(endMin, dayEndMin);
+  const rowStart = minutesToGridRow(clampedStart, dayStartMin, gridMin);
+  const rowEnd = gridRowEnd(clampedEnd, dayStartMin, gridMin);
+  if (rowEnd <= rowStart) return null;
+  return { rowStart, rowEnd };
+}
+
 // DEC-900 amendment (wave 60): minutes-from-midnight clock formatting moved
 // to the single owner, src/domain/clock.ts, crossed here via
 // app/src/lib/clock.ts. What was formatMinutes (zero-padded, card

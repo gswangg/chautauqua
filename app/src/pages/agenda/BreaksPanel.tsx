@@ -460,8 +460,8 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
           </div>
         </div>
         <span className="chq-breaks-outside-hint">
-          A break outside the day&apos;s window is kept but flagged — the grid shows it greyed rather than dropping
-          it.
+          A break outside the day&apos;s window is kept but flagged. If it still overlaps the visible hours, the grid
+          shows it greyed; if it falls entirely outside them, it is listed here but no band is drawn.
         </span>
         <div className="chq-breaks-add-actions">
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => void handleAdd()} disabled={adding}>
