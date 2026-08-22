@@ -11,7 +11,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo, Bindings } from "../server/env";
 import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
-import { requireOrganizer, csrfJson } from "../server/middleware";
+import { requireOrganizer, requireCookieSession, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray, readOptionalJsonBody, requireAtLeastOneField } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
@@ -746,7 +746,12 @@ taskRoutes.get("/task-assignments/:id/response", requireOrganizer, async (c) => 
 // ---------------------------------------------------------------------------
 
 // POST /api/v1/events/:eventId/onboarding/remind
-taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson, async (c) => {
+// DEC-027 wave-18 amendment (population derived by
+// test/claim-mint-guard-population.test.ts): this route reaches remindNow
+// -> sendReminderEmails(..., mintClaimTokens=true) -> resolvePortalLinks(...,
+// true) -> createClaimToken -- a claim-token mint is a credential mint, so
+// requireCookieSession goes immediately after the role guard.
+taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
@@ -785,6 +790,9 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
 // SPEC §10 #3 (DEC-441): assisted chasing — a read-only preview of exactly
 // what "remind now" would send, rendered from the same buildReminderMessage
 // builder as the real send. Never calls the mailer, never writes a row.
+// No requireCookieSession here (DEC-027): previewRemindNow resolves portal
+// links with mintClaimTokens=false and mints nothing, so this route is not
+// in the claim-mint-guard population -- do not "fix" this.
 taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const eventId = c.req.param("eventId");
