@@ -303,7 +303,20 @@ const OVERFLOW_TOLERANCE_PX = 1;
 /** Evaluates one route's mobile-viewport observation: HTTP 200, no
  * page-level horizontal overflow, and every measured primary control
  * meets the >= 44px tap-target height (DEC-393). */
-export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObservation): MobileRouteResult {
+export function evaluateMobileRoute(
+  entry: MobileRouteEntry,
+  observed: MobileObservation,
+  // DEC-808 wave-30 amendment: true (default, every existing call site
+  // unchanged/byte-identical) means interactiveOffenders participates in
+  // `reasons`/`ok` same as always. The public/portal pass passes false —
+  // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING wired straight through — so
+  // widening offenderSelector past controlSelector (INTERACTIVE_CONTROL_
+  // SELECTOR vs the narrow MOBILE_CONTROL_SELECTOR) reports every wide
+  // offender in the `interactiveOffenders` field without flipping the
+  // BLOCKING public-pass contract DEC-253 already relies on (minControlHeight/
+  // minControlWidth over the narrow population, untouched, still gate it).
+  offendersBlocking = true,
+): MobileRouteResult {
   // DEC-401: also consider maxElementRight — an element clipped by an
   // ancestor's overflow:hidden can widen the visible page without moving
   // document.scrollingElement.scrollWidth.
@@ -343,7 +356,7 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
   const interactiveOffenders = interactiveOffenderMeasurements.map(
     (m) => `${m.selector} w=${Math.round(m.width)}px h=${Math.round(m.height)}px`,
   );
-  if (interactiveOffenders.length > 0) {
+  if (offendersBlocking && interactiveOffenders.length > 0) {
     reasons.push(`${interactiveOffenders.length} interactive offender(s) under ${MIN_TAP_TARGET_PX}px: ${interactiveOffenders.join(" | ")}`);
   }
   // DEC-253 wave-30 amendment: same expected-status noise filter as the
@@ -601,6 +614,114 @@ export function deriveInteractiveOffenders(
  * the roster's prose. */
 export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
 
+// ---------------------------------------------------------------------------
+// DEC-808 wave-30 amendment: the public/portal 390 tap-floor population has
+// never been graded by the live geometry gate — MOBILE_CONTROL_SELECTOR
+// (scripts/render-sweep.ts) is a hand-listed six-selector list whose own
+// comment says it "deliberately excludes secondary inline links", so it
+// carries the DEC-180/DEC-808 "a hand-listed population is not a
+// population" defect the admin pass already fixed at w7-dd
+// (INTERACTIVE_CONTROL_SELECTOR above). This section widens the SAME
+// pure predicate (deriveInteractiveOffenders, DEC-613: never a second
+// predicate) over the public/portal MOBILE_ROUTE_MANIFEST instead of
+// ADMIN_MOBILE_ROUTE_MANIFEST — an entirely separate route population, so
+// its own ceiling/blocking flag, kept advisory (not blocking) on landing,
+// same disposition ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING already has
+// (see scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE entry for both).
+//
+// The narrow MOBILE_CONTROL_SELECTOR pass (minControlHeight/minControlWidth)
+// is left completely untouched — it is still what the BLOCKING public mobile
+// gate (evaluateMobileRoute's heightFails/widthFails reasons) checks. This
+// section only widens what gets REPORTED as an advisory offender, via
+// visitMobileRoute's new `offenderSelector` parameter (scripts/render-
+// sweep.ts), collected in the SAME page load as the narrow pass so the
+// public route population is never visited twice.
+// ---------------------------------------------------------------------------
+
+/** DEC-808 wave-30 amendment: PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING mirrors
+ * ADMIN_MOBILE_PASS_BLOCKING's flip rule — false on landing (first live
+ * measurement of a population that has never been graded before), flipped
+ * true in a later wave once a re-confirmed reading settles clean. */
+export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = false;
+
+/** DEC-808 wave-30 amendment, two-sided ratchet for the public/portal mobile
+ * pass's WIDE (INTERACTIVE_CONTROL_SELECTOR) offender population — the same
+ * `deriveInteractiveOffenders`/MIN_TAP_TARGET_PX predicate
+ * ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING already grades, run instead
+ * over MOBILE_ROUTE_MANIFEST (the public/portal/auth/docs 390 routes).
+ *
+ * MEASURED (DEC-967: never invented, never carried forward), task v12m-w30-a:
+ * ran the full local stack (migrations + seed + wrangler dev) and
+ * `npm run gate:render-sweep` end-to-end against this task's own worktree
+ * HEAD (sha b9c5a45d8). The public mobile pass's own printed total read
+ * "render-sweep: public mobile total interactive offenders: 41" (19 EXEMPT
+ * by an already-adjudicated receipt — mostly the `.chq-visually-hidden`
+ * skip-link idiom and `.chq-wordmark` — 22 CANDIDATE; see the gate's
+ * console output and the roster this task wrote,
+ * docs/design/audit/public-390-interactive-offenders-v12.md). */
+export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
+
+/** DEC-808 wave-30 amendment clause (d), the vacuity clause: a route whose
+ * NARROW MOBILE_CONTROL_SELECTOR population produced zero matched elements
+ * (minControlHeight === null) has been passing the BLOCKING public mobile
+ * gate's height/width check vacuously — there was nothing to measure, so
+ * nothing could ever fail. Two-sided floor on that count, same MEASURED
+ * discipline as the ceiling above: task v12m-w30-a's own live gate run
+ * (sha b9c5a45d8) counted 4 such routes out of MOBILE_ROUTE_MANIFEST's 28
+ * members (`/`, `/e/devflow-conf-2027/programme`,
+ * `/embed/devflow-conf-2027/schedule`, `/docs/api`). */
+export const PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR = 4;
+
+/** DEC-808 wave-30 amendment: one row of the public/portal roster's vacuity
+ * section — whether THIS route's narrow-population (MOBILE_CONTROL_SELECTOR)
+ * pass measured zero controls (minControlHeight === null), meaning the
+ * blocking public gate's height/width check passed vacuously for it. */
+export interface PublicMobileVacuityRow {
+  readonly path: string;
+  readonly vacuousNarrow: boolean;
+}
+
+/** DEC-808 wave-30 amendment: renders the public/portal 390 mobile pass's
+ * offender roster — reuses formatAdminMobileOffenderLedger verbatim (DEC-613:
+ * never a second predicate/formatter) for the per-route offender table, then
+ * appends the vacuity-clause section clause (d) of this wave's DEC-808
+ * amendment requires: how many routes' narrow population never matched a
+ * single control. Machine-written, unconditional on every gate run — same
+ * idiom as scripts/render-sweep.ts's admin roster write (DEC-996). */
+export function formatPublicMobileOffenderRoster(
+  results: readonly AdminMobileOffenderLedgerRow[],
+  ceiling: number,
+  exemptSelectors: ReadonlySet<string>,
+  vacuityRows: readonly PublicMobileVacuityRow[],
+): string {
+  const base = formatAdminMobileOffenderLedger(
+    results,
+    ceiling,
+    exemptSelectors,
+    "Public/portal mobile tap-floor offender roster (390px, DEC-253/DEC-367/DEC-808 wave-30 amendment)",
+    "public/portal",
+  );
+  const vacuous = vacuityRows.filter((r) => r.vacuousNarrow);
+  const lines: string[] = [base.trimEnd(), ""];
+  lines.push("## Vacuity clause (DEC-808 wave-30 amendment, clause d)");
+  lines.push("");
+  lines.push(
+    "Routes below matched zero elements under the narrow MOBILE_CONTROL_SELECTOR " +
+      "population (minControlHeight === null) — the BLOCKING public mobile gate's " +
+      "height/width check has been passing on these routes vacuously, since there was " +
+      "nothing for it to measure.",
+  );
+  lines.push("");
+  if (vacuous.length === 0) {
+    lines.push("No routes measured a vacuous narrow population on the last gate run.");
+  } else {
+    for (const r of vacuous) lines.push(`- ${r.path}`);
+  }
+  lines.push("");
+  lines.push(`Vacuous-narrow count: ${vacuous.length} (of ${vacuityRows.length} routes measured)`);
+  return lines.join("\n") + "\n";
+}
+
 /** DEC-996 wave-24 amendment: classification result for one printed offender
  * line. `EXEMPT` names the receipt token (a class name) that reaches it —
  * either a `tap-floor-exempt:` comment naming that literal class, or the
@@ -658,19 +779,30 @@ export function formatAdminMobileOffenderLedger(
   results: readonly AdminMobileOffenderLedgerRow[],
   ceiling: number,
   exemptSelectors: ReadonlySet<string> = new Set(),
+  // wave-30 (DEC-808 amendment): the public/portal roster reuses this exact
+  // formatter/classifier (DEC-613: never a second predicate) but is a
+  // different population under a different route manifest, so it needs its
+  // own heading — defaulting preserves every existing admin caller's output
+  // byte-for-byte.
+  title = "Admin mobile tap-floor offender roster (390px, DEC-253/DEC-367/DEC-808/DEC-996)",
+  // DEC-808 wave-30 amendment: same default-preserves-every-existing-caller
+  // rationale as `title` above — the admin caller's byte-for-byte output is
+  // unaffected; the public/portal roster passes "public" so its own prose
+  // doesn't misname itself the admin pass.
+  passLabel = "admin",
 ): string {
   void ceiling; // DEC-996 wave-24 amendment: the printed total classifies the
   // population instead of comparing it to the raw ceiling — the ceiling
   // itself is unchanged and still lives in ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING.
   const lines: string[] = [];
-  lines.push("# Admin mobile tap-floor offender roster (390px, DEC-253/DEC-367/DEC-808/DEC-996)");
+  lines.push(`# ${title}`);
   lines.push("");
   lines.push(
     "MACHINE-WRITTEN by `npm run gate:render-sweep` (scripts/render-sweep.ts). Do not hand-edit — the next gate run overwrites this file unconditionally.",
   );
   lines.push("");
   lines.push(
-    "Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path. Each line is classified EXEMPT (naming the receipt token that reaches it) or CANDIDATE (DEC-996 wave-24 amendment) — a bare count over this mixed population is not a measurement.",
+    `Lists every visible interactive control under the 44px tap-target floor (\`MIN_TAP_TARGET_PX\`, either dimension) found by the ${passLabel} 390x844 mobile pass, one route section per route with at least one offender, sorted by route path. Each line is classified EXEMPT (naming the receipt token that reaches it) or CANDIDATE (DEC-996 wave-24 amendment) — a bare count over this mixed population is not a measurement.`,
   );
   lines.push("");
 

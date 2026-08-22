@@ -919,6 +919,27 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "contract DEC-253 depends on. This constant lives beside that contract without "
     + "replacing it (scripts/render-sweep-lib.ts, DEC-253/DEC-367/DEC-808 wave-155 "
     + "amendment, task qf).",
+  PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING:
+    "wave-30 (task v12m-w30-a, DEC-808 amendment): same disposition as "
+    + "ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING immediately above -- measures the "
+    + "public/portal mobile pass's own OFFENDER COUNT for the widened INTERACTIVE_CONTROL_"
+    + "SELECTOR population under MIN_TAP_TARGET_PX, ADVISORY not blocking "
+    + "(PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = false), because minControlHeight/"
+    + "minControlWidth over the narrow MOBILE_CONTROL_SELECTOR population already carry "
+    + "the BLOCKING public-pass contract DEC-253 depends on. A new non-zero row in the "
+    + "exit gate for this count would move the campaign's own convergence goalposts "
+    + "mid-stream the first time this population is ever measured. This constant lives "
+    + "beside that contract without replacing it (scripts/render-sweep-lib.ts, DEC-253/"
+    + "DEC-367/DEC-808 wave-30 amendment).",
+  PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR:
+    "wave-30 (task v12m-w30-a, DEC-808 amendment clause d): a POPULATION-COMPLETENESS "
+    + "fact -- how many public/portal 390 routes' narrow MOBILE_CONTROL_SELECTOR pass "
+    + "matched zero elements, so the BLOCKING public mobile gate's height/width check has "
+    + "been passing on them vacuously -- not itself a v12 frame or 390-geometry "
+    + "conformance fact about any one screen's controls; closing it means widening "
+    + "MOBILE_CONTROL_SELECTOR (a separate act, DEC-253's own contract) rather than fixing "
+    + "a rendered defect, the same INSTRUMENT-COMPLETENESS disposition "
+    + "ROUTE_SUBSTATE_UNVISITED_CEILING already has (scripts/render-sweep-lib.ts).",
   DRAWN_FIELD_LABEL_DIVERGENCE_CEILING:
     "measures whether a drawn v12 FIELD label (an 11px/800-weight/0.1em-tracking eyebrow span "
     + "over an input-shaped box) matches the WORDS the app's hardcoded label actually renders -- "

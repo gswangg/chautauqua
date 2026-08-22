@@ -58,6 +58,9 @@ import {
   evaluateTypeRoleResult,
   filterKnownClipExceptions,
   formatAdminMobileOffenderLedger,
+  formatPublicMobileOffenderRoster,
+  PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
+  PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING,
   FONT_FLOOR_BLOCKING,
   fontFloorErrorResult,
   formatFontFloorSummary,
@@ -86,6 +89,7 @@ import {
   type InteractiveMeasurement,
   type MobileRouteEntry,
   type MobileRouteResult,
+  type PublicMobileVacuityRow,
   type RouteResult,
   type TypeRoleResult,
 } from "./render-sweep-lib";
@@ -1201,6 +1205,21 @@ async function visitMobileRoute(
   entry: MobileRouteEntry,
   controlSelector: string = MOBILE_CONTROL_SELECTOR,
   fontFloorResults?: FontFloorResult[],
+  // DEC-808 wave-30 amendment: the population `interactiveMeasurements` is
+  // collected over — defaults to controlSelector so every existing call
+  // site (the admin pass) is byte-identical without passing this. The
+  // public pass below passes INTERACTIVE_CONTROL_SELECTOR here while
+  // controlSelector stays MOBILE_CONTROL_SELECTOR, so minControlHeight/
+  // minControlWidth (the BLOCKING public-pass contract, DEC-253) keep
+  // measuring the narrow population in the SAME page load that now also
+  // reports the wide population's offenders advisorily.
+  offenderSelector: string = controlSelector,
+  // DEC-808 wave-30 amendment: threaded straight to evaluateMobileRoute.
+  // Defaults true (byte-identical for the admin pass and every existing
+  // caller); the public pass passes PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING
+  // (false on landing) so the widened offenderSelector population never
+  // flips the BLOCKING public gate.
+  offendersBlocking = true,
 ): Promise<MobileRouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before the in-page evaluation below.
@@ -1225,7 +1244,7 @@ async function visitMobileRoute(
     pageErrors.push(err instanceof Error ? err.message : String(err));
   }
 
-  const measured = await page.evaluate((selector: string) => {
+  const measured = await page.evaluate((selectors: { controlSelector: string; offenderSelector: string }) => {
     // DEC-401: structural-only descriptor — tag + up to 3 classes, never
     // text content (gate logs must not carry seed or user data).
     const describe = (el: Element): string => {
@@ -1286,17 +1305,38 @@ async function visitMobileRoute(
         .map(({ el, spill, sw, cw }) => `${describe(el)} spill=${Math.round(spill)}px (scrollWidth ${Math.round(sw)} > clientWidth ${Math.round(cw)})`);
     }
 
-    const controls = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+    const controls = Array.from(document.querySelectorAll(selectors.controlSelector)) as HTMLElement[];
     let minControlHeight: number | null = null;
     let minControlWidth: number | null = null;
     let minControlSelector: string | null = null;
-    // DEC-253/DEC-367/DEC-808 wave-155 amendment: every visible control's
-    // own structural box, over the exact same population as the minima
-    // below — handed to the pure deriveInteractiveOffenders in
-    // render-sweep-lib.ts so the gate can report every offender, not just
-    // the shortest control.
-    const measurements: InteractiveMeasurement[] = [];
+    // DEC-367: the 44px floor's second dimension, over the narrow
+    // controlSelector population only — this is the BLOCKING public-pass
+    // contract (DEC-253) and must stay untouched by the DEC-808 wave-30
+    // offenderSelector widening below.
     for (const el of controls) {
+      if (el.offsetParent === null) continue; // visible only (not display:none)
+      const rect = el.getBoundingClientRect();
+      if (minControlWidth === null || rect.width < minControlWidth) {
+        minControlWidth = rect.width;
+      }
+      if (minControlHeight === null || rect.height < minControlHeight) {
+        minControlHeight = rect.height;
+        minControlSelector = describe(el);
+      }
+    }
+
+    // DEC-253/DEC-367/DEC-808 wave-155/wave-30 amendment: every visible
+    // control's own structural box, over offenderSelector — the admin pass
+    // still hands the same selector here as controlSelector (default
+    // parameter, byte-identical), but the DEC-808 wave-30 public pass hands
+    // the widened INTERACTIVE_CONTROL_SELECTOR while controlSelector above
+    // stays the narrow MOBILE_CONTROL_SELECTOR — handed to the pure
+    // deriveInteractiveOffenders in render-sweep-lib.ts so the gate can
+    // report every offender, not just the shortest narrow-population
+    // control.
+    const offenderControls = Array.from(document.querySelectorAll(selectors.offenderSelector)) as HTMLElement[];
+    const measurements: InteractiveMeasurement[] = [];
+    for (const el of offenderControls) {
       if (el.offsetParent === null) continue; // visible only (not display:none)
       const rect = el.getBoundingClientRect();
       measurements.push({
@@ -1306,18 +1346,6 @@ async function visitMobileRoute(
         height: rect.height,
         visible: true,
       });
-      // DEC-367: the 44px floor's second dimension. Tracked over the exact
-      // same visible primary nav/filter/submit control population as
-      // minControlHeight — no new selector, no new population — so a
-      // control that clears the height floor on padding alone but is only
-      // as wide as its own text still gets caught.
-      if (minControlWidth === null || rect.width < minControlWidth) {
-        minControlWidth = rect.width;
-      }
-      if (minControlHeight === null || rect.height < minControlHeight) {
-        minControlHeight = rect.height;
-        minControlSelector = describe(el);
-      }
     }
 
     return {
@@ -1330,7 +1358,7 @@ async function visitMobileRoute(
       minControlSelector,
       interactiveMeasurements: measurements,
     };
-  }, controlSelector);
+  }, { controlSelector, offenderSelector });
 
   // DEC-421: advisory type-floor measurement at this route's viewport.
   if (fontFloorResults) {
@@ -1353,7 +1381,7 @@ async function visitMobileRoute(
   }
 
   await page.close();
-  return evaluateMobileRoute(entry, { status, ...measured, clipOffenders, consoleErrors, pageErrors });
+  return evaluateMobileRoute(entry, { status, ...measured, clipOffenders, consoleErrors, pageErrors }, offendersBlocking);
 }
 
 async function main(): Promise<void> {
@@ -1499,7 +1527,25 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        mobileResults.push(await visitMobileRoute(context, baseUrl, entry, MOBILE_CONTROL_SELECTOR, fontFloorResults));
+        // DEC-808 wave-30 amendment: offenderSelector widens to
+        // INTERACTIVE_CONTROL_SELECTOR (same population the admin pass
+        // already grades) while controlSelector stays MOBILE_CONTROL_
+        // SELECTOR — minControlHeight/minControlWidth (the BLOCKING public
+        // gate) keep measuring the narrow population; offendersBlocking is
+        // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING (false on landing) so the
+        // wider population is reported (interactiveOffenders) but never
+        // flips this pass's exit code.
+        mobileResults.push(
+          await visitMobileRoute(
+            context,
+            baseUrl,
+            entry,
+            MOBILE_CONTROL_SELECTOR,
+            fontFloorResults,
+            INTERACTIVE_CONTROL_SELECTOR,
+            PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING,
+          ),
+        );
       } catch (err) {
         mobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -1512,6 +1558,55 @@ async function main(): Promise<void> {
     console.log(formatMobileSummary(mobileResults));
 
     if (!allMobilePassed(mobileResults)) {
+      failed = true;
+    }
+
+    // DEC-808 wave-30 amendment: the public/portal mobile pass's own
+    // advisory interactive-offender total (INTERACTIVE_CONTROL_SELECTOR,
+    // never previously graded — see PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_
+    // CEILING's comment in render-sweep-lib.ts), plus clause (d)'s vacuity
+    // count. Same idiom as the admin mobile total below.
+    console.log("");
+    console.log("render-sweep: public mobile interactive offenders (DEC-253/DEC-367/DEC-808 wave-30 amendment)...");
+    let totalPublicInteractiveOffenders = 0;
+    for (const r of mobileResults) {
+      totalPublicInteractiveOffenders += r.interactiveOffenders.length;
+      if (r.interactiveOffenders.length > 0) {
+        console.log(`  ${r.entry.path}: ${r.interactiveOffenders.length} offender(s): ${r.interactiveOffenders.join(" | ")}`);
+      }
+    }
+    console.log(
+      `render-sweep: public mobile total interactive offenders: ${totalPublicInteractiveOffenders} (ceiling ${PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING})`,
+    );
+
+    // DEC-996 idiom, DEC-808 wave-30 amendment: write the roster this pass
+    // just measured unconditionally, same as the admin roster below —
+    // never discarded to scrollback. Exempt tokens are DERIVED from this
+    // run's own offenders against the tree's own receipts (never
+    // hand-listed), reusing deriveAdminMobileExemptSelectors verbatim
+    // (DEC-613: never a second predicate) — it is generic over any
+    // offender-line population, not admin-specific.
+    const publicMobileLedgerPath = join(REPO_ROOT, "docs", "design", "audit", "public-390-interactive-offenders-v12.md");
+    const publicMobileExemptTokens = deriveAdminMobileExemptSelectors(
+      mobileResults.flatMap((r) => r.interactiveOffenders),
+    );
+    const publicMobileVacuityRows: PublicMobileVacuityRow[] = mobileResults.map((r) => ({
+      path: r.entry.path,
+      vacuousNarrow: r.minControlHeight === null,
+    }));
+    writeFileSync(
+      publicMobileLedgerPath,
+      formatPublicMobileOffenderRoster(
+        mobileResults.map((r) => ({ path: r.entry.path, interactiveOffenders: r.interactiveOffenders })),
+        PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
+        publicMobileExemptTokens,
+        publicMobileVacuityRows,
+      ),
+      "utf-8",
+    );
+    console.log(`render-sweep: wrote public mobile offender roster to ${publicMobileLedgerPath}`);
+
+    if (totalPublicInteractiveOffenders > PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING && PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING) {
       failed = true;
     }
 
