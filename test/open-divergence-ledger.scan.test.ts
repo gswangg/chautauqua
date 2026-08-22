@@ -439,7 +439,24 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-export const OPEN_DIVERGENCE_CEILING = 24;
+//
+// LOWERED 24 -> 16 (task v12m-w34-e, DEC-099 wave-34 clause (a), Comms +
+// Contacts half). All 8 closed rows were ALREADY adjudicated -- their DEC
+// or DEVIATIONS citation sat a blank line or section away, outside this
+// grammar's line/paragraph scope. No exclusion list was added and the
+// grammar was not forked (DEC-808's "never hand-curate a row"): each
+// verdict sentence's own paragraph was edited to name the ruling its
+// following bullets/sections already cite. Closed: comms-compose-desktop
+// -v12.md:41 (DEC-902 wave-9, DEC-967, DEC-651 wave-26) and :136 (DEC-964
+// wave-21); contacts-desktop-v12.md:45 (DEC-902 wave-8), :120 (DEC-902
+// wave-14m disposition (b)), :160 (DEC-902 wave-14m disposition (b));
+// contacts-directory-desktop-v12.md:30 (DEC-919) and :67 (DEC-902 wave-14m
+// wording disposition, applied to order); contacts-drawer-390-v12.md:410
+// (docs/design/DEVIATIONS.md §7, moved into the table cell itself rather
+// than the section two blocks below). Population and grammar unchanged --
+// re-measure via `npx vitest run test/open-divergence-ledger.scan.test.ts`
+// with this constant forced to -1 before trusting any future line number.
+export const OPEN_DIVERGENCE_CEILING = 16;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {

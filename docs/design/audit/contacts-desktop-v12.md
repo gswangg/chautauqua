@@ -42,7 +42,8 @@ eight are separately adjudicated.
 
 ## Frame :312 "Pipeline · invitations for next year"
 
-**MOSTLY MATCHES, one additive divergence.** Entered via `ContactsPage` at
+**MOSTLY MATCHES, one additive divergence.** (The additive divergence below
+is adjudicated by DEC-902 wave-8: blessed, not open debt.) Entered via `ContactsPage` at
 `/contacts?tab=pipeline` — the real route and its real `?tab=` navigation,
 mounting `PipelineBoard`.
 
@@ -117,7 +118,8 @@ per the mandate.
 
 ## Frame :617 "Add to the pipeline"
 
-**MOSTLY MATCHES, one content divergence.** Opened through the real
+**MOSTLY MATCHES, one content divergence.** (The content divergence below is
+adjudicated by DEC-902 wave-14m disposition (b): blessed, not adopted.) Opened through the real
 `PipelineBoard` header control ("Add to the pipeline") that opens it — the
 `EnrollDialog` function (`app/src/pages/contacts/PipelineBoard.tsx`
 `function EnrollDialog`; there is no separate `EnrollDialog.tsx` file —
@@ -158,7 +160,9 @@ per the mandate.
 ## Frame :352 "Duplicates · merge"
 
 **MOSTLY MATCHES, with one back-link content divergence and one
-already-adjudicated frame-silent addition.** Entered by mounting
+already-adjudicated frame-silent addition.** (Both divergences below are
+adjudicated under DEC-902 wave-14m disposition (b): blessed, not adopted.)
+Entered by mounting
 `MergePage` directly (it is itself the leaf route at `/contacts/merge`,
 reached only by URL — the same established idiom
 `Contacts.frame-verdicts.render.test.tsx`'s own "Merge · 390" case uses,

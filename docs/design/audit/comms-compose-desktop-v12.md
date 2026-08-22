@@ -39,7 +39,11 @@ branch), reached from a `?ids=` landing with 23 recipients (matching the
 frame's own demo numbers) through the template step's Subject/Body fields.
 
 **Mostly MATCHES, with one blessed structural divergence and two
-visibility-gating divergences.**
+visibility-gating divergences.** The two visibility-gating divergences below
+are governed by DEC-902 wave-9 and DEC-967 (frame sample data is not product
+copy); the blessed structural divergence (step-3 primary only advancing, not
+sending) is filed per DEC-651 wave-26's measurement-only mandate, which is
+this document's own governing decision.
 
 - "Recipients · 23" section head and "Change selection" control (frame
   :81-82) MATCH exactly.
@@ -133,7 +137,9 @@ Entered via the send step after the send completes
 draws — "Send complete" / "21 of 23 speakers were emailed" is a POST-SEND
 report, not a pre-send confirmation screen.
 
-**Mostly MATCHES, with one real counting-vocabulary divergence.**
+**Mostly MATCHES, with one real counting-vocabulary divergence.** The
+counting-vocabulary divergence is fixed and adjudicated by DEC-964 (wave 21),
+per the bullet below.
 
 - The step rail's "Preview" row detail — "One email per recipient" (frame
   :482-483) — MATCHES verbatim.

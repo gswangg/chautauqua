@@ -27,7 +27,8 @@ below.
 
 ## Frame :28 "Directory · 1600"
 
-**MATCHES**, with one additive text divergence noted below. Entered via
+**MATCHES**, with one additive text divergence noted below (the `N of M`
+counter relocation is per `src/decisions-data/DEC-919.md`). Entered via
 `ContactsPage` → `ContactsApp.tsx`.
 
 - Title-row action cluster order — `Import CSV` / `Export CSV` / `New
@@ -64,7 +65,9 @@ below.
 
 ## Frame :229 "Contact · drawer"
 
-**MATCHES**, with one order **DIVERGENCE** in the action bar. Entered via
+**MATCHES**, with one order **DIVERGENCE** in the action bar (adjudicated
+below on the same axis as DEC-902's wave-14m wording disposition, applied to
+order rather than wording). Entered via
 `ContactsApp.tsx`'s `?openContact=<id>` one-shot URL state → `ContactDrawer`.
 
 - The drawer opens as a `role="dialog"` labelled "Contact detail", with a
