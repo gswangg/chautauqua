@@ -214,6 +214,13 @@ import {
 } from '../app/src/phone-tap-target-scan/core';
 import { extractCssTsLiteral, sanitizeCommentBraces } from '../app/src/phone-overflow-scan/population';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
+import {
+  buildSkeletonBlobs,
+  labelIsComposedLiteral,
+  labelIsComposedWithKnownAffix,
+  looksLikeDataValue,
+  skeletonOwnTextTokens,
+} from './skeleton-join';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -475,6 +482,15 @@ const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
 const SOURCE_FILE_PATHS = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_BLOBS: string[] = SOURCE_FILE_PATHS.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
 
+// WAVE 31 (DEC-808 wave-31 amendment, task w31-b): digit-collapsed skeleton
+// blobs, built once from the SAME NORMALIZED_BLOBS corpus above, for the
+// skeleton join tier below. The join technique itself (`collapseDigitsToSkeleton`
+// / `buildSkeletonBlobs` / `skeletonOwnTextTokens`) lives in ONE shared
+// module, test/skeleton-join.ts (DEC-613) -- see that file's own header for
+// why it does not also re-implement allBoundaryMatches/ownTextEquals/
+// classTokensNear (each ledger PORTS those, never imports a sibling suite).
+const SKELETON_BLOBS: string[] = buildSkeletonBlobs(NORMALIZED_BLOBS);
+
 // -- Composed-label resolution tier (DEC-393 wave-23 amendment; task w23-g)
 // -- consulted ONLY when the own-text tier above finds no match for a
 // label at all. See test/helpers/composed-label-resolve.ts's own header
@@ -482,6 +498,139 @@ const NORMALIZED_BLOBS: string[] = SOURCE_FILE_PATHS.map((f) => normalizeSource(
 // this join lives, shared byte-for-byte with the desktop half. -----------
 
 const COMPOSED_HELPERS: ComposedHelper[] = discoverComposedHelpers(join(SRC_ROOT, 'domain'), join(APP_SRC_ROOT, 'lib'));
+
+// WAVE 31 (DEC-808 wave-31 amendment, task w31-b): a small, explicit,
+// HAND-VERIFIED table for the handful of no-label-match rows the automatic
+// passes above (own-text/attribute/composed/skeleton tiers, plus
+// `labelIsComposedLiteral`/`looksLikeDataValue`/`labelIsComposedWithKnownAffix`)
+// cannot classify on pattern alone -- each entry backed by a real, checked
+// citation to the rendering source. Mirrors `HAND_VERIFIED_COMPOSED` from
+// branch `v12m-w29-e`'s (unlanded) desktop file, kept as a SEPARATE table
+// here (DEC-613's "one join" rule is about the join TECHNIQUE, never about
+// every hand-triage table feeding it -- see test/skeleton-join.ts's own
+// header). Keyed on fileName+line only (construction-proof).
+const HAND_VERIFIED_COMPOSED: { fileName: string; line: number; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 165,
+    reason:
+      'COMPOSED-from-a-constant: src/routes/auth-views.tsx renders `placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}` -- a backtick template literal with an interpolation hole; the source carries no literal digit at all, only the variable name, so neither the own-text tier (a placeholder, not text content -- also not caught by the attribute tier because the value is a template expression, not a plain quoted string) nor the digit-skeleton join (which requires a digit already present at the matching source position) can see it.',
+  },
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 140,
+    reason:
+      "COMPOSED-from-data-plus-a-sibling-flag: app/src/pages/agenda/PhoneAgenda.tsx renders the room chip as `{room.name}` (a live room name, \"Room 2A\" is this pack's fixture) followed by a SEPARATE `<span className=\"chq-flag\">CLASH</span>` sibling when `roomHasConflict(...)` is true -- the frame's own-text extraction concatenates both elements' text into one label, but no single element's own text is ever \"Room 2A CLASH\".",
+  },
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 142,
+    reason:
+      'COMPOSED-from-data: same room-chip renderer as the :140 entry above (PhoneAgenda.tsx `{room.name}`); "Room 2B" is this pack\'s second fixture room name, live data, not static app copy.',
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 386,
+    reason:
+      "COMPOSED-from-data: app/src/pages/content/DeliverableDetail.tsx's deliverable-kind chip renders `{DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}` -- that file's own comment at the same site names the exact shape (\"the plain '<kind> · N versions' label\"); the count is a live chain length, never a literal digit in source.",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 387,
+    reason: 'COMPOSED-from-data: same `{DELIVERABLE_LABELS[kind]} · {countOf(chain.length, \'version\')}` renderer as the :386 entry above (DeliverableDetail.tsx), a different kind/count pair ("Recording · 1 version").',
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 215,
+    reason:
+      "COMPOSED-from-data (DEC-919 wave-128 amendment prose): app/src/pages/Overview.tsx renders `Remind all {spellCount(new Set(payload.overdueTasks.rows.map((r) => r.contactId)).size)}` via src/domain/count-copy.ts's spellCount/plural pair -- \"three\" is a live spelled-out count, never a literal string in source.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 277,
+    reason:
+      'COMPOSED-from-data (DEC-919 wave-128 amendment): app/src/pages/overview/AgendaWorkSection.tsx renders `<div className="chq-overview-overflow">{agendaOverflowLine(payload)}</div>` -- the composed sentence plus the frame\'s "›" mark, never a literal string; the amendment\'s own prose names this exact frame row.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 493,
+    reason:
+      'BLESSED SUBSTITUTION (DEC-967 wave-106 amendment, cited verbatim in src/routes/portal/tasks/views.tsx\'s own header comment above `tasksPageDockPrimary`): the frame\'s fixed dock resolves to "the first NOT-complete assignment\'s own existing control -- the same href/label/form the row itself would render, reused rather than duplicated content" (one of "Fill out form" / "Update your bio and headshot ›" / "Mark complete", never the literal frame string "Mark the release signed") -- a RULED, deliberate divergence, not an unadjudicated gap.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 588,
+    reason:
+      'BLESSED OMISSION (DEC-967 wave-106 amendment, same site as the :493 entry above): `tasksPageDockPrimary` explicitly `return`s `null` for a `file_request`-kind task ("no dockable single control (see comment above)"), because "reusing a `<input type=file>` form in two places on one page is not \'the same control\', it\'s a second, empty upload widget" -- the frame\'s "Upload slides" dock primary is a RULED, deliberate omission, not an unadjudicated gap.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 620,
+    reason:
+      "COMPOSED-from-data (DEC-777/DEC-041): src/routes/portal/edit.tsx:293 renders `<p class=\"chq-portal-sub\">{sessionFormatLabel(data.formatLabel)} · set by the organisers</p>` -- the format clause is live `sessionFormatLabel` vocabulary (DEC-908), only the trailing '· set by the organisers' rider is a literal; the row as a whole is never one string in source.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1091,
+    reason:
+      'NEAR-MISS, SETTLED (DEC-908 amendment): src/routes/public/submit-views.tsx:967 renders `<a href={...}>Submit another talk &rsaquo;</a>` -- the frame\'s own drawn label omits the trailing chevron the app adds; DEC-908\'s own prose ("The adjacent \'Submit another talk\' anchor\'s flat-link face stays as-is: cfp.css.ts already documents that as a settled whole-row styling choice") already adjudicates this exact row -- an own-text-equal match will never resolve because the two strings genuinely differ by one glyph, not because the control goes unbuilt.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 358,
+    reason:
+      "COMPOSED via the landed two-node idiom (DEC-919 wave-98 amendment, cited verbatim in app/src/pages/submissions/SubmissionDetailPage.tsx's own comment): `<Link className=\"chq-detail-back\">&lsaquo; <span className=\"chq-detail-back-full\">All submissions</span><span className=\"chq-detail-back-short\">Triage</span></Link>` -- ONE anchor, two sibling spans, CSS reveals `.chq-detail-back-short` at phone and `.chq-detail-back-full` at desktop; the anchor's own SOURCE text content is never the single string \"‹ Triage\", only its CSS-resolved rendered text is.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 283,
+    reason:
+      'COMPOSED-from-data: app/src/pages/review/Scorecard.tsx renders `<Link to={...} className="chq-review-back">&lsaquo; {plan.name} queue</Link>` -- "Wave 2" is this pack\'s live fixture plan name, never a literal string; the leading chevron and trailing " queue" are the only static parts, split around a variable my chevron-affix check cannot bridge because a SECOND fixed suffix follows the variable.',
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 666,
+    reason:
+      "BLESSED, RULED NOT A DEFECT (DEC-745 wave-98 amendment, §4, quoted verbatim): \"Review.dc.html:665-667 draws 'Save the plan' + 'Cancel'. That pair captions the NEW-plan state; an existing plan renders 'Duplicate' + 'Save' and has no Cancel-while-editing affordance on any surface. Introducing one is a behaviour change with no ruling behind it and would evict Duplicate; the geometry-only dock stands and the copy delta is recorded as a frame interpretation, not a defect.\" app/src/pages/review/PlanEditor.tsx:1497-1499 confirms the existing-plan dock renders `{saving ? \\'Saving…\\' : \\'Save\\'}`, never \"Save the plan\".",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 936,
+    reason: 'Same composed `&lsaquo; {plan.name} queue` renderer as the :283 entry above (Scorecard.tsx), a second frame state drawing the identical live plan-name back-link.',
+  },
+];
+
+function handVerifiedComposedReason(control: DrawnControl): string | null {
+  const hit = HAND_VERIFIED_COMPOSED.find((e) => e.fileName === control.fileName && e.line === control.line);
+  return hit ? hit.reason : null;
+}
+
+// WAVE 31 (DEC-808 wave-31 amendment, task w31-b): a hand-verified DENYLIST
+// for the inverse mistake -- `labelIsComposedLiteral`'s "flanked by a
+// matching quote character" test cannot distinguish real rendered app text
+// from a DEVELOPER'S OWN COMMENT PROSE that happens to quote the frame's
+// literal word, when that comment lives inside a CSS-in-JS tagged template
+// (a `.css.ts` file's own `/* :NNN -- ... "Word" ... */` documentation
+// block is STRING CONTENT of the template literal, not a JS syntax
+// comment, so `frame-source-corpus.ts`'s `stripComments` correctly leaves
+// it alone -- this is the SAME trap the field guide already names, "a
+// comment quoting a frame literal", one register further down). Each entry
+// is a real row where the automatic composed-literal pass fires on exactly
+// this false-positive shape, hand-checked against the actual render path,
+// which renders DIFFERENT text.
+const NOT_ACTUALLY_COMPOSED: { fileName: string; line: number; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1063,
+    reason:
+      'FALSE-POSITIVE composed-literal match: the only quoted "Draft" in the corpus is inside src/routes/public/cfp.css.ts\'s own CSS-in-JS documentation comment ("the step-1 dock\'s secondary \\"Draft\\" control" / "the frame\'s \\"Draft\\" is a drawing abbreviation, not a label") -- prose ABOUT the frame, never rendered app text. The real control (src/routes/public/submit-views.tsx:746, class `chq-cfp-save-draft`) renders the literal text "Save draft", never bare "Draft" -- a genuine, unadjudicated label divergence.',
+  },
+];
+
+function notActuallyComposedReason(control: DrawnControl): string | null {
+  const hit = NOT_ACTUALLY_COMPOSED.find((e) => e.fileName === control.fileName && e.line === control.line);
+  return hit ? hit.reason : null;
+}
 
 function isAlnum(ch: string | undefined): boolean {
   return ch !== undefined && /[A-Za-z0-9]/.test(ch);
@@ -776,7 +925,29 @@ export function tokenIsControlShaped(token: string): boolean {
 
 // -- Grade -------------------------------------------------------------------
 
-export type RowReason = 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'resolved';
+export type RowReason =
+  | 'no-label-match'
+  | 'no-token'
+  | 'no-rule'
+  | 'no-control-shape'
+  | 'resolved'
+  /** WAVE 31 (DEC-808 wave-31 amendment): the label resolves as a quoted
+   * string literal SOMEWHERE in the corpus (a ternary's alternate branch, a
+   * template literal's fixed segment) or has the SHAPE of live fixture data
+   * (an email, a date, a bare count, ...) -- the app composes/renders this
+   * exact text, but no join tier can attach it to a control's own class
+   * list. Never OFFENDER: real, live app text the join is blind to, not a
+   * gap in the product. */
+  | 'composed-unseen'
+  /** WAVE 31 (DEC-808 wave-31 amendment): after the own-text, attribute,
+   * composed, and skeleton tiers ALL fail, and neither
+   * `labelIsComposedLiteral` nor `looksLikeDataValue` explains the miss,
+   * the corpus carries NO trace of this label at all -- the frame draws a
+   * control the product simply does not render. Phone is not frozen, so
+   * this is a real, repairable divergence and grades OFFENDER (at an
+   * effective declared height of 0, strictly below any drawn floor) even
+   * though no CSS token was ever resolved to compare against. */
+  | 'not-drawn';
 
 interface Graded {
   control: DrawnControl;
@@ -785,8 +956,9 @@ interface Graded {
   tokens: string[];
   /** WAVE 23 (DEC-393 amendment): which tier resolved this row's tokens --
    * not part of the grading grammar itself, carried through for the
-   * ledger's own reporting. WAVE 26 (DEC-995 amendment) adds 'attribute'. */
-  matchTier: 'own-text' | 'attribute' | 'composed' | null;
+   * ledger's own reporting. WAVE 26 (DEC-995 amendment) adds 'attribute'.
+   * WAVE 31 (DEC-808 wave-31 amendment) adds 'skeleton'. */
+  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | null;
 }
 
 /** WAVE 25 REPAIR (DEC-393 amendment, task w25-b): resolves the token set
@@ -840,7 +1012,34 @@ function gradeControl(control: DrawnControl): Graded {
   }
 
   if (matchTier === null) {
-    return { control, resolvedHeight: undefined, reason: 'no-label-match', tokens, matchTier: null };
+    // WAVE 31 (DEC-808 wave-31 amendment, task w31-b): digit-collapsed
+    // skeleton tier, consulted ONLY when own-text, attribute, and composed
+    // ALL fail -- see test/skeleton-join.ts for the algorithm.
+    const skeleton = skeletonOwnTextTokens(control.label, SKELETON_BLOBS, allBoundaryMatches, ownTextEquals, classTokensNear);
+    if (skeleton.matched) {
+      tokens = skeleton.tokens.filter((t) => t.startsWith('chq-'));
+      matchTier = 'skeleton';
+    }
+  }
+
+  if (matchTier === null) {
+    // WAVE 31 (DEC-808 wave-31 amendment, task w31-b): every join tier has
+    // failed. Distinguish "the app composes/renders this text and no tier
+    // can attach it to a control" (stays UNRESOLVED, `composed-unseen`)
+    // from "the corpus carries no trace of this label at all" (a real,
+    // repairable phone divergence, `not-drawn` -- OFFENDER).
+    if (notActuallyComposedReason(control) !== null) {
+      return { control, resolvedHeight: 0, reason: 'not-drawn', tokens: [], matchTier: null };
+    }
+    if (
+      labelIsComposedLiteral(control.label, NORMALIZED_BLOBS) ||
+      looksLikeDataValue(control.label) ||
+      labelIsComposedWithKnownAffix(control.label, NORMALIZED_BLOBS) ||
+      handVerifiedComposedReason(control) !== null
+    ) {
+      return { control, resolvedHeight: undefined, reason: 'composed-unseen', tokens: [], matchTier: null };
+    }
+    return { control, resolvedHeight: 0, reason: 'not-drawn', tokens: [], matchTier: null };
   }
   if (tokens.length === 0) {
     return { control, resolvedHeight: undefined, reason: 'no-token', tokens, matchTier };
@@ -865,8 +1064,14 @@ function gradeControl(control: DrawnControl): Graded {
 }
 
 const GRADED: Graded[] = ALL_CONTROLS.map(gradeControl);
-const OFFENDERS: Graded[] = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! < g.control.drawnFloor);
-const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved');
+// WAVE 31 (DEC-808 wave-31 amendment): a `not-drawn` row (no join tier
+// found any trace of the label in the corpus at all -- see gradeControl
+// above) is an OFFENDER too, at an effective declared height of 0, exactly
+// like a resolved-but-too-short row.
+const OFFENDERS: Graded[] = GRADED.filter(
+  (g) => (g.reason === 'resolved' && g.resolvedHeight! < g.control.drawnFloor) || g.reason === 'not-drawn',
+);
+const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved' && g.reason !== 'not-drawn');
 
 // -- Ratchets ------------------------------------------------------------
 // Wave-155 pb (DEC-393): the 7 offenders measured on v12m-w7-da -- "Sign in"
@@ -883,7 +1088,20 @@ const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved');
 // FRAME_FLOOR_DIVERGENCE_CEILING remains 0. See
 // docs/design/audit/frame-control-floor-390-v12.md for the wave-25
 // breakdown.
-export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
+//
+// WAVE 31 (DEC-808 wave-31 amendment, task w31-b): the skeleton-digit-join
+// tier (test/skeleton-join.ts) plus a `not-drawn` disposition for whatever
+// STILL cannot resolve after every join tier AND both automatic
+// composed-vs-not-drawn classifiers fail -- see gradeControl above and
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 31" section for
+// the full offender-by-offender receipt. Re-measured on this branch
+// (forcing this ceiling to -1, reading the printed offender list back):
+// RAISED 0 -> 1. The one real offender, "Draft" (Chautauqua Public and
+// Portal.dc.html:1063), is a genuine, previously-invisible label
+// divergence: the real control (src/routes/public/submit-views.tsx:746)
+// renders "Save draft", never bare "Draft". No product byte moved this
+// wave (this lane's own scope); left for the next wave to fix.
+export const FRAME_FLOOR_DIVERGENCE_CEILING = 1;
 
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
 // on this branch the same way. See the audit doc for the wave-25
@@ -907,7 +1125,27 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // under `no-control-shape` (a typography/section class, not a control
 // face) -- so the bucket net-shrinks by 3, 109 -> 106. Full receipt in
 // docs/design/audit/frame-control-floor-390-v12.md's "WAVE 26" section.
-export const UNRESOLVED_COUNT_TRIPWIRE = 106;
+//
+// WAVE 31 (DEC-808 wave-31 amendment, task w31-b): the skeleton-digit join
+// (test/skeleton-join.ts) resolved 0 of the 106 `no-label-match` rows to a
+// genuine token (every digit-bearing label in this population is composed
+// from a runtime value with NO digit literal anywhere in source, not a
+// static template with a varying digit -- see the audit doc). The
+// composed-vs-not-drawn split (`labelIsComposedLiteral` /
+// `looksLikeDataValue` / `labelIsComposedWithKnownAffix` / a small
+// hand-verified table, all in gradeControl above) reclassifies 105 of the
+// 106 as `composed-unseen` (still UNRESOLVED, real live app text the join
+// cannot attach to a class) and 1 as `not-drawn` (moved to OFFENDERS
+// above). Re-measured on this branch (forcing this tripwire to -1, reading
+// the printed reason breakdown back): 89 `composed-unseen`, 4 `no-token`,
+// 12 `no-control-shape` (the wave-26 11 plus 1 reclassified from
+// `no-label-match` by the attribute tier's own pre-existing "Headshot"
+// row -- unchanged from wave 26, just now counted under this file's own
+// updated bucket names). LOWERED 106 -> 105 (net: -106 old no-label-match
+// rows, +105 composed-unseen, +1 not-drawn moved to OFFENDERS -- the
+// bucket's own total this wave is 89+4+12=105). Full per-row receipt in
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 31" section.
+export const UNRESOLVED_COUNT_TRIPWIRE = 105;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
@@ -1061,10 +1299,12 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
 
   it(`never exceeds FRAME_FLOOR_DIVERGENCE_CEILING (${FRAME_FLOOR_DIVERGENCE_CEILING}) resolved drawn-floor offenders`, () => {
     if (OFFENDERS.length > FRAME_FLOOR_DIVERGENCE_CEILING) {
-      const lines = OFFENDERS.map(
-        (o) =>
-          `${o.control.fileName}:${o.control.line} -- drawn ${o.control.drawnFloor}px, "${o.control.label}" ` +
-          `declares ${o.resolvedHeight}px (tokens [${o.tokens.join(', ')}])`,
+      const lines = OFFENDERS.map((o) =>
+        o.reason === 'not-drawn'
+          ? `${o.control.fileName}:${o.control.line} -- drawn ${o.control.drawnFloor}px, "${o.control.label}" ` +
+            `NOT-DRAWN: no join tier (own-text/attribute/composed/skeleton) finds this label anywhere in the corpus`
+          : `${o.control.fileName}:${o.control.line} -- drawn ${o.control.drawnFloor}px, "${o.control.label}" ` +
+            `declares ${o.resolvedHeight}px (tokens [${o.tokens.join(', ')}])`,
       );
       throw new Error(
         `${OFFENDERS.length} drawn controls declare a min-height BELOW the floor their own frame draws, ` +
@@ -1089,22 +1329,31 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
 
   it(`UNRESOLVED bucket tripwire: exactly UNRESOLVED_COUNT_TRIPWIRE (${UNRESOLVED_COUNT_TRIPWIRE}) drawn controls resolve to no label match, no class token, no CSS rule, or no control-shaped token`, () => {
     if (UNRESOLVED.length !== UNRESOLVED_COUNT_TRIPWIRE) {
+      const breakdown: Record<string, number> = {};
+      for (const g of UNRESOLVED) breakdown[g.reason] = (breakdown[g.reason] ?? 0) + 1;
       throw new Error(
         `measured ${UNRESOLVED.length} unresolved drawn controls, expected the tripwire value ` +
           `${UNRESOLVED_COUNT_TRIPWIRE}. This tripwire exists so the drawn-control population cannot ` +
           `silently shrink (DEC-180/808) -- re-measure and replace the line:\n` +
-          `  export const UNRESOLVED_COUNT_TRIPWIRE = ${UNRESOLVED.length};`,
+          `  export const UNRESOLVED_COUNT_TRIPWIRE = ${UNRESOLVED.length};\n` +
+          `Reason breakdown: ${JSON.stringify(breakdown)}`,
       );
     }
     expect(UNRESOLVED.length).toBe(UNRESOLVED_COUNT_TRIPWIRE);
   });
 
-  it('every row is accounted for exactly once across resolved/unresolved, and every resolved row is offender xor ok', () => {
+  it('every row is accounted for exactly once across resolved/not-drawn/unresolved, and every resolved row is offender xor ok', () => {
     expect(GRADED.length).toBe(ALL_CONTROLS.length);
     const resolvedCount = GRADED.filter((g) => g.reason === 'resolved').length;
-    expect(resolvedCount + UNRESOLVED.length).toBe(ALL_CONTROLS.length);
+    const notDrawnCount = GRADED.filter((g) => g.reason === 'not-drawn').length;
+    // WAVE 31 (DEC-808 wave-31 amendment): `not-drawn` rows are neither
+    // `resolved` nor counted in UNRESOLVED (they are OFFENDERS, graded
+    // without ever resolving a token) -- the population splits three ways.
+    expect(resolvedCount + notDrawnCount + UNRESOLVED.length).toBe(ALL_CONTROLS.length);
     const resolvedOk = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! >= g.control.drawnFloor);
-    expect(resolvedOk.length + OFFENDERS.length).toBe(resolvedCount);
+    const resolvedOffenders = GRADED.filter((g) => g.reason === 'resolved' && g.resolvedHeight! < g.control.drawnFloor);
+    expect(resolvedOk.length + resolvedOffenders.length).toBe(resolvedCount);
+    expect(resolvedOffenders.length + notDrawnCount).toBe(OFFENDERS.length);
   });
 
   it('union join: a label rendered at more than one site unions their tokens rather than flagging ambiguity (DEC-393 wave-25 repair of the retired wave-22 ambiguity gate)', () => {
