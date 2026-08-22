@@ -90,4 +90,56 @@ describe('RosterPanel add-speaker refusal shapes (DEC-505)', () => {
 
     expect(await screen.findByText('Priya Raman already uses this email')).toBeInTheDocument();
   });
+
+  // DEC-909 wave-18 clause (c): src/server/repo/participants.ts's
+  // participant-cap refusal throws ApiError('invalid', ..., { submissionId })
+  // -- a wire key no FormRow on this form renders. The top-of-form error
+  // line is the only anchor for it; nothing may be swallowed.
+  it("a submissionId-keyed refusal (no FormRow renders that key) surfaces on the top-of-form line", async () => {
+    mockBase({
+      'POST /api/v1/contacts': {
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', {
+          submissionId: 'This session already has 8 participants, its limit.',
+        }),
+      },
+    });
+    render(
+      <MemoryRouter>
+        <RosterPanel mode="add" onClose={vi.fn()} onChanged={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fillAddForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+    expect(
+      await screen.findByText('This session already has 8 participants, its limit.'),
+    ).toBeInTheDocument();
+    // No anchor list renders with nothing renderable in it.
+    expect(screen.queryByRole('link', { name: /First name/ })).not.toBeInTheDocument();
+  });
+
+  it('a mixed refusal (a renderable field key plus an unrenderable one) shows both the field error and the top-of-form line', async () => {
+    mockBase({
+      'POST /api/v1/contacts': {
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', {
+          email: 'Not a valid email address',
+          submissionId: 'This session already has 8 participants, its limit.',
+        }),
+      },
+    });
+    render(
+      <MemoryRouter>
+        <RosterPanel mode="add" onClose={vi.fn()} onChanged={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fillAddForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+    expect(await screen.findByText('Not a valid email address')).toBeInTheDocument();
+    expect(
+      await screen.findByText('This session already has 8 participants, its limit.'),
+    ).toBeInTheDocument();
+  });
 });

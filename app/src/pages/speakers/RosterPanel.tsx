@@ -191,7 +191,24 @@ function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
           setConflict(true);
           setError(err.message);
         } else if (err.fields && Object.keys(err.fields).length > 0) {
-          setFieldErrors(err.fields);
+          // DEC-909 wave-18 clause (c): a wire field error the form cannot
+          // render (e.g. the participant-cap refusal's `submissionId` key,
+          // src/server/repo/participants.ts) is never dropped -- partition
+          // into keys FIELD_ORDER renders and keys it doesn't, and surface
+          // every unrenderable message through the top-of-form line, intact.
+          const renderable: Record<string, string> = {};
+          const unrenderable: string[] = [];
+          for (const [key, message] of Object.entries(err.fields)) {
+            if ((FIELD_ORDER as readonly string[]).includes(key)) {
+              renderable[key] = message;
+            } else {
+              unrenderable.push(message);
+            }
+          }
+          setFieldErrors(renderable);
+          if (unrenderable.length > 0) {
+            setError(unrenderable.join(' '));
+          }
         } else {
           setError(err.message);
         }
