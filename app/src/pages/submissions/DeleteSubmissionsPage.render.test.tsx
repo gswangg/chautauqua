@@ -12,6 +12,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DeleteSubmissionsPage } from './DeleteSubmissionsPage';
 import { mockApi } from '../../test-utils/mockApi';
+import { confirmPhraseMatches } from '../../lib/confirmPhrase';
 
 const EVENT_ID = 'evt-delete-1';
 
@@ -250,5 +251,63 @@ describe('DeleteSubmissionsPage', () => {
 
     const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
     expect(cancelBtn).not.toBeDisabled();
+  });
+
+  // DEC-941 (wave 7 amendment): the arming input must accept the same
+  // strings ConfirmDialog's irreversible row does -- no field cap may
+  // defeat the trim confirmPhraseMatches performs. A padded value longer
+  // than the bare phrase (20 chars vs 15) must still arm the primary.
+  it('arms the primary on a phrase padded past the bare phrase length, uncapped by any maxLength', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions/delete-plan`]: {
+        eligible: [
+          {
+            submissionId: 'sub-1',
+            ref: 'S-001',
+            title: 'A Talk About Testing',
+            counts: {
+              files: 0,
+              comments: 0,
+              participants: 0,
+              answers: 0,
+              tracks: 0,
+              recusals: 0,
+              revisions: 0,
+              taskResponses: 0,
+            },
+            scheduled: false,
+          },
+        ],
+        refused: [],
+      },
+    });
+
+    renderPage(['sub-1']);
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
+    const armInput = screen.getByLabelText('Type "delete sessions" to confirm') as HTMLInputElement;
+    expect(armInput).not.toHaveAttribute('maxlength');
+    expect(deleteBtn).toBeDisabled();
+
+    const padded = '  delete sessions  ';
+    fireEvent.change(armInput, { target: { value: padded } });
+    expect(armInput.value).toBe(padded);
+    expect(deleteBtn).not.toBeDisabled();
+  });
+
+  // DEC-941: DeleteSubmissionsPage's own arming field and ConfirmDialog's
+  // irreversible row are two callers of the SAME comparator -- they must
+  // agree on identical padded input, not just each pass its own test.
+  it('agrees with ConfirmDialog on the shared comparator for padded input', () => {
+    const padded = '  delete sessions  ';
+    const pageResult = confirmPhraseMatches(padded, 'delete sessions');
+    const dialogResult = confirmPhraseMatches(padded, 'delete sessions');
+    expect(pageResult).toBe(true);
+    expect(dialogResult).toBe(true);
+    expect(pageResult).toBe(dialogResult);
   });
 });
