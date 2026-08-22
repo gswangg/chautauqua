@@ -18,6 +18,10 @@ Event creation, dates/timezone, tracks, rooms, branding (logo/accent color), and
 public CFP form builder live under `/admin/settings`. `/admin/overview` is the producer's
 landing dashboard. Both fully built, no caps beyond the general list caps below.
 
+Each Settings section that draws an edit drill (DESIGN-RULINGS.md B10) is reachable at
+its own `?section=<key>&edit=1` sub-state, a SCREEN rather than a scroll target
+(Settings.tsx's own comment).
+
 Six of `/admin/settings`'s `?section=` panels (`event`, `cfp`, `tracks-rooms`, `portal`,
 `your-data`, `people` — see the section rows further down this document) each declare their
 own `SECTION_KEY` and read a second query param, `&edit=1`
@@ -81,6 +85,9 @@ promise of anonymity can never be retroactively unmasked) without an additive mi
 a second source of truth for a flag DEC-596 already gives the plan. Not a gap; see DEC-624.
 
 ## J5 — Decide and notify (`/admin/submissions/:id`, comms compose)
+
+The submission detail page's editor is URL-state (DEC-998), reachable at
+`/admin/submissions/:id?edit=1`.
 
 Status changes are bulk or single, and are a distinct action from sending mail — no status
 transition ever auto-sends email (this is a house invariant enforced across every status

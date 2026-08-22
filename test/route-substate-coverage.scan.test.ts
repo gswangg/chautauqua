@@ -263,6 +263,9 @@ describe("route sub-state coverage (DEC-144 amendment, wave 27)", () => {
   // this file used to derive for those sub-states. The 3 remaining rows
   // (`?section=your-data&edit=1&intent=new`, `/admin/contacts?import=1`,
   // `?history=0`) are unrelated sub-states this task did not touch.
+  // Re-measured at 3 in wave 5 (task w5-cb, DEC-271): the constant had
+  // gone stale in the SLACK direction (declared 10, measured 3). Lowered
+  // to the measured value in the same commit.
   const ROUTE_SUBSTATE_UNVISITED_CEILING = 3;
 
   it(`no more than ${ROUTE_SUBSTATE_UNVISITED_CEILING} derived closed-set query sub-states are unvisited by ROUTE_MANIFEST`, () => {
