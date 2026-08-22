@@ -29,10 +29,12 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter } from 'react-router-dom';
 import { AgendaPage } from './Agenda';
 import { mockApi } from '../test-utils/mockApi';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Agenda.dc.html');
+const AGENDA_CSS = join(HERE, 'agenda', 'agenda.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims. Copied from
@@ -42,6 +44,30 @@ function verbatimLine(lineNo: number, literal: string): void {
   const line = lines[lineNo - 1];
   if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
   expect(line).toBe(literal);
+}
+
+/** w15-v (DEC-808/DEC-994): jsdom evaluates no `@media` block, so the DOM
+ * order asserted below (counts row -> h1 -> day chips -> room chips) is
+ * really just element source order -- it says nothing about whether the
+ * frame's stacked column layout is what actually PAINTS at 390px. Extract
+ * agenda.css's terminal `@media (max-width: 700px)` block by brace-depth --
+ * same idiom as Contacts.frame-verdicts.render.test.tsx's own
+ * `readContactsPhoneLayer`. */
+function readAgendaPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(AGENDA_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('agenda.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('agenda.css phone block never closes');
+  return css.slice(start, i - 1);
 }
 
 const EVENT_ID = 'evt-agenda-frame-verdicts';
@@ -131,6 +157,14 @@ describe('v12 Agenda 390 frame: per-frame render verdict receipt (w14-sc, DEC-97
 
     const phoneAgenda = document.querySelector('.chq-phone-agenda')!;
     const head = phoneAgenda.querySelector('.chq-phone-agenda-head')!;
+
+    // jsdom's DOM-order assertions below (counts row -> h1 -> day chips ->
+    // room chips) only prove source order, not the frame's stacked
+    // single-column band -- agenda.css's terminal phone block is what
+    // actually makes `.chq-phone-agenda-head` a top-to-bottom flex column
+    // instead of the desktop row it would otherwise be.
+    const phoneLayer = readAgendaPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-phone-agenda-head\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
 
     // docs/design/Chautauqua Agenda.dc.html:131 `          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">6 unplaced · 2 clash</span>`
     verbatimLine(131, '          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">6 unplaced · 2 clash</span>');
