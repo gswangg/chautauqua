@@ -395,7 +395,15 @@
      TaskView.tsx renders only `<button>` here), so the idiom stays legal
      and the companion gap is widened instead: desktop gap 9px (:56) plus
      2*10=20 restores the drawn separation once a real anchor's expanded
-     hit box is ever added. */
+     hit box is ever added -- computes to 29px, off the pack's px-only
+     gap grid (DEC-937 wave-35 amendment), but DEC-937 wave-123's own
+     ruling requires this exact value ("the declared phone gap becomes
+     the frame's own rendered gap PLUS 2N, never a bare 2N") and
+     app/src/pages/speakers/speakers-tier2-gap.test.ts pins it
+     byte-for-byte -- rounding to the grid would silently redraw the
+     frame's own separation away from what it draws. ADJUDICATED LEFT
+     (wave-35), not repaired: see
+     docs/design/audit/pack-unit-grammar-v12.md. */
   .chq-taskview-actions .chq-btn {
     min-height: 44px;
     display: inline-flex;

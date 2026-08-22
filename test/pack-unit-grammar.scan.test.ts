@@ -65,12 +65,32 @@
 // docs/design/audit/pack-unit-grammar-v12.md, coordinates as bare-path +
 // backtick-quote, never `path:line`).
 //
-// SCOPE THIS WAVE: MEASURE AND RECORD ONLY -- this lane moves no product
+// SCOPE WAVE 29: MEASURE AND RECORD ONLY -- that lane moved no product
 // byte. Both ceilings are registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE (a freshly measured population must not move the
 // campaign's convergence goalposts mid-stream, the same disposition
 // DESKTOP_FLOOR_DIVERGENCE_CEILING and DRAWN_FIELD_LABEL_DIVERGENCE_CEILING
-// already carry) until a later, separately-ruled lane drains it.
+// already carry).
+//
+// WAVE 35 (DEC-937 amendment, task w35-e): drained PACK_UNIT_GRAMMAR_
+// OFFENDERS_CEILING from 13 to 6. All 7 off-grid font-size sites (each
+// desktop-visible, none touching a frame-verdict-pinned selector) were
+// repaired to the nearest on-grid computed px, expressed in rem to keep
+// user font scaling. All 6 off-grid `gap` sites are LEFT and adjudicated,
+// not repaired: 5 sit inside a phone `@media (max-width: …)`
+// companion-gap register (DEC-385 single-direction responsive), which
+// made them nominally eligible for unconditional repair -- but DEC-937's
+// OWN wave-123 amendment already pins their exact value ("the declared
+// phone gap becomes the frame's own rendered gap PLUS 2N") and three
+// other test files assert it byte-for-byte, so rounding to the px grid
+// would silently redraw the frame's own separation and redden a
+// different, already-settled DEC-937 ruling. The 6th,
+// `app/src/pages/submissions/detail.css`'s desktop `gap: 92px`, is a
+// DEC-989 wave-42 measured frame pin; repairing it would move a green
+// desktop frame verdict. Every adjudicated row is recorded in
+// docs/design/audit/pack-unit-grammar-v12.md. Both ceilings stay in
+// scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE (unchanged this wave
+// -- that disposition is a separate, unruled decision).
 //
 // NON-VACUITY (DEC-967 waves 103/143): the detector's ability to fire and
 // discriminate px/rem/em/other is proved over a SYNTHETIC fixture this
@@ -250,7 +270,27 @@ const RESULT = grade(PRODUCT_SOURCES, PACK_VOCAB);
  * scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE, not the campaign's
  * gating lists, until a later lane drains them (see this file's header
  * comment). */
-export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = 13;
+// DEC-937 wave-35 amendment: drained 7 of the 13 wave-29 offenders -- all 7
+// off-grid font-size sites, each desktop-visible and repaired to the
+// nearest on-grid computed px (kept as `rem` to preserve user font
+// scaling). The 6 off-grid `gap` sites are all LEFT and adjudicated in
+// docs/design/audit/pack-unit-grammar-v12.md: 5 sites (comms.css,
+// speakers.css x3, task-view.css) declare `gap: 29px` inside a phone
+// `@media (max-width: …)` companion-gap idiom, and DEC-937's OWN
+// wave-123 amendment requires this exact value ("the declared phone gap
+// becomes the frame's own rendered gap PLUS 2N, never a bare 2N") --
+// app/src/pages/comms/comms-tier2-floor.test.ts and
+// app/src/pages/speakers/speakers-tier2-gap.test.ts /
+// speakers-pager-button-tap-floor.test.ts pin it byte-for-byte, so
+// rounding to the px grid would silently redraw the frame's own
+// separation away from what it draws (a repair that reddens a
+// different, already-settled DEC-937 ruling is not a repair). The 6th,
+// `app/src/pages/submissions/detail.css`'s desktop `gap: 92px`, is a
+// DEC-989 wave-42 measured frame pin (frame 02 at 1600px: 700px body +
+// 320px rail + 92px gutter) -- repairing it would move a green desktop
+// frame verdict. DESKTOP IS FROZEN and a pinned phone idiom is frozen
+// the same way -- neither is repaired.
+export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = 6;
 export const PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING = 6;
 
 describe('pack size-unit grammar (DEC-937 wave-29)', () => {
@@ -263,7 +303,7 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
     expect(PACK_VOCAB.gap.size).toBeGreaterThan(0);
   });
 
-  it('never exceeds PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (13) off-grid size declarations', () => {
+  it('never exceeds PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (6) off-grid size declarations', () => {
     if (RESULT.offenders.length > PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
       throw new Error(
         `${RESULT.offenders.length} product font-size/gap declarations compute to a px value ` +
@@ -277,7 +317,7 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
     expect(RESULT.offenders.length).toBeLessThanOrEqual(PACK_UNIT_GRAMMAR_OFFENDERS_CEILING);
   });
 
-  it('never sits BELOW PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (13) without the ceiling being lowered to match', () => {
+  it('never sits BELOW PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (6) without the ceiling being lowered to match', () => {
     if (RESULT.offenders.length < PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
       throw new Error(
         `${RESULT.offenders.length} product declarations sit off-grid, below the ceiling of ` +
@@ -316,17 +356,15 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
     expect(RESULT.otherTotal).toBe(60);
   });
 
-  it('names the off-grid rem font-size sites so a regression is traceable', () => {
+  it('names the off-grid rem font-size sites so a regression is traceable (DEC-937 wave-35: all 7 repaired, none remain)', () => {
     const fontSizeOffenders = RESULT.offenders
       .filter((o) => o.property === 'font-size')
       .map((o) => `${o.value}=${o.computedPx}`)
       .sort();
-    expect(fontSizeOffenders).toEqual(
-      ['0.8rem=12.8px', '0.8rem=12.8px', '0.85rem=13.6px', '0.85rem=13.6px', '0.9rem=14.4px', '1.1rem=17.6px', '1.3rem=20.8px'].sort(),
-    );
+    expect(fontSizeOffenders).toEqual([]);
   });
 
-  it('names the off-grid px/rem gap sites so a regression is traceable', () => {
+  it('names the off-grid px/rem gap sites so a regression is traceable (DEC-937 wave-35: all 6 adjudicated LEFT, none repaired -- each is pinned by another DEC-937 ruling or a desktop frame verdict)', () => {
     const gapOffenders = RESULT.offenders
       .filter((o) => o.property === 'gap')
       .map((o) => o.value)
