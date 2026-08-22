@@ -14,6 +14,7 @@ import {
   allFontFloorPassed,
   allMobilePassed,
   allPassed,
+  classifyAdminMobileOffender,
   deriveInteractiveOffenders,
   evaluateFontFloor,
   evaluateMobileRoute,
@@ -1537,6 +1538,32 @@ describe("mobileErrorResult interactiveOffenders field", () => {
   });
 });
 
+describe("classifyAdminMobileOffender (DEC-996 wave-24 amendment, w24-i)", () => {
+  it("classifies CANDIDATE when no class token is in the exempt set (synthetic control, unreceipted)", () => {
+    expect(classifyAdminMobileOffender("input.chq-fake-never-floored w=10px h=10px", new Set())).toEqual({
+      classification: "CANDIDATE",
+    });
+  });
+
+  it("classifies EXEMPT and names the receipt when a class token IS in the exempt set (synthetic control, receipted)", () => {
+    expect(
+      classifyAdminMobileOffender("input.chq-fake-never-floored w=10px h=10px", new Set(["chq-fake-never-floored"])),
+    ).toEqual({ classification: "EXEMPT", receipt: "chq-fake-never-floored" });
+  });
+
+  it("checks every class token on the selector, not just the first", () => {
+    expect(
+      classifyAdminMobileOffender("input.chq-file.chq-content-upload-input w=1px h=44px", new Set(["chq-content-upload-input"])),
+    ).toEqual({ classification: "EXEMPT", receipt: "chq-content-upload-input" });
+  });
+
+  it("classifies CANDIDATE when the exempt set is empty", () => {
+    expect(classifyAdminMobileOffender("input.chq-check w=18px h=18px", new Set())).toEqual({
+      classification: "CANDIDATE",
+    });
+  });
+});
+
 describe("formatAdminMobileOffenderLedger (DEC-996 w22-i)", () => {
   const row = (over: Partial<AdminMobileOffenderLedgerRow>): AdminMobileOffenderLedgerRow => ({
     path: "/admin/overview",
@@ -1551,7 +1578,7 @@ describe("formatAdminMobileOffenderLedger (DEC-996 w22-i)", () => {
     );
     expect(out).toContain("No offenders measured on the last gate run.");
     expect(out).not.toContain("## /admin/overview");
-    expect(out).toContain("Measured total: 0 (ceiling 79)");
+    expect(out).toContain("Measured total: 0 (exempt: 0, candidate defects: 0)");
   });
 
   it("renders each offender string verbatim for a single-route roster", () => {
@@ -1568,9 +1595,19 @@ describe("formatAdminMobileOffenderLedger (DEC-996 w22-i)", () => {
       79,
     );
     expect(out).toContain("## /admin/overview");
-    expect(out).toContain("- button.chq-participation-menu-trigger w=95px h=19px");
-    expect(out).toContain("- select.chq-bad-w w=10px h=44px");
-    expect(out).toContain("Measured total: 2 (ceiling 79)");
+    expect(out).toContain("- button.chq-participation-menu-trigger w=95px h=19px — **CANDIDATE**");
+    expect(out).toContain("- select.chq-bad-w w=10px h=44px — **CANDIDATE**");
+    expect(out).toContain("Measured total: 2 (exempt: 0, candidate defects: 2)");
+  });
+
+  it("classifies an offender EXEMPT when its class token is in the passed exempt set, naming the receipt", () => {
+    const out = formatAdminMobileOffenderLedger(
+      [row({ path: "/admin/overview", interactiveOffenders: ["input.chq-check w=18px h=18px"] })],
+      79,
+      new Set(["chq-check"]),
+    );
+    expect(out).toContain("- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)");
+    expect(out).toContain("Measured total: 1 (exempt: 1, candidate defects: 0)");
   });
 
   it("sorts multiple offending routes by path, independent of input order", () => {
@@ -1598,7 +1635,7 @@ describe("formatAdminMobileOffenderLedger (DEC-996 w22-i)", () => {
       ],
       42,
     );
-    expect(out).toContain("Measured total: 3 (ceiling 42)");
+    expect(out).toContain("Measured total: 3 (exempt: 0, candidate defects: 3)");
   });
 
   it("is machine-written and instructs against hand-editing", () => {

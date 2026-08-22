@@ -33,7 +33,7 @@
 // see test/render-sweep-lib.test.ts.
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +41,7 @@ import { fileURLToPath } from "node:url";
 import { chromium, type Browser, type BrowserContext, type ConsoleMessage, type Page } from "playwright";
 
 import { EVENT_SLUG, ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
+import { allCssFiles, hasExemptionForToken } from "../app/src/phone-tap-target-scan/core";
 import {
   ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
   ADMIN_MOBILE_PASS_BLOCKING,
@@ -250,6 +251,58 @@ export const KNOWN_CLIP_EXCEPTIONS: Readonly<Record<string, string>> = {
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
+
+/** Every *.ts/*.tsx file under `root`, enumerated rather than named
+ * (DEC-808) — this run's src/** counterpart to app/src/phone-tap-target-
+ * scan/core.ts's allCssFiles, since `tap-floor-exempt:` receipts for
+ * operator-chrome tokens (e.g. `.chq-wordmark`) live inside `src/**`
+ * TS/TSX modules (embedded CSS template strings), not `.css` files. */
+function allSrcTsSourceFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
+    if (entry.name.includes(".test.")) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** DEC-996 wave-24 amendment: derives the exempt class-token set for
+ * `formatAdminMobileOffenderLedger`'s classifier from THIS run's own
+ * offender lines against the tree's own receipts — never a hand-written
+ * array (DEC-180). Two idioms, same as
+ * test/admin-390-offender-roster.scan.test.ts derives independently:
+ * (1) a `tap-floor-exempt:` CSS comment naming the class's own rule,
+ * checked via app/src/phone-tap-target-scan/core.ts's
+ * `hasExemptionForToken` over every app/src/**\/*.css and src/**\/*.ts(x)
+ * file; (2) the `.chq-check-hit` wrapper idiom — `chq-check` is EXEMPT
+ * whenever app/src/styles.css's own `.chq-check-hit` rule carries the
+ * 44px floor. */
+function deriveAdminMobileExemptSelectors(offenderLines: readonly string[]): Set<string> {
+  const candidateTokens = new Set<string>();
+  for (const line of offenderLines) {
+    const selectorPart = line.split(/\s+w=/)[0] ?? line;
+    for (const m of selectorPart.matchAll(/\.[a-zA-Z0-9_-]+/g)) candidateTokens.add(m[0].slice(1));
+  }
+
+  const sourceTexts = [
+    ...allCssFiles(join(REPO_ROOT, "app", "src")),
+    ...allSrcTsSourceFiles(join(REPO_ROOT, "src")),
+  ].map((f) => readFileSync(f, "utf-8"));
+
+  const exempt = new Set<string>();
+  for (const token of candidateTokens) {
+    if (sourceTexts.some((text) => hasExemptionForToken(text, token))) exempt.add(token);
+  }
+
+  if (candidateTokens.has("chq-check")) {
+    const stylesCss = readFileSync(join(REPO_ROOT, "app", "src", "styles.css"), "utf-8");
+    if (/\.chq-check-hit\s*\{[^}]*min-height\s*:\s*44px/.test(stylesCss)) exempt.add("chq-check");
+  }
+
+  return exempt;
+}
 
 interface Persona {
   email: string;
@@ -1539,13 +1592,20 @@ async function main(): Promise<void> {
     // a gate that measures and discards to scrollback is DEC-851's
     // declared-knob-with-no-reader shape, inverted (a measured value with no
     // reader). Unconditional on every gate run, whether or not this pass
-    // fails, so the tree always reflects the last measurement.
+    // fails, so the tree always reflects the last measurement. The exempt
+    // set is DERIVED from THIS run's own offenders against the tree's own
+    // receipts (never hand-listed) — same idiom
+    // test/admin-390-offender-roster.scan.test.ts derives independently.
     const adminMobileLedgerPath = join(REPO_ROOT, "docs", "design", "audit", "admin-mobile-tap-floor-390-v12.md");
+    const adminMobileExemptTokens = deriveAdminMobileExemptSelectors(
+      adminMobileResults.flatMap((r) => r.interactiveOffenders),
+    );
     writeFileSync(
       adminMobileLedgerPath,
       formatAdminMobileOffenderLedger(
         adminMobileResults.map((r) => ({ path: r.entry.path, interactiveOffenders: r.interactiveOffenders })),
         ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
+        adminMobileExemptTokens,
       ),
       "utf-8",
     );
