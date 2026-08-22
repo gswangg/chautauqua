@@ -569,6 +569,30 @@ const LEDGER: LedgerEntry[] = [
     ],
   },
   {
+    key: "the-contacts-390-rule-chips-label-ink-resolves-to-chq-brand-not-a-third-olive-dec-367-amendment-wave-16-r5",
+    status: "honored",
+    reason:
+      "DEC-367 amendment, wave-16 r5: checked against the tree both halves. Positive -- the chip label really does draw --chq-brand: app/src/pages/contacts/contacts.css's .chq-contacts-filter-rule-chip sets color: var(--chq-brand), and the rule's own header comment confirms #2E3A16 resolves there so the label's REST ink is never a state token. Negative -- the resolution mints no new hex literal: --chq-brand (#4E5C31/#4e5c31), --chq-surface-sunk (#EFEBDF/#efebdf) and --chq-muted (#565A4B/#565a4b) are all pre-existing tokens declared in src/views/theme.ts and app/src/styles.css, not a fresh third olive.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: "color: var(--chq-brand);",
+      testFile: "app/src/pages/contacts/FilterRulesPanel.ruleChips.render.test.tsx",
+    },
+  },
+  {
+    key: "contacts-390-rule-chip",
+    status: "honored",
+    reason:
+      "DEC-393 wave-16 r4 amendment, task v12m-w16-ui-r4-a: .chq-contacts-filter-rule-chip carries the frame's gap:9px directly (docs/design/Chautauqua Contacts.dc.html:190), and its neighbouring .chq-contacts-filter-rule-chip-edit / -dismiss rules both meet the 44px width floor with outward-only cancelled padding, per the file's own header comments -- the hit-box separation is frame-exact even though the glyph-to-glyph reading widens.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: ".chq-contacts-filter-rule-chip {",
+      testFile: "app/src/pages/contacts/FilterRulesPanel.ruleChips.render.test.tsx",
+    },
+  },
+  {
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
     status: "honored",
     reason:
@@ -806,8 +830,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(17);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(47);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
+    expect(derived.length).toBe(48);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

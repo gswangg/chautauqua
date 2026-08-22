@@ -383,6 +383,17 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "imported only by app/src/phone-tap-target-undeclared.scan.test.ts, and test-file imports don't confer " +
     "reachability (DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / " +
     "anchor-floor.ts / ssr.ts siblings above.",
+  "app/src/phone-tap-target-scan/width-ceiling.ts":
+    "Isolated ratchet-constant holder (DEC-808 wave-26, task w26-j) for `WIDTH_FLOOR_OFFENDERS_CEILING`, split " +
+    "into its own file so a lane re-measuring the width-half floor never collides with ./width-floor.ts's " +
+    "population/predicate machinery -- imported only by app/src/phone-tap-target-width-floor.scan.test.ts, and " +
+    "test-file imports don't confer reachability (DEC-518); same shape as its ceilings.ts sibling above.",
+  "app/src/phone-tap-target-scan/width-floor.ts":
+    "Width-half tap-floor lens (DEC-393/DEC-808 wave-26, task w26-j) grading the hit-box WIDTH clause the " +
+    "existing height-only floor scans never covered -- imported only by " +
+    "app/src/phone-tap-target-width-floor.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / anchor-floor.ts " +
+    "/ ssr.ts / undeclared.ts siblings above.",
   "src/routes/docs-content/technical-names.ts":
     "ASD-STE100 rule-1.5/1.6 technical-name declaration for the docs articles -- consumed only by " +
     "test/docs-ste.scan.test.ts (the docs dictionary scan), and test-file imports don't confer reachability " +
