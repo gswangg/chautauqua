@@ -25,6 +25,20 @@
 // was dropped from the task's candidate list because it measures as NOT
 // title-divergent). Writing a note for a remaining offender is the only
 // way to lower this ratchet -- never editing this file's ceiling alone.
+//
+// PRECONDITION, not cleanup (task w10-tf, DEC-976): task w11-pd drained
+// this ratchet from 35 to 24 and left it for a "later cleanup wave" --
+// which re-inflated it, because every scribe wave that writes a NEW
+// src/decisions-data/DEC-NNN.md under an id whose decisions/DEC-NNN.md H1
+// differs creates one more unnoted collision by construction (decisions/'s
+// 999-id space is closed, DEC-808, so a new ruling can never mint a fresh
+// id). Task w10-tf drained the ratchet to 0 by writing the remaining 31
+// notes (offenders re-measured fresh, not trusted from any prior wave's
+// list -- see docs/design/audit/decision-registry-collision-v12.md). The
+// registry note is now a PRECONDITION of creating any new
+// src/decisions-data/DEC-NNN.md file: write it in the SAME commit that
+// creates the file, whenever its id collides with a title-divergent
+// decisions/DEC-NNN.md, never as a follow-up.
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -88,10 +102,10 @@ function measure() {
 }
 
 // RATCHET: seeded at (35 title-divergent ids) - (11 registry notes written
-// task w11-pd) = 24. May only be LOWERED, by writing a registry note into
-// the src/decisions-data side of a still-unnoted divergent pair, never
-// raised.
-export const UNNOTED_REGISTRY_COLLISION_CEILING = 24;
+// task w11-pd) = 24, then drained to 0 (task w10-tf, DEC-976): all
+// remaining title-divergent ids now carry a registry note. May only be
+// LOWERED further if a new divergence is retired outright; never raised.
+export const UNNOTED_REGISTRY_COLLISION_CEILING = 0;
 
 describe("decision-registry collision scan (DEC-976 wave-155, task w11-pd)", () => {
   it("non-vacuity: both directories are read and non-empty (a broken path must not read as a clean pass)", () => {
