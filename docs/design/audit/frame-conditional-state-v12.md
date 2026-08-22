@@ -109,27 +109,34 @@ when the evidence exists in product source but no test contains it.
 | Speakers | `app/src/pages/speakers` |
 | Comms | `app/src/pages/comms`, `src/mail`, `src/routes/comms` |
 
-## Results: 20 MATCHED, 0 PRESENT-UNMOUNTED, 3 diverge
+## Results: 20 MATCHED, 0 PRESENT-UNMOUNTED, 0 unsettled diverge (3 diverge, all 3 now RULED)
 
 Ceilings (`test/frame-conditional-state.scan.test.ts`):
-`FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING = 3`,
+`FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING = 0`,
 `FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING = 0`, each measured by forcing
 to `-1` and reading the printed roster, both registered in
 `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE` (a newly-measured
 population, the same disposition already given to
 `FRAME_EYEBROW_DIVERGENCE_CEILING`/`FRAME_EYEBROW_UNRESOLVED_CEILING`).
+The DIVERGENCE_CEILING reads 0 rather than 3 because all three rows below
+are now excluded from the ceiling's population via
+`test/frame-conditional-state.scan.test.ts`'s `SETTLED_EXPR_KEYS` (DEC-383
+wave-32) — the mechanical join's own grade for each is unchanged (this
+section's prose is unchanged, superseded in place rather than deleted), it
+is the adjudication, not the grading, that changed.
 
-### The three unruled findings
+### The three findings — RULED wave-32 (superseding "unruled" below in place)
 
 Each bullet below carries this ledger's own divergence token as its row
 marker (`test/open-divergence-ledger.scan.test.ts`'s population walk):
 each is its OWN bullet-shaped row, scoped only to its own indented
-continuation lines, so the three are three separate open rows, not one.
-All three were grepped, individually, for a subject match against the
-decision registry and the deviations record — none resolved (see "FOR THE
-PLANNER" below for what a ruling on each would need); none of the three
-bullets below names a decision number or the deviations record, so this
-ledger correctly reads all three as open.
+continuation lines, so the three are three separate rows, not one. At the
+time this section was first written, all three were grepped, individually,
+for a subject match against the decision registry and the deviations
+record — none resolved (see "FOR THE PLANNER" below for what a ruling on
+each needed). Wave-32 supplies exactly that ruling for each, cited inside
+the bullet's own indented continuation lines below so the adjudication is
+part of the row, not a separate table a future join can miss.
 
 - **DIVERGES — `Chautauqua Agenda.dc.html:182` `slot.blocked` (hinted
   false).** `app/src/pages/agenda/phoneSlots.ts`'s `PhoneSlot.kind` union
@@ -140,6 +147,10 @@ ledger correctly reads all three as open.
   #E1DDCE`, uppercase muted note text reading `{{ slot.note }}` — a
   blackout/reserved-time row distinct from an ordinary free slot) that the
   phone agenda cannot currently render at all.
+  RULED BUILD under DEC-895 wave-32: the frame's own demo data
+  (`blocked: true, note: 'Break · 15 min'` / `'Lunch · 60 min'`) names it a
+  scheduled break, and `PhoneAgenda.tsx` already receives `breaks`. Built
+  by task `v12m-w32-b`.
 - **DIVERGES — `Chautauqua Comms.dc.html:719` `e.hasFact` (hinted true).**
   `src/mail/shell.ts`'s `EmailShellOptions` interface is `{ eventName,
   reason, cta }` — no `fact`/`factLabel` field. The frame draws a
@@ -149,6 +160,10 @@ ledger correctly reads all three as open.
   recipient's session (their slot, their room). No such block exists in
   `renderEmailHtml`; the only optional block that file supports is the CTA
   (`e.hasButton`, MATCHED above).
+  RULED BUILD under DEC-441 wave-32: all FOUR of the frame's `emails`
+  entries carry `hasFact: true` ('Your talk', 'Reviewer feedback', 'Still
+  to do', 'Your slot'), so it is a drawn element of the shell, not a rare
+  conditional. Built by task `v12m-w32-d`.
 - **DIVERGES — `Chautauqua Settings.dc.html:327` `f.note` (hinted
   false).** The frame draws a **phone-only, read-only** "Event" fields
   list (`‹ Settings` back link, `eventFields` as label/value/optional-note
@@ -159,24 +174,35 @@ ledger correctly reads all three as open.
   matching this shape; `f.note`'s own bare identifier is too generic (4
   chars) to search safely, and no quoted-string/class-token evidence for
   it exists either.
+  RULED NOT A DIVERGENCE under DEC-964 wave-32:
+  `docs/design/audit/settings-panels-390-v12.md` row 5, for the SAME
+  frame, grades the optional per-field note MATCHES (SHAPE) against
+  `app/src/pages/settings/SummarySection.tsx`'s `row.hint`, which is live
+  in the tree. This ledger's mechanical join produced a false negative
+  because its evidence tier could not search a 4-character identifier by
+  bare word; the sibling per-frame audit found it by SHAPE instead.
 
-### FOR THE PLANNER: what a ruling on each unmatched row above would need
+### FOR THE PLANNER: historical — what a ruling on each row would need (all three now supplied above, wave-32)
 
 - **`slot.blocked`**: either (a) a product decision that a 4th phone-agenda
   slot kind is in scope, with the server/`buildPhoneSlots` wiring to
   produce it (what upstream data would populate `slot.note`? a break? a
   room hold?) — or (b) a DEVIATIONS entry retiring the drawn 4th state the
   same way `slot.clash`'s inner "one-tap resolution" control was retired
-  (see below).
+  (see below). SUPPLIED: (a), DEC-895 wave-32, built by `v12m-w32-b`.
 - **`e.hasFact`**: a product decision on whether the "highlighted fact"
   block is a real feature (would need a new `EmailShellOptions.fact:
   {label, value} | null` field and at least one caller, e.g. the CFP
   decision or schedule-confirmation email template) or a DEVIATIONS entry
-  naming it SIZED, NOT BUILT.
+  naming it SIZED, NOT BUILT. SUPPLIED: the feature-real branch, DEC-441
+  wave-32, built by `v12m-w32-d`.
 - **`f.note`**: confirmation of whether a read-only phone "Event" settings
   summary is in scope at all, distinct from the existing desktop-frozen
   edit form — this is the only one of the three findings whose very
   EXISTENCE as a planned screen is unconfirmed, not just its note field.
+  SUPPLIED: in scope, already built as `SummarySection.tsx`'s `row.hint`;
+  DEC-964 wave-32 rules the row NOT A DIVERGENCE rather than BUILD, since
+  nothing needed building.
 
 ## SETTLED (already ruled elsewhere — graded MATCHED by this ledger, not among the three findings above)
 

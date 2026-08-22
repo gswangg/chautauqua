@@ -383,10 +383,30 @@ const GRADED: GradedRow[] = ROWS.map(gradeRow);
 // resolution control is RETIRED (DEC-903,
 // docs/design/audit/agenda-clash-390-v12.md PART 3) but this ledger's own
 // mechanical join already independently grades slot.clash MATCHED (the
-// `clash` kind is real and tested) -- nothing to exclude here. No row in
-// this population is settled-as-DIVERGES; this set exists so a future
-// amendment has a place to add one without touching the grading code.
-const SETTLED_EXPR_KEYS: ReadonlySet<string> = new Set([]);
+// `clash` kind is real and tested) -- nothing to exclude here.
+//
+// DEC-383 wave-32 rules that a row enters this set ONLY carrying the id
+// that settled it -- the same id is also written into the audit doc
+// bullet's own indented continuation lines, so the exclusion and the
+// adjudication are one commit and neither can outlive the other.
+const SETTLED_EXPR_KEYS: ReadonlySet<string> = new Set([
+  // slot.blocked -- RULED BUILD under DEC-895 wave-32 (a scheduled break
+  // is a distinct, untappable phone-agenda slot kind; the frame's own
+  // demo data names it). Built by v12m-w32-b.
+  'docs/design/Chautauqua Agenda.dc.html:182',
+  // e.hasFact -- RULED BUILD under DEC-441 wave-32 (the frame's email
+  // shell draws the highlighted-fact block on all four `emails` demo
+  // entries, a drawn shell element, not a rare conditional). Built by
+  // v12m-w32-d.
+  'docs/design/Chautauqua Comms.dc.html:719',
+  // f.note -- RULED NOT A DIVERGENCE under DEC-964 wave-32 (a sibling
+  // per-frame audit, docs/design/audit/settings-panels-390-v12.md row 5,
+  // grades the same frame line MATCHED (SHAPE) against
+  // app/src/pages/settings/SummarySection.tsx's live `row.hint`; the
+  // mechanical join here false-positived because it could not search a
+  // 4-character identifier).
+  'docs/design/Chautauqua Settings.dc.html:327',
+]);
 
 function rowKey(r: ConditionalRow): string {
   return `${r.rel}:${r.line}`;
@@ -399,7 +419,7 @@ const PRESENT_UNMOUNTED = GRADED.filter((r) => r.grade === 'PRESENT-UNMOUNTED');
 // 3. Ceilings (forced to -1 to read the roster; the real values below).
 // ---------------------------------------------------------------------------
 
-export const FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING = 3;
+export const FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING = 0;
 export const FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING = 0;
 
 // ---------------------------------------------------------------------------
@@ -576,13 +596,12 @@ describe('frame conditional-state ledger (DEC-383 wave-29)', () => {
     expect(PRESENT_UNMOUNTED.length).toBeGreaterThanOrEqual(FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING);
   });
 
-  it('the exact DIVERGES roster is slot.blocked, e.hasFact and f.note (measured at main b2157a6e2 -- change this assertion, never silently, when a lane fixes one)', () => {
+  it('all three former DIVERGES rows are now ruled and excluded, so the unsettled roster is empty (DEC-383/DEC-895/DEC-441/DEC-964 wave-32 -- change this assertion, never silently, when a new row diverges)', () => {
+    // docs/design/Chautauqua Comms.dc.html:719 `<sc-if value="{{ e.hasFact }}" hint-placeholder-val="{{ true }}">` -- RULED BUILD (DEC-441 wave-32): all four frame `emails` entries carry hasFact:true, a drawn shell element. Built by v12m-w32-d.
+    // docs/design/Chautauqua Agenda.dc.html:182 `<sc-if value="{{ slot.blocked }}" hint-placeholder-val="{{ false }}">` -- RULED BUILD (DEC-895 wave-32): frame demo data blocked:true names a scheduled break. Built by v12m-w32-b.
+    // docs/design/Chautauqua Settings.dc.html:327 `<sc-if value="{{ f.note }}" hint-placeholder-val="{{ false }}">` -- RULED NOT A DIVERGENCE (DEC-964 wave-32): docs/design/audit/settings-panels-390-v12.md row 5 grades this MATCHED (SHAPE) against app/src/pages/settings/SummarySection.tsx `row.hint`.
     const keys = DIVERGES.map((r) => `${r.rel}:${r.line}:${r.expr}`).sort();
-    expect(keys).toEqual([
-      'docs/design/Chautauqua Comms.dc.html:719:e.hasFact',
-      'docs/design/Chautauqua Agenda.dc.html:182:slot.blocked',
-      'docs/design/Chautauqua Settings.dc.html:327:f.note',
-    ].sort());
+    expect(keys).toEqual([]);
   });
 
   it('overlap measurement: how many drawn-word-ledger rows fall inside a false-hinted sc-if extent (recorded in the audit doc; no ledger touched this lane)', () => {
