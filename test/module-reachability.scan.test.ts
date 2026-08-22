@@ -418,19 +418,6 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Spawned by scripts/walkthrough.ts via a runtime-computed `scripts/walkthrough/${area}.ts` path over " +
     "WALKTHROUGH_AREAS -- same shape as producer.ts, never a static import (scripts/walkthrough/stress.ts is a " +
     "sibling module but is instead a direct package.json entry, `gate:scale`, so it needs no ledger entry).",
-  "app/src/phone-tap-target-scan/width-floor.ts":
-    "Width-half tap-floor population/predicate lens (DEC-393/DEC-808) -- grades whether the 44px floor's " +
-    "horizontal-padding clause is satisfied by a real hit-box width, not merely any non-zero padding -- " +
-    "imported only by app/src/phone-tap-target-width-floor.scan.test.ts, and test-file imports don't confer " +
-    "reachability (DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / " +
-    "anchor-floor.ts / ssr.ts / undeclared.ts siblings above.",
-  "app/src/phone-tap-target-scan/width-ceiling.ts":
-    "Ratchet ceiling constant module (DEC-808) for the width-floor lens above, isolated into its own file " +
-    "carrying the sole `export const WIDTH_FLOOR_OFFENDERS_CEILING = <int>;` line so a worker re-measuring " +
-    "the ratchet touches only this constant and its history comment, never the population/predicate " +
-    "machinery in width-floor.ts -- imported only by app/src/phone-tap-target-width-floor.scan.test.ts, and " +
-    "test-file imports don't confer reachability (DEC-518). Same shape as its comment-blind-css-assertion-" +
-    "scan/ceiling.ts sibling below.",
   "app/src/comment-blind-css-assertion-scan/ceiling.ts":
     "Ratchet ceiling constant module (DEC-374 amendment, wave v12m-w8 task w8-ef) -- its only importer is " +
     "test/comment-blind-css-assertion.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +
