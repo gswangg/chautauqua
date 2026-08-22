@@ -5,10 +5,24 @@
 // jsdom never evaluates @media rules, so this mirrors
 // test/account-password-phone.test.ts's own source-scan style rather than
 // asserting computed style.
+//
+// DEC-994 (wave 29): a pin that spells a rule's WHOLE selector list into a
+// regex breaks the moment a correct lane adds or reorders a sibling
+// selector on that same rule -- the drawn geometry gets more conformant
+// and the pin reddens anyway. Repaired here by resolving the DECLARATION
+// that governs a single named selector via
+// `test/helpers/css-media-blocks.ts`'s `resolvePhoneDeclaration`, which
+// contains that selector as a whole compound in the rule's selector list
+// rather than matching the list's literal text. Converted under this
+// ruling: the "card email/password inputs take the frame's 50px
+// min-height" case (the file's one red) and the "prev/next pager is a
+// filled, edge-to-edge button bar at 46px on phone" case's second
+// assertion, which spelled the same two-selector-list shape.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { resolvePhoneDeclaration } from "./helpers/css-media-blocks";
 
 const REPO_ROOT = join(__dirname, "..");
 const AUTH_CSS_TS = readFileSync(join(REPO_ROOT, "src/routes/auth.css.ts"), "utf-8");
@@ -48,8 +62,11 @@ describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.htm
   });
 
   it("card email/password inputs take the frame's 50px min-height", () => {
-    expect(combined).toMatch(
-      /\.chq-auth-card input\[type=email\],\s*\n\s*\.chq-auth-card input\[type=password\]\s*\{[^}]*min-height:\s*50px/,
+    expect(resolvePhoneDeclaration(AUTH_CSS_TS, ".chq-auth-card input[type=email]", "min-height")).toBe(
+      "50px",
+    );
+    expect(resolvePhoneDeclaration(AUTH_CSS_TS, ".chq-auth-card input[type=password]", "min-height")).toBe(
+      "50px",
     );
   });
 
@@ -115,9 +132,12 @@ describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Doc
     expect(DOCS_SITE_CSS_TS).toMatch(
       /\.chq-docs-pager\s*\{[^}]*border-top:\s*1px solid var\(--chq-ink\);[^}]*background:\s*var\(--chq-surface-sunk\);[^}]*padding:\s*12px 16px 16px;/,
     );
-    expect(DOCS_SITE_CSS_TS).toMatch(
-      /\.chq-docs-pager-prev,\s*\n\s*\.chq-docs-pager-next\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*46px;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;/,
-    );
+    for (const selector of [".chq-docs-pager-prev", ".chq-docs-pager-next"]) {
+      expect(resolvePhoneDeclaration(DOCS_SITE_CSS_TS, selector, "flex")).toBe("1");
+      expect(resolvePhoneDeclaration(DOCS_SITE_CSS_TS, selector, "min-height")).toBe("46px");
+      expect(resolvePhoneDeclaration(DOCS_SITE_CSS_TS, selector, "font-size")).toBe("13px");
+      expect(resolvePhoneDeclaration(DOCS_SITE_CSS_TS, selector, "font-weight")).toBe("600");
+    }
   });
 
   it("desktop pager stays a bare divider (max-width 680, --chq-rule top border) -- phone-only override", () => {
@@ -125,5 +145,54 @@ describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Doc
     expect(desktopRule, "expected the desktop .chq-docs-pager rule").not.toBeNull();
     expect(desktopRule![1]).toMatch(/max-width:\s*680px/);
     expect(desktopRule![1]).toMatch(/border-top:\s*1px solid var\(--chq-rule\)/);
+  });
+});
+
+// DEC-994 (wave 29) synthetic controls: over FIXTURE CSS this test writes
+// itself, never over the live sheet -- a control run against the sheet a
+// lane just fixed would eat its own repair and prove nothing (the
+// "sentinel eats its own fix" trap).
+describe("resolvePhoneDeclaration (DEC-994 repair contract)", () => {
+  const FIXTURE_CSS = `
+    .chq-widget {
+      color: red;
+    }
+    @media (max-width: 700px) {
+      .chq-thing-a input[type=email],
+      .chq-thing-a input[type=password] {
+        min-height: 50px;
+      }
+    }
+  `;
+
+  it("(a) adding a fourth sibling selector to the rule does not change the resolved value", () => {
+    const before = resolvePhoneDeclaration(FIXTURE_CSS, ".chq-thing-a input[type=email]", "min-height");
+    expect(before).toBe("50px");
+
+    const withSibling = FIXTURE_CSS.replace(
+      ".chq-thing-a input[type=email],\n      .chq-thing-a input[type=password] {",
+      ".chq-thing-a input[type=email],\n      .chq-thing-a input[type=password],\n      .chq-thing-a .chq-input {",
+    );
+    // Confirm the fixture actually changed shape before trusting the result.
+    expect(withSibling).not.toBe(FIXTURE_CSS);
+    const after = resolvePhoneDeclaration(withSibling, ".chq-thing-a input[type=email]", "min-height");
+    expect(after).toBe("50px");
+    expect(
+      resolvePhoneDeclaration(withSibling, ".chq-thing-a .chq-input", "min-height"),
+    ).toBe("50px");
+  });
+
+  it("(b) deleting the min-height declaration makes the resolver fail loudly", () => {
+    const withoutDeclaration = FIXTURE_CSS.replace("min-height: 50px;\n      }", "}");
+    expect(withoutDeclaration).not.toBe(FIXTURE_CSS);
+    expect(() =>
+      resolvePhoneDeclaration(withoutDeclaration, ".chq-thing-a input[type=email]", "min-height"),
+    ).toThrow(/declares no "min-height" property/);
+  });
+
+  it("throws (never returns undefined) when the selector names no rule in the phone block", () => {
+    expect(() => resolvePhoneDeclaration(FIXTURE_CSS, ".chq-nonexistent", "min-height")).toThrow(
+      /no rule in the phone block has/,
+    );
   });
 });

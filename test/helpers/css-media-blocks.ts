@@ -17,6 +17,13 @@
 //
 // Callers strip comments first (a decision note quoting CSS-shaped text is
 // not a rule); this module deliberately does not, so it stays one job.
+//
+// `resolvePhoneDeclaration` below is the exception: it needs the sheet's
+// single terminal phone block (comment-stripped), which is exactly what
+// `app/src/test-utils/phoneBlock.ts`'s `phoneBlockText` already provides,
+// so it is reused here rather than re-derived (DEC-613).
+
+import { phoneBlockText } from '../../app/src/test-utils/phoneBlock';
 
 export interface MediaSplit {
   /** `css` with every @media block (opener and body) removed. */
@@ -83,6 +90,47 @@ export function phoneMediaBlocks(css: string): string[] {
     opener.lastIndex = i;
   }
   return blocks;
+}
+
+/** Splits a comma-separated CSS selector list into its trimmed compound
+ * selectors -- never a substring match against the joined list, since a
+ * frame-geometry pin must resolve the DECLARATION that governs a named
+ * selector regardless of which siblings it is listed beside (DEC-994
+ * wave-28 amendment: "adding or reordering a sibling selector can never
+ * redden it, and deleting the declaration always does"). */
+function splitSelectorList(selector: string): string[] {
+  return selector
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/** Resolves the declared value of `property` on the rule, within the
+ * sheet's terminal `@media (max-width: 700px)` block, whose selector list
+ * CONTAINS `selector` as a whole compound selector -- never a substring
+ * match on the full list text. Throws (fails loudly) if no rule names the
+ * selector, or if the rule that does name it never declares `property`,
+ * so a lane that deletes the declaration cannot pass silently. A lane
+ * that only adds or reorders a sibling selector on the same rule can
+ * never change this function's result. */
+export function resolvePhoneDeclaration(css: string, selector: string, property: string): string {
+  const block = phoneBlockText(css);
+  const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = ruleRe.exec(block)) !== null) {
+    const selectors = splitSelectorList(m[1] ?? '');
+    if (!selectors.includes(selector)) continue;
+    const body = m[2] ?? '';
+    const declRe = new RegExp(`(?:^|;)\\s*${property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;]+);`);
+    const declMatch = declRe.exec(body);
+    if (!declMatch) {
+      throw new Error(
+        `rule for selector "${selector}" in the phone block declares no "${property}" property`,
+      );
+    }
+    return (declMatch[1] ?? '').trim();
+  }
+  throw new Error(`no rule in the phone block has "${selector}" in its selector list`);
 }
 
 /** Every `selector { body }` rule in `css`, at ANY @media nesting depth --
