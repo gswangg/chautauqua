@@ -504,10 +504,10 @@ export function AgendaPage() {
             : '';
           return (
             <ConfirmDialog
-              title="Unschedule this session?"
+              title={`Unschedule "${pendingUnschedule.ref}"?`}
               body={
                 <p>
-                  {pendingUnschedule.ref} will be removed{slotClause}. This cannot be undone.
+                  It will be removed{slotClause}. This cannot be undone.
                 </p>
               }
               confirmLabel="Unschedule session"

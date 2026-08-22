@@ -241,8 +241,8 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
             draws. */}
         {pendingDelete && (
           <ConfirmDialog
-            title="Revoke this token?"
-            body={`Any script or embed still using ${pendingDelete.name} stops working immediately. This cannot be undone.`}
+            title={`Revoke "${pendingDelete.name}"?`}
+            body="Any script or embed still using it stops working immediately. This cannot be undone."
             confirmLabel="Revoke"
             pending={deleting}
             onConfirm={() => void confirmDelete()}
@@ -391,8 +391,8 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
 
       {pendingDelete && (
         <ConfirmDialog
-          title="Revoke this token?"
-          body={`Any script or embed still using ${pendingDelete.name} stops working immediately. This cannot be undone.`}
+          title={`Revoke "${pendingDelete.name}"?`}
+          body="Any script or embed still using it stops working immediately. This cannot be undone."
           confirmLabel="Revoke"
           pending={deleting}
           onConfirm={() => void confirmDelete()}

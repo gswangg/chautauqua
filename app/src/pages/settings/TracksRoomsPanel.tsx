@@ -457,13 +457,12 @@ export function TracksRoomsPanel() {
 
       {pendingDelete && (
         <ConfirmDialog
-          title={pendingDelete.kind === 'track' ? 'Remove this track?' : 'Remove this room?'}
-          body={
-            <p>
-              {pendingDelete.kind === 'track' ? pendingDelete.track.name : pendingDelete.room.name} will be removed.
-              This cannot be undone.
-            </p>
+          title={
+            pendingDelete.kind === 'track'
+              ? `Remove "${pendingDelete.track.name}"?`
+              : `Remove "${pendingDelete.room.name}"?`
           }
+          body={<p>This cannot be undone.</p>}
           confirmLabel={pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'}
           onConfirm={() =>
             void (pendingDelete.kind === 'track'

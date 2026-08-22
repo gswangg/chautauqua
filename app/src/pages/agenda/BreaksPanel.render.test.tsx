@@ -230,6 +230,10 @@ describe('BreaksPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(apiDeleteMock).not.toHaveBeenCalled();
 
+    // DEC-941 wave-23 amendment: the confirm's title names the break by its
+    // own label, not a bare generic question.
+    expect(await screen.findByRole('dialog', { name: 'Remove "Lunch"?' })).toBeInTheDocument();
+
     fireEvent.click(await screen.findByRole('button', { name: 'Remove break' }));
 
     await waitFor(() => expect(apiDeleteMock).toHaveBeenCalledWith('/breaks/brk-1'));

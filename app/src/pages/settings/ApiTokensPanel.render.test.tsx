@@ -118,12 +118,10 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
     expect(revokeBtn).toHaveClass('chq-settings-summary-row-action');
     fireEvent.click(revokeBtn);
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Revoke this token?')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: /CI pipeline/ });
+    expect(within(dialog).getByText('Revoke "CI pipeline"?')).toBeInTheDocument();
     expect(
-      within(dialog).getByText(
-        'Any script or embed still using CI pipeline stops working immediately. This cannot be undone.',
-      ),
+      within(dialog).getByText('Any script or embed still using it stops working immediately. This cannot be undone.'),
     ).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }));
@@ -326,12 +324,10 @@ describe('ApiTokensPanel (DEC-941)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Revoke this token?')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: /CI pipeline/ });
+    expect(within(dialog).getByText('Revoke "CI pipeline"?')).toBeInTheDocument();
     expect(
-      within(dialog).getByText(
-        'Any script or embed still using CI pipeline stops working immediately. This cannot be undone.',
-      ),
+      within(dialog).getByText('Any script or embed still using it stops working immediately. This cannot be undone.'),
     ).toBeInTheDocument();
 
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(

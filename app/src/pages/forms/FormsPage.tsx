@@ -510,10 +510,10 @@ export function FormsPage() {
 
       {deleteConfirm && !deleteConfirm.conflictMessage && (
         <ConfirmDialog
-          title="Delete field"
+          title={`Delete "${deleteConfirm.field.label}"?`}
           body={
             <>
-              <p>{`Delete the "${deleteConfirm.field.label}" field? This cannot be undone.`}</p>
+              <p>This cannot be undone.</p>
               {typeof answeredCount === 'number' && answeredCount > 0 && (
                 <p>{`${answeredCount} people have already answered this form — their answers to this question are deleted too.`}</p>
               )}
@@ -529,7 +529,7 @@ export function FormsPage() {
       )}
       {deleteConfirm?.conflictMessage && (
         <ConfirmDialog
-          title="Delete field"
+          title={`Delete "${deleteConfirm.field.label}"?`}
           body={deleteConfirm.conflictMessage}
           confirmLabel="Delete field anyway"
           pending={busy}

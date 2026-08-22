@@ -82,7 +82,7 @@ describe('FieldModal Delete -> shared irreversible ConfirmDialog (DEC-650 wave-6
     // top of it.
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit a question' })).not.toBeInTheDocument());
 
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete field' });
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete "Co-speaker email"?' });
     expect(within(confirmDialog).getAllByText(/Co-speaker email/).length).toBeGreaterThan(0);
     // Blast radius from the already-held answeredCount.
     expect(within(confirmDialog).getByText(/12 people have already answered this form/)).toBeInTheDocument();
