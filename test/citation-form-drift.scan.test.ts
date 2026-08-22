@@ -46,7 +46,8 @@
 // and the ratchet's own history/rationale comments -- pure extraction, no
 // behavior change.
 import { describe, expect, it } from "vitest";
-import { resolve } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { buildPopulationClasses, type SourceDoc } from "./citation-form-drift/population";
 import { BARE_PATH_RE, CITATION_RE, findLineKeyedOffenders, type Offender } from "./citation-form-drift/detector";
 
@@ -391,5 +392,148 @@ describe("citation-form-drift scan: line-keyed citations into app/src, src, test
   it("BARE_PATH_RE sanity: a bare path with no line number still matches the drift-proof shape's grammar", () => {
     BARE_PATH_RE.lastIndex = 0;
     expect(BARE_PATH_RE.test("scripts/exit-predicate.ts")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Backtick-parity guard (DEC-967 wave-28 amendment, task v12m-w28-e).
+//
+// WHY: the third wave running, an amendment landed with its heading pasted
+// INSIDE the previous section's still-open backtick code span (a stray odd
+// number of backtick characters somewhere upstream in the same file), and
+// test/decision-doc-citation.scan.test.ts's UNRESOLVED_CITATION_CEILING only
+// caught it downstream, as an unresolved-quote count, with no indication of
+// WHERE or WHY. A cheap, mechanical, by-name check: every markdown file
+// under src/decisions-data/ and decisions/ must contain an EVEN number of
+// backtick (`` ` ``) characters. Markdown backtick spans are always opened
+// and closed in pairs (single backtick code spans and double-backtick spans
+// alike each contribute an even number of backtick characters); a file with
+// an odd count has an unclosed span somewhere, and anything appended after
+// that point -- an amendment heading, a citation, a quote -- is silently
+// swallowed into the wrong span. This check says so BY NAME, at the file
+// level, rather than waiting for a downstream citation-resolution count to
+// go red with no clue which file or line broke.
+//
+// This is a FORM check only (parity), not a resolution check -- it does not
+// know or care whether any individual citation resolves; that is still
+// test/decision-doc-citation.scan.test.ts's job. It exists purely to catch
+// the specific failure mode (an amendment appended inside an open span)
+// immediately and by name.
+//
+// RATCHET, not an invariant: forced to -1 on this branch and read by name,
+// four pre-existing files (none owned by this task: DEC-681.md, DEC-909.md,
+// DEC-919.md, DEC-986.md) already carry an odd backtick count today, for
+// reasons unrelated to this task's citation (long unrelated docs, not
+// audited here -- out of this task's stated scope, which owns only
+// DEC-976.md, DEC-967.md, and any decisions/*.md drained). Asserting a hard
+// zero would either block on unrelated pre-existing debt or require editing
+// files this task does not own; ratcheting the population -- same two-sided
+// shape as every other citation ceiling in this campaign (DEC-808) --
+// still fails IMMEDIATELY AND BY NAME the moment a NEW file goes odd (this
+// wave's own failure mode), which is the whole point, while leaving the
+// pre-existing four for the lane that next opens their file to drain
+// (mirrors the field guide's "A HAND-LISTED POPULATION IS NOT A
+// POPULATION" -- readdirSync-derived, re-measured every run, never
+// snapshotted).
+describe("backtick-parity guard: every decisions-data/decisions doc has an EVEN number of backticks (DEC-967 wave-28)", () => {
+  const ROOT2 = resolve(__dirname, "..");
+
+  /** Every DEC-*.md file directly under `dir`, enumerated by readdirSync --
+   * never a hand-listed manifest (DEC-808: "a directory is not a
+   * population"). */
+  function decisionDocFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isFile() && /^DEC-\d+\.md$/.test(e.name))
+      .map((e) => e.name)
+      .sort();
+  }
+
+  function backtickCount(content: string): number {
+    return (content.match(/`/g) ?? []).length;
+  }
+
+  const DIRS: { label: string; dir: string }[] = [
+    { label: "src/decisions-data", dir: join(ROOT2, "src", "decisions-data") },
+    { label: "decisions", dir: join(ROOT2, "decisions") },
+  ];
+
+  interface ParityOffender {
+    label: string;
+    name: string;
+    count: number;
+  }
+
+  function findParityOffenders(): ParityOffender[] {
+    return DIRS.flatMap(({ label, dir }) =>
+      decisionDocFiles(dir)
+        .map((name) => ({ label, name, count: backtickCount(readFileSync(join(dir, name), "utf8")) }))
+        .filter((o) => o.count % 2 === 1),
+    );
+  }
+
+  // Seeded at this branch's own measurement (forced to -1, printed offender
+  // list read by name): 4 pre-existing offenders, all in src/decisions-data/,
+  // none owned by this task. May only be LOWERED as each file is repaired at
+  // its citation site, never raised to paper over a new regression.
+  const BACKTICK_PARITY_CEILING = 4;
+
+  it("vacuous-population tripwire: both directories are actually walked and contain files", () => {
+    for (const { label, dir } of DIRS) {
+      const files = decisionDocFiles(dir);
+      expect(files.length, `${label} contributed zero DEC-*.md files`).toBeGreaterThan(0);
+    }
+  });
+
+  it(
+    "count of DEC-*.md files with an ODD backtick count (an unclosed code span) never exceeds " +
+      "BACKTICK_PARITY_CEILING (may only be lowered, by closing the span at its real verbatim boundary -- " +
+      "never by raising the constant)",
+    () => {
+      const offenders = findParityOffenders();
+      if (offenders.length > BACKTICK_PARITY_CEILING) {
+        throw new Error(
+          `${offenders.length} file(s) carry an ODD number of backtick characters, above the ratchet ceiling ` +
+            `of ${BACKTICK_PARITY_CEILING} -- an amendment or citation landed inside an unclosed code span. ` +
+            `Close the span at its real verbatim boundary; never raise this ceiling to paper over it:\n` +
+            offenders.map((o) => `  ${o.label}/${o.name}: ${o.count} backticks`).join("\n"),
+        );
+      }
+      expect(offenders.length).toBeLessThanOrEqual(BACKTICK_PARITY_CEILING);
+    },
+  );
+
+  it("the ceiling is not stale: the measured offender count is not below BACKTICK_PARITY_CEILING (two-sided ratchet)", () => {
+    const offenders = findParityOffenders();
+    if (offenders.length < BACKTICK_PARITY_CEILING) {
+      throw new Error(
+        `backtick-parity guard: BACKTICK_PARITY_CEILING (${BACKTICK_PARITY_CEILING}) exceeds the measured ` +
+          `offender count (${offenders.length}). Lower the constant: ` +
+          `export const BACKTICK_PARITY_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(BACKTICK_PARITY_CEILING);
+  });
+
+  // --- Synthetic controls --------------------------------------------------
+
+  it("positive control: an odd backtick count is detected", () => {
+    const fixture = "Some text `opened but never closed and more prose after it.";
+    expect(backtickCount(fixture) % 2).toBe(1);
+  });
+
+  it("positive control: an amendment heading pasted inside a still-open span reproduces an odd count", () => {
+    const fixture =
+      "`npx vitest run app/src/frame-citation.scan.test.ts is green (23/23).\n\n" +
+      "## Amendment (wave 27)\n\nFour ledgers grade the words the pack draws.";
+    expect(backtickCount(fixture) % 2).toBe(1);
+  });
+
+  it("negative control: a well-formed file with properly paired code spans has an even count", () => {
+    const fixture = "See `path/to/file.ts:17` which reads `const X = 1;` and later `another span`.";
+    expect(backtickCount(fixture) % 2).toBe(0);
+  });
+
+  it("negative control: a file with zero backticks has an even (zero) count", () => {
+    expect(backtickCount("No code spans here at all.") % 2).toBe(0);
   });
 });
