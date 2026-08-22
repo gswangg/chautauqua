@@ -204,6 +204,31 @@
 //      this drain touches only an already-`offender` row's declared value,
 //      moving it to `ok`, never creating or removing an `unresolved` row).
 //
+//      WAVE 27 (DEC-393 amendment, task w27-b): the wave-151/157/159
+//      population was grading 28 rows of frame content
+//      test/desktop-control-label.scan.test.ts's own FIXTURE_EXCLUSIONS/
+//      COMPOSED_EXCLUSIONS tables had already hand-triaged (mock/seed
+//      content wearing control geometry, or a label composed/blessed
+//      rather than drawn literally) a SECOND time, as UNRESOLVED. Both
+//      tables are now `export`ed from that file (no other change there)
+//      and imported here (DEC-613 -- one triage table, not two). A drawn
+//      row whose own `fileName`+`line` matches either table's entry now
+//      grades a new fourth status, `excluded`, carrying that table's own
+//      reason string, instead of `unresolved`. Keyed on file+line only
+//      (not label): the two files compute a control's "line" from
+//      different offsets on the same source line, so line is the shared,
+//      construction-proof key. MEASURED (this branch, forcing both
+//      ceilings to -1): 28 rows moved unresolved->excluded (3 FIXTURE, 25
+//      COMPOSED); UNRESOLVED fell 166->141 (130 no-label-match, 1
+//      no-token, 10 no-control-shape); OFFENDERS unchanged at 2 -- neither
+//      of the two known mis-attributed rows (Contacts.dc.html:602
+//      "Reviewer", Submissions.dc.html:314 "Waitlist") lands on any
+//      FIXTURE/COMPOSED file:line coordinate, so this widening does not
+//      touch their verdict. Full breakdown, receipts and the retired
+//      "left to a later wave, full stop" sentence in
+//      docs/design/audit/desktop-control-floor-v12.md's own "WAVE 27"
+//      section. Zero product CSS bytes changed.
+//
 //   4. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      DESKTOP_FLOOR_DIVERGENCE_CEILING is a single exported const, hand-
 //      measured on this branch by forcing it to -1 and reading the printed
@@ -235,6 +260,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
+import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -852,16 +878,46 @@ function tokenIsControlShapedIndexed(token: string): boolean {
   return CONTROL_SHAPE_INDEX.get(token) ?? false;
 }
 
+// -- Frame-content exclusions (DEC-393 wave-27 amendment, task w27-b) ------
+// test/desktop-control-label.scan.test.ts already hand-triages this exact
+// pack's FIXTURE (mock/seed content wearing control geometry) and COMPOSED
+// (label assembled at render time, or already BLESSED by DEVIATIONS.md)
+// rows, each entry asserted against the pack by exact file:line:label. A
+// drawn-floor row landing on one of those SAME file:line coordinates is the
+// SAME frame content those tables already adjudicated -- grading it a fresh
+// UNRESOLVED/OFFENDER here would be a second, independent judgment call
+// about content the label ledger already settled (DEC-613: one table, not
+// two). Imported, never re-triaged (DEC-613 -- this file already imports
+// enumerateSourceFiles/normalizeSource from ./frame-source-corpus, same
+// idiom). Keyed on fileName+line only (not label): the two files compute a
+// control's "line" from different offsets within the same source line (this
+// file: the text immediately after the opening tag; the label ledger: the
+// matched text-node offset), so the safe, construction-proof join key is the
+// line the two extractions share, not a label string each phrases from a
+// different anchor point.
+const FRAME_CONTENT_EXCLUSIONS: { fileName: string; line: number; reason: string }[] = [
+  ...FIXTURE_EXCLUSIONS.map((e) => ({ fileName: e.fileName, line: e.line, reason: `FIXTURE: ${e.reason}` })),
+  ...COMPOSED_EXCLUSIONS.map((e) => ({ fileName: e.fileName, line: e.line, reason: `COMPOSED: ${e.reason}` })),
+];
+
+function frameContentExclusionFor(control: DrawnControl): string | null {
+  const hit = FRAME_CONTENT_EXCLUSIONS.find((e) => e.fileName === control.fileName && e.line === control.line);
+  return hit ? hit.reason : null;
+}
+
 // -- Join + grade every drawn control ---------------------------------------
 
-export type RowStatus = 'ok' | 'offender' | 'unresolved';
+export type RowStatus = 'ok' | 'offender' | 'unresolved' | 'excluded';
 
 export interface GradedRow {
   control: DrawnControl;
   status: RowStatus;
-  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | null;
+  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'frame-content' | null;
   tokens: string[];
   declaredMinHeight: number | null;
+  /** Set only when status === 'excluded': the source table's own reason
+   * string, carried through verbatim (never re-worded). */
+  excludedReason: string | null;
 }
 
 /** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
@@ -876,6 +932,18 @@ export interface GradedRow {
  * the app rendering a bare label as a control, it is the JOIN's own
  * conservatism finding a real element with no control face to grade. */
 function gradeControl(control: DrawnControl): GradedRow {
+  const frameContentReason = frameContentExclusionFor(control);
+  if (frameContentReason !== null) {
+    return {
+      control,
+      status: 'excluded',
+      reason: 'frame-content',
+      tokens: [],
+      declaredMinHeight: null,
+      excludedReason: frameContentReason,
+    };
+  }
+
   let tokens: string[] = [];
   let ownTextMatched = false;
   for (const blob of NORMALIZED_BLOBS) {
@@ -888,10 +956,10 @@ function gradeControl(control: DrawnControl): GradedRow {
   tokens = [...new Set(tokens)];
 
   if (!ownTextMatched) {
-    return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null };
+    return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null };
   }
   if (tokens.length === 0) {
-    return { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null };
+    return { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null, excludedReason: null };
   }
 
   let best: number | null = null;
@@ -904,10 +972,10 @@ function gradeControl(control: DrawnControl): GradedRow {
     if (maxMinHeight !== null && (best === null || maxMinHeight > best)) best = maxMinHeight;
   }
   if (!anyRule) {
-    return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null };
+    return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null };
   }
   if (!anyControlShaped) {
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null };
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null };
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
@@ -918,14 +986,15 @@ function gradeControl(control: DrawnControl): GradedRow {
     // resolving purely by co-incidence of a shared class list. Grading this
     // OFFENDER would put min-height on a heading; drop to UNRESOLVED,
     // honest per the file's own existing chq-chipstrip precedent.
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared };
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null };
   }
-  return { control, status, reason: null, tokens, declaredMinHeight: declared };
+  return { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null };
 }
 
 const GRADED: GradedRow[] = ALL_CONTROLS.map(gradeControl);
 const OFFENDERS: GradedRow[] = GRADED.filter((r) => r.status === 'offender');
 const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
+const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 
 // -- Ratchets -----------------------------------------------------------
 // Both measured on this branch by forcing each to -1 and reading the
@@ -933,7 +1002,7 @@ const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
 export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 166;
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 141;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
@@ -1126,9 +1195,60 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(UNRESOLVED.length).toBeGreaterThanOrEqual(DESKTOP_FLOOR_UNRESOLVED_CEILING);
   });
 
-  it('every row is accounted for exactly once across ok/offender/unresolved', () => {
+  it('every row is accounted for exactly once across ok/offender/unresolved/excluded', () => {
     expect(GRADED.length).toBe(ALL_CONTROLS.length);
     const okCount = GRADED.filter((r) => r.status === 'ok').length;
-    expect(okCount + OFFENDERS.length + UNRESOLVED.length).toBe(ALL_CONTROLS.length);
+    expect(okCount + OFFENDERS.length + UNRESOLVED.length + EXCLUDED.length).toBe(ALL_CONTROLS.length);
+  });
+
+  it('non-vacuity: synthetic positive/negative controls over the frame-content exclusion join', () => {
+    // POSITIVE: a fabricated row landing on a FIXTURE_EXCLUSIONS file:line
+    // grades EXCLUDED, carrying that table's own reason string, never
+    // UNRESOLVED or OFFENDER.
+    const fixtureEntry = FIXTURE_EXCLUSIONS[0]!;
+    const fabricatedFixtureControl: DrawnControl = {
+      fileName: fixtureEntry.fileName,
+      line: fixtureEntry.line,
+      drawnFloor: 44,
+      label: 'Zzy Fabricated Fixture Row',
+      frameTitle: 'Zzy Fabricated Frame',
+      frameLine: fixtureEntry.line,
+    };
+    const gradedFixture = gradeControl(fabricatedFixtureControl);
+    expect(gradedFixture.status).toBe('excluded');
+    expect(gradedFixture.reason).toBe('frame-content');
+    expect(gradedFixture.excludedReason).toBe(`FIXTURE: ${fixtureEntry.reason}`);
+
+    // POSITIVE: same for a COMPOSED_EXCLUSIONS coordinate.
+    const composedEntry = COMPOSED_EXCLUSIONS[0]!;
+    const fabricatedComposedControl: DrawnControl = {
+      fileName: composedEntry.fileName,
+      line: composedEntry.line,
+      drawnFloor: 46,
+      label: 'Zzy Fabricated Composed Row',
+      frameTitle: 'Zzy Fabricated Frame',
+      frameLine: composedEntry.line,
+    };
+    const gradedComposed = gradeControl(fabricatedComposedControl);
+    expect(gradedComposed.status).toBe('excluded');
+    expect(gradedComposed.reason).toBe('frame-content');
+    expect(gradedComposed.excludedReason).toBe(`COMPOSED: ${composedEntry.reason}`);
+
+    // NEGATIVE: a fabricated row on a file:line that appears in NEITHER
+    // table grades normally (here, unresolved/no-label-match, since the
+    // fabricated label matches no real source) -- the exclusion join never
+    // swallows a row it wasn't told to.
+    const fabricatedOutsideControl: DrawnControl = {
+      fileName: fixtureEntry.fileName,
+      line: 999999,
+      drawnFloor: 44,
+      label: 'Zzy Fabricated Outside Row',
+      frameTitle: 'Zzy Fabricated Frame',
+      frameLine: 999999,
+    };
+    const gradedOutside = gradeControl(fabricatedOutsideControl);
+    expect(gradedOutside.status).not.toBe('excluded');
+    expect(gradedOutside.status).toBe('unresolved');
+    expect(gradedOutside.reason).toBe('no-label-match');
   });
 });
