@@ -421,6 +421,18 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/review/PlanEditor.render.test.tsx",
     },
   },
+  {
+    key: "the-contacts-390-rule-chips-label-ink-resolves-to-chq-brand-not-a-third-olive-dec-367-amendment-wave-16-r5",
+    status: "honored",
+    reason:
+      "DEC-367 amendment, wave-16 r5: the palette has no third olive between --chq-brand and --chq-brand-hover, and spending a hover/active token as the chip's REST ink would make the label's own B8 hover state a no-op against the identical hover rule already declared on .chq-contacts-filter-rule-chip-edit. #2E3A16 resolves to --chq-brand instead, restoring a strictly monotone rest -> hover -> active ladder.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: ".chq-contacts-filter-rule-chip {",
+      testFile: "app/src/pages/contacts/contacts-chip-ink-390.test.ts",
+    },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -576,6 +588,18 @@ const LEDGER: LedgerEntry[] = [
     reason:
       "DEC-393 wave-155 amendment (task pe): test/desktop-control-floor.scan.test.ts's desktop drawn-floor ledger extracts any pack element with a min-height + border-radius + (border/background) shape as a DRAWN CONTROL, with no way to tell a real control from decoration. Twelve of that ledger's 23 wave-151 offenders are field-name/section-name labels the pack draws as bordered chips that the app correctly renders as plain, unbordered text via .chq-portal-field-label / .chq-page-title / .chq-section-label -- none of the three is a control anywhere in the app.",
     honored: { kind: "present", file: "src/routes/portal/portal.css.ts", literal: ".chq-portal-field-label {", testFile: "test/desktop-control-floor.scan.test.ts" },
+  },
+  {
+    key: "contacts-390-rule-chip",
+    status: "honored",
+    reason:
+      "DEC-393 wave-16 r4 amendment (task v12m-w16-ui-r4-a): the frame's drawn gap:9px between the chip's edit label and its dismiss control is met as hit-box separation, not literal optical separation -- the 44px width floor and a literal 9px drawn gap between glyphs cannot both hold at this glyph size, and the floor wins per DEC-393.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/contacts/contacts.css",
+      literal: ".chq-contacts-filter-rule-chip-edit",
+      testFile: "app/src/pages/contacts/contacts-rule-chip-geometry-390.test.ts",
+    },
   },
 ];
 
@@ -781,9 +805,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(16);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(17);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(21);
-    expect(derived.length).toBe(46);
+    expect(derived.length).toBe(47);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

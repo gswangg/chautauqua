@@ -214,6 +214,15 @@
   display: none;
 }
 
+/* DEC-919 wave-109-style amendment, extended: the per-criterion recuse
+   hint (DEC-889 wave-32) is the same markup-mounted `hidden`-attribute
+   phone-only idiom as the pair above, given its own top-level rule (not
+   folded into the comma group above) so the pair's own regex-based
+   phone-frame test keeps matching a single-selector rule verbatim. */
+.chq-review-criterion-hint-phone {
+  display: none;
+}
+
 @media (max-width: 700px) {
   /* :936 `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
      display:flex; flex-direction:column; gap:7px` -- sticky so the band
