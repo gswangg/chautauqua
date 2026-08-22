@@ -1073,6 +1073,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     );
   }
 
+  // DEC-730 wave-33: the head summary's overdue exception drops its class
+  // (element stays) once the page has already spent its emphasis budget --
+  // docs/design/Chautauqua Speakers.dc.html:469 (the EmptyState heading, a
+  // filtered zero-row result) or :563 (the pendingFailure rollback banner).
+  const summaryExceptionSuppressed =
+    (gridRead.data !== undefined && hasActiveNarrowing(filters) && visibleRows.length === 0) ||
+    pendingFailure !== null;
+
   return (
     <div className="chq-page chq-speakers-page chq-measure-table">
       {(error ?? gridRead.error) && <div className="chq-error">{error ?? gridRead.error}</div>}
@@ -1102,8 +1110,25 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             {/* v12 drops the middle "N tasks open" clause: the column
                 heads now carry per-task progress, which is the same fact
                 broken down usefully, and the page line is left with the
-                two numbers that are actually a summary. */}
-            <strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.overdue ?? 0}</strong> overdue
+                two numbers that are actually a summary.
+
+                DEC-730 wave-33 fix: frame :57 (desktop) / :140 (390) draw
+                the RESTING clause plain and the EXCEPTION clause (numeral
+                AND noun, one strong span) in ink -- the tree had it
+                backwards (weight on the resting accepted count, weight on
+                the overdue numeral only). The <strong> node always
+                renders (nothing that queries it loses it); its exception
+                class is suppressed when the page has already spent its
+                emphasis budget elsewhere -- frame :469 (filtered result
+                set is empty) or frame :563 (a rollback banner is
+                mounted) -- both read off state this component already
+                holds, no new state/fetch. */}
+            {counts?.speakers ?? 0} accepted &middot;{' '}
+            <strong
+              className={summaryExceptionSuppressed ? undefined : 'chq-speakers-summary-exception'}
+            >
+              {counts?.overdue ?? 0} overdue
+            </strong>
           </span>
         </div>
         <div className="chq-speakers-head-actions">

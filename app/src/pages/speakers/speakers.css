@@ -25,6 +25,18 @@
   flex-wrap: wrap;
 }
 
+/* DEC-730 wave-33: the ONE desktop-affecting rule in this file's commit --
+   docs/design/Chautauqua Speakers.dc.html:57 is a DESKTOP frame
+   (`12 accepted · <strong style="color:#1B1D17">3 overdue</strong>`), so
+   this rule is declared at top level, not inside a phone @media block
+   (DEC-385: narrow overrides wide, never the reverse -- a phone-only rule
+   here would leave the desktop landing frame wrong). #1B1D17 is the same
+   value as --chq-ink (DEC-383: no colour literal); the <strong> tag
+   already supplies the frame's implied bold weight. */
+.chq-speakers-summary-exception {
+  color: var(--chq-ink);
+}
+
 /* DEC-265 amendment / G13 lane-D fix (04-speakers--09): the
    rolled-back-write banner -- drawn as a ~102px box below the title band
    with a 1px ink border, the bold title line over the body, and the two

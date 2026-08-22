@@ -470,8 +470,10 @@ export function RosterDrillIn({
           &lsaquo; Speakers
         </button>
         <h1 className="chq-page-title">Roster</h1>
+        {/* DEC-730 wave-33: frame :264 draws the roster drill-in summary
+            entirely plain -- no <strong> at all. */}
         <span className="chq-summary">
-          <strong>{acceptedCount}</strong> accepted &middot; <strong>{notClaimedCount}</strong> not claimed
+          {acceptedCount} accepted &middot; {notClaimedCount} not claimed
         </span>
       </div>
 
