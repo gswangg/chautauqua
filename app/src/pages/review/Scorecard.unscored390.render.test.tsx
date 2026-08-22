@@ -229,7 +229,7 @@ describe('frame :934-979 "Scorecard · a criterion unscored" -- first markup-lev
     expect(selected).toHaveTextContent('5');
   });
 
-  it(':958-964 the unscored "Speaker readiness" criterion exposes five score controls, none selected -- DIVERGES: the frame\'s own recuse hint (:964) is not present anywhere in the DOM', async () => {
+  it(':958-964 the unscored "Speaker readiness" criterion exposes five score controls, none selected, and carries the frame\'s own recuse hint (:964) -- the w29-c divergence, since CLOSED by DEC-889 wave-32', async () => {
     verbatimLine(958, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:600">Speaker readiness</span>');
     verbatimLine(
       964,
@@ -244,14 +244,24 @@ describe('frame :934-979 "Scorecard · a criterion unscored" -- first markup-lev
     expect(pills).toHaveLength(5);
     expect(within(readinessGroup).queryAllByRole('radio', { checked: true })).toHaveLength(0);
 
-    // DIVERGES (recorded in review-v12.md, this task's appended section):
-    // Scorecard.tsx never renders this sentence -- not per-criterion, not
-    // as a global caption. The reviewer's only completeness cue in this
-    // state is the phone banner above (:941-943), which explains the
-    // weighted-total refusal but never mentions recusal. Out of this
-    // task's scope (CSS-only fix budget; this is missing copy/markup, not
-    // a phone-block geometry fix), so left as a finding, not a fix.
-    expect(screen.queryByText(/Pick a score, or recuse yourself/)).not.toBeInTheDocument();
+    // w29-c recorded this as a DIVERGENCE (Scorecard.tsx rendered the
+    // sentence nowhere -- not per-criterion, not as a global caption) and
+    // left it as a finding rather than a fix, the task's budget being
+    // CSS-only. DEC-889 wave-32 then BUILT it (commit 0fca1e97c, "review:
+    // build the per-criterion recuse hint at Review 390"), so the
+    // divergence is closed and the old `not.toBeInTheDocument()` is a
+    // stale receipt. It moves to the frame's shape rather than being
+    // deleted: the same line :964 the frame draws is now asserted PRESENT,
+    // and scoped to this unscored criterion's own fieldset so a global
+    // caption (which the frame does not draw) would still fail.
+    //
+    // Deliberately NOT a duplicate of Scorecard.recuseHint390.render.test.
+    // tsx: that file owns the hint's own contract (exactly one node, the
+    // hidden attribute, zero nodes in scored fieldsets, the terminal
+    // phone-block CSS register). This one only re-verdicts frame
+    // :934-979's markup in the unscored state, which is what it is for.
+    const HINT_TEXT = 'Pick a score, or recuse yourself if you cannot judge this one.';
+    expect(within(readinessGroup).getByText(HINT_TEXT)).toBeInTheDocument();
   });
 
   it(':967-969 Overall reads the phone "Not yet" node, reached in this exact unscored state (not merely present in source)', async () => {

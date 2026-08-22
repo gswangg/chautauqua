@@ -13,7 +13,7 @@ import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856, DEC_663 } from '../../../.
 // This amendment lives in decisions/DEC-290.md; no src/decisions.ts export
 // exists for DEC-290 to compile-check against (never hand-add one here).
 import { countOf, plural, thingsNeedFixingHeading } from '../../lib/plural';
-import { validateImportMapping } from '../../../../src/domain/contacts';
+import { validateImportMapping, validateHeaderMappingInjectivity } from '../../../../src/domain/contacts';
 import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../lib/domain-caps';
 import { formatBytes } from '../../../../src/domain/files';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
@@ -254,6 +254,29 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const badRows: BadRow[] = useMemo(() => {
     if (header.length === 0) return [];
     const autoMapping = suggestMapping(header);
+    // DEC-663 (wave 34): suggestMapping is keyed by header NAME, so a file
+    // with two columns both called "Email" auto-suggests BOTH into the one
+    // "email" target and mapImportRow below refuses the mapping outright.
+    // That refusal is correct and is surfaced to the organizer by
+    // mappingValidationError (which runs the same rule and names both
+    // column positions) -- but it must not be raised from inside this
+    // render-phase memo, where it would take the whole wizard down instead
+    // of rendering the message. This file-level email gate simply has no
+    // answer to give while the mapping itself is refused: there is no
+    // defensible way to say which of the duplicate columns a row's email
+    // came from. So it stands down and lets the mapping refusal, which
+    // already blocks Continue, own the screen.
+    //
+    // Checked against `autoMapping` rather than the live `mapping` on
+    // purpose: on the very first render `mapping` is still {} (the
+    // auto-suggest effect below has not run yet), so the live value would
+    // report no collision while the autoMapping used two lines down
+    // already has one.
+    try {
+      validateHeaderMappingInjectivity(autoMapping, header);
+    } catch {
+      return [];
+    }
     // DEC-011/DEC-478 (wave-65 amendment): the domain's mapImportRow has no
     // concept of FULL_NAME_TARGET (that pseudo-target is client-only, see
     // ./csv.ts), so a fullName-mapped column must run through
@@ -321,9 +344,26 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // columns may target one field" check -- run inline as the mapping is
   // edited so the offending pair is named and Continue is blocked before
   // the organizer ever reaches the dry run.
+  // DEC-663 (wave 34): the duplicate-HEADER rule is a DIFFERENT question
+  // from DEC-478's value-side injectivity above, and neither subsumes the
+  // other. `mapping` is keyed by header NAME, so two columns both called
+  // "Email" collapse into ONE key -- validateImportMapping's input cannot
+  // represent the collision and so can never see it. Only
+  // validateHeaderMappingInjectivity, which also takes the raw header
+  // ARRAY (both positions intact), can, which is why it is the rule
+  // mapImportRow calls.
+  //
+  // It has to run HERE, in the same inline refusal, for the same reason
+  // DEC-478's does: without it the collision surfaces only when
+  // mapImportRow throws from inside a render-phase useMemo (badRows,
+  // dedupeCount), which is not a refusal at all -- it unmounts the whole
+  // wizard behind an error boundary, so the organizer gets no message, no
+  // named columns, and no way back. Run inline it becomes what the frame
+  // draws: the offending 1-based positions named, Continue blocked.
   const mappingValidationError = useMemo(() => {
     try {
       validateImportMapping(mapping, header);
+      validateHeaderMappingInjectivity(mapping, header);
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : 'Invalid column mapping';
@@ -331,6 +371,12 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   }, [mapping, header]);
 
   const dedupeCount = useMemo(() => {
+    // DEC-663 (wave 34): same stand-down as badRows above -- while the
+    // mapping is refused, mapImportRow will throw rather than map, and an
+    // in-file duplicate-email count is meaningless anyway when the email
+    // column itself is ambiguous. mappingValidationError is already
+    // rendering the refusal and blocking Continue.
+    if (mappingValidationError) return 0;
     // DEC-011/DEC-478 (wave-65 amendment): same expand-then-map order as
     // badRows above -- mapImportRow (domain) throws on the FULL_NAME_TARGET
     // pseudo-target unless expandFullNameMapping has already rewritten it
@@ -345,7 +391,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       else seen.add(mapped.email);
     }
     return dupes;
-  }, [dataRows, mapping, header]);
+  }, [dataRows, mapping, header, mappingValidationError]);
 
   // B5: update rows -- the only rows where something is lost -- come first.
   // Array.prototype.sort is stable, so within each group (update vs.

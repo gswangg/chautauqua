@@ -57,4 +57,5 @@ export {
   mapImportRow,
   importFieldCapViolations,
   validateImportMapping,
+  validateHeaderMappingInjectivity,
 } from "./contacts-parts/import";
