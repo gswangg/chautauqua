@@ -27,15 +27,30 @@
 //   declares its own local `stripComments`-shaped function instead of
 //   importing the shared, string-aware ./helpers/strip-css-comments.ts.
 //
-// POPULATION (DEC-180): every `*.test.ts` / `*.test.tsx` file under test/
-// and app/src/, discovered by readdirSync -- never a hand-listed file list.
-// This scan file excludes only itself (a file cannot meaningfully judge its
-// own source against a detector built to describe OTHER files' patterns;
-// every other candidate, including its sibling helper's own unit-test file,
-// is measured for real).
+// POPULATION (DEC-180, widened wave v12m-w29 task w29-h, DEC-613): a suffix
+// is not a population. The original population was every `*.test.ts` /
+// `*.test.tsx` file under test/ and app/src/, discovered by readdirSync --
+// but a private comment-stripper hiding in a NON-test module a test file
+// imports (app/src/test-utils/phoneBlock.ts's own local `stripCssComments`,
+// caught this wave) was structurally invisible to that population no matter
+// how many files it was imported by: its filename lacks `.test.`, full stop.
+// The population is now the TEST-FILE set (unchanged, found by the same
+// readdirSync walk) UNION every module under test/** or app/src/** that is
+// reachable, by following static relative `import`/`export...from` specifiers
+// (never a bare/external specifier, and never a specifier resolving outside
+// those two roots), from any test file -- transitively, so a helper that
+// itself imports another helper still pulls the second one in. This mirrors
+// test/module-reachability.scan.test.ts's own walker (DEC-518), pointed the
+// other direction: that scan walks FROM shipped entry points to prove every
+// module is reachable; this one walks FROM every test file to prove every
+// module a test can reach is graded, not just the ones spelled with `.test.`
+// in their name. This scan file excludes only itself (a file cannot
+// meaningfully judge its own source against a detector built to describe
+// OTHER files' patterns; every other candidate, including its sibling
+// helper's own unit-test file, is measured for real).
 
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { COMMENT_BLIND_CSS_ASSERTION_CEILING } from "../app/src/comment-blind-css-assertion-scan/ceiling";
 import { LOCAL_CSS_COMMENT_STRIPPER_CEILING } from "../app/src/comment-blind-css-assertion-scan/local-stripper-ceiling";
@@ -57,7 +72,93 @@ function findTestFiles(root: string): string[] {
   return out;
 }
 
-const CANDIDATE_FILES = [...findTestFiles(TEST_DIR), ...findTestFiles(APP_SRC_DIR)].sort();
+const TEST_FILES = [...findTestFiles(TEST_DIR), ...findTestFiles(APP_SRC_DIR)].sort();
+
+// ---------------------------------------------------------------------------
+// Widened half: every test/** / app/src/** module reachable, by static
+// relative import, from any test file -- test/module-reachability.scan.
+// test.ts's walker shape, pointed from test files as roots instead of
+// shipped entry points.
+// ---------------------------------------------------------------------------
+
+const IMPORT_RESOLVE_SUFFIXES = [".ts", ".tsx"];
+
+function resolveRelativeSpecifier(fromFile: string, spec: string): string | undefined {
+  if (!spec.startsWith(".")) return undefined; // bare/external specifier -- not a repo module
+  const base = resolve(dirname(fromFile), spec);
+  if (existsSync(base) && statSync(base).isFile()) return base;
+  for (const suffix of IMPORT_RESOLVE_SUFFIXES) {
+    if (existsSync(base + suffix)) return base + suffix;
+  }
+  for (const suffix of IMPORT_RESOLVE_SUFFIXES) {
+    const indexPath = join(base, `index${suffix}`);
+    if (existsSync(indexPath)) return indexPath;
+  }
+  return undefined;
+}
+
+// `import type`/`export type` erases at build time and confers no real
+// import-graph reachability -- same exclusion module-reachability.scan.test.ts
+// applies, for the same reason (a module reached only that way carries no
+// runtime code to be comment-blind about).
+function stripTypeOnlyImportExport(source: string): string {
+  return source
+    .replace(/import\s+type\s*\{[^}]*\}\s*from\s*["'][^"']+["']\s*;?/g, "")
+    .replace(/import\s+type\s+[A-Za-z_$][\w$]*\s*from\s*["'][^"']+["']\s*;?/g, "")
+    .replace(/export\s+type\s*\{[^}]*\}\s*from\s*["'][^"']+["']\s*;?/g, "");
+}
+
+const IMPORT_FROM_RE = /import\s+(?:[^;]*?\s+from\s+)?["']([^"']+)["']/g;
+const EXPORT_FROM_RE = /export\s+[^;]*?from\s*["']([^"']+)["']/g;
+const DYNAMIC_IMPORT_RE = /import\(\s*["']([^"']+)["']\s*\)/g;
+
+function extractRelativeSpecifiers(source: string): string[] {
+  const valueOnly = stripTypeOnlyImportExport(source);
+  const specs: string[] = [];
+  for (const re of [IMPORT_FROM_RE, EXPORT_FROM_RE, DYNAMIC_IMPORT_RE]) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(valueOnly))) {
+      if (m[1]) specs.push(m[1]);
+    }
+  }
+  return specs;
+}
+
+function underTestOrAppSrc(abs: string): boolean {
+  return abs.startsWith(TEST_DIR + "/") || abs.startsWith(APP_SRC_DIR + "/");
+}
+
+/** Every test/** / app/src/** module reachable by static relative import from
+ * any test file, transitively, excluding the test files themselves (already
+ * in TEST_FILES) and anything outside test/ or app/src/ (e.g. src/**, which
+ * this instrument's population has never covered and this task doesn't
+ * widen it to). */
+function walkImportedModules(roots: string[]): Set<string> {
+  const seen = new Set<string>();
+  const stack = [...roots];
+  while (stack.length > 0) {
+    const file = stack.pop() as string;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    if (!existsSync(file)) continue;
+    const source = readFileSync(file, "utf-8");
+    for (const spec of extractRelativeSpecifiers(source)) {
+      const resolved = resolveRelativeSpecifier(file, spec);
+      if (!resolved || !underTestOrAppSrc(resolved)) continue;
+      stack.push(resolved);
+    }
+  }
+  return seen;
+}
+
+const REACHED_FROM_TESTS = walkImportedModules(TEST_FILES);
+const TEST_FILE_SET = new Set(TEST_FILES);
+const IMPORTED_MODULES = [...REACHED_FROM_TESTS]
+  .filter((abs) => !TEST_FILE_SET.has(abs) && abs !== SELF)
+  .sort();
+
+const CANDIDATE_FILES = [...TEST_FILES, ...IMPORTED_MODULES];
 
 // ---------------------------------------------------------------------------
 // Class 1 detection: a CSS-source-holding IDENTIFIER (a `*_CSS` / `*_PHONE_
@@ -147,6 +248,51 @@ export function isLocalStripperOffender(content: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Local-stripper CARVE-OUTS (DEC-613 wave-29, task w29-h): the population
+// widening above surfaced non-test modules that declare their own local
+// `strip[Css]Comments`-shaped function for a real reason -- each entry's
+// `reason` names the CAPABILITY the shared test/helpers/strip-css-comments.ts
+// genuinely lacks, never a branch/wave/schedule (DEC-099, checked by
+// test/exemption-reason-is-a-principle.scan.test.ts). A carved-out file is
+// EXCLUDED from LOCAL_STRIPPER_OFFENDERS below, not merely narrated in a
+// history comment, so the ceiling reflects only genuinely un-migrated copies.
+// ---------------------------------------------------------------------------
+
+const LOCAL_STRIPPER_CARVE_OUTS: Record<string, { reason: string }> = {
+  "app/src/phone-tap-target-scan/core.ts": {
+    reason:
+      "stripTsxComments recognises `//` line comments over TSX source, a capability the shared, CSS-only " +
+      "test/helpers/strip-css-comments.ts does not have (it strips only `/* */` block comments); the sibling " +
+      "stripComments is the block-comment-only building block stripTsxComments composes over, not an " +
+      "independent copy of the shared CSS vocabulary.",
+  },
+  "test/frame-source-corpus.ts": {
+    reason:
+      "recognises `//` line comments over general TypeScript source in addition to `/* */` block comments, a " +
+      "capability the shared, CSS-only test/helpers/strip-css-comments.ts does not have.",
+  },
+  "test/frame-caption-ledger/match.ts": {
+    reason:
+      "recognises `//` line comments over general TypeScript source in addition to `/* */` block comments, a " +
+      "capability the shared, CSS-only test/helpers/strip-css-comments.ts does not have; its own header notes it " +
+      "shares this exact scanning shape with test/frame-source-corpus.ts's stripComments deliberately, as two " +
+      "sites needing the same non-CSS capability, not two accidental copies.",
+  },
+};
+
+// test/source-comments.ts (recognises TS `//` line comments, a real
+// capability the shared CSS-only stripper lacks) and test/helpers/
+// strip-template-literals.ts (also blanks template-literal bodies) both
+// declare functions named `stripSourceComments` / `stripCommentsAndTemplate
+// Literals` -- neither matches LOCAL_STRIPPER_DECL_RE's `strip(?:Css|CSS)?
+// Comments?` naming shape (the detector is name-based, DEC-374's original
+// design), so neither is a live offender under this instrument and neither
+// needs a carve-out entry: there is nothing here for LOCAL_STRIPPER_OFFENDERS
+// to exclude. Named for completeness against this task's own brief, which
+// listed both as modules "the widening will surface" -- verified NOT
+// surfaced, by direct regex test, rather than assumed.
+
+// ---------------------------------------------------------------------------
 // Real-tree measurement
 // ---------------------------------------------------------------------------
 
@@ -167,13 +313,44 @@ const COMMENT_BLIND_OFFENDERS: Offender[] = candidateContents
   .filter((f) => isCommentBlindCssAssertionOffender(f.content))
   .map((f) => ({ file: f.path }));
 
+// The shared, canonical stripper itself (test/helpers/strip-css-comments.ts)
+// necessarily "declares a local stripComments-shaped function" -- it IS the
+// declaration everyone else is supposed to import -- and by definition it
+// never imports itself. This is the CANONICAL implementation, not a copy of
+// it, so it is excluded from judgment here the same way this scan file
+// excludes itself above; a stale/removed exclusion would surface loudly as
+// a sudden, obviously-wrong self-offense the moment someone deletes it.
+const SHARED_STRIPPER_REL = "test/helpers/strip-css-comments.ts";
+
 const LOCAL_STRIPPER_OFFENDERS: Offender[] = candidateContents
-  .filter((f) => isLocalStripperOffender(f.content))
+  .filter(
+    (f) =>
+      f.path !== SHARED_STRIPPER_REL &&
+      isLocalStripperOffender(f.content) &&
+      !(f.path in LOCAL_STRIPPER_CARVE_OUTS),
+  )
   .map((f) => ({ file: f.path }));
 
 describe("comment-blind CSS assertion instrument (DEC-374 amendment)", () => {
   it("parsed a non-trivial population of *.test.ts(x) files (walk floor sanity)", () => {
-    expect(CANDIDATE_FILES.length).toBeGreaterThanOrEqual(300);
+    expect(TEST_FILES.length).toBeGreaterThanOrEqual(300);
+  });
+
+  // VACUOUS-POPULATION TRIPWIRE, widened half (DEC-613 wave-29, task
+  // w29-h): the import-graph walk that discovers non-test modules imported
+  // by test files must not have silently narrowed to matching nothing --
+  // measured at this wave's landing (forced re-derivation, offender list
+  // read back), the widened half sits comfortably in the hundreds. A count
+  // near zero means the resolver has stopped following real edges, not that
+  // test files have stopped importing helper modules.
+  it("VACUOUS-POPULATION TRIPWIRE: the widened (imported-module) half of the population is in the neighbourhood measured at this wave's landing, never near zero", () => {
+    expect(
+      IMPORTED_MODULES.length,
+      `Only ${IMPORTED_MODULES.length} non-test module(s) were found reachable by import from a test file -- ` +
+        `this walker has likely narrowed to matching nothing (a resolver regression, a suffix restriction that's ` +
+        `too tight, or a root boundary drawn too small). This wave's landing measured well over 100; re-derive ` +
+        `the walk, don't trust a clean scan.`,
+    ).toBeGreaterThanOrEqual(100);
   });
 
   // VACUOUS-POPULATION TRIPWIRE: a detector that has silently narrowed to
@@ -299,5 +476,25 @@ describe("comment-blind CSS assertion instrument (DEC-374 amendment)", () => {
       );
     }
     expect(LOCAL_STRIPPER_OFFENDERS.length).toBeGreaterThanOrEqual(LOCAL_CSS_COMMENT_STRIPPER_CEILING);
+  });
+
+  // -- Carve-out ledger exactness (DEC-613 wave-29, task w29-h) -----------
+  // Every carve-out must genuinely be a local-stripper-shaped file (else
+  // it's a stale/unnecessary entry hiding a real offender's exclusion), and
+  // must actually be in the walked population (else it's exempting nothing
+  // and can't be trusted to mean what it says).
+
+  it("every LOCAL_STRIPPER_CARVE_OUTS entry is a real, currently-in-population, local-stripper-shaped file", () => {
+    const candidateByPath = new Map(candidateContents.map((f) => [f.path, f.content]));
+    for (const [path, { reason }] of Object.entries(LOCAL_STRIPPER_CARVE_OUTS)) {
+      const content = candidateByPath.get(path);
+      expect(content, `LOCAL_STRIPPER_CARVE_OUTS names ${path}, which is not in the walked population`).toBeDefined();
+      expect(
+        declaresLocalStripper(content as string),
+        `LOCAL_STRIPPER_CARVE_OUTS names ${path}, which no longer declares a local strip[Css]Comments-shaped ` +
+          `function -- this carve-out is stale, remove it`,
+      ).toBe(true);
+      expect(reason.length, `LOCAL_STRIPPER_CARVE_OUTS entry for ${path} has an empty reason`).toBeGreaterThan(0);
+    }
   });
 });

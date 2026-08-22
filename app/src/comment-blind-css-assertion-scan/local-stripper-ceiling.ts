@@ -200,4 +200,44 @@
 // forced to -1 again: 81, exactly 83-2, confirmed by reading the offender
 // list (the two converted files absent, all others -- including the six
 // left alone -- present as before). Ceiling lowered to match: 83 -> 81.
+// v12m-w29-h (DEC-613 wave-29): population WIDENED (DEC-180/DEC-367) from
+// "every *.test.ts(x) file" -- a suffix is not a population -- to that set
+// UNION every test/**/app/src/** module reachable by static relative import
+// from a test file. This closes the exact delay fuse DEC-613 named:
+// app/src/test-utils/phoneBlock.ts declared its own naive
+// `.replace(/\/\*[\s\S]*?\*\//g, '')` `stripCssComments`, imported by 34
+// test files (`grep -rl phoneBlock app/src test src`), invisible to this
+// ratchet purely because its filename lacks `.test.`. CONVERTED:
+// phoneBlock.ts now imports and re-exports test/helpers/strip-css-
+// comments.ts's shared, string-aware stripCssComments under the same
+// name/signature -- no re-export shim, the private copy is deleted outright.
+// All 34 real importers (the grep population minus phoneBlock.ts itself and
+// module-reachability.scan.test.ts's mere textual mention) re-run green:
+// no false receipt (a comment-satisfied assertion that only passed under
+// the naive regex) was found -- every assertion in every importer still
+// passes once routed through the real, string-aware stripper.
+//
+// The widening surfaced three more non-test local strippers, each carved
+// out in test/comment-blind-css-assertion.scan.test.ts's own
+// LOCAL_STRIPPER_CARVE_OUTS (excluded from the offender count, not merely
+// narrated) with a capability-named reason (DEC-099):
+// app/src/phone-tap-target-scan/core.ts and test/frame-source-corpus.ts and
+// test/frame-caption-ledger/match.ts all recognise `//` line comments over
+// general TypeScript source, a capability the shared, CSS-only
+// test/helpers/strip-css-comments.ts genuinely does not have. Two further
+// modules this task's own brief named as candidates -- test/source-
+// comments.ts (`stripSourceComments`) and test/helpers/strip-template-
+// literals.ts (`stripCommentsAndTemplateLiterals`) -- were checked directly
+// against LOCAL_STRIPPER_DECL_RE and do NOT match its `strip(?:Css|CSS)?
+// Comments?` naming shape, so neither is a live offender under this
+// (name-based, DEC-374-original) detector and neither needed a carve-out;
+// recorded here as verified-not-surfaced rather than silently omitted.
+// Re-measured over the widened population with the ceiling forced to -1:
+// EXACTLY 81, the same 81 files present before the widening (phoneBlock.ts
+// is gone from the list -- it never declared a local stripper before this
+// wave's conversion landed, so it was already outside this count; the three
+// carve-outs are excluded by construction, not merely absent from the
+// list). Ceiling stays at 81 (measured count sits AT the ceiling, not
+// below it) -- the widening plus the phoneBlock.ts conversion plus the
+// three carve-outs leaves this ratchet exactly where it was, never above.
 export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 81;
