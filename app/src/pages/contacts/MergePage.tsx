@@ -208,19 +208,19 @@ export function MergePage() {
     }
   }
 
-  // v12m-w1-c (DEC-919 amendment wave 98): frame "Merge · 390"
-  // (docs/design/Chautauqua Contacts.dc.html:524) draws the back link as
-  // `‹ Duplicates` only -- no "Contacts · " prefix. ONE anchor, never a
-  // second phone-only Link: the prefix lives in its own span that the
-  // terminal phone block hides at <=700px, so desktop stays byte-unchanged
-  // ("‹ Contacts · Duplicates").
+  // DEC-919 (wave-7 amendment, w7-d): both v12 frames -- the 1600
+  // "Duplicates · merge" subscreen (docs/design/Chautauqua Contacts.dc.html:359)
+  // and the 390 frame (:524) -- draw the back link as `‹ Duplicates` with no
+  // "Contacts · " prefix at either width. The prefix span was previously kept
+  // on a "desktop stays byte-unchanged" freeze rationale, not because any
+  // frame demanded it; removed at both widths per DEC-919.
   const backLink = (
     <Link
       to="/contacts"
       state={{ panel: 'duplicates' }}
       className="chq-contacts-merge-back chq-phone-back"
     >
-      &lsaquo; <span className="chq-contacts-merge-back-prefix">Contacts &middot; </span>Duplicates
+      &lsaquo; Duplicates
     </Link>
   );
 

@@ -1766,24 +1766,15 @@
     margin-inline: -10px;
   }
 
-  /* v12m-w1-c (DEC-919 amendment wave 98): frame "Merge · 390"
+  /* v12m-w1-c (DEC-919 amendment wave 98, back-link prefix removed at
+     both widths per DEC-919 wave-7 amendment / w7-d): frame "Merge · 390"
      (docs/design/Chautauqua Contacts.dc.html:524-539 -- :522-523 are the
      phone shell's wrapper divs; the cited content starts at the back link
-     `‹ Duplicates`). Four phone-only
+     `‹ Duplicates`). Three phone-only
      divergences from desktop -- desktop stays byte-unchanged, every rule
      below lives inside this terminal max-width block (DEC-385).
 
-     1. Back link :524 draws `‹ Duplicates` -- ONE anchor, the
-        "Contacts · " prefix (kept in its own span in MergePage.tsx) is
-        hidden here only. */
-  /* phone-hidden: shape 3, bare navigational glyph prefix (DEC-919 wave
-     101) -- the `‹` stays, "Duplicates" remains visible and remains the
-     tap target on .chq-contacts-merge-back above. */
-  .chq-contacts-merge-back-prefix {
-    display: none;
-  }
-
-  /* 2. Head subtitle :526 draws ONE line carrying both the pair position
+     1. Head subtitle :526 draws ONE line carrying both the pair position
      AND the kept record's name ("1 of 6 pairs · Marcus Okafor"); desktop
      keeps the count-only right-flushed row. The name suffix span is
      display:none by default (see the desktop rule above :826) -- surface
@@ -1794,7 +1785,7 @@
     display: inline;
   }
 
-  /* 3. Footer primary :537 labels the button "Merge them" -- the kept
+  /* 2. Footer primary :537 labels the button "Merge them" -- the kept
      name is redundant on phone since change 2 just put it in the head.
      ONE button, two spans, swap which is visible; desktop keeps
      "Merge into <name>". */
@@ -1806,7 +1797,7 @@
     display: none;
   }
 
-  /* 4. Footer secondary :538 draws "Not a duplicate" with the frame's
+  /* 3. Footer secondary :538 draws "Not a duplicate" with the frame's
      bordered 48px secondary treatment (border/border-radius only -- the
      earlier phone block at :852 already gives it the full-width 48px flex
      target); desktop keeps DEC-992's borderless text-link treatment. */
