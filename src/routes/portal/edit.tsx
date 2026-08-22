@@ -19,6 +19,7 @@ import {
   getPortalParticipants,
   addCoPresenter,
   CO_PRESENTER_DUPLICATE_MESSAGE,
+  CO_PRESENTER_UNSAVED_MESSAGE,
   type EditableSubmissionData,
   type PortalParticipant,
 } from "../../server/repo/portal-edit";
@@ -336,6 +337,12 @@ function ParticipantsSection(props: {
   // A plain field-validation error (missing name, bad email format) stays a
   // bare inline field message, never a banner naming a "did not happen".
   const isDuplicate = errors?.email === CO_PRESENTER_DUPLICATE_MESSAGE;
+  // DEC-029 (wave-30 amendment): the page's primary Save refuses (rather
+  // than saving-and-dropping) when a co-presenter was typed but never
+  // submitted via Add co-presenter — same "who did NOT happen" banner
+  // register as the duplicate case above, distinct wording, same
+  // errors.email carrier so no second field-error channel is invented.
+  const isUnsaved = errors?.email === CO_PRESENTER_UNSAVED_MESSAGE;
   // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1314):
   // `Priya is already on this session. Everything you typed is still below.`
   // the 390 frame's callout names the person already on the session instead of
@@ -359,6 +366,12 @@ function ParticipantsSection(props: {
         <div class="chq-error-summary chq-portal-copresenter-notice" role="alert">
           <h2>Nobody was added</h2>
           <p>{duplicateMatch ? duplicateMatch.name : "This person"} is already on this session. Everything you typed is still below.</p>
+        </div>
+      ) : null}
+      {isUnsaved ? (
+        <div class="chq-error-summary chq-portal-copresenter-notice" role="alert">
+          <h2>Nothing was saved</h2>
+          <p>{CO_PRESENTER_UNSAVED_MESSAGE} Everything you typed is still below.</p>
         </div>
       ) : null}
       {participants.length === 0 ? (
@@ -555,6 +568,25 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const { answers, repeatedFieldIds } = extractAnswers(data.fields, body, data.answers);
+
+  // DEC-029 (wave-30 amendment): the four co-presenter controls join THIS
+  // form via form="chq-portal-edit-form" (verified src/routes/portal/edit.tsx
+  // :417/:428/:446/:471), but this handler never reads their names — a
+  // speaker who types a co-presenter and presses the page's primary Save
+  // must be refused with a named message, never saved-and-silently-dropped.
+  // Read with the SAME idiom the participants POST handler below uses
+  // (typeof body.<name> === "string" ? body.<name> : ""), never a second
+  // parser. Threaded into every 400 re-render on this route so a rejection
+  // never blanks what the speaker typed into these fields.
+  const cpFirstName = typeof body.firstName === "string" ? body.firstName : "";
+  const cpLastName = typeof body.lastName === "string" ? body.lastName : "";
+  const cpEmail = typeof body.email === "string" ? body.email : "";
+  const cpRole = typeof body.role === "string" ? body.role : "";
+  const participantValues = { firstName: cpFirstName, lastName: cpLastName, email: cpEmail, role: cpRole };
+  // Never a `required` attribute on any of the four controls (DEC-029
+  // wave-108 clause, unamended) — the refusal below is a message, not a
+  // blocker on the primary Save's ordinary field validation.
+  const hasUnsavedCoPresenter = cpFirstName.trim() !== "" || cpLastName.trim() !== "" || cpEmail.trim() !== "";
   // File fields are read-only here (DEC-041): a missing stored file answer
   // must never be fatal, so required is forced false for file fields only.
   // Public submit's validateAnswers still enforces required files.
@@ -573,7 +605,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     if (!trackResult.ok) trackError = trackResult.error;
   }
 
-  if (!validation.ok || trackError || repeatedFieldIds.length > 0) {
+  if (!validation.ok || trackError || repeatedFieldIds.length > 0 || hasUnsavedCoPresenter) {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
@@ -583,6 +615,12 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     // per-field validation errors.
     const mergedErrors = { ...(validation.ok ? {} : validation.errors) };
     for (const fieldId of repeatedFieldIds) mergedErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
+    // DEC-029 (wave-30 amendment): the co-presenter refusal is a SEPARATE
+    // error channel (participantErrors, the same one the participants POST
+    // handler below already uses) from the session/speaker field errors
+    // above — never merged into mergedErrors, which key against
+    // data.fields ids.
+    const participantErrors = hasUnsavedCoPresenter ? { email: CO_PRESENTER_UNSAVED_MESSAGE } : undefined;
     return c.html(
       <EditPage
         branding={portalData.branding}
@@ -596,6 +634,8 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
         editable={true}
         tracksEditable={tracksEditable}
         participants={participants}
+        participantErrors={participantErrors}
+        participantValues={participantValues}
         speakerName={portalData.contactName}
       />,
       400,

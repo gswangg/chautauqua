@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
+import { CO_PRESENTER_UNSAVED_MESSAGE } from "../src/server/repo/portal-edit";
 
 const BASE_DATA: EditableSubmissionData = {
   submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
@@ -30,6 +31,7 @@ const loadEditableSubmissionMock = vi.fn(async () => BASE_DATA);
 const addCoPresenterMock = vi.fn(
   async (..._args: unknown[]) => ({ ok: true }) as { ok: boolean; errors?: Record<string, string> },
 );
+const saveSubmissionEditsMock = vi.fn(async (..._args: unknown[]) => {});
 
 vi.mock("../src/server/repo/portal-edit", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal-edit")>(
@@ -40,6 +42,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     loadEditableSubmission: (...args: unknown[]) => loadEditableSubmissionMock(...(args as [])),
     getPortalParticipants: vi.fn(async () => []),
     addCoPresenter: (...args: unknown[]) => addCoPresenterMock(...args),
+    saveSubmissionEdits: (...args: unknown[]) => saveSubmissionEditsMock(...args),
   };
 });
 
@@ -86,9 +89,24 @@ function postParticipant(app: Hono<AppEnv>, fields: Record<string, string>) {
   });
 }
 
+function postEdit(app: Hono<AppEnv>, fields: Record<string, string>) {
+  const params = new URLSearchParams();
+  params.append("chq_csrf", CSRF_TOKEN);
+  for (const [k, v] of Object.entries(fields)) params.append(k, v);
+  return app.request("/portal/submissions/s1/edit", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      cookie: `chq_csrf=${CSRF_TOKEN}`,
+    },
+    body: params.toString(),
+  });
+}
+
 describe("POST /portal/submissions/:id/participants route", () => {
   beforeEach(() => {
     addCoPresenterMock.mockClear();
+    saveSubmissionEditsMock.mockClear();
     loadEditableSubmissionMock.mockReset();
     loadEditableSubmissionMock.mockResolvedValue(BASE_DATA);
   });
@@ -272,5 +290,72 @@ describe("POST /portal/submissions/:id/participants route", () => {
     });
     expect(res.status).toBe(403);
     expect(addCoPresenterMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /portal/submissions/:id/edit route (DEC-029 wave-30 amendment: primary Save must never silently drop a typed co-presenter)", () => {
+  beforeEach(() => {
+    addCoPresenterMock.mockClear();
+    saveSubmissionEditsMock.mockClear();
+    loadEditableSubmissionMock.mockReset();
+    loadEditableSubmissionMock.mockResolvedValue(BASE_DATA);
+  });
+
+  it("refuses with a named message when the co-presenter fields are filled, keeps all four typed values in the re-render, and writes no participant row", async () => {
+    const app = buildApp();
+    const res = await postEdit(app, {
+      firstName: "Priya",
+      lastName: "Nair",
+      email: "priya@example.com",
+      role: "co-presenter",
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain(CO_PRESENTER_UNSAVED_MESSAGE);
+    expect(html).toContain("Priya");
+    expect(html).toContain("Nair");
+    expect(html).toContain("priya@example.com");
+    // The role select's chosen option renders `selected` on the co-presenter
+    // value actually posted, not the default.
+    expect(html).toMatch(/value="co-presenter"[^]*?selected/);
+    expect(addCoPresenterMock).not.toHaveBeenCalled();
+    expect(saveSubmissionEditsMock).not.toHaveBeenCalled();
+  });
+
+  it("regression: an unchanged 302 redirect when the co-presenter fields are left empty", async () => {
+    const app = buildApp();
+    const res = await postEdit(app, {
+      firstName: "",
+      lastName: "",
+      email: "",
+      role: "",
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal/submissions/s1");
+    expect(saveSubmissionEditsMock).toHaveBeenCalledTimes(1);
+    expect(addCoPresenterMock).not.toHaveBeenCalled();
+  });
+
+  it("an ordinary field-validation 400 still preserves whatever was typed into the co-presenter fields", async () => {
+    loadEditableSubmissionMock.mockResolvedValue({
+      ...BASE_DATA,
+      fields: [{ id: "title", kind: "text", label: "Title", required: true, section: "session" } as never],
+      answers: { title: "Stored title" },
+    });
+    const app = buildApp();
+    const res = await postEdit(app, {
+      // No field__title posted at all -> required-field validation failure,
+      // unrelated to the co-presenter aside.
+      firstName: "Priya",
+      lastName: "Nair",
+      email: "priya@example.com",
+      role: "co-presenter",
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("Priya");
+    expect(html).toContain("Nair");
+    expect(html).toContain("priya@example.com");
+    expect(saveSubmissionEditsMock).not.toHaveBeenCalled();
   });
 });
