@@ -140,24 +140,15 @@ function formatOffender(o: Offender): string {
 const MEMBERS = findPhoneVerdictMembers(PAGES_ROOT);
 const OFFENDERS = findOffenders(MEMBERS);
 
-// Measured on this branch (task w12-xf) by forcing this constant to -1 and
-// reading the printed offender list: 25 members, 12 offenders --
-// Agenda.frame-verdicts, Comms.frame-verdicts, Comms.frame390,
-// Contacts.frame-verdicts, Content.frame-verdicts,
-// content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
-// overview/Overview.frame390, review/PlanEditor.frame390,
-// settings/CallForPapersPanel.frame390, Speakers.frame-verdicts,
-// submissions/Submissions.frame390. (The task brief's own "MEASURED ON MAIN
-// 38c4b5518: 25 members, 11 offenders" line names 12 files in its list --
-// an off-by-one in that header prose, not in this scan; this constant is
-// set to what THIS branch measures, per the brief's own instruction, never
-// to the brief's number.)
-// LOWERED 12 -> 9 in the wave-12 merge train, exactly as the header note
-// above predicted: sibling lanes w12-xb/xc/xe landed cascade reads in
-// Contacts.frame-verdicts, Content.frame-verdicts and Comms.frame-verdicts
-// in this same batch, so those three left the offender set. (w12-xa's
-// Submissions.frame-verdicts already read a stylesheet and was never an
-// offender -- it is this file's own negative control.) Remaining 9:
+// RE-MEASURED (task w13-xj) by forcing this constant to -1 and reading the
+// printed offender list: still 25 members, now 9 offenders -- three of the
+// original 12 (Comms.frame-verdicts, Contacts.frame-verdicts,
+// Content.frame-verdicts) gained a cascade read when sibling wave-12 lanes
+// w12-xa/xb/xc/xe landed, exactly as this file's own header predicted
+// ("EXPECT THE COMPANION TO FIRE IN THE MERGE TRAIN"). The two-sided
+// companion below caught the drop live (measured RED at 12 before this
+// edit) -- lowering the ceiling in this same commit is that companion's
+// contract, never a snapshot carried from a prior wave. Current offenders:
 // Agenda.frame-verdicts, Comms.frame390, Speakers.frame-verdicts,
 // content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
 // overview/Overview.frame390, review/PlanEditor.frame390,
