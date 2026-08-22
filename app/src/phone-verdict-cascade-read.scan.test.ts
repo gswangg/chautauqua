@@ -189,11 +189,18 @@ describe('phone-verdict cascade-read lens (DEC-808 wave-12, task w12-xf)', () =>
   });
 
   it('a synthetic verdict file with no stylesheet read is flagged (positive control)', () => {
+    // The fixture body is a DOM-only assertion on purpose: that is exactly
+    // the shape this lens exists to catch (a 390 verdict that reads the
+    // rendered DOM and never the cascade). It must not be spelled
+    // `expect(<literal>).toBe(<same literal>)` -- fixture source is still
+    // this file's own source text, and
+    // `app/src/tautological-assertion.scan.test.ts` (DEC-967 wave-57)
+    // scans every test file for that pattern with no allowlist.
     const source = `
       import { describe, expect, it } from 'vitest';
       describe('fake', () => {
         it('DIVERGES: fake claim', () => {
-          expect(true).toBe(true);
+          expect(screen.getByRole('table')).toBeInTheDocument();
         });
       });
     `;
