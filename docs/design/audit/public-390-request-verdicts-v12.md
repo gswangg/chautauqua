@@ -116,7 +116,7 @@ table below — not a third copy of the request assertions themselves.
    `<legend>{field.label}</legend>` renders the organiser's
    own stored field label, and the frame's bare word is a sampled fixture
    value, not a string to ship (DEC-613 wave-27). `Save draft`/`Draft` is
-   ruled at `docs/design/DEVIATIONS.md:765`: "CFP wizard dock's `Save
+   ruled at docs/design/DEVIATIONS.md`Save draft`: "CFP wizard dock's `Save
    draft` vs the frame's `Draft` — ALREADY RULED, recorded here only so
    the ledger stops re-filing it. `src/routes/public/cfp.css.ts` states the
    disposition in the sheet itself: the accessible name stays 'Save draft'
