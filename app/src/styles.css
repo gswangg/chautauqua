@@ -2911,4 +2911,22 @@ select:focus-visible,
     align-items: center;
     padding-inline: 16px;
   }
+
+  /* task v12m-w21-b (src/decisions-data/DEC-383.md wave-21 amendment): the
+     shared `.chq-chipstrip` token above (`display:flex; gap:8px;
+     overflow-x:auto; -webkit-overflow-scrolling:touch`) is an
+     overflow-x:auto scroll container whose computed overflow-y is forced
+     to `auto`, clipping the house ring (`:focus-visible { outline: 2px
+     solid var(--chq-brand); outline-offset: 2px; }`) top and bottom on
+     every focusable child, and on the first child's leading edge at
+     scrollLeft 0 -- same mechanism as app/src/pages/contacts/contacts.css
+     `.chq-contacts-filter-chipstrip :focus-visible,
+     .chq-contacts-segment-pills :focus-visible { outline-offset: -2px; }`
+     (wave v12m-w16-ui-r5-a). Never `outline: none` (DEC-409: no rule may
+     remove an outline) and never a new ring colour/width -- only the
+     offset flips negative so the house ring draws inside the box instead
+     of being clipped. */
+  .chq-chipstrip :focus-visible {
+    outline-offset: -2px;
+  }
 }

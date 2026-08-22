@@ -316,6 +316,13 @@ every other page also draws its ring through. Scheduled owner-lane: none
 yet — this is the shell lane's fix (`app/src/styles.css`), not this
 page's; filed here per DEC-180, not assigned.
 
+**Resolved (task v12m-w21-b, src/decisions-data/DEC-383.md wave-21
+amendment):** the shell lane landed the fix — `.chq-chipstrip
+:focus-visible { outline-offset: -2px; }` scoped inside `app/src/
+styles.css`'s one terminal `@media (max-width: 700px)` block, same
+inset-offset mechanism as the two page-owned strips above. Receipt:
+`app/src/chipstrip-focus-ring.test.ts`.
+
 ## Merge · 390 — render verdict (task w29-a, DEC-976 wave-29)
 
 Before this task the "Merge · 390" frame (`docs/design/Chautauqua
