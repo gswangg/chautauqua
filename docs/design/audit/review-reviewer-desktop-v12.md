@@ -41,25 +41,54 @@ plans" list) — combined onto one 1600 canvas; the tree splits them across
 three routes. This lane's checks, per the brief, are scoped to the two
 named components only.
 
-- **Results-table track set.** DESIGN-RULINGS.md:191 restates the frame's
-  grid as `44px 1fr 150px 130px 92px 92px auto` (Rank / Title / Speaker /
-  Track / Score / Reviews / Decision). Verdicted against `review.css`'s
-  own rule text (jsdom applies no stylesheet, so a computed-style read
-  would be fiction):
-  - **MATCHES** on three tracks: Speaker `150px`, Track `130px`, Score
-    `92px` — exact.
-  - **DIVERGES** on three tracks, each with its own pre-existing DEC-902
-    comment explaining why:
-    - Rank is `56px`, not the ruling's `44px` — `review.css`'s own
-      comment: "44 fit RANK only before the shared 16px first-cell inset
-      landed."
-    - Reviews is `210px`, not `92px` — sized for the full label inventory
-      ("▸ N reviews" and "▸ N reviews · M recusals", the wider variant
-      needing ~178px), not just the plain count.
-    - Decision is a fixed `190px` (`white-space:nowrap`), not the
-      ruling's `auto` — under `table-layout:fixed`, `auto`/`1px` is taken
-      literally rather than shrink-to-content, so the column is sized to
-      the Accept+Decline button pair's real width instead.
+- **Results-table track set — re-anchored on the FRAME (DEC-902
+  wave-12).** The prior wave's verdict here read the track set off
+  DESIGN-RULINGS.md:191, a RULING whose numbers (`44px 1fr 150px 130px
+  92px 92px auto`) are a paraphrase written to explain a different rule
+  (see the inheritance note below) — not a second, competing pixel spec.
+  The geometry authority is the FRAME itself
+  (`Chautauqua Review.dc.html:124`, `grid-template-columns:44px 1fr 132px
+  118px 190px 84px auto`). Verdicted against `review.css`'s own rule text
+  (jsdom applies no stylesheet, so a computed-style read would be
+  fiction), the tree declares Rank `56px`, Speaker `150px`, Track `130px`,
+  Score `92px`, Reviews `210px`, Decision `190px` (`white-space:nowrap`),
+  Title width-less (the remainder column, both sides). Against the frame's
+  own numbers, **all six sized tracks diverge** — only Title (the
+  remainder column) matches structurally. This is a WIDER residual than
+  the prior wave's "three of seven" (which measured against the ruling's
+  paraphrase, not the frame): Speaker/Track/Score happen to equal the
+  ruling's numbers exactly, which is why they read as MATCHES under the
+  old, wrong authority — they diverge from the frame just as the other
+  three do.
+  - **Three tracks carry their own recorded gate-9 fit** in `review.css`'s
+    comments, each explaining a deliberate, adjudicated divergence from
+    the frame:
+    - Rank is `56px`, not the frame's `44px` — "44 fit RANK only before
+      the shared 16px first-cell inset landed."
+    - Reviews is `210px`, not the frame's `84px` — sized to fit the full
+      label inventory ("▸ N reviews" and "▸ N reviews · M recusals", the
+      wider variant needing ~178px), not just the plain count.
+    - Decision is a fixed `190px` (`white-space:nowrap`), not the frame's
+      `auto` — under `table-layout:fixed`, `auto`/`1px` is taken literally
+      rather than shrink-to-content, so the column is sized to the
+      Accept+Decline button pair's real width instead.
+  - **Three tracks carry no fit of their own** — Speaker (`150px` vs the
+    frame's `132px`), Track (`130px` vs `118px`), Score (`92px` vs
+    `190px`) simply inherited DESIGN-RULINGS.md:191's paraphrase verbatim,
+    which is not a justification once the frame is the authority.
+    Un-adjudicated: flagged here per this measurement-only lane's scope
+    (DEC-651), not fixed — this lane moves no product byte.
+  - **Inheritance clause (the ruling's operative half) — verified
+    structurally, holds regardless of the residual above.**
+    DESIGN-RULINGS.md:191's actual claim is that "the expanded reviews
+    band repeats the results table's ... grid" — read for its VERB, not
+    its numbers. `.chq-review-reviews-row` (`ResultsTable.tsx`'s expanded
+    evaluation disclosure) is a real `<tr>` inside the SAME
+    `table.chq-review-results-table` (`table-layout: fixed`), so it
+    inherits that table's column tracks by construction, whatever they
+    measure. Confirmed by rendering and expanding a row: the disclosure
+    row is a `<tr>` whose `closest('table.chq-review-results-table')` is
+    the identical table node.
   - The seven column head labels themselves are the frame's seven
     columns, in the same order, but one text label also diverges: the
     frame's second column reads "Submission" (frame :125); the tree's own
@@ -117,6 +146,15 @@ named components only.
 returned from `GET /api/v1/review/plans` (the `plans.length > 1` hub
 branch — see the componentry note above).
 
+Stale-await fix (DEC-902 wave-12): the receipt below previously awaited
+`findByRole('heading', { name: 'Your plans' })`, which resolves only
+against `ReviewerQueue.tsx`'s loading skeleton (rendered while any plan's
+progress envelope is still unresolved) — the frame's actual head text,
+once resolved, is `"<N> left to score"` (frame :843, matching the scoped
+queue's own head register). The receipt now awaits the resolved head
+before querying `.chq-reviewer-plan-row`, so it can no longer silently
+verdict a still-loading DOM.
+
 - **Plan cards, one action each** (frame :847-853): each
   `.chq-reviewer-plan-row` carries exactly ONE action link, drawn from
   the closed-vocabulary set `Start scoring` / `Score the next one` /
@@ -130,13 +168,21 @@ branch — see the componentry note above).
 
 | Frame | Verdict |
 | --- | --- |
-| :28 Organiser view · 1600 (results-table track set + progress band) | DIVERGES (pre-existing, documented) |
+| :28 Organiser view · 1600 (results-table track set + progress band) | DIVERGES (pre-existing, documented; re-anchored on the frame wave-12) |
 | :183 Reviewer scorecard | MATCHES |
 | :351 Reviewer queue | MATCHES |
-| :830 Your plans · /review | MATCHES |
+| :830 Your plans · /review | MATCHES (stale-await fixed wave-12) |
 
 3 of 4 frames MATCH as rendered; the one DIVERGES row (frame :28's
-results-table track set) is three pre-existing, individually
-DEC-902-commented track-width deviations from DESIGN-RULINGS.md:191's own
-restatement of the frame's grid — none of them new debt, and none moved
-by this lane (DEC-651 measurement-only).
+results-table track set) is now verdicted against the FRAME itself
+(`Chautauqua Review.dc.html:124`), not DESIGN-RULINGS.md:191's own
+paraphrase of it (DEC-902 wave-12 re-anchor). Against the frame, all six
+sized tracks carry a residual — three with their own recorded DEC-902
+gate-9 fit (Rank/Reviews/Decision), three that simply inherited the
+ruling's paraphrase with no fit of their own (Speaker/Track/Score,
+un-adjudicated) — while the ruling's operative inheritance clause (the
+expanded reviews band repeats the results table's grid) holds
+structurally regardless, since `.chq-review-reviews-row` is a real `<tr>`
+in the same `table-layout:fixed` table. None of this is new debt, and
+none of it is moved by this lane (DEC-651 measurement-only, DESKTOP
+frozen).
