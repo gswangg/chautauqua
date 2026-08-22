@@ -14,9 +14,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, 'detail.css'), 'utf-8');
+const CSS = stripCssComments(readFileSync(join(HERE, 'detail.css'), 'utf-8'));
 const TSX = readFileSync(join(HERE, 'SubmissionDetailPage.tsx'), 'utf-8');
 
 /** Brace-matches every `@media (max-width: 700px) { ... }` block in

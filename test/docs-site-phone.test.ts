@@ -27,10 +27,12 @@ vi.mock("../src/server/repo/public/home", () => ({
 import { docsSiteRoutes } from "../src/routes/docs-site";
 import { DOCS_ARTICLES } from "../src/routes/docs-content";
 import { docsArticleNeighbours } from "../src/routes/docs-content/nav";
-import { DOCS_SITE_CSS } from "../src/routes/docs-site.css";
+import { DOCS_SITE_CSS as DOCS_SITE_CSS_RAW } from "../src/routes/docs-site.css";
 import type { AppEnv } from "../src/server/env";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
+const DOCS_SITE_CSS = stripCssComments(DOCS_SITE_CSS_RAW);
 const DOCS_SITE_TSX = readFileSync(join(REPO_ROOT, "src/routes/docs-site.tsx"), "utf-8");
 
 // Mirrors test/docs-site.test.ts's buildApp — docsSiteRoutes is a Hono

@@ -11,7 +11,10 @@
 // stays byte-unchanged rather than being edited in place.
 
 import { describe, expect, it } from "vitest";
-import { THEME_CSS } from "../src/views/theme";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 describe(".chq-nav a's phone rule reaches the full 44px floor (DEC-393)", () => {
   it("the base (desktop) rule is byte-unchanged: padding: 4px 0, no min-height/flex added", () => {

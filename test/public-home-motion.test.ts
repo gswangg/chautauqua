@@ -6,7 +6,10 @@
 // same family in the same rule-block region.
 
 import { describe, expect, it } from "vitest";
-import { HOME_CSS } from "../src/routes/public/home.css";
+import { HOME_CSS as HOME_CSS_RAW } from "../src/routes/public/home.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const HOME_CSS = stripCssComments(HOME_CSS_RAW);
 
 const ACTION_CLASSES = [
   ".chq-home-action-primary",

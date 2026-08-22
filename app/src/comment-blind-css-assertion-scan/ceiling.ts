@@ -165,4 +165,56 @@
 // ceiling) are untouched and still pass. Re-measured with the ceiling
 // forced to -1: 20 offenders remain, back at the pre-regression population.
 // Ceiling stays at 20 (measured count sits AT the ceiling, not below it).
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 20;
+// v12m-w23-h (wave 23, task w23-h, DEC-374 wave-23 amendment): migrated 19
+// of the 20 offenders to test/helpers/strip-css-comments.ts's shared,
+// string-aware stripCssComments, in the exact `const X_CSS =
+// stripCssComments(readFileSync(...))` / `import { X_CSS as X_CSS_RAW }
+// ...; const X_CSS = stripCssComments(X_CSS_RAW);` shapes wave-155 and
+// v12m-w5-cd already used -- app/src/pages/contacts/FilterRulesPanel.
+// disclosureContract.render.test.tsx, app/src/pages/contacts/
+// FilterRulesPanel.render.test.tsx, app/src/pages/contacts/
+// contacts-tier2-floor.test.ts, app/src/pages/overview/
+// AgendaWorkSection.clash390-eyebrow.render.test.tsx, app/src/pages/review/
+// review-phone-cascade-tap.test.ts, app/src/pages/review/
+// review-tier2-floor.test.ts, app/src/pages/settings/
+// settings-phone-390.frames.test.ts, app/src/pages/settings/
+// settings-tier2-gap.test.ts, app/src/pages/speakers/
+// speakers-tier2-gap.test.ts, app/src/pages/submissions/
+// detail-head-390.test.ts, app/src/pages/submissions/
+// detail-tier2-floor.test.ts, test/account-desktop-frame-verdicts.test.ts,
+// test/docs-article-390-frame-verdicts.test.ts, test/docs-site-phone.test.ts,
+// test/embed-accent-surfaces.test.ts, test/public-home-motion.test.ts,
+// test/public-w17-c-desktop-grid-and-day-pills.test.ts,
+// test/submit-cfp-frame-copy.test.ts, test/theme-nav-tap-width.test.ts.
+// Several files (contacts-tier2-floor.test.ts, review-phone-cascade-tap.
+// test.ts, review-tier2-floor.test.ts, settings-phone-390.frames.test.ts,
+// detail-tier2-floor.test.ts) already comment-stripped internally via a
+// local naive `.replace(/\/\*[\s\S]*?\*\//g, '')` (not counted by
+// LOCAL_CSS_COMMENT_STRIPPER_CEILING, since the function wasn't named
+// strip[Css]Comments) -- these had that naive regex swapped for the real,
+// string-aware `stripCssComments` call, same population, same result.
+// Every migrated assertion still passed once routed through the real
+// stripper -- NO false receipt (a comment-satisfied assertion) was found
+// in this batch; the drain is pure instrument migration, not a repair.
+// The 20th offender, app/src/pages/contacts/contacts-phone-standdown-
+// receipts.test.ts, is DELIBERATELY LEFT UNMIGRATED: its own header
+// comment already states "the comments ARE the subject under test" -- its
+// sole `*_CSS`-shaped identifier, RAIL_RECEIPT_CSS, is extracted BY
+// LOCATING a CSS comment block (chqRailReceiptComment()) and every
+// assertion on it checks the COMMENT'S OWN TEXT (receipt annotations like
+// "DRILL-THROUGH ACTION", "RECORDED DEVIATION"). Routing it through
+// stripCssComments would erase the very subject under test -- the same
+// "subject test" carve-out DEC-374's v12m-w13-rg amendment already
+// established for cfp-phone-steps.test.ts's phone-hidden: receipt check.
+// Unlike that precedent, this file has no OTHER, non-comment-subject
+// assertion to route through the real stripper, so there is no genuine
+// call site for a `stripCssComments(` import to attach to -- adding one
+// purely to satisfy this detector's structural check, with no real use,
+// would be exactly the kind of decorative gaming Fail Loudly forbids.
+// Re-measured with the ceiling forced to -1: 1 offender remains (down from
+// 20) -- confirmed by forcing this ceiling to -1 again and reading the
+// offender-list detail (only contacts-phone-standdown-receipts.test.ts
+// present). LOCAL_CSS_COMMENT_STRIPPER_CEILING re-measured the same way:
+// unchanged at 83 (none of this batch's edits declared a new local
+// stripper). Ceiling lowered to match the measured value: 20 -> 1.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 1;

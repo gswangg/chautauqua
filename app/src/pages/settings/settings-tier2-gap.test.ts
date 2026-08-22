@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_576, DEC_937, DEC_989 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_937; // this lane's Part 1 (speakers.css) has no settings.css analog, cited for the shared idiom
 void DEC_393; // Part 2: the companion-gap rider (settings.css's row is cleared via SINGLE_TARGET_OK, asserted here)
@@ -18,7 +19,7 @@ void DEC_576; // Part 3: the anchor-qualified a.chq-pill rule this file adds
 void DEC_989; // the ratchets this task lowers (asserted in their own scan files, not duplicated here)
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SETTINGS_CSS = readFileSync(join(HERE, 'settings.css'), 'utf-8');
+const SETTINGS_CSS = stripCssComments(readFileSync(join(HERE, 'settings.css'), 'utf-8'));
 
 function ruleBodyContaining(css: string, needle: string): string {
   const idx = css.indexOf(needle);

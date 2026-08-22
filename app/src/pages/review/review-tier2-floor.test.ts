@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_576, DEC_989 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_393; // the row-action-anchor tap-target floor this task drains
 void DEC_989; // horizontal-overflow-at-390 + the ratchet shape this task lowers
@@ -24,7 +25,7 @@ void DEC_576; // this wave's ruling: .chq-pill's anchor form is floored once, in
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 function read(file: string): string {
-  return readFileSync(join(HERE, file), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripCssComments(readFileSync(join(HERE, file), 'utf-8'));
 }
 function readRaw(file: string): string {
   return readFileSync(join(HERE, file), 'utf-8');

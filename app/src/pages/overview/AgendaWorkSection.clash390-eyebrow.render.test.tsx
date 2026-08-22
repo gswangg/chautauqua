@@ -20,11 +20,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgendaWorkSection } from './AgendaWorkSection';
 import type { OverviewPayload } from './types';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Overview.dc.html');
-const CSS = readFileSync(join(HERE, 'overview.css'), 'utf-8');
+const CSS = stripCssComments(readFileSync(join(HERE, 'overview.css'), 'utf-8'));
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims. Copied from

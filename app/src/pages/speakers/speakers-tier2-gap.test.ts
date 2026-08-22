@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_576, DEC_937, DEC_989 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_937; // Part 1: the painted-face treatment (.chq-speaker-detail-actions a)
 void DEC_393; // Part 2: the companion-gap rider this file's phone-only gap widenings satisfy
@@ -25,8 +26,13 @@ void DEC_576; // Part 3: bare .chq-pill stays unfloored, the anchor form takes i
 void DEC_989; // the ratchets this task lowers (asserted in their own scan files, not duplicated here)
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SPEAKERS_CSS = readFileSync(join(HERE, 'speakers.css'), 'utf-8');
-const TASK_VIEW_CSS = readFileSync(join(HERE, 'task-view.css'), 'utf-8');
+// RAW -- Part 3 below asserts the presence of a `tap-floor-exempt:` CSS
+// COMMENT itself (the comment's text is the subject under test), so this
+// must never be routed through the stripper (DEC-374's subject test).
+const SPEAKERS_CSS_RAW = readFileSync(join(HERE, 'speakers.css'), 'utf-8');
+// Comment-stripped for every other (rule-body) assertion in this file.
+const SPEAKERS_CSS = stripCssComments(SPEAKERS_CSS_RAW);
+const TASK_VIEW_CSS = stripCssComments(readFileSync(join(HERE, 'task-view.css'), 'utf-8'));
 
 /** Extracts the FIRST top-level-or-media rule body whose selector text
  * contains `needle` verbatim (comma-branch or descendant match), by
@@ -95,13 +101,13 @@ describe('speakers-tier2-gap receipts (task w12-p)', () => {
 
   describe('Part 3 -- anchor floor: bare .chq-pill cleared by composition exemption', () => {
     it('speakers.css carries a tap-floor-exempt comment directly above the only chq-pill-mentioning rule', () => {
-      expect(SPEAKERS_CSS).toMatch(
+      expect(SPEAKERS_CSS_RAW).toMatch(
         /\/\*\s*tap-floor-exempt:[^*]*\*\/\s*\.chq-speakers-filters \.chq-pill\.is-active\s*\{/,
       );
     });
 
     it('the exemption comment body contains no `*` (would truncate the comment)', () => {
-      const m = SPEAKERS_CSS.match(/\/\*\s*tap-floor-exempt:([^*]*)\*\//);
+      const m = SPEAKERS_CSS_RAW.match(/\/\*\s*tap-floor-exempt:([^*]*)\*\//);
       expect(m).not.toBeNull();
       expect((m as RegExpMatchArray)[1]).not.toMatch(/\*/);
     });

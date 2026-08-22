@@ -4,9 +4,16 @@
 // pill on both the default and the ?day=-filtered view).
 
 import { describe, expect, it } from "vitest";
-import { PUBLIC_CSS } from "../src/routes/public/public.css";
-import { AGENDA_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
-import { CARDS_CSS, CARDS_PHONE_CSS } from "../src/routes/public/css/cards.css";
+import { PUBLIC_CSS as PUBLIC_CSS_RAW } from "../src/routes/public/public.css";
+import { AGENDA_CSS as AGENDA_CSS_RAW, AGENDA_PHONE_CSS as AGENDA_PHONE_CSS_RAW } from "../src/routes/public/css/agenda.css";
+import { CARDS_CSS as CARDS_CSS_RAW, CARDS_PHONE_CSS as CARDS_PHONE_CSS_RAW } from "../src/routes/public/css/cards.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+const PUBLIC_CSS = stripCssComments(PUBLIC_CSS_RAW);
+const AGENDA_CSS = stripCssComments(AGENDA_CSS_RAW);
+const AGENDA_PHONE_CSS = stripCssComments(AGENDA_PHONE_CSS_RAW);
+const CARDS_CSS = stripCssComments(CARDS_CSS_RAW);
+const CARDS_PHONE_CSS = stripCssComments(CARDS_PHONE_CSS_RAW);
 import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
 import { AgendaContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent, PublicSpeakerWithSessions } from "../src/server/repo/public";

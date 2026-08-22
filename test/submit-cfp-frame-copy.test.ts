@@ -8,10 +8,13 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
-import { CFP_CSS } from "../src/routes/public/cfp.css";
+import { CFP_CSS as CFP_CSS_RAW } from "../src/routes/public/cfp.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
 import { validateTrackChoice } from "../src/lib/submit-core";
 import { ClosedPage } from "../src/routes/public/submit-views";
 import type { AppEnv } from "../src/server/env";
+
+const CFP_CSS = stripCssComments(CFP_CSS_RAW);
 
 const EVENT_ROW = {
   id: "event-1",

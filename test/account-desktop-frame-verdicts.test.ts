@@ -58,6 +58,7 @@ import type { AppEnv } from "../src/server/env";
 import type { Db } from "../src/server/context";
 import type { KVStore } from "../src/auth/claim";
 import * as schema from "../src/db/schema";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 const DESIGN_FILE = join(REPO_ROOT, "docs", "design", "Chautauqua Account.dc.html");
@@ -195,7 +196,8 @@ describe("Sign in · a card, not a stretched phone (Chautauqua Account.dc.html:2
     // verdicted against auth.css.ts's own stylesheet TEXT, the same idiom
     // docs/design/audit/speakers-desktop-v12.md's grid-weight-inversion
     // finding uses for an inherently-CSS fact.
-    const { AUTH_CSS } = await import("../src/routes/auth.css");
+    const { AUTH_CSS: AUTH_CSS_RAW } = await import("../src/routes/auth.css");
+    const AUTH_CSS = stripCssComments(AUTH_CSS_RAW);
     expect(AUTH_CSS).toMatch(/\.chq-auth-card\s*\{[^}]*max-width:\s*460px/);
     expect(AUTH_CSS).toMatch(/\.chq-auth-card\s*\{[^}]*align-self:\s*center/);
 

@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { DEC_385, DEC_976 } from "../src/decisions";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 void DEC_385;
 void DEC_976;
@@ -190,7 +191,8 @@ function extract700Block(src: string): string {
 
 describe("docs-site.css.ts terminal phone block — figure affordance rules (DEC-385, source-scan)", () => {
   it("hides the desktop label and shows the phone affordance, additively, inside the single terminal block only", async () => {
-    const { DOCS_SITE_CSS } = await import("../src/routes/docs-site.css");
+    const { DOCS_SITE_CSS: DOCS_SITE_CSS_RAW } = await import("../src/routes/docs-site.css");
+    const DOCS_SITE_CSS = stripCssComments(DOCS_SITE_CSS_RAW);
     const block = extract700Block(DOCS_SITE_CSS);
 
     expect(block).toMatch(/\.chq-docs-figure-placeholder\s*\{\s*display:\s*none;\s*\}/);

@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_393, DEC_937, DEC_989 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_937; // PART 1: painted-face cancelled-padding removal on .chq-contacts-title-actions a
 void DEC_393; // PART 2: anchor-floor trio + companion-gap re-measurement
@@ -33,7 +34,7 @@ const DESIGN_RULINGS = readFileSync(
  * than returning only the first, so a property split across two rules for
  * the same selector is still visible to a single `toMatch`. */
 function phoneLayerRuleBodies(css: string, selector: string): string {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const withoutComments = stripCssComments(css);
   const opener = /@media\s*\(max-width:\s*\d+px\)\s*\{/g;
   let m: RegExpExecArray | null;
   const layers: string[] = [];
