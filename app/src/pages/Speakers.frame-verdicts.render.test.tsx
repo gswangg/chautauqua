@@ -22,10 +22,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
 import type { OnboardingGridResponse } from './speakers/types';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Speakers.dc.html');
+const SPEAKERS_CSS = join(HERE, 'speakers', 'speakers.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -36,6 +38,35 @@ function verbatimLine(lineNo: number, literal: string): void {
   const line = lines[lineNo - 1];
   if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
   expect(line).toBe(literal);
+}
+
+/** w15-v (DEC-808/DEC-994): jsdom evaluates no `@media` block, so the row
+ * DOM-order assertion below (identity before the trailing Open action)
+ * only proves source order, never that the row actually paints as one
+ * flush horizontal line the way the frame draws it (:267-274). speakers.css
+ * has TWO occurrences of the string `max-width: 700px` -- one is prose
+ * inside a comment (:1922, "five former `@media (max-width: 700px)`
+ * blocks are concatenated into ONE terminal block") describing the
+ * consolidation, not a second rule block; `stripCssComments` removes it
+ * before the brace-depth walk below runs, so exactly one real `@media
+ * (max-width: 700px) {` opener (:1942) remains to match against -- the
+ * one that actually declares `.chq-speakers-roster-row`. Same idiom as
+ * Contacts.frame-verdicts.render.test.tsx's `readContactsPhoneLayer`. */
+function readSpeakersPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(SPEAKERS_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('speakers.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('speakers.css phone block never closes');
+  return css.slice(start, i - 1);
 }
 
 const EVENT_ID = 'evt-speakers-frame-verdicts';
@@ -170,6 +201,13 @@ describe('v12 Speakers 390 frames: per-frame render verdict receipts (w14-sc, DE
     const row = nameLink.closest('.chq-speakers-roster-row')!;
     const openLink = within(row as HTMLElement).getByRole('link', { name: 'Open' });
     expect(nameLink.compareDocumentPosition(openLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // The DOM-order check above only proves source order -- speakers.css's
+    // terminal phone block is what actually makes `.chq-speakers-roster-row`
+    // a flush horizontal flex row (identity + trailing Open action on one
+    // line) instead of a stacked default.
+    const phoneLayer = readSpeakersPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-speakers-roster-row\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/);
 
     // docs/design/Chautauqua Speakers.dc.html:279 `        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Add a speaker</span>`
     verbatimLine(279, '        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Add a speaker</span>');

@@ -23,6 +23,7 @@ import { listEnvelope, mockApi } from '../test-utils/mockApi';
 import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../lib/useCurrentEvent';
 import { writeComposeDraft } from './comms/composeDraft';
 import { DEC_976, DEC_385 } from '../../../src/decisions';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
 
 void DEC_976; // this file's whole job is a frame verdict (DEC-976)
 void DEC_385; // fix rule scope: comms.css terminal block / Comms.tsx markup only (DEC-385 wave-30 amendment)
@@ -43,6 +44,7 @@ function stubPhoneMatchMedia() {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Comms.dc.html');
+const COMMS_CSS = join(HERE, 'comms', 'comms.css');
 
 /** DEC-967 shape, copied from the sibling file's own `verbatimLine`. */
 function verbatimLine(lineNo: number, literal: string): void {
@@ -50,6 +52,34 @@ function verbatimLine(lineNo: number, literal: string): void {
   const line = lines[lineNo - 1];
   if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
   expect(line).toBe(literal);
+}
+
+/** w15-v (DEC-808/DEC-994): jsdom evaluates no `@media` block, so the
+ * "Recent sends" row assertions below (:196-203 test) only prove which
+ * child text nodes exist, never that each row actually stacks
+ * when/subject/template as the frame's own three-line card (:196-203)
+ * instead of a single desktop-width line. comms.css has exactly one real
+ * `@media (max-width: 700px) {` opener (:1448) after comments are
+ * stripped -- the file's other two `max-width: 700px` sightings (:1221,
+ * :1424) are prose inside comments describing why there is a second block
+ * at all, removed by `stripCssComments` before the brace-depth walk runs.
+ * Same idiom as Contacts.frame-verdicts.render.test.tsx's
+ * `readContactsPhoneLayer`. */
+function readCommsPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(COMMS_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('comms.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('comms.css phone block never closes');
+  return css.slice(start, i - 1);
 }
 
 const EVENT_ID = 'evt-comms-frame390';
@@ -232,6 +262,13 @@ describe('COMMS 390 landing frame verdict (w30-e, DEC-976, DEC-621)', () => {
     // b5's templateId is null -- an em dash, never a blank cell (RecentSends'
     // own em-dash convention, reused here rather than re-derived).
     expect(template).toBe('—');
+
+    // The DOM-order/text checks above only prove which nodes exist, never
+    // that comms.css's terminal phone block actually stacks each row's
+    // when/subject/template lines as the frame's three-line card instead
+    // of a single desktop-width row.
+    const phoneLayer = readCommsPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-comms-phone-recent-row\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
   });
 
   // Frame :210 bottom tab strip (`list="{{ tabs }}"`) -- per
