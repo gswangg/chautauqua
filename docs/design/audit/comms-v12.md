@@ -133,8 +133,8 @@ frame's own 390-card opening line).
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
 | `:177` Comms (landing) | DIVERGES | Structurally matches the frame's own composition (title, draft-card slot, "Recent sends" band) — the empty-state "Compose" card (finding 2 above) and the "Recent sends" band's Templates/History links (also finding 2) both render as built. The divergence is a jsdom artefact, not a content gap: `.chq-comms-phone-landing` stays mounted (CSS `display:none`, never unmounted) whichever tab is active, so jsdom — which evaluates no `@media` rule — renders the landing dashboard SIMULTANEOUSLY with the page-level tab head (`role="tablist"`) and whichever tab body is showing, something the frame itself never draws side-by-side. Any assertion against this frame must scope to `.chq-comms-phone-landing` (or its own text is ambiguous against the compose-tab RecentSends mount, which repeats the same batch subject elsewhere in the DOM). |
-| `:286` Templates · 390 | ADJUDICATED (task v12m-w21-l, DEC-976) | Head (back `‹ Comms`, H1 `Templates`, count line), row-then-editor composition, and the Save/"Use in a send" footer render as drawn, and the editor auto-selects the first template (DEC-890 amendment-4) — matching the frame's own assumption that the editor is already open. Frame `:311-315` draws "Insert a field · open", a merge-field panel rendered permanently open with every field row visible; DEC-993 replaced that shape app-wide with a single closed `Insert a field ▾` trigger (`InsertFieldMenu.tsx`) whose panel only mounts after a click (`aria-expanded="false"`, no `role="menu"` in the DOM at rest). This row itself already says so: "A deliberate, already-ruled product change (DEC-993), not an unbuilt gap" — a ruled product change, not an open divergence. |
-| `:335` Send history · 390 | MATCHES | Head (back `‹ Comms`, H1 `History`, count line), and per-row order (when·short, subject, template, toggle) match. The frame's `See the recipients` copy (`:350`) is present verbatim: `RecentSends`' `columnHeads` mount (History's own) renders two sibling spans — `.chq-comms-batch-toggle-label-desktop` "Open" and `.chq-comms-batch-toggle-label-phone` "See the recipients" (DEC-833) — both live in the DOM at once since jsdom applies no `@media` rule to hide either; the button's accessible name stays pinned to "Open" via an explicit `aria-label` (same DEC-833 comment), which is the one caveat a screen-reader-shaped query needs to know, not a content gap. |
+| `:286` Templates · 390 | ADJUDICATED (task v12m-w21-l, DEC-976; disposition confirmed w12-xe) | Head (back `‹ Comms`, H1 `Templates`, count line), row-then-editor composition, and the editor auto-selects the first template (DEC-890 amendment-4) — matching the frame's own assumption that the editor is already open. Frame `:311-315` draws "Insert a field · open", a merge-field panel rendered permanently open with every field row visible; **SETTLED (DEC-993)** — `src/decisions-data/part4.ts`'s `DEC_993` rules the closed `Insert a field ▾` trigger (`InsertFieldMenu.tsx`, `aria-expanded="false"`, no `role="menu"` in the DOM at rest) IS the ruled shape, a settled divergence recorded on this row, not re-derived each wave. Frame `:323-324` footer draws a filled "Save" + bordered "Cancel"; **SETTLED (DEC-621 wave-98 amendment)** — `TemplatesTab.tsx`'s own comment at its footer records the frame's Save/Cancel dock as the shell's `.chq-phone-dock` geometry composed onto the existing footer wrapper (one Save control, one `save()` call, DEC-547): a saved template's footer pairs Save with "Use in a send" (DEC-890 amendment wave 4), and Cancel is reserved for a brand-new, unsaved draft that has nothing yet to send. Neither clause is an open divergence. Render receipt: `Comms.frame-verdicts.render.test.tsx`'s `:286` case. |
+| `:335` Send history · 390 | MATCHES | Head (back `‹ Comms`, H1 `History`, count line), and per-row order (when·short, subject, template, toggle) match. The frame's `See the recipients` copy (`:350`) is present verbatim: `RecentSends`' `columnHeads` mount (History's own) renders two sibling spans — `.chq-comms-batch-toggle-label-desktop` "Open" and `.chq-comms-batch-toggle-label-phone` "See the recipients" (DEC-833) — both live in the DOM at once since jsdom applies no `@media` rule to hide either; the button's accessible name stays pinned to "Open" via an explicit `aria-label` (same DEC-833 comment), which is the one caveat a screen-reader-shaped query needs to know, not a content gap. DOM presence alone is a desktop-cascade claim, not a 390 one — `Comms.frame-verdicts.render.test.tsx`'s `:335` case (w12-xe) additionally reads `comms.css`'s terminal `@media (max-width: 700px)` block (read-only; the file is owned by another lane) and confirms `.chq-comms-batch-toggle-label-desktop{display:none}` / `.chq-comms-batch-toggle-label-phone{display:inline}` there, so the MATCHES verdict is now backed by a real cascade receipt, not DOM presence alone. |
 
 No CSS or component file was touched by this task (measurement only, per
 its own scope). The Templates row above is the DEC-993 dropdown
@@ -164,3 +164,35 @@ out is still correct and still needed in the phone-stubbed case — the
 tab body underneath is CSS-hidden by width, not mount-gated, so it still
 coexists with the landing in a jsdom render where `isPhone` is stubbed
 true; that seam is unchanged and out of this task's scope.
+
+## Amendment (task w12-xe, DEC-993, DEC-976)
+
+**`:286` DIVERGES row retitled -- both its clauses now carry an explicit
+disposition.** The render-receipt test (`Comms.frame-verdicts.render.test.tsx`)
+used to title the `:286` case "DIVERGES: Insert-a-field renders CLOSED", a
+title with no blessing token that read as open backlog to every corpus
+grep despite this file's own table already carrying an ADJUDICATED
+verdict (task v12m-w21-l). It is retitled SETTLED and now cites `DEC_993`
+(`src/decisions-data/part4.ts`) directly, compile-checked via
+`src/decisions.ts`. The footer clause the same case exercises (frame
+`:323-324` Save/Cancel vs the app's Save/"Use in a send") previously had
+no stated authority anywhere in this document; it is now SETTLED against
+`DEC_621` wave-98 amendment (`TemplatesTab.tsx`'s own comment at its
+footer), also compile-checked.
+
+**`:335` MATCHES row now carries a cascade receipt, not DOM presence
+alone.** `Comms.frame-verdicts.render.test.tsx` and
+`Comms.frame390.render.test.tsx` both read zero stylesheet bytes before
+this task -- the same blindness DEC-976's wave-12 sweep found producing
+false divergences in Submissions/Contacts/Content. Every remaining
+structural claim in both files was re-derived against `comms.css`: the
+`:177`/`:180`/`:184`/`:189`/`:196`/`:210` cases in both files gate their
+phone-only content on `useIsPhone()` MOUNTING (stubbed matchMedia, not a
+CSS `display` toggle jsdom can't see), so none of them were making a
+false DOM-presence claim about cascade geometry -- only the `:335` DEC-833
+toggle-label swap was a real CSS-only width swap asserted from DOM
+presence alone, and it now additionally reads `comms.css`'s terminal
+`@media (max-width: 700px)` block (read-only -- the file stays owned by
+`w5-g`/`w9-e`/`w11-i`/`w12-e`) to confirm the desktop label is actually
+`display:none` and the phone label actually paints at 390. The MATCHES
+verdict stands, now on a cascade receipt.

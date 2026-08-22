@@ -12,7 +12,12 @@
 // mockApi/listEnvelope test-utils. Full verdict prose lives in
 // docs/design/audit/comms-v12.md; this file is the render receipt each row
 // cites. jsdom applies no stylesheet (no @media), so every assertion below
-// is about DOM STRUCTURE/ORDER, never computed geometry.
+// is about DOM STRUCTURE/ORDER, never computed geometry -- EXCEPT where a
+// claim is specifically about what the CASCADE paints at 390 (a CSS-only
+// width swap): those read comms.css's own bytes (w12-xe, DEC-993/DEC-976),
+// the same idiom app/src/pages/comms/CommsDrill.frame390.render.test.tsx
+// already uses for this exact file (comms.css is a sibling lane's file --
+// READ ONLY, never edited here).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -23,6 +28,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { CommsPage } from './Comms';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
 import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../lib/useCurrentEvent';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
+import { DEC_993, DEC_621 } from '../../../src/decisions';
+
+void DEC_993; // :286 Insert-a-field: settled disposition, not an open divergence (see below)
+void DEC_621; // :323-324 footer Save/"Use in a send" vs frame Save/Cancel: wave-98 amendment authority (TemplatesTab.tsx's own comment)
 
 // w15-ti (DEC-919 wave-159): the phone landing's MOUNT is now gated on
 // isPhone (Comms.tsx), not just CSS-hidden -- jsdom implements no
@@ -43,6 +53,10 @@ function stubPhoneMatchMedia() {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Comms.dc.html');
+// READ-ONLY: comms.css is a sibling lane's file (w5-g/w9-e/w11-i/w12-e all
+// hold it) -- this task never edits it, only reads its bytes for a cascade
+// receipt (w12-xe, DEC-976).
+const COMMS_CSS_FILE = join(HERE, 'comms', 'comms.css');
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -179,7 +193,7 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
   // Comms.tsx (:49-54, DEC-710) reads ?tab= through useSearchParams and
   // falls back to 'compose'; 'templates' mounts TemplatesTab through the
   // real tab switch, never mounted directly.
-  it('frame :286 Templates · 390 -- DIVERGES: Insert-a-field renders CLOSED (DEC-993 dropdown), the frame draws it permanently open', async () => {
+  it('frame :286 Templates · 390 -- SETTLED (DEC-993): Insert-a-field renders CLOSED by a ruled product change, not an open divergence', async () => {
     verbatimLine(
       286,
       '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
@@ -202,17 +216,24 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     expect(screen.getByRole('button', { name: 'Acceptance' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Subject' })).toHaveValue('Your talk has been accepted to {event_name}');
     // Frame :311-315 draws "Insert a field · open" -- a permanently-open
-    // merge-field panel with every field row visible. DEC-993 replaced
-    // that shape with a single closed 'Insert a field ▾' trigger
-    // (InsertFieldMenu.tsx): the trigger renders, its menu panel does not,
-    // until clicked.
+    // merge-field panel with every field row visible. SETTLED (DEC-993,
+    // src/decisions-data/part4.ts's DEC_993): "the closed 'Insert a field
+    // ▾' trigger IS the ruled shape; the frame's permanently-open
+    // merge-field palette is a settled divergence recorded on the row, not
+    // re-derived each wave" -- the trigger renders, its menu panel does
+    // not, until clicked. docs/design/audit/comms-v12.md's `:286` row
+    // carries the matching ADJUDICATED disposition (task v12m-w21-l).
     const trigger = screen.getByRole('button', { name: /Insert a field/ });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    // Frame :323-324 footer: filled "Save" + bordered "Cancel". The app's
-    // footer instead pairs Save with "Use in a send" once a saved template
-    // is selected (Cancel only appears for a brand-new, unsaved draft) --
-    // already documented in docs/design/audit/comms-v12.md.
+    // Frame :323-324 footer: filled "Save" + bordered "Cancel". SETTLED
+    // (DEC-621 wave-98 amendment, TemplatesTab.tsx's own comment at its
+    // footer): the frame's Save/Cancel dock is the shell's
+    // `.chq-phone-dock` geometry composed onto the EXISTING footer
+    // wrapper -- one Save control, one save() call (DEC-547). A saved
+    // template's footer pairs Save with "Use in a send" (DEC-890 amendment
+    // wave 4); Cancel is reserved for a brand-new, unsaved draft, which
+    // has nothing yet to send. Not an open divergence.
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
@@ -241,9 +262,26 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     // the recipients" toggle -- RecentSends' columnHeads mount renders
     // both a desktop "Open" span and a phone "See the recipients" span
     // (DEC-833, two sibling spans, CSS-only width swap), both present in
-    // jsdom since no @media rule applies here.
+    // jsdom since jsdom evaluates no @media rule -- so DOM presence alone
+    // is a DESKTOP-cascade claim, not a 390 one. The button's accessible
+    // name stays pinned to "Open" via an explicit aria-label (DEC-833's
+    // own comment), so the phone SCREEN READER name never shortens.
     const toggle = within(tab).getByRole('button', { name: 'Open' });
     expect(within(toggle).getByText('See the recipients')).toBeInTheDocument();
     expect(within(toggle).getByText('Open')).toBeInTheDocument();
+    // Cascade read (w12-xe, DEC-976): confirm the terminal 700px block
+    // actually PAINTS the phone label and hides the desktop one at 390 --
+    // comms.css:2535-2541 (DEC-833 wave-129 amendment), read-only, same
+    // idiom as CommsDrill.frame390.render.test.tsx's own comms.css checks.
+    const commsCss = stripCssComments(readFileSync(COMMS_CSS_FILE, 'utf-8'));
+    const terminalOpen = commsCss.lastIndexOf('@media (max-width: 700px)');
+    expect(terminalOpen).toBeGreaterThan(-1);
+    const phoneLayer = commsCss.slice(terminalOpen);
+    const desktopLabelRule = phoneLayer.match(/\.chq-comms-batch-toggle-label-desktop\s*\{([^}]*)\}/);
+    expect(desktopLabelRule, 'expected a phone-block rule hiding the desktop label').not.toBeNull();
+    expect(desktopLabelRule![1]).toMatch(/display:\s*none/);
+    const phoneLabelRule = phoneLayer.match(/\.chq-comms-batch-toggle-label-phone\s*\{([^}]*)\}/);
+    expect(phoneLabelRule, 'expected a phone-block rule revealing the phone label').not.toBeNull();
+    expect(phoneLabelRule![1]).not.toMatch(/display:\s*none/);
   });
 });
