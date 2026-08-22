@@ -1071,6 +1071,7 @@ DIVERGES rows for this same population cite this subsection.
   `stageEmptyBody()` naming the structurally immediately-preceding stage
   (Interested) rather than the frame's copy's two-back reference
   (Contacted) is the correct derivation of the frame's own sentence, not
+  a defect. DEC-976 wave-9 amendment.
 
 ## 9. Wave 34 rulings (DEC-021 wave-34 amendment)
 
@@ -1089,4 +1090,3 @@ DIVERGES rows for this same population cite this subsection.
   two clauses to state both outcomes truthfully rather than continue
   asserting the frame's now-disproven unconditional case. DEC-380 governs:
   the frame's prose asserted behaviour the code (correctly) forbids.
-  a defect. DEC-976 wave-9 amendment.

@@ -987,6 +987,14 @@ const LEDGER: LedgerEntry[] = [
       "the tree's .chq-contacts-pipeline-phone-stages IS the frame's pill strip, at the width it belongs to; desktop's five simultaneous Kanban columns are settled truth verdicted MATCHES at the frame's desktop cut. stageEmptyBody() naming the structurally immediately-preceding stage (not the frame copy's two-back reference) is the correct derivation of the frame's own sentence, not a defect.",
     honored: { kind: "present", file: "app/src/pages/contacts/PipelineBoard.tsx", literal: "function stageEmptyBody(stage: PipelineStage, entries: PipelineEntry[]): string {", testFile: "app/src/pages/contacts/PipelineBoard.render.test.tsx" },
   },
+  // ---- ## 9. Wave 34 rulings (DEC-021 wave-34 amendment) ----------------
+  {
+    key: "breakspanels-outside-the-window-hint-no-longer-matches-chautauqua-agenda-dc-html-244-verbatim",
+    status: "honored",
+    reason:
+      "the frame's hint sentence unconditionally promises a greyed band for every out-of-window break, but a break whose extent does not intersect the day window at all has no band to grey -- the unclamped arithmetic produced inverted/phantom grid rows. clampBreakToWindow draws a band only where the break's interval intersects the window; a fully-outside break is kept in the list (never dropped, satisfying the frame's own dropping clause) but paints none, and the hint copy states both outcomes. DEC-380 governs: the frame's prose asserted behaviour the code correctly forbids.",
+    honored: { kind: "present", file: "app/src/pages/agenda/gridMath.ts", literal: "export function clampBreakToWindow(", testFile: "app/src/pages/agenda/gridMath.test.ts" },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1184,8 +1192,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     }
   });
 
-  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all nine real headings", () => {
-    expect(LEDGER_SECTIONS.length).toBe(9);
+  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all ten real headings", () => {
+    expect(LEDGER_SECTIONS.length).toBe(10);
     for (const heading of LEDGER_SECTIONS) {
       expect(DEVIATIONS_TEXT.includes(heading), `expected DEVIATIONS.md to contain "${heading}"`).toBe(true);
     }
@@ -1203,7 +1211,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
     expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(18);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
-    expect(derived.length).toBe(80);
+    expect(bySection.get("## 9. Wave 34 rulings (DEC-021 wave-34 amendment)")).toBe(1);
+    expect(derived.length).toBe(82);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {

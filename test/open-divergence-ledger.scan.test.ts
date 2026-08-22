@@ -310,10 +310,15 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // (120 audit files, 246 -> 244 token rows), the audit-file floor being
 // untouched because w32-f added and deleted no audit document.
 const AUDIT_FILE_FLOOR = 120;
-const TOKEN_ROW_FLOOR = 244;
+const TOKEN_ROW_FLOOR = 246;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 34,
-  table: 72,
+  // MEGABATCH (wave-34 thunderdome): 72 -> 69. Confirmed which rows of this
+  // shape disappeared before lowering, per this guard's own instruction --
+  // the wave-32/33/34 adoption lanes (w32-f, w33-c, w34-e, w34-f) re-graded
+  // DIVERGES table cells to HARDCODED-MATCHES / adjudicated, removing three
+  // table-shape rows. No row was deleted; each was resolved.
+  table: 69,
   bullet: 31,
   fallback: 109,
 };
@@ -452,7 +457,6 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-<<<<<<< HEAD
 //
 // LOWERED 24 -> 16 (task v12m-w34-e, DEC-099 wave-34 clause (a), Comms +
 // Contacts half). All 8 closed rows were ALREADY adjudicated -- their DEC
@@ -478,7 +482,7 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // merged tree -- 24 - 8 (w34-e) - 9 (w34-f) -- so the constant below is the
 // value RE-MEASURED on the fully merged tree with it forced to -1, never
 // either side's arithmetic and never either side's branch-local reading.
-export const OPEN_DIVERGENCE_CEILING = 7;
+export const OPEN_DIVERGENCE_CEILING = 3;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {

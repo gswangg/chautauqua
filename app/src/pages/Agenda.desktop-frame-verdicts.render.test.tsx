@@ -255,11 +255,19 @@ describe('v12 Agenda DESKTOP (1600) frames: per-frame render verdict receipts (w
       expect(within(dialog).getByLabelText('Starts')).toBeInTheDocument();
       expect(within(dialog).getByLabelText('Minutes')).toBeInTheDocument();
       // docs/design/Chautauqua Agenda.dc.html:244 (the outside-window hint) --
-      // `A break outside the day's window is kept but flagged`
+      // DIVERGES, blessed: docs/design/DEVIATIONS.md §9 (DEC-021 wave-34
+      // amendment, task w34-b). The frame's sentence promises a greyed band
+      // for EVERY out-of-window break; DEC-021 wave-34 disproved that for a
+      // break whose extent never intersects the day window (it has no band
+      // to grey, and the unclamped arithmetic painted a phantom one). The
+      // shipped hint states both outcomes truthfully. DEC-380 governs: the
+      // frame's prose asserted behaviour the code correctly forbids, so the
+      // frame line is still pinned verbatim as the DRAWN text, and the
+      // shipped copy is asserted as the blessed divergence beside it.
       verbatimLine(244, '        <span style="font-size:13px; color:#565A4B; line-height:1.55">A break outside the day\'s window is kept but flagged — the grid shows it greyed rather than dropping it.</span>');
       expect(
         within(dialog).getByText(
-          "A break outside the day's window is kept but flagged — the grid shows it greyed rather than dropping it.",
+          "A break outside the day's window is kept but flagged. If it still overlaps the visible hours, the grid shows it greyed; if it falls entirely outside them, it is listed here but no band is drawn.",
         ),
       ).toBeInTheDocument();
       expect(within(dialog).getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
