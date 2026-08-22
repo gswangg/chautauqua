@@ -37,19 +37,27 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerErrorHandler } from "../src/server/http";
+import { publicSubmitRoutes } from "../src/routes/public/submit";
+import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
+import { MAX_TEXT_LENGTH } from "../src/forms/validate";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
-import { DEC_029, DEC_919 } from "../src/decisions";
+import type { R2Bucket } from "@cloudflare/workers-types";
+import { DEC_029, DEC_919, DEC_902 } from "../src/decisions";
 
 // DEC-029 (wave-108 amendment, src/decisions-data/DEC-029.md): the edit
 // screen's co-presenter controls are a SECOND SUBMIT of the ONE edit form
 // (`form`/`formaction`/`formenctype`), never a second form -- the :1373
 // verdict below asserts exactly that wiring. DEC-919 (wave 47 amendment):
 // PublicEmptyState's fresh/filtered split -- the :1167 verdict below grades
-// which branch the route takes. Void-referenced so the dependency is
+// which branch the route takes. DEC-902 (wave-20 amendment): a wording
+// residual against a v12 desktop frame is a work item, not a closed
+// verdict -- the :1211 verdict below cites it for the dock-note
+// divergence it names. Void-referenced so the dependency is
 // compile-checked (src/decisions.ts).
 void DEC_029;
 void DEC_919;
+void DEC_902;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -304,6 +312,140 @@ async function buildSessionsApp() {
   return app;
 }
 
+// ---------------------------------------------------------------------------
+// :1101 "CFP closed", :1211 "Submit a talk · rejected on submit", :1532
+// "CFP not open yet · /submit/:slug" -- the three window/error states of
+// publicSubmitRoutes' GET/POST /submit/:eventSlug (DEC-976 wave-22
+// amendment). These were previously covered only by
+// test/desktop-frames-portal.test.ts's SOURCE SCAN (readFileSync + a
+// nearby expect(), never a dispatched request). Harness copied VERBATIM
+// in shape from test/cfp-desktop-frame-verdicts.test.ts's own fakeDb/
+// appWithDb/fakeKv/fakeFilesBucket idiom (DEC-613: reuse the shape, not a
+// seventh reimplementation) -- driven by real `form.closeDate`/`openDate`
+// fixture values through the route's own `formWindowState` resolver
+// (DEC-651), never by mounting ClosedPage/NotYetOpenPage directly.
+// ---------------------------------------------------------------------------
+
+function submitMakeChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async () => rows,
+    then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) => Promise.resolve(rows).then(resolve, reject),
+  };
+  return chain;
+}
+
+function submitFakeDb(selectQueue: unknown[][]) {
+  let call = 0;
+  const db = {
+    select: () => {
+      const rows = selectQueue[call] ?? [];
+      call += 1;
+      return submitMakeChain(rows);
+    },
+    insert: () => ({
+      values: () => ({
+        then: (resolve: (v: undefined) => void) => resolve(undefined),
+        onConflictDoUpdate: () => ({
+          returning: async () => [{ count: 1 }],
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+        }),
+      }),
+    }),
+    delete: () => ({ where: async () => {} }),
+  };
+  return db as unknown as AppEnv["Variables"]["db"];
+}
+
+function submitFakeKv() {
+  const store = new Map<string, string>();
+  return {
+    async get(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    async put(key: string, value: string) {
+      store.set(key, value);
+    },
+    async delete(key: string) {
+      store.delete(key);
+    },
+  };
+}
+
+function submitFakeFilesBucket(): R2Bucket {
+  return {
+    async put() {},
+    async get() {
+      return null;
+    },
+    async delete() {},
+  } as unknown as R2Bucket;
+}
+
+function submitAppWithDb(db: AppEnv["Variables"]["db"]) {
+  const app = new Hono<AppEnv>();
+  registerErrorHandler(app);
+  app.use("*", async (c, next) => {
+    c.set("db", db);
+    await next();
+  });
+  app.route("/", publicSubmitRoutes);
+  return app;
+}
+
+const SUBMIT_CSRF_TOKEN = "test-csrf-token";
+const SUBMIT_BINDINGS = {
+  MAIL_FROM_EMAIL: "noreply@example.com",
+  MAIL_FROM_NAME: "Chautauqua",
+  DEV_MODE: "1",
+} as unknown as AppEnv["Bindings"];
+
+const SUBMIT_EVENT_ROW = {
+  id: "event-1",
+  orgId: "org-1",
+  name: "DevFlow Conf 2027",
+  slug: "test-conf",
+  recordPrefix: "SES",
+  timezone: "UTC",
+  brandingJson: null,
+};
+
+const SUBMIT_FORM_ROW = {
+  id: "form-1",
+  eventId: "event-1",
+  title: "Speak at DevFlow Conf 2027",
+  description: null,
+  isDefault: true,
+  openDate: null,
+  closeDate: null,
+  tracksJson: null,
+};
+
+const SUBMIT_TRACK_ROW = { id: "track-1", name: "Platform & Infra" };
+
+const SUBMIT_FIELD_ROWS = [
+  { id: "title", section: "session", kind: "text", label: "Title", helpText: null, required: true, position: 0, optionsJson: null, ruleJson: null },
+  { id: "description", section: "session", kind: "long_text", label: "Description", helpText: null, required: true, position: 1, optionsJson: null, ruleJson: null },
+  {
+    id: "field_session_format",
+    role: "session_format",
+    section: "session",
+    kind: "dropdown",
+    label: "Session format",
+    helpText: null,
+    required: true,
+    position: 2,
+    optionsJson: JSON.stringify(["Talk (30 min)", "Talk (45 min)", "Workshop"]),
+    ruleJson: null,
+  },
+  { id: "first_name", section: "speaker", kind: "text", label: "First name", helpText: null, required: true, position: 3, optionsJson: null, ruleJson: null },
+  { id: "last_name", section: "speaker", kind: "text", label: "Last name", helpText: null, required: true, position: 4, optionsJson: null, ruleJson: null },
+  { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 5, optionsJson: null, ruleJson: null },
+];
+
 describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public and Portal.dc.html, task w26-h)", () => {
   it("frame :1373 'Portal · Edit your session · desktop' (GET /portal/submissions/:id/edit) -- MATCHES: back link, H1, session-length row, participants list, co-presenter block as a SECOND SUBMIT of #chq-portal-edit-form, terminal Save/Cancel row", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1373 `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Edit your session · desktop</span>`
@@ -449,5 +591,133 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     // selector definition can't be mistaken for a rendered element.)
     expect(html).not.toContain('class="chq-pub-accent-link chq-pub-empty-escape"');
     expect(html).not.toContain('class="chq-btn chq-btn-primary"');
+  });
+
+  it('frame :1101 \'CFP closed\' (GET /submit/:eventSlug, closed window state) -- MATCHES: "The call for papers has closed" heading, submissions-closed body naming the event, one "Browse the sessions ›" link', async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1101 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">CFP closed</span>`
+    verbatimLine(
+      1101,
+      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">CFP closed</span>`,
+    );
+
+    // closeDate well in the past -> formWindowState resolves "closed"
+    // before any field/track select runs.
+    const CLOSED_FORM = { ...SUBMIT_FORM_ROW, closeDate: new Date(Date.UTC(2020, 0, 1)) };
+    const db = submitFakeDb([[SUBMIT_EVENT_ROW], [CLOSED_FORM]]);
+    const app = submitAppWithDb(db);
+    const res = await app.request(
+      "/submit/test-conf",
+      { headers: {} },
+      { ...SUBMIT_BINDINGS, KV: submitFakeKv() } as unknown as AppEnv["Bindings"],
+    );
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    expect(html).toContain('class="chq-pub-surface-title"');
+    expect(html).toContain("The call for papers has closed");
+    expect(html).toContain('class="chq-cfp-closed-body"');
+    expect(html).toContain("Submissions closed on");
+    expect(html).toContain("Thanks for your interest in DevFlow Conf 2027.");
+    const links = [...html.matchAll(/<a href="([^"]+)">([^<]*)<\/a>/g)];
+    expect(links).toHaveLength(1);
+    expect(links[0]![1]).toBe("/e/test-conf/sessions");
+    expect(html).toMatch(/Browse the sessions\s*(?:&rsaquo;|›)/);
+  });
+
+  it('frame :1211 \'Submit a talk · rejected on submit\' (POST /submit/:eventSlug, invalid submission) -- DIVERGES (dock note, DEC-902 wave-20 amendment, already adjudicated docs/design/audit/cfp-desktop-v12.md disposition (a)): the top-of-form summary and every typed answer MATCH; the rejected-state dock note is not error-state-aware', async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1211 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk · rejected on submit</span>`
+    verbatimLine(
+      1211,
+      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk · rejected on submit</span>`,
+    );
+
+    const db = submitFakeDb([[SUBMIT_EVENT_ROW], [SUBMIT_FORM_ROW], SUBMIT_FIELD_ROWS, [SUBMIT_TRACK_ROW]]);
+    const app = submitAppWithDb(db);
+
+    const OVER_LENGTH_DESC = "x".repeat(MAX_TEXT_LENGTH + 50);
+    const form = new FormData();
+    form.set(CSRF_COOKIE_NAME, SUBMIT_CSRF_TOKEN);
+    form.set("field__title", "");
+    form.set("field__description", OVER_LENGTH_DESC);
+    form.set("speaker_name", "Dana Whitmore");
+    form.set("field__email", "dana@example.com");
+    form.set("field__field_session_format", "Talk (30 min)");
+    // trackIds omitted -> "Pick one" track-missing error, making 3 problems.
+
+    const req = new Request("http://local/submit/test-conf", {
+      method: "POST",
+      headers: { cookie: `${CSRF_COOKIE_NAME}=${SUBMIT_CSRF_TOKEN}` },
+      body: form,
+    });
+    const res = await app.request(req, undefined, {
+      ...SUBMIT_BINDINGS,
+      KV: submitFakeKv(),
+      FILES: submitFakeFilesBucket(),
+    } as unknown as AppEnv["Bindings"]);
+    expect(res.status).toBe(400);
+    const html = await res.text();
+
+    // :1225/:1220 MATCHES verbatim -- exactly 3 problems produce exactly
+    // this spelled-count heading and reassurance line.
+    expect(html).toContain('class="chq-error-summary"');
+    expect(html).toContain("Three things need fixing before this can be sent");
+    expect(html).toContain("Nothing was lost. Everything you typed is still below.");
+    const anchors = [...html.matchAll(/<a class="chq-error-summary-link" href="#([^"]+)"/g)].map((m) => m[1]);
+    expect(anchors).toHaveLength(3);
+    for (const id of anchors) {
+      expect(html).toContain(`id="${id}"`);
+    }
+    expect(html).toContain(OVER_LENGTH_DESC);
+    expect(html).toContain("Dana Whitmore");
+    expect(html).toContain("dana@example.com");
+    // :1289-1290 dock persists.
+    expect(html).toContain("Submit this talk");
+    expect(html).toContain('class="chq-btn chq-btn-secondary chq-cfp-save-draft"');
+    expect(html).toContain("Save draft");
+    // DIVERGES (DEC-902 wave-20 amendment): the frame's own rejected-state
+    // dock note reads "Saving a draft skips these checks" (frame :1291);
+    // .chq-cfp-actions-note (submit-views.tsx) renders the fresh-form
+    // sentence unconditionally with no branch on errors/trackError. Named
+    // here, not fixed (desktop is frozen) -- already adjudicated in
+    // docs/design/audit/cfp-desktop-v12.md's :1211 section, disposition
+    // (a): a future lane should branch the note and adopt the frame's
+    // literal for the rejected state, in the same commit that moves the
+    // byte.
+    expect(html).toContain('class="chq-cfp-actions-note"');
+    expect(html).toContain("We email a confirmation with a link to your portal");
+    expect(html).not.toContain("Saving a draft skips these checks");
+  });
+
+  it('frame :1532 \'CFP not open yet · /submit/:slug\' (GET /submit/:eventSlug, not-yet-open window state) -- MATCHES (DESIGN-RULINGS "CFP -- the third window state"): heading leads with the open date, "You will not need an account.", one way-forward link', async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1532 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">CFP not open yet · /submit/:slug</span>`
+    verbatimLine(
+      1532,
+      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">CFP not open yet · /submit/:slug</span>`,
+    );
+
+    // openDate well in the future -> formWindowState resolves
+    // "not_yet_open" before any field/track query runs; the select queue
+    // after event/form is exactly one more call, getPriorPublicEvent's own
+    // lookup, returning no row so the way-forward link falls back to
+    // "Browse the sessions ›" (DEC-745 wave-33 amendment: the fallback
+    // half of the ruled contract, the half a zero-row fixture produces).
+    const NOT_YET_OPEN_FORM = { ...SUBMIT_FORM_ROW, openDate: new Date(Date.UTC(2099, 0, 1)) };
+    const db = submitFakeDb([[SUBMIT_EVENT_ROW], [NOT_YET_OPEN_FORM], []]);
+    const app = submitAppWithDb(db);
+    const res = await app.request(
+      "/submit/test-conf",
+      { headers: {} },
+      { ...SUBMIT_BINDINGS, KV: submitFakeKv() } as unknown as AppEnv["Bindings"],
+    );
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    expect(html).toContain('class="chq-pub-surface-title"');
+    expect(html).toContain("The call for papers opens on");
+    expect(html).toContain("You will not need an account.");
+    const links = [...html.matchAll(/<a href="([^"]+)">([^<]*)<\/a>/g)];
+    expect(links).toHaveLength(1);
+    expect(links[0]![1]).toBe("/e/test-conf/sessions");
+    expect(html).toMatch(/Browse the sessions\s*(?:&rsaquo;|›)/);
   });
 });

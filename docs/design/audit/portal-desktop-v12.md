@@ -287,9 +287,20 @@ sub-app mounted and asserts the returned HTML string's structure and order.
 
 - `:1101` (CFP closed), `:1211` (Submit a talk · rejected on submit), `:1532`
   (CFP not open yet) — the other three of the six `test/desktop-frames-
-  portal.test.ts` cites — remain **source-scan-only**, still open for a
-  future render-verdict lane (out of this task's scope, which named exactly
-  :1373/:1473/:1167).
+  portal.test.ts` cites — now carry real-request render verdicts too (DEC-976
+  wave-22 amendment), in `test/portal-desktop-frame-verdicts.test.ts` — the
+  file that already owns this section's shape. `:1101` MATCHES; `:1532`
+  MATCHES; `:1211` diverges on the rejected-state dock note only, the same
+  narrow gap this document's own task-w24-i section above (`## Frame :1211`)
+  and `docs/design/audit/cfp-desktop-v12.md`'s independent render (task
+  w26-g, `test/cfp-desktop-frame-verdicts.test.ts`) already found and
+  adjudicated under DEC-902's wave-20 amendment, disposition (a) — not new
+  debt. (Those two prior renders, task w24-i above in this same file and
+  task w26-g in `cfp-desktop-v12.md`, already carried real-request coverage
+  for all three of these frames before this amendment landed; this
+  amendment's receipt is a third, independent confirmation in the file this
+  document's own :1373/:1473/:1167 section names as the intended home for
+  it, not evidence the frames were previously unmeasured.)
 - `:28, :132, :249, :680, :730, :779, :894` — the seven non-portal public
   frames in this file — are claimed by `test/desktop-frames-public.test.ts`
   (also a source scan; not touched here).
