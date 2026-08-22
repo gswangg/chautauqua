@@ -155,6 +155,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   //     carrying no adjudicated exemption receipt -- Tier-2 geometry.
   "ROLE_LABEL_SPELLING_CEILING",
   "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
+  // wave-35 (DEC-808 wave-35 amendment): the public/portal 390 roster's
+  // CANDIDATE half is a defect count on a 390 route -- Tier-2 geometry,
+  // the same disposition ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING already
+  // carries for its admin twin, never OUT_OF_CAMPAIGN_SCOPE (unlike its
+  // mixed-total sibling PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING above).
+  "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING",
   // wave-30 (task v12m-w30-d, DEC-367 amendment): grounds the mobile
   // overflow probe's two escape hatches (inHorizontalScroller's ancestor
   // exclusion, KNOWN_CLIP_EXCEPTIONS) in the design pack --
@@ -279,6 +285,10 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // a declared-but-unread knob (DEC-851/DEC-988). Both read 0.
   "ROLE_LABEL_SPELLING_CEILING",
   "ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING",
+  // wave-35 (DEC-808 wave-35 amendment): wired into TIER2 in the same
+  // commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- a real
+  // 390-geometry defect count, never a declared-but-unread knob.
+  "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING",
   // wave-30 (task v12m-w30-d): wired into TIER2 in the same commit that
   // declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
   // declared-but-unread knob (DEC-851/DEC-988).
