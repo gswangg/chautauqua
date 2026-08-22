@@ -8,20 +8,24 @@ import type { ContactDetail, ContactListItem } from './types';
 // control that lies about two of its options ('reviewer' is an account
 // role, 'guest' has no representation in the data model).
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
-import { DEC_393, DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
+import { DEC_393, DEC_764, DEC_765, DEC_795, DEC_909 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { plural } from '../../lib/plural';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
-// Compile-checked dependency markers: no `Invited: <name>` prefill, the
-// title field is required before submit, and the confirmation names the
-// role actually chosen (DEC-764); role is threaded through to the POST
-// body (DEC-765). The Event select defaults to the event in context, and an
-// existing roster spot on the selected event is an advisory, never a block
-// (DEC-795).
+// Compile-checked dependency markers: no `Invited: <name>` prefill, and the
+// confirmation names the role actually chosen (DEC-764); role is threaded
+// through to the POST body (DEC-765). The Event select defaults to the
+// event in context, and an existing roster spot on the selected event is an
+// advisory, never a block (DEC-795). The session title itself is OPTIONAL
+// (DEC-909 wave-18 amendment clause a) -- this modal no longer refuses a
+// blank title client-side; the server never invents one and a typed title
+// that matches an existing session on this event joins it instead of
+// minting a duplicate.
 void DEC_764;
 void DEC_765;
 void DEC_795;
+void DEC_909;
 void DEC_393; // wave-17: the "As" role buttons (chq-btn chq-add-to-event-role-btn, below) reach `Chautauqua Contacts.dc.html`:602's own 46px desktop floor via contacts-panels.css
 
 interface EventOption {
@@ -40,8 +44,9 @@ export function AddToEventModal({ contact, onClose }: Props) {
   const { eventId: currentEventId } = useCurrentEvent();
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState('');
-  // DEC-764: no prefill -- a session title is something a person types, not
-  // something the modal invents on their behalf.
+  // DEC-764/DEC-909: no prefill -- a session title is something a person
+  // types, not something the modal invents on their behalf -- and, per
+  // DEC-909 wave-18 amendment clause (a), typing one is now optional.
   const [title, setTitle] = useState('');
   // DEC-714: default to the vocabulary's own first option ('speaker') --
   // never a bare string literal duplicating PARTICIPANT_ROLE_OPTIONS[0].
@@ -84,10 +89,6 @@ export function AddToEventModal({ contact, onClose }: Props) {
       setError('Select an event.');
       return;
     }
-    if (title.trim() === '') {
-      setError('Enter a session title.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -117,7 +118,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
             <button
               type="button"
               className="chq-btn chq-btn-primary"
-              disabled={busy || !eventId || title.trim() === ''}
+              disabled={busy || !eventId}
               onClick={confirm}
             >
               {alreadyOnRoster ? 'Add another session' : 'Add them'}
@@ -180,7 +181,12 @@ export function AddToEventModal({ contact, onClose }: Props) {
               ))}
             </div>
           </FormRow>
-          <FormRow label="Session title" htmlFor="add-to-event-title">
+          <FormRow
+            label="Session title"
+            htmlFor="add-to-event-title"
+            optional
+            help="Added as an accepted session on this event. No email is sent. A title matching an existing session joins it instead of creating a new one."
+          >
             <input
               id="add-to-event-title"
               className="chq-input"
@@ -200,9 +206,6 @@ export function AddToEventModal({ contact, onClose }: Props) {
               {plural(submissionsOnSelectedEvent.length, 'session')}
             </p>
           )}
-          <p className="chq-contacts-pipeline-caption">
-            This creates an accepted session on that event. No email is sent.
-          </p>
         </>
       )}
 

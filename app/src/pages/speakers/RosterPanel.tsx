@@ -19,6 +19,13 @@ import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 import { ParticipationMenu } from './ParticipationMenu';
 import type { InviteStatus, OnboardingRow } from './types';
+import { DEC_909 } from '../../../../src/decisions';
+
+// Compile-checked dependency marker: handleAddSpeaker's catch block below
+// folds any err.fields key FIELD_ORDER doesn't render (e.g. the
+// participant-cap refusal's `submissionId`) onto the top-of-form error line
+// instead of dropping it (DEC-909 wave-18 amendment clause c).
+void DEC_909;
 
 // DEC-958 (wave 58): every wire key POST /contacts's crud.ts validator can
 // name on this form's own submitted body (src/routes/api/contacts/crud.ts
@@ -191,7 +198,18 @@ function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
           setConflict(true);
           setError(err.message);
         } else if (err.fields && Object.keys(err.fields).length > 0) {
+          // DEC-909 wave-18 amendment clause (c): DEC-958 still seeds the
+          // WHOLE map into fieldErrors (every key stays available to
+          // fieldClassName/fieldAriaInvalid), but a key FIELD_ORDER doesn't
+          // render (e.g. the participant-cap refusal's `submissionId`) would
+          // otherwise vanish silently -- nothing here is a form control, so
+          // fold its message onto the same top-of-form line normal errors
+          // use rather than dropping it.
           setFieldErrors(err.fields);
+          const unrendered = Object.entries(err.fields).filter(([key]) => !(FIELD_ORDER as readonly string[]).includes(key));
+          if (unrendered.length > 0) {
+            setError(unrendered.map(([, message]) => message).join(' '));
+          }
         } else {
           setError(err.message);
         }

@@ -56,12 +56,16 @@ void DEC_290;
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY
 void DEC_466; // /contacts/duplicates bounded below via the blessed JS-slice (DEC-461(e))
 // Compile-checked dependency marker: POST /contacts/:id/add-to-event below
-// rejects a blank title rather than inventing one (DEC-764).
+// treats a blank/absent title as "" (DEC-909 wave-18 amendment clause a
+// makes it optional) -- the server still never INVENTS a title (no
+// 'Invited: <name>' fallback) and never DUPLICATES one, since the title
+// reaches attachOrCreateRosterSession rather than pushContactToEvent
+// directly (DEC-764, DEC-909).
 void DEC_764;
 // Compile-checked dependency marker: POST /contacts/:id/add-to-event below
 // validates role against PARTICIPANT_ROLE_OPTIONS and passes both role and
-// the owned contact row (never re-resolved by email) to pushContactToEvent
-// (DEC-765).
+// the owned contact row (never re-resolved by email) to
+// attachOrCreateRosterSession (DEC-765).
 void DEC_765;
 // Compile-checked dependency marker: POST /contacts below never invents a
 // `sessionTitle` -- an omitted/blank one stays "" rather than falling back
@@ -545,15 +549,17 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const event = await getEventForOrg(c.var.db, body.eventId, orgId);
     if (!event) throw new ApiError("not_found", "Event not found");
 
-    // DEC-764: the server no longer invents a title — a blank field is
-    // rejected rather than silently falling back to 'Invited: <name>'.
-    if (typeof body.title !== "string" || body.title.trim() === "") {
+    // DEC-909 wave-18 amendment clause (a): the title is optional -- a
+    // blank/absent field normalises to "" rather than being rejected. The
+    // server still never INVENTS a title (no 'Invited: <name>' fallback)
+    // and, per clause (b) below, never DUPLICATES one either.
+    if (body.title !== undefined && typeof body.title !== "string") {
       throw new ApiError("invalid", "Validation failed", { title: "required" });
     }
-    if (body.title.length > MAX_NAME_LENGTH) {
-      throw new ApiError("invalid", "Validation failed", { title: overCapFieldMessage(body.title.length, MAX_NAME_LENGTH) }); // DEC-417
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (title.length > MAX_NAME_LENGTH) {
+      throw new ApiError("invalid", "Validation failed", { title: overCapFieldMessage(title.length, MAX_NAME_LENGTH) }); // DEC-417
     }
-    const title = body.title;
 
     // DEC-765: role reaches participant.role, validated against the app's
     // own vocabulary (never a free-text value from the modal).
@@ -565,7 +571,10 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       role = body.role;
     }
 
-    const submissionId = await repo.pushContactToEvent(c.var.db, event.id, orgId, contact, title, role);
+    // DEC-909 wave-18 amendment clause (b): match-then-mint lives entirely
+    // inside repo.attachOrCreateRosterSession (ONE PREDICATE) -- the route
+    // never re-implements the exact-title lookup itself.
+    const submissionId = await repo.attachOrCreateRosterSession(c.var.db, event.id, orgId, contact, title, role);
     return c.json({ submissionId }, 201);
   });
 }

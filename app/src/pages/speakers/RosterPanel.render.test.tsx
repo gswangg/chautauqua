@@ -199,6 +199,33 @@ describe('RosterPanel', () => {
     });
   });
 
+  // DEC-909 wave-18 amendment clause (c): a refusal field key FIELD_ORDER
+  // doesn't render (the participant-cap refusal's `submissionId`, minted
+  // when a typed session title exact-matches an existing session that's
+  // already full) must not be dropped -- it folds onto the top-of-form
+  // error line, message intact, instead of rendering nothing.
+  describe('unrenderable field key (DEC-909 wave-18 amendment clause c)', () => {
+    it('surfaces the participant-cap refusal message on the top-of-form error line', async () => {
+      const capMessage = 'This session already has the maximum of 8 participants.';
+      apiPostMock.mockRejectedValueOnce(
+        new ApiError(400, 'invalid', capMessage, {
+          submissionId: capMessage,
+        }),
+      );
+
+      renderPanel({ mode: 'add', onClose: vi.fn(), onChanged: vi.fn() });
+      fillAddForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+      // The message is not dropped -- it renders on the top-of-form error
+      // line even though `submissionId` has no FormRow of its own.
+      expect(await screen.findByText(capMessage)).toBeInTheDocument();
+      // No ErrorSummary problem list -- `submissionId` isn't in FIELD_ORDER,
+      // so there is nothing to anchor a per-field link to.
+      expect(screen.queryByRole('link', { name: /submissionId/i })).not.toBeInTheDocument();
+    });
+  });
+
   // DEC-788 amendment (wave 8): the shared DuplicateEmailNotice forward path.
   describe('duplicate-email 409 forward path (DEC-788 amendment, wave 8)', () => {
     it('renders the existing person + open link + add-to-event affordance', async () => {

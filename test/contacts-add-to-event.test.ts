@@ -112,6 +112,10 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
+      // DEC-909 clause b's findSubmissionByExactTitle does
+      // .select().from(submission).where(...).orderBy(...).limit(1) --
+      // orderBy is a pass-through no-op, same as where, for this fake.
+      orderBy: () => chain,
       // DEC-111 amendment (waves 48 and 55): getOrCreateTask and
       // getOrCreateFormTaskForm both do insert-on-conflict-do-nothing-then-
       // select-limit(1) lookups keyed by (eventId, title); this fake ignores WHERE
@@ -298,32 +302,77 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
   });
 
-  it("400s a blank title instead of inventing one (DEC-764)", async () => {
-    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+  // DEC-909 wave-18 amendment clause (a): the title is now OPTIONAL -- a
+  // blank field normalises to "" and succeeds, rather than the 400 DEC-764
+  // used to require. The server still never INVENTS a title (no
+  // 'Invited: <name>' fallback).
+  it("succeeds with a blank title, minting a session with an empty title (DEC-909 wave-18 clause a)", async () => {
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
       jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "   " }),
     );
 
-    expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(json.error.fields).toEqual({ title: "required" });
-    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+    expect(res.status).toBe(201);
+    const submissionInsert = inserts.find((i) => i.table === schema.submission)!.vals as any;
+    expect(submissionInsert.title).toBe("");
+    expect(state.submission[0].status).toBe("accepted");
   });
 
-  it("400s a missing title", async () => {
-    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+  it("succeeds with a missing title, minting a session with an empty title (DEC-909 wave-18 clause a)", async () => {
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
       jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1" }),
     );
 
+    expect(res.status).toBe(201);
+    const submissionInsert = inserts.find((i) => i.table === schema.submission)!.vals as any;
+    expect(submissionInsert.title).toBe("");
+    expect(state.submission[0].status).toBe("accepted");
+  });
+
+  it("400s an over-cap title even though the field is optional", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "x".repeat(201) }),
+    );
+
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(json.error.fields).toEqual({ title: "required" });
     expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+  });
+
+  // DEC-909 wave-18 amendment clause (b): a second add with an EXACTLY
+  // matching title references the existing session instead of minting a
+  // duplicate -- match-then-mint lives inside
+  // repo.attachOrCreateRosterSession, not the route.
+  it("a second add with an exactly-matching title returns the SAME submissionId, minting no duplicate session (DEC-909 wave-18 clause b)", async () => {
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const first = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "Keynote: Ada" }),
+    );
+    expect(first.status).toBe(201);
+    const firstJson = (await first.json()) as { submissionId: string };
+    expect(state.submission).toHaveLength(1);
+
+    const second = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "Keynote: Ada" }),
+    );
+    expect(second.status).toBe(201);
+    const secondJson = (await second.json()) as { submissionId: string };
+
+    expect(secondJson.submissionId).toBe(firstJson.submissionId);
+    // Still exactly one session -- the second add attached a participant to
+    // the existing one instead of minting a duplicate.
+    expect(state.submission).toHaveLength(1);
+    const submissionInserts = inserts.filter((i) => i.table === schema.submission);
+    expect(submissionInserts).toHaveLength(1);
   });
 
   it("links the CRM contact by id -- a case/whitespace-differing email never mints a second contact row (DEC-765)", async () => {

@@ -283,13 +283,24 @@ shell has no mid-page-footer surface to sweep — the sweep is complete.
    session; related: "Add <name> to this event" creates a brand-new session
    from the typed title even when an identical one exists. Decide the
    roster-add-without-session story per the frames/DECs.
-   CLOSED (re-verified wave-140/w15-ff, DEC-909 wave-128): `app/src/pages/speakers/RosterPanel.tsx`
-   renders `<FormRow label="Title" htmlFor="roster-title" optional
-   error={fieldErrors.title}>` and its `help` copy states "A title matching
-   an existing session joins it instead of creating a new one." Pinned by
-   `RosterPanel.render.test.tsx`'s 'adds a speaker with no session title
-   typed: the field is optional and the add still succeeds' case, which
-   asserts `Session title` closest label reads `Session title · optional`.
+   Was marked CLOSED at wave-140/w15-ff citing DEC-909 wave-128, but that
+   ruling landed on `POST /contacts` (RosterPanel's own door) only — the
+   OTHER door, `POST /contacts/:id/add-to-event` (`AddToEventModal.tsx`),
+   still required a title both client- and server-side, and RosterPanel's
+   own refusal handler silently dropped the participant-cap refusal's
+   `submissionId` field key. DEC-909's wave-18 amendment (re-verified wave
+   22, main `27e4ae3b1`) ruled all three gaps; wave-22 task w22-f built them:
+   `src/routes/api/contacts/crud.ts`'s add-to-event route now calls
+   `repo.attachOrCreateRosterSession` (never `pushContactToEvent`) and
+   accepts a blank/absent title, `AddToEventModal.tsx` drops its client-side
+   title refusal and labels the field optional via `FormRow`, and
+   `RosterPanel.tsx`'s refusal handler folds any `err.fields` key
+   `FIELD_ORDER` can't render onto the top-of-form error line instead of
+   dropping it. CLOSED for real this time (wave 22, task w22-f) — pinned by
+   `test/contacts-add-to-event.test.ts`'s exact-title-match/blank-title
+   cases, `AddToEventModal.render.test.tsx`'s optional-field and
+   empty-title-submit cases, and `RosterPanel.render.test.tsx`'s
+   unrenderable-field-key case.
 5. Bulk-send wizard counts disagree across steps ("17 submissions selected"
    vs "19 recipients") — reconcile the counting vocabulary.
    CLOSED (re-verified wave-140/w15-ff): `app/src/pages/comms/ComposeWizard.tsx`

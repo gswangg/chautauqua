@@ -3,10 +3,12 @@
 // and the chosen role is what POST /contacts/:id/add-to-event sends. The
 // old hardcoded explanatory sentence is gone.
 //
-// DEC-764: the title field starts empty (no `Invited: <name>` prefill),
-// 'Add them' is disabled until a title is typed, the dialog states its
-// no-email consequence up front, and the success copy names the role
-// actually chosen.
+// DEC-764/DEC-909: the title field starts empty (no `Invited: <name>`
+// prefill), the success copy names the role actually chosen. DEC-909
+// wave-18 amendment clause (a): the title is now OPTIONAL -- 'Add them' is
+// never disabled by an empty/blank title, and the field is labelled
+// optional through FormRow (mirroring RosterPanel's own idiom) rather than
+// this modal refusing the submit client-side.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -70,12 +72,15 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     const firstOptionButton = screen.getByRole('button', { name: PARTICIPANT_ROLE_OPTIONS[0]!.label });
     expect(firstOptionButton).toHaveAttribute('aria-pressed', 'true');
 
-    // DEC-764: the factual no-email/creates-a-session sentence is present.
-    expect(screen.getByText(/creates an accepted session on that event/i)).toBeInTheDocument();
+    // DEC-909 wave-18 amendment clause (a): the factual no-email/added-as-
+    // a-session sentence now lives in the Session title field's help text
+    // (mirroring RosterPanel's own idiom verbatim), which also names the
+    // exact-title-match behaviour.
+    expect(screen.getByText(/added as an accepted session on this event/i)).toBeInTheDocument();
     expect(screen.getByText(/no email is sent/i)).toBeInTheDocument();
   });
 
-  it('starts with no title prefill and disables Add them until a title is typed (DEC-764)', async () => {
+  it('starts with no title prefill and labels the field optional, never disabling Add them for a blank title (DEC-764/DEC-909)', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
@@ -91,18 +96,52 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
-    const titleInput = screen.getByLabelText('Session title') as HTMLInputElement;
+    const titleInput = screen.getByLabelText(/Session title/) as HTMLInputElement;
     expect(titleInput.value).toBe('');
     expect(titleInput).not.toHaveValue('Invited: Priya Raman');
 
+    // DEC-909 wave-18 amendment clause (a): 'Add them' is enabled from the
+    // start -- an empty/blank title is a legitimate submission, never a
+    // client-side refusal.
     const addButton = screen.getByRole('button', { name: 'Add them' });
-    expect(addButton).toBeDisabled();
-
-    fireEvent.change(titleInput, { target: { value: 'Keynote: Priya' } });
     expect(addButton).not.toBeDisabled();
 
     fireEvent.change(titleInput, { target: { value: '   ' } });
-    expect(addButton).toBeDisabled();
+    expect(addButton).not.toBeDisabled();
+
+    fireEvent.change(titleInput, { target: { value: 'Keynote: Priya' } });
+    expect(addButton).not.toBeDisabled();
+  });
+
+  it('submits with an empty title (DEC-909 wave-18 amendment clause a)', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
+      'POST /api/v1/contacts/ct-1/add-to-event': { status: 201, body: { submissionId: 'sub-1' } },
+    });
+
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'View in Speakers' })).toBeInTheDocument();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/ct-1/add-to-event'),
+    );
+    expect(call).toBeDefined();
+    const body = JSON.parse((call![1] as RequestInit).body as string);
+    expect(body.title).toBe('');
   });
 
   it('sends the chosen role in the POST body and names it in the success copy', async () => {
@@ -124,7 +163,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
 
     const nonDefault = PARTICIPANT_ROLE_OPTIONS[1]!;
     fireEvent.click(screen.getByRole('button', { name: nonDefault.label }));
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Panel: Priya' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Panel: Priya' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
 
     await waitFor(() => {
@@ -161,7 +200,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Keynote: Priya' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Keynote: Priya' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
 
     await waitFor(() => {
@@ -240,7 +279,7 @@ describe('AddToEventModal advisory when the contact already has a submission on 
     expect(screen.getByRole('button', { name: 'Add another session' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add them' })).not.toBeInTheDocument();
     // Never blocked: the primary action stays enabled once a title exists.
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Second talk' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Second talk' } });
     expect(screen.getByRole('button', { name: 'Add another session' })).not.toBeDisabled();
   });
 
