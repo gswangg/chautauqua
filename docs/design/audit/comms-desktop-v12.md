@@ -44,8 +44,9 @@ not a frame this document owes a verdict on.
 
 ## Frame `:222` "Templates" (1600)
 
-**MATCHES**, with one additive structural DIVERGES noted below. Entered via
-`?tab=templates`.
+**MATCHES**, with one additive structural DIVERGES noted below, governed by
+DEC-902 wave-8 (a frame's control list is a floor, not a ceiling). Entered
+via `?tab=templates`.
 
 - The drill head (frame :229, `Templates` H1) MATCHES: breadcrumb "‹ Comms",
   H1 "Templates", and a "New template" primary render inside
@@ -57,7 +58,8 @@ not a frame this document owes a verdict on.
   (`TemplatesTab.tsx`'s `.chq-comms-templates-table`). Same content, same
   reading order, a more semantic DOM shape than the frame drew — filed as a
   DIVERGES per this task's mandate to record any structural mismatch, not
-  because it is a defect.
+  because it is a defect — an additive control the tree draws beyond the
+  frame's own list, blessed by DEC-902 wave-8.
 - Opening Templates MATCHES the frame's own assumption (frame :250,
   `Acceptance` eyebrow): the editor auto-selects the first saved template
   (`TemplatesTab.tsx`'s DEC-890 amendment-4 effect), with "Duplicate"
@@ -79,8 +81,9 @@ not a frame this document owes a verdict on.
 ## Frame `:360` "Compose · step 1 of 4" (1600)
 
 **DIVERGES** on the frame's own demo STATE (default selection), MATCHES on
-structure. Entered via `?tab=compose` (the default tab, `ComposeWizard`'s
-real first step).
+structure — governed by DEC-902 wave-9 (demo-state and pill-count rows) and
+DEC-967 ("frame sample data is not product copy"). Entered via
+`?tab=compose` (the default tab, `ComposeWizard`'s real first step).
 
 - The step strip (frame :375, `Recipients`/`Template`/`Preview`/`Send`)
   MATCHES in title and order.
@@ -93,7 +96,9 @@ real first step).
   selected submissions.") until a row is checked. This is a genuine, if
   cosmetic, divergence between the frame's populated demo state and the
   app's actual cold-start state — not a defect (selecting-then-composing is
-  the product's real flow), filed here per the mandate.
+  the product's real flow), filed here per the mandate — blessed by
+  DEC-902 wave-9 (demo-state row) and DEC-967 (frame sample data is not
+  product copy).
 - The question head (frame :404, "Nothing sends until step 4") MATCHES
   verbatim, beside the "Who is this going to?" `<h2>`.
 - **DIVERGES**: the frame draws exactly THREE status filter pills —
@@ -102,7 +107,8 @@ real first step).
   `Decline queue`, `Accepted`, `Declined`, `Waitlisted`) as pills — an
   already-established, cross-surface vocabulary choice (every status pill
   filter in the product renders the full pipeline, not a decided-only
-  subset), not new debt.
+  subset), not new debt — the pill-count row DEC-902 wave-9 blesses by name
+  (removing three would remove filtering).
 - The recipient table (frame :425, column order checkbox/Submission/
   Speaker/Status/Slot) MATCHES in order — the tree's own header reads
   "Speakers" (plural) where the frame prints "Speaker" (singular), a
@@ -114,8 +120,10 @@ real first step).
 ## Frame `:544` "Comms · nothing sent yet" (1600, fresh empty state)
 
 **MATCHES** on every text/structure claim the frame draws inside its own
-1600px shell; **DIVERGES (additively)** on what surrounds that shell.
-Entered via `?tab=compose` with an all-time-empty batch list and zero
+1600px shell; **DIVERGES (additively)** on what surrounds that shell,
+governed by DEC-902 wave-8 (the always-present tablist is an additive
+control the frame's own shell never drew, blessed as a floor-not-ceiling
+row). Entered via `?tab=compose` with an all-time-empty batch list and zero
 seven-day totals (Comms.tsx's own `isFreshEmpty` two-signal check).
 
 - The head subtitle (frame :571, "No sends on this event") MATCHES
@@ -182,9 +190,9 @@ mount).
 
 | Frame | Verdict |
 | --- | --- |
-| :222 Templates (1600) | MATCHES (one additive, cosmetic table-vs-div DIVERGES) |
-| :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3); structurally MATCHES |
-| :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop) |
+| :222 Templates (1600) | MATCHES (one additive, cosmetic table-vs-div DIVERGES, DEC-902 wave-8) |
+| :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3), DEC-902 wave-9 + DEC-967; structurally MATCHES |
+| :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop), DEC-902 wave-8 |
 | :589 Comms · history (1600) | CLOSED-with-receipt (DEC-964 wave-8, task w8-a): MATCHES on page chrome (no page-level Comms H1/tablist at any width) and inside the frame's own shell |
 
 All four frames render successfully through the real route with no

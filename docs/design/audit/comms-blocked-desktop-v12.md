@@ -15,9 +15,11 @@ where a real divergence is found below.
 
 ## Frame :750 "Compose · send blocked"
 
-**DIVERGES.** Entered via `ComposeWizard` at the `preview` step, with
-`attachIcs` toggled on against a fixture where some selected recipients'
-submissions are not yet scheduled.
+**DIVERGES.** Governed by the DEC-660 wave-148 comment cited below (the
+cause-substitution finding this section documents). Entered via
+`ComposeWizard` at the `preview` step, with `attachIcs` toggled on against
+a fixture where some selected recipients' submissions are not yet
+scheduled.
 
 - The frame draws this as a distinct, page-level state: a `<h1>Check before
   sending</h1>` beside a `"N recipients"` caption (frame :763-764), inside
@@ -110,7 +112,7 @@ under the desktop freeze to make it "MATCH."
 
 | Frame | Verdict |
 | --- | --- |
-| :750 Compose · send blocked | DIVERGES (real cause substitution + table→list shape; population-naming and 3-button footer both hold) |
+| :750 Compose · send blocked | DIVERGES (real cause substitution + table→list shape; population-naming and 3-button footer both hold), DEC-660 wave-148 |
 | :686 What each template renders | RESOLVED-BY-RULING (DEC-976, wave 9) — see DEVIATIONS.md §8, "documents a vocabulary, not a rendered screen" |
 | :712 DevFlow Conf 2027 (template card body) | RESOLVED-BY-RULING (DEC-976, wave 9) — same finding as :686; the one interpolation fact it demonstrates is real |
 
