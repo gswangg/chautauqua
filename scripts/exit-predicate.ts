@@ -684,6 +684,17 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-30 (task v12m-w30-d, DEC-367 amendment): grounds the mobile
+  // overflow probe's two escape hatches (inHorizontalScroller's ancestor
+  // exclusion, KNOWN_CLIP_EXCEPTIONS) in the design pack --
+  // UNGROUNDED_SCROLLER_CEILING grades every `overflow-x/overflow:
+  // auto|scroll` declaration with no docs/design/*.dc.html frame drawing
+  // that scrolling region; STALE_CLIP_EXCEPTION_CEILING re-verifies each
+  // KNOWN_CLIP_EXCEPTIONS member still names a real, genuinely-truncating
+  // rule (DEC-725: an in-code exemption's premise rots like an allowlist)
+  // (test/horizontal-scroller-premise.scan.test.ts).
+  "UNGROUNDED_SCROLLER_CEILING",
+  "STALE_CLIP_EXCEPTION_CEILING",
 ];
 
 /**
@@ -782,6 +793,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // declared-but-unread knob (DEC-851/DEC-988).
   "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
   "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  // wave-30 (task v12m-w30-d): wired into TIER2 in the same commit that
+  // declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "UNGROUNDED_SCROLLER_CEILING",
+  "STALE_CLIP_EXCEPTION_CEILING",
 ];
 
 /**
