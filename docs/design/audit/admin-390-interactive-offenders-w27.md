@@ -190,7 +190,7 @@ Measured total: **77**
 Exactly at the new ceiling of 77 (DEC-393). Ceiling lowered from 79 to 77 —
 the RE-MEASURED total after this task's (DEC-393, v12m-w11-tc)
 `.chq-auth-back` fix, never a guess or an arithmetic subtraction
-(`scripts/render-sweep-lib.ts:558`,
+(`scripts/render-sweep-lib.ts`
 `ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`).
 
 - **EXEMPT** (idioms 1-3, rows 1-10, 12): **66** (1+25+30+1+1+1+1+1+3+1+2).
