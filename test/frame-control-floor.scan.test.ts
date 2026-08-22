@@ -144,6 +144,27 @@
 //    ruling is explicit that a new non-zero row in the exit gate would move
 //    the campaign's goalposts mid-convergence.
 //
+// WAVE 23 (DEC-393 amendment, task w23-g): a composed-label resolution
+// tier, shared with the desktop half via test/helpers/composed-label-
+// resolve.ts (DEC-613: one join, not two) and consulted ONLY when the
+// own-text tier above finds no match at all. Every exported string-
+// returning helper under src/domain/*-copy.ts and app/src/lib/*-
+// vocabulary.ts (readdirSync-derived, never hand-listed) whose returned
+// template literal carries a `${...}` hole is decomposed into its fixed
+// text segments; a drawn label resolves ONLY when it matches exactly ONE
+// helper AND that helper has exactly ONE call site in the whole corpus
+// shaped as its own text (two helpers or two call sites is left
+// UNRESOLVED, deliberately not unioned -- see that module's own header).
+// Re-measured on this branch (forcing UNRESOLVED_COUNT_TRIPWIRE to -1):
+// the tier resolves 2 of the 111 no-label-match rows -- both "Move
+// DFC-047 to 11:30" (Chautauqua Agenda.dc.html:171, Chautauqua
+// Overview.dc.html:276), via schedule-copy.ts's conflictMoveLabel, to
+// PhoneAgenda.tsx's ONE call site (`chq-phone-slot-clash-move`), declared
+// 44px, exactly matching both frames' own drawn 44px floor -- both grade
+// OK, zero new offenders. FRAME_FLOOR_DIVERGENCE_CEILING stays 0.
+// UNRESOLVED_COUNT_TRIPWIRE lowered 111 -> 109. Full receipt in
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 23" section.
+//
 // PORTING NOTE (wave 25): `ownTextEquals`/`allBoundaryMatches`/
 // `classTokensNear` are copied (not imported) from
 // test/desktop-control-floor.scan.test.ts even though that file exports
@@ -177,6 +198,7 @@ import {
   topLevelRulesWithExemption,
 } from '../app/src/phone-tap-target-scan/core';
 import { extractCssTsLiteral, sanitizeCommentBraces } from '../app/src/phone-overflow-scan/population';
+import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -438,6 +460,14 @@ const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
 const SOURCE_FILE_PATHS = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_BLOBS: string[] = SOURCE_FILE_PATHS.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
 
+// -- Composed-label resolution tier (DEC-393 wave-23 amendment; task w23-g)
+// -- consulted ONLY when the own-text tier above finds no match for a
+// label at all. See test/helpers/composed-label-resolve.ts's own header
+// for the full algorithm and honesty clauses; that module is the ONE place
+// this join lives, shared byte-for-byte with the desktop half. -----------
+
+const COMPOSED_HELPERS: ComposedHelper[] = discoverComposedHelpers(join(SRC_ROOT, 'domain'), join(APP_SRC_ROOT, 'lib'));
+
 function isAlnum(ch: string | undefined): boolean {
   return ch !== undefined && /[A-Za-z0-9]/.test(ch);
 }
@@ -667,6 +697,10 @@ interface Graded {
   resolvedHeight: number | undefined;
   reason: RowReason;
   tokens: string[];
+  /** WAVE 23 (DEC-393 amendment): which tier resolved this row's tokens --
+   * not part of the grading grammar itself, carried through for the
+   * ledger's own reporting. */
+  matchTier: 'own-text' | 'composed' | null;
 }
 
 /** WAVE 25 REPAIR (DEC-393 amendment, task w25-b): resolves the token set
@@ -691,11 +725,22 @@ function gradeControl(control: DrawnControl): Graded {
   }
   tokens = [...new Set(tokens)].filter((t) => t.startsWith('chq-'));
 
+  let matchTier: Graded['matchTier'] = ownTextMatched ? 'own-text' : null;
   if (!ownTextMatched) {
-    return { control, resolvedHeight: undefined, reason: 'no-label-match', tokens };
+    // WAVE 23 (DEC-393 amendment): composed-label tier, consulted ONLY when
+    // the own-text tier found no match anywhere in the corpus.
+    const composed = resolveComposedLabel(control.label, COMPOSED_HELPERS, NORMALIZED_BLOBS, classTokensNear);
+    if (composed !== null) {
+      tokens = composed.tokens;
+      matchTier = 'composed';
+    }
+  }
+
+  if (matchTier === null) {
+    return { control, resolvedHeight: undefined, reason: 'no-label-match', tokens, matchTier: null };
   }
   if (tokens.length === 0) {
-    return { control, resolvedHeight: undefined, reason: 'no-token', tokens };
+    return { control, resolvedHeight: undefined, reason: 'no-token', tokens, matchTier };
   }
 
   let best: number | undefined;
@@ -708,12 +753,12 @@ function gradeControl(control: DrawnControl): Graded {
     if (tokenIsControlShaped(t)) anyControlShaped = true;
   }
   if (!anyRule) {
-    return { control, resolvedHeight: undefined, reason: 'no-rule', tokens };
+    return { control, resolvedHeight: undefined, reason: 'no-rule', tokens, matchTier };
   }
   if (!anyControlShaped) {
-    return { control, resolvedHeight: undefined, reason: 'no-control-shape', tokens };
+    return { control, resolvedHeight: undefined, reason: 'no-control-shape', tokens, matchTier };
   }
-  return { control, resolvedHeight: best ?? 0, reason: 'resolved', tokens };
+  return { control, resolvedHeight: best ?? 0, reason: 'resolved', tokens, matchTier };
 }
 
 const GRADED: Graded[] = ALL_CONTROLS.map(gradeControl);
@@ -741,7 +786,14 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // on this branch the same way. See the audit doc for the wave-25
 // no-label-match/no-token/no-rule/no-control-shape breakdown.
 // Lowered wave-13-xb (DEC-613): re-measured at 111, was stale at 112.
-export const UNRESOLVED_COUNT_TRIPWIRE = 111;
+// Lowered wave-23-g (DEC-393 amendment): the composed-label tier
+// (test/helpers/composed-label-resolve.ts) resolves 2 of the 111
+// no-label-match rows -- both "Move DFC-047 to 11:30"
+// (Chautauqua Agenda.dc.html:171, Chautauqua Overview.dc.html:276), via
+// schedule-copy.ts's conflictMoveLabel, to chq-phone-slot-clash-move
+// (PhoneAgenda.tsx's ONE call site), declared 44px >= both frames' drawn
+// 44px -- both grade OK, zero new offenders. Re-measured at 109, was 111.
+export const UNRESOLVED_COUNT_TRIPWIRE = 109;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
