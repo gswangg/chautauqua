@@ -2253,6 +2253,23 @@ select:focus-visible,
     padding: 14px 16px;
   }
 
+  /* DEC-576 wave-22 amendment (shell header 390 lane, w22-e): every admin
+     390 frame draws the wordmark at 20px, not the desktop 22px --
+     Settings.dc.html:278, Submissions.dc.html:140, Content.dc.html:201/250,
+     Contacts.dc.html:182 all agree byte-for-byte
+     (`font-size:20px; ... position:relative; top:-2.5px`), and the
+     wordmark's own DEC-991 comment above already states the matching
+     optical-nudge value for that size ("-3px at 22px, -2.5px at 20px, -2px
+     at 17px") -- this applies the existing scale, it does not invent a new
+     nudge. Scoped to `.chq-header .chq-wordmark` (not the bare class) per
+     this wave's merge-train note, so the edit stays inside `.chq-header*`
+     territory and cannot collide with an unrelated chipstrip fix landing
+     the same wave. */
+  .chq-header .chq-wordmark {
+    font-size: 20px;
+    top: -2.5px;
+  }
+
   /* v12m-w3-review (probe: /admin/review/plans/:id/submissions/:id at 390
      measured documentElement.scrollWidth 422 against clientWidth 390 --
      +32, the overflowing nodes being `span.chq-user-identity` (right edge

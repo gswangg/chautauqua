@@ -19,8 +19,8 @@ hand-listing) and verdicted.
 
 | Frame line | Drawn literal / element | Verdict | Notes |
 |---|---|---|---|
-| :278 | `chautauqua` wordmark span | **NOT INSTRUMENTABLE HERE** | Owned by the app shell, app/src/App.tsx`Header()`'s `chq-header` > `chq-wordmark`, not `SettingsPage`. A real mount of `SettingsPage` alone — the harness this task is bound to reuse — mints neither `.chq-header` nor `.chq-wordmark` (confirmed by the receipt's own negative assertion). No Settings-cluster real-mount test wraps `SettingsPage` in the shell `Header`, so this literal has no page-scoped receipt to give; it needs a shell-level (`App.tsx`) frame verdict, out of this lane's owned-file scope. |
-| :279 | right-flushed event-name span (`DevFlow 2027` sample) | **NOT INSTRUMENTABLE HERE** | Same shell ownership as :278 — `App.tsx`'s `Header()` renders `<EventSwitcher />` in the identity slot, not a bare span; also out of scope for a `SettingsPage`-only real mount. |
+| :278 | `chautauqua` wordmark span | **VERDICTED AT THE SHELL** | Owned by the app shell, `App.tsx`'s `Header()` (`chq-header` > `chq-wordmark`), not `SettingsPage` — a real mount of `SettingsPage` alone mints neither class. Per `src/decisions-data/DEC-576.md`'s `## Amendment (wave 22)`, this band is verdicted ONCE at the shell rather than per page; see docs/design/audit/shell-header-390-v12.md`Verdict table` (DIVERGES-fixed: the wordmark's phone-width 20px/-2.5px pair was missing and is now landed). |
+| :279 | right-flushed event-name span (`DevFlow 2027` sample) | **VERDICTED AT THE SHELL** | Same shell ownership as :278 — `App.tsx`'s `Header()` renders `<EventSwitcher />` in the identity slot, not a bare span. Verdicted at the shell per the same DEC-576 amendment; see docs/design/audit/shell-header-390-v12.md`the divergence` (DIVERGES-blessed: the control substitutes for the frame's plain span, a substitution DEC-576's own base ruling already blessed at every width, not a new call made here). |
 | :281 | H1 `Settings` at the 27px cluster-landing register | **MATCHES** | Real mount: `getByRole('heading', {name:'Settings', level:1})` carries class `chq-page-title` only — never `chq-settings-drill-title` (the 26px drill twin), and the page wrapper carries `data-drilled="false"`. settings.css's phone layer (CSS companion, below) confirms no `.chq-page-title` rule outside `[data-drilled='true']` sets 26px, so the un-drilled H1 falls through to `styles.css`'s shared `--chq-type-page-title-phone-size: 27px` — the cluster-landing register, not the drill register. |
 | :285-293 | one row per `mobileGroups` entry: 16px/600 label, `Open` (13px/700, brand-olive), 13px muted detail line | **MATCHES** | `SettingsPage`'s `SECTIONS` array is `mobileGroups`. Row count in the real mount equals `SECTIONS.length` (7, derived from the population, never a hand-listed number — DEC-180). Every row carries its section's `label`/`detail` text (graded by SHAPE per DEC-967, not pinned) on classes `chq-settings-rail-link-label`/`-detail`, and an `Open` span (`chq-settings-rail-link-open`) sharing the label's baseline row wrapper (`chq-settings-rail-link-row`), distinct from the detail line beneath it — same order the frame draws. |
 | :295 | closing sentence `Embed codes are easier to copy on a laptop` | **MATCHES** | Real mount: renders as a `<p className="chq-settings-rail-note">`, plain text — no `role`, no `disabled`/`aria-disabled` attribute, not nested in a `button`/`a`/`[role=button]`. Confirms the DEC-032 ruling directly (the disabled token's two legal uses — inert control, drag handle — apply to neither this nor any other reading of the sentence). |
@@ -29,15 +29,16 @@ hand-listing) and verdicted.
 
 ## Summary
 
-Five of seven drawn regions **MATCH**. Two (:278 wordmark, :279 event name)
-are **not instrumentable from within this lane's owned real-mount** because
-they are drawn by the app shell (`App.tsx`'s `Header()`), a file outside
-this task's scope and outside `SettingsPage`'s own render tree — not a
-product defect, a scope boundary of "mount the page, not the shell." A
-future shell-level frame-verdict lane (e.g. covering `App.tsx`'s `Header`
-across every page it wraps) is the correct owner of a receipt for :278/:279;
-this doc records the gap rather than silently marking those two rows
-MATCHES on a citation the render harness cannot actually give (DEC-976).
+Five of seven drawn regions **MATCH** from this lane's own `SettingsPage`
+real mount. Two (:278 wordmark, :279 event name) are owned by the app
+shell (`App.tsx`'s `Header()`), outside `SettingsPage`'s own render tree —
+not a product defect, a scope boundary of "mount the page, not the shell."
+Task w22-e (`src/decisions-data/DEC-576.md`'s `## Amendment (wave 22)`)
+closed that gap with the shell-level receipt this doc's table now cites
+for both rows, so no row in this document is left recording an unowned
+scope hole (DEC-976: a receipt the render harness cannot actually give is
+never silently marked MATCHES; it is now cited to the receipt that CAN
+give it).
 
 No DIVERGES rows (DEC-099 wave-14m clause 1: this sentence records the
 absence of a divergence): every literal this lane could instrument through
