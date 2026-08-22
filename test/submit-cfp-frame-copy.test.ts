@@ -155,7 +155,7 @@ describe("GET /submit/:eventSlug — frame 10--14 copy batch (w5-c)", () => {
   it("has a visible 'Create an account' affordance linking a real anchor on the page, not a dead control", async () => {
     const body = await getSubmitPage();
     expect(body).toContain("Create an account");
-    expect(body).toContain('<a href="#chq-cfp-submit-form">Create an account</a>');
+    expect(body).toContain('<a class="chq-cfp-intro-cta-link" href="#chq-cfp-submit-form">Create an account</a>');
     expect(body).toContain('<form id="chq-cfp-submit-form"');
   });
 

@@ -622,12 +622,22 @@ export function SubmitPage(props: {
               to the real mechanism (the form below, whose Name/Email
               fields are what actually mints the account on submit) rather
               than a dead control pointing at a route that doesn't exist. */}
-          {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
-              w17-e): "Create an account" is a phrase inside a sentence, not
-              a standalone control -- a 44px box would break the line box it
-              lives in. No declaration. */}
+          {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment
+              (task w35-b): the wave-30 "phrase inside a sentence" premise
+              was unverifiable (no companion class named). Re-grounded per
+              the wave-35 ladder: neither the desktop nor the 390 "Submit a
+              talk" frame extent (Chautauqua Public and Portal.dc.html
+              :891-1010 / :1017-1065) draws "Create an account" as a
+              standalone control or a same-surface floored twin reaching
+              #chq-cfp-submit-form (rung 1/2 both fail), so this is recorded
+              as DEVIATIONS.md §9's first entry (rung 3) rather than left
+              silent. The anchor now carries its own class token (DEC-996
+              wave-35: chq-cfp-intro-cta-link, no leading dot here -- a
+              dotted literal reads as a grounding claim to this file's own
+              scan, which this receipt deliberately is not), so the
+              exemption is reachable by an instrument. */}
           <p class="chq-cfp-intro-cta">
-            New speaker? <a href="#chq-cfp-submit-form">Create an account</a> by submitting your talk below — we'll
+            New speaker? <a class="chq-cfp-intro-cta-link" href="#chq-cfp-submit-form">Create an account</a> by submitting your talk below — we'll
             email you a link to set a password when you're done.
           </p>
         </div>
@@ -780,11 +790,20 @@ export function SubmitPage(props: {
         {/* w5-c: the "already have an account?" identity note renders
             ONCE, here at the bottom of the page -- the intro above no
             longer duplicates it (see introLede/chq-cfp-intro-cta). */}
-        {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
-            w17-e): a phrase inside a sentence, not a standalone control. No
-            declaration. */}
+        {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment
+            (task w35-b): re-grounded per the wave-35 ladder. Neither the
+            desktop nor the 390 "Submit a talk" frame extent (Chautauqua
+            Public and Portal.dc.html :891-1010 / :1017-1065) draws "Sign in
+            to the speaker portal" as a standalone control, and this page
+            carries no other floored control reaching /login (rung 1/2 both
+            fail) -- recorded as DEVIATIONS.md §9's second entry (rung 3).
+            The anchor now carries its own class token (DEC-996 wave-35:
+            chq-cfp-identity-note-link, no leading dot here -- a dotted
+            literal reads as a grounding claim to this file's own scan,
+            which this receipt deliberately is not), so the exemption is
+            reachable by an instrument. */}
         <p class="chq-cfp-identity-note">
-          Already have an account? <a href="/login">Sign in to the speaker portal</a> &rsaquo;
+          Already have an account? <a class="chq-cfp-identity-note-link" href="/login">Sign in to the speaker portal</a> &rsaquo;
         </p>
         <FieldRulesScript fields={fields} />
         <CfpStepsScript />

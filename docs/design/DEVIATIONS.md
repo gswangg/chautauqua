@@ -1090,3 +1090,40 @@ DIVERGES rows for this same population cite this subsection.
   two clauses to state both outcomes truthfully rather than continue
   asserting the frame's now-disproven unconditional case. DEC-380 governs:
   the frame's prose asserted behaviour the code (correctly) forbids.
+## 10. Wave 35 rulings (DEC-393 wave-35 amendment): ungrounded inline-prose tap-floor links
+
+DEC-393's wave-35 amendment rules that an `inline-in-prose` tap-floor
+exemption is a GROUNDING claim, repaired down a three-rung ladder (floor /
+same-surface floored twin / DEVIATIONS) when it can't be grounded. The three
+entries below are the rung-3 outcomes for the wave-35 roster's three
+ungrounded links — in each case the pack draws no standalone control and no
+same-surface floored twin for the link's destination, so the box stays
+running-prose typography and the deviation is recorded rather than left
+silent (DEC-996 wave-35: each anchor now also carries its own `chq-` class
+token, so the receipt is reachable by an instrument).
+
+- **CFP "New speaker? Create an account" — `src/routes/public/submit-views.tsx`
+  (`.chq-cfp-intro-cta-link`).** Neither `docs/design/Chautauqua Public and
+  Portal.dc.html:891-1010` (desktop "Submit a talk · /submit/:slug") nor
+  `:1017-1065` (the 390 "Submit a talk" frame) draws a "Create an account"
+  control anywhere in its extent — both frames go straight from the page
+  header into the talk-fields form with no such affordance, drawn or
+  implied. There is no same-surface floored control reaching
+  `#chq-cfp-submit-form` either (the form's own action buttons go to
+  different destinations). Rung 1 and rung 2 both fail; the link stays
+  inline prose at its line-box height. DEC-393 wave-35 amendment (task
+  w35-b).
+- **CFP "Already have an account? Sign in to the speaker portal" —
+  `src/routes/public/submit-views.tsx` (`.chq-cfp-identity-note-link`).**
+  Same two frame extents (`:891-1010` / `:1017-1065`) draw no "Sign in"
+  control, and the page carries no other floored control reaching `/login`.
+  Rung 1 and rung 2 both fail for the identical reason as the entry above.
+  DEC-393 wave-35 amendment (task w35-b).
+- **Docs "/login" reference — `src/routes/docs.tsx` (`.chq-docs-auth-link`).**
+  `/docs/api` has no v12 frame of any kind — grepping every `.dc.html` file
+  for "docs/api", "Authentication" and "Bearer" finds no hits, and the
+  route's own header comment records that GET /docs/api is one of three
+  operator "chrome" surfaces (DEC-382) rather than a designed screen. With
+  no frame to draw from, rung 1 and rung 2 both fail by construction; the
+  reference-page prose link stays unfloored. DEC-393 wave-35 amendment (task
+  w35-b).

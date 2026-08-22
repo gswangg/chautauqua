@@ -56,8 +56,22 @@ function DocsPage() {
             <p>Two ways to authenticate against the API:</p>
             <ul>
               <li>
-                <strong>Session cookie</strong> — log in via the browser at <a href="/login">/login</a>; the admin
-                SPA and its JSON calls use the resulting session cookie automatically.
+                {/* DEC-393 wave-35 amendment (task w35-b): "/login" here is a
+                    reference-page prose link, not a standalone control --
+                    /docs/api has no v12 frame at all (DEC-382: this page is
+                    operator chrome, not a designed screen), so the wave-35
+                    ladder's rung 1/2 both fail for want of anything to draw
+                    from. Recorded as DEVIATIONS.md §9's third entry (rung
+                    3). No `tap-floor-exempt:` receipt: that grammar is the
+                    tap-floor-exempt-premise instrument's own population
+                    (test/tap-floor-exempt-premise.scan.test.ts), scoped to
+                    receipts it can check a companion-class premise for --
+                    this deviation has no companion class to name. */}
+                <strong>Session cookie</strong> — log in via the browser at{" "}
+                <a class="chq-docs-auth-link" href="/login">
+                  /login
+                </a>
+                ; the admin SPA and its JSON calls use the resulting session cookie automatically.
               </li>
               <li>
                 <strong>Bearer token</strong> — send{" "}

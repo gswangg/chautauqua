@@ -200,7 +200,7 @@ describe("GET /submit/:eventSlug — single Name control (DEC-986 wave 45 amendm
     expect(body).not.toContain("creates your speaker portal account");
     expect(body).not.toContain("create an account");
     expect(body).toContain("set a password");
-    expect(body).toContain("Already have an account? <a href=\"/login\">Sign in to the speaker portal</a>");
+    expect(body).toContain("Already have an account? <a class=\"chq-cfp-identity-note-link\" href=\"/login\">Sign in to the speaker portal</a>");
   });
 });
 

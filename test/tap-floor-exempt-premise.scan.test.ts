@@ -258,14 +258,15 @@ const RECEIPTS = allReceipts(FILES);
 const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 
 // Ratchets (DEC-393 wave-30 amendment, task w30-b; re-measured wave-34,
-// task w34-h). Seeded by measuring the real corpus once (98 receipts: 19
-// composition, 11 inline, 68 other) -- docs/design/audit/tap-floor-exempt-
-// premise-v12.md is the full roster. UNVERIFIABLE-PREMISE is expected to be
-// large this wave (every `other` reason, and every composition/inline
-// receipt this instrument's necessarily-narrow companion-name heuristic
-// cannot resolve) -- it is a roster count, not a defect count, and is
-// two-sided only so a future wave narrowing the instrument (or widening its
-// grammar) re-measures honestly rather than drifting silently.
+// task w34-h; re-measured again wave-35, task w35-b). Seeded by measuring
+// the real corpus once (98 receipts: 19 composition, 11 inline, 68 other) --
+// docs/design/audit/tap-floor-exempt-premise-v12.md is the full roster.
+// UNVERIFIABLE-PREMISE is expected to be large this wave (every `other`
+// reason, and every composition/inline receipt this instrument's
+// necessarily-narrow companion-name heuristic cannot resolve) -- it is a
+// roster count, not a defect count, and is two-sided only so a future wave
+// narrowing the instrument (or widening its grammar) re-measures honestly
+// rather than drifting silently.
 // FALSE-PREMISE is a real 44px defect count. Wave 30 found one instance
 // (cards.css.ts:239, .chq-pub-headshot-fallback) and recorded it as a
 // predicate-grammar mismatch rather than a missing CSS rule: a
@@ -276,8 +277,21 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // tier for exactly that shape (a companion co-styled with an `img` element
 // selector whose own width/height rules put both axes at >=44px) -- forced
 // to -1 and re-measured, the row now resolves VERIFIED and the ceiling
-// drops to 0. Re-measured, unchanged: 86.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 86;
+// drops to 0.
+//
+// Wave 35 (task w35-b, DEC-393 wave-35 amendment): grounding the CFP
+// intro-cta/identity-note inline links added two new `inline-in-prose`
+// receipts -- src/routes/public/cfp.css.ts (one comment, two TOKEN-scoped
+// empty rules for both anchors) and src/routes/tools.css.ts (one, for the
+// docs /login reference) -- each a real, named exemption the
+// SSR_UNFLOORED_TOKENS_CEILING scan (app/src/phone-tap-target-ssr.scan.test.ts)
+// requires, but neither names a companion class (DEVIATIONS.md is the
+// grounding authority for these three, not another floored control), so
+// both resolve UNVERIFIABLE-PREMISE exactly like the population's `other`
+// rows -- 98 receipts -> 100, 86 -> 88. FALSE-PREMISE stays 0: wave 34's
+// replaced-content grammar tier already resolved the population's only
+// instance, and w35-b introduced no new one.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 88;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {

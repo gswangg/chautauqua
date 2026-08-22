@@ -68,6 +68,22 @@ export const TOOLS_CSS = `
     border-radius: 4px;
     background: var(--chq-surface);
   }
+
+  @media (max-width: 700px) {
+    /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task
+       w35-b): src/routes/docs.tsx's Authentication section links "/login"
+       inside one running sentence ("log in via the browser at /login;
+       ..."). Grounded per the wave-35 ladder and recorded as
+       DEVIATIONS.md §9's third entry (rung 3, not rung 1/2): /docs/api has
+       no v12 frame at all (DEC-382: this page is operator chrome, not a
+       designed screen), so there is nothing to draw a standalone control
+       or a same-surface floored twin from. No new declaration: this empty
+       rule exists only so the exemption is scoped by TOKEN, matching the
+       JSX class token now on the anchor (.chq-docs-auth-link). DEC-385
+       single-direction: this is the first phone media query in this
+       module, appended after every top-level rule. */
+    .chq-docs-auth-link {}
+  }
 `;
 
 /** Inlines TOOLS_CSS into a <style> element, the same way ThemeStyles()

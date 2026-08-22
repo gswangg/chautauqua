@@ -150,7 +150,7 @@ describe("SubmitPage intro — organiser-authored form.description (DEC-986 w24 
   it("still renders the 'Create an account' CTA line regardless of intro state", async () => {
     for (const description of ["Authored copy.", null, "   "]) {
       const body = await getSubmitPage(description);
-      expect(body).toContain('<a href="#chq-cfp-submit-form">Create an account</a>');
+      expect(body).toContain('<a class="chq-cfp-intro-cta-link" href="#chq-cfp-submit-form">Create an account</a>');
     }
   });
 });
