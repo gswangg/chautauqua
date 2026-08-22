@@ -220,7 +220,15 @@ describe('v12 Review DESKTOP (1600) frames: per-frame render verdict receipts, P
       expect(startWaveBtn).toBeInTheDocument();
     });
 
-    it('DIVERGES (additively, per review.css\'s own comment): the frame draws the locked row as four content tracks; the tree keeps the unlocked row\'s six-track grid, its outer two blank', async () => {
+    // RETIRED DIVERGES -> MATCHES (DEC-903, Thunderdome medic pass). This
+    // verdict recorded the tree keeping "the unlocked row's six-track grid,
+    // its outer two blank". That was undone at bdcbdf66c ("review plan
+    // editor: locked criterion row conforms to frame's four tracks",
+    // DEC-882 wave-8), which predates this batch's merge base: the handle
+    // and remove tracks are ABSENT now, not blank, in both the CSS and the
+    // markup. Retired against the constructs that satisfy it, not blessed
+    // (DEC-903) -- blessing would assert a divergence that no longer exists.
+    it('MATCHES: the locked criterion row declares the frame\'s four content tracks, with no drag-handle or remove-button column at all', async () => {
       const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'review', 'review.css');
       const css = readFileSync(cssPath, 'utf-8');
       const readonlyRuleBody = css.match(
@@ -230,16 +238,20 @@ describe('v12 Review DESKTOP (1600) frames: per-frame render verdict receipts, P
       // criterion row's own grid as `1fr 232px 128px 122px` -- four
       // content tracks, no drag-handle or remove-button column at all.
       verbatimLine(696, '            <div style="display:grid; grid-template-columns:1fr 232px 128px 122px; gap:16px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">');
-      expect(readonlyRuleBody).toMatch(/grid-template-columns:\s*20px minmax\(0, 1fr\) 232px 128px 122px 62px/);
+      // `minmax(0, 1fr)` is the overflow-safe spelling of the frame's bare
+      // `1fr` (an unqualified 1fr floors at min-content and would let a
+      // long label push the row wide); the TRACK COUNT and the three fixed
+      // widths are the frame's, exactly.
+      expect(readonlyRuleBody).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 232px 128px 122px/);
 
       renderLockedPlan();
       await screen.findByRole('heading', { name: 'Wave 2 — AI Engineering deep pass' });
       const rows = document.querySelectorAll('.chq-review-criterion-row-readonly');
       expect(rows.length).toBeGreaterThan(0);
-      // Six <span>/content children per row: blank handle, label, hint,
-      // type, weight, blank remove -- the six-track grid the CSS above
-      // declares, not the frame's four.
-      expect(rows[0]?.children.length).toBe(6);
+      // Four content children per row: label, hint, type, weight -- the
+      // same four tracks the CSS above declares and the frame draws, with
+      // no blank handle or remove cell padding them out.
+      expect(rows[0]?.children.length).toBe(4);
     });
   });
 

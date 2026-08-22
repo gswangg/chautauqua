@@ -378,7 +378,15 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // Frame :1477 "Reset a password"
   // ---------------------------------------------------------------------
   describe('frame :1477 "Reset a password"', () => {
-    it('DIVERGES: the frame draws this as a Modal (bordered header, title, subtitle, Close); the tree opens no dialog at all -- the reveal renders inline in the row with no header contract', async () => {
+    // RETIRED DIVERGES -> MATCHES (DEC-903, Thunderdome medic pass). This
+    // verdict recorded "the tree opens no dialog at all -- the reveal
+    // renders inline in the row with no header contract". That was closed
+    // at dc71d1f6c ("w7-c: Settings :1477 reset-password reveal renders as
+    // a Modal"), which predates this batch's merge base: PeopleRolesPanel
+    // now mounts the reveal in ModalFrame, so the tree carries the frame's
+    // full header contract. Retired against the constructs that satisfy it,
+    // never blessed (DEC-903).
+    it('MATCHES: the reveal is a Modal carrying the frame\'s header contract -- title, subtitle and Close -- not an inline row band', async () => {
       renderSection('people', {
         'POST /api/v1/users/u-other/reset-password': {
           status: 200,
@@ -393,12 +401,15 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
 
       await waitFor(() => expect(screen.getByText('kf4-amber-lintel-08')).toBeInTheDocument());
 
-      // docs/design/Chautauqua Settings.dc.html:1484 -- Modal header title `Sam Whitfield can sign in again`. No `role="dialog"` exists anywhere in the tree for this reveal.
+      // docs/design/Chautauqua Settings.dc.html:1484 -- Modal header title `Sam Whitfield can sign in again`, now carried by a real `role="dialog"` in the tree.
       verbatimLine(1484, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Sam Whitfield can sign in again</span>');
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(screen.queryByText('Sam Whitfield can sign in again')).not.toBeInTheDocument();
+      const resetDialog = screen.getByRole('dialog', { name: 'Sam Whitfield can sign in again' });
+      expect(within(resetDialog).getByRole('heading', { name: 'Sam Whitfield can sign in again' })).toBeInTheDocument();
+      // The frame's subtitle register and its Close, both present.
+      expect(within(resetDialog).getByText('sbek-reviewer@example.com · Reviewer')).toBeInTheDocument();
+      expect(within(resetDialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
 
-      // docs/design/Chautauqua Settings.dc.html:1491 -- section label `New password · shown once` inside the frame's body; the content still renders, just with no dialog chrome around it.
+      // docs/design/Chautauqua Settings.dc.html:1491 -- section label `New password · shown once` inside the frame's body, now inside that dialog's chrome.
       verbatimLine(1491, '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">New password · shown once</span>');
       expect(screen.getByText('New password · shown once')).toBeInTheDocument();
       expect(screen.getByText('kf4-amber-lintel-08')).toBeInTheDocument();

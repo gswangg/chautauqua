@@ -114,11 +114,36 @@ describe('w17-d/DEC-919: settings.css terminal-block source (settings.css append
     const actionRuleBody = css.slice(actionRuleIdx, css.indexOf('}', actionRuleIdx));
     expect(actionRuleBody).toContain('display: none;');
 
-    // both rules are the LAST two rules in the file, i.e. appended at the
-    // terminal block's end, ahead only of its closing brace.
+    // Both rules live INSIDE the single phone media block -- brace-matched
+    // from the block's opener, so containment is MEASURED rather than
+    // inferred from `idx > openIdx` ordering alone (a rule sitting after
+    // the block had already closed would satisfy the ordering check).
+    let depth = 1;
+    let i = openIdx + '@media (max-width: 700px) {'.length;
+    while (i < css.length && depth > 0) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') depth -= 1;
+      i += 1;
+    }
+    expect(depth).toBe(0);
+    const blockCloseIdx = i - 1;
+    expect(hRuleIdx).toBeLessThan(blockCloseIdx);
+    expect(actionRuleIdx).toBeLessThan(blockCloseIdx);
+
+    // Nothing LATER in the file re-declares either hidden selector, so the
+    // hide cannot be won back by a subsequent rule.
+    //
+    // This clause used to read "both rules are the LAST two rules in the
+    // file". That over-specified the claim: it made settings.css's phone
+    // block permanently closed to any further append, and duly went red
+    // when DEC-393 wave-13-xi appended the `.chq-settings-embed-back` 44px
+    // tap-floor after them -- a legitimate Tier-0 floor fix on a disjoint
+    // selector, not a regression against this rule. What the hide actually
+    // needs is CONTAINMENT (above) plus NON-OVERRIDE (here); position
+    // relative to unrelated selectors was never the invariant.
     const afterActionRule = css.slice(css.indexOf('}', actionRuleIdx) + 1);
-    // only whitespace and the two closing braces (block, then file) remain.
-    expect(afterActionRule.replace(/[\s}]/g, '')).toBe('');
+    expect(afterActionRule).not.toContain('.chq-settings-section-head > h2');
+    expect(afterActionRule).not.toContain('.chq-settings-section-action');
   });
 });
 

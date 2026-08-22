@@ -608,17 +608,39 @@ const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 22;
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
     expect(TEST_PHONE_CITATIONS.length).toBeGreaterThan(0);
-    // app/src/phone-page-scaffold.test.ts:116 cites
+    // The anchor cites
     // `docs/design/Chautauqua Speakers.dc.html:261` inside a comment that
     // also carries a backtick-quoted literal, followed within
     // EXPECT_PROXIMITY_LINES by a real `expect(` -- a fully-receipted claim,
     // confirmed against the measured tree before this test was written.
+    //
+    // DEC-999: this anchor is keyed on CONTENT, never on the source line the
+    // citation happens to occupy today. It used to pin `c.sourceLine === 115`;
+    // the unrelated import added at 4f58ec77e moved the comment to 116 and
+    // this tripwire reported a defect in a corpus that had not changed.
+    // Re-pinning 115 -> 116 is forbidden by that ruling -- it buys one wave
+    // and re-breaks on the next edit -- so the citing file's own line is
+    // DERIVED and cross-checked here instead. The only line number asserted
+    // is the CITED artefact's (the frame's :261), which the frame file makes
+    // stable. Deriving it keeps the guard non-vacuous: the scan must still
+    // FIND the citation AND place it on the line that actually carries it.
+    const ANCHOR_FILE = 'app/src/phone-page-scaffold.test.ts';
+    const ANCHOR_FRAME = 'Chautauqua Speakers.dc.html';
+    const ANCHOR_FRAME_LINE = 261;
+    // Assembled from its parts so this line is not itself a scannable
+    // citation (a bare literal here would add an unreceipted one).
+    const ANCHOR_NEEDLE = `docs/design/${ANCHOR_FRAME}:${ANCHOR_FRAME_LINE}`;
+    const anchorLine =
+      readFileSync(join(REPO_ROOT, ANCHOR_FILE), 'utf-8')
+        .split('\n')
+        .findIndex((l) => l.includes(ANCHOR_NEEDLE)) + 1;
+    expect(anchorLine).toBeGreaterThan(0);
     const known = TEST_PHONE_CITATIONS.some(
       (c) =>
-        c.file === 'app/src/phone-page-scaffold.test.ts' &&
-        c.sourceLine === 116 &&
-        c.frameFile === 'Chautauqua Speakers.dc.html' &&
-        c.firstLine === 261
+        c.file === ANCHOR_FILE &&
+        c.sourceLine === anchorLine &&
+        c.frameFile === ANCHOR_FRAME &&
+        c.firstLine === ANCHOR_FRAME_LINE
     );
     expect(known).toBe(true);
   });

@@ -241,7 +241,17 @@ describe('v12 Contacts import/bulk-modal DESKTOP (1600) frames: per-frame render
       await screen.findByText(/rows have no email address/);
     }
 
-    it('DIVERGES: the frame titles this state "Nothing was imported" with a Close head control; the tree keeps step 2\'s "Match the columns" title while this block is showing, with no distinct dialog identity of its own', async () => {
+    // RETIRED DIVERGES -> MATCHES (DEC-903, Thunderdome medic pass). This
+    // block used to assert the tree "keeps step 2's 'Match the columns'
+    // title ... with no distinct dialog identity of its own". That stopped
+    // being true at 006f112a2 ("contacts: Import CSV file-level refusal
+    // owns its own dialog identity", DEC-575 w8-b), which predates this
+    // batch's merge base -- so the verdict had been asserting a divergence
+    // the tree no longer had. Per DEC-903 the row is RETIRED against the
+    // construct that satisfies it, never "blessed": blessing would assert
+    // the divergence still exists, a second false claim on top of a stale
+    // one.
+    it('MATCHES: the frame gives this refusal its own dialog identity -- H1 "Nothing was imported" plus a Close head control -- and so does the tree', async () => {
       await renderRefusal();
       // docs/design/Chautauqua Contacts.dc.html:777 -- the frame's own
       // dialog H1 for this refusal.
@@ -251,10 +261,13 @@ describe('v12 Contacts import/bulk-modal DESKTOP (1600) frames: per-frame render
       );
       // docs/design/Chautauqua Contacts.dc.html:780 -- the frame's Close.
       verbatimLine(780, '        <a href="#" style="font-size:13px; font-weight:700">Close</a>');
-      expect(screen.queryByRole('heading', { name: 'Nothing was imported' })).not.toBeInTheDocument();
-      // The tree is still step 2's "Match the columns" dialog underneath
-      // this refusal block, not a dedicated "Nothing was imported" state.
-      expect(screen.getByRole('heading', { name: 'Match the columns' })).toBeInTheDocument();
+      // ImportWizard.tsx's `stepTitle` resolves the refusal ahead of the
+      // step ladder (`showSizeRefusal || showFileWarning` wins first), and
+      // ModalFrame draws the frame's Close beside it.
+      expect(screen.getByRole('heading', { name: 'Nothing was imported' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      // Step 2's title no longer stands in for this state.
+      expect(screen.queryByRole('heading', { name: 'Match the columns' })).not.toBeInTheDocument();
     });
 
     it('DIVERGES: the frame\'s heading is a bare count ("N rows have no email address"); the tree names both the offending count AND the total ("N of M rows...")', async () => {
