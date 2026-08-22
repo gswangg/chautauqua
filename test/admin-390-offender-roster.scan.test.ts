@@ -137,4 +137,26 @@ describe("admin-390-offender-roster (DEC-851 amendment, wave 27)", () => {
     }
     expect(duplicated.size).toBeGreaterThan(0);
   });
+
+  // Two-sided companion (DEC-808 wave-85 amendment). Restored by the wave-13m
+  // merge train: v12m-w13-xb removed the exact-equality pin
+  // `expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBe(79)` from
+  // test/render-sweep-lib.test.ts because the pinned 79 and the lib's own
+  // measured 77 were two different live runs, and restating the number there
+  // duplicated the lib's ownership of it. That deletion was right on its own
+  // terms, but the pin was ALSO the only thing supplying this ratchet's
+  // BELOW direction (the detector credits a single-`it` exact-equality pin as
+  // two-sided), so removing it left the ceiling one-sided and turned
+  // test/campaign-ratchet-two-sided.scan.test.ts red. The BELOW direction
+  // belongs here rather than back in the lib test: the governed measurement is
+  // the roster's own RECORDED_TOTAL, so this asserts against the measurement
+  // instead of re-stating the literal xb correctly refused to duplicate.
+  it("does not fall stale below ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (two-sided companion, DEC-808 wave-85 amendment)", () => {
+    expect(
+      RECORDED_TOTAL,
+      `ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = ${ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING} is stale -- ` +
+        `the roster's recorded total dropped to ${RECORDED_TOTAL}. Lower the constant in ` +
+        `scripts/render-sweep-lib.ts in the same commit that closed the gap.`,
+    ).toBeGreaterThanOrEqual(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING);
+  });
 });
