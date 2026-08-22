@@ -169,7 +169,11 @@ function scan(files: string[]): Occurrence[] {
 // findings on branch collisions. May only be LOWERED as further call sites
 // adopt the idiom -- the companion `it` below fails if the measured count
 // drops below this constant, so the ceiling can never sit stale.
-export const CONFIRM_TITLE_OBJECT_CEILING = 18;
+// Wave 25 (task w25-d): lowered 18 -> 9. Repair: sibling lane v12m-w23-i
+// (merge commit 6723d6483, "confirm titles name their object across
+// contacts/comms/content/submissions/review/speakers", DEC-941 wave-23
+// amendment) converted the remaining clusters this comment forecast.
+export const CONFIRM_TITLE_OBJECT_CEILING = 9;
 
 describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 wave-9 amendment)', () => {
   const FILES = srcFiles();

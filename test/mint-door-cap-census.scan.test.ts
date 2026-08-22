@@ -244,7 +244,7 @@ const DOOR_REGISTRY: RegistryEntry[] = [
     kind: "mint",
     repoFile: "comms.ts",
     repoFn: "createTemplate",
-    note: "creates a template; handler and createTemplate reference only MAX_NAME_LENGTH/MAX_TEXT_LENGTH/MAX_RICH_TEXT_LENGTH (text-length), no cap on how many templates an event can accumulate -- the motivating gap for this whole census.",
+    note: "creates a template; wave-25 (task w25-d, DEC-660 wave-23 amendment): src/domain/email-templates.ts:23 declares `export const MAX_EMAIL_TEMPLATES_PER_EVENT = 50;` and src/server/repo/comms.ts:108 enforces it pre-write in createTemplate (`if (existingCount >= MAX_EMAIL_TEMPLATES_PER_EVENT) {`), refusing before any db.insert -- capped by this census's rule.",
   },
   {
     route: "/api/v1/plans/:id/advance-round",
@@ -380,7 +380,6 @@ describe("mint-door cap census (DEC-180 wave-23 amendment) -- measurement only, 
     // and the sha it was measured against.
     const EXPECTED_OFFENDERS = [
       "/api/v1/users (api/users.ts)",
-      "/api/v1/events/:eventId/templates (comms/templates.ts)",
       "/api/v1/events/:eventId/plans (review/plans-crud.ts)",
       "/api/v1/plans/:id/reviewers (review/plans-reviewers.ts)",
       "/api/v1/review/plans/:planId/recusals/:submissionId (review/recusals.ts)",
@@ -398,7 +397,12 @@ describe("mint-door cap census (DEC-180 wave-23 amendment) -- measurement only, 
   // the offender list printed above back -- measured 5 on this branch's sha
   // (see the doc for the exact sha). Never invented, never converted from
   // the failure output into an allowlist.
-  const MINT_DOOR_UNCAPPED_CEILING = 5;
+  // Wave 25 (task w25-d): lowered 5 -> 4. Repair: MAX_EMAIL_TEMPLATES_PER_EVENT
+  // (src/domain/email-templates.ts:23) is now enforced pre-write in
+  // createTemplate (src/server/repo/comms.ts:108, DEC-660 wave-23
+  // amendment), so /api/v1/events/:eventId/templates no longer measures
+  // uncapped.
+  const MINT_DOOR_UNCAPPED_CEILING = 4;
 
   it(`ratchet: no more than ${MINT_DOOR_UNCAPPED_CEILING} mint doors are uncapped`, () => {
     const offenders: string[] = [];
@@ -434,7 +438,6 @@ describe("mint-door cap census (DEC-180 wave-23 amendment) -- measurement only, 
       const { pass, capRefs, exempt } = gradeMintDoor(snippets);
       const isOffender = [
         "/api/v1/users",
-        "/api/v1/events/:eventId/templates",
         "/api/v1/events/:eventId/plans",
         "/api/v1/plans/:id/reviewers",
         "/api/v1/review/plans/:planId/recusals/:submissionId",
