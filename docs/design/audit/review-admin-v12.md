@@ -92,58 +92,84 @@ pair). This is a ruling, not a code change beyond what the finding's own
 "What was built" section already shipped (the CSS-only dock geometry) —
 cite DEVIATIONS.md §3 rather than claiming new code. Closed.
 
-## 5. w29-e: three new gaps found reviewing the whole 594-673 extent -- the per-criterion "Options"/"Weight" eyebrows have no phone text counterpart, and both consequence lines (:640, :662) use different grammar than the frame draws
+## 5. v12m-w31-a/DEC-745 (wave-31 amendment) — (a) and (b) BUILT; (c) RETIRED (already closed by DEC-745 wave-33, never marked here)
 
 `app/src/pages/review/PlanEditor.frame390.render.test.tsx` grades the whole
 "Plan editor · 390" extent (24 drawn strings) with `verbatimLine` citations
 for every one of them plus render assertions against the shipped tree.
-Twenty-one of the 24 already match (accounting for the pre-existing,
-already-ruled divergences: `Reviewers`→`Who reviews what`, `Swap`→`Remove`,
-the dock's Duplicate/Save pair — all cited above / in
-`docs/design/DEVIATIONS.md`). Three do not, and none of the three is fixable
-inside this task's OWNS list (`PlanEditor.frame390.render.test.tsx`, this
-audit file, `review.css`'s terminal phone block only) — DEC-385 wave-29
-condition (4) ("touches only files the lane OWNS") fails for all three
-because the fix is in `PlanEditor.tsx`, which this task does not own.
+Twenty-one of the 24 already matched before this wave; the remaining three
+are resolved as follows.
 
-**(a) `:612`/`:627` "Options"/"Weight" eyebrows are not phone-rendered
-anywhere.** The frame draws these as visible per-criterion labels beside the
-options list and the weight input. The built tree carries those exact words
-in exactly one place — `.chq-review-criteria-head-row`
-(app/src/pages/review/PlanEditor.tsx`aria-hidden="true"`), a desktop column-header row
-rendered *unconditionally*, not gated by `isPhone` and not scoped per
-criterion. A screen reader user on phone never hears "Options" or "Weight"
-named before the corresponding control. Disposition: needs a real fix in
-`PlanEditor.tsx` (a phone-only, per-criterion eyebrow beside each options
-block / weight span, mirroring the already-shipped `chq-review-criteria-
-count-phone`/`chq-review-reviewers-count-phone` pattern) — filed here, not
-built.
+**(a) BUILT — `:612`/`:627` "Options"/"Weight" eyebrows now render,
+phone-visible, per criterion.** `app/src/pages/review/PlanEditor.tsx` now
+renders `<span className="chq-review-criterion-field-eyebrow">Options</span>`
+immediately above each dropdown criterion's option rows, and
+`<span className="chq-review-criterion-field-eyebrow">Weight</span>`
+immediately above each rating criterion's weight input — neither is
+`aria-hidden`, and each is the real accessible label for its control via
+`id`/`aria-labelledby` (`aria-labelledby={`criterion-${criterion.id}-options-
+eyebrow criterion-${criterion.id}-label`}` on the options block;
+`aria-labelledby={`criterion-${criterion.id}-weight-eyebrow criterion-
+${criterion.id}-label`}` on the weight input). `app/src/pages/review/
+review.css` carries a top-level `.chq-review-criterion-field-eyebrow {
+display: none; }` (desktop already labels these columns via the
+unconditional aria-hidden `.chq-review-criteria-head-row`, so the eyebrow
+stays invisible there) and, inside the terminal `@media (max-width: 700px)`
+block only, restores the frame's own register: `font-size: 11px;
+font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color:
+var(--chq-muted);` (`--chq-muted` resolves to `#565a4b`, the frame's exact
+hex, `app/src/styles.css`). `PlanEditor.frame390.render.test.tsx`'s
+CONFORMANCE describe block asserts both eyebrows render with real text at
+phone width, are labelled to their control, and are `display: none` at every
+width outside the terminal phone block (source-level, since jsdom applies no
+stylesheet).
 
-**(b) `:640`'s second clause is a different sentence.** Frame: "N of about M
-· the two scored ones average by weight". Shipped
-(`PlanEditor.tsx:2241`): "N of about M · more than that and reviewers rush
-the last ones" (`chq-review-criteria-cap-notice`). The prefix matches; the
-consequence named is entirely different copy, describing a soft-cap warning
-rather than a scoring-mechanics fact. Not obviously a bug — the shipped
-sentence is plausible standalone copy — but it is not what the frame draws,
-and no `DEVIATIONS.md` entry rules on it. Disposition: a design call
-(replace the shipped clause, or bless the divergence), out of this task's
-scope to make.
+One narrowing versus the frame's literal layout, recorded rather than
+silently fixed: the frame pairs the "Options" eyebrow with the "N of M"
+count on the same line, above the option rows (`:612`/`:613`). Relocating
+the count there would move it out of its already-shipped footer position
+(below the rows, beside "Add an option"), which is a desktop-visible reflow
+this task's OWNS list (`review.css`'s terminal phone block only, no
+top-level declaration may change) cannot repair with a matching desktop
+counter-rule. The count therefore stays in its shipped footer position at
+every width; only the "Options" eyebrow moved to sit above the rows. Still
+open, not a defect this wave introduced.
 
-**(c) `:662` is a different sentence, not just different numbers.** Frame:
-"Would assign N of M · you confirm before anything saves" — a preview-count
-sentence. Shipped (app/src/pages/review/PlanEditor.tsx`capRowSummaryLine` ->
-`distributeSummaryText`): "N talks · M reviews needed at K each · R
-reviewers" — a capacity-summary sentence with no "would assign" framing and
-no explicit confirm-before-save language. `DEC-745 wave-72`'s own comment at
-`PlanEditor.tsx:263-266` states this grammar is deliberate (`distributeSummaryText`
-is shared with the post-preview confirm panel and was chosen over the
-frame's wording), so this is very likely an already-made design call that
-was never logged in `DEVIATIONS.md` — filed here so a future ruling pass
-can either write it down there or correct it back toward the frame.
+**(b) BUILT — `:640`'s second clause now matches the frame's slot with
+plan-wide-consistent words.** `app/src/pages/review/PlanEditor.tsx` now
+branches on `isPhone` (the same seam `capRowSummaryLinePhone` already uses)
+so `.chq-review-criteria-cap-notice` reads
+`` `${editingCriteria.length} of about ${MAX_PLAN_CRITERIA} · scores average by weight` ``
+at phone width, while desktop keeps
+`` `${editingCriteria.length} of about ${MAX_PLAN_CRITERIA} · more than that and reviewers rush the last ones` ``
+byte-identically (`DEC-385`). Ruling (v12m-w31-a, DEC-745 wave-31
+amendment): the frame's literal clause, "the two scored ones average by
+weight," names a NUMBER-WORD sampled from the frame's own fixture (its mock
+draws 3 criteria, 2 of which carry weight) — the same fixture-data carve-out
+`DEC-613`/`DEC-582` apply to stored labels forbids shipping a number-word
+grammar to match a mock. The phone clause instead carries the words of the
+sentence this same page already ships elsewhere for the identical fact (the
+section eyebrow's "Scores average by weight," `PlanEditor.tsx`), placed in
+the frame's slot. `PlanEditor.frame390.render.test.tsx`'s CONFORMANCE
+describe block asserts the phone sentence, and a sibling assertion pins
+desktop's byte-identical, unchanged clause.
 
-None of the three block anything else; the extent's remaining 21 strings
-are conformant. Not resolvable within this task's file ownership.
+**(c) RETIRED — `:662` was already closed, not a live gap.** Verified by
+execution: `capRowSummaryLinePhone` (`app/src/pages/review/PlanEditor.tsx`)
+already ships the frame's own grammar —
+`` `Would assign ${wouldAssign} of ${reviewsNeeded} · you confirm before anything saves` ``
+— per its own `DEC-745 (wave-33 amendment)` comment. This finding's original
+text described the OLDER, pre-wave-33 shipped sentence
+(`distributeSummaryText`'s "N talks · M reviews needed at K each · R
+reviewers"), which desktop still renders but phone no longer does.
+`PlanEditor.frame390.render.test.tsx`'s
+`:662 the phone cap row reads the frame's own "Would assign N of M · you
+confirm before anything saves" grammar (DEC-745 wave-33)` test already
+covers this. Nothing left to build here; this entry was fossil prose that
+had never been marked resolved.
+
+All three of this section's original findings are now closed (two built,
+one retired); the extent's remaining 21 strings were already conformant.
 
 ## What was built (for completeness, not a gap)
 

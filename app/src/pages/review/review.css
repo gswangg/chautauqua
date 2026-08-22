@@ -1116,6 +1116,18 @@
   white-space: nowrap;
 }
 
+/* v12m-w31-a/DEC-745 (wave-31 amendment): `Chautauqua Review.dc.html:612`/
+   `:627` -- the phone-only "Options"/"Weight" eyebrows immediately above
+   each criterion's options block / weight cell. Desktop already labels
+   these columns via the unconditional aria-hidden
+   `.chq-review-criteria-head-row`, so this second label stays invisible at
+   every width except the terminal phone block below (DEC-385); this
+   top-level rule is the one exception the task authorizes to review.css
+   outside that block. */
+.chq-review-criterion-field-eyebrow {
+  display: none;
+}
+
 /* v12 intake section A (DEC-650): a Choice criterion's options render as
    editable rows in the criterion row's WEIGHT column -- the weight input
    never renders at all for a dropdown criterion, this block takes its
@@ -2600,8 +2612,32 @@
     padding: 0 4px;
   }
 
+  /* v12m-w31-a/DEC-745 (wave-31 amendment): `Chautauqua Review.dc.html:612`/
+     `:627` -- the frame's register for the phone-only "Options"/"Weight"
+     eyebrows (11px/800/0.1em/uppercase/muted), shown only inside this
+     terminal phone block (the top-level rule above keeps it display:none
+     at every wider width). --chq-muted resolves to #565A4B (styles.css:29),
+     the exact hex the frame draws. */
+  .chq-review-criterion-field-eyebrow {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
   .chq-review-criterion-weight {
     flex: 0 0 auto;
+    /* The weight cell is a row-direction flex (desktop review.css:1098-1101,
+       unchanged); at phone the eyebrow above needs its own line, so this
+       phone-only override adds wrap and the eyebrow claims the full row via
+       the sibling-scoped flex-basis rule below. */
+    flex-wrap: wrap;
+  }
+
+  .chq-review-criterion-weight .chq-review-criterion-field-eyebrow {
+    flex: 1 1 100%;
   }
 
   .chq-review-criterion-weight .chq-input {
