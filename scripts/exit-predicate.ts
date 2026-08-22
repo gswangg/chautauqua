@@ -1104,6 +1104,27 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "about the join's own mounting check, not itself a v12 frame or 390-geometry conformance fact, "
     + "the same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
     + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  BACKTICK_PARITY_CEILING:
+    "measures how many decisions-data/decisions doc files carry an ODD backtick count (an "
+    + "unclosed markdown code span) -- a citation-hygiene fact about the decision registry's own "
+    + "prose, not itself a v12 frame or 390-geometry conformance fact (test/citation-form-drift.scan.test.ts, "
+    + "DEC-967 wave-28 amendment; registered wave-31 -- landed unregistered by the same commit that "
+    + "introduced it).",
+  PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING:
+    "measures a newly-derived population (a phone `display:none` rule whose hidden `chq-` token "
+    + "carries a STATIC text child the pack draws verbatim inside some width:390 frame extent -- the "
+    + "hide's own premise is contradicted) that no instrument previously graded -- a real "
+    + "capability/copy-fidelity fact about this specific population, but a newly measured, "
+    + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
+    + "promoted once its measurement technique is proven complete enough to gate on, the same "
+    + "disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING (app/src/phone-hidden-drawn-text.scan.test.ts, "
+    + "DEC-725 wave-31 amendment).",
+  PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING:
+    "measures how many of that same population's hidden rules resolve to a COMPOSED (non-static) "
+    + "text child the static substring join can never verify -- an instrument-completeness fact about "
+    + "this ledger's own join technique, not itself a v12 frame or 390-geometry conformance fact, the "
+    + "same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(app/src/phone-hidden-drawn-text.scan.test.ts, DEC-725 wave-31 amendment).",
 };
 
 /**
