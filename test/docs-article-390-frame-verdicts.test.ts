@@ -93,10 +93,10 @@ describe('"Docs · an article · 390" anatomy — live request (docs/design/Chau
     // Body prose block exists (content owned by docs-content).
     expect(html).toContain('class="chq-docs-prose"');
 
-    // A list block renders (this fixture article's own list -- the
-    // frame's :192-196 <ol> is a SAMPLE numbered how-to that no shipped
-    // article currently instantiates as `ordered: true`; see the
-    // source-scan describe block below for that render branch's shape).
+    // A list block renders (this fixture article's own list). It also now
+    // carries the frame's :192-196 ordered how-to block as a real
+    // `ordered: true` list -- see the live-request describe block below
+    // for that receipt.
     expect(html).toContain('class="chq-docs-list"');
 
     // Figure + caption (:183-188).
@@ -214,29 +214,46 @@ describe("docs-site.css.ts terminal phone block — figure affordance rules (DEC
 });
 
 // -----------------------------------------------------------------------
-// (d) ordered how-to section — SHAPE only. No shipped DOCS_ARTICLES entry
-// carries `ordered: true` today (grepped: zero hits across
-// src/routes/docs-content/*.ts), so a live request can never reach an
-// <ol> — this is filed, not fixed (docs-content/*.ts is content, owned
-// elsewhere, and out of this task's FILES-I-OWN scope). The render branch
-// itself is graded by source shape: the same list token
-// (`chq-docs-list`) the unordered branch above already exercises live,
-// picking <ol> instead of <ul> when `block.ordered` is true
-// (docs/design/Chautauqua Docs.dc.html:192 `<ol style="margin:0; padding-left:19px; display:flex; flex-direction:column; gap:8px; font-size:15px; line-height:1.6; color:#3F4237">`).
+// (d) ordered how-to section — wave 21 (DEC-976 amendment): the
+// "call-for-papers-and-submissions" article now carries the frame's
+// "Working through the queue" ordered how-to block as a real
+// `{ kind: "list", ordered: true, ... }` entry, so a real request reaches
+// the <ol class="chq-docs-list"> branch. The shipped article carries the
+// desktop extent's fuller wording (same heading, same three actions, same
+// bold spans as the shorter 390 extent's items — see the fully-receipted
+// citation on the describe block immediately below), since this is a
+// single-density article body (DEC-385: no phone-only copy fork exists
+// for docs prose) and the desktop extent is the fuller, still-truthful
+// version of the identical three steps.
 // -----------------------------------------------------------------------
 
-describe("ordered how-to section — render-branch shape only (no live fixture, filed not fixed)", () => {
+describe("ordered how-to section — render-branch shape", () => {
   it("the ordered-list branch renders the same list token, ol instead of ul", () => {
     expect(DOCS_SITE_TSX).toMatch(/block\.ordered[\s\S]{0,80}<ol class="chq-docs-list">/);
     expect(DOCS_SITE_TSX).toMatch(/<ul class="chq-docs-list">/);
   });
+});
 
-  it("no shipped article instantiates the ordered branch (documents the gap this test cannot close)", () => {
-    const contentDir = join(REPO_ROOT, "src", "routes", "docs-content");
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
-    const files = readdirSync(contentDir).filter((f) => f.endsWith(".ts") && f !== "types.ts");
-    const anyOrdered = files.some((f) => readFileSync(join(contentDir, f), "utf-8").includes("ordered: true"));
-    expect(anyOrdered).toBe(false);
+describe('"Working through the queue" ordered how-to — live request (docs/design/Chautauqua Docs.dc.html:192 `<ol style="margin:0; padding-left:19px; display:flex; flex-direction:column; gap:8px; font-size:15px; line-height:1.6; color:#3F4237">`)', () => {
+  it("renders a real <ol class=\"chq-docs-list\"> with the three how-to steps, reached through app.request", async () => {
+    const app = await buildRealApp();
+    const res = await app.request("/docs/call-for-papers-and-submissions");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const unescaped = unescapeHtml(html);
+
+    expect(unescaped).toContain("Working through the queue");
+    const olMatch = html.match(/<ol class="chq-docs-list">([\s\S]*?)<\/ol>/);
+    expect(olMatch).not.toBeNull();
+    const olHtml = unescapeHtml(olMatch![1]!);
+    expect(olHtml).toContain("Filter to");
+    expect(olHtml).toContain("Needs triage");
+    expect(olHtml).toContain("Open the oldest");
+    expect(olHtml).toContain("Decide, then use");
+    expect(olHtml).toContain("Next ›");
+    // Three <li> items, matching the frame's three-step shape.
+    const liCount = (olMatch![1]!.match(/<li>/g) || []).length;
+    expect(liCount).toBe(3);
   });
 });
 

@@ -99,6 +99,25 @@ fixed: the new test grades the render branch's SHAPE via a source-scan
 separately documents, with a passing assertion, that no article
 instantiates it yet.
 
+### Resolution (wave 21, DEC-976 amendment)
+
+Fixed. `src/routes/docs-content/call-for-papers-and-submissions.ts` adds a
+`{ kind: "heading", text: "Working through the queue" }` block followed by
+a real `{ kind: "list", ordered: true, items: [...] }` block, inside that
+article's existing "Triage and the status pipeline" section — the same
+article the frame's group and subject already belong to, so no surface is
+invented. The three items carry the desktop extent's fuller wording
+(`docs/design/Chautauqua Docs.dc.html` `<li>Filter to <strong>Needs
+triage</strong> from the saved views.</li>`, same bold spans and same
+three actions as the 390 extent's shorter wording) since this article's
+body has no phone-only copy fork. A shipped article now instantiates
+`ordered: true`, so a live request reaches the `<ol class="chq-docs-list">`
+branch: `test/docs-article-390-frame-verdicts.test.ts`'s
+`'"Working through the queue" ordered how-to — live request'` describe
+block dispatches `app.request("/docs/call-for-papers-and-submissions")`
+and asserts the rendered `<ol class="chq-docs-list">` and its three `<li>`
+texts against the response body, not a source `toContain`.
+
 ## Everything else on the frame
 
 Back control, Contents control, group label/eyebrow, title, lede, body
