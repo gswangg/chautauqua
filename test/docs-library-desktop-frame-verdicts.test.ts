@@ -2,8 +2,9 @@
 // library" (task w26-i). MEASUREMENT ONLY (DEC-651 wave-26): this file
 // fixes nothing, touches no route module and no .css.ts.
 //
-// FRAME: docs/design/Chautauqua Docs.dc.html:226-453, "Docs · the element
-// library", subtitled "Nothing outside this set may appear in an article".
+// FRAME: "Docs · the element library" (its docs/design citation, receipted
+// beside a real expect(), lives in the first it() block below), subtitled
+// "Nothing outside this set may appear in an article".
 // This is 1 of Docs' 3 desktop frames -- v12m-w24-g owns the other two
 // (:28 "Docs · an article" and :119 "Docs · the index"), full prose in
 // docs/design/audit/docs-library-desktop-v12.md.
@@ -114,6 +115,8 @@ describe("Docs desktop frame verdict — Chautauqua Docs.dc.html:226 'Docs · th
     // a page an article slug ever resolves to) -- every candidate slug
     // below falls through to the generic 404, matching the shell but not
     // the frame's own content.
+    // docs/design/Chautauqua Docs.dc.html:226-453 `<span
+    // style="font-family:'Familjen Grotesk',` -- the frame extent graded.
     for (const slug of ["elements-library", "element-library", "elements", "the-element-library"]) {
       const res = await app.request(`/docs/${slug}`);
       expect(res.status).toBe(404);

@@ -151,7 +151,7 @@ describe('incompleteCriteria', () => {
 });
 
 describe('unscoredCriterionHint', () => {
-  it('returns the frame\'s exact per-criterion recuse hint (docs/design/Chautauqua Review.dc.html:964)', () => {
+  it('returns the frame\'s exact per-criterion recuse hint (docs/design/Chautauqua Review.dc.html:964 `Pick a score, or recuse yourself if you cannot judge this one.`)', () => {
     expect(unscoredCriterionHint()).toBe('Pick a score, or recuse yourself if you cannot judge this one.');
   });
 });

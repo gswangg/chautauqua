@@ -153,7 +153,7 @@ async function buildApp(): Promise<Hono<AppEnv>> {
   return app;
 }
 
-describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and Portal.dc.html:600-674)', () => {
+describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and Portal.dc.html:600-674 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0;`)', () => {
   it("GET /portal/submissions/s1/edit renders drawn literals in drawn order", async () => {
     const app = await buildApp();
     const res = await app.request("/portal/submissions/s1/edit");
@@ -246,7 +246,7 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
   });
 });
 
-describe('"Portal · co-presenter rejected" 390 (docs/design/Chautauqua Public and Portal.dc.html:1304-1367)', () => {
+describe('"Portal · co-presenter rejected" 390', () => {
   it("POST /portal/submissions/s1/participants with a duplicate email renders the DEC-029 three-part refusal disclosure at 400, edits preserved", async () => {
     addCoPresenterMock.mockResolvedValueOnce({
       ok: false,
@@ -275,6 +275,9 @@ describe('"Portal · co-presenter rejected" 390 (docs/design/Chautauqua Public a
     // DEC-029 (wave-108 amendment, edit.tsx): a refusal re-renders the edit
     // page directly at 400 -- never a redirect, which would discard the
     // speaker's unsaved typing.
+    // docs/design/Chautauqua Public and Portal.dc.html:1304-1367 `<div
+    // style="width:390px; height:844px; background:#F4F1E8;` -- the
+    // co-presenter-rejected frame extent this file grades.
     expect(res.status).toBe(400);
     const html = await res.text();
 

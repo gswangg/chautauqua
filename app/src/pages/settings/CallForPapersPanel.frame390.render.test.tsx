@@ -98,7 +98,7 @@ function renderCfpDrill() {
   );
 }
 
-describe('Settings · Call for papers 390 drill (docs/design/Chautauqua Settings.dc.html:444-477)', () => {
+describe('Settings · Call for papers 390 drill', () => {
   it('frame :441 anchor -- renders the ‹ Settings back control and the Call for papers drill title', async () => {
     // docs/design/Chautauqua Settings.dc.html:441
     verbatimLine(
@@ -106,6 +106,8 @@ describe('Settings · Call for papers 390 drill (docs/design/Chautauqua Settings
       '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Settings · Call for papers</span>',
     );
     renderCfpDrill();
+    // docs/design/Chautauqua Settings.dc.html:444-477 `<div style="width:390px;` --
+    // the drill's own frame extent this describe block grades.
     await waitFor(() =>
       expect(document.querySelector('.chq-settings-drill-title')).toHaveTextContent('Call for papers'),
     );
