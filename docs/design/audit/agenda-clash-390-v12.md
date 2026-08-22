@@ -31,7 +31,7 @@ shipping in:
 - `app/src/pages/overview/AgendaWorkSection.tsx` ("Remind all three")
 - `app/src/pages/overview/rows.ts:54` ("Place the other six ›" / headline
   count)
-- `src/domain/scorecardLogic.ts` (`${capitalizeFirst(spellCount(n))} …`)
+- `app/src/pages/review/scorecardLogic.ts` (`${capitalizeFirst(spellCount(n))} …`)
 
 All three re-exported from `app/src/lib/plural.ts:5`. No new vocabulary
 owner, no new module added.

@@ -31,7 +31,7 @@ wave-24 amendment.
 - The frame's own caption is the verdict's subject: a CARD, not a
   full-bleed stretch. An SSR HTML string carries no computed layout (jsdom
   is not involved at all here), so this is verdicted against
-  `src/routes/auth.css`'s own stylesheet TEXT, the same idiom
+  `src/routes/auth.css.ts`'s own stylesheet TEXT, the same idiom
   `docs/design/audit/speakers-desktop-v12.md`'s grid-weight-inversion
   finding uses for an inherently-CSS fact: `.chq-auth-card` declares
   `max-width: 460px` and `align-self: center`, matching the frame's own

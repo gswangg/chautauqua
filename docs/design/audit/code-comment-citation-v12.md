@@ -96,11 +96,11 @@ below.
   plans phone note this file mirrors: app/src/pages/review/review.css`.chq-reviewer-plans-phone-note {`
 - Comment in `src/routes/review/reviewer.ts` (around line 286) cited the
   missing bare path `src/server/repo/agenda.ts` lines 316-330 (that module was
-  split; the batching helper it means is
+  split, and the batching helper it means moved to
   `src/server/repo/agenda/rows.ts`): src/server/repo/agenda/rows.ts`loadDurationMinBySubmission`
 - Comment in `src/server/repo/review/recusal.ts` (around line 32) cited
-  the missing bare path `src/db/schema.ts` line 376 (schema is split by
-  domain; the recusal uniqueIndex actually lives in
+  the missing bare path `src/db/schema.ts` line 376 (schema.ts was split by
+  domain, and the recusal uniqueIndex actually moved to
   `src/db/schema/review.ts`): src/db/schema/review.ts`review_recusal_plan_submission_user_idx`
 - Comment in `src/server/repo/review/submissions.ts` (around line 19)
   cited `src/server/repo/files-library.ts` line 39, which exists but has only
@@ -194,12 +194,13 @@ below.
   cited the missing bare basename `schema.ts` line 289; the participant-pair
   uniqueIndex it means lives in `src/db/schema/submissions.ts`: src/db/schema/submissions.ts`participant_submission_id_contact_id_idx`
 - Comment in `src/server/repo/pipeline.ts` (around line 254) cited the
-  missing bare path `src/db/schema.ts` line 669; schema is split by domain,
-  and the pipeline-entry uniqueIndex it means lives in
+  missing bare path `src/db/schema.ts` line 669; schema.ts was split by
+  domain, and the pipeline-entry uniqueIndex it means moved to
   `src/db/schema/crm.ts`: src/db/schema/crm.ts`pipeline_entry_org_id_contact_id_idx`
 - Comment in `src/server/repo/portal-config.ts` (around line 107) cited
-  the missing bare path `src/db/schema.ts` line 505; the portal-settings
-  uniqueIndex it means lives in `src/db/schema/content.ts`: src/db/schema/content.ts`portal_settings_event_id_idx`
+  the missing bare path `src/db/schema.ts` line 505; schema.ts was split
+  by domain, and the portal-settings
+  uniqueIndex it means moved to `src/db/schema/content.ts`: src/db/schema/content.ts`portal_settings_event_id_idx`
 - Comment in `src/server/repo/tasks/reminders.ts` (around line 632)
   cites the send-path field discipline it mirrors; the exact line
   drifted from the cited 283-299 range to the real assignment further

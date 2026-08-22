@@ -87,7 +87,7 @@ are recorded below as Composed rows, not as surviving gaps.
 | `Chautauqua Content.dc.html:345/346` | "Slides · 22" / "Video · 4" | `{LIBRARY_KIND_LABELS[k]} &middot; {kindCounts?.[k] ?? 0}`, in `app/src/pages/content/FilesLibrary.tsx` |
 | `Chautauqua Content.dc.html:387` | "Recording · 1 version" | `{DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}`, in `app/src/pages/content/DeliverableDetail.tsx` |
 | `Chautauqua Overview.dc.html:276` | "Move DFC-047 to 11:30" | `` `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}` ``, in `src/server/repo/overview/scheduling.ts` |
-| `Chautauqua Overview.dc.html:215` | "Remind all three" | `Remind all {spellCount(...)}`, in `app/src/pages/overview/Overview.tsx` |
+| `Chautauqua Overview.dc.html:215` | "Remind all three" | `Remind all {spellCount(...)}`, in `app/src/pages/Overview.tsx` |
 | `Chautauqua Public and Portal.dc.html:379/380` | "Wed 13" / "Thu 14" | `{formatDayShort(day)}`, in `src/routes/public/agenda-controls.tsx` |
 | `Chautauqua Public and Portal.dc.html:381` | "My schedule · 4" | `<span id="chq-ics-count">0</span> saved` populated client-side, in `src/routes/public/agenda-rail.tsx` |
 | `Chautauqua Public and Portal.dc.html:493` | "Mark the release signed" | DEC-613 wave-128 shared vocabulary: `tasksPageDockPrimary`, in `src/routes/portal/tasks/views.tsx` |

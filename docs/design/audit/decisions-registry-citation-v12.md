@@ -47,7 +47,9 @@ Four shapes, with their counts (sum to 1291):
   file has since moved or the citation was always slightly wrong (these
   decisions/ docs predate the two-directional grammar entirely, so nothing
   ever caught this). Example: DEC-011.md cites `src/lib/csv.ts` around line
-  109-114, and no such repo-relative path resolves.
+  109-114 (the wave-65 amendment on the same file later moved that module to
+  `src/domain/csv.ts` and deleted the original), and no such repo-relative
+  path resolves.
 
 - **Path does not resolve -- ambiguous (159 offenders).** A bare basename
   (no `/`) that now matches more than one file in the tree, so
