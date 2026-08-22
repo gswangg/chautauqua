@@ -257,7 +257,10 @@ describe("route sub-state coverage (DEC-144 amendment, wave 27)", () => {
   // (a new closed-set sub-state landing with no manifest row) and an
   // unaccounted drop (this test's own population narrowing without the
   // roster doc being updated) both fail loudly.
-  const ROUTE_SUBSTATE_UNVISITED_CEILING = 10;
+  // Re-measured at 3 in wave 5 (task w5-cb, DEC-271): the constant had
+  // gone stale in the SLACK direction (declared 10, measured 3). Lowered
+  // to the measured value in the same commit.
+  const ROUTE_SUBSTATE_UNVISITED_CEILING = 3;
 
   it(`no more than ${ROUTE_SUBSTATE_UNVISITED_CEILING} derived closed-set query sub-states are unvisited by ROUTE_MANIFEST`, () => {
     const unvisited = deriveUnvisitedRows();
