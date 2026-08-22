@@ -602,8 +602,25 @@ function computeHeaderScopeWithoutReceiptOffenders(
  * the scan, not invented as 0 -- this task adds the check but does not fix
  * any of these 22 files' bodies (out of this task's stated scope, which is
  * computeUnreceiptedCitations plus new helpers/controls only). May only be
- * LOWERED as offenders get fixed, never raised to paper over a regression. */
-const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 22;
+ * LOWERED as offenders get fixed, never raised to paper over a regression.
+ *
+ * Lowered 22 -> 8 by task w17-f (DEC-998 wave-17, Content cluster, sole
+ * owner of this constant this wave): fixed this worktree's two owned
+ * offenders (FilesLibrary.frame390.render.test.tsx,
+ * FilesLibrary.session-size-fuse.receipt.render.test.tsx), each by adding a
+ * genuine in-body citation into Chautauqua Content.dc.html (backtick literal
+ * read verbatim from the frame line, receipted by a nearby expect( / a
+ * qualifying verbatimLine helper call), then re-ran this scan forced to -1
+ * and measured the remaining population directly rather than assuming 22-2.
+ * Per DEC-998 wave-17 clause (b), only what this worktree measured and fixed
+ * is landed here -- the other 8 measured offenders (PhoneAgenda.clash390,
+ * PhoneAgenda.clashMove390, PlanEditor.frame390, ReviewerQueue.hub390-frame,
+ * Scorecard.unscored390, SettingsDrill.publicPages390,
+ * SettingsDrill.savedEmbeds390, cfp-stored-label-register) belong to sibling
+ * lanes v12m-w17-c/d/e; the merge train re-seeds this constant to the
+ * batch-measured truth (forced to -1, offender list read fresh) once those
+ * lanes land, rather than trusting any branch's own note. */
+const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 8;
 
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
