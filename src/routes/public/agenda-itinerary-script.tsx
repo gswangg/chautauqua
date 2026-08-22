@@ -56,6 +56,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
   var slug = ${JSON.stringify(props.eventSlug)};
   var stored = [];
   try { stored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { stored = []; }
+  if (!Array.isArray(stored)) { stored = []; }
   var boxes = document.querySelectorAll('.chq-itinerary-toggle');
   // DEC-584: the desktop grid and the phone list both render a
   // '.chq-itinerary-toggle' for every session (one is display:none at a
@@ -69,9 +70,6 @@ export function ItineraryScript(props: { eventSlug: string }) {
   });
   function boxStates(){
     return Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
-  }
-  function currentIds(){
-    return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
   function updateLink(ids){
     var count = document.getElementById('chq-ics-count');
@@ -111,10 +109,10 @@ export function ItineraryScript(props: { eventSlug: string }) {
   var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
   var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
   // DEC-555 wave-29 amendment: takes ids as a parameter -- the caller's
-  // single write-path snapshot -- rather than re-deriving it via
-  // currentIds(). A second internal DOM read here is exactly the shape that
-  // let a cap-trimmed row keep showing checked/saved after
-  // applyItineraryToggle had already dropped it from storage.
+  // single write-path snapshot -- rather than re-deriving it via a second
+  // internal DOM read, which is exactly the shape that let a cap-trimmed
+  // row keep showing checked/saved after applyItineraryToggle had already
+  // dropped it from storage.
   function applyScheduleView(ids){
     if (scheduleRows.length === 0) return;
     var idSet = {};
@@ -195,9 +193,13 @@ export function ItineraryScript(props: { eventSlug: string }) {
       }
     }
   }
-  Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
-  updateLink(stored);
-  applyScheduleView(stored);
+  // DEC-555 wave-34: the persistence handler binds BEFORE any render pass
+  // below can throw. If mirrorItineraryCheckboxes/applyScheduleView/etc.
+  // throws on first paint, the page must still keep the change listener
+  // that makes a Remove click durable -- registering it last left a throw
+  // in the render passes with no persistence handler at all (the shipped
+  // Cut-4 MAJOR symptom: the per-session Remove control toggles visually
+  // but the removal does not persist).
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
     // DEC-555 wave-29 amendment (THE FIX): ONE storage snapshot
@@ -210,12 +212,16 @@ export function ItineraryScript(props: { eventSlug: string }) {
     // second DOM read.
     var latestStored = [];
     try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
+    if (!Array.isArray(latestStored)) { latestStored = []; }
     var result = applyItineraryToggle(latestStored, allRenderedIds, boxStates(), e.target.value, e.target.checked);
     Array.prototype.forEach.call(boxes, function(b, i){ b.checked = result.boxes[i].checked; });
     localStorage.setItem(key, JSON.stringify(result.ids));
     updateLink(result.ids);
     applyScheduleView(result.ids);
   });
+  Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
+  updateLink(stored);
+  applyScheduleView(stored);
 })();`;
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }

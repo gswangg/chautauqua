@@ -392,3 +392,78 @@ describe("ItineraryScript: public /schedule Remove control persistence (w29-c)",
     expect(boxUntouched.checked).toBe(untouchedPersisted);
   });
 });
+
+// w34-c (DEC-555 wave-34 amendment): the persistence listener now registers
+// BEFORE the first paint's render passes, so a throw inside
+// mirrorItineraryCheckboxes/updateLink/applyScheduleView can no longer leave
+// the page with no change handler at all -- exactly the shipped Cut-4 MAJOR
+// symptom docs/mobile-campaign.md records ("the per-session Remove control
+// toggles visually but the removal does not persist").
+describe("ItineraryScript emitted body: change listener binds before first paint (w34-c)", () => {
+  it("addEventListener('change' appears before the first updateLink( and applyScheduleView( call sites", () => {
+    const body = extractScriptBody();
+    const listenerPos = body.indexOf("addEventListener('change'");
+    expect(listenerPos).toBeGreaterThan(-1);
+
+    // Find the first CALL to updateLink(/applyScheduleView( -- not their
+    // `function updateLink(` / `function applyScheduleView(` declarations,
+    // which necessarily precede the listener as ordinary function
+    // definitions and are not first-paint invocations.
+    const updateLinkCallPos = body.indexOf("updateLink(stored)");
+    const applyScheduleViewCallPos = body.indexOf("applyScheduleView(stored)");
+    expect(updateLinkCallPos).toBeGreaterThan(-1);
+    expect(applyScheduleViewCallPos).toBeGreaterThan(-1);
+
+    expect(listenerPos).toBeLessThan(updateLinkCallPos);
+    expect(listenerPos).toBeLessThan(applyScheduleViewCallPos);
+  });
+});
+
+describe("ItineraryScript emitted body: non-array localStorage payloads (w34-c)", () => {
+  it.each([
+    ["an object payload", '{"a":1}'],
+    ["a bare string payload", '"5"'],
+  ])("a %s neither throws nor selects any checkbox", (_label, rawPayload) => {
+    const body = extractScriptBody();
+    const key = `chq_itinerary_${EVENT_SLUG}`;
+    const dom = makeDom();
+    dom.window.localStorage.setItem(key, rawPayload);
+
+    const errors: unknown[] = [];
+    dom.window.addEventListener("error", (e: unknown) => errors.push(e));
+    runScript(dom, body);
+    expect(errors).toEqual([]);
+
+    const boxes = Array.from(dom.window.document.querySelectorAll(".chq-itinerary-toggle")) as HTMLInputElement[];
+    for (const box of boxes) {
+      expect(box.checked).toBe(false);
+    }
+  });
+
+  it("a change event fired after a non-array localStorage payload persists cleanly (the listener guard applies to latestStored too)", () => {
+    const body = extractScriptBody();
+    const key = `chq_itinerary_${EVENT_SLUG}`;
+    const dom = makeDom();
+    dom.window.localStorage.setItem(key, '{"a":1}');
+
+    const errors: unknown[] = [];
+    dom.window.addEventListener("error", (e: unknown) => errors.push(e));
+    runScript(dom, body);
+    expect(errors).toEqual([]);
+
+    const boxA = dom.window.document.querySelectorAll(".chq-itinerary-toggle")[0] as HTMLInputElement;
+    boxA.checked = true;
+    boxA.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    expect(errors).toEqual([]);
+
+    const stored = JSON.parse(dom.window.localStorage.getItem(key) ?? "[]");
+    expect(stored).toEqual(["sub-a"]);
+  });
+});
+
+describe("ItineraryScript emitted body: dead currentIds() removed (w34-c)", () => {
+  it("the emitted script no longer defines or references currentIds", () => {
+    const body = extractScriptBody();
+    expect(body).not.toContain("currentIds");
+  });
+});
