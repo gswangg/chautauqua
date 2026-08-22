@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import assert from 'node:assert';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const COMMS_CSS = readFileSync(join(__dirname, 'comms.css'), 'utf8');
 
@@ -51,8 +52,9 @@ function ruleBodyFor(rawCss: string, selector: string): string {
   // Strip block comments first -- a doc comment sitting between one rule's
   // closing brace and the next selector (e.g. the 358px-budget note above
   // the overflow rules) would otherwise sit between the required anchor
-  // char and the selector text.
-  const css = rawCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  // char and the selector text. Uses the shared, string-aware stripper
+  // (DEC-613) rather than a private regex.
+  const css = stripCssComments(rawCss);
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`(?:^|[{,}])\\s*${escaped}\\s*(?=[,{])[\\s\\S]*?\\{([^}]*)\\}`);
   const m = css.match(re);

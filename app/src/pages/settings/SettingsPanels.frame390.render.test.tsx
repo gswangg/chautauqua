@@ -47,6 +47,7 @@ import { EventSettingsPanel } from './EventSettingsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { OTHER, SELF, mockPeople, renderPanel as renderPeoplePanel } from './PeopleRolesPanel.test-helpers';
 import { DEC_385, DEC_576, DEC_919, DEC_967, DEC_976 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_385; // settings.css read-only below: an in-flight lane owns edits to it this wave
 void DEC_576; // the later DEVIATIONS entry / later ruling is the contract, never relitigated
@@ -57,7 +58,7 @@ void DEC_976; // frame verdicts grade the drawn extent, not a citation count
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Settings.dc.html');
-const SETTINGS_CSS = readFileSync(join(HERE, 'settings.css'), 'utf-8');
+const SETTINGS_CSS = stripCssComments(readFileSync(join(HERE, 'settings.css'), 'utf-8'));
 
 /** DEC-967: a citation that can never silently rot to a wrong line -- read
  * the ACTUAL design-file line and assert it byte-for-byte matches the

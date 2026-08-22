@@ -96,4 +96,27 @@
 // receipt (a comment-satisfied assertion) was found in this batch.
 // Ceiling lowered by exactly 1, 33 -> 32; v12m-w13-rf drains N more of the
 // same 38 in this batch; the merge train re-measures.
+// v12m-w4-bg (wave 4, task w4-bg, DEC-374/DEC-613): measured RED at this
+// branch's tree (forced -1, offender list read back) BEFORE any change: 34,
+// against a stale-looking 29 ceiling (the two-sided companion had already
+// gone red the other way from lanes draining without lowering this
+// constant). Converted 5 offenders assigned by this task
+// (app/src/pages/comms/Comms.phone.render.test.tsx,
+// app/src/pages/comms/comms-phone-floor.test.ts,
+// app/src/pages/review/PlanEditor.render.test.tsx,
+// app/src/pages/settings/SettingsPanels.frame390.render.test.tsx,
+// app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts) to route
+// their `*_CSS`/`*_PHONE_BLOCK` source through the shared
+// test/helpers/strip-css-comments.ts stripCssComments before any
+// toMatch/not.toMatch assertion. comms-phone-floor.test.ts's own local
+// `.replace(/\/\*[\s\S]*?\*\//g, '')` inside ruleBodyFor was also replaced
+// by the shared stripper, but the file's intentional raw-source assertion
+// (the `overflow-exempt:` comment-presence check on COMMS_CSS itself) was
+// left untouched -- that assertion's SUBJECT is a comment, so stripping
+// would make it false, not vacuous (DEC-374's subject test). Every other
+// touched assertion still passed once routed through the real stripper --
+// no vacuous receipt was found in this batch. Re-measured offender count
+// after conversion: 29, exactly 34-5, confirmed by forcing this ceiling to
+// -1 again. Ceiling stays at 29 (measured count now sits AT the ceiling,
+// not below it).
 export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 29;

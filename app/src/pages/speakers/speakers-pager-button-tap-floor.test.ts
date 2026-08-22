@@ -14,11 +14,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import assert from 'node:assert';
 import { DEC_393 } from '../../../../src/decisions';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 void DEC_393; // the phone tap floor is ELEMENT-qualified: a rule naming `a` does not floor a `<button>`
 
 const HERE = __dirname;
-const SPEAKERS_CSS = readFileSync(join(HERE, 'speakers.css'), 'utf8');
+const SPEAKERS_CSS = stripCssComments(readFileSync(join(HERE, 'speakers.css'), 'utf8'));
 const ONBOARDING_GRID = readFileSync(join(HERE, 'OnboardingGrid.tsx'), 'utf8');
 
 function lastPhoneBlock(css: string): string {

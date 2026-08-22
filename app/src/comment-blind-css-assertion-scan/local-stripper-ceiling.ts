@@ -104,4 +104,15 @@
 // (forms-phone-390) and 6f0b5d48 (contacts head-band-face / rule-builder /
 // rule-chip-dismiss) all land inside this batch. Lowered 88 -> 86 from the
 // re-measured number, never by arithmetic on the batch size.
+// v12m-w4-bg (wave 4, task w4-bg, DEC-374/DEC-613): measured RED at this
+// branch's tree (forced -1, offender list read back) BEFORE any change: 87,
+// one over the declared 86. Converted the one offender assigned by this
+// task, app/src/pages/agenda/agenda-painted-face.test.ts, whose private
+// inline `stripComments` (a plain `.replace(/\/\*[\s\S]*?\*\//g, '')`) was
+// replaced with an import of test/helpers/strip-css-comments.ts's shared,
+// string-aware stripCssComments -- no offset/length-preserving invariant
+// depended on the old regex here, so the swap is a straight substitution.
+// Every touched test still passed once routed through the real stripper.
+// Re-measured offender count after conversion: 86, exactly 87-1, confirmed
+// by forcing this ceiling to -1 again. Ceiling stays at 86.
 export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 86;
