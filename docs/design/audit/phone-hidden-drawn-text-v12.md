@@ -109,17 +109,37 @@ Both carry a companion "never sits ABOVE the measured truth" `it`
 
 ## Megabatch merge note (Thunderdome)
 
-`v12m-w31-a` is repairing the two `.chq-review-criteria-*` rows named in the
-worked example above (`app/src/pages/review/review.css`) in this SAME batch,
-measured here against a tree that does not yet contain that repair. Both
-ceilings above include exactly one row each for
-`.chq-review-criteria-head-row` (PREMISE-FALSE) and
-`.chq-review-criteria-eyebrow` (UNVERIFIABLE), and are EXPECTED to drop by
-(at least) one each once the merge train lands both branches — read a lower
-measured count post-merge as the ratchet working, not as a broken gate, and
-tighten both constants in the same merge-train commit (mirrors
-`docs/design/audit/frame-field-label-v12.md`'s own "Megabatch merge note"
-idiom).
+This section was written while the sibling repair was still in flight, and
+it predicted (DEC-725) that both ceilings would drop by at least one each
+once the wave-31 batch landed, on the reasoning that the two
+`.chq-review-criteria-*` rows in the worked example above
+(`app/src/pages/review/review.css`) were about to be repaired.
+
+**That prediction was wrong, and the merge train re-measured rather than
+assuming it (DEC-725).** Both branches are now on main, the scan was
+re-run on the merged tree with both ceilings forced to 0, and the measured
+truth is unchanged: **59 PREMISE-FALSE / 35 UNVERIFIABLE**, exactly the
+constants already recorded. Neither is tightened, because tightening a
+ratchet to a number the instrument does not report would be the precise
+dishonesty these two-sided guards exist to prevent.
+
+Both worked-example rows survive the repair, for reasons the repair does
+not touch:
+
+- `.chq-review-criteria-head-row` stays PREMISE-FALSE. The phone rule still
+  hides a row whose "Weight" text the pack draws verbatim in the
+  "Plan editor · 390" extent, so the hide's own premise is still
+  contradicted. Building the eyebrow beside it did not remove the hidden
+  row that carries the drawn word.
+- `.chq-review-criteria-eyebrow` stays UNVERIFIABLE. Its text child is
+  assembled at render time from a live count, and a static substring join
+  can never verify a composed value — an instrument-completeness fact
+  about this scan's own technique, which no product change can discharge.
+
+This file's own two probe assertions pin both gradings against the LIVE
+tree, so neither claim here rests on this prose: if a later wave really
+does drain either row, those probes fail and force this section to be
+rewritten rather than letting it quietly go stale.
 
 ## PREMISE-FALSE roster (59 rows)
 
