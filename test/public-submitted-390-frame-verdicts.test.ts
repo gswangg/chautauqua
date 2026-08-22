@@ -296,6 +296,10 @@ describe("PUBLIC SSR Submitted 390 trio -- per-frame verdicts (task w30-a, DEC-9
     const loginAnchors = [...html.matchAll(/<a[^>]*href="\/login"/g)];
     expect(loginAnchors).toHaveLength(1);
     expect(html).toMatch(/Log in\s*(?:&rsaquo;|›)/);
+    // DEC-908 (wave-35 amendment): :1124 draws NEITHER the spam-check note
+    // nor the tail links row -- only :1074 (fresh) draws both.
+    expect(html).not.toContain('class="chq-cfp-confirm-note"');
+    expect(html).not.toContain('class="chq-cfp-links"');
   });
 
   it("frame :1147 Submitted · has an account -- MATCHES: title + exactly ONE meta line, \"You already have an account here.\" + filled \"Log in to track it\" primary", async () => {
@@ -318,9 +322,13 @@ describe("PUBLIC SSR Submitted 390 trio -- per-frame verdicts (task w30-a, DEC-9
     // :1158 the filled primary CTA, no /claim/ path minted or rendered.
     expect(html).toMatch(/<a class="chq-btn chq-btn-primary" href="\/login">\s*Log in to track it\s*<\/a>/);
     expect(html).not.toContain("/claim/");
+    // DEC-908 (wave-35 amendment): :1147 draws NEITHER the spam-check note
+    // nor the tail links row -- only :1074 (fresh) draws both.
+    expect(html).not.toContain('class="chq-cfp-confirm-note"');
+    expect(html).not.toContain('class="chq-cfp-links"');
   });
 
-  it("DIVERGES: the frames draw a state-specific confirmation-body sentence; submit-views.tsx renders one generic body for all three states", async () => {
+  it("MATCHES: each state renders its own confirmation-body sentence (:1083/:1132/:1155); the old generic body appears nowhere", async () => {
     const freshHtml = await (await postSubmit({})).text();
     const knownHtml = await (
       await postSubmit({ existingContact: { id: "contact-1", title: null, company: null, bio: null } }, "dana@example.com")
@@ -332,27 +340,37 @@ describe("PUBLIC SSR Submitted 390 trio -- per-frame verdicts (task w30-a, DEC-9
       )
     ).text();
 
-    // submit-views.tsx:833's ONE generic body, byte-identical across all
-    // three states -- never the frames' three distinct sentences
-    // ("a portal link ... edit this talk until <date>" / "a confirmation,
-    // with a link to set a password" / "a confirmation.").
-    const genericBody = (html: string, email: string) =>
-      html.includes(`We&#39;ve emailed a confirmation for &quot;Taming 40-Minute CI: Incremental Builds at Monorepo Scale&quot; to ${email}.`);
-    expect(genericBody(freshHtml, "priya@example.com")).toBe(true);
-    expect(genericBody(knownHtml, "dana@example.com")).toBe(true);
-    expect(genericBody(acctHtml, "marcus@example.com")).toBe(true);
-
+    // docs/design/Chautauqua Public and Portal.dc.html:1083 `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed priya@example.com a portal link. You can edit this talk until 16 Aug.</span>`
+    verbatimLine(1083, `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed priya@example.com a portal link. You can edit this talk until 16 Aug.</span>`);
     // docs/design/Chautauqua Public and Portal.dc.html:1132 `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed dana@example.com a confirmation, with a link to set a password.</span>`
     verbatimLine(1132, `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed dana@example.com a confirmation, with a link to set a password.</span>`);
-    // :1132's own distinct sentence never appears -- the generic body above
-    // is what the "email already known" state actually renders.
-    expect(knownHtml).not.toContain("a confirmation, with a link to set a password");
-
     // docs/design/Chautauqua Public and Portal.dc.html:1155 `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed marcus@example.com a confirmation.</span>`
     verbatimLine(1155, `        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed marcus@example.com a confirmation.</span>`);
-    // :1155's own distinct (bare, no clause) sentence never appears either
-    // -- the "has an account" state renders the same generic body too.
-    expect(acctHtml).not.toMatch(/We emailed marcus@example\.com a confirmation\.[^,]/);
+
+    // DEC-908 wave-33 amendment: each state renders its own drawn sentence
+    // verbatim (fresh's date clause reads "16 August 2026" in this test's
+    // fake close date rather than the frame's illustrative "16 Aug", so we
+    // match the fixed prefix + close-date clause shape rather than the
+    // frame's exact date token).
+    expect(freshHtml).toContain("We emailed priya@example.com a portal link.");
+    expect(knownHtml).toContain("We emailed dana@example.com a confirmation, with a link to set a password.");
+    expect(acctHtml).toContain("We emailed marcus@example.com a confirmation.");
+
+    // The old generic body (byte-identical across all three states) never
+    // appears anywhere -- it was the receipt of the gap DEC-908 wave-33
+    // closed.
+    const genericBody = (html: string, email: string) =>
+      html.includes(`We&#39;ve emailed a confirmation for &quot;Taming 40-Minute CI: Incremental Builds at Monorepo Scale&quot; to ${email}.`);
+    expect(genericBody(freshHtml, "priya@example.com")).toBe(false);
+    expect(genericBody(knownHtml, "dana@example.com")).toBe(false);
+    expect(genericBody(acctHtml, "marcus@example.com")).toBe(false);
+
+    // Each state's sentence is exclusive to that state -- never leaks into
+    // the others.
+    expect(knownHtml).not.toContain("a portal link");
+    expect(knownHtml).not.toMatch(/We emailed dana@example\.com a confirmation\.[^,]/);
+    expect(acctHtml).not.toContain("a portal link");
+    expect(acctHtml).not.toContain("a confirmation, with a link to set a password");
   });
 
   it("phone (max-width:700px terminal block) governs .chq-cfp-confirm / -card / -actions / -password geometry the frames require", () => {
