@@ -50,37 +50,37 @@ ruled shell substitution.
 
 ## Frame :675 "Plan editor · criteria frozen"
 
-**DIVERGES** (two real, additive divergences — not new debt in the sense of
-missing functionality, but a genuine text/DOM difference from the frame).
-Entered via `PlanEditor` at `/review/plans/:planId`, a plan whose active
-round already carries submitted evaluations (`evaluationCountsByRound`).
+**RULING** (DEC-882 wave-8) + one CLOSED-with-receipt item. Entered via
+`PlanEditor` at `/review/plans/:planId`, a plan whose active round already
+carries submitted evaluations (`evaluationCountsByRound`).
 
-- **Locked eyebrow text.** The frame draws a fixed, generic sentence —
-  `Locked — wording, type and weights fixed for this wave` (frame :693) —
-  naming no count. The tree instead states the LIVE scored-review count,
-  read from the plan's own `evaluationCountsByRound` (server truth, never
-  re-derived): `Locked — 12 reviews scored against these criteria` in this
-  fixture. This is a strict improvement in informativeness (the frame's own
-  sibling body-caption already promises "Wording, weights and the scale are
-  fixed for the rest of this wave" separately, so nothing the frame states
-  is lost) but it is a real text divergence from the cited line, filed here
-  rather than silently treated as a match.
+- **Locked eyebrow text (RULING, DEC-882 wave-8, clause b).** The frame
+  draws a fixed, generic sentence — `Locked — wording, type and weights
+  fixed for this wave` (frame :693) — naming no count. The tree instead
+  states the LIVE scored-review count, read from the plan's own
+  `evaluationCountsByRound` (server truth, never re-derived): `Locked — 12
+  reviews scored against these criteria` in this fixture. Ruled a deliberate,
+  additive improvement, not a divergence to close: the frame's own sibling
+  body-caption already carries the generic sentence verbatim ("Wording,
+  weights and the scale are fixed for the rest of this wave"), so nothing
+  the frame states is lost, and the eyebrow's live count is real information
+  the static frame cannot draw. This bullet stays as a ruling, never a
+  lane.
 - **Locked notice card** (frame :705-708, headline `Changing these would
   rescore work already done` + reason sentence + `Start a new wave` CTA)
   **MATCHES** exactly — headline, full reason sentence, and the button are
   all present in `.chq-review-criteria-locked-notice`.
-- **Locked row track count.** The frame's own locked-row markup (frame
-  :696) draws a FOUR-track grid (`1fr 232px 128px 122px` — label / hint /
-  type / weight, no drag-handle or remove-button column). The tree's
-  `.chq-review-criterion-row.chq-review-criterion-row-readonly` rule
-  instead keeps a SIX-track grid (`20px minmax(0, 1fr) 232px 128px 122px
-  62px`), the same six tracks the UNLOCKED row uses, with the outer two
-  rendered as blank placeholder `<span/>` elements rather than removed
-  entirely. This is documented in review.css's own comment as a deliberate
-  choice (keeping the unlocked row's column alignment rather than
-  reflowing the table when a round locks) — filed here as a real,
-  additively-blessed divergence per this task's instruction to file
-  divergences even where a comment in the code already explains them.
+- **Locked row track count — CLOSED-with-receipt (wave 8, w8-c).** The
+  frame's own locked-row markup (frame :696) draws a FOUR-track grid (`1fr
+  232px 128px 122px` — label / hint / type / weight, no drag-handle or
+  remove-button column). `.chq-review-criterion-row.chq-review-criterion-row-readonly`
+  in `app/src/pages/review/review.css` now matches: `grid-template-columns:
+  minmax(0, 1fr) 232px 128px 122px`, four tracks, no drag or remove column.
+  `PlanEditor.tsx`'s locked-row map no longer pads the row with leading/
+  trailing placeholder `<span/>` elements — the handle and remove tracks
+  are absent from the grid itself, not blank cells within a six-track grid
+  as the prior (now-superseded) reading held. The unlocked editor and its
+  header are untouched and keep their six-track layout.
 
 ## Frame :718 "New plan · /review/plans/new"
 
