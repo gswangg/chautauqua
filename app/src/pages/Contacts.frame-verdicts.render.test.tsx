@@ -23,10 +23,35 @@ import { ContactsPage } from './Contacts';
 import { MergePage } from './contacts/MergePage';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
 import { resetEventsCacheForTests } from '../lib/useCurrentEvent';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Contacts.dc.html');
+const CONTACTS_CSS = join(HERE, 'contacts', 'contacts.css');
+
+/** DEC-976 wave-12: jsdom applies no stylesheet, so a body-band verdict
+ * needs the phone CSS's own TEXT to say whether the desktop `<table>`
+ * really "renders at every width" or is transformed. Extract
+ * contacts.css's single terminal `@media (max-width: 700px)` block by
+ * brace-depth -- same idiom as PipelineBoard.frame390.render.test.tsx's
+ * own phone-layer walk. */
+function readContactsPhoneLayer(): string {
+  const css = stripCssComments(readFileSync(CONTACTS_CSS, 'utf-8'));
+  const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+  const openMatch = opener.exec(css);
+  if (openMatch === null) throw new Error('contacts.css has no @media (max-width: 700px) block');
+  let depth = 1;
+  let i = openMatch.index + openMatch[0].length;
+  const start = i;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  if (depth !== 0) throw new Error('contacts.css phone block never closes');
+  return css.slice(start, i - 1);
+}
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims -- a citation that can never silently rot to a
@@ -92,7 +117,7 @@ function mockContactsBase(overrides: Record<string, unknown> = {}) {
 
 describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DEC-976)', () => {
   // Frame :179-223 "Contacts" -- caption at :175.
-  it('frame :179 Contacts landing -- head band CONFORMS (counter, both chip strips, builder disclosed behind "+ Rule"), body DIVERGES: the same desktop `<table>` (checkbox column, header row) renders at every width, not the frame\'s headerless card list -- the per-row action itself now MATCHES ("Email")', async () => {
+  it('frame :179 Contacts landing -- head band CONFORMS (counter, both chip strips, builder disclosed behind "+ Rule"), body DIVERGES (narrowed, DEC-976 wave-12): contacts.css\'s terminal phone block hides the desktop header row and turns each `<tr>` into the frame\'s headerless card (thead display:none, tr/td become a grid card, per-row action reads "Email") -- the sole surviving divergence is the frame-silent selection checkbox column, not "the same desktop table at every width"', async () => {
     verbatimLine(175, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Contacts</span>");
     stubPhoneMatchMedia();
     mockContactsBase();
@@ -158,27 +183,44 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // docs/design/Chautauqua Contacts.dc.html:194-196 `          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">All</span>`
     expect(document.querySelector('.chq-contacts-segment-pills')).toBeNull();
 
-    // Below the now-conforming head band, the body still diverges: the
-    // frame's headerless per-row card list (:203-209) and its footer tab
-    // strip (:214-221) are NOT what mounts here -- the actual read is the
-    // same desktop `<table class="chq-table chq-contacts-table">`
-    // (checkbox column, "Name and email"/"Company"/"Labels" headers) every
-    // width renders.
+    // Below the now-conforming head band, DOM structure alone (jsdom
+    // applies no @media) still shows the desktop `<table
+    // class="chq-table chq-contacts-table">` with its header row --
+    // markup is not what the field guide re-derived FALSE four waves
+    // running, though: the phone READ of that same markup is the frame's
+    // headerless card list, produced by contacts.css's own terminal
+    // `@media (max-width: 700px)` block, read below as text since jsdom
+    // cannot compute it.
     const table = await screen.findByRole('table');
     const headerCells = within(table).getAllByRole('columnheader');
     expect(headerCells.map((c) => c.textContent)).toEqual(['', 'Name and email', 'Company', 'Labels', '']);
     await waitFor(() => expect(within(table).getByText('Priya Raman')).toBeInTheDocument());
+
+    // contacts.css's terminal phone block (":179 body" clause, DEC-976
+    // wave-12): `.chq-contacts-table thead { display: none }` blanks the
+    // header row this markup still carries, and `.chq-contacts-table
+    // tbody tr` becomes a grid -- the SAME markup renders as the frame's
+    // headerless per-row card (:203-209), never "the same desktop table at
+    // every width".
+    const phoneLayer = readContactsPhoneLayer();
+    expect(phoneLayer).toMatch(/\.chq-contacts-table thead\s*\{[^}]*display:\s*none;/);
+    expect(phoneLayer).toMatch(/\.chq-contacts-table,\s*\n?\s*\.chq-contacts-table tbody\s*\{[^}]*display:\s*block;/);
+    expect(phoneLayer).toMatch(/\.chq-contacts-table tbody tr\s*\{[^}]*display:\s*grid;/);
+    expect(phoneLayer).toMatch(/\.chq-contacts-table tbody td\s*\{[^}]*display:\s*block;/);
+
     // -- re-derived against the tree (ContactsTable.tsx's useIsPhone gate,
     // landed separately from this task's head-band lanes): the row's boxed
     // action now reads "Email" like the frame instead of the desktop
-    // "Open" -- narrowing the body divergence to the header row/checkbox
-    // column alone.
+    // "Open" -- narrowing the surviving body divergence to the
+    // frame-silent selection checkbox column alone.
     // docs/design/Chautauqua Contacts.dc.html:203 `          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:13px">`
     // docs/design/Chautauqua Contacts.dc.html:209 `            <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600; flex-shrink:0">Email</span>`
     expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
     const emailButton = within(table).getByRole('button', { name: 'Email Priya Raman' });
     expect(emailButton).toBeInTheDocument();
     expect(emailButton).toHaveTextContent('Email');
+    // The frame draws no selection control at all (:203-209) -- this is
+    // the one genuine frame-silent addition left in the body band.
     expect(within(table).getByRole('checkbox', { name: 'Select all on page' })).toBeInTheDocument();
   });
 
