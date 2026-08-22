@@ -336,13 +336,19 @@ describe('v12 Review 390 frames: per-frame render verdict receipts (task rh, DEC
     expect(selectedPill).toHaveTextContent('5');
 
     // :957-964: the second (unscored) criterion's radiogroup has no
-    // selection, and the frame's own caption ("Pick a score, or recuse
-    // yourself if you cannot judge this one.") does not exist as separate
-    // copy on this scorecard -- the phone banner above already carries the
-    // completeness message; DIVERGES, cited in review-v12.md.
+    // selection, and carries the frame's own caption ("Pick a score, or
+    // recuse yourself if you cannot judge this one."). This was cited in
+    // review-v12.md as a DIVERGENCE -- the caption existed nowhere and the
+    // phone banner above was the only completeness cue -- until DEC-889
+    // wave-32 (commit 0fca1e97c) built the per-criterion hint. The
+    // divergence is closed, so this receipt moves to the frame's shape.
+    // Scoped to the unscored criterion's own group, which is what frame
+    // :964 draws: a global caption would not satisfy it.
     const readinessGroup = screen.getByRole('group', { name: /Speaker readiness/ });
     expect(within(readinessGroup).queryAllByRole('radio', { checked: true })).toHaveLength(0);
-    expect(screen.queryByText(/Pick a score, or recuse yourself/)).not.toBeInTheDocument();
+    expect(
+      within(readinessGroup).getByText('Pick a score, or recuse yourself if you cannot judge this one.'),
+    ).toBeInTheDocument();
 
     // :967-969: Overall reads a phone-only "Not yet" node while unscored
     // (native `hidden`, unhidden only by the max-width:700px block this

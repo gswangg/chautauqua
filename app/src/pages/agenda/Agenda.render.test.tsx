@@ -1413,9 +1413,15 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     expect(roomChip.querySelector('.chq-flag')?.textContent).toBe('CLASH');
 
     // Overlapping A/B render as one merged clash run, not two placed cards.
-    // DEC-380 amendment (w12-a): derived from slot.sessions.length via the
-    // shared countOf helper, not a hardcoded "Two".
-    expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();
+    // DEC-380 amendment (w12-a): derived from slot.sessions.length, not a
+    // hardcoded count -- the three-way case below is the falsifier.
+    // DEC-380 wave-32: this ONE flag composes the pack's SPELLED-count
+    // grammar (capitalizeFirst + spellCount + plural) because frame
+    // docs/design/Chautauqua Agenda.dc.html:161 draws it spelled; the
+    // numeral countOf() form still owns the data-dense registers
+    // elsewhere in this file, so this expectation is deliberately the odd
+    // one out rather than evidence of a drift.
+    expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();
   });
 
   it('arms an unscheduled session from the sheet, places it on tap, and fires the same PUT as desktop drag-drop', async () => {
@@ -1491,7 +1497,10 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('3 sessions in this slot')).toBeInTheDocument();
+    // Still the falsifier for "the count is derived, not hardcoded": with
+    // three sessions the spelled grammar must read "Three", and the
+    // two-session wording must be absent.
+    expect(screen.getByText('Three sessions in this slot')).toBeInTheDocument();
     expect(screen.queryByText('Two sessions in this slot')).toBeNull();
   });
 

@@ -454,14 +454,22 @@ describe('Plan editor · 390 DIVERGENCES from the frame (real gaps, not fixed he
     expect(line.textContent).not.toContain('the two scored ones average by weight');
   });
 
-  it(':662 "Would assign N of M · you confirm before anything saves" is a DIFFERENT sentence in the shipped product -- "N talks · M reviews needed at K each · R reviewers" (distributeSummaryText), never the frame\'s grammar', async () => {
+  // This test used to record a DIVERGENCE: the phone cap row rendered
+  // desktop's distributeSummaryText grammar ("N talks · M reviews needed at
+  // K each · R reviewers") rather than the sentence frame :662 draws.
+  // DEC-745 wave-33 closed it by adding capRowSummaryLinePhone -- a SECOND
+  // composer beside capRowSummaryLine, not a rewrite of it, so desktop's
+  // wording is byte-identical to what it was. The receipt therefore moves
+  // to the frame's grammar and now also guards the split: seeing desktop's
+  // sentence on a phone-width mount is the regression to catch.
+  it(':662 the phone cap row reads the frame\'s own "Would assign N of M · you confirm before anything saves" grammar (DEC-745 wave-33)', async () => {
     stubPhoneMatchMedia();
     mockPlan();
     renderEditor();
 
-    const summary = await screen.findByText(/talks? · \d+ reviews? needed at \d+ each · \d+ reviewers?$/);
-    expect(summary.textContent).toBe('13 talks · 39 reviews needed at 3 each · 6 reviewers');
-    expect(screen.queryByText(/^Would assign \d+ of \d+ · you confirm before anything saves$/)).not.toBeInTheDocument();
+    const summary = await screen.findByText(/^Would assign \d+ of \d+ · you confirm before anything saves$/);
+    expect(summary).toBeInTheDocument();
+    expect(screen.queryByText(/talks? · \d+ reviews? needed at \d+ each · \d+ reviewers?$/)).not.toBeInTheDocument();
   });
 
   it(':652 reviewer-row action reads "Remove", not the frame\'s "Swap" -- already RULED (DEVIATIONS.md, DEC-745 wave-98: no reassign-in-place capability exists)', async () => {

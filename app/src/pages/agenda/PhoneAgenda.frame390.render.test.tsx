@@ -22,16 +22,24 @@
 // asserted here against the BUILT truth, never the frame literal a fix
 // would require touching PhoneAgenda.tsx/phoneSlots.ts to satisfy:
 //
-//   1. Frame :161 spells "Two sessions in this slot"; the built clash
-//      disclosure runs the shared count-copy helper (countOf, DEC-925) and
-//      renders "<n> sessions in this slot" with a numeral, never the
-//      spelled word -- even when n happens to be 2.
+// BOTH DIVERGENCES HAVE SINCE BEEN CLOSED, by the lanes that DO own
+// PhoneAgenda.tsx, and the receipts below move to the frame's shape
+// accordingly (they are stale receipts, not a licence to revert product
+// work -- the audit rows in docs/design/audit/agenda-390-v12.md record the
+// history):
+//
+//   1. Frame :161 spells "Two sessions in this slot". This file recorded
+//      the built disclosure as numeral-based (countOf, DEC-925). DEC-380
+//      wave-32 then rebuilt this ONE flag on the pack's spelled-count
+//      grammar (capitalizeFirst + spellCount + plural), so it now reads
+//      the frame's wording. countOf still owns every data-dense register
+//      elsewhere, which is why only this flag is spelled.
 //   2. Frame :171 draws an inline one-tap resolution action ("Move DFC-047
-//      to 11:30") directly on the clash card. No such control, or any
-//      control whose accessible name matches /^Move \S+ to \d{1,2}:\d{2}$/,
-//      exists anywhere in the built component -- the only path off a clash
-//      is arm-then-tap-a-free-run ("Place here anyway"), a different
-//      interaction shape than the frame draws.
+//      to 11:30") directly on the clash card. This file recorded that no
+//      such control existed. DEC-895 wave-33 then built it
+//      (computeClashMove + conflictMoveLabel, one resolution per clash
+//      card, rendered as the card's last child exactly as the frame
+//      draws it).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -212,8 +220,8 @@ describe('Agenda 390 frame :149-155 -- a placed slot renders time, ref·length, 
   });
 });
 
-describe('Agenda 390 frame :161 -- two-in-a-slot disclosure (DIVERGES: built copy is numeral-based, frame spells "Two")', () => {
-  it('renders a clash disclosure whose text matches the numeral shape /^\\d+ sessions? in this slot$/ for a seeded 2-session clash', () => {
+describe('Agenda 390 frame :161 -- two-in-a-slot disclosure (the numeral divergence, since CLOSED by DEC-380 wave-32)', () => {
+  it('renders a clash disclosure spelling the count exactly as frame :161 draws it, for a seeded 2-session clash', () => {
     const a = placedSession('c1', 'DFC-014', 'Taming 40-Minute CI', 'Priya Raman', 'r1', 660, 690);
     const b = placedSession('c2', 'DFC-047', 'Onboarding in 30 Minutes', 'Ruth Adeyemi', 'r1', 675, 705);
     const conflicts: AgendaConflict[] = [
@@ -225,19 +233,20 @@ describe('Agenda 390 frame :161 -- two-in-a-slot disclosure (DIVERGES: built cop
     expect(clash).not.toBeNull();
     const flag = clash!.querySelector('.chq-flag');
     expect(flag).not.toBeNull();
-    // DIVERGES: frame :161 draws the literal "Two sessions in this slot"
-    // (spelled word). The built component runs countOf (DEC-925, the
-    // codebase's one count-copy helper) and always renders a numeral, even
-    // for n=2 -- see docs/design/audit/agenda-390-v12.md #1.
-    expect(flag!.textContent).toMatch(/^\d+ sessions? in this slot$/);
-    expect(flag!.textContent).toBe('2 sessions in this slot');
+    // Frame :161 draws the literal "Two sessions in this slot" (spelled
+    // word), and DEC-380 wave-32 built exactly that. The shape assertion
+    // moves with it: spelled head, still count-derived (the three-way
+    // falsifier lives in PhoneAgenda.falsifiability.render.test.tsx, which
+    // proves "Three" for n=3 and so rules out a hardcoded "Two").
+    expect(flag!.textContent).toMatch(/^[A-Z][a-z]+ sessions? in this slot$/);
+    expect(flag!.textContent).toBe('Two sessions in this slot');
 
     // both clashing sessions' title+speaker render inside the disclosure
     expect(within(clash as HTMLElement).getByText('Taming 40-Minute CI')).toBeInTheDocument();
     expect(within(clash as HTMLElement).getByText('Onboarding in 30 Minutes')).toBeInTheDocument();
   });
 
-  it('DIVERGES: frame :171 draws an inline "Move DFC-047 to 11:30" resolution action on the clash card -- no control anywhere matches that shape in the built tree', () => {
+  it('frame :171\'s inline "Move <ref> to <time>" resolution action now renders on the clash card, naming DFC-047 (divergence CLOSED by DEC-895 wave-33)', () => {
     const a = placedSession('c1', 'DFC-014', 'Taming 40-Minute CI', 'Priya Raman', 'r1', 660, 690);
     const b = placedSession('c2', 'DFC-047', 'Onboarding in 30 Minutes', 'Ruth Adeyemi', 'r1', 675, 705);
     const conflicts: AgendaConflict[] = [
@@ -245,9 +254,21 @@ describe('Agenda 390 frame :161 -- two-in-a-slot disclosure (DIVERGES: built cop
     ];
     const { container } = render(<PhoneAgenda {...baseProps({ placed: [a, b], conflicts })} />);
 
+    // Exactly ONE resolution per clash card (DEC-895: computed from the
+    // card's own sessions, never re-derived per session), carrying the
+    // frame's grammar and naming the frame's session -- DFC-047, the later
+    // of the two overlapping talks, is the one offered a new slot.
+    //
+    // The CLOCK is deliberately not pinned here. The suggested time is the
+    // first free slot in this file's own day window, so "11:30" would be
+    // an artifact of the fixture rather than anything frame :171 fixes.
+    // The frame's verbatim sentence "Move DFC-047 to 11:30" is verdicted
+    // against its own seeding in PhoneAgenda.clashMove390.render.test.tsx,
+    // which quotes frame line :171 in full; duplicating it here with
+    // different props would only pin a coincidence.
     const moveButtons = within(container).queryAllByText(/^Move \S+ to \d{1,2}:\d{2}$/);
-    expect(moveButtons).toHaveLength(0);
-    expect(within(container).queryByText(/^Move DFC-047 to 11:30$/)).not.toBeInTheDocument();
+    expect(moveButtons).toHaveLength(1);
+    expect(moveButtons[0]!.textContent).toMatch(/^Move DFC-047 to \d{1,2}:\d{2}$/);
   });
 });
 
