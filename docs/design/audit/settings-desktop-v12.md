@@ -90,7 +90,8 @@ file already does; this document does not repeat it.
 
 ## Frame :788 "Settings · editing tracks and rooms"
 
-**DIVERGES** (a real, pre-existing and BLESSED divergence — not new debt).
+**RESOLVED-BY-RULING (DEVIATIONS "Tracks-and-rooms save model")** — a real,
+pre-existing and BLESSED divergence, not new debt.
 Entered by firing the real "Add" control on the Tracks and rooms section's
 read view.
 
@@ -129,8 +130,8 @@ read view.
 | :28 Event, form, publishing, data · 1600 | MATCHES |
 | :607 Settings · editing the call for papers | MATCHES |
 | :698 Settings · editing the event | MATCHES |
-| :788 Settings · editing tracks and rooms | DIVERGES (blessed, DEVIATIONS "Tracks-and-rooms save model") |
+| :788 Settings · editing tracks and rooms | RESOLVED-BY-RULING (DEVIATIONS "Tracks-and-rooms save model") |
 
-3 of 4 frames MATCH as rendered; the one DIVERGES row is a previously-ruled,
+3 of 4 frames MATCH as rendered; the one RESOLVED-BY-RULING row is a previously-ruled,
 intentional divergence (per-row dirty-reveal beats a single page-level save
 footer), not new debt. No desktop byte was moved to produce this verdict.

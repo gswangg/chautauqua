@@ -255,7 +255,7 @@ describe('v12 Content DESKTOP (1600) frames: per-frame render verdict receipts (
       await waitFor(() => expect(within(band).getByText(/Re-uploaded/)).toBeInTheDocument());
     });
 
-    it('DIVERGES (additively): the status band also carries a "Request changes" secondary the frame reserves for the Notes column\'s own "Ask for changes" composer', async () => {
+    it('RESOLVED-BY-RULING (DEC-902, wave 8): the status band also carries a "Request changes" secondary the frame reserves for the Notes column\'s own "Ask for changes" composer -- a blessed, additive capability', async () => {
       renderDetail();
       await screen.findByRole('heading', { name: 'Taming 40-Minute CI' });
       const band = document.querySelector<HTMLElement>('.chq-content-status-band')!;
@@ -269,7 +269,7 @@ describe('v12 Content DESKTOP (1600) frames: per-frame render verdict receipts (
       // lives in the right column, :181, "Ask for changes").
     });
 
-    it('DIVERGES (additively): the title row carries "Edit title and abstract" + "Revision history" links the frame draws nowhere on this screen', async () => {
+    it('RESOLVED-BY-RULING (DEC-902, wave 8): the title row carries "Edit title and abstract" + "Revision history" links the frame draws nowhere on this screen -- blessed, additive capabilities', async () => {
       renderDetail();
       const heading = await screen.findByRole('heading', { name: 'Taming 40-Minute CI' });
       const head = heading.closest<HTMLElement>('.chq-content-detail-head')!;
@@ -356,16 +356,19 @@ describe('v12 Content DESKTOP (1600) frames: per-frame render verdict receipts (
       expect(screen.getByRole('tab', { name: 'All types' })).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s remaining chips read a generic "Other · 5" bucket; the tree instead names each kind directly ("Handout · 5") -- there is no "other" grouping in the vocabulary', async () => {
+    it('RESOLVED-BY-RULING (DEC-902): the frame\'s generic "Other · 5" bucket is a pack-internal inconsistency the desktop frame draws and the phone frame omits over the same library; the tree\'s blessed shape names each kind directly ("Handout · 5"), preserving the organiser\'s per-kind filter', async () => {
       renderFiles();
       await screen.findByRole('heading', { name: 'Files' });
       // docs/design/Chautauqua Content.dc.html:308 -- the frame's own mock
-      // draws a generic `Other · 5` chip alongside Slides/Video.
+      // draws a generic `Other · 5` chip alongside Slides/Video; DEC-902
+      // closes this without a lane (PHONE :344-346 draws no residual chip
+      // over the same 31-file library).
       verbatimLine(308, '          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Other · 5</a>');
       expect(screen.getByRole('tab', { name: 'Slides · 22' })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: 'Video · 4' })).toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: 'Other · 5' })).not.toBeInTheDocument();
+      // The blessed shape: a per-kind chip, not the frame's rejected catch-all.
       expect(screen.getByRole('tab', { name: 'Handout · 5' })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: 'Other · 5' })).not.toBeInTheDocument();
     });
 
     it('MATCHES: the table header row is File / Session / Version / Size / [actions]', async () => {
@@ -447,7 +450,7 @@ describe('v12 Content DESKTOP (1600) frames: per-frame render verdict receipts (
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
 
-    it('DIVERGES: the frame\'s own error-band copy is bespoke prose ("keynote-final.zip is not a slide format"); the tree renders the pure-core\'s generic per-extension refusal instead', async () => {
+    it('RESOLVED-BY-RULING (DEC-902/DEC-967): the frame\'s own error-band copy is bespoke sample prose ("keynote-final.zip is not a slide format"); the tree renders the pure-core\'s server-enforced refusal instead, which DEC-902 blesses as the correct shape', async () => {
       renderDetail();
       await screen.findByRole('heading', { name: 'Taming 40-Minute CI' });
       await waitFor(() => expect(screen.getByText('slides-v3.pdf')).toBeInTheDocument());

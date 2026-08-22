@@ -145,7 +145,7 @@ describe('v12 Agenda DESKTOP (1600) frames: per-frame render verdict receipts (w
       expect(within(summary).getByText('2 conflicts').tagName).toBe('STRONG');
     });
 
-    it('DIVERGES (additively): the head action row also carries a "Breaks ›" disclosure the frame draws nowhere in the 1600 header -- only Auto-schedule and Publish schedule', async () => {
+    it('RESOLVED-BY-RULING (DEC-902, wave 9): the head action row also carries a "Breaks ›" disclosure the frame draws nowhere in the 1600 header -- a real, later-landed capability the frame\'s canvas predates, blessed', async () => {
       renderAgenda();
       await screen.findByRole('heading', { name: 'Agenda' });
       const actions = document.querySelector<HTMLElement>('.chq-agenda-head-actions')!;
@@ -236,7 +236,7 @@ describe('v12 Agenda DESKTOP (1600) frames: per-frame render verdict receipts (w
       expect(row).toHaveTextContent('15 min');
     });
 
-    it('DIVERGES (additively): an existing row carries BOTH Edit and Remove; the frame draws only a single "Remove" link per row', async () => {
+    it('RESOLVED-BY-RULING (DEC-902, wave 9): an existing row carries BOTH Edit and Remove; the frame draws only a single "Remove" link per row -- the inline-edit affordance is a real, later-landed capability, blessed', async () => {
       const dialog = await openBreaks();
       // docs/design/Chautauqua Agenda.dc.html:227 -- the frame's own row
       // actions cell is exactly one control, `Remove`.

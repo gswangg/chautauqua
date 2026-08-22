@@ -30,8 +30,8 @@ lane's test file.
 
 ## Frame :28 "Organiser view · 1600"
 
-**DIVERGES** (a real, pre-existing, already-documented divergence — not
-new debt). This lane's assigned checks cover the two pieces the brief
+**RESOLVED-BY-RULING (DEC-902)** — a real, pre-existing, already-documented
+divergence, not new debt. This lane's assigned checks cover the two pieces the brief
 names: the results-table track set (`ResultsTable.tsx`, entered at
 `/review/plans/:planId/results`) and the reviewer-progress band
 (`ProgressPanel.tsx`, entered at `/review/plans/:planId/progress`). The
@@ -47,8 +47,8 @@ named components only.
   would be fiction):
   - **MATCHES** on three tracks: Speaker `150px`, Track `130px`, Score
     `92px` — exact.
-  - **DIVERGES** on three tracks, each with its own pre-existing DEC-902
-    comment explaining why:
+  - **RESOLVED-BY-RULING (DEC-902)** on three tracks, each with its own
+    pre-existing DEC-902 comment explaining why:
     - Rank is `56px`, not the ruling's `44px` — `review.css`'s own
       comment: "44 fit RANK only before the shared 16px first-cell inset
       landed."
@@ -129,12 +129,12 @@ branch — see the componentry note above).
 
 | Frame | Verdict |
 | --- | --- |
-| :28 Organiser view · 1600 (results-table track set + progress band) | DIVERGES (pre-existing, documented) |
+| :28 Organiser view · 1600 (results-table track set + progress band) | RESOLVED-BY-RULING (DEC-902, pre-existing, documented) |
 | :183 Reviewer scorecard | MATCHES |
 | :351 Reviewer queue | MATCHES |
 | :830 Your plans · /review | MATCHES |
 
-3 of 4 frames MATCH as rendered; the one DIVERGES row (frame :28's
+3 of 4 frames MATCH as rendered; the one RESOLVED-BY-RULING row (frame :28's
 results-table track set) is three pre-existing, individually
 DEC-902-commented track-width deviations from DESIGN-RULINGS.md:191's own
 restatement of the frame's grid — none of them new debt, and none moved
