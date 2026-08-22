@@ -23,15 +23,18 @@ literal token, since it lives outside docs/design/audit/**.
 
 Derived, never hand-listed, per DEC-808: `readdirSync docs/design/audit`
 for `*.md`, a FLAT (non-recursive) listing identical in shape to the two
-frame ledgers' own `designFiles()` -- 100 files (including this document itself). A nested
-`docs/design/audit/settings-v12/` directory holds three further `.md`
-files this scan does not reach, mirroring the task brief's literal
+frame ledgers' own `designFiles()` -- 101 files (including this document
+itself), measured live task w18-c, DEC-903 wave-18 (superseded: this
+document previously read 100 files, before further audit files landed). A
+nested `docs/design/audit/settings-v12/` directory holds three further
+`.md` files this scan does not reach, mirroring the task brief's literal
 instruction rather than inventing a wider walk.
 
-Within each of the 100 files, every raw-text occurrence of the marker word
-opens one row, keyed `file:line` -- 203 rows measured on this branch
-(after this task's three re-verdicts below landed, and after this very
-document was added without ever spelling the marker itself).
+Within each of the 101 files, every raw-text occurrence of the marker word
+opens one row, keyed `file:line` -- 153 rows measured live task w18-c,
+DEC-903 wave-18 (superseded: previously stated as 203 rows, after this
+task's three re-verdicts below landed, and after this very document was
+added without ever spelling the marker itself).
 
 A row is ADJUDICATED when its own line, or "the paragraph it heads",
 carries a `DEC-NNN` citation or names `docs/design/DEVIATIONS.md`;
@@ -48,16 +51,23 @@ documented in the scan file's own header comment.
 
 ## Measured result
 
-- 100 audit files scanned (this document itself is the 100th, contributing 0 rows since it never spells the marker).
-- 203 total marker-token rows.
-- 133 open (no DEC-NNN citation or DEVIATIONS.md reference resolves them).
-- 70 adjudicated (a DEC ruling or a DEVIATIONS.md entry already settles
+- 101 audit files scanned live task w18-c, DEC-903 wave-18 (superseded:
+  previously stated as 100, this document itself contributing 0 rows since
+  it never spells the marker).
+- 153 total marker-token rows (superseded: previously stated as 203).
+- 1 open (no DEC-NNN citation or DEVIATIONS.md reference resolves it;
+  superseded: previously stated as 133 -- the drop is ADJUDICATION landed
+  by later lanes, including this task's own hyphenated-citation repairs,
+  not row deletion).
+- 152 adjudicated (a DEC ruling or a DEVIATIONS.md entry already settles
   them, even though the marker word remains in the prose as historical
   narration -- the audit corpus is append-only, per its own established
-  convention).
+  convention; superseded: previously stated as 70).
 
-`OPEN_DIVERGENCE_CEILING = 133` is a two-sided ratchet (DEC-808): a
-companion test fails if the open count rises above it (printing every
+`OPEN_DIVERGENCE_CEILING = 1` is a two-sided ratchet (DEC-808; superseded:
+previously stated as 133), measured live in
+`test/open-divergence-ledger.scan.test.ts`, never by arithmetic on this
+document. A companion test fails if the open count rises above it (printing every
 offending `file:line`) and another fails if it drops below it without the
 constant being lowered to match (printing the exact replacement line), so
 neither direction can go stale. It may only be LOWERED as future waves
