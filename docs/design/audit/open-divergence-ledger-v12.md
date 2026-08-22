@@ -170,3 +170,163 @@ All three rows are edited in place in their source files, in the
 append-only voice those files already use -- the original finding prose is
 retained as the historical record, with a resolution note naming the
 receipt added above or beside it.
+
+## Re-measured (task w31-d, DEC-099 wave-31 amendment): the ledger keyed
+## on ONE literal, 28 audit files carried the same claim in another shape
+
+The scan's own key was the single literal "the marker" (spelled out fully
+in `test/open-divergence-ledger.scan.test.ts`'s header comment, since this
+document deliberately never spells it -- see the note at the top of this
+file). Measured by hand across the 107-file population this ledger was
+scanning: 28 files carry `diverg`/`mismatch`/`does not match` prose and
+contributed ZERO rows, because their own verdict shape is a heading, a
+bold-led summary sentence, or a table cell -- never the marker literal.
+This included the already-named case from wave 28 (content-landing-390-
+v12.md's `## Divergence found` section, a real Content-390 chip-count gap)
+and 27 others: overflow-390-v12.md, density-pairing-v12.md,
+submissions-390-v12.md, settings-desktop-v12.md, contacts-pipeline-390-
+v12.md, comms-landing-390-v12.md, review-admin-v12.md, public-desktop-
+v12.md, contacts-drawer-390-v12.md, comms-compose-desktop-v12.md,
+contacts-desktop-v12.md, contacts-directory-desktop-v12.md,
+desktop-control-floor-v12.md, submissions-desktop-v12.md,
+public-390-request-verdicts-v12.md, comms-v12.md, review-v12.md,
+content-v12.md, contacts-v12.md, frame-field-label-v12.md,
+settings-v12/w10-frame-verdicts.md, decision-registry-collision-v12.md,
+drawn-field-label-v12.md, shell-header-390-v12.md, home-fresh-deploy-390-
+v12.md, frame-control-labels-v12.md, docs-library-desktop-v12.md,
+desktop-frame-ledger-v12.md.
+
+**The widened grammar** (full detail in the scan file's own header
+comment): a line that is itself a HEADING, a BOLD-LED verdict span, or a
+TABLE-ROW -- the three shapes a verdict is actually STATED in, not buried
+mid-paragraph -- and whose text matches `diverg`/`mismatch`/`does not
+match` opens a row, UNLESS that same line DENIES a divergence ("no ...
+diverge", "not a divergence", "cannot diverge", "never ... diverge"). A
+markdown table HEADER row (e.g. "| Frame | Verdict | What diverges |",
+present verbatim in five files) is excluded by its own shape -- it is
+always immediately followed by a `| --- | --- |` separator row, which is
+what the exclusion keys on, not a hand-listed file.
+
+**Negative controls, proven both synthetically and by hand against the
+real corpus** (per this task's own instruction): overflow-390-v12.md:179
+("...cannot diverge — there is no head to diverge."), density-pairing-
+v12.md:96 ("No other divergence."), and content-landing-390-v12.md:38
+("...not a divergence)") were all read by hand and confirmed to open ZERO
+rows under the widened grammar -- each is a denial landing inside a table
+cell, and `test/open-divergence-ledger.scan.test.ts`'s new "widened claim
+vocabulary" describe block pins all three by file:line directly against
+the live `ALL_ROWS` population (not just a synthetic fixture), so a future
+regression that reopens any of them fails loudly.
+
+**Measured result (re-run live on this branch, all four constants forced
+to -1/-1/{-1×4}/-1 first, actuals read back off the failure output, per
+this ledger's own established discipline):**
+
+- **110 audit files** (107 at the wave-27 baseline + 3 added by other
+  in-flight lanes since, unrelated to this task).
+- **234 total claim rows** at the point this section's own numbers were
+  measured (160 literal-token rows, unchanged, + 74 rows newly reached by
+  the widened vocabulary); this document's own later self-referential
+  bold-led sentence below ("`OPEN_DIVERGENCE_CEILING` rises from 0 to
+  16.") adjudicated by this same paragraph's DEC-180 citation, adds one
+  further row once written, taking the LIVE, current count to **235** --
+  `TOKEN_ROW_FLOOR` and the fallback shape floor are seeded at that final,
+  post-edit figure, not the mid-edit one, per this ledger's own "measure
+  by running the instrument, never by arithmetic on this comment" rule.
+- Shape split: **29 heading / 70 table / 29 bullet / 107 fallback**
+  (up from 15/44/26/75; every widened bold-led row classifies `fallback`
+  under `classifyLineShape`, which is why fallback grew the most).
+- **58 of the 74 newly-reached rows are ADJUDICATED** by the SAME
+  line/paragraph-scoped citation grammar this ledger has always used
+  (unchanged, per this task's instruction not to fork it) -- most already
+  carry a `DEC-NNN` citation on their own table-row cell or in the same
+  heading section.
+- **16 of the 74 are OPEN.** Every one was read by hand; none carries a
+  `DEC-NNN` or `docs/design/DEVIATIONS.md` citation reachable by this
+  grammar's line/paragraph scope, so per this task's own instruction
+  ("adjudicate ONLY rows you can settle by citing an existing DEC or
+  DEVIATIONS line ... never by inventing a ruling") none is closed here.
+  All 16 are the SAME known over-approximation direction (b) this
+  document's "Population and grammar" section above has always disclosed
+  -- the resolving citation sits in a LATER paragraph or section than the
+  row's own line/paragraph reaches, most commonly a bold-led "Verdict:
+  MATCHES, with N settled divergences" summary sentence whose citations
+  live in the bullet points that follow it (a blank line away), or a
+  table cell that names a "Known, already-adjudicated" section further
+  down the same file rather than citing inline. The 16, by file:line and
+  their own words (verbatim, no paraphrase inserted):
+  - `comms-compose-desktop-v12.md:41` -- "**Mostly MATCHES, with one
+    blessed structural divergence and two visibility-gating
+    divergences.**" (citations for the "blessed" clause live in the
+    bullets that follow, out of this row's paragraph scope).
+  - `comms-compose-desktop-v12.md:136` -- "**Mostly MATCHES, with one
+    real counting-vocabulary divergence.**" (the DEC-964 citation for
+    this exact divergence is two lines below, in a bullet, out of scope).
+  - `contacts-desktop-v12.md:45` -- "**MOSTLY MATCHES, one additive
+    divergence.**"
+  - `contacts-desktop-v12.md:120` -- "**MOSTLY MATCHES, one content
+    divergence.**"
+  - `contacts-desktop-v12.md:160` -- "**MOSTLY MATCHES, with one
+    back-link content divergence and one already-adjudicated frame-silent
+    addition.**"
+  - `contacts-directory-desktop-v12.md:30` -- "**MATCHES**, with one
+    additive text divergence noted below."
+  - `contacts-directory-desktop-v12.md:67` -- "**MATCHES**, with one
+    order **DIVERGENCE** in the action bar."
+  - `contacts-drawer-390-v12.md:23` -- table cell: "...heading-level
+    (`<h1>` vs `<h2>`) is a pre-existing, already-SETTLED divergence — see
+    'Known, already-adjudicated divergences' below, not reopened here"
+    (that section, lines 39-42, DOES cite `docs/design/DEVIATIONS.md` §7,
+    but a table row's paragraph is atomic per this ledger's own grammar,
+    so the citation two sections down is correctly not credited here).
+  - `density-pairing-v12.md:203` -- "**DIVERGENCE_CEILING = 0**, measured
+    over the full derived population..." (this is a DIFFERENT
+    instrument's own ratchet constant name reading zero, not a product
+    divergence -- a false-positive of the widened grammar in the SAFE
+    direction, documented rather than special-cased per this ledger's own
+    "never hand-curate a row" discipline).
+  - `desktop-control-floor-v12.md:182` -- heading: "## Offenders: 0
+    (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 0` as of wave 26...)"
+    (same false-positive shape as the row above -- another instrument's
+    own zeroed ceiling; the DEC-393 citation is in the very next `###`
+    subheading, one heading-boundary out of scope).
+  - `desktop-control-floor-v12.md:438` -- bold-led: "**MEASURED (this
+    branch, forcing both `DESKTOP_FLOOR_DIVERGENCE_CEILING` and
+    `DESKTOP_FLOOR_UNRESOLVED_CEILING` to -1...)**" (same instrument,
+    same false-positive shape).
+  - `public-390-request-verdicts-v12.md:98` -- table cell: "**Divergence
+    noted, not a defect**: the frame's own static mockup leads with the
+    event title as a bare `<span>`, never an `<h1>`..." -- read by hand,
+    genuinely no DEC/DEVIATIONS citation anywhere in the row; a real,
+    small, uncited sample-vs-route gap.
+  - `submissions-390-v12.md:14` -- "**Verdict: MATCHES**, with two
+    settled, already-adjudicated divergences recorded below" (citations
+    for both settled divergences are in the bullets that follow).
+  - `submissions-390-v12.md:88` -- "**Verdict: MATCHES**, with one
+    settled divergence (the dock's third action) and one out-of-scope
+    note (the co-presenter caption)."
+  - `submissions-desktop-v12.md:128` -- "**MATCHES**, with two real,
+    narrow control-type divergences noted below."
+  - `submissions-desktop-v12.md:193` -- table cell: "MATCHES (two
+    control-type divergences)" (the narrative citation, if any, is in
+    prose elsewhere in the file, out of this atomic table row's scope).
+
+**`OPEN_DIVERGENCE_CEILING` rises from 0 to 16.** This is the widened
+instrument SEEING real, already-narrated debt for the first time -- the
+campaign's actual remaining distance is unchanged by this task, only this
+ledger's visibility of it. `AUDIT_FILE_FLOOR` (110), `TOKEN_ROW_FLOOR`
+(234) and the four `SHAPE_FLOORS` (29/70/29/106) are raised in the same
+commit to match, per this ledger's own monotone-floor discipline (DEC-180
+wave-27).
+
+**Megabatch merge note (Thunderdome), per the pattern
+`docs/design/audit/frame-field-label-v12.md`'s own "Megabatch merge note"
+section already uses:** `review-admin-v12.md`'s findings (a) and (b) (the
+PlanEditor `:612`/`:627` "Options"/"Weight" phone-eyebrow gap, and the
+`:640` consequence-line wording gap) are being repaired by sibling task
+`v12m-w31-a` in this same wave's batch. Neither finding opened a row in
+THIS ledger (both are plain fallback prose in `review-admin-v12.md`,
+outside the widened grammar's three trigger shapes), so a merge-train
+re-measure after `v12m-w31-a` lands will not move `OPEN_DIVERGENCE_CEILING`
+-- recorded here so that fact is not mistaken for a broken ratchet if a
+future wave re-measures and finds this ledger's count unchanged.

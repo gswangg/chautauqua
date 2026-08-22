@@ -19,8 +19,13 @@
 // docs/design/audit/settings-v12/ directory (three further .md files) is
 // now reached; a non-vacuity assertion below pins that at least one row
 // resolves from a nested path, so a future flattening cannot silently
-// re-open the blind spot. Within each of the 105 files, every raw-text
-// occurrence of the token `DIVERGES` opens one row, keyed `file:line`.
+// re-open the blind spot. Within each of the 110 files, every raw-text
+// occurrence of the literal token `DIVERGES` opens one row, keyed
+// `file:line` -- PLUS (task w31-d, DEC-099 wave-31 amendment) every
+// heading/bold-led/table-row line carrying the corpus's OTHER verdict
+// vocabulary (`diverg`/`mismatch`/`does not match`, case-insensitive,
+// minus a same-line denial) -- see the WIDENED CLAIM VOCABULARY comment
+// below for the full grammar and its negative controls.
 //
 // ADJUDICATION GRAMMAR: a row is ADJUDICATED when its own line, or "the
 // paragraph it heads", carries a `DEC-NNN` citation or names
@@ -88,6 +93,48 @@ const DEC_CITE_RE = /\bDEC-\d{3}\b/;
 const DEVIATIONS_RE = /docs\/design\/DEVIATIONS\.md/;
 const TOKEN = 'DIVERGES';
 
+// WIDENED CLAIM VOCABULARY (task w31-d, DEC-099 wave-31 amendment): the
+// literal TOKEN above is one verdict shape the corpus uses; 28 of 107 audit
+// files carry a DIFFERENT verdict shape for the same claim -- lower-case
+// "diverges"/"divergence", "mismatch", or "does not match" -- and were
+// invisible to a scan keyed on ONE literal (field-guide wave-28/31: "a
+// green ledger is a statement about its grammar"). This is a DERIVED
+// widening (never a hand-listed file/phrase list, per DEC-808): any line
+// that is itself a HEADING (classifyLineShape === 'heading'), a
+// BOLD-LED verdict span (starts, ignoring leading whitespace, with `**`),
+// or a TABLE-ROW (classifyLineShape === 'table') -- the three shapes a
+// verdict is actually STATED in, never buried mid-paragraph prose -- and
+// whose text matches CLAIM_RE opens a row exactly like a literal TOKEN
+// line does. Bare fallback prose (a claim mentioned in passing, never
+// stated as the line's own verdict) is deliberately NOT widened: real
+// corpus denials of this shape (contacts-pipeline-390-v12.md:96 "no
+// divergence to record there"; comms-landing-390-v12.md:23/58 "No
+// divergence -- the frame...") sit in ordinary paragraph prose, not in a
+// heading/bold-span/table-row, so restricting the widened shapes to the
+// three "a verdict is actually stated here" constructs excludes them
+// without needing prose-level negation handling for that shape.
+//
+// The one shape where a real denial DOES land inside a widened trigger is
+// TABLE-ROW: overflow-390-v12.md:179's cell reads "...so head and body
+// cannot diverge -- there is no head to diverge." -- a denial stated
+// inside a table cell. DENIAL_RE below catches this (and the same-shaped
+// denials read by hand in density-pairing-v12.md:96 "No other
+// divergence.", content-landing-390-v12.md:38 "not a divergence") so a
+// line asserting the ABSENCE of a divergence never opens a row, matching
+// this ledger's own two-sided negative-control discipline (DEC-099: "a
+// sentence that DENIES a divergence must NOT open a row").
+const CLAIM_RE = /diverg|mismatch|does not match/i;
+const DENIAL_RE = /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*/i;
+// A markdown table's HEADER row (e.g. "| Frame | Verdict | What diverges |")
+// names its VERDICT COLUMN "What diverges"/"Diverges" in five of the newly
+// -reached files (comms-v12.md:133, review-v12.md:63, content-v12.md:77,
+// contacts-v12.md:194, settings-v12/w10-frame-verdicts.md:70,
+// frame-field-label-v12.md:86) -- the column's NAME, not a claim about any
+// specific frame. A header row is always immediately followed by a
+// markdown separator row (only `|`, `-`, `:` and whitespace); that shape,
+// not any hand-listed file, is what excludes it.
+const TABLE_SEPARATOR_RE = /^\s*\|?[\s:|-]*-{3,}[\s:|-]*\|?\s*$/;
+
 export type RowShape = 'heading' | 'table' | 'bullet' | 'fallback';
 
 export interface DivergenceRow {
@@ -146,13 +193,33 @@ export function isAdjudicated(line: string, paragraph: string): boolean {
   return DEC_CITE_RE.test(line) || DEVIATIONS_RE.test(line) || DEC_CITE_RE.test(paragraph) || DEVIATIONS_RE.test(paragraph);
 }
 
-/** Derives every DIVERGES row in `text` (already split into `lines`), tagged
+/** Whether `line`, at its own shape, opens a row under the WIDENED claim
+ * vocabulary (heading / bold-led / table-row carrying CLAIM_RE, minus a
+ * same-line DENIAL_RE denial). Exported so the negative-control tests can
+ * drive it directly. */
+export function isWidenedClaimTrigger(line: string, nextLine?: string): boolean {
+  if (!CLAIM_RE.test(line)) return false;
+  if (DENIAL_RE.test(line)) return false;
+  const shape = classifyLineShape(line);
+  if (shape === 'table') {
+    // A table row immediately followed by a separator row is the header,
+    // naming its verdict column -- not a claim about a frame.
+    if (nextLine !== undefined && TABLE_SEPARATOR_RE.test(nextLine)) return false;
+    return true;
+  }
+  if (shape === 'heading') return true;
+  return /^\s*\*\*/.test(line); // bold-led verdict span
+}
+
+/** Derives every claim row in `text` (already split into `lines`), tagged
  * with its file, shape, paragraph and adjudication status. Pure function --
- * exported for the negative-control tests. */
+ * exported for the negative-control tests. A row opens on either the
+ * literal TOKEN (any shape, original grammar) or the widened claim
+ * vocabulary (heading/bold-led/table-row only, see comment above). */
 export function deriveRowsFromLines(relFile: string, lines: string[]): DivergenceRow[] {
   const out: DivergenceRow[] = [];
   lines.forEach((line, idx) => {
-    if (!line.includes(TOKEN)) return;
+    if (!line.includes(TOKEN) && !isWidenedClaimTrigger(line, lines[idx + 1])) return;
     const paragraph = paragraphFor(lines, idx);
     out.push({
       file: relFile,
@@ -218,12 +285,12 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
 const AUDIT_FILE_FLOOR = 110;
-const TOKEN_ROW_FLOOR = 178;
+const TOKEN_ROW_FLOOR = 235;
 const SHAPE_FLOORS: Record<RowShape, number> = {
-  heading: 15,
-  table: 44,
-  bullet: 26,
-  fallback: 75,
+  heading: 29,
+  table: 70,
+  bullet: 29,
+  fallback: 107,
 };
 
 // -- Ratchet -------------------------------------------------------------
@@ -310,7 +377,42 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // and after the walk widened -- both newly-reached rows are ADJUDICATED,
 // so per this task's own instruction the ceiling is left untouched rather
 // than raised.
-export const OPEN_DIVERGENCE_CEILING = 0;
+//
+// RE-BASELINED (task w31-d, DEC-099 wave-31 amendment): the WIDENED CLAIM
+// VOCABULARY above (heading/bold-led/table-row shapes matching CLAIM_RE,
+// minus DENIAL_RE) reaches 28 of the 107 audit files that were carrying
+// this ledger's claim in a shape the bare literal TOKEN could never see.
+// Re-measured live on this branch (constants forced to -1/-1/{-1,-1,-1,-1}
+// first, actuals read off the failure output): 107 -> 110 audit files (3
+// more files were also added to the corpus by other in-flight lanes since
+// the wave-27 baseline; unrelated to this task), 160 -> 234 DIVERGES-token
+// rows (74 new rows from the widened vocabulary), shape split
+// 15/44/26/75 -> 29/70/29/106 (every shape grew: 14 new heading rows, 26
+// new table rows, 3 new bullet rows -- a bold-led span classifies
+// `fallback` under classifyLineShape, which is why table/heading grew less
+// than fallback's +31). Of the 74 newly-reached rows, 58 are ADJUDICATED
+// by the SAME line/paragraph-scoped DEC-NNN-or-DEVIATIONS.md grammar this
+// file has always used (unchanged, per this task's own instruction not to
+// fork it) and 16 are OPEN. Every one of the 16 was read by hand (see
+// docs/design/audit/open-divergence-ledger-v12.md "Re-measured (task
+// w31-d)" for the full file:line list with its own words) -- none carries
+// a DEC-NNN or DEVIATIONS.md citation reachable by this grammar's
+// line/paragraph scope, so none is adjudicated in this task; per this
+// task's own instruction ("adjudicate ONLY rows you can settle by citing
+// an existing DEC or DEVIATIONS line ... never by inventing a ruling"),
+// none is closed here. All 16 are the SAME known over-approximation
+// direction (b) this file's header comment has always documented (a
+// resolving citation sits in a LATER paragraph/section than the grammar's
+// line/paragraph scope reaches) -- e.g. contacts-drawer-390-v12.md:23's
+// table cell says "already-SETTLED divergence — see 'Known,
+// already-adjudicated divergences' below", and that section (line 39-42)
+// does cite `docs/design/DEVIATIONS.md` §7, but a table row's paragraph is
+// itself atomic (shape 2 above) so the citation two sections down is
+// correctly not credited. OPEN_DIVERGENCE_CEILING rises from 0 to 16 --
+// this is the widened instrument seeing real, already-narrated debt for
+// the first time, not new debt landing; the campaign's actual distance to
+// run is unchanged by this task, only this ledger's VISIBILITY of it.
+export const OPEN_DIVERGENCE_CEILING = 16;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
@@ -472,6 +574,99 @@ describe('open-divergence ledger negative controls (DEC-099: every scan ships on
     const lines = ['## DIVERGES 1 -- fixed', '', 'Ruled by DEC-100.', '', '## end'];
     const rows = deriveRowsFromLines('synthetic.md', lines);
     expect(rows.every((r) => r.adjudicated)).toBe(true);
+  });
+
+  // WIDENED CLAIM VOCABULARY negative controls (task w31-d, DEC-099
+  // wave-31 amendment). Both directions on synthetic fixtures, plus real
+  // corpus files read by hand (per this task's own instruction): the
+  // POSITIVE-trigger real files are comms-compose-desktop-v12.md:41
+  // ("**Mostly MATCHES, with one blessed structural divergence...**",
+  // bold-led), review-v12.md:63 is a table HEADER row and correctly does
+  // NOT trigger (see header-row control below), and content-landing-390-
+  // v12.md:65 ("## Divergence found", heading) all opened real rows in
+  // this task's own measured run. The DENIAL real files are
+  // overflow-390-v12.md:179 ("...cannot diverge — there is no head to
+  // diverge.", table), density-pairing-v12.md:96 ("No other
+  // divergence."), and content-landing-390-v12.md:38 ("...not a
+  // divergence)", table) -- all three read by hand and confirmed absent
+  // from this task's measured OPEN/adjudicated row list.
+  describe('widened claim vocabulary (task w31-d, DEC-099 wave-31 amendment)', () => {
+    it('a heading-shape line matching "divergence" (no literal DIVERGES token) opens a row', () => {
+      const lines = ['## Divergence found', '', 'The frame draws two chips, the app renders three.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.shape).toBe('heading');
+      expect(rows[0]!.adjudicated).toBe(false);
+    });
+
+    it('a bold-led verdict span matching "divergence" opens a row (fallback shape, per classifyLineShape)', () => {
+      const lines = ['Some lead-in text.', '', '**Mostly MATCHES, with one real divergence.**', 'No citation follows.', '', 'Next paragraph.'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.shape).toBe('fallback');
+      expect(rows[0]!.adjudicated).toBe(false);
+    });
+
+    it('a table-row cell matching "mismatch"/"does not match" opens a row', () => {
+      const lines = ['| a | b | the label does not match the frame |'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.shape).toBe('table');
+    });
+
+    it('a table HEADER row naming its verdict column "What diverges" does NOT open a row (it is the column name, not a claim)', () => {
+      const lines = ['| Frame | Verdict | What diverges |', '| --- | --- | --- |', '| :1 x | MATCHES | n/a |'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('bare fallback prose mentioning "divergence" in passing (not heading/bold/table) does NOT open a row', () => {
+      const lines = ['This is a plain sentence that mentions divergence in passing, never as its own verdict line.'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('DENIAL: a table cell that DENIES a divergence ("no ... diverge") does NOT open a row', () => {
+      const lines = ['| a | b | head and body cannot diverge — there is no head to diverge |'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('DENIAL: a bold-led span that DENIES a divergence ("not a divergence") does NOT open a row', () => {
+      const lines = ['**MATCHES, not a divergence.**'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('DENIAL: a heading that DENIES a divergence ("No other divergence") does NOT open a row', () => {
+      const lines = ['## Check passes: no other divergence.'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('a widened row IS adjudicated when its own line/paragraph carries a DEC-NNN citation', () => {
+      const lines = ['## Divergence found', '', 'Ruled by DEC-825.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows[0]!.adjudicated).toBe(true);
+    });
+
+    it('real corpus file (read by hand): overflow-390-v12.md:179 denial does not appear in the measured OPEN or newly-widened row set', () => {
+      const rows = ALL_ROWS.filter((r) => r.file.endsWith('overflow-390-v12.md') && r.line === 179);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('real corpus file (read by hand): density-pairing-v12.md denial lines do not open rows', () => {
+      const rows = ALL_ROWS.filter((r) => r.file.endsWith('density-pairing-v12.md') && [60, 66, 96].includes(r.line));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('real corpus file (read by hand): content-landing-390-v12.md:38 ("not a divergence") does not open a row, but :65 ("## Divergence found") does', () => {
+      const denialRow = ALL_ROWS.find((r) => r.file.endsWith('content-landing-390-v12.md') && r.line === 38);
+      const headingRow = ALL_ROWS.find((r) => r.file.endsWith('content-landing-390-v12.md') && r.line === 65);
+      expect(denialRow).toBeUndefined();
+      expect(headingRow).toBeDefined();
+      expect(headingRow!.shape).toBe('heading');
+    });
   });
 
   // Two-sided companions for the two monotone-UPWARD vacuity floors
