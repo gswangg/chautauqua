@@ -1,15 +1,17 @@
-// Pack declaration vocabulary ratchet (DEC-937, wave-20 task w20-a).
+// Pack declaration vocabulary ratchet (DEC-937, wave-20 task w20-a; widened
+// to font-weight/line-height by DEC-991's wave-29 amendment, task w29-f).
 //
 // DESIGN-RULINGS.md's own opening states the closed test: "anything not
 // listed here and not in a frame is improvisation and should be flagged."
 // No prior instrument ever asked that question at the level of a bare CSS
 // PROPERTY VALUE -- every ledger so far grades a screen, a control label, or
-// a caption. This scan grades two properties directly against the pack's
+// a caption. This scan grades four properties directly against the pack's
 // own declared value set:
 //
-//   1. POPULATION -- every `font-style: <value>;` and
-//      `border-radius: <value>;` declaration in product stylesheets, walked
-//      via readdirSync (never a hand-listed file array, DEC-808):
+//   1. POPULATION -- every `font-style: <value>;`, `border-radius: <value>;`,
+//      `font-weight: <value>;` and `line-height: <value>;` declaration in
+//      product stylesheets, walked via readdirSync (never a hand-listed file
+//      array, DEC-808):
 //        a. every *.css file under app/src/**, recursively;
 //        b. every SSR CSS module under src/** via
 //           test/helpers/ssr-css-sources's ssrCssSources() (mirrors the
@@ -26,23 +28,64 @@
 //      as an exclusion list of offenders (DEC-180):
 //        a. a declaration inside an `@font-face { ... }` block is an ASSET
 //           declaration (it names a font FILE's own style, e.g. the italic
-//           cut of a variable font), not screen typography -- it is
-//           stripped from the population before matching. src/views/theme.ts
-//           carries the only two members, both `font-style: normal;`.
+//           cut of a variable font, or the `font-weight: 400 700;` variable-
+//           weight RANGE a font file itself covers), not screen typography
+//           -- it is stripped from the population before matching.
+//           src/views/theme.ts and app/src/styles.css each carry one
+//           `@font-face` block with a `font-weight: 400 <max>;` range.
 //        b. a `border-radius` value that is not a bare `<digits>px` token
 //           (a percentage, a keyword, a `var(...)` reference, or a
 //           multi-value shorthand) sits outside the pack's px-radius
-//           grammar entirely -- it is not evaluated as a px-vocabulary
-//           offender, but it IS counted, into its own asserted total below,
-//           so the population can never silently shrink by reclassifying a
-//           real declaration as "not applicable".
+//           grammar entirely; likewise a `font-weight` value that is not a
+//           bare `<digits>` token (`var(...)`, `inherit`) and a
+//           `line-height` value that is not a bare `<digits>` or
+//           `<digits>.<digits>` token (`var(...)`, `inherit`) sit outside
+//           their respective grammars. None of these three is evaluated as
+//           a vocabulary offender, but each IS counted, into its own
+//           asserted total below, so the population can never silently
+//           shrink by reclassifying a real declaration as "not applicable".
+//        c. THE SHORTHAND/CUSTOM-PROPERTY HAZARD: a raw `${property}:`
+//           substring search also fires inside a CSS custom property whose
+//           OWN NAME happens to end with that property name, e.g.
+//           `--chq-type-overview-headline-line-height: 1.2;` (overview.css)
+//           ends in the literal substring `line-height:` and would be
+//           misread as a `line-height` declaration with value `1.2` --
+//           silently correct in this one case (1.2 is in-vocabulary either
+//           way) but a false population member in general, and the exact
+//           DEC-613 "second copy of a vocabulary" shape if a future custom
+//           property's numeric suffix ever drifted out of vocabulary
+//           unnoticed. `font: <weight> <size>/<line-height> <family>;`
+//           shorthand is the same hazard in the other direction: it never
+//           contains the literal substring `font-weight:` or `line-height:`
+//           so a naive search both under- and over-counts depending on
+//           which malformed substring it happens to catch. Both are closed
+//           by one guard: every property match requires a non-word,
+//           non-hyphen character (or start-of-string) immediately before
+//           the property name (`(?<![\w-])`), so `-headline-line-height:`
+//           can never be misread as `line-height:`, and `font-weight`/
+//           `line-height` are matched only by their own exact literal
+//           name, never as a substring of a longer token. Applied
+//           uniformly to all four properties (verified to change nothing
+//           for font-style/border-radius: no custom property in this tree
+//           ends in either literal).
 //
-//   4. OFFENDER -- a product `font-style` value not in the pack's
-//      `font-style` vocabulary (empty, per the vacuous-population tripwire
-//      below -- so ANY product `font-style` declaration surviving
-//      discriminator (a) is an offender), or a product `border-radius`
-//      value that IS a bare `<digits>px` token but that token is not in the
-//      pack's derived px-radius vocabulary.
+//   4. OFFENDER -- a product declaration whose value survives its
+//      property's discriminators (a)-(c) above (i.e. is grammar-eligible)
+//      but is not in the pack's derived vocabulary for that property.
+//      font-style's pack vocabulary is empty (vacuous-population tripwire),
+//      so ANY product `font-style` declaration surviving discriminator (a)
+//      is an offender.
+//
+//   5. SETTLED EXCLUSIONS -- before any measured count becomes a ceiling,
+//      every candidate offender's subject is grepped across
+//      `src/decisions-data/` and `decisions/` (DEC-991's wave-29 amendment,
+//      restating the wave-28 lesson: a new ledger's first measurement is
+//      not a ceiling until its rows are checked against standing rulings).
+//      A row a standing ruling settles is NOT counted as an offender; it is
+//      recorded below in SETTLED_EXCLUSIONS, quoting that ruling VERBATIM,
+//      with a resolution guard that throws loudly if the quote stops
+//      resolving against the live decision doc (so a future edit to that
+//      doc cannot silently strand the exclusion).
 //
 // RATCHET: PACK_VOCABULARY_OFFENDERS_CEILING is a single exported const,
 // two-sided (fails above AND below, printing the exact replacement line --
@@ -58,7 +101,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_937 } from '../src/decisions';
+import { DEC_937, DEC_945, DEC_991 } from '../src/decisions';
 import { ssrCssSources } from './helpers/ssr-css-sources';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -66,10 +109,12 @@ const REPO_ROOT = join(HERE, '..');
 const APP_SRC = join(REPO_ROOT, 'app/src');
 const DESIGN_DIR = join(REPO_ROOT, 'docs/design');
 
-// Confirms this file's population depends on the ruling it implements
+// Confirms this file's population depends on the rulings it implements
 // (compile-checked, per the standing house rule: code depending on
 // DEC-NNN must reference its constant).
 void DEC_937;
+void DEC_991;
+void DEC_945;
 
 /** Every *.css file under `root`, enumerated (DEC-808), never hand-listed. */
 function listCssFiles(root: string): string[] {
@@ -108,20 +153,27 @@ function stripFontFace(css: string): string {
   return css.replace(/@font-face\s*\{[^{}]*\}/g, '');
 }
 
+type Property = 'font-style' | 'border-radius' | 'font-weight' | 'line-height';
+
 interface Declaration {
   readonly value: string;
   readonly path: string;
 }
 
 /** Every `property: value;` declaration in `text`, after comment- and
- * @font-face-stripping, value trimmed. */
-function findDeclarations(text: string, path: string, property: 'font-style' | 'border-radius'): Declaration[] {
+ * @font-face-stripping, value trimmed. Discriminator (c) above: the
+ * `(?<![\w-])` lookbehind requires the property name not be the tail of a
+ * longer identifier (a custom property like
+ * `--chq-type-overview-headline-line-height`), so a custom property whose
+ * OWN NAME happens to end in a graded property's name is never misread as a
+ * declaration of that property. */
+function findDeclarations(text: string, path: string, property: Property): Declaration[] {
   const cleaned = stripFontFace(stripComments(text));
   // Terminator is `;` for a real CSS rule OR an unescaped quote for an
   // inline `style="..."` attribute (the pack's .dc.html files routinely
   // omit the trailing `;` on the LAST declaration before the closing
   // quote) -- `[^;"']+` stops at whichever comes first.
-  const re = new RegExp(`${property}:\\s*([^;"']+)`, 'g');
+  const re = new RegExp(`(?<![\\w-])${property}:\\s*([^;"']+)`, 'g');
   const out: Declaration[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(cleaned)) !== null) {
@@ -155,6 +207,12 @@ function packSources(): ProductSources[] {
 }
 
 const PX_RE = /^\d+px$/;
+// Grammar (discriminator (b) above): font-weight is a bare integer token;
+// line-height is a bare integer or decimal token (both unitless, per CSS
+// and per every literal the pack itself draws -- measured: {400..800} for
+// font-weight, {1, 1.04 ... 1.7} for line-height).
+const WEIGHT_RE = /^\d+$/;
+const LINE_HEIGHT_RE = /^\d+(?:\.\d+)?$/;
 
 interface Vocabulary {
   readonly fontStyleValues: ReadonlySet<string>;
@@ -162,16 +220,28 @@ interface Vocabulary {
   readonly radiusPxVocab: ReadonlySet<string>;
   readonly radiusPxTotal: number;
   readonly radiusOutOfGrammarTotal: number;
+  readonly weightVocab: ReadonlySet<string>;
+  readonly weightTotal: number;
+  readonly weightOutOfGrammarTotal: number;
+  readonly lineHeightVocab: ReadonlySet<string>;
+  readonly lineHeightTotal: number;
+  readonly lineHeightOutOfGrammarTotal: number;
 }
 
-/** Derives the pack's declared value set for both properties from a set of
- * `.dc.html` sources (or a synthetic fixture with the same shape). */
+/** Derives the pack's declared value set for all four properties from a set
+ * of `.dc.html` sources (or a synthetic fixture with the same shape). */
 function deriveVocabulary(sources: readonly ProductSources[]): Vocabulary {
   const fontStyleValues = new Set<string>();
   let fontStyleTotal = 0;
   const radiusPxVocab = new Set<string>();
   let radiusPxTotal = 0;
   let radiusOutOfGrammarTotal = 0;
+  const weightVocab = new Set<string>();
+  let weightTotal = 0;
+  let weightOutOfGrammarTotal = 0;
+  const lineHeightVocab = new Set<string>();
+  let lineHeightTotal = 0;
+  let lineHeightOutOfGrammarTotal = 0;
   for (const s of sources) {
     for (const d of findDeclarations(s.text, s.path, 'font-style')) {
       fontStyleValues.add(d.value);
@@ -185,30 +255,111 @@ function deriveVocabulary(sources: readonly ProductSources[]): Vocabulary {
         radiusOutOfGrammarTotal++;
       }
     }
+    for (const d of findDeclarations(s.text, s.path, 'font-weight')) {
+      if (WEIGHT_RE.test(d.value)) {
+        weightVocab.add(d.value);
+        weightTotal++;
+      } else {
+        weightOutOfGrammarTotal++;
+      }
+    }
+    for (const d of findDeclarations(s.text, s.path, 'line-height')) {
+      if (LINE_HEIGHT_RE.test(d.value)) {
+        lineHeightVocab.add(d.value);
+        lineHeightTotal++;
+      } else {
+        lineHeightOutOfGrammarTotal++;
+      }
+    }
   }
-  return { fontStyleValues, fontStyleTotal, radiusPxVocab, radiusPxTotal, radiusOutOfGrammarTotal };
+  return {
+    fontStyleValues,
+    fontStyleTotal,
+    radiusPxVocab,
+    radiusPxTotal,
+    radiusOutOfGrammarTotal,
+    weightVocab,
+    weightTotal,
+    weightOutOfGrammarTotal,
+    lineHeightVocab,
+    lineHeightTotal,
+    lineHeightOutOfGrammarTotal,
+  };
 }
 
 interface Offender {
-  readonly property: 'font-style' | 'border-radius';
+  readonly property: Property;
   readonly value: string;
   readonly path: string;
 }
 
+interface SettledExclusion {
+  readonly property: Property;
+  readonly value: string;
+  /** Repo-relative paths of the ONLY sites this settlement covers -- scoped
+   * by site, not just by value, so a coincidentally-identical value showing
+   * up at a NEW, un-ruled site is never silently swept in under an old
+   * ruling's name (that would be a vocabulary hole the settlement itself
+   * creates). */
+  readonly paths: readonly string[];
+  /** The exact decision-doc file the verbatim quote must resolve against. */
+  readonly decisionDoc: string;
+  /** The verbatim quote from that doc backing the settlement. */
+  readonly quote: string;
+}
+
+/** Rows a standing ruling already settles (point 5 of the header comment)
+ * -- never counted as offenders. Each quote is checked to still resolve
+ * against its decision doc by a describe block below (a resolution guard:
+ * if the doc is ever edited to drop this quote, the guard throws loudly
+ * rather than let the exclusion silently outlive its own citation). */
+const SETTLED_EXCLUSIONS: readonly SettledExclusion[] = [
+  {
+    property: 'line-height',
+    value: '1.63',
+    paths: ['app/src/pages/not-found.css', 'src/routes/auth.css.ts'],
+    decisionDoc: 'decisions/DEC-945.md',
+    quote: '28px title, 15px/1.63 body, links in one flex row',
+  },
+];
+
+function isSettled(property: Property, value: string, path: string): boolean {
+  return SETTLED_EXCLUSIONS.some(
+    (e) => e.property === property && e.value === value && e.paths.some((p) => path.endsWith(p)),
+  );
+}
+
 /** Finds every product declaration whose value sits outside `vocab`, per
- * the discriminators stated in this file's header comment. */
+ * the discriminators stated in this file's header comment, excluding rows
+ * SETTLED_EXCLUSIONS already dispositions. */
 function findOffenders(sources: readonly ProductSources[], vocab: Vocabulary): Offender[] {
   const out: Offender[] = [];
   for (const s of sources) {
     for (const d of findDeclarations(s.text, s.path, 'font-style')) {
+      if (isSettled('font-style', d.value, d.path)) continue;
       if (!vocab.fontStyleValues.has(d.value)) {
         out.push({ property: 'font-style', value: d.value, path: d.path });
       }
     }
     for (const d of findDeclarations(s.text, s.path, 'border-radius')) {
       if (!PX_RE.test(d.value)) continue; // discriminator (b): out of grammar, not an offender
+      if (isSettled('border-radius', d.value, d.path)) continue;
       if (!vocab.radiusPxVocab.has(d.value)) {
         out.push({ property: 'border-radius', value: d.value, path: d.path });
+      }
+    }
+    for (const d of findDeclarations(s.text, s.path, 'font-weight')) {
+      if (!WEIGHT_RE.test(d.value)) continue; // discriminator (b): out of grammar, not an offender
+      if (isSettled('font-weight', d.value, d.path)) continue;
+      if (!vocab.weightVocab.has(d.value)) {
+        out.push({ property: 'font-weight', value: d.value, path: d.path });
+      }
+    }
+    for (const d of findDeclarations(s.text, s.path, 'line-height')) {
+      if (!LINE_HEIGHT_RE.test(d.value)) continue; // discriminator (b): out of grammar, not an offender
+      if (isSettled('line-height', d.value, d.path)) continue;
+      if (!vocab.lineHeightVocab.has(d.value)) {
+        out.push({ property: 'line-height', value: d.value, path: d.path });
       }
     }
   }
@@ -244,11 +395,52 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     expect(PACK_VOCAB.radiusOutOfGrammarTotal).toBe(39);
   });
 
+  it('derives the pack font-weight vocabulary exactly (DEC-991 wave-29)', () => {
+    expect(PACK_VOCAB.weightVocab).toEqual(new Set(['400', '500', '600', '700', '800']));
+    // Measured on this branch: 2556 literal <digits> font-weight
+    // declarations across the 13 frame files; zero out-of-grammar (the
+    // pack's inline styles never carry a `font-weight: var(...)` or
+    // `font-weight: inherit`) -- asserted explicitly so a future frame
+    // edit introducing one can't silently vanish from this population.
+    expect(PACK_VOCAB.weightTotal).toBe(2556);
+    expect(PACK_VOCAB.weightOutOfGrammarTotal).toBe(0);
+  });
+
+  it('derives the pack line-height vocabulary exactly (DEC-991 wave-29)', () => {
+    expect(PACK_VOCAB.lineHeightVocab).toEqual(
+      new Set([
+        '1',
+        '1.04',
+        '1.05',
+        '1.06',
+        '1.07',
+        '1.08',
+        '1.1',
+        '1.15',
+        '1.2',
+        '1.25',
+        '1.3',
+        '1.35',
+        '1.4',
+        '1.45',
+        '1.5',
+        '1.55',
+        '1.6',
+        '1.65',
+        '1.7',
+      ]),
+    );
+    // Measured on this branch: 658 literal <digits>[.<digits>] line-height
+    // declarations across the 13 frame files; zero out-of-grammar.
+    expect(PACK_VOCAB.lineHeightTotal).toBe(658);
+    expect(PACK_VOCAB.lineHeightOutOfGrammarTotal).toBe(0);
+  });
+
   it('never exceeds PACK_VOCABULARY_OFFENDERS_CEILING (0) declarations outside the pack vocabulary', () => {
     if (OFFENDERS.length > PACK_VOCABULARY_OFFENDERS_CEILING) {
       throw new Error(
-        `${OFFENDERS.length} product font-style/border-radius declarations sit outside the pack's ` +
-          `derived vocabulary, above the ceiling of ${PACK_VOCABULARY_OFFENDERS_CEILING}. ` +
+        `${OFFENDERS.length} product font-style/border-radius/font-weight/line-height declarations sit ` +
+          `outside the pack's derived vocabulary, above the ceiling of ${PACK_VOCABULARY_OFFENDERS_CEILING}. ` +
           `PACK_VOCABULARY_OFFENDERS_CEILING may only be RAISED (a merge-train act, never a worker's ` +
           `edit mid-lane), and only alongside a DESIGN-RULINGS.md/DEVIATIONS.md entry blessing the new ` +
           `value. Offenders:\n` +
@@ -278,6 +470,80 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     const radiusOffenders = OFFENDERS.filter((o) => o.property === 'border-radius');
     expect(radiusOffenders).toEqual([]);
   });
+
+  it('names the drained sites so a regression is traceable (font-weight: 900)', () => {
+    // app/src/pages/contacts/contacts-panels.css's .chq-contacts-pipeline-
+    // card-age-stale drew 900 (measured at main b2157a6e2); `Chautauqua
+    // Contacts.dc.html`'s own AGE_STALE constant draws 800 for this exact
+    // chip, so the pack's own vocabulary IS the frame's demand -- the
+    // product byte moved to 800 rather than becoming a recorded offender
+    // (docs/design/audit/pack-weight-leading-v12.md).
+    const weightOffenders = OFFENDERS.filter((o) => o.property === 'font-weight');
+    expect(weightOffenders).toEqual([]);
+  });
+
+  it('names the drained sites so a regression is traceable (line-height offenders beyond the settled 1.63)', () => {
+    const lineHeightOffenders = OFFENDERS.filter((o) => o.property === 'line-height');
+    expect(lineHeightOffenders).toEqual([]);
+  });
+
+  it('measures the product font-weight/line-height grammar totals exactly, so neither population can shrink silently', () => {
+    let weightBare = 0;
+    let weightOutOfGrammar = 0;
+    let lineHeightBare = 0;
+    let lineHeightOutOfGrammar = 0;
+    for (const s of PRODUCT_SOURCES) {
+      for (const d of findDeclarations(s.text, s.path, 'font-weight')) {
+        if (WEIGHT_RE.test(d.value)) weightBare++;
+        else weightOutOfGrammar++;
+      }
+      for (const d of findDeclarations(s.text, s.path, 'line-height')) {
+        if (LINE_HEIGHT_RE.test(d.value)) lineHeightBare++;
+        else lineHeightOutOfGrammar++;
+      }
+    }
+    // Measured on this branch: 576 bare-integer font-weight declarations
+    // (400/500/600/700/800, all in-vocabulary) plus 15 out-of-grammar
+    // (`var(--chq-type-*-weight)` design-token references and two bare
+    // `inherit`), and 173 bare line-height declarations (172 in-vocabulary
+    // plus the 2 SETTLED `1.63` occurrences) plus 2 out-of-grammar (one
+    // `var(--chq-type-overview-headline-line-height)`, one `inherit`).
+    expect(weightBare).toBe(576);
+    expect(weightOutOfGrammar).toBe(15);
+    expect(lineHeightBare).toBe(173);
+    expect(lineHeightOutOfGrammar).toBe(2);
+  });
+});
+
+describe('pack declaration vocabulary -- SETTLED exclusions resolve against their own citation (DEC-991 wave-29)', () => {
+  it('every SETTLED_EXCLUSIONS quote still resolves verbatim against its decision doc (resolution guard)', () => {
+    expect(SETTLED_EXCLUSIONS.length).toBeGreaterThan(0);
+    for (const exclusion of SETTLED_EXCLUSIONS) {
+      const docPath = join(REPO_ROOT, exclusion.decisionDoc);
+      const docText = readFileSync(docPath, 'utf8');
+      if (!docText.includes(exclusion.quote)) {
+        throw new Error(
+          `SETTLED_EXCLUSIONS quote for ${exclusion.property}: ${exclusion.value} no longer resolves ` +
+            `verbatim against ${exclusion.decisionDoc}. The doc changed under this exclusion -- re-derive ` +
+            `the disposition from the live doc before trusting this settlement. Quote was:\n  "${exclusion.quote}"`,
+        );
+      }
+    }
+  });
+
+  it('a settled line-height value is excluded from OFFENDERS but is still a real, counted product declaration', () => {
+    const settledSites = PRODUCT_SOURCES.flatMap((s) => findDeclarations(s.text, s.path, 'line-height')).filter(
+      (d) => d.value === '1.63',
+    );
+    // ssrCssSources() paths are repo-relative (see its own header comment);
+    // app/src/**/*.css paths are absolute (listCssFiles's own contract) --
+    // this scan's SETTLED_EXCLUSIONS.paths uses `endsWith`, so both forms
+    // resolve against the same repo-relative suffix regardless.
+    expect(settledSites.map((d) => d.path).sort()).toEqual(
+      [join(APP_SRC, 'pages/not-found.css'), 'src/routes/auth.css.ts'].sort(),
+    );
+    expect(OFFENDERS.some((o) => o.property === 'line-height' && o.value === '1.63')).toBe(false);
+  });
 });
 
 describe('pack declaration vocabulary -- detector non-vacuity (DEC-967, synthetic fixture only)', () => {
@@ -294,14 +560,26 @@ describe('pack declaration vocabulary -- detector non-vacuity (DEC-967, syntheti
           '.chq-fixture-b { border-radius: 7px; }', // not in vocab: offender
           '.chq-fixture-c { border-radius: 50%; }', // out of grammar: not an offender, not counted as in-vocab
           '.chq-fixture-d { font-style: normal; }', // not in (empty) vocab: offender
-          '@font-face { font-family: "Fixture"; font-style: italic; }', // discriminated out: not an offender
+          '@font-face { font-family: "Fixture"; font-style: italic; font-weight: 400 700; }', // discriminated out: not an offender (either property)
+          '.chq-fixture-e { font-weight: 700; }', // in vocab: not an offender
+          '.chq-fixture-f { font-weight: 900; }', // not in vocab: offender
+          '.chq-fixture-g { font-weight: var(--fixture-weight); }', // out of grammar: not an offender
+          '.chq-fixture-h { line-height: 1.5; }', // in vocab: not an offender
+          '.chq-fixture-i { line-height: 1.63; }', // not in vocab: offender (nothing settles it in this fixture)
+          // discriminator (c) hazard: a custom property whose OWN NAME ends
+          // in the graded property's name must never be misread as a
+          // declaration of that property -- 1.99 is not in the fixture pack
+          // vocabulary, so if the lookbehind guard were missing this would
+          // wrongly surface as a `line-height: 1.99` offender.
+          '.chq-fixture-j { --chq-fixture-widget-line-height: 1.99; }',
         ].join('\n'),
       );
       const designDir = join(dir, 'docs-design');
       mkdirSync(designDir, { recursive: true });
       writeFileSync(
         join(designDir, 'Fixture.dc.html'),
-        '<div style="border-radius:4px"></div><div style="border-radius:4px"></div>',
+        '<div style="border-radius:4px; font-weight:700; line-height:1.5"></div>' +
+          '<div style="border-radius:4px; font-weight:700; line-height:1.5"></div>',
       );
 
       const fixtureSources: ProductSources[] = listCssFiles(join(dir, 'app-src')).map((path) => ({
@@ -315,16 +593,23 @@ describe('pack declaration vocabulary -- detector non-vacuity (DEC-967, syntheti
       const fixtureVocab = deriveVocabulary(fixturePackSources);
       expect(fixtureVocab.fontStyleValues).toEqual(new Set());
       expect(fixtureVocab.radiusPxVocab).toEqual(new Set(['4px']));
+      expect(fixtureVocab.weightVocab).toEqual(new Set(['700']));
+      expect(fixtureVocab.lineHeightVocab).toEqual(new Set(['1.5']));
 
       const fixtureOffenders = findOffenders(fixtureSources, fixtureVocab);
       expect(fixtureOffenders).toEqual([
         { property: 'font-style', value: 'normal', path: join(cssDir, 'widget.css') },
         { property: 'border-radius', value: '7px', path: join(cssDir, 'widget.css') },
+        { property: 'font-weight', value: '900', path: join(cssDir, 'widget.css') },
+        { property: 'line-height', value: '1.63', path: join(cssDir, 'widget.css') },
       ]);
-      // discriminates the in-vocabulary and out-of-grammar declarations
-      // away from the offender list, and the comment-quoted italic away
-      // from the population entirely.
-      expect(fixtureOffenders.length).toBe(2);
+      // discriminates the in-vocabulary, out-of-grammar, @font-face-asset,
+      // and custom-property-collision declarations away from the offender
+      // list, and the comment-quoted italic away from the population
+      // entirely -- including the SETTLED-shape 1.63 value, which IS an
+      // offender in this fixture because nothing here settles it (the real
+      // product SETTLED_EXCLUSIONS entry is exercised separately above).
+      expect(fixtureOffenders.length).toBe(4);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
