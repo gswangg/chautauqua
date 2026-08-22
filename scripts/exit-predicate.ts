@@ -965,6 +965,7 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "to check against, never a real content divergence -- an instrument-completeness fact "
     + "about the ledger's own join technique, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING and FIELD_WIDTH_UNRESOLVED_CEILING (DEC-180 wave-24 "
+    + "amendment).",
 
   FRAME_EYEBROW_DIVERGENCE_CEILING:
     "measures a newly-derived word population (a phone frame's drawn text-transform:uppercase "
