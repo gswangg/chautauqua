@@ -51,5 +51,15 @@ export const callForPapersAndSubmissions: DocsArticle = {
       caption:
         "The submissions worklist: every submission for the event, with its status shown as a pill. Select a batch and apply one status change to all of them at once. A status change here never sends email.",
     },
+    { kind: "heading", text: "Working through the queue" },
+    {
+      kind: "list",
+      ordered: true,
+      items: [
+        "Filter to **Needs triage** from the saved views.",
+        "Open the oldest — the table sorts that way by default.",
+        "Decide, then use **Next ›** rather than going back to the list.",
+      ],
+    },
   ],
 };
