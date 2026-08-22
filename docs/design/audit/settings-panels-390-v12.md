@@ -21,7 +21,7 @@ measure"). Every literal below now has its own byte-for-byte
 | 4 | per-field 46px value box (`{{ f.value }}`) | :326 | MATCHES (SHAPE) | `SummarySection.tsx` `.chq-settings-row-value` |
 | 5 | optional per-field note (`{{ f.note }}`) | :328 | MATCHES (SHAPE) | `SummarySection.tsx` `.chq-settings-row-hint` (Slug row) |
 | 6 | footer "Save", flex:1, filled, min-height:46px | :335 | MATCHES, read-drill only | `EventSettingsPanel.tsx` `readFooterPrimary` → `.chq-settings-drillrow-footer-primary` (DEC-919 wave-156) |
-| 7 | footer "Cancel", bordered, min-height:46px | :336 | **DIVERGES** | never renders in the READ drill |
+| 7 | footer "Cancel", bordered, min-height:46px | :336 | **DIVERGES (DEC-919 wave-156, adjudicated below)** | never renders in the READ drill |
 
 **Row 7 — DIVERGES, adjudicated (DEC-919 wave-156):** the frame draws one
 static screen with the READ view's field rows *and* what is, in the built
@@ -52,8 +52,8 @@ change (`SettingsEditForm.tsx` is not in this task's MAY-FIX list).
 | 2 | `People and roles` H1 | :555 | MATCHES | shell (`.chq-settings-drill-title`) |
 | 3 | per-person name (`{{ p.name }}`) | :561 | MATCHES (SHAPE) | `PeopleRolesPanel.tsx` rows → `.chq-settings-row-label` |
 | 4 | ellipsised email (`{{ p.email }}`) | :562 | MATCHES (SHAPE, fallback label) | same row primitive; `OTHER` fixture has no name, label falls back to email |
-| 5 | `{{ p.role }} · {{ p.scope }}` eyebrow | :563 | **DIVERGES (half)** | role renders (`.chq-settings-row-value`); scope half omitted |
-| 6 | per-row bordered 44px "Change" | :565 | **DIVERGES** | never renders on the read path |
+| 5 | `{{ p.role }} · {{ p.scope }}` eyebrow | :563 | **DIVERGES (half, DEC-576 wave-31, adjudicated below)** | role renders (`.chq-settings-row-value`); scope half omitted |
+| 6 | per-row bordered 44px "Change" | :565 | **DIVERGES (DEC-576 wave-31, adjudicated below)** | never renders on the read path |
 | 7 | full-width filled 46px "Invite someone", below the list | :568 | MATCHES | `.chq-settings-drillrow-footer-primary`, after the last row (DEC-919 wave-156) |
 
 **Rows 5 and 6 — DIVERGES, DEVIATIONS.md §6-blessed, never re-litigated

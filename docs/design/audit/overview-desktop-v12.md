@@ -18,7 +18,10 @@ component or stylesheet, even where a real divergence is found below.
 
 ## Frame :28 "What needs you today · 1600"
 
-**MATCHES, with one filed DIVERGES.** Entered via `OverviewPage` at
+**MATCHES, with one filed DIVERGES.** (DEC-099 wave-14m clause 1: the one
+item this heading names, §03's "Ask for changes" control, is
+CLOSED-with-receipt below via DEC-720 wave-8 — this heading narrates that
+closed finding.) Entered via `OverviewPage` at
 `/overview`, populated with a fixture whose four actionable totals (one
 overdue task, one triage submission, one content approval, one unplaced
 session) sum to four — the SAME arithmetic `headlineText()` runs to produce
@@ -108,7 +111,11 @@ every worklist total and v1 aggregate is zero — the exact predicate
 ## Frame :476 "States · hover, pending, drag"
 
 **MATCHES for the states Overview implements; DIVERGES (by omission, not
-defect) for the two it does not draw at all.** This frame is a system-wide
+defect) for the two it does not draw at all.** (DEC-380 wave-130
+amendment, "a frame's drawing does not create a data model" — its inverse
+here: a system-wide catalogue frame's drawing does not create a control
+this specific page never needed; see the bullet below.) This frame is a
+system-wide
 token catalogue rather than a page-specific screen, so it is verdicted
 against the SPECIFIC control families Overview's own stylesheet draws,
 never against a re-read of the pack as its own proof.
@@ -132,7 +139,11 @@ never against a re-read of the pack as its own proof.
   all — session drag-and-drop is Agenda's own page, not Overview's. This is
   not a broken control (there is nothing broken); it is the frame
   documenting a design-system pattern this specific page never needed,
-  filed here for completeness rather than silently assumed.
+  filed here for completeness rather than silently assumed. **Adjudicated
+  (DEC-380 wave-130 amendment):** the ruling that a frame's drawing does
+  not create a data model applies by the same logic to a frame's drawing
+  not creating a control family a page has no use for — Pending/Drag are
+  recorded here for completeness, not scheduled as debt.
 
 ## Frame :689 "Loading · the first paint"
 
@@ -163,7 +174,7 @@ which is what actually proves "the first frame", not merely "eventually".
 | :28 What needs you today · 1600 | MATCHES (§03 "Ask for changes" CLOSED-with-receipt, DEC-720 wave-8) |
 | :308 New event | MATCHES |
 | :432 Overview · a brand-new event | MATCHES |
-| :476 States · hover, pending, drag | MATCHES for Buttons; DIVERGES by omission (no Pending/Drag controls exist on this page) |
+| :476 States · hover, pending, drag | MATCHES for Buttons; DIVERGES by omission (no Pending/Drag controls exist on this page) — adjudicated, DEC-380 wave-130 |
 | :689 Loading · the first paint | MATCHES |
 
 4 of 5 frames now MATCH outright as rendered; the remaining partial row is a

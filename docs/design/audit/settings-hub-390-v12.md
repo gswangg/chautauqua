@@ -39,5 +39,6 @@ across every page it wraps) is the correct owner of a receipt for :278/:279;
 this doc records the gap rather than silently marking those two rows
 MATCHES on a citation the render harness cannot actually give (DEC-976).
 
-No DIVERGES rows: every literal this lane could instrument through a real
-mount of `SettingsPage` matched the frame.
+No DIVERGES rows (DEC-099 wave-14m clause 1: this sentence records the
+absence of a divergence): every literal this lane could instrument through
+a real mount of `SettingsPage` matched the frame.
