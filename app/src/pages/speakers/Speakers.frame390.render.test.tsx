@@ -281,8 +281,29 @@ describe('v12 frame render verdict "Speakers" (docs/design/Chautauqua Speakers.d
 });
 
 describe('v12 frame render verdict "Roster · 390" (docs/design/Chautauqua Speakers.dc.html:260-282, task w31-a, DEC-976 wave-31)', () => {
-  it('guards the frame source file: frame :260 `width:390px; height:844px;` -- verbatimLine() pins below read the same frame, and that the tree still draws the drill-in surface those pins grade', () => {
+  it('guards the frame source file (frame :260 `width:390px; height:844px;` -- verbatimLine() pins below read the same frame) against a real RosterDrillIn mount', () => {
     expect(DESIGN_FILE.endsWith('Chautauqua Speakers.dc.html')).toBe(true);
+    render(
+      <MemoryRouter>
+        <RosterDrillIn
+          rows={drillInRows()}
+          acceptedCount={12}
+          notClaimedCount={2}
+          onAddSpeaker={vi.fn()}
+          onBack={vi.fn()}
+          eventId={EVENT_ID}
+          onSelectStatus={vi.fn()}
+          onSendInvite={vi.fn()}
+          invitingContactIds={new Set()}
+        />
+      </MemoryRouter>,
+    );
+    // :263 -- the frame's own <h1>"Roster" literal, read from a real mount.
+    verbatimLine(
+      263,
+      '        <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Roster</h1>',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Roster' })).toBeInTheDocument();
     // DEC-967 wave-99: a receipt block whose every expect() resolves to a
     // design-file read is the tautology shape tautological-assertion.scan.
     // test.ts bans -- the guard has to touch the TREE it grades too, so it
