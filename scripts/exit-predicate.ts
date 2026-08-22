@@ -650,6 +650,15 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // GRADED, GATING conformance ratchet, not a citation-form or
   // instrument-soundness fact (test/open-divergence-ledger.scan.test.ts).
   "OPEN_DIVERGENCE_CEILING",
+  // wave-16 (task w16-qa, DEC-998 clause a): these two constants were
+  // declared by task w14-a (app/src/frame-citation.scan.test.ts:606/:778)
+  // but never added to this list, so assertCampaignPopulationTotal threw
+  // and NOT ONE campaign row could be read. Receipt-integrity conformance
+  // facts of exactly the kind UNRECEIPTED_CLAIM_CEILING /
+  // DESKTOP_UNRECEIPTED_CLAIM_CEILING already gate at their own non-zero
+  // ceilings -- never OUT_OF_CAMPAIGN_SCOPE.
+  "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
 ];
 
 /**
@@ -743,6 +752,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
   // declared-but-unread knob (DEC-851/DEC-988).
   "OPEN_DIVERGENCE_CEILING",
+  // wave-16 (task w16-qa, DEC-998 clause a): wired into TIER2 in the same
+  // commit that declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
+  "DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING",
 ];
 
 /**
