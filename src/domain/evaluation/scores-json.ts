@@ -24,6 +24,18 @@
 // multiplies them. A display projection (an export's per-criterion label
 // column) may tolerate what arithmetic must not -- that tolerance belongs to
 // the export's own reader, never to this parser.
+//
+// DEC-212 (wave-34 amendment), why one more reader degrades instead of
+// throwing: numericScoresFor guards the two sites adjacent to a WRITE (a
+// results table built moments after a reviewer's submit, an export run
+// against live data) -- those callers own the row and a corrupt value there
+// is a bug worth surfacing immediately. numericScoresOrNull guards the
+// organiser's UNBOUNDED historical read (every evaluation a submission has
+// EVER carried, across every plan it was ever scored under) -- one bad row
+// years old must not 500 the whole list. Same contract, same refusal to
+// coerce a string into arithmetic; the only difference is what happens on
+// refusal: throw for a fresh write-adjacent read, null for a boundless
+// historical one.
 
 import type { EvaluationCriterion } from "./scoring";
 import type { EvaluationScores } from "./scoring";
@@ -96,6 +108,33 @@ export function numericScoresFor(
         context,
         `score for criterion "${criterion.id}" must be a finite number, got ${JSON.stringify(value)}`,
       );
+    }
+    out[criterion.id] = value;
+  }
+  return out;
+}
+
+/** DEC-212 (wave-34 amendment): the non-throwing sibling of numericScoresFor,
+ * for the ONE caller that reads scores across an unbounded history rather
+ * than adjacent to a write (the organiser's submission-evaluations list,
+ * which spans every plan a submission was ever scored under). Returns null
+ * -- never throws -- when `criteria` is empty, when any criterion id is
+ * absent from `scores`, or when its value is not a finite number. Otherwise
+ * returns the fully-numeric record for exactly the given criteria. This is
+ * completeness as a NUMERIC test, not a presence test: the same function
+ * that decides "is this scorecard complete enough to have a score" also
+ * produces the record that arithmetic runs on, so the two can never
+ * disagree. */
+export function numericScoresOrNull(
+  scores: Record<string, number | string>,
+  criteria: EvaluationCriterion[],
+): EvaluationScores | null {
+  if (criteria.length === 0) return null;
+  const out: EvaluationScores = {};
+  for (const criterion of criteria) {
+    const value = scores[criterion.id];
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return null;
     }
     out[criterion.id] = value;
   }
