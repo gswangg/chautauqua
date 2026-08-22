@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "wave-21: the open-divergence ledger's own prose is re-baselined from the instrument, and a superseded figure is marked superseded in place rather than left as the document's headline";
+export const DEC_099 = "The open-divergence ledger's population walk is RECURSIVE, and its three vacuity guards are re-measured in the same commit";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Amendment (wave 23): A mint door without a cap is an unbounded surface: the census is derived from the routes, not from the caps";
+export const DEC_180 = "Every field label the pack draws is a population, and until this wave nothing graded it";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
