@@ -33,7 +33,7 @@ function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
     contentApproval: { total: 0, reuploadedCount: 0, rows: [] },
     agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [], unplacedRemainderDurationMin: null },
     'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
-    review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
+    review: { plans: 0, evaluationsSubmitted: 0, evaluationsStarted: 0 },
     speakers: { contactsOwing: 0, overdueAssignments: 0 },
     content: { awaitingApproval: 0 },
     agenda: { unplaced: 0, conflicts: 0 },
@@ -195,22 +195,23 @@ describe('buildDeadlineCells', () => {
 
 describe('buildNoActionRows', () => {
   // DEC-589: the Review row must name its own denominator — evaluations
-  // submitted out of evaluations EXPECTED (every assigned evaluation row),
-  // never out of the unrelated plan count ("40 of 3 evaluation plans in").
+  // submitted out of evaluations STARTED (rows that exist, submitted or
+  // not), never out of the unrelated plan count ("40 of 3 evaluation plans
+  // in") and never a claim about assignment the aggregate never read.
   it('derives Review and Comms rows from the retained aggregates', () => {
     const p = payload({
-      review: { plans: 3, evaluationsSubmitted: 1, evaluationsExpected: 12 },
+      review: { plans: 3, evaluationsSubmitted: 1, evaluationsStarted: 12 },
       comms: { sentLast7Days: 4, lastSentAt: NOW - 2 * DAY },
     });
     const rows = buildNoActionRows(p, NOW);
     expect(rows.map((r) => r.key)).toEqual(['review', 'comms']);
     // DEC-370 amendment (wave 5): the clause drops its trailing period --
     // the frame's ' · ' grammar is the ONE join, never a hand-appended '.'.
-    expect(rows[0]!.detail).toBe('1 of 12 evaluations in');
+    expect(rows[0]!.detail).toBe('1 of 12 evaluations submitted');
     expect(rows[1]!.detail).toBe('4 sent in 7 days · last 2 days ago');
     // A numerator taken outside its own denominator can exceed it -- assert
-    // the rendered pair never violates submitted <= expected.
-    expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
+    // the rendered pair never violates submitted <= started.
+    expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsStarted);
   });
 
   it('reads the zero-plans state plainly', () => {
@@ -219,17 +220,28 @@ describe('buildNoActionRows', () => {
     expect(rows[1]!.detail).toBe('No messages sent in the last 7 days.');
   });
 
-  it('reads a distinct zero-expected state when plans exist but nothing is assigned', () => {
-    const p = payload({ review: { plans: 2, evaluationsSubmitted: 0, evaluationsExpected: 0 } });
+  it('reads a distinct zero-started state when plans exist but no reviews have begun', () => {
+    const p = payload({ review: { plans: 2, evaluationsSubmitted: 0, evaluationsStarted: 0 } });
     const rows = buildNoActionRows(p, NOW);
-    expect(rows[0]!.detail).toBe('No evaluations assigned yet.');
+    expect(rows[0]!.detail).toBe('No reviews started yet.');
   });
 
-  it('handles the boundary where every expected evaluation has been submitted', () => {
-    const p = payload({ review: { plans: 1, evaluationsSubmitted: 5, evaluationsExpected: 5 } });
+  it('handles the boundary where every started evaluation has been submitted', () => {
+    const p = payload({ review: { plans: 1, evaluationsSubmitted: 5, evaluationsStarted: 5 } });
     const rows = buildNoActionRows(p, NOW);
-    expect(rows[0]!.detail).toBe('5 of 5 evaluations in');
-    expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
+    expect(rows[0]!.detail).toBe('5 of 5 evaluations submitted');
+    expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsStarted);
+  });
+
+  // DEC-589: the row may only speak for what it counted -- it must never
+  // claim a word ("assigned") about a population it never read.
+  it('never says "assigned" in the Review row detail', () => {
+    const started = payload({ review: { plans: 3, evaluationsSubmitted: 1, evaluationsStarted: 12 } });
+    const zero = payload({ review: { plans: 2, evaluationsSubmitted: 0, evaluationsStarted: 0 } });
+    for (const p of [started, zero]) {
+      const detail = buildNoActionRows(p, NOW)[0]!.detail;
+      expect(detail).not.toMatch(/assigned/i);
+    }
   });
 });
 

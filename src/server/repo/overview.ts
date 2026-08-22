@@ -34,10 +34,12 @@ import { ApiError } from "../http";
 import { overdueAssignmentConditions } from "./tasks/crud";
 import { visibleSessionConditions } from "./public/gates";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
-import { DEC_010, DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
+import { DEC_010, DEC_370, DEC_531, DEC_589, DEC_613, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
 void DEC_010;
 void DEC_370;
 void DEC_531;
+void DEC_589;
+void DEC_613;
 void DEC_704;
 void DEC_772;
 void DEC_776;
@@ -96,14 +98,18 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       .select({ count: sql<number>`count(*)` })
       .from(schema.evaluationPlan)
       .where(eq(schema.evaluationPlan.eventId, eventId)),
-    // DEC-589: submitted vs. expected must come from the SAME join pass over
-    // the event's plans (evaluationsExpected = every assigned evaluation row,
-    // submitted or not) — a numerator counted against an unrelated
+    // DEC-589: submitted vs. started must come from the SAME join pass over
+    // the event's plans — a numerator counted against an unrelated
     // denominator (plans) is exactly the "40 of 3 evaluation plans in" bug
-    // this fixes.
+    // this fixes. `started` counts evaluation rows that exist (upsertEvaluation
+    // is the only insert site, so a row means someone began it) — it is NOT
+    // every assignment. The true assigned denominator lives with
+    // /plans/:id/progress (resolveAssignments + assignedExcludingRecused +
+    // assignedExcludingSaturated) and is deliberately not re-derived here:
+    // two resolvers for one count is DEC-613's delay-fuse trap.
     db
       .select({
-        expected: sql<number>`count(*)`,
+        started: sql<number>`count(*)`,
         submitted: sql<number>`count(case when ${schema.evaluation.submittedAt} is not null then 1 end)`,
       })
       .from(schema.evaluation)
@@ -191,7 +197,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   const eventStartDate = eventRows[0]?.startDate ? new Date(`${eventRows[0].startDate}T00:00:00Z`).getTime() : null;
   const triage = aggregateTriageCounts(statusRows.map((r) => ({ status: r.status, n: Number(r.n) })));
   const plans = Number(planCountRows[0]?.count ?? 0);
-  const evaluationsExpected = Number(evaluationsAggRows[0]?.expected ?? 0);
+  const evaluationsStarted = Number(evaluationsAggRows[0]?.started ?? 0);
   const evaluationsSubmitted = Number(evaluationsAggRows[0]?.submitted ?? 0);
   const planCloseDate = planCloseRows[0]?.closeDate == null ? null : planCloseRows[0].closeDate.getTime();
   const planRound = planCloseRows[0]?.currentRound ?? null;
@@ -758,7 +764,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
 
   return {
     "triage-counts": triage,
-    review: { plans, evaluationsSubmitted, evaluationsExpected },
+    review: { plans, evaluationsSubmitted, evaluationsStarted },
     speakers,
     content,
     agenda,

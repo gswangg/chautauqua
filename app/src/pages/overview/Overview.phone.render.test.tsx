@@ -120,7 +120,7 @@ function payload(): OverviewPayload {
       unplacedRemainderDurationMin: null,
     },
     'triage-counts': { pending: 1, accept_queue: 0, decline_queue: 0 },
-    review: { plans: 3, evaluationsSubmitted: 1, evaluationsExpected: 6 },
+    review: { plans: 3, evaluationsSubmitted: 1, evaluationsStarted: 6 },
     speakers: { contactsOwing: 1, overdueAssignments: 1 },
     content: { awaitingApproval: 1 },
     agenda: { unplaced: 0, conflicts: 0 },
