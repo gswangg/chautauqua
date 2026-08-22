@@ -154,16 +154,22 @@
    ("Added 6 days ago") -- the bold-caps micro-label treatment is reserved
    for the STALE alarm state only now, so a fresh card's age doesn't read
    with the same visual weight as an actual alert. `stale` (past 30 days) is
-   still signalled by WEIGHT and WORDING only (900 + a literal "Stale"
+   still signalled by WEIGHT and WORDING only (800 + a literal "Stale"
    prefix), never colour -- this product has no red. */
 .chq-contacts-pipeline-card-age {
   font-size: 12px;
   color: var(--chq-muted);
 }
 
+/* DEC-991 amendment (wave 29): weight corrected from 900 to 800 -- the
+   pack's own vocabulary is {400,500,600,700,800}, and
+   `Chautauqua Contacts.dc.html`'s pipeline-card stale-age chip
+   (`const AGE_STALE = 'font-size:11px; font-weight:800; ...'`) draws 800
+   for this exact chip. The pack's own drawn value is the frame's demand,
+   so the product byte moves to match it -- not a recorded offender. */
 .chq-contacts-pipeline-card-age-stale {
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
