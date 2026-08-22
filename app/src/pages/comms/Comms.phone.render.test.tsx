@@ -20,6 +20,7 @@ import { TemplatesTab } from './TemplatesTab';
 import { PhoneDraftCard } from './PhoneDraftCard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import type { EmailBatchRow, EmailTemplate } from './types';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 // w15-ti (DEC-919 wave-159) fallout: the landing block's MOUNT is now
 // gated on isPhone itself (Comms.tsx), not just its `-show` class, so
@@ -37,8 +38,8 @@ function stubPhoneMatchMedia() {
 
 const EVENT_ID = 'evt-comms-phone';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, 'comms.css'), 'utf-8');
-const TEMPLATES_CSS = readFileSync(join(HERE, 'templates.css'), 'utf-8');
+const CSS = stripCssComments(readFileSync(join(HERE, 'comms.css'), 'utf-8'));
+const TEMPLATES_CSS = stripCssComments(readFileSync(join(HERE, 'templates.css'), 'utf-8'));
 
 /** Extracts a top-level (not inside an @media block) rule's declaration
  * body by selector — same helper as shell-geometry.test.ts. */

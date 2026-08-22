@@ -19,11 +19,12 @@ import { PlanEditor } from './PlanEditor';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { guardedNavigate } from '../../lib/useNavExceptions';
 import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../../../src/domain/evaluation';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const EVENT_ID = 'evt-plan-editor';
 const PLAN_ID = 'plan-1';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REVIEW_CSS = readFileSync(join(HERE, 'review.css'), 'utf-8');
+const REVIEW_CSS = stripCssComments(readFileSync(join(HERE, 'review.css'), 'utf-8'));
 
 function plan(overrides: Record<string, unknown> = {}) {
   return {
