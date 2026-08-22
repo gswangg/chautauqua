@@ -182,6 +182,20 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // defect count, per clause (c)'s "a row in the roster, not a silent pass".
   "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+  // wave-35 (task v12m-w35-a, DEC-393 wave-35 amendment): an `inline-*`
+  // tap-floor-exempt receipt is a GROUNDING claim (the same navigation
+  // destination reachable from a floored control on the same rendered
+  // surface), not just a typography argument
+  // (test/inline-prose-exemption-premise.scan.test.ts). Sibling instrument
+  // to the wave-30 build above -- distinct file, distinct constants, same
+  // 44px-floor grammar. INLINE_PROSE_UNGROUNDED_CEILING grades receipts
+  // that name a companion class whose floor claim is false (a real 44px
+  // defect, measured 0). INLINE_PROSE_UNVERIFIABLE_CEILING grades receipts
+  // naming no companion class at all -- a roster count, not a defect count
+  // (measured 10), the same "row in the roster, not a silent pass"
+  // discipline as its wave-30 sibling.
+  "INLINE_PROSE_UNGROUNDED_CEILING",
+  "INLINE_PROSE_UNVERIFIABLE_CEILING",
 ];
 
 /**
@@ -300,6 +314,15 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // (DEC-851/DEC-988). Its UNVERIFIABLE-PREMISE sibling is OUT_OF_CAMPAIGN_SCOPE
   // instead (an instrument-completeness roster count, not a conformance fact).
   "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
+  // wave-35 (task v12m-w35-a): inline-prose grounding ratchet, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988). Both
+  // siblings gate here (task instruction, not OUT_OF_CAMPAIGN_SCOPE): this
+  // is still the 44px floor, and an ungroundable inline receipt is exactly
+  // the second evasion mode DEC-393's wave-30 amendment clause (b) already
+  // names, not a mere instrument-completeness fact.
+  "INLINE_PROSE_UNGROUNDED_CEILING",
+  "INLINE_PROSE_UNVERIFIABLE_CEILING",
 ];
 
 /**
