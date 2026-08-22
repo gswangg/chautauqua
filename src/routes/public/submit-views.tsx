@@ -856,7 +856,15 @@ export function ConfirmationPage(props: {
             </>
           )}
         </p>
-        {props.emailDelivered ? <p class="chq-cfp-confirm-note">If it hasn't arrived, check spam.</p> : null}
+        {/* DEC-908 (wave-35 amendment): frames :1124/:1147 draw neither this
+            note nor the tail links row below -- only :1074 (the "fresh"
+            state) draws both. Added the state==="fresh" gate on top of the
+            existing emailDelivered gate; DEC-380's reasoning above (why the
+            note is emailDelivered-only within the fresh state) is
+            unchanged. */}
+        {props.state === "fresh" && props.emailDelivered ? (
+          <p class="chq-cfp-confirm-note">If it hasn't arrived, check spam.</p>
+        ) : null}
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>
@@ -912,14 +920,16 @@ export function ConfirmationPage(props: {
             </>
           )}
         </div>
-        <div class="chq-cfp-links">
-          <a href={`/submit/${props.eventSlug}`}>Submit another talk &rsaquo;</a>
-          {/* DEC-908 (wave-16 amendment): Chautauqua Public and
-              Portal.dc.html:1092 `<a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Browse the sessions ›</a>`
-              -- the href already pointed at the same route, only the label
-              was named for the wrong noun. */}
-          <a href={`/e/${props.eventSlug}/sessions`}>Browse the sessions &rsaquo;</a>
-        </div>
+        {props.state === "fresh" ? (
+          <div class="chq-cfp-links">
+            <a href={`/submit/${props.eventSlug}`}>Submit another talk &rsaquo;</a>
+            {/* DEC-908 (wave-16 amendment): Chautauqua Public and
+                Portal.dc.html:1092 `<a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Browse the sessions ›</a>`
+                -- the href already pointed at the same route, only the label
+                was named for the wrong noun. */}
+            <a href={`/e/${props.eventSlug}/sessions`}>Browse the sessions &rsaquo;</a>
+          </div>
+        ) : null}
       </div>
     </PageShell>
   );

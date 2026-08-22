@@ -41,6 +41,19 @@ function unescapeHtml(s: string): string {
     .replace(/&#39;/g, "'");
 }
 
+// docs-site.css.ts's phone-terminal block carries a CSS *comment* (task
+// w30-b's own citation of the frame's "screenshot · 390 · tap to zoom"
+// placeholder-twin text) that is never rendered content -- it lives inside
+// the inlined <style> tag's text, byte-identical regardless of which
+// figure branch (placeholder vs real <img>) a given request renders. A raw
+// substring search over the full response therefore false-positives on
+// that comment even when the real <img> branch renders no placeholder
+// markup at all. Same idiom as test/docs-inline-markup.test.ts's
+// `withoutStyles`: only the page OUTSIDE <style> is real rendered content.
+function withoutStyles(body: string): string {
+  return body.replace(/<style>[\s\S]*?<\/style>/g, "");
+}
+
 function allFigureShotIds(): string[] {
   const ids: string[] = [];
   for (const article of DOCS_ARTICLES) {
@@ -101,7 +114,7 @@ describe("figure block: placeholder vs real image", () => {
     const app = await buildAppWith([]);
     const res = await app.request(`/docs/${article.slug}`);
     expect(res.status).toBe(200);
-    const body = await res.text();
+    const body = withoutStyles(await res.text());
     expect(body).not.toContain("<img");
     expect(body).toContain(`screenshot · ${block.shotId}`);
   });
@@ -111,7 +124,8 @@ describe("figure block: placeholder vs real image", () => {
     const app = await buildAppWith([block.shotId]);
     const res = await app.request(`/docs/${article.slug}`);
     expect(res.status).toBe(200);
-    const rawBody = await res.text();
+    const fullBody = await res.text();
+    const rawBody = withoutStyles(fullBody);
     expect(rawBody).toContain(`src="/docs/shots/${block.shotId}.png"`);
     expect(rawBody).toContain('class="chq-docs-figure-img"');
     expect(rawBody).toContain('alt=""');
