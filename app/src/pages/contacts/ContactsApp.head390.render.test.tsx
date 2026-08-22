@@ -144,7 +144,7 @@ describe('ContactsApp 390 head composition receipt (src/decisions-data/DEC-976.m
     // switcher cannot land in a single owning sheet (app/src/styles.css is
     // shell chrome shared by every admin page) without either appearing
     // everywhere or becoming page-conditioned shell, and neither may be
-    // hidden -- DEC-919's carve-out needs a surviving full-screen path this
+    // hidden -- src/decisions-data/DEC-919.md's carve-out needs a surviving full-screen path this
     // landing does not have. A static frame draws ONE panel of this
     // four-panel surface in its default state and cannot depict a switcher
     // or a create path, the same disposition already given to MergePage's

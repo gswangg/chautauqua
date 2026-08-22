@@ -102,8 +102,14 @@ describe('contacts.css one narrowing caption at 390 (DEC-930 wave-16-r5 amendmen
     expect(idMatch).not.toBeNull();
     const idVar = idMatch![1]!;
 
+    // v12m-w6-a (DEC-393 wave-6 amendment): aria-labelledby is now
+    // conditional -- the name never points at a stood-down caption when no
+    // rule is active (`activeRules(rules).length > 0 ? chipstripCaptionId :
+    // undefined`) -- so the widened regex captures the ternary's truthy
+    // branch and still proves it resolves to the SAME identifier the
+    // `<span>` carries as its id.
     const groupMatch = PANEL.match(
-      /className="chq-contacts-filter-chipstrip"[^>]*aria-labelledby=\{(\w+)\}/,
+      /className="chq-contacts-filter-chipstrip"[^>]*aria-labelledby=\{[^}]*?\?\s*(\w+)\s*:\s*undefined\}/,
     );
     expect(groupMatch).not.toBeNull();
     expect(groupMatch![1]).toBe(idVar);

@@ -1569,12 +1569,14 @@
      outward cancel into the chip's 12px leading padding is unchanged --
      no glyph moves. `min-width: 44px` added: the width half of the 44px
      floor (docs/design/DESIGN-RULINGS.md:189) was unmet on a
-     one-character custom-key label. IN-FLIGHT NOTE for the merge agent:
-     if a second `.chq-contacts-filter-rule-chip-edit` rule lands here
-     from branch v12m-w16-ui-r3-c with `max-width: 46vw; min-width: 0`,
-     the correct merged value is `min-width: 44px`, not that rule's `0`
-     -- `max-width` (not `min-width`) is what forces its ellipsis, and
-     46vw at 390px is 179px, well above the 44px floor. */
+     one-character custom-key label. RESOLVED (DEC-393 wave-6 amendment):
+     a second `.chq-contacts-filter-rule-chip-edit` rule landed below
+     (from branch v12m-w16-ui-r3-c) with `max-width: 46vw; min-width: 0`,
+     which took the cascade and dropped the width floor to 0. The merged
+     value is `min-width: 44px`, not that rule's `0` -- `max-width` (not
+     `min-width`) is what forces its ellipsis, and 46vw at 390px is
+     179px, well above the 44px floor -- so that later rule's
+     `min-width` was corrected to `44px` to match. */
   .chq-contacts-filter-rule-chip-edit {
     min-height: 44px;
     min-width: 44px;
@@ -1845,7 +1847,7 @@
      kept and only the overflow/size properties are added. */
   .chq-contacts-filter-rule-chip-edit {
     max-width: 46vw;
-    min-width: 0;
+    min-width: 44px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

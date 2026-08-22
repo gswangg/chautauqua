@@ -58,7 +58,7 @@ describe('contacts.css rule-chip label bound at 390 (src/decisions-data/DEC-919.
     expect(BLOCKS.length).toBe(1);
     const last = BLOCKS[0]!;
     expect(last.body).toMatch(
-      /\.chq-contacts-filter-rule-chip-edit\s*\{\s*max-width:\s*46vw;\s*min-width:\s*0;\s*overflow:\s*hidden;\s*text-overflow:\s*ellipsis;\s*white-space:\s*nowrap;\s*\}/,
+      /\.chq-contacts-filter-rule-chip-edit\s*\{\s*max-width:\s*46vw;\s*min-width:\s*44px;\s*overflow:\s*hidden;\s*text-overflow:\s*ellipsis;\s*white-space:\s*nowrap;\s*\}/,
     );
   });
 
@@ -95,8 +95,14 @@ describe('contacts.css rule-chip label bound at 390 (src/decisions-data/DEC-919.
   });
 
   it('the earlier phone .chq-contacts-filter-rule-chip-edit rule (min-height/flex/type register) is untouched', () => {
+    // v12m-w16-ui-r4-a (DEC-393 amendment): cancelled padding on a chip's
+    // inner controls runs OUTWARD ONLY, so the shorthand
+    // `padding-inline: 4px; margin-inline: -4px;` this rule used to carry
+    // was split into an outward-only leading pair
+    // (padding-inline-start/margin-inline-start) with the trailing side
+    // zeroed out -- the shorthand form is gone on purpose.
     expect(CSS).toMatch(
-      /\.chq-contacts-filter-rule-chip-edit \{\n {4}min-height: 44px;\n {4}display: flex;\n {4}align-items: center;\n {4}padding-inline: 4px;\n {4}margin-inline: -4px;\n {4}border: none;\n {4}background: none;\n {4}font-family: inherit;\n {4}font-size: 13px;\n {4}font-weight: 600;\n {4}color: inherit;\n {2}\}/,
+      /\.chq-contacts-filter-rule-chip-edit \{\n {4}min-height: 44px;\n {4}min-width: 44px;\n {4}display: flex;\n {4}align-items: center;\n {4}padding-inline-start: 4px;\n {4}padding-inline-end: 0;\n {4}margin-inline-start: -4px;\n {4}margin-inline-end: 0;\n {4}border: none;\n {4}background: none;\n {4}font-family: inherit;\n {4}font-size: 13px;\n {4}font-weight: 600;\n {4}color: inherit;\n {2}\}/,
     );
   });
 
