@@ -116,6 +116,23 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
   // (`if (!phoneSearchOpen) searchInputRef.current?.focus();`).
   const [focusRuleIndex, setFocusRuleIndex] = useState<number | null>(null);
   const rulesRowRef = useRef<HTMLDivElement | null>(null);
+  // src/decisions-data/DEC-990.md (amendment, wave-16 r4): the disclosure's
+  // full contract, symmetric with the focus-in half above. `builderId`
+  // names `.chq-contacts-filter-rules-row` so both triggers below can
+  // `aria-controls` it and announce their own `aria-expanded` state --
+  // otherwise nothing tells an AT user that "+ Rule"/a chip's edit button
+  // opened anything. `addChipRef` is the trigger the disclosure returns
+  // focus to on close: `Done` is the ONLY control that removes
+  // `is-builder-open` (dropping the row -- and the just-clicked Done
+  // button inside it -- to `display:none`), so `Done`'s handler is where
+  // focus must be moved back OUT, mirroring the effect above that moves it
+  // IN. Desktop is untouched: `.chq-contacts-filter-add-chip` is
+  // `display:none` above 700px (contacts.css), so this ref is never the
+  // active element there and `builderOpen`/`is-builder-open` has no
+  // desktop CSS keyed to it (contacts.css:~136 for the `Done` button
+  // itself).
+  const builderId = useId();
+  const addChipRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!builderOpen || focusRuleIndex === null) return;
@@ -140,9 +157,30 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
     onChange([...rules, { field: FILTER_RULE_FIELDS[0]!, op: 'contains', value: '' }]);
   }
 
+  // src/decisions-data/DEC-990.md (amendment, wave-16 r4): `Done` is the
+  // ONLY place a blank rule is pruned. `addRule()` (above) is shared with
+  // the desktop `.chq-contacts-filter-add-full` "Add a rule" button, which
+  // has no `Done` control (`display:none` at desktop) -- pruning inside
+  // `addRule()` itself would change desktop behaviour, which the frozen
+  // desktop invariant forbids. A blank rule renders no chip
+  // (`activeRules()`, segments.ts:92) yet still counts against
+  // MAX_SEGMENT_RULES, so leaving it un-reconciled lets a phone user hit
+  // the cap on rules they can never see. This also closes the disclosure
+  // and returns focus to its trigger (`addChipRef`) -- the row this
+  // button lives in goes `display:none` the instant `builderOpen` flips,
+  // so without this the browser drops focus to `<body>`.
+  function closeBuilder() {
+    if (rules.some((r) => r.value.trim() === '')) {
+      onChange(rules.filter((r) => r.value.trim() !== ''));
+    }
+    setBuilderOpen(false);
+    addChipRef.current?.focus();
+  }
+
   return (
     <>
     <div
+      id={builderId}
       className={`chq-contacts-filter-rules-row${builderOpen ? ' is-builder-open' : ''}`}
       ref={rulesRowRef}
     >
@@ -263,7 +301,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       <button
         type="button"
         className="chq-btn chq-btn-tertiary chq-contacts-filter-builder-done"
-        onClick={() => setBuilderOpen(false)}
+        onClick={closeBuilder}
       >
         Done
       </button>
@@ -296,6 +334,8 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
               type="button"
               className="chq-contacts-filter-rule-chip-edit"
               aria-label={`Edit ${ruleChipLabel(rule)}`}
+              aria-expanded={builderOpen}
+              aria-controls={builderId}
               onClick={() => {
                 setFocusRuleIndex(i);
                 setBuilderOpen(true);
@@ -332,6 +372,9 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       <button
         type="button"
         className="chq-contacts-filter-add-chip"
+        ref={addChipRef}
+        aria-expanded={builderOpen}
+        aria-controls={builderId}
         onClick={() => {
           // DEC-990 amendment (extending src/decisions-data/DEC-919.md's
           // wave-128 amendment): the newly-appended rule's index is
