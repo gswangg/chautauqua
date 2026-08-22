@@ -437,7 +437,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 151,
     text: 'Next free slot in Room 2A',
     reason:
-      "app/src/pages/overview/AgendaWorkSection.tsx composes `<span className=\"chq-overview-caption\">Next free slot in {conflict.resolution.roomName}</span>` from the conflict's own live suggested room name.",
+      "app/src/pages/overview/AgendaWorkSection.tsx composes `<span className=\"chq-overview-caption\">{conflictMoveCaption(conflict.resolution.roomName)}</span>`, where conflictMoveCaption (src/domain/schedule-copy.ts) returns `Next free slot in ${roomName}` from the conflict's own live suggested room name.",
   },
   {
     fileName: 'Chautauqua Overview.dc.html',
@@ -486,7 +486,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 264,
     text: '12 accepted · 2 not claimed',
     reason:
-      "app/src/pages/speakers/RosterPanel.tsx composes `<strong>{acceptedCount}</strong> accepted &middot; <strong>{notClaimedCount}</strong> not claimed` from the roster's own live counts, in the 390-phone drill-in head.",
+      "app/src/pages/speakers/RosterPanel.tsx composes `{acceptedCount} accepted &middot; {notClaimedCount} not claimed` from the roster's own live counts, in the 390-phone drill-in head (DEC-730 wave-33 amendment: frame :264 draws this summary entirely plain, no <strong>).",
   },
   {
     fileName: 'Chautauqua Speakers.dc.html',
@@ -500,7 +500,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 469,
     text: '12 accepted · 3 overdue',
     reason:
-      "app/src/pages/speakers/OnboardingGrid.tsx composes `<strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.overdue ?? 0}</strong> overdue` from the event's own live speaker/overdue counts, beside the Speakers H1.",
+      "app/src/pages/speakers/OnboardingGrid.tsx composes `{counts?.speakers ?? 0} accepted &middot;{' '} <strong className={summaryExceptionSuppressed ? undefined : 'chq-speakers-summary-exception'} > {counts?.overdue ?? 0} overdue </strong>` from the event's own live speaker/overdue counts, beside the Speakers H1 (DEC-730 wave-33 amendment: resting accepted clause plain, exception clause in a conditionally-classed <strong>).",
   },
   {
     fileName: 'Chautauqua Speakers.dc.html',
