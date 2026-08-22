@@ -85,6 +85,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker slides"
+          confirmPhraseNoun="file name"
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
         />,
@@ -107,6 +108,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker Slides"
+          confirmPhraseNoun="file name"
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
         />,
@@ -124,6 +126,7 @@ describe('ConfirmDialog', () => {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase="Speaker slides"
+          confirmPhraseNoun="file name"
           onConfirm={vi.fn()}
           onCancel={onCancel}
         />,
@@ -167,6 +170,49 @@ describe('ConfirmDialog', () => {
         ),
       ).toThrow(/confirmPhrase/);
       consoleError.mockRestore();
+    });
+
+    it('throws when the irreversible weight has no confirmPhraseNoun', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ConfirmDialog
+            title="Delete this resource?"
+            confirmLabel="Delete resource"
+            weight="irreversible"
+            confirmPhrase="Speaker slides"
+            onConfirm={vi.fn()}
+            onCancel={vi.fn()}
+          />,
+        ),
+      ).toThrow(/confirmPhraseNoun/);
+      consoleError.mockRestore();
+    });
+
+    // DEC-613 (wave-33): Chautauqua Settings.dc.html:1429 draws the
+    // typed-confirm eyebrow as a GENERIC instruction -- "Type the file name
+    // to confirm" -- with the object's own name appearing only in the
+    // bordered box below (:1430, "Speaker handbook 2027.pdf"), never inside
+    // the label. This pins both directions: the label reads the generic
+    // instruction and the confirm phrase is absent from the label element,
+    // while it remains present as the input's placeholder (the frame's
+    // muted in-box content).
+    it("draws the label as the frame's generic instruction, with the phrase only in the box", () => {
+      render(
+        <ConfirmDialog
+          title="Delete this resource?"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase="Speaker handbook 2027.pdf"
+          confirmPhraseNoun="file name"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('Type the file name to confirm')).toBeInTheDocument();
+      expect(screen.queryByText('Type "Speaker handbook 2027.pdf" to confirm')).not.toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Speaker handbook 2027.pdf');
     });
   });
 });

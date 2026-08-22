@@ -97,7 +97,7 @@ Each row gets one of four verdicts:
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
 
-**Totals (DEC-613 wave-28 re-measurement): 100 HARDCODED-MATCHES, 6
+**Totals (DEC-613 wave-33 re-measurement, task w33-d): 101 HARDCODED-MATCHES, 5
 HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED** — partitions the
 128-row population exactly; see the per-row table below for every
 DIVERGES row's own citation.
@@ -115,10 +115,11 @@ accordingly, not silently kept as a false match.
 ## Ratchets
 
 Two-sided per DEC-808, seeded at the measured value on this branch (DEC-613
-wave-28 amendment: DIVERGENCE_CEILING re-measured 5 -> 6 after the
-population widened and absorbed one new real divergence):
+wave-33 amendment, task w33-d: DIVERGENCE_CEILING re-measured 6 -> 5 after
+the Settings :1429 typed-confirm row moved to HARDCODED-MATCHES — see
+"Divergences" below):
 
-- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6`
+- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 5`
 - `DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1`
 
 Registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`, the
@@ -146,14 +147,7 @@ so no row is silently OPEN against `test/open-divergence-ledger.scan.test.ts`.
    the same field) "Public URL" vs. `EventSettingsPanel.tsx`'s "Slug" —
    blessed, recorded divergence, `docs/design/DEVIATIONS.md` §7 (DEC-613's
    own carve-out for this exact row).
-4. `Chautauqua Settings.dc.html:1429` "Type the file name to confirm" vs.
-   `app/src/components/ConfirmDialog.tsx`'s composed
-   `Type "${confirmPhrase}" to confirm` — newly found by this ledger;
-   adjudicated here under DEC-613's adoption rule as a genuine, still-open
-   outlier (the composed phrase is the confirm-phrase's own value threaded
-   into the label, not a formatting variant of the frame's generic
-   instruction text) with no blessing on record.
-5. `Chautauqua Submissions.dc.html:693` "Options · one per line" vs.
+4. `Chautauqua Submissions.dc.html:693` "Options · one per line" vs.
    `app/src/pages/forms/FieldModal.tsx`'s "Options (one per line)" —
    wave-28 DEC-613 amendment: found by the widened population step
    (`tailOpensInputBox`'s caption-sibling clause). Adjudicated here under
@@ -327,7 +321,7 @@ per-row Citation column always names the specific site.
 | 1371 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>` |
 | 1375 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="Last name" htmlFor="people-invite-last-name" error={fieldErrors.lastName}>` |
 | 1380 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`...(mailStatus ? [{ label: 'Email', value: mailStatusSummary(mailStatus) }] : []),` |
-| 1429 | Type the file name to confirm | HARDCODED-DIVERGES | The frame draws a generic instruction label ("Type the file name to confirm") over a box holding the actual filename; ConfirmDialog's irreversible-weight prompt instead composes the phrase directly INTO the label text itself -- different words, not a formatting variant. Adjudicated a genuine open outlier under DEC-613's adoption rule. | app/src/components/ConfirmDialog.tsx`Type "${confirmPhrase}" to confirm` |
+| 1429 | Type the file name to confirm | HARDCODED-MATCHES | DEC-613 wave-33 (task w33-d): resolved -- ConfirmDialog's typed-confirm label now renders the frame's generic instruction verbatim (`Type the ${confirmPhraseNoun} to confirm`), composed at render time with ResourcesPanel.tsx's `confirmPhraseNoun="file name"`; the object's own name moved to the input's `placeholder`, the frame's muted in-box content. | app/src/components/ConfirmDialog.tsx`Type the ${confirmPhraseNoun} to confirm` + app/src/pages/settings/ResourcesPanel.tsx`confirmPhraseNoun="file name"` |
 | 1454 | Name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/ApiTokensPanel.tsx`<th>Name and prefix</th>` |
 
 ### Chautauqua Speakers.dc.html

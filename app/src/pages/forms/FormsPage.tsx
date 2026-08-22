@@ -523,6 +523,7 @@ export function FormsPage() {
           pending={busy}
           weight="irreversible"
           confirmPhrase={deleteConfirm.field.label}
+          confirmPhraseNoun="field name"
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
         />
@@ -535,6 +536,7 @@ export function FormsPage() {
           pending={busy}
           weight="irreversible"
           confirmPhrase={deleteConfirm.field.label}
+          confirmPhraseNoun="field name"
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
         />

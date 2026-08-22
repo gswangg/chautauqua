@@ -457,6 +457,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
           confirmLabel="Delete resource"
           weight="irreversible"
           confirmPhrase={pendingDelete.title}
+          confirmPhraseNoun="file name"
           pending={deleting}
           onConfirm={() => void confirmDeleteResource()}
           onCancel={() => setPendingDelete(null)}

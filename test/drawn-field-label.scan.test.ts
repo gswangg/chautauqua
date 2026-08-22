@@ -351,13 +351,6 @@ const DIVERGES: Record<string, { reason: string; citation: string }> = {
       'hand-verified.',
     citation: 'app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>`',
   },
-  'Chautauqua Settings.dc.html:1429': {
-    reason:
-      'The frame draws a generic instruction label ("Type the file name to confirm") over a box ' +
-      'holding the actual filename; ConfirmDialog\'s irreversible-weight prompt instead composes the ' +
-      'phrase directly INTO the label text itself -- different words, not a formatting variant.',
-    citation: 'app/src/components/ConfirmDialog.tsx`{`Type "${confirmPhrase}" to confirm`}`',
-  },
   // Wave-28 DEC-613 amendment: found by the widened tailOpensInputBox
   // population step (see its own header).
   'Chautauqua Submissions.dc.html:693': {
@@ -406,6 +399,23 @@ const COMPOSED: Record<string, { reason: string; citation: string }> = {
   'Chautauqua Submissions.dc.html:684': {
     reason: 'FieldModal composes label="Help text" plus the same shared OPTIONAL_SUFFIX constant as the Contacts rows above.',
     citation: 'app/src/pages/forms/FieldModal.tsx`<FormRow label="Help text" htmlFor="field-help-text" optional>`',
+  },
+  // DEC-613 wave-33 (task w33-d): ConfirmDialog's typed-confirm label is now
+  // built from a template literal, `Type the ${confirmPhraseNoun} to
+  // confirm` -- assembled at render time from a caller-supplied noun rather
+  // than written as one literal string, so the corpus-wide literal search
+  // cannot find this frame row's exact text as one token. ResourcesPanel.tsx
+  // is this frame's own caller (the resource-delete confirm) and passes
+  // `confirmPhraseNoun="file name"`, producing exactly the frame's drawn
+  // text at render time.
+  'Chautauqua Settings.dc.html:1429': {
+    reason:
+      'Composed from ConfirmDialog\'s template literal label plus ResourcesPanel.tsx\'s ' +
+      '`confirmPhraseNoun="file name"` prop, both concatenating at render to the frame\'s exact drawn ' +
+      'text, "Type the file name to confirm" -- not written as one literal string, so the corpus-wide ' +
+      'literal search cannot find it as one token.',
+    citation: 'app/src/components/ConfirmDialog.tsx`{`Type the ${confirmPhraseNoun} to confirm`}` + ' +
+      'app/src/pages/settings/ResourcesPanel.tsx`confirmPhraseNoun="file name"`',
   },
 };
 
@@ -463,7 +473,11 @@ const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
 // those 7 grade MATCHES/STORED, 1 (Submissions "Options · one per line")
 // grades a real new DIVERGES, forcing 5 -> 6. Never guessed, forced to -1
 // and re-measured on this branch.
-export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6;
+// DEC-613 wave-33 (task w33-d): the Settings :1429 typed-confirm entry is
+// now built product code (ConfirmDialog's generic label + ResourcesPanel's
+// confirmPhraseNoun), removed from DIVERGES. Re-measured on this branch,
+// never guessed (DEC-808).
+export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 5;
 export const DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1;
 
 describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w25-i)', () => {

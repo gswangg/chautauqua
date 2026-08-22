@@ -32,6 +32,14 @@ interface ConfirmDialogProps {
   // anywhere under app/src. That absence is recorded here, not designed for.
   weight?: 'reversible' | 'irreversible';
   confirmPhrase?: string;
+  // DEC-613 (wave-33): the frame's typed-confirm label is a GENERIC
+  // instruction ("Type the file name to confirm") -- the object's own name
+  // never enters the label, it lives only in the bordered box below
+  // (rendered here as the input's `placeholder`, DEC-781's muted-box
+  // reading). `confirmPhraseNoun` supplies the noun for that instruction
+  // ("file name", "field name", ...). No default: 'irreversible' with no
+  // noun is a caller bug, not a fallback to guess a word from.
+  confirmPhraseNoun?: string;
   onConfirm: () => void;
   onCancel: () => void;
   // DEC-781 (wave-9 amendment): no `subtitle` slot is added here. Frame
@@ -58,6 +66,7 @@ export function ConfirmDialog({
   confirmDisabled = false,
   weight = 'reversible',
   confirmPhrase,
+  confirmPhraseNoun,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -67,6 +76,9 @@ export function ConfirmDialog({
   // silent degrade to the reversible weight -- it is a caller bug.
   if (weight === 'irreversible' && !confirmPhrase?.trim()) {
     throw new Error("ConfirmDialog: weight='irreversible' requires a non-empty confirmPhrase");
+  }
+  if (weight === 'irreversible' && !confirmPhraseNoun?.trim()) {
+    throw new Error("ConfirmDialog: weight='irreversible' requires a non-empty confirmPhraseNoun");
   }
 
   const phraseMatches =
@@ -98,7 +110,7 @@ export function ConfirmDialog({
       {weight === 'irreversible' && (
         <div className="chq-confirm-typed-row">
           <label className="chq-confirm-typed-label" htmlFor="chq-confirm-typed-input">
-            {`Type "${confirmPhrase}" to confirm`}
+            {`Type the ${confirmPhraseNoun} to confirm`}
           </label>
           <input
             id="chq-confirm-typed-input"

@@ -331,9 +331,13 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       verbatimLine(1422, '          <span style="font-size:13px; color:#565A4B">Downloaded 18 times by 12 speakers</span>');
       expect(within(dialog).queryByText(/Downloaded \d+ times by \d+ speakers/)).not.toBeInTheDocument();
 
-      // docs/design/Chautauqua Settings.dc.html:1429 -- `Type the file name to confirm` MATCHES: irreversible weight, primary disabled until typed.
+      // docs/design/Chautauqua Settings.dc.html:1429 -- `Type the file name to confirm` MATCHES verbatim
+      // (DEC-613 wave-33, task w33-d): the label is now the frame's generic instruction; the object's
+      // own name lives only in the input's placeholder (the frame's muted in-box content), not the label.
       verbatimLine(1429, '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Type the file name to confirm</span>');
-      expect(within(dialog).getByText(/Type "Speaker handbook 2027.pdf" to confirm/)).toBeInTheDocument();
+      expect(within(dialog).getByText('Type the file name to confirm')).toBeInTheDocument();
+      expect(within(dialog).queryByText(/Type "Speaker handbook 2027.pdf" to confirm/)).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('textbox')).toHaveAttribute('placeholder', 'Speaker handbook 2027.pdf');
 
       // docs/design/Chautauqua Settings.dc.html:1432 -- frame primary `Delete it`; the tree's `Delete resource` is a
       // ruled, DELIBERATE non-adoption (DEC-941 wave-9 amendment): app/src/confirm-primary-object.scan.test.ts
