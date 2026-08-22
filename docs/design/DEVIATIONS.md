@@ -881,6 +881,29 @@ carries this section's ruling in full; these five entries are its record.
   "Starts"/"Ends") adopt the frame verbatim because those three have no
   such mismatch between the label and what the control edits; Slug is the
   one outlier, reasoned and recorded rather than silently left stale.
+- **Content · 390 landing keeps its THIRD chip ("All accepted sessions")
+  that the frame's `:198`/`:247` and `:373` phone extents never draw (DEC-919
+  wave-28 amendment, task w29-b).** `docs/design/Chautauqua Content.dc.html`
+  draws three chips in its desktop extent (`Needs a decision · 5`,
+  `Approved · 9`, `All accepted sessions · 23`) and only the first two in
+  both 390 extents; the shipped `.chq-chipstrip`
+  (app/src/pages/content/SessionList.tsx`WORKLIST_TABS`, from
+  `worklist.ts`) renders all three, at every width. Two reasons, both from
+  the artifacts, keep the third chip at 390. (1) DEC-919's re-line-never-
+  remove governs controls, and a filter tab is a capability, not prose —
+  hiding it at phone width removes the only way to see every accepted
+  session; `app/src/phone-capability-removal.scan.test.ts`'s own header
+  states the mandate's words: "390 keeps desktop's capabilities, and
+  display:none is legal only for a control that has nothing left to
+  govern" — a third filter tab still governs a real, reachable list, so no
+  receipt shape applies. (2) The frame's own phone chip row draws
+  `style="display:flex; gap:7px; overflow-x:auto;
+  -webkit-overflow-scrolling:touch"` — the pack itself draws a SCROLLING
+  strip, so a member past the drawn 390 viewport is a drawing boundary, not
+  a decision to omit it. Recorded here per DEC-919's own wave-28 amendment
+  (`src/decisions-data/DEC-919.md`); the audit row is rewritten to carry
+  the `DIVERGES` token plus this citation in
+  `docs/design/audit/content-landing-390-v12.md`.
 
 ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
 

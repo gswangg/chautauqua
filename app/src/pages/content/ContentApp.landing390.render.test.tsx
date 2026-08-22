@@ -26,6 +26,7 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 const EVENT_ID = 'evt-content-landing-390';
 const DESIGN_FILE = join(process.cwd(), 'docs', 'design', 'Chautauqua Content.dc.html');
 const CSS_FILE = join(process.cwd(), 'app/src/pages/content/content.css');
+const STYLES_FILE = join(process.cwd(), 'app/src/styles.css');
 
 /** DEC-967 shape (copied from ContentApp.worklist-390.render.test.tsx's own
  * verbatimLine): read the ACTUAL line at assert time, fail loudly if the
@@ -62,6 +63,23 @@ function ruleBody(css: string, selector: string): string {
   const match = css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`));
   expect(match, `no rule for \`${selector}\``).not.toBeNull();
   return match![1]!;
+}
+
+/** styles.css's own single terminal `@media (max-width: 700px)` block --
+ * same brace-matched shape as contentPhoneBlock() above, applied to the
+ * shared shell sheet the chip strip's `.chq-pill` floor lives in. */
+function stylesPhoneBlock(): string {
+  const source = readFileSync(STYLES_FILE, 'utf-8');
+  const open = source.lastIndexOf('@media (max-width: 700px) {');
+  expect(open).toBeGreaterThan(-1);
+  const bodyStart = source.indexOf('{', open) + 1;
+  let depth = 1;
+  let i = bodyStart;
+  for (; i < source.length && depth > 0; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') depth--;
+  }
+  return source.slice(bodyStart, i - 1);
 }
 
 beforeEach(() => {
@@ -243,16 +261,46 @@ describe('ContentApp 390 landing (docs/design/"Chautauqua Content.dc.html":198-2
     const chips = within(chipstrip as HTMLElement);
 
     // Frame's chip strip draws exactly two chips (Needs a decision,
-    // Approved) -- NARROWED, not MATCHES: the shipped chipstrip carries a
-    // third tab ('All accepted sessions', WORKLIST_TABS' third entry,
-    // DEC-825) the frame's :198 extent never draws. Recorded as a
-    // divergence in the companion audit file; not a product edit this
-    // measurement-only lane may make.
+    // Approved); the shipped chipstrip carries a third tab ('All accepted
+    // sessions', WORKLIST_TABS' third entry, DEC-825) the frame's :198
+    // extent never draws. DIVERGES, ADJUDICATED: the third chip STAYS per
+    // DEC-919 wave-28 amendment, ruling recorded in
+    // `docs/design/DEVIATIONS.md` §7 -- a filter tab is a capability
+    // (re-line-never-remove), and the frame's own phone chip row draws a
+    // scrolling strip (`overflow-x:auto`), so a member past the drawn
+    // viewport is a drawing boundary, not an omission. See
+    // docs/design/audit/content-landing-390-v12.md for the full row.
     const needsDecisionChip = chips.getByRole('tab', { name: /^Needs a decision/ });
     const approvedChip = chips.getByRole('tab', { name: /^Approved/ });
+    const allChip = chips.getByRole('tab', { name: /^All accepted sessions/ });
     expect(needsDecisionChip).toHaveTextContent('Needs a decision · 3');
     expect(approvedChip).toHaveTextContent('Approved · 9');
+    expect(allChip).toBeInTheDocument();
     expect(chips.getAllByRole('tab')).toHaveLength(3);
+
+    // The strip SCROLLS, it never wraps -- the frame's own phone chip row
+    // is the authority for this (`overflow-x:auto;
+    // -webkit-overflow-scrolling:touch`), and it is what makes the third
+    // (and any further) chip a drawing-boundary matter rather than a
+    // removed capability.
+    const stylesSource = readFileSync(STYLES_FILE, 'utf-8');
+    const stripRule = ruleBody(stylesSource, '.chq-chipstrip');
+    expect(stripRule).toMatch(/overflow-x:\s*auto/);
+    const stripChildRule = ruleBody(stylesSource, '.chq-chipstrip > *');
+    expect(stripChildRule).toMatch(/flex-shrink:\s*0/);
+
+    // Every chip clears the 44px tap floor the frame draws on its own
+    // chips (`min-height:44px`, :210/:211) -- the phone rule, not a
+    // desktop-only assumption. Two rules cooperate: the multi-selector
+    // group rule sets `min-height: 44px` and `.chq-pill`'s own follow-on
+    // rule adds `min-width: 44px` for short labels (styles.css's own
+    // comment beside it explains why).
+    const phoneBlock = stylesPhoneBlock();
+    const pillPhoneRule = ruleBody(phoneBlock, '.chq-pill');
+    expect(pillPhoneRule).toMatch(/min-width:\s*44px/);
+    const sharedFloorMatch = phoneBlock.match(/\.chq-pill,\s*\.chq-rail-link,\s*\.chq-checkbox-label,\s*\.chq-btn-tertiary\s*\{([^}]*)\}/);
+    expect(sharedFloorMatch, 'no .chq-pill shared phone floor rule').not.toBeNull();
+    expect(sharedFloorMatch![1]).toMatch(/min-height:\s*44px/);
   });
 
   it('draws every row (title/meta/status) and the Approve+Open verb pair, across ALL rows the fixture renders (frame :217-224, DEC-180)', async () => {
