@@ -34,6 +34,23 @@ void DEC_967; // wave-117 amendment: a phone class hidden by its container is no
 // the ancestor itself passes hasTopLevelDisplayNone; an ancestor that stops hiding
 // re-exposes every child it covered).
 void DEC_991; // cited per task w6-f: the exemption-must-name-a-checked-receipt shape.
+// DEC-919 wave-5 amendment: a markup-mounted phone class hidden at every one
+// of its mount sites by the native `hidden` attribute on the SAME opening
+// tag needs no top-level display:none rule of its own -- the browser's UA
+// stylesheet ([hidden] { display: none }) already removes it at desktop,
+// and a phone-width media rule with `display: block` (or similar) switches
+// it back on, the exact idiom scorecard.css:504's own comment names
+// ("Scorecard.tsx renders this span with the native `hidden` attribute
+// ... reveal it here, phone-only") and the one Scorecard.recuseHint390.
+// render.test.tsx:238-239 depends on -- that test asserts
+// topLevelRuleBody(SCORECARD_CSS, '.chq-review-criterion-hint-phone')
+// THROWS (no top-level rule at all), which a hand-authored top-level
+// display:none would have violated. Modelled exactly like COVERED_BY
+// above: RE-DERIVED LIVE from the real TSX mount sites on every run (never
+// a static allowlist), and a class with several mount sites is only
+// credited when EVERY ONE of them carries `hidden` -- a single bare mount
+// (no `hidden`) re-opens the offender, same as one uncovered COVERED_BY
+// child would.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -338,6 +355,113 @@ function markupPhoneClasses(root: string): Set<string> {
 
 const MARKUP_PHONE_CLASSES = markupPhoneClasses(APP_SRC);
 
+// --- DEC-919 wave-5: the `hidden`-attribute mounting mechanism ------------
+//
+// Reuses the walkTsx directory walk above (never a second parser) to read
+// every non-test *.tsx file's text once, then extracts each JSX opening
+// tag (tracking brace/quote depth so a `{expr > other}` inside an
+// attribute value does not terminate the tag early) and, for every
+// phone-named class carried in that tag's className literal, records
+// whether the SAME tag also carries the bare `hidden` attribute.
+
+/** Every JSX opening-tag substring (`<Foo ...>` or `<Foo ... />`) in `text`,
+ * found by scanning for `<` followed by a letter and reading forward while
+ * tracking string-quote state and `{}` brace depth, so a `>` inside a JS
+ * expression (e.g. `hidden={a > b}`) does not end the tag early. */
+function extractOpeningTags(text: string): string[] {
+  const tags: string[] = [];
+  const n = text.length;
+  let i = 0;
+  while (i < n) {
+    if (text[i] === '<' && /[A-Za-z]/.test(text[i + 1] ?? '')) {
+      let j = i + 1;
+      let braceDepth = 0;
+      let quote: string | null = null;
+      while (j < n) {
+        const ch = text[j];
+        if (quote !== null) {
+          if (ch === quote && text[j - 1] !== '\\') quote = null;
+        } else if (ch === '"' || ch === "'" || ch === '`') {
+          quote = ch;
+        } else if (ch === '{') {
+          braceDepth++;
+        } else if (ch === '}') {
+          braceDepth--;
+        } else if (ch === '>' && braceDepth <= 0) {
+          break;
+        }
+        j++;
+      }
+      tags.push(text.slice(i, j + 1));
+      i = j + 1;
+    } else {
+      i++;
+    }
+  }
+  return tags;
+}
+
+/** Whether `tagText` carries the bare `hidden` JSX attribute (not a
+ * substring of a longer identifier like `isHidden`, and not merely the
+ * word `hidden` anywhere in the tag): requires whitespace immediately
+ * before it and whitespace/`/`/`>` immediately after. */
+function tagHasHiddenAttr(tagText: string): boolean {
+  return /\shidden(?=[\s/>])/.test(tagText);
+}
+
+/** Every class token named in a `className=` literal within a single
+ * opening tag. Same literal shapes as CLASSNAME_LITERAL_RE, scoped to one
+ * tag's text so at most the tag's own className attribute is read. */
+function tagClassNames(tagText: string): string[] {
+  const out: string[] = [];
+  const re = /className\s*=\s*"([^"]*)"|className\s*=\s*\{`([^`]*)`\}|className\s*=\s*'([^']*)'/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(tagText))) {
+    const raw = (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, ' ');
+    for (const token of raw.split(/\s+/)) if (token) out.push(token);
+  }
+  return out;
+}
+
+interface HiddenMountTally {
+  total: number;
+  hiddenCount: number;
+}
+
+/** For every phone-named class mounted across `texts`, tallies how many
+ * opening tags carry it and how many of those tags also carry `hidden`. */
+function markupHiddenMountCoverage(texts: string[]): Map<string, HiddenMountTally> {
+  const map = new Map<string, HiddenMountTally>();
+  for (const text of texts) {
+    for (const tagText of extractOpeningTags(text)) {
+      const classes = tagClassNames(tagText).filter((token) => /phone/.test(token));
+      if (classes.length === 0) continue;
+      const hidden = tagHasHiddenAttr(tagText);
+      for (const token of classes) {
+        const key = `.${token}`;
+        const entry = map.get(key) ?? { total: 0, hiddenCount: 0 };
+        entry.total++;
+        if (hidden) entry.hiddenCount++;
+        map.set(key, entry);
+      }
+    }
+  }
+  return map;
+}
+
+const MARKUP_TSX_TEXTS = walkTsx(APP_SRC).map((file) => readFileSync(file, 'utf-8'));
+const MARKUP_HIDDEN_MOUNT_COVERAGE = markupHiddenMountCoverage(MARKUP_TSX_TEXTS);
+
+/** True only when the selector has at least one markup mount AND every one
+ * of its mount sites carries the bare `hidden` attribute on the same tag.
+ * A single bare (unhidden) mount site keeps this false, re-opening the
+ * class as an offender -- mirrors isCoveredByHiddenAncestor's shape. */
+function isHiddenAtEveryMarkupMount(selector: string): boolean {
+  const entry = MARKUP_HIDDEN_MOUNT_COVERAGE.get(selector);
+  if (entry === undefined || entry.total === 0) return false;
+  return entry.hiddenCount === entry.total;
+}
+
 /** Whether `selector` has a top-level (non-@media) rule anywhere in the
  * already-loaded CSS source population that declares `display: none`. */
 function hasTopLevelDisplayNone(selector: string): boolean {
@@ -432,6 +556,7 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
   .filter((selector) => !hasTopLevelDisplayNone(selector))
   .filter((selector) => !NOT_PHONE_ONLY_SELECTORS.has(selector))
   .filter((selector) => !isCoveredByHiddenAncestor(selector))
+  .filter((selector) => !isHiddenAtEveryMarkupMount(selector))
   .sort();
 
 // Measured on this branch's tree (v12m-w8-g) after (1) fixing
@@ -468,6 +593,21 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
 // genuinely rendered at both widths as shared layout, not phone-only
 // affordances -- and are now NOT_PHONE_ONLY entries with that reasoning.
 // Zero genuine desktop leaks were found in this population.
+//
+// DEC-919 wave-5 (task w5-ce): the scan flagged two more markup-mounted
+// phone classes -- .chq-overview-clash-line-phone
+// (AgendaWorkSection.tsx:141) and .chq-review-criterion-hint-phone
+// (Scorecard.tsx:907) -- neither of which has (or should have) a
+// top-level display:none rule; both are mounted with the native `hidden`
+// attribute on the same span, the UA stylesheet's [hidden]{display:none}
+// hides them at desktop, and their phone media query (overview.css:878,
+// scorecard.css:506) switches them back on with `display: block`. Adding a
+// hand-authored top-level display:none for either is FORBIDDEN by
+// Scorecard.recuseHint390.render.test.tsx:238-239, which pins that
+// topLevelRuleBody THROWS (no top-level rule at all) for
+// .chq-review-criterion-hint-phone. isHiddenAtEveryMarkupMount recognises
+// both via the real `hidden` attribute on their sole mount site, not via
+// an exemption list -- ceiling stays at the same measured truth, 0.
 export const MARKUP_PHONE_UNHIDDEN_CEILING = 0;
 
 describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
@@ -541,6 +681,58 @@ describe('markup-mounted phone classes must be top-level display:none (DEC-919 w
     for (const [selector, ancestor] of COVERED_BY) {
       expect(hasTopLevelDisplayNone(ancestor), `COVERED_BY entry for ${selector} names ancestor ${ancestor}, which is not currently top-level display:none`).toBe(true);
     }
+  });
+
+  // DEC-919 wave-5: the `hidden`-attribute mounting mechanism. Both
+  // controls use a class name the real tree does not contain anywhere
+  // (real TSX files cannot be injected into), exercising the underlying
+  // mechanism -- extractOpeningTags + tagHasHiddenAttr + tagClassNames via
+  // markupHiddenMountCoverage -- directly against synthetic TSX-shaped
+  // text, the same mechanism MARKUP_HIDDEN_MOUNT_COVERAGE runs per-file
+  // over MARKUP_TSX_TEXTS above.
+  it('a synthetic class mounted ONCE with the native hidden attribute is recognised as hidden (positive control)', () => {
+    const syntheticTsx =
+      '<span hidden className="chq-synthetic-phone-hidden-attr-control">x</span>';
+    const coverage = markupHiddenMountCoverage([syntheticTsx]);
+    const entry = coverage.get('.chq-synthetic-phone-hidden-attr-control');
+    expect(entry).toEqual({ total: 1, hiddenCount: 1 });
+  });
+
+  it('a synthetic class mounted TWICE, once WITHOUT hidden, is still an offender (negative control: every mount must carry hidden)', () => {
+    const syntheticTsx =
+      '<span hidden className="chq-synthetic-phone-hidden-attr-partial">a</span>\n' +
+      '<span className="chq-synthetic-phone-hidden-attr-partial">b</span>';
+    const coverage = markupHiddenMountCoverage([syntheticTsx]);
+    const entry = coverage.get('.chq-synthetic-phone-hidden-attr-partial');
+    expect(entry).toEqual({ total: 2, hiddenCount: 1 });
+    // Directly exercise isHiddenAtEveryMarkupMount's all-or-nothing shape
+    // by re-deriving it against this synthetic coverage map.
+    expect(entry !== undefined && entry.hiddenCount === entry.total).toBe(false);
+  });
+
+  it('`hidden` as a substring of another identifier (isHidden) does not count as the hidden attribute (negative control)', () => {
+    const syntheticTsx =
+      '<span isHidden className="chq-synthetic-phone-hidden-attr-substring">x</span>';
+    expect(tagHasHiddenAttr(extractOpeningTags(syntheticTsx)[0] ?? '')).toBe(false);
+  });
+
+  it('a `>` inside a JS expression attribute value does not end the tag early (brace-depth control)', () => {
+    const syntheticTsx = '<span hidden data-cmp={a > b} className="chq-synthetic-phone-hidden-attr-brace">x</span>';
+    const tags = extractOpeningTags(syntheticTsx);
+    expect(tags.length).toBe(1);
+    expect(tagClassNames(tags[0] ?? '')).toContain('chq-synthetic-phone-hidden-attr-brace');
+    expect(tagHasHiddenAttr(tags[0] ?? '')).toBe(true);
+  });
+
+  it('the two real hidden-attribute-mounted classes are recognised via the hidden-attribute mechanism, not an exemption list (live tripwire)', () => {
+    for (const selector of ['.chq-overview-clash-line-phone', '.chq-review-criterion-hint-phone']) {
+      expect(NOT_PHONE_ONLY_SELECTORS.has(selector), `${selector} should not need a NOT_PHONE_ONLY exemption`).toBe(false);
+      expect(COVERED_BY_SELECTORS.has(selector), `${selector} should not need a COVERED_BY exemption`).toBe(false);
+      expect(hasTopLevelDisplayNone(selector), `${selector} should have no top-level display:none rule (native hidden attribute idiom)`).toBe(false);
+      expect(isHiddenAtEveryMarkupMount(selector), `${selector} should be recognised as hidden at every markup mount via the hidden attribute`).toBe(true);
+    }
+    expect(MARKUP_OFFENDERS).not.toContain('.chq-overview-clash-line-phone');
+    expect(MARKUP_OFFENDERS).not.toContain('.chq-review-criterion-hint-phone');
   });
 
   it('markup-mounted phone classes without a top-level display:none never exceed the ceiling (two-sided ratchet: may only fall)', () => {
