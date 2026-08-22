@@ -217,13 +217,19 @@ export async function insertActiveParticipants(
   for (const chunk of chunkRowsForInsert(rows)) {
     await db.insert(schema.participant).values(chunk);
   }
-  // DEC-725 amendment: unlike the invite/visibility/status writers below,
-  // this function's one caller (pushContactsToEvent, src/server/repo/
-  // contacts/push.ts) always calls it in the same request that just
-  // createSubmission'd submissionId — that INSERT already stamped
-  // updatedAt to `now` moments earlier, so there is no stale stamp to
-  // correct here. No touchSubmissions call (see submissions/touch.ts
-  // header for the general contract this deliberately doesn't need).
+  // DEC-725 amendment (wave 18): the touch lands INSIDE this function so
+  // every caller inherits it, the same shape DEC-725 already used for
+  // removeParticipantRow. This function has two callers
+  // (src/server/repo/contacts/push.ts): pushContactsToEvent, which calls
+  // this in the same request that just createSubmission'd submissionId (so
+  // this stamp is a same-timestamp no-op there), and
+  // attachOrCreateRosterSession's exact-title-match branch, which attaches
+  // to a PRE-EXISTING submission that nothing else in that request
+  // touches -- without this call that submission's updated_at never moves,
+  // so src/sync/airtable.ts's gt(submission.updatedAt, lookbackMark)
+  // watermark never re-selects it and repo/overview.ts's
+  // desc(submission.updatedAt) worklist never resurfaces it.
+  await touchSubmissions(db, [submissionId], now);
 }
 
 export interface ParticipantScope {

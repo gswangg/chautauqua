@@ -304,6 +304,12 @@ export async function createParticipant(
     createdAt: now,
     updatedAt: now,
   });
+  // DEC-725 amendment: like createSubmissionTracks below, this writer is
+  // only ever called immediately after createSubmission (the public CFP
+  // route inserts the lead participant in the same request that just
+  // inserted the submission row) — the submission row's own INSERT already
+  // stamped updatedAt to `now` moments earlier, so there is no stale stamp
+  // to correct here. No touchSubmissions call.
 }
 
 export async function createSubmissionTracks(

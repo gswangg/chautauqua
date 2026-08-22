@@ -107,12 +107,26 @@ describe("pushContactsToEvent (DEC-357, DEC-810 amendment wave 59): ONE session 
     // ONE submission created for the whole batch -- not one per contact
     // (DEC-810 amendment, wave 59).
     expect(submissionSelectCalls).toHaveLength(1);
-    expect(submissionUpdateCalls).toHaveLength(1);
-    for (const call of submissionUpdateCalls) {
-      const setValue = call.setValue as { status: string; acceptedAt: Date };
-      expect(setValue.status).toBe("accepted");
-      expect(setValue.acceptedAt).toBeInstanceOf(Date);
-    }
+    // TWO submission updates: updateSubmissionStatuses's one status-setting
+    // pass, plus ONE touchSubmissions stamp from insertActiveParticipants
+    // (DEC-725 amendment, wave 18) -- a same-request re-stamp of the
+    // submission this call already just created, harmless here, but the
+    // same call insertActiveParticipants's OTHER caller
+    // (attachOrCreateRosterSession) needs for real, onto a pre-existing
+    // submission nothing else in that request touches.
+    expect(submissionUpdateCalls).toHaveLength(2);
+    const statusCalls = submissionUpdateCalls.filter(
+      (call): call is { setValue: { status: string; acceptedAt: Date } } =>
+        typeof (call.setValue as { status?: unknown }).status === "string",
+    );
+    expect(statusCalls).toHaveLength(1);
+    expect(statusCalls[0]!.setValue.status).toBe("accepted");
+    expect(statusCalls[0]!.setValue.acceptedAt).toBeInstanceOf(Date);
+    const touchCalls = submissionUpdateCalls.filter(
+      (call) => typeof (call.setValue as { status?: unknown }).status !== "string",
+    );
+    expect(touchCalls).toHaveLength(1);
+    expect((touchCalls[0]!.setValue as { updatedAt: unknown }).updatedAt).toBeInstanceOf(Date);
   });
 
   it("throws for an empty contact list rather than silently minting a submission (callers must skip the call)", async () => {
