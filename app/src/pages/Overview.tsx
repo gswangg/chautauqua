@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 // DEC-833 (wave-16 amendment): the four section labels below carry both a
 // desktop and a phone form as sibling spans, matching the frame's 390 copy.
-import { DEC_833 } from '../../../src/decisions';
+import { DEC_720, DEC_833 } from '../../../src/decisions';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -21,6 +21,9 @@ import type {
 } from './overview/types';
 
 void DEC_833;
+// DEC-720 (wave-8 amendment): the §03 content-approval row exposes the
+// frame's second decision, Ask for changes, alongside Approve.
+void DEC_720;
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments } from './overview/rows';
 import { plural, spellCount } from '../lib/plural';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
@@ -29,7 +32,7 @@ import { sessionFormatLabel } from '../../../src/lib/session-vocabulary';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
-type ContentDecision = 'approved';
+type ContentDecision = 'approved' | 'changes_requested';
 
 // DEC-611: Overview names the public surfaces it produces and links to them
 // by the event's own slug, never a guessed slugification of the name. The
@@ -474,6 +477,13 @@ export function OverviewPage() {
                 onClick={() => handleContentAction(row, 'approved')}
               >
                 Approve
+              </button>
+              <button
+                type="button"
+                className="chq-overview-btn"
+                onClick={() => handleContentAction(row, 'changes_requested')}
+              >
+                Ask for changes
               </button>
               <Link className="chq-overview-link-btn" to={`/content/${row.submissionId}`}>
                 Open
