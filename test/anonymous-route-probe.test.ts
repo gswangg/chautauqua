@@ -174,6 +174,11 @@ const PUBLIC_BY_DESIGN: { pattern: string; reason: string }[] = [
     reason:
       "DEC-028 origin/DEC-067 gate: 'headshots of visible speakers are public content by definition (J10 renders them)' -- the handler itself gates non-visible headshots to a 404 rather than requiring a session (src/routes/portal/profile.tsx comment above headshotServeRoutes).",
   },
+  {
+    pattern: "/reset/:token",
+    reason:
+      "DEC-949 (wave-7 amendment): password-reset landing page -- 'the GET twin resolves the same KV grant the POST spends its budget guessing against, and additionally renders the target account's email on a resolve' (src/routes/auth-reset.tsx comment above GET /reset/:token). Same shape as /claim/:token above: the token itself is the credential, not a session, so the route is reachable anonymous by design. It touches db.select/db.insert only for the per-IP consume-then-refund rate-limit budget (checkAndIncrementScopedLimit/refundScopedLimit) that gates guessing, before the token is ever resolved -- not to read org data.",
+  },
 ];
 
 function patternMatches(pattern: string, actualPath: string): boolean {
