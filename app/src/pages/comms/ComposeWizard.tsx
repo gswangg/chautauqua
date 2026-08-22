@@ -25,7 +25,18 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { writeComposeDraft, clearComposeDraft } from './composeDraft';
 import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_317, DEC_660, DEC_752, DEC_793, DEC_825, DEC_939, DEC_964, DEC_967, DEC_993 } from '../../../../src/decisions';
+import {
+  DEC_317,
+  DEC_613,
+  DEC_660,
+  DEC_752,
+  DEC_793,
+  DEC_825,
+  DEC_939,
+  DEC_964,
+  DEC_967,
+  DEC_993,
+} from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 import { useIsPhone } from '../../lib/useIsPhone';
 
@@ -45,6 +56,9 @@ void DEC_967;
 void DEC_993;
 void DEC_660;
 void DEC_939;
+// DEC-613 (wave-24 amendment): the frame's drawn FIELD label is the
+// product's field label -- backs the "From which plan" rename below.
+void DEC_613;
 
 // DEC-660 (wave-148): the only merge field COMPOSE_MERGE_FIELDS carries
 // whose value depends on a submission's slot assignment (buildMergeVars,
@@ -1450,7 +1464,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               {includeFeedback && (
                 <div className="chq-comms-panel-indent">
                   <label className="chq-comms-template-label">
-                    Evaluation plan
+                    {/* docs/design/Chautauqua Comms.dc.html:102 draws
+                        `From which plan` -- DEC-613's wave-24 amendment
+                        rules the frame's drawn field label is the
+                        product's field label, so the shorter code-side
+                        "Evaluation plan" is retired. */}
+                    From which plan
                     <select
                       className="chq-select"
                       value={feedbackPlanId}

@@ -65,20 +65,35 @@ visibility-gating divergences.**
   buildable follow-on; the frame's literal is what ships.
 - "Include reviewer feedback" and "Attach calendar invite" toggles (frame
   :99, :108) MATCH by text and order.
-- **DIVERGES**: the "From which plan" evaluation-plan selector is
-  always-visible in the frame, sitting as a permanent sibling of the
-  "Include reviewer feedback" checkbox with a preselected value ("Wave 1 —
-  first pass, all tracks", frame :102-103). The tree instead reveals a
-  DIFFERENTLY-labelled select ("Evaluation plan") only once that checkbox
-  is checked, starting at an empty "Choose a plan…" placeholder — ruling
-  A18's "a parameter of the checkbox it belongs to" design, per the code's
-  own comment, but a genuine label AND visibility AND default-value
-  divergence from the frame's always-shown, preselected control. The
-  visibility-and-default-value shape is the frame's own populated demo
-  state ("Wave 1 — first pass, all tracks" preselected) against the app's
-  real cold, unchecked start, governed by DEC-902 wave-9 (demo-state row)
-  and DEC-967 (frame sample data is not product copy); ruling A18 covers
-  the separate label/placement question and is not disturbed.
+- **CLOSED (label; wave 24, task w24-g)**: the evaluation-plan selector's
+  field label — task w24-e's amendment to `DEC-613`
+  (`src/decisions-data/DEC-613.md`: "the frame's drawn FIELD label is the
+  product's field label; a code-side shortening is a second copy of the
+  pack's vocabulary") is the ruling authority. `ComposeWizard.tsx` now
+  renders `From which plan` verbatim at the site formerly reading
+  `Evaluation plan` (`.chq-comms-template-label`, drawn once "Include
+  reviewer feedback" is checked), with a drift-proof frame citation
+  (`docs/design/Chautauqua Comms.dc.html:102`) above it. Pinned by
+  `ComposeWizard.render.test.tsx`'s new test mounting the wizard, ticking
+  "Include reviewer feedback", and resolving the select via
+  `getByLabelText('From which plan')` — a real accessible-name lookup
+  against the rendered DOM, not a source-text match — plus the frame-verdict
+  suite's own `Comms-compose.desktop-frame-verdicts.render.test.tsx`
+  (updated to assert the new label rather than the old one).
+- **DIVERGES (unchanged; visibility and default value only)**: independent
+  of the label fix above, the selector is still always-visible in the
+  frame, sitting as a permanent sibling of the "Include reviewer feedback"
+  checkbox with a preselected value ("Wave 1 — first pass, all tracks",
+  frame :102-103). The tree still reveals the (now correctly-labelled)
+  select only once that checkbox is checked, starting at an empty "Choose a
+  plan…" placeholder — ruling A18's "a parameter of the checkbox it belongs
+  to" design, per the code's own comment. The visibility-and-default-value
+  shape is the frame's own populated demo state ("Wave 1 — first pass, all
+  tracks" preselected) against the app's real cold, unchecked start,
+  governed by DEC-902 wave-9 (demo-state row) and DEC-967 (frame sample
+  data is not product copy); ruling A18 covers the separate
+  visibility/placement question and is not disturbed by this label fix.
+  Out of scope for task w24-g, which moves copy, not geometry/visibility.
 - **DIVERGES**: the "N have no slot yet — those get no invite" advisory
   (frame :110) is drawn in the frame directly beneath an UNCHECKED "Attach
   calendar invite" box (frame :107's unfilled `border:1px solid #8E8A7A`,
@@ -154,6 +169,26 @@ report, not a pre-send confirmation screen.
 - The footer note "All 21 are in History, each with the address it went
   to" (frame :531) and the "Compose another" / "Back to Comms" action pair
   (frame :533-534) MATCH.
+
+## Task w24-g verdict table: "Attachments and merge fields" block re-check
+
+Authority for the field-label row: `src/decisions-data/DEC-613.md`'s
+wave-24 amendment (task w24-e), backed in code by `DEC_613` in
+`app/src/pages/comms/ComposeWizard.tsx` (compile-checked per the campaign
+rule that a dependency on DEC-NNN must reference its constant).
+
+| Frame line | Frame literal | Verdict |
+| --- | --- | --- |
+| `Chautauqua Comms.dc.html:96` | `Attachments and merge fields` | MATCHES (confirmed still rendering verbatim; see the wave-19 CLOSED row above — the wave-24 reconciliation commit 32436e11b aligned tests to this literal and it holds) |
+| `Chautauqua Comms.dc.html:99` | `Include reviewer feedback` | MATCHES |
+| `Chautauqua Comms.dc.html:102` | `From which plan` | DIVERGES-fixed (task w24-g). Was `Evaluation plan`; now renders the frame's literal verbatim, per DEC-613's wave-24 amendment. Visibility/default-value divergence is unchanged and separately tracked above (ruling A18/DEC-902 wave-9) — out of this task's scope. |
+| `Chautauqua Comms.dc.html:104` | `Only submitted, non-recused reviews are merged` | MATCHES modulo a trailing-period byte, deliberately UNTOUCHED. Checked both `docs/design/audit/frame-caption-residue-v12.md` and `test/frame-caption-ledger.scan.test.ts` before this row was written: neither adjudicates this caption (no entry names Comms.dc.html:104 or this text in either instrument's exclusion tables), so per this task's explicit instruction the trailing-period byte is left alone rather than fixed unilaterally. Flagged here as UNADJUDICATED for whichever lane owns the caption ledger next. |
+| `Chautauqua Comms.dc.html:108` | `Attach calendar invite` | MATCHES |
+| `Chautauqua Comms.dc.html:110` | `3 of 23 have no slot yet — those get no invite` | MATCHES (app composes `{noSlotCount} of {preview.length} have no slot yet — those get no invite` from real counts, confirmed at `ComposeWizard.tsx:1494`; gating divergence unchanged and separately tracked above, DEC-902 wave-9). |
+
+Note for the next wave: `v12m-w24-h` is building a field-label ledger
+(a words-only instrument, the shape `desktop-field-width-v12.md`'s own
+Adjudications named as missing) that will count this row once it lands.
 
 ## What this document does NOT cover
 
