@@ -597,17 +597,27 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
 // DEC-919 wave-5 (task w5-ce): the scan flagged two more markup-mounted
 // phone classes -- .chq-overview-clash-line-phone
 // (AgendaWorkSection.tsx:141) and .chq-review-criterion-hint-phone
-// (Scorecard.tsx:907) -- neither of which has (or should have) a
-// top-level display:none rule; both are mounted with the native `hidden`
-// attribute on the same span, the UA stylesheet's [hidden]{display:none}
-// hides them at desktop, and their phone media query (overview.css:878,
-// scorecard.css:506) switches them back on with `display: block`. Adding a
-// hand-authored top-level display:none for either is FORBIDDEN by
-// Scorecard.recuseHint390.render.test.tsx:238-239, which pins that
-// topLevelRuleBody THROWS (no top-level rule at all) for
-// .chq-review-criterion-hint-phone. isHiddenAtEveryMarkupMount recognises
-// both via the real `hidden` attribute on their sole mount site, not via
-// an exemption list -- ceiling stays at the same measured truth, 0.
+// (Scorecard.tsx:907) -- at that time NEITHER had a top-level
+// display:none rule; both were mounted with the native `hidden` attribute
+// on the same span, the UA stylesheet's [hidden]{display:none} hid them
+// at desktop, and their phone media query (overview.css:878,
+// scorecard.css:506) switched them back on with `display: block`.
+// isHiddenAtEveryMarkupMount recognised both via the real `hidden`
+// attribute on their sole mount site, not via an exemption list.
+//
+// DEC-919 wave-109-style amendment (DEC-099: an amendment that reverses
+// says so): a later merge-train repair gave BOTH classes a hand-authored
+// top-level `display: none;` rule after all (overview.css:262,
+// scorecard.css:222) -- belt-and-suspenders with the `hidden` attribute,
+// not a replacement for it -- so a stylesheet-applied desktop render can
+// never leak the phone copy even if the `hidden` attribute were ever
+// dropped from the JSX in isolation. Scorecard.recuseHint390.render.
+// test.tsx's own CSS-half describe block now pins `topLevelRuleBody`
+// returning exactly `display: none;` for .chq-review-criterion-hint-phone
+// (the opposite of the wave-5 "THROWS" pin it replaced). Both classes are
+// therefore recognised via the ordinary hasTopLevelDisplayNone path now
+// AND via isHiddenAtEveryMarkupMount -- neither mechanism is exclusive,
+// and both must keep agreeing. Ceiling stays at the same measured truth, 0.
 export const MARKUP_PHONE_UNHIDDEN_CEILING = 0;
 
 describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
@@ -724,11 +734,16 @@ describe('markup-mounted phone classes must be top-level display:none (DEC-919 w
     expect(tagHasHiddenAttr(tags[0] ?? '')).toBe(true);
   });
 
-  it('the two real hidden-attribute-mounted classes are recognised via the hidden-attribute mechanism, not an exemption list (live tripwire)', () => {
+  it('the two real hidden-attribute-mounted classes are recognised via BOTH the top-level display:none rule and the hidden-attribute mechanism, not an exemption list (live tripwire, DEC-099 reversal)', () => {
     for (const selector of ['.chq-overview-clash-line-phone', '.chq-review-criterion-hint-phone']) {
       expect(NOT_PHONE_ONLY_SELECTORS.has(selector), `${selector} should not need a NOT_PHONE_ONLY exemption`).toBe(false);
       expect(COVERED_BY_SELECTORS.has(selector), `${selector} should not need a COVERED_BY exemption`).toBe(false);
-      expect(hasTopLevelDisplayNone(selector), `${selector} should have no top-level display:none rule (native hidden attribute idiom)`).toBe(false);
+      // DEC-919 wave-109-style amendment: both classes were since given a
+      // hand-authored top-level display:none (overview.css:262,
+      // scorecard.css:222), belt-and-suspenders with the `hidden`
+      // attribute below -- this reverses the wave-5 assumption that a
+      // top-level rule would never exist for either class.
+      expect(hasTopLevelDisplayNone(selector), `${selector} should have a top-level display:none rule (wave-109-style belt-and-suspenders idiom)`).toBe(true);
       expect(isHiddenAtEveryMarkupMount(selector), `${selector} should be recognised as hidden at every markup mount via the hidden attribute`).toBe(true);
     }
     expect(MARKUP_OFFENDERS).not.toContain('.chq-overview-clash-line-phone');
