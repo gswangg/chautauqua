@@ -152,6 +152,7 @@ describe("patchContact cascades email onto the linked user row (DEC-456)", () =>
     const { db, updates } = selectQueueDb([
       [current], // findContactById (pre-patch read)
       [], // conflict check: no user owns New@Example.com
+      [], // DEC-663 (wave-25 amendment): sibling-contact conflict check, no other contact in the org owns New@Example.com
       [updated], // findContactById (post-update read-back)
     ]);
 

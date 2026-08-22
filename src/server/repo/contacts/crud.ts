@@ -154,6 +154,30 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       if (owner && owner.contactId !== id) {
         throw new ApiError("conflict", "That email already belongs to another account");
       }
+      // DEC-663 (wave-25 amendment): identity within an org is (orgId,
+      // lower(email)) on every find-or-create path (POST /contacts,
+      // src/routes/api/contacts/crud.ts:186-193) -- the patch path must
+      // refuse the same collision, not just the login-account one above,
+      // or an organizer editing an email in the drawer silently mints a
+      // second contact holding the address findContactByEmail
+      // (src/server/repo/submit.ts) would otherwise have matched. Scoped to
+      // the SAME org as the contact being patched (current!.orgId), and
+      // excludes this contact's own id so a same-contact re-save is never
+      // mistaken for a conflict. Message text mirrors the create route's
+      // conflict wording exactly ("<name> already uses this email") --
+      // duplicated here rather than imported because the route file is out
+      // of this change's scope.
+      const sibling = await db
+        .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+        .from(schema.contact)
+        .where(and(eq(schema.contact.orgId, current!.orgId), sql`lower(${schema.contact.email}) = ${newEmailLower}`, sql`${schema.contact.id} != ${id}`))
+        .limit(1);
+      const siblingContact = sibling[0];
+      if (siblingContact) {
+        throw new ApiError("conflict", `${siblingContact.firstName} ${siblingContact.lastName} already uses this email`, {
+          email: "Already on an existing contact",
+        });
+      }
     }
   }
   const patchedAt = new Date();
