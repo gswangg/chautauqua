@@ -54,6 +54,21 @@ import { join } from "node:path";
 const SRC_ROOT = join(__dirname, "..", "src");
 const SCHEMA_DIR = join(__dirname, "..", "src", "db", "schema");
 
+// DEC-558 (wave 10-te amendment): the compiled decision registry
+// (`src/decisions-data/**`) is prose ABOUT code, never code itself -- its
+// exported strings *quote* constructs like `.limit(1)` to document them
+// (e.g. DEC_558's own string names the construct this scanner polices), the
+// same shape DEC-374 already established for CSS comments: a construct
+// mentioned inside descriptive text is a citation, not a call site. Derived
+// from the path prefix (not a filename list) so any future file dropped
+// into that directory is excluded the same way, with no registry to keep in
+// sync.
+const DECISIONS_DATA_DIR = join(SRC_ROOT, "decisions-data") + "/";
+
+function isDecisionsDataPath(file: string): boolean {
+  return file.startsWith(DECISIONS_DATA_DIR);
+}
+
 // DEC-558 (wave 79 amendment): a bare `DEC-\d{3}` in the six lines above a
 // `.limit(1)` chain used to be enough, on its own, to waive the chain --
 // which meant ANY comment citing ANY DEC number (and nearly every comment
@@ -149,11 +164,13 @@ function listSourceFiles(dir: string): string[] {
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
+      if (isDecisionsDataPath(full + "/")) continue;
       out.push(...listSourceFiles(full));
     } else if (
       (entry.endsWith(".ts") || entry.endsWith(".tsx")) &&
       !entry.endsWith(".test.ts") &&
-      !entry.endsWith(".test.tsx")
+      !entry.endsWith(".test.tsx") &&
+      !isDecisionsDataPath(full)
     ) {
       out.push(full);
     }
@@ -300,6 +317,18 @@ function relativePath(file: string): string {
   return file.slice(join(__dirname, "..").length + 1);
 }
 
+/**
+ * Combines the path-level exclusion (decisions-data is prose, not code)
+ * with the content-level scan. This is the single function both the real
+ * scan loop and the self-checks below go through, so a self-check on a
+ * synthetic path exercises the exact same exclusion the real population
+ * walk relies on -- no separate, driftable copy of the rule.
+ */
+function scanFileForOffenders(file: string, source: string): LimitOneChain[] {
+  if (isDecisionsDataPath(file)) return [];
+  return findUnorderedLimitOneChains(source, file);
+}
+
 describe("DEC-558: .limit(1) chains with no total order over the candidate set", () => {
   const files = listSourceFiles(SRC_ROOT);
   const allFlagged: LimitOneChain[] = [];
@@ -308,7 +337,7 @@ describe("DEC-558: .limit(1) chains with no total order over the candidate set",
   for (const file of files) {
     const source = readFileSync(file, "utf8");
     totalLimitOneCalls += (source.match(/\.limit\(\s*1\s*\)/g) ?? []).length;
-    allFlagged.push(...findUnorderedLimitOneChains(source, file));
+    allFlagged.push(...scanFileForOffenders(file, source));
   }
 
   it("finds at least 100 .limit(1) call sites across src/ (scanner sanity check)", () => {
@@ -324,6 +353,20 @@ describe("DEC-558: .limit(1) chains with no total order over the candidate set",
   it("self-check: a synthetic non-id-keyed, unordered .limit(1) chain IS flagged", () => {
     const source = `const row = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);`;
     const offenders = findUnorderedLimitOneChains(source, "synthetic-unordered.ts");
+    expect(offenders.length).toBe(1);
+  });
+
+  it("self-check: a synthetic unordered .limit(1) chain under src/decisions-data/ is NOT an offender (prose about code, not a call site)", () => {
+    const file = join(SRC_ROOT, "decisions-data", "partN.ts");
+    const source = `export const DEC_999 = "the query does db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1) with no order";`;
+    const offenders = scanFileForOffenders(file, source);
+    expect(offenders).toEqual([]);
+  });
+
+  it("self-check: a synthetic unordered, non-id-keyed .limit(1) chain under src/server/repo/ IS still an offender", () => {
+    const file = join(SRC_ROOT, "server", "repo", "synthetic-unordered.ts");
+    const source = `const row = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);`;
+    const offenders = scanFileForOffenders(file, source);
     expect(offenders.length).toBe(1);
   });
 
