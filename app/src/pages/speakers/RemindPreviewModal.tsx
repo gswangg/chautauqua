@@ -149,7 +149,29 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
                   / paper), the closure scan forbids a new hex literal. */}
               <div className="chq-speakers-remind-card-band">
                 <div className="chq-speakers-remind-card">
-                  <pre className="chq-speakers-remind-draft-text">{first.text}</pre>
+                  {/* v12 frame :523-524: subject header band with a bottom
+                      rule -- DEC-441 (wave-7 amendment): NOT the frame's
+                      event-letterhead block (no such data exists on a send),
+                      the subject is the honest header instead. */}
+                  <div className="chq-speakers-remind-card-header">
+                    <span className="chq-speakers-remind-card-subject">{first.subject}</span>
+                  </div>
+                  <span className="chq-speakers-remind-card-greeting">{first.parts.greeting}</span>
+                  <span className="chq-speakers-remind-card-nudge">{first.parts.nudge}</span>
+                  {/* v12 frame :525-528: left-ruled "Still to do" block. */}
+                  <div className="chq-speakers-remind-card-todo">
+                    <span className="chq-speakers-remind-card-todo-eyebrow">Still to do</span>
+                    <span className="chq-speakers-remind-card-todo-lines">{first.parts.stillToDo.join(' ')}</span>
+                  </div>
+                  <a
+                    className="chq-speakers-remind-card-cta"
+                    href={first.parts.portalLine}
+                  >
+                    Open your tasks
+                  </a>
+                  <span className="chq-speakers-remind-card-paste">
+                    Or paste this into your browser: {first.parts.portalLine}
+                  </span>
                 </div>
               </div>
               {/* v12 frame :533 caption, verbatim. */}
