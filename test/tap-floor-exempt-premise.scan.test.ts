@@ -236,9 +236,15 @@ export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 86;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
-  it("this instrument is DEC_393's own wave-30 amendment build (compile-checked dependency, per this repo's decisions.ts convention)", () => {
-    expect(DEC_393).toMatch(/wave-30/i);
-    expect(DEC_393).toMatch(/tap-floor-exempt/i);
+  it("this instrument is DEC-393's own wave-30 amendment build (durable decision doc, cited by directory per DEC-976 -- a DEC_NNN registry constant is mutable and asserts nothing durable)", () => {
+    void DEC_393; // compile-checked dependency marker only; text assertions below target the durable doc.
+    const ruling = readFileSync(join(__dirname, "..", "src", "decisions-data", "DEC-393.md"), "utf8");
+    expect(ruling).toContain(
+      "## Amendment (wave 30): a tap-floor-exempt reason is a premise about the tree, and its verifier must be named in the receipt and executable by a scan",
+    );
+    expect(ruling).toContain(
+      "a tap-floor-exempt reason is a premise about the tree, and its verifier must be named in the receipt and executable by a scan",
+    );
   });
 
   it("population sanity: walked a non-trivial number of real receipts (vacuous-population tripwire, DEC-999)", () => {
