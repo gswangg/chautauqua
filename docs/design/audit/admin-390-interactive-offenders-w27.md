@@ -190,15 +190,44 @@ printed total exactly (the two `.chq-auth-back` sightings from the
 before-fix run are gone from this table entirely — fixed, not merely
 reclassified, so they are not rows at all any more).
 
-## Totals
+## Totals (re-derived wave 28, task v12m-w28-d, DEC-996 wave-28 amendment)
 
-Measured total: **103**
+**The roster's own row table (below) is the single population; its sum is
+checked by `test/admin-390-offender-roster.scan.test.ts` directly against
+`scripts/render-sweep-lib.ts`'s `ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`
+— that constant is the ONE owner of the measured number now (DEC-996
+wave-28 amendment; this file no longer states a second, independently-typed
+"Measured total: **N**" literal for a parser to cross-check, the exact
+two-copies shape DEC-613 forbids, which is how the ceiling and this roster
+drifted to 77 vs 103 in the wave-25/wave-27/wave-23 merge train).**
+
+Current value (row-table sum = ceiling): **103**.
+
+Re-derivation receipt, wave 28: ran `npm run db:migrate && npm run seed &&
+npm run gate:render-sweep` to completion against this task's own worktree
+HEAD (self-boots a migrated + seeded local `wrangler dev`, same recipe as
+every prior live re-derivation of this number). Printed:
+`render-sweep: admin mobile total interactive offenders: 103 (ceiling 77)`
+— a route-for-route, selector-for-selector match to the 15-row table below
+(same 17 route sightings, same box dimensions, same counts, including the
+wave-23 `/admin/contacts?import=1` and
+`/admin/submissions/seed_submission_0001?history=0` rows). The
+machine-written companion roster
+(`docs/design/audit/admin-mobile-tap-floor-390-v12.md`, overwritten by that
+same run) independently classified all 103 as EXEMPT, 0 CANDIDATE —
+agreeing with every row's classification below.
 
 77 (DEC-393, v12m-w11-tc) + 26 (wave 23, task w23-f's route-substate
-widening — see `docs/design/audit/route-substate-390-sweep-v12.md`) = 103,
-matching `scripts/render-sweep-lib.ts`'s
-`ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`, never a guess or an
-arithmetic subtraction.
+widening — see `docs/design/audit/route-substate-390-sweep-v12.md`) = 103.
+This was always the tree's real, current population; a wave-25 lane
+misread this file's own prose out of chronological order and "lowered" the
+ceiling from 103 back to 77 (task w27-a's amendment text, which pre-dates
+wave 23's widening but was applied to the constant afterward) — the
+wave-28 re-derivation above confirms the correct, current, live number is
+103, and the ceiling has been raised back to it with this run as its
+receipt (DEC-967: measured, not invented; DEC-996 wave-28 amendment:
+raising a ceiling to match a real, re-measured population is honest —
+lowering a roster to match a stale ceiling is not).
 
 - **EXEMPT** (idioms 1-3, rows 1-10, 12, 14-15): **93** (1+25+30+1+1+1+1+1+3+1+2+25+1).
 - **FIXED, DEC-393 (v12m-w11-tc)** (row 11 — reclassified EXEMPT via idiom
