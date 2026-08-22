@@ -41,9 +41,15 @@
 // second step (its body swaps from the form to the reveal block) so the
 // one-time password is still shown exactly once and closing the dialog is
 // still the last time it is seen. The reset-password reveal is a distinct
-// per-row affordance (frame 09--24) and keeps its inline site/copy
-// untouched -- only the shared reveal markup is extracted into
-// PasswordRevealBlock so the two paths can't drift.
+// per-row affordance (frame 09--24) -- only the shared reveal markup is
+// extracted into PasswordRevealBlock so the two paths can't drift.
+//
+// DEC-747 (wave-7 amendment): frame :1477 draws the reset reveal as a 560px
+// Modal with the SAME ModalFrame anatomy the invite reveal already has
+// (title names the person, subtitle is 'email · Role', a Close link in the
+// head) -- the reset reveal moved from its inline site into its own
+// ModalFrame, with its own modalClassName alongside the invite dialog's.
+// PasswordRevealBlock itself is unchanged; only the chrome around it.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -347,7 +353,17 @@ export function PeopleRolesPanel() {
     setError(null);
     try {
       const res = await apiPost<{ email: string; password: string }>(`/users/${user.id}/reset-password`);
-      setRevealedPassword({ email: res.email, password: res.password, context: 'reset' });
+      // DEC-747 (wave-7 amendment): the reset reveal's own ModalFrame names
+      // the person and states 'email · Role' as its subtitle -- captured
+      // from the row being reset, same as the invite path captures at
+      // submit time.
+      setRevealedPassword({
+        email: res.email,
+        password: res.password,
+        context: 'reset',
+        name: user.name,
+        role: user.role === 'organizer' ? 'organizer' : 'reviewer',
+      });
       setResetTargetId(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
@@ -649,10 +665,10 @@ export function PeopleRolesPanel() {
         </button>
       </div>
 
-      {/* DEC-747 amendment (wave 67): the reset-password reveal keeps its
-          original inline site -- only the invite-context reveal moved into
-          the dialog below. A general (non-invite) error, e.g. a load
-          failure, still renders here since the dialog isn't open for it. */}
+      {/* DEC-747 (wave-7 amendment): the reset-password reveal is now its
+          own Modal (below), the same dialog contract as the invite reveal.
+          A general (non-invite, non-reset) error, e.g. a load failure,
+          still renders here since neither dialog is open for it. */}
       {!inviting && error && (
         <div className="chq-error" role="alert">
           {error}
@@ -665,16 +681,32 @@ export function PeopleRolesPanel() {
       )}
 
       {revealedPassword && revealedPassword.context === 'reset' && (
-        <PasswordRevealBlock
-          revealed={revealedPassword}
-          copyResult={copyResult}
-          failedCopyRef={failedCopyRef}
-          onCopy={() => void handleCopyPassword()}
-          onDone={() => {
+        <ModalFrame
+          // DEC-747 (wave-7 amendment): the reset reveal is a Modal with
+          // exactly the invite reveal's ModalFrame anatomy (Chautauqua
+          // Settings.dc.html:1477-1484) -- title names the PERSON, subtitle
+          // is 'email · Role', a Close link in the head. Its own
+          // modalClassName -- never the invite dialog's
+          // chq-people-invite-modal -- since it is a distinct dialog.
+          title={`${revealedPassword.name || revealedPassword.email} can sign in again`}
+          subtitle={`${revealedPassword.email} · ${roleLabel(revealedPassword.role ?? 'reviewer')}`}
+          onClose={() => {
             setRevealedPassword(null);
             setCopyResult(null);
           }}
-        />
+          modalClassName="chq-people-reset-modal"
+        >
+          <PasswordRevealBlock
+            revealed={revealedPassword}
+            copyResult={copyResult}
+            failedCopyRef={failedCopyRef}
+            onCopy={() => void handleCopyPassword()}
+            onDone={() => {
+              setRevealedPassword(null);
+              setCopyResult(null);
+            }}
+          />
+        </ModalFrame>
       )}
 
       {loading ? (
