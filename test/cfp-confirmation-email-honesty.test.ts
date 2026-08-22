@@ -239,7 +239,7 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     expect((submissionInserts[0] as any).title).toBe("My great talk");
 
     expect(html).not.toContain("Check your email");
-    expect(html).not.toContain("We've emailed");
+    expect(html).not.toContain("We emailed");
     expect(html).not.toContain("was emailed");
     // DEC-380 (wave 137 amendment): "If it hasn't arrived, check spam."
     // (Chautauqua Public and Portal.dc.html:1084) renders on the
@@ -265,7 +265,11 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Check your email.");
-    expect(html).toContain("emailed a confirmation for");
+    // DEC-908 (wave-33 amendment): the generic "emailed a confirmation for
+    // ..." body is retired in favor of one sentence per ConfirmationState --
+    // this fixture's state is "fresh" (a brand-new contact), whose sentence
+    // is "We emailed <email> a portal link."
+    expect(html).toContain("We emailed ada@example.com a portal link.");
     // DEC-380 (wave 137 amendment): Chautauqua Public and Portal.dc.html:1084
     // draws this beside the confirmation body -- buildable, conditional
     // troubleshooting with a live referent, so it is built verbatim on the

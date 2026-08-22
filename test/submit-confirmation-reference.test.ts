@@ -103,16 +103,16 @@ describe("submit confirmation: reference + echoed address (DEC-862)", () => {
   });
 });
 
-describe("DEC-961: confirmation edit-until sentence + way-forward links", () => {
+describe("DEC-908 (wave-33 amendment): confirmation body edit-until sentence + way-forward links", () => {
   it("with a close date, states the exact edit-until instant", () => {
     const html = render("fresh", FORM_ROW_WITH_CLOSE);
-    expect(html).toContain("You can edit this until");
-    expect(html).not.toContain("You can edit this until the call for papers closes.");
+    expect(html).toContain("You can edit this talk until");
   });
 
-  it("with no close date, falls back to the generic sentence", () => {
+  it("with no close date, renders only the first sentence -- no date is invented", () => {
     const html = render("fresh", FORM_ROW_NO_CLOSE);
-    expect(html).toContain("You can edit this until the call for papers closes.");
+    expect(html).not.toContain("You can edit this talk until");
+    expect(html).toContain("a portal link.");
   });
 
   it("carries a .chq-cfp-links row with Submit another talk and Browse the sessions", () => {

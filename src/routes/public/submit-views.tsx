@@ -779,6 +779,31 @@ export function SubmitPage(props: {
 //    before.
 export type ConfirmationState = "fresh" | "pending-existing-contact" | "has-account";
 
+// DEC-908 (wave-33 amendment): one body sentence PER STATE, built on the
+// emailDelivered branch only — Chautauqua Public and Portal.dc.html:1083
+// (fresh), :1132 (pending-existing-contact), :1155 (has-account). The
+// close-date clause that used to live in its own paragraph above the card
+// is now the fresh state's second sentence, using the SAME date expansion
+// (dayLabelEndInstant + formatEventDateTime, DEC-522) — it is dropped
+// entirely when form.closeDate is null rather than inventing a date.
+function confirmationBodySentence(props: {
+  state: ConfirmationState;
+  submittedEmail: string;
+  form: FormRow;
+  event: EventRow;
+}): string {
+  if (props.state === "has-account") {
+    return `We emailed ${props.submittedEmail} a confirmation.`;
+  }
+  if (props.state === "pending-existing-contact") {
+    return `We emailed ${props.submittedEmail} a confirmation, with a link to set a password.`;
+  }
+  const closeSentence = props.form.closeDate
+    ? ` You can edit this talk until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`
+    : "";
+  return `We emailed ${props.submittedEmail} a portal link.${closeSentence}`;
+}
+
 export function ConfirmationPage(props: {
   event: EventRow;
   title: string;
@@ -801,11 +826,6 @@ export function ConfirmationPage(props: {
       <div class="chq-cfp-confirm">
         <span class="chq-cfp-confirm-flag">SUBMITTED &middot; {props.ref}</span>
         <h1 class="chq-pub-surface-title">{props.emailDelivered ? "That's in. Check your email." : "That's in. We couldn't send your confirmation email."}</h1>
-        <p class="chq-cfp-confirm-body">
-          {props.form.closeDate
-            ? `You can edit this until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`
-            : "You can edit this until the call for papers closes."}
-        </p>
         <div class="chq-cfp-confirm-card">
           <span class="chq-cfp-title" style="font-size:17px">
             {props.title}
@@ -829,9 +849,7 @@ export function ConfirmationPage(props: {
             DEC-380.md's own "Both captions this amendment named are built". */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
-            <>
-              We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
-            </>
+            <>{confirmationBodySentence(props)}</>
           ) : (
             <>
               We couldn't send a confirmation email to {props.submittedEmail}. Your submission "{props.title}" is saved under ref {props.ref}.
@@ -853,12 +871,7 @@ export function ConfirmationPage(props: {
             </p>
           ) : props.state === "pending-existing-contact" ? (
             <>
-              {props.emailDelivered ? (
-                // G13 (frame 10--18, MINOR): the confirmation body above
-                // already names the address -- never state it twice in
-                // consecutive sentences.
-                <p>That email includes a link to set a password.</p>
-              ) : (
+              {props.emailDelivered ? null : (
                 <p>
                   We couldn't email a password-setup link this time. If you already set one up, log in below; otherwise ask the
                   organiser to resend your portal invite.
