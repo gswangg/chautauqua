@@ -56,7 +56,7 @@ describe('FieldModal field rows (DEC-958)', () => {
 
     fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
     const optionsRow = screen
-      .getByLabelText('Options (one per line)', { selector: 'textarea', exact: false })
+      .getByLabelText('Options · one per line', { selector: 'textarea', exact: false })
       .closest('.chq-form-row');
     expect(optionsRow).toHaveClass('chq-form-row');
 

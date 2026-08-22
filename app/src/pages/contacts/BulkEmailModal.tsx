@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DEC_613 } from '../../../../src/decisions';
+
+// DEC-613 wave-32 amendment: adopted the frame's drawn "Message" field
+// label (Chautauqua Contacts.dc.html:562) over the body textarea, in
+// place of the shorter "Body".
+void DEC_613;
 import {
   BULK_EMAIL_MERGE_FIELDS,
   MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP,
@@ -358,7 +364,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
               aria-invalid={fieldErrors.subject ? true : undefined}
             />
           </FormRow>
-          <FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>
+          <FormRow label="Message" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>
             <textarea
               id="bulk-email-body"
               className="chq-textarea"

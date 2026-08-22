@@ -217,8 +217,18 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // diff `auditFiles()`/`ALL_ROWS` against the last-known-good list to find
 // which audit file or row disappeared before lowering any floor -- a fall
 // is a deleted ledger, exactly what this guard exists to catch.
+// Wave-32 amendment (task w32-f): TOKEN_ROW_FLOOR lowered 189 -> 187 after
+// confirming which rows disappeared, per this comment's own instruction --
+// docs/design/audit/drawn-field-label-v12.md's four adopted rows (Contacts
+// "Message", Submissions "Options · one per line", Settings "Type the file
+// name to confirm", Comms "From which plan") moved from HARDCODED-DIVERGES
+// to HARDCODED-MATCHES, removing their DIVERGES-token table cells; two new
+// DIVERGES-token mentions were added elsewhere in the same file's prose
+// (net -2, verified: `grep -c DIVERGES` on that one file moved 10 -> 8, no
+// other audit file changed). Never guessed, forced to -1 and re-measured
+// on this branch.
 const AUDIT_FILE_FLOOR = 118;
-const TOKEN_ROW_FLOOR = 189;
+const TOKEN_ROW_FLOOR = 187;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   heading: 15,
   table: 44,

@@ -21,7 +21,14 @@ import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { confirmPhraseMatches } from '../../lib/confirmPhrase';
 import { PageSkeleton } from '../../components/PageSkeleton';
-import { DEC_941 } from '../../../../src/decisions';
+import { DEC_941, DEC_613 } from '../../../../src/decisions';
+
+// DEC-613 wave-32 amendment: this footer arm-row label carried the same
+// composed-phrase-into-the-label anti-pattern ConfirmDialog.tsx's own
+// typed-confirmation label was adopted away from, a second copy of the
+// same vocabulary -- brought in line for consistency even though this
+// control (unlike ConfirmDialog's) is not itself drawn by any frame.
+void DEC_613;
 import './submissions.css';
 
 void DEC_941; // bulk session delete is armed by a typed phrase on its own page, reusing ConfirmDialog's match semantics
@@ -236,8 +243,13 @@ export function DeleteSubmissionsPage() {
                 reusing its exact match semantics (confirmPhraseMatches:
                 trim + case-insensitive) rather than inventing a second rule. */}
             <div className="chq-submissions-delete-arm-row">
+              {/* DEC-613 wave-32 amendment: the same generic-instruction-label
+                  split ConfirmDialog.tsx now uses (Chautauqua Settings.dc.
+                  html:1429, "Type the file name to confirm") -- the label
+                  states the instruction, the phrase to type lives in the
+                  box below (the placeholder), never composed together. */}
               <label className="chq-submissions-delete-arm-label" htmlFor="chq-submissions-delete-arm-input">
-                {`Type "${DELETE_ARM_PHRASE}" to confirm`}
+                Type the phrase to confirm
               </label>
               <input
                 id="chq-submissions-delete-arm-input"

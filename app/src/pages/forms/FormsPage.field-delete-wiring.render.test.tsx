@@ -90,7 +90,7 @@ describe('FieldModal Delete -> shared irreversible ConfirmDialog (DEC-650 wave-6
     // Irreversible weight: typed confirmation gates the Delete button.
     const confirmDeleteBtn = within(confirmDialog).getByRole('button', { name: 'Delete field' });
     expect(confirmDeleteBtn).toBeDisabled();
-    const typed = within(confirmDialog).getByLabelText('Type "Co-speaker email" to confirm');
+    const typed = within(confirmDialog).getByLabelText('Type the field name to confirm');
     fireEvent.change(typed, { target: { value: 'wrong' } });
     expect(confirmDeleteBtn).toBeDisabled();
     fireEvent.change(typed, { target: { value: 'Co-speaker email' } });

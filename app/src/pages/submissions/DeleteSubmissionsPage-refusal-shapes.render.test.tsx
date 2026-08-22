@@ -70,7 +70,7 @@ describe('DeleteSubmissionsPage delete refusal shapes (DEC-505/DEC-856)', () => 
     });
 
     // DEC-941 (wave 134 amendment): the primary is armed by a typed phrase.
-    fireEvent.change(screen.getByLabelText('Type "delete sessions" to confirm'), {
+    fireEvent.change(screen.getByLabelText('Type the phrase to confirm'), {
       target: { value: 'delete sessions' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Delete 1 session' }));

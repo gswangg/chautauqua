@@ -322,12 +322,6 @@ const STORED: Record<string, { reason: string; citation: string }> = {
 };
 
 const DIVERGES: Record<string, { reason: string; citation: string }> = {
-  'Chautauqua Comms.dc.html:102': {
-    reason:
-      'DEC-613\'s own named, still-open outlier: the frame draws "From which plan" but the compose ' +
-      'wizard\'s control reads "Evaluation plan" -- different words, same field.',
-    citation: 'app/src/pages/comms/ComposeWizard.tsx`Evaluation plan`',
-  },
   'Chautauqua Settings.dc.html:739': {
     reason:
       'Blessed, recorded divergence (docs/design/DEVIATIONS.md §7): the frame\'s "Public URL" names a ' +
@@ -341,31 +335,6 @@ const DIVERGES: Record<string, { reason: string; citation: string }> = {
       '"Nothing was saved" duplicate-slug error-state frame -- same field, same blessed divergence ' +
       '(docs/design/DEVIATIONS.md §7).',
     citation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
-  },
-  'Chautauqua Contacts.dc.html:562': {
-    reason:
-      'The bulk-email dialog\'s frame draws a "Message" eyebrow over the body textarea, but ' +
-      'BulkEmailModal.tsx labels the same control "Body" -- different words, same field. Found by ' +
-      'this ledger\'s own boundary-anchored corpus search coincidentally landing on an unrelated ' +
-      '"Message-ID:" mail header literal in src/mail/email-binding.ts before this real divergence was ' +
-      'hand-verified.',
-    citation: 'app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>`',
-  },
-  'Chautauqua Settings.dc.html:1429': {
-    reason:
-      'The frame draws a generic instruction label ("Type the file name to confirm") over a box ' +
-      'holding the actual filename; ConfirmDialog\'s irreversible-weight prompt instead composes the ' +
-      'phrase directly INTO the label text itself -- different words, not a formatting variant.',
-    citation: 'app/src/components/ConfirmDialog.tsx`{`Type "${confirmPhrase}" to confirm`}`',
-  },
-  // Wave-28 DEC-613 amendment: found by the widened tailOpensInputBox
-  // population step (see its own header).
-  'Chautauqua Submissions.dc.html:693': {
-    reason:
-      'The FieldModal options-list textarea\'s frame label draws "Options · one per line" (a middle-dot ' +
-      'separator, the pack\'s own composition convention) but FieldModal.tsx\'s FormRow spells it ' +
-      '"Options (one per line)" (a parenthetical) -- different punctuation, same field.',
-    citation: 'app/src/pages/forms/FieldModal.tsx`<FormRow label="Options (one per line)" htmlFor="field-options" optional>`',
   },
 };
 
@@ -406,6 +375,21 @@ const COMPOSED: Record<string, { reason: string; citation: string }> = {
   'Chautauqua Submissions.dc.html:684': {
     reason: 'FieldModal composes label="Help text" plus the same shared OPTIONAL_SUFFIX constant as the Contacts rows above.',
     citation: 'app/src/pages/forms/FieldModal.tsx`<FormRow label="Help text" htmlFor="field-help-text" optional>`',
+  },
+  // Wave-32 (DEC-613 amendment): adopted -- ConfirmDialog.tsx's label is now
+  // `Type the ${confirmNoun} to confirm`, a template literal whose static
+  // fragments the corpus-wide literal search cannot find as one token; the
+  // Settings resource-delete caller passes confirmNoun="file name", the
+  // exact composed string the frame draws.
+  'Chautauqua Settings.dc.html:1429': {
+    reason:
+      'ConfirmDialog.tsx composes the literal template `Type the ${confirmNoun} to confirm`; ' +
+      'ResourcesPanel.tsx (the Settings resource-delete caller) passes confirmNoun="file name", ' +
+      'composing verbatim to the frame\'s drawn instruction. The object\'s own name (the frame\'s ' +
+      '"Speaker handbook 2027.pdf" muted content) is the input\'s placeholder, not part of the label.',
+    citation:
+      'app/src/components/ConfirmDialog.tsx`{`Type the ${confirmNoun} to confirm`}` + ' +
+      'app/src/pages/settings/ResourcesPanel.tsx`confirmNoun="file name"`',
   },
 };
 
@@ -463,7 +447,19 @@ const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
 // those 7 grade MATCHES/STORED, 1 (Submissions "Options · one per line")
 // grades a real new DIVERGES, forcing 5 -> 6. Never guessed, forced to -1
 // and re-measured on this branch.
-export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6;
+// Wave-32 DEC-613 amendment (task w32-f): adopted the drawn labels product
+// code still shortened or re-punctuated -- Contacts "Message" (was "Body"),
+// Submissions "Options · one per line" (was the parenthetical form),
+// Settings "Type the file name to confirm" (ConfirmDialog's label now
+// states the generic instruction, composed from a new `confirmNoun` prop,
+// with the object's own name moved to the input's placeholder) -- and
+// repaired the Comms "From which plan" row's stale DIVERGES entry: the
+// compose wizard already ships the frame's exact words (a hand-classified
+// map entry was shadowing the generic corpus-literal-match path that would
+// otherwise have found it). 6 -> 2, the two remaining rows both the
+// blessed Settings "Public URL"/"Slug" divergence (DEVIATIONS.md §7).
+// Never guessed, forced to -1 and re-measured on this branch.
+export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 2;
 export const DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1;
 
 describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w25-i)', () => {
@@ -554,10 +550,14 @@ describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w
   });
 
   it('DEC-613\'s own two named outliers grade as this file predicts', () => {
+    // Wave-32 (DEC-613 amendment): ComposeWizard.tsx already ships "From
+    // which plan" verbatim (the audit doc's `Evaluation plan` citation was
+    // stale) -- this row is now a match, not the open outlier it was at
+    // wave-25.
     const fromWhichPlan = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Comms.dc.html' && r.row.label === 'From which plan'
     );
-    expect(fromWhichPlan?.status).toBe('diverges');
+    expect(fromWhichPlan?.status).toBe('matches');
     const eventName = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Settings.dc.html' && r.row.label === 'Event name'
     );

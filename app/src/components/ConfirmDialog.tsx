@@ -1,7 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { ModalFrame } from './ModalFrame';
 import { confirmPhraseMatches } from '../lib/confirmPhrase';
+import { DEC_613 } from '../../../src/decisions';
 import './confirm-dialog.css';
+
+// DEC-613 wave-32 amendment: the typed-confirmation label states the
+// frame's generic instruction (`Type the ${confirmNoun} to confirm`); the
+// object's own name lives in the input's placeholder, never composed into
+// the label text.
+void DEC_613;
 
 interface ConfirmDialogProps {
   title: string;
@@ -32,6 +39,14 @@ interface ConfirmDialogProps {
   // anywhere under app/src. That absence is recorded here, not designed for.
   weight?: 'reversible' | 'irreversible';
   confirmPhrase?: string;
+  // DEC-613 wave-32 amendment: the frame's typed-confirmation label is a
+  // GENERIC instruction ("Type the file name to confirm",
+  // Chautauqua Settings.dc.html:1429) with the object's own name rendered
+  // as muted content inside the value box below it, not composed into the
+  // label text itself. `confirmNoun` names what the caller is typing (e.g.
+  // "file name", "field name", "name") -- required whenever `weight` is
+  // 'irreversible', same as `confirmPhrase`.
+  confirmNoun?: string;
   onConfirm: () => void;
   onCancel: () => void;
   // DEC-781 (wave-9 amendment): no `subtitle` slot is added here. Frame
@@ -58,6 +73,7 @@ export function ConfirmDialog({
   confirmDisabled = false,
   weight = 'reversible',
   confirmPhrase,
+  confirmNoun,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -67,6 +83,9 @@ export function ConfirmDialog({
   // silent degrade to the reversible weight -- it is a caller bug.
   if (weight === 'irreversible' && !confirmPhrase?.trim()) {
     throw new Error("ConfirmDialog: weight='irreversible' requires a non-empty confirmPhrase");
+  }
+  if (weight === 'irreversible' && !confirmNoun?.trim()) {
+    throw new Error("ConfirmDialog: weight='irreversible' requires a non-empty confirmNoun");
   }
 
   const phraseMatches =
@@ -98,7 +117,7 @@ export function ConfirmDialog({
       {weight === 'irreversible' && (
         <div className="chq-confirm-typed-row">
           <label className="chq-confirm-typed-label" htmlFor="chq-confirm-typed-input">
-            {`Type "${confirmPhrase}" to confirm`}
+            {`Type the ${confirmNoun} to confirm`}
           </label>
           <input
             id="chq-confirm-typed-input"
