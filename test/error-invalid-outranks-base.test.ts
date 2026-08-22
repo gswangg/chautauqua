@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { ERROR_STATES_CSS } from "../src/views/error-states.css";
 import { THEME_CSS } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 type Specificity = [number, number, number];
 
@@ -57,15 +58,16 @@ function isHigher(x: Specificity, y: Specificity): boolean {
   return x[2] > y[2];
 }
 
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
+// DEC-613: ERROR_STATES_CSS and THEME_CSS are already-evaluated CSS-string
+// constants (the module's own template-literal export value, not raw .ts
+// source text), so the shared, string-aware test/helpers/strip-css-
+// comments.ts's stripCssComments has nothing to desync against here.
 
 /** Extracts every `selectorGroup { body }` rule from CSS text, in source
  * order, WITHOUT merging duplicate selector groups -- unlike the parity
  * scan, this test cares that a selector group appears more than once. */
 function extractRules(css: string): { selectorGroup: string; body: string }[] {
-  const cleaned = stripComments(css);
+  const cleaned = stripCssComments(css);
   const rules: { selectorGroup: string; body: string }[] = [];
   const ruleRe = /([^{}`]+)\{([^{}]*)\}/g;
   let match: RegExpExecArray | null;

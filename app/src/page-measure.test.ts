@@ -18,6 +18,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PAGES_ROOT = join(HERE, 'pages');
@@ -37,22 +38,23 @@ function allFiles(root: string, extension: string): string[] {
 const CSS_FILES = allFiles(HERE, '.css');
 const PAGE_TSX_FILES = allFiles(PAGES_ROOT, '.tsx');
 
-/** Strips /* … *\/ comments before any brace-structure scan.
- *
- * v12m megabatch: settings.css carries a DEC-976 verbatim frame citation
- * containing `{{ g.label }}`. Those braces break the @media strip's
- * one-level-nesting assumption, so the block survives and its rules leak out
- * as "top-level". This was survivable while settings.css had five @media
- * blocks (only the one holding the comment leaked); v12m-w9-c consolidated
- * them into ONE block (DEC-976 wave-91), so everything leaked. Same
- * comments-first order css-contract.scan.test.ts:118 already uses. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
+// DEC-613: the CSS-comment strip below is the shared, string-aware
+// test/helpers/strip-css-comments.ts's stripCssComments, not a private
+// re-derivation -- every input reaching it here is real *.css file text
+// (never a raw .ts/.tsx module), so the shared helper's quote-tracking has
+// nothing to desync against.
+//
+// v12m megabatch: settings.css carries a DEC-976 verbatim frame citation
+// containing `{{ g.label }}`. Those braces break the @media strip's
+// one-level-nesting assumption, so the block survives and its rules leak out
+// as "top-level". This was survivable while settings.css had five @media
+// blocks (only the one holding the comment leaked); v12m-w9-c consolidated
+// them into ONE block (DEC-976 wave-91), so everything leaked. Same
+// comments-first order css-contract.scan.test.ts:118 already uses.
 
 /** Every top-level `selector { body }` rule, with @media blocks stripped. */
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
-  const withoutMedia = stripComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
+  const withoutMedia = stripCssComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const rules: Array<{ selector: string; body: string }> = [];
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
@@ -64,7 +66,7 @@ function topLevelRules(css: string): Array<{ selector: string; body: string }> {
 
 /** Extracts a top-level (not inside an @media block) rule's declaration body by selector. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = stripComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
+  const withoutMedia = stripCssComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

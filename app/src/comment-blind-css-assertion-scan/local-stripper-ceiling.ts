@@ -297,4 +297,53 @@
 // 82 - 16 (16 real offenders converted; the 3 importer updates were never
 // counted as offenders themselves, since they only ever imported, never
 // declared, a local stripper). Ceiling lowered to match: 81 -> 66.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 66;
+// v12m-w37-d (wave 37, task w37-d, DEC-613 migration wave): forced -1 and
+// measured RED at this branch's tree BEFORE any change: 66, matching the
+// declared ceiling. Read back the full offender roster (66 files) rather
+// than trusting the 82-vs-81 figure this task's own brief cited -- w36-d
+// had already landed on this branch's ancestry and moved the real number.
+// Converted 2 of the 66 to import test/helpers/strip-css-comments.ts's
+// shared, string-aware stripCssComments in place of a local, block-comment-
+// only `stripComments` declaration -- both genuinely CSS-only content, no
+// raw `.ts`/`.tsx` prose ever reaching the stripper:
+// test/error-invalid-outranks-base.test.ts (its local `stripComments`
+// strips ERROR_STATES_CSS/THEME_CSS -- already-evaluated CSS-string
+// constants, not raw source text) and app/src/page-measure.test.ts (its
+// top-level `stripComments` strips real `*.css` file text read via
+// readFileSync; the file's SECOND, scope-local `stripComments` inside its
+// `chq-page string literal` describe block -- documented at its own
+// declaration site as deliberately `//`-line-comment-aware because an
+// apostrophe in TSX prose desyncs a naive quote-matcher -- was left alone,
+// unmigrated, the same carve-out shape DEC-613's earlier waves already
+// established for raw-.tsx/.ts readers; declaring the shared stripper via
+// import clears this ratchet's per-file offender flag for the whole file
+// regardless, since `isLocalStripperOffender` is `declaresLocalStripper &&
+// !importsSharedStripper` -- file-grained, not per-declaration-site).
+// Both migrated files' own assertions still pass unchanged (`npx vitest
+// run --config vitest.fast.config.ts test/error-invalid-outranks-base.
+// test.ts app/src/page-measure.test.ts`: 24 tests, all green) -- no false
+// receipt was found in this batch. Newer arrivals than these two --
+// app/src/confirm-title-object.scan.test.ts, app/src/pages/contacts/
+// SegmentPillStrip.bound390.render.test.tsx, app/src/pages/contacts/
+// contacts-segment-pills-390.test.ts, test/pack-declaration-vocabulary.
+// scan.test.ts -- were checked and left alone: the first strips `//` line
+// comments over raw .tsx by design; the second and third depend on their
+// local stripper's byte-length-preserving residue to keep character
+// offsets valid indices into the raw source (the exact invariant class
+// DEC-613's wave-19 amendment already carved out); the fourth's
+// findDeclarations is shared between an unaffected pack-docs population and
+// a product population that reads raw .ts via test/helpers/ssr-css-
+// sources.ts's ssrCssSources() (w26-f's documented reason, unchanged).
+// test/ssr-css-contract.scan.test.ts was also checked and left alone: every
+// actual call site in the file passes it an already-extracted CSS string
+// (never the raw file text), so migrating would likely be safe by usage,
+// but the file's own header comment already documents a direct, verified
+// corruption test against src/views/theme.ts and a deliberate decision not
+// to use the shared stripper for that reason -- overriding that recorded
+// verification without re-doing the same experiment was out of this task's
+// narrow scope, so the file was left as its own prior wave decided.
+// Re-measured with the ceiling forced to -1 again: EXACTLY 64, exactly
+// 66 - 2, confirmed by reading the offender list (the two migrated files
+// absent, all 64 others present as before). Ceiling lowered to match:
+// 66 -> 64. Discharges DEC-613's wave-36 amendment for this task's slice.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 64;
