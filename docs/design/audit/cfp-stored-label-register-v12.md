@@ -59,7 +59,7 @@ templating vocabulary every list row in the pack uses.
 | Email | field caption | `email` | **STORED** | Email | yes |
 | Company · optional | field caption | `company` | **STORED** (code-path identical to Title/Email's generic `FormField`) | Company | no — id absent from the shared `FIELD_ROWS` fixture |
 | Job title · optional | field caption | `job_title` | **STORED** (code-path identical to Title/Email's generic `FormField`) | Job title | no — id absent from the shared `FIELD_ROWS` fixture |
-| Bio · optional | field caption | `bio` | **CONFLICT** — see below | Speaker bio | yes |
+| Bio · optional | field caption | `bio` | **STORED** — see below (RULED-AND-BUILT, DEC-613 wave-19) | Speaker bio | yes |
 | Notes for reviewers · optional | field caption | `field_notes_for_reviewers` | **STORED** | Notes for reviewers | yes |
 | Accessibility needs · optional | field caption | `field_accessibility_needs` | **STORED** | Accessibility needs | yes |
 
@@ -75,32 +75,36 @@ comparison.
 field, so it is not a row in this register — it is cited above as the
 governing analogy, per the brief.
 
-## The one CONFLICT: Bio
+## Bio: RULED-AND-BUILT under DEC-613 wave-19
 
-`src/routes/public/submit-views.tsx`'s `CFP_BIO_LABEL` constant (`"Bio"`,
-`:39`) is a **display-only override** applied to the locked `bio`
-`FormFieldDef` at render time (`:462-463`): the stored `form_field.label`
-for that row is "Speaker bio" (see `FIELD_ROWS` in both
-`test/submit-cfp-frame-copy.test.ts` and this file's mirrored copy), but the
-rendered `<span class="chq-field-label">` ships the frame's shortened
-"Bio", exactly as `Chautauqua Public and Portal.dc.html:102`/`:1246` draws
-it.
+This position was the register's one CONFLICT row and the campaign's one
+explicitly undecided design question (see `src/decisions-data/DEC-613.md`'s
+"Amendment (wave 19)"). `src/routes/public/submit-views.tsx` used to declare
+a `CFP_BIO_LABEL` constant (`"Bio"`) and apply it as a **display-only
+override** to the locked `bio` `FormFieldDef` at render time, overriding the
+stored `form_field.label` ("Speaker bio", see `FIELD_ROWS` in both
+`test/submit-cfp-frame-copy.test.ts` and this file's mirrored copy) with the
+frame's shortened "Bio", the same caption `Chautauqua Public and Portal.dc.html:102`/`:1246`
+draws.
 
-This was built deliberately (w5-c, cited at `submit-views.tsx:31-33`),
-**before** this amendment existed, and it is the exact pattern the wave-96
-precedent and this amendment both rule against: the frame's abbreviated
-caption overriding a stored label rather than the stored label shipping
-verbatim. `test/cfp-stored-label-register.test.ts`'s
-`"CONFLICT row (flagged, not fixed...)"` test pins the CURRENT (conflicting)
-behavior as a receipt of the divergence, not as an endorsement of it.
+DEC-613 wave-19 rules against the override, deciding the question this
+register's earlier draft left open. The frame draws "Bio" consistently at
+every width it appears (unlike Format, which abbreviates on only one
+control), but consistency is not the same claim as intent: the position
+resolves through a real `form_field` record, which is the register's own
+STORED verdict and therefore its REQUIRED behavior, and DEC-967 already
+rules that a frame's sample data is not product copy — "Bio" is what the
+frame's fictional organiser stored, not a caption the product may impose. An
+organiser who renamed this field would still have been shown "Bio", which is
+capability removal to match a drawing (DEC-380/582).
 
-**This task changes no product byte** (per the brief: `submit-views.tsx` is
-out of scope). The Bio override is flagged here as a finding for a future
-lane: either the ruling gets a narrow, named exception for Bio (the frame
-draws "Bio" consistently at every width it appears, unlike Format, which
-only abbreviates on this one control), or `CFP_BIO_LABEL`'s override is
-removed and the stored "Speaker bio" ships everywhere, matching the rest of
-this register. Undecided; not built either way by this task.
+**Built**: the `CFP_BIO_LABEL` override was deleted from
+`submit-views.tsx` (the constant itself was also deleted, being now
+unreferenced); the stored "Speaker bio" ships at every width, matching the
+rest of this register. `test/cfp-stored-label-register.test.ts`'s row for
+Bio is `verdict: "stored"`, covered by the same `it.each` assertion every
+other STORED row is, plus a dedicated test asserting the stored label
+renders and the frame's "Bio" abbreviation does not.
 
 ## Verdict grammar
 
@@ -116,5 +120,6 @@ this register. Undecided; not built either way by this task.
   abbreviation of anything stored.
 - **CONFLICT** — the position IS backed by a stored `form_field` row, but
   the product currently ships the frame's abbreviated caption instead of
-  the stored label, contradicting this amendment. Exactly one such row
-  exists today (Bio).
+  the stored label, contradicting this amendment. Zero such rows remain:
+  Bio, the one row that used to carry this verdict, was ruled STORED and
+  built under DEC-613 wave-19.

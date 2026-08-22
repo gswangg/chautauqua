@@ -37,15 +37,15 @@ void DEC_322;
 void DEC_380;
 void DEC_745;
 
-// w5-c (frame 10--14 copy batch): the bio field's caption is a display-only
-// override applied to the locked bio FormFieldDef at render time -- the
-// field's real `label` is stored differently in the DB. The abstract
+// DEC-613 wave-19: the bio field's stored label ships at every width -- a
+// frame's abbreviated legend never renames stored data (DEC-613 wave-27).
+// The label override that used to sit here was removed; only `helpText` is
+// display-only for this field (see CFP_BIO_HELP_TEXT below). The abstract
 // field's 1,200-character budget is NOT display-only: it is stamped by
 // projectFieldForAnswers (src/forms/types.ts, DEC-124 wave 59 amendment)
 // onto the real `fields` list and enforced by src/forms/validate.ts, so the
 // "x / y" counter here reflects the real, server-enforced `maximum`.
 const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";
-const CFP_BIO_LABEL = "Bio";
 // w8-g (DEC-380 wave-133): frame is copy authority (DEC-582) -- the pack's
 // wording promises later editability in the portal, which is true (the
 // portal profile view lets a speaker edit their own bio).
@@ -456,8 +456,10 @@ export function SubmitPage(props: {
   const accentColor = branding(event).accentColor;
   const logoUrl = branding(event).logoUrl;
   // w5-c: display-only overrides (abstract counter helper text, bio
-  // label/helper) applied here rather than to `fields` itself -- see the
-  // CFP_ABSTRACT_HELP_TEXT / CFP_BIO_* constants above. The abstract
+  // helper text) applied here rather than to `fields` itself -- see the
+  // CFP_ABSTRACT_HELP_TEXT / CFP_BIO_* constants above (DEC-613 wave-19: no
+  // label override remains -- the bio field's stored label ships as-is).
+  // The abstract
   // field's `maximum` is NOT overridden here: it already arrives on `f` via
   // projectFieldForAnswers (src/forms/types.ts), so the counter and
   // server-side validation read the same real cap. Every other consumer
@@ -469,7 +471,7 @@ export function SubmitPage(props: {
       return { ...f, helpText: CFP_ABSTRACT_HELP_TEXT };
     }
     if (lockedFieldName(f.id) === "bio") {
-      return { ...f, label: CFP_BIO_LABEL, helpText: CFP_BIO_HELP_TEXT };
+      return { ...f, helpText: CFP_BIO_HELP_TEXT };
     }
     if (lockedFieldName(f.id) === "email") {
       return { ...f, helpText: CFP_EMAIL_HELP_TEXT };
