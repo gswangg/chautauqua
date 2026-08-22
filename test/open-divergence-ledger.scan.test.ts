@@ -124,7 +124,25 @@ const TOKEN = 'DIVERGES';
 // this ledger's own two-sided negative-control discipline (DEC-099: "a
 // sentence that DENIES a divergence must NOT open a row").
 const CLAIM_RE = /diverg|mismatch|does not match/i;
-const DENIAL_RE = /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*/i;
+const DENIAL_RE =
+  /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*|\b(?:closed|resolved|fixed)\b[^.|]{0,40}\bmismatch\w*/i;
+// CODE-SPAN STRIP (task w36-e, DEC-099 wave-36 amendment): an inline
+// backtick code span naming a ratchet-instrument CONSTANT -- e.g. this very
+// file's own `OPEN_DIVERGENCE_CEILING`, or a sibling instrument's
+// `DESKTOP_FLOOR_DIVERGENCE_CEILING` / `FRAME_FLOOR_DIVERGENCE_CEILING` --
+// spells the substring "DIVERGENCE" as part of an IDENTIFIER, never as a
+// prose claim about a frame. Three real rows (desktop-control-floor-v12.md
+// :192 and :448, frame-control-floor-390-v12.md:127) opened under the
+// widened grammar for exactly this reason and read, on inspection, as
+// nothing but a heading/bold-span NAMING another instrument's own constant
+// -- not a claim at all, per this task's own instruction ("another
+// instrument's ratchet-constant NAME ... widen the ledger's exclusion
+// grammar instead of writing a fake adjudication"). Stripped ONLY for the
+// widened-vocabulary CLAIM_RE test below -- the literal TOKEN ('DIVERGES')
+// check a few lines down is untouched, so a literal DIVERGES token written
+// inside backticks (e.g. as a code example) still opens a row exactly as
+// before.
+const CODE_SPAN_RE = /`[^`]*`/g;
 // A markdown table's HEADER row (e.g. "| Frame | Verdict | What diverges |")
 // names its VERDICT COLUMN "What diverges"/"Diverges" in five of the newly
 // -reached files (comms-v12.md:133, review-v12.md:63, content-v12.md:77,
@@ -198,7 +216,7 @@ export function isAdjudicated(line: string, paragraph: string): boolean {
  * same-line DENIAL_RE denial). Exported so the negative-control tests can
  * drive it directly. */
 export function isWidenedClaimTrigger(line: string, nextLine?: string): boolean {
-  if (!CLAIM_RE.test(line)) return false;
+  if (!CLAIM_RE.test(line.replace(CODE_SPAN_RE, ''))) return false;
   if (DENIAL_RE.test(line)) return false;
   const shape = classifyLineShape(line);
   if (shape === 'table') {
@@ -309,10 +327,32 @@ const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 // base; the megabatch carries the fall forward onto the wave-31 corpus
 // (120 audit files, 246 -> 244 token rows), the audit-file floor being
 // untouched because w32-f added and deleted no audit document.
+// RE-MEASURED (task w36-e, DEC-099 wave-36 amendment): the code-span-strip
+// widening above (see CODE_SPAN_RE comment) removed exactly 4 rows from
+// ALL_ROWS -- desktop-control-floor-v12.md:192 and :448,
+// frame-control-floor-390-v12.md:127, open-divergence-ledger-v12.md:315 --
+// each confirmed by hand to be a ratchet-constant NAME, not a claim (diff
+// of the row set before/after the strip, run with both regexes side by
+// side; no other row anywhere in the 120-file corpus changed). TOKEN_ROW_FLOOR
+// falls 246 -> 242 by that removal alone... but the DENIAL_RE widening
+// (resolution-verb + "mismatch") removes one further row,
+// tap-floor-exempt-premise-v12.md:47 (a heading narrating that "a second
+// floor-grammar tier closed the predicate-grammar mismatch" -- a denial the
+// original DENIAL_RE, keyed only to `diverg`, could not see), landing at
+// 241. Re-measured live on this branch with the constant forced to
+// 999999999 first and the printed count read back, never computed from this
+// comment's own arithmetic.
 const AUDIT_FILE_FLOOR = 120;
-const TOKEN_ROW_FLOOR = 246;
+const TOKEN_ROW_FLOOR = 241;
 const SHAPE_FLOORS: Record<RowShape, number> = {
-  heading: 34,
+  // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
+  // removals above were heading-shape (desktop-control-floor-v12.md:192,
+  // frame-control-floor-390-v12.md:127, tap-floor-exempt-premise-v12.md:47);
+  // the fourth (desktop-control-floor-v12.md:448) is bold-led, which
+  // classifyLineShape files under `fallback`, so fallback's floor is
+  // unchanged. Confirmed by re-running the shape tally with both grammars
+  // side by side -- no other shape moved.
+  heading: 32,
   // MEGABATCH (wave-34 thunderdome): 72 -> 69. Confirmed which rows of this
   // shape disappeared before lowering, per this guard's own instruction --
   // the wave-32/33/34 adoption lanes (w32-f, w33-c, w34-e, w34-f) re-graded
@@ -482,7 +522,28 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // merged tree -- 24 - 8 (w34-e) - 9 (w34-f) -- so the constant below is the
 // value RE-MEASURED on the fully merged tree with it forced to -1, never
 // either side's arithmetic and never either side's branch-local reading.
-export const OPEN_DIVERGENCE_CEILING = 3;
+//
+// LOWERED 3 -> 0 (task w36-e, DEC-099 wave-36 amendment): the 3 rows the
+// prior wave's re-measure found OPEN -- desktop-control-floor-v12.md:192,
+// desktop-control-floor-v12.md:448, tap-floor-exempt-premise-v12.md:47 --
+// were read by hand and every one is a FALSE POSITIVE of the widened claim
+// vocabulary, not real unadjudicated debt: the first two are
+// headings/bold-spans NAMING a sibling instrument's own ratchet constant
+// (`DESKTOP_FLOOR_DIVERGENCE_CEILING`, `DESKTOP_FLOOR_UNRESOLVED_CEILING`)
+// -- the substring "DIVERGENCE" is part of an IDENTIFIER, never a claim
+// about a frame; the third is a heading narrating that "a second
+// floor-grammar tier closed the predicate-grammar mismatch" -- a denial the
+// original DENIAL_RE (keyed only to `diverg`, never `mismatch`) could not
+// see. Per this task's own instruction ("widen the ledger's exclusion
+// grammar instead of writing a fake adjudication -- and ship a synthetic
+// negative control proving the widening cannot swallow a real open row"),
+// the grammar was widened (CODE_SPAN_RE strip before the CLAIM_RE test;
+// DENIAL_RE grew a resolution-verb + "mismatch" clause) rather than
+// hand-adjudicating three rows that were never real claims. Re-measured
+// live on this branch with the constant forced to -1 and the printed
+// offender list read back: 0 rows remain OPEN. No DEC ruling or
+// DEVIATIONS.md entry was invented for any of the three; none needed one.
+export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
@@ -736,6 +797,73 @@ describe('open-divergence ledger negative controls (DEC-099: every scan ships on
       expect(denialRow).toBeUndefined();
       expect(headingRow).toBeDefined();
       expect(headingRow!.shape).toBe('heading');
+    });
+  });
+
+  // CODE-SPAN / RATCHET-CONSTANT-NAME negative controls (task w36-e,
+  // DEC-099 wave-36 amendment). A printed row that names another
+  // instrument's own ratchet constant is not a claim at all -- see the
+  // CODE_SPAN_RE comment near the top of this file for the three real rows
+  // this widening resolved.
+  describe('code-span / ratchet-constant-name exclusion (task w36-e, DEC-099 wave-36 amendment)', () => {
+    it('a heading whose ONLY "divergence" occurrence is inside a backtick code span naming a ratchet constant does NOT open a row', () => {
+      const lines = ['## Offenders: 0 (ceiling `SOME_OTHER_DIVERGENCE_CEILING = 0` as of wave 12)', '', 'Nothing else here.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('a bold-led line whose ONLY "mismatch" occurrence is inside a backtick code span naming a ratchet constant does NOT open a row', () => {
+      const lines = ['**MEASURED (forcing `SOME_MISMATCH_CEILING` to -1 before and after adding the tier):**'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('NEGATIVE CONTROL: a heading with "divergence" in prose OUTSIDE any code span still opens a row, even when the same line also carries an unrelated backtick span', () => {
+      const lines = ['## Divergence found in `SomeComponent`', '', 'The frame draws two chips, the app renders three.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.adjudicated).toBe(false);
+    });
+
+    it('NEGATIVE CONTROL: the literal DIVERGES token inside a backtick code span still opens a row (only the WIDENED claim vocabulary is code-span-stripped, never the base TOKEN check)', () => {
+      const lines = ['Some prose citing the literal `DIVERGES` marker as an example.'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.adjudicated).toBe(false);
+    });
+  });
+
+  // RESOLUTION-VERB DENIAL negative controls (task w36-e, DEC-099 wave-36
+  // amendment). A heading narrating that a mismatch was CLOSED/RESOLVED/
+  // FIXED is a denial DENIAL_RE's original diverg-only grammar could not
+  // see -- see tap-floor-exempt-premise-v12.md:47.
+  describe('resolution-verb mismatch denial (task w36-e, DEC-099 wave-36 amendment)', () => {
+    it('a heading narrating that a tier CLOSED a "mismatch" does NOT open a row', () => {
+      const lines = ['## The former FALSE-PREMISE row, now VERIFIED: a second tier closed the predicate-grammar mismatch', '', 'Detail.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('a heading narrating that a tier RESOLVED a "mismatch" does NOT open a row', () => {
+      const lines = ['## A second tier resolved the grammar mismatch this wave'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(0);
+    });
+
+    it('NEGATIVE CONTROL: a heading asserting a "mismatch" exists, with NO resolution verb, still opens a row', () => {
+      const lines = ['## Predicate-grammar mismatch found here', '', 'No citation in this section.', '', '## Next'];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.adjudicated).toBe(false);
+    });
+
+    it('NEGATIVE CONTROL: a heading where the resolution verb is far from "mismatch" (beyond the 40-char window) still opens a row', () => {
+      const lines = [
+        '## Fixed the header alignment bug in an unrelated component that has nothing at all to do with this specific longstanding grammar mismatch',
+      ];
+      const rows = deriveRowsFromLines('synthetic.md', lines);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.adjudicated).toBe(false);
     });
   });
 
