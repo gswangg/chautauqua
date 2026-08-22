@@ -403,6 +403,10 @@ export function PlanEditor() {
   // DEC-676: recorded-evaluation count per round (GET /plans/:id only) --
   // read-only server truth, never re-derived from draft state.
   const [evaluationCountsByRound, setEvaluationCountsByRound] = useState<Record<string, number>>({});
+  // DEC-929 wave-34 amendment: whether any evaluation has been SUBMITTED
+  // (GET /plans/:id only) -- the Delete plan affordance's own predicate,
+  // distinct from evaluationCountsByRound above which counts drafts too.
+  const [planHasSubmittedEvaluation, setPlanHasSubmittedEvaluation] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [reviewers, setReviewers] = useState<PlanReviewer[]>([]);
   // w40-e/DEC-745 amendment: the roster's TRUE row count and page size --
@@ -717,6 +721,7 @@ export function PlanEditor() {
         setDraft(loaded);
         setPristineDraft(loaded);
         setEvaluationCountsByRound(plan.evaluationCountsByRound ?? {});
+        setPlanHasSubmittedEvaluation(plan.hasSubmittedEvaluation ?? false);
         setPlanTimeZone(plan.timezone);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
@@ -2894,23 +2899,26 @@ export function PlanEditor() {
       {/* w25-g/DEC-745 amendment (A9): Delete plan lives beside Assign, but
           as a TERTIARY text link in the editor's own footer row, far left --
           not a framed button, and not the "Who reviews what" section head
-          it used to share with Assign a reviewer. It disables once any
-          review has landed anywhere on the plan (planHasSubmittedReview,
-          the DEC-213 predicate); disabled adjacent copy names the
-          alternative ("Start a new wave") rather than leaving the organiser
-          to guess -- the delete capability itself is never removed, only
-          gated. */}
+          it used to share with Assign a reviewer. DEC-929 wave-34 amendment:
+          it disables once a review has LANDED (planHasSubmittedEvaluation,
+          the server's own submitted-only DELETE guard predicate) -- NOT
+          planHasSubmittedReview (DEC-213's any-evaluation-including-drafts
+          predicate), which would disagree with the server and leave a
+          draft-only plan's Delete link disabled even though the request
+          would succeed; disabled adjacent copy names the alternative
+          ("Start a new wave") rather than leaving the organiser to guess --
+          the delete capability itself is never removed, only gated. */}
       {!isNew && planId && (
         <div className="chq-review-editor-footer-row">
           <button
             type="button"
             className="chq-link-button chq-review-editor-footer-delete"
-            disabled={saving || deletePreviewLoading || planHasSubmittedReview}
+            disabled={saving || deletePreviewLoading || planHasSubmittedEvaluation}
             onClick={removePlan}
           >
             {deletePreviewLoading ? 'Loading…' : 'Delete plan'}
           </button>
-          {planHasSubmittedReview && (
+          {planHasSubmittedEvaluation && (
             <span className="chq-review-field-caption">
               Delete plan is unavailable once a review has landed — start a new wave instead.
             </span>
