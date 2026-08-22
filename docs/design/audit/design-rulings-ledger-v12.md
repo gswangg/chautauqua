@@ -12,7 +12,7 @@ every top-level `**`-led bold paragraph, keyed `<heading-slug>::<n>`
 live file. Measured: **137 ruling units** (67 bullets + 44 numbered items +
 26 bold-led paragraphs — matches the file's own literal counts).
 
-Every one of the 137 is currently graded **gap**: DESIGN-RULINGS.md's
+Every one of the 137 was, at wave 31, graded **gap**: DESIGN-RULINGS.md's
 bullets/numbered items/bold paragraphs are design *rationale* — an
 argument for a decision, a cross-reference to another section, a legend
 entry, a sub-rule inside a larger spec — not, on their own, a standalone
@@ -21,15 +21,42 @@ honored citation for one of its child units would be exactly the borrowed
 citation DEC-582's own ledger prose forbids ("recorded, never omitted,
 never faked with a borrowed citation").
 
-`RULING_UNIT_GAP_CEILING = 137` (two-sided ratchet, `test/design-rulings-ledger
-.scan.test.ts`), registered in `scripts/exit-predicate.ts`'s
+**Wave 34 (v12m-w34-j) drained 7 of the 137** -- a genuine 1:1 artifact
+existed for each and each is now graded "honored" in
+`test/design-rulings-ledger.scan.test.ts`'s `UNIT_LEDGER`. See "Drained
+units (wave 34)" below. `RULING_UNIT_GAP_CEILING` moved `137` -> `130`
+(two-sided ratchet, `test/design-rulings-ledger.scan.test.ts`), measured
+by forcing the constant to `-1` and reading the failing assertion's count
+back, per the ratchet's own instructions -- never computed by arithmetic
+on the source counts. Still registered in `scripts/exit-predicate.ts`'s
 `OUT_OF_CAMPAIGN_SCOPE` — the same disposition already given to
 `FRAME_EYEBROW_DIVERGENCE_CEILING` and `PACK_UNIT_GRAMMAR_OFFENDERS_CEILING`:
 a newly-derived population no instrument previously graded must not move
-the campaign's goalposts mid-convergence. Draining this ledger — finding a
-genuine 1:1 artifact for a specific unit and re-grading it "honored" — is
-real, narrow work for a later wave. This document exists so that wave can
-**drain** the list below rather than re-derive it.
+the campaign's goalposts mid-convergence. Draining the remaining 130 —
+finding a genuine 1:1 artifact for a specific unit and re-grading it
+"honored" — is real, narrow work for a later wave. This document exists
+so that wave can **drain** the list below rather than re-derive it.
+
+### Drained units (wave 34)
+
+| key | artifact | test |
+| --- | --- | --- |
+| `review-criteria-scale-or-choice::5` | `app/src/pages/review/Scorecard.tsx` (`recorded, not averaged`) | `app/src/pages/Review.frame-verdicts.render.test.tsx` |
+| `review-criteria-scale-or-choice::6` | `app/src/pages/review/Scorecard.tsx` (`chq-review-choice-group` radiogroup) | `app/src/pages/review/Scorecard.render.test.tsx` |
+| `review-criteria-scale-or-choice::8` | `src/server/repo/review/plans.ts` (`planHasEvaluations` predicate) | `test/plan-criteria-guard.test.ts` |
+| `password-reset::2` | `src/routes/auth-views.tsx` ("We will email you a link to set a new one.") | `test/password-reset-flow.test.ts` |
+| `password-reset::3` | `src/routes/auth-views.tsx` ("If that address has an account, a reset link is on its way.") | `test/password-reset-flow.test.ts` |
+| `password-reset::4` | `src/routes/auth-views.tsx` ("Signing in as {props.email}.") | `test/desktop-frames-account.test.ts` |
+| `password-reset::5` | `src/routes/auth-views.tsx` ("Send a fresh link") | `test/password-reset-flow.test.ts` |
+
+`review-criteria-scale-or-choice::8`'s reason string cites the
+`planHasEvaluations` predicate only, never the refusal-message string --
+sibling lane `v12m-w34-d` was rewriting that copy concurrently, so pinning
+the message text would have created a cross-lane merge collision over
+prose the guard predicate itself doesn't own. `password-reset::1` stays a
+gap: it is the document's own meta-narration about its drafting history
+("An earlier draft of this document called it proposed new work"), not a
+claim with a code artifact of its own.
 
 Every gap row, named by key, parent heading, and its own words (truncated
 to ~160 chars where long):
@@ -194,19 +221,18 @@ to ~160 chars where long):
 - `review-criteria-scale-or-choice::2` (bold): **Aggregation is the decision that matters: a Choice criterion is unweighted and excluded from the numeric score.** Results show a distribution in the per-crite…
 - `review-criteria-scale-or-choice::3` (bullet): - **The weight input disappears for Choice** — not zeroed, not disabled-with-a-zero. A criterion outside the mean has no weight to give, and a visible `0` invit…
 - `review-criteria-scale-or-choice::4` (bullet): - **Shares recompute over the Scale criteria alone.** With Relevance ×3 and Depth ×2, the shares read 60% / 40%, not 50% / 33% — the third criterion is not taki…
-- `review-criteria-scale-or-choice::5` (bullet): - **The scorecard's overall says what it counts**: "Weighted mean of the two scored criteria · Fit is recorded, not averaged". A number whose denominator is inv…
-- `review-criteria-scale-or-choice::6` (bullet): - **The Choice row is a radio row of its options**, same fieldset/legend contract and 44px targets as the numeric scale — stacked rather than inline, because op…
 - `review-criteria-scale-or-choice::7` (bullet): - **The expanded results band shows each reviewer's pick as text**, in its own column under the criterion name, with the distribution in the footer where the me…
-- `review-criteria-scale-or-choice::8` (bullet): - **Type is immutable once any evaluation exists** — the same freeze rule as wording and weights, and for the same reason: changing a criterion from Scale to Ch…
 - `review-criteria-scale-or-choice::9` (bullet): - **Existing plans are untouched** — a criterion with no type is Scale, so nothing needs migrating.
+
+(`review-criteria-scale-or-choice::5`, `::6`, `::8` drained wave 34 -- see
+"Drained units (wave 34)" above.)
 
 ### Password reset
 
 - `password-reset::1` (bold): **This is implemented** — `src/routes/auth-reset.tsx` with `src/auth/password-reset.ts`, covered by `test/password-reset-flow.test.ts`. An earlier draft of this…
-- `password-reset::2` (numbered): 1. **Ask** — one email field. "We will email you a link to set a new one."
-- `password-reset::3` (numbered): 2. **Sent** — the security decision, and the reason this needs a designed screen rather than a toast: the confirmation must read **"If that address has an accou…
-- `password-reset::4` (numbered): 3. **Set** — new password twice, reached from the emailed link, **naming the account being changed** so a forwarded link cannot silently reset someone else's. T…
-- `password-reset::5` (numbered): 4. **No longer valid** — any expiring or supersedable token guarantees users meet this state, so it is a designed screen with a *Send a fresh link* primary, nev…
+
+(`password-reset::2`, `::3`, `::4`, `::5` drained wave 34 -- see "Drained
+units (wave 34)" above.)
 
 ### Speaker detail — due-date and schedule columns right-align before status ink
 
