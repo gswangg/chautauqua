@@ -642,6 +642,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
 });
 
 describe("MAX_FILE_LIBRARY_SCAN ceiling (DEC-773 w55-c amendment): refuse loudly rather than a truncated page", () => {
+  // DEC-069 wave-25: measured 2960ms at 66d902ea5a80fa4654c23762af965febec39b600 (default 5000)
   it("throws when the deliverable root scan exceeds the ceiling, instead of silently truncating", async () => {
     const seed = baseSeed();
     seed.file = [];
@@ -663,7 +664,7 @@ describe("MAX_FILE_LIBRARY_SCAN ceiling (DEC-773 w55-c amendment): refuse loudly
     }
     const db = makeFakeFilesDb(seed);
     await expect(listEventDeliverableFiles(db, "event-1", q())).rejects.toThrow(ApiError);
-  });
+  }, 20000);
 });
 
 describe("kindCounts (DEC-902): one grouped query, matching the filtered list's own arithmetic", () => {

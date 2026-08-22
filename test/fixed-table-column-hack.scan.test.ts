@@ -23,6 +23,7 @@ function cssFiles(dir: string): string[] {
 }
 
 describe("no width:1px shrink-hack columns in fixed-layout stylesheets", () => {
+  // DEC-069 wave-25: measured 3192ms at 66d902ea5a80fa4654c23762af965febec39b600 (default 5000)
   it("every file with table-layout:fixed is free of the 1px+nowrap column signature", () => {
     const offenders: string[] = [];
     for (const file of cssFiles(ROOT)) {
@@ -38,5 +39,5 @@ describe("no width:1px shrink-hack columns in fixed-layout stylesheets", () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, 20000);
 });

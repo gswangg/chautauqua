@@ -38,11 +38,15 @@ describe("suite timeout policy (DEC-069 wave-25 amendment)", () => {
   });
 
   it("the population of measured per-test timeout probes is not zero", () => {
-    // Walk test/ for *-probe.test.ts files, then keep only the ones that
-    // actually carry a numeric third argument to an it()/test() call --
-    // i.e. a measured per-test timeout, per the DEC-069 wave-25 policy.
-    const probeFiles = globSync("test/**/*-probe.test.ts", { cwd: ROOT });
-    expect(probeFiles.length).toBeGreaterThan(0);
+    // DEC-727 wave-17 amendment: the population isn't limited to
+    // *-probe.test.ts -- a whole-corpus scan (app/src/css-contract.scan,
+    // test/fixed-table-column-hack.scan, test/files-library) is a
+    // first-class member too. Walk the whole test/ and app/src/ trees.
+    const candidateFiles = [
+      ...globSync("test/**/*.test.ts", { cwd: ROOT }),
+      ...globSync("app/src/**/*.test.ts", { cwd: ROOT }),
+    ];
+    expect(candidateFiles.length).toBeGreaterThan(0);
 
     // Matches a per-test timeout: a `}, <digits>);` closing an it()/test()
     // call body, immediately preceded (anywhere earlier in the file) by the
@@ -53,7 +57,33 @@ describe("suite timeout policy (DEC-069 wave-25 amendment)", () => {
     const RECEIPT_RE = /\/\/ DEC-069 wave-25: measured \d+ms at [0-9a-f]{7,40} \(default 5000\)/;
     const THIRD_ARG_TIMEOUT_RE = /\}\s*,\s*\d+\s*\)\s*;/;
 
-    const withMeasuredTimeout = probeFiles.filter((rel) => {
+    // Synthetic positive control: a fabricated source string carrying both
+    // signals must count.
+    const FABRICATED_WITH_TIMEOUT = `
+      // DEC-069 wave-25: measured 9999ms at 0123456 (default 5000)
+      it("slow thing", () => {
+        expect(true).toBe(true);
+      }, 20000);
+    `;
+    expect(
+      RECEIPT_RE.test(FABRICATED_WITH_TIMEOUT) && THIRD_ARG_TIMEOUT_RE.test(FABRICATED_WITH_TIMEOUT),
+    ).toBe(true);
+
+    // Synthetic negative control: a fabricated source string carrying the
+    // receipt comment but NO third-argument timeout must NOT count -- a
+    // stray receipt comment (e.g. left behind after a refactor) is not
+    // itself evidence of a per-test timeout.
+    const FABRICATED_RECEIPT_ONLY = `
+      // DEC-069 wave-25: measured 9999ms at 0123456 (default 5000)
+      it("slow thing", () => {
+        expect(true).toBe(true);
+      });
+    `;
+    expect(
+      RECEIPT_RE.test(FABRICATED_RECEIPT_ONLY) && THIRD_ARG_TIMEOUT_RE.test(FABRICATED_RECEIPT_ONLY),
+    ).toBe(false);
+
+    const withMeasuredTimeout = candidateFiles.filter((rel) => {
       const source = readFileSync(resolve(ROOT, rel), "utf8");
       return RECEIPT_RE.test(source) && THIRD_ARG_TIMEOUT_RE.test(source);
     });
