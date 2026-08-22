@@ -1,0 +1,33 @@
+# Width-half tap-floor lens (DEC-393/DEC-808 wave-26, task w26-j)
+
+Measured on branch `v12m-w26-j` at `9022b00a` by `app/src/phone-tap-target-width-floor.scan.test.ts`, forcing `WIDTH_FLOOR_OFFENDERS_CEILING` (`app/src/phone-tap-target-scan/width-ceiling.ts`) to `-1` and reading the printed offender list back. `WIDTH_FLOOR_OFFENDERS_CEILING` is `0`.
+
+## The axis every existing tap ceiling does not read
+
+`docs/design/DESIGN-RULINGS.md:189` rules the 44px floor as `min-height:44px` plus centred flex plus **horizontal padding**, "because without padding the hit box is only as wide as the text". Every tap-floor scan in `app/src/phone-tap-target-scan/` (the base scan, the anchor-floor lens, the SSR lenses, the SPA-classless lens, the undeclared-height lens) grades that third clause with `core.ts`'s `horizontalPaddingNonZero` -- a predicate that **any** non-zero padding value satisfies, including a bare 4px around a single glyph.
+
+Proof this was live in-tree: `app/src/pages/contacts/contacts.css:1270`'s `.chq-contacts-filter-rule-chip-dismiss` gave a bare `✕` `padding-inline: 4px` -- a ~17px-wide hit box -- and passed every one of those ceilings at their declared 0. The repair at `contacts.css:1544` (`min-width: 44px`, inside the file's terminal `@media (max-width: 700px)` block) is a **hand fix with no instrument behind it**. `scripts/gate:render-sweep`'s live admin-390 pass measures 79 sub-floor interactive controls today while all six static tap-floor ceilings read 0 -- this is the same gap seen from a different instrument: a control-geometry fact that only a live-DOM measurement caught because no static scan graded the width dimension at all.
+
+## What this instrument measures
+
+**Population** (DEC-808: enumerated by a forward tag walk over every SPA `*.tsx` under `app/src` and every SSR `*.tsx` under `src/routes` minus `*.test.*`/`src/routes/dev/**`, never a hand-listed file set): every `button`/`a`/`select`/`input[type=button|submit]` whose rendered content has **no visible text** -- either a single non-alphanumeric glyph (`✕`, `→`, `»`) or nothing at all, relying on `aria-label`/`aria-labelledby` for its accessible name. Such a control cannot borrow width from its own label text the way `horizontalPaddingNonZero`'s host predicate implicitly assumes every control can.
+
+**Predicate**: a site's resolved `chq-…` token(s) (its own class tokens, or -- when classless -- its nearest enclosing element's, via `core.ts`'s `classlessTagSites` ancestor walk) pass when some rule effective at the 390 phone frame -- a `<=700px` narrow-media rule or an unconditional top-level rule (single-direction responsive, DEC-385) -- declares `min-width`/`width` >= 44px on a selector reaching the token, or the token carries a `tap-floor-exempt:` comment.
+
+Implementation: `app/src/phone-tap-target-scan/width-floor.ts` (population + predicate), `app/src/phone-tap-target-scan/width-ceiling.ts` (the isolated ratchet constant, same one-file-per-ceiling precedent as `app/src/phone-overflow-scan/starved-track-ceiling.ts`), `app/src/phone-tap-target-width-floor.scan.test.ts` (the two-sided ratchet).
+
+## The measured population, by owning stylesheet -- five sites, all conforming
+
+Enumerating the whole tree (108 SPA `*.tsx`, 28 SPA `*.css`, 41 SSR `*.tsx`, 16 SSR CSS-in-TS modules) finds exactly five glyph-only/empty-with-aria-label control sites:
+
+1. **`app/src/pages/agenda/DayGrid.tsx:410`** -- `.chq-day-grid-cell-btn.chq-day-grid-cell-btn-clash`. Carries a `tap-floor-exempt:` comment at `app/src/pages/agenda/agenda.css:478-480` ("render-gate -- … never mounted at phone width; verified by `agenda-render-gate.receipt.test.ts`"). Exempt, not an offender.
+2. **`app/src/pages/contacts/FilterRulesPanel.tsx:274`** -- `.chq-contacts-filter-rule-chip-dismiss` (the bare `✕` this lens's own header names). Floored: `app/src/pages/contacts/contacts.css:1544` declares `min-width: 44px` inside the file's terminal `@media (max-width: 700px)` block (the wave-16-ui-r2-b hand repair).
+3. **`app/src/pages/settings/TracksRoomsPanel.tsx:270`** -- `.chq-color-swatch.chq-swatch-cycle` (a self-closing `<button aria-label="Track colour: …" … />`, the new-track colour swatch). Floored: `app/src/pages/settings/settings.css:2641`/`:2654` both declare `min-width: 44px` (top-level, DEC-385).
+4. **`app/src/pages/settings/tracksRooms/TrackEditRow.tsx:55`** -- the same `.chq-color-swatch.chq-swatch-cycle` token, on the per-row swatch-cycle button. Same top-level floor as row 3.
+5. **`src/routes/public/filters.tsx:37`** -- `.chq-pub-search-submit` (an empty `<button aria-label="Search" type="submit">`, an SVG-icon submit). Floored: `src/routes/public/css/chrome.css.ts:331`/`:342` declare `width: auto; min-width: 44px;` in the phone override -- the exact repair `src/decisions-data/DEC-367.md`'s own citation describes (task w13-ee), closing the `width:40px`-survives-into-phone-override defect that ruling records.
+
+**Zero offenders.** Every hand repair the task brief named as "an idiom with no reader" -- `app/src/styles.css:2805`, `app/src/pages/settings/settings.css:2641`/`:2654`, `app/src/pages/forms/forms.css:822`, `app/src/pages/contacts/contacts.css:1545`, `app/src/pages/review/scorecard.css:386`, `src/routes/docs-site.css.ts:295`/`:346`, `src/routes/portal/portal.css.ts:864`/`:1183`, `src/routes/public/css/chrome.css.ts:331`/`:342`, `src/routes/public/cfp.css.ts:338`, `src/routes/public/css/rail.css.ts:532` -- was inspected while measuring this population: every one already declares a >=44px `min-width` (most are checkboxes or text-labelled buttons outside this lens's own narrower population, and the two that are in-population -- rows 2 and 5 above -- are exactly the two proven conforming above). The gap this instrument closes is not a live backlog; it is that **none of those nine repairs had a reader** (DEC-851) -- nothing would have caught a regression if one were reverted, or a fresh glyph-only control shipped without the width clause DESIGN-RULINGS.md:189 requires. That is now graded.
+
+## Scope note
+
+This lens's population is deliberately narrower than the render-sweep's 79-offender live measurement: it only grades controls with **no visible text at all** (the shape DESIGN-RULINGS.md:189's own rationale names -- "without padding the hit box is only as wide as the text"), not every interactive control on the page. A text-labelled button whose padding is merely thin but non-zero is a different, still-ungraded shape; DESIGN-RULINGS.md's ruling is stated for the glyph-only case, and that is the case this instrument was scoped to (DEC-393/DEC-808 wave-26 brief). This is a WIDENING lens (DEC-808 protocol): it measures and files, it does not fix, and it touched no stylesheet.

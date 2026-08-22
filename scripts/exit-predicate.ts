@@ -622,6 +622,17 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // (app/src/phone-overflow-scan/starved-track-ceiling.ts, checked by
   // app/src/phone-horizontal-overflow.scan.test.ts).
   "STARVED_FLEX_TRACK_CEILING",
+  // wave-26 (task w26-j, DEC-393/DEC-808 amendment): width-half tap-floor
+  // ratchet -- DESIGN-RULINGS.md:189 rules the 44px floor as min-height
+  // PLUS horizontal padding ("without padding the hit box is only as wide
+  // as the text"), a clause every other tap-floor ceiling grades with
+  // `horizontalPaddingNonZero`, which any non-zero padding value passes.
+  // Grades every glyph-only/empty-with-aria-label button/a/select/
+  // input[type=button|submit] against a >=44px min-width/width declared
+  // somewhere effective at 390 (app/src/phone-tap-target-scan/width-floor
+  // .ts + width-ceiling.ts, checked by
+  // app/src/phone-tap-target-width-floor.scan.test.ts). Measured 0.
+  "WIDTH_FLOOR_OFFENDERS_CEILING",
 ];
 
 /**
@@ -703,6 +714,10 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988).
   "STARVED_FLEX_TRACK_CEILING",
+  // wave-26 (task w26-j): width-half tap-floor ratchet, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "WIDTH_FLOOR_OFFENDERS_CEILING",
 ];
 
 /**
