@@ -37,7 +37,7 @@ describe('PeopleRolesPanel summary/drill-in', () => {
     await waitFor(() => {
       expect(within(section).getByText(SELF.name)).toBeInTheDocument();
     });
-    expect(within(section).getByText('Organizer')).toBeInTheDocument();
+    expect(within(section).getByText('Organiser')).toBeInTheDocument();
     expect(within(section).getByText(OTHER.email)).toBeInTheDocument();
     expect(within(section).getByText('Reviewer')).toBeInTheDocument();
 

@@ -59,7 +59,7 @@ import { useMe } from '../../lib/useMe';
 import { copyText } from '../../lib/clipboard';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
-import { capitalizeFirst } from '../../lib/plural';
+import { roleLabel } from '../../lib/role-labels';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
 import { DEC_385, DEC_651, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
@@ -409,16 +409,6 @@ export function PeopleRolesPanel() {
     }
   }
 
-  // DEC-910: a role is reported as itself -- never a hand-written
-  // complementary predicate that could silently absorb a third role (e.g. a
-  // speaker with a portal account) into "reviewer".
-  const ROLE_LABELS: Record<string, string> = { organizer: 'Organizer', reviewer: 'Reviewer' };
-  function roleLabel(role: string): string {
-    const known = ROLE_LABELS[role];
-    if (known) return known;
-    return capitalizeFirst(role);
-  }
-
   // w1-f, DEC-785: the read view is the real per-person rows (name + role),
   // not a count.
   const rows = loading
@@ -599,7 +589,7 @@ export function PeopleRolesPanel() {
                 className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
                 onClick={() => setNewRole('organizer')}
               >
-                Organizer
+                Organiser
               </button>
             </div>
             <div className="chq-form-row-help">
@@ -760,7 +750,7 @@ export function PeopleRolesPanel() {
                         onChange={(e) => void handleRoleChange(user, e.target.value as Role)}
                       >
                         <option value="reviewer">Reviewer</option>
-                        <option value="organizer">Organizer</option>
+                        <option value="organizer">Organiser</option>
                       </select>
                       {roleErrors[user.id] ? (
                         <span role="alert" className="chq-error">

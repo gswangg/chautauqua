@@ -518,13 +518,6 @@ export const COMPOSED_EXCLUSIONS = [
   },
   {
     fileName: 'Chautauqua Settings.dc.html',
-    line: 1303,
-    label: 'Organiser',
-    reason:
-      "COMPOSED-from-data, spelling variant: the Invite dialog's role pill composes its label via `ROLE_LABELS[role]` where `ROLE_LABELS = { organizer: 'Organizer', reviewer: 'Reviewer' }` (PeopleRolesPanel.tsx:378-379) -- the app spells the composed value with the US 'z' where the frame draws the British 's'; the control and its live-role composition are both real, only the letter differs.",
-  },
-  {
-    fileName: 'Chautauqua Settings.dc.html',
     line: 1432,
     label: 'Delete it',
     reason:

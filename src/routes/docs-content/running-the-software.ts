@@ -30,12 +30,12 @@ export const runningTheSoftware: DocsArticle = {
     { kind: "heading", text: "The three roles" },
     {
       kind: "prose",
-      text: "Each login goes to the surface for that role. An organizer signs into the full admin console: call for papers, triage and decisions, contacts, agenda, and publishing. A reviewer signs into the same console but a narrower one: their queue of assigned submissions and the scoring surfaces, with no access to the organizer's settings or contacts. A speaker gets no admin login at all; the speaker portal shows only their submissions, tasks, and profile.",
+      text: "Each login goes to the surface for that role. An organiser signs into the full admin console: call for papers, triage and decisions, contacts, agenda, and publishing. A reviewer signs into the same console but a narrower one: their queue of assigned submissions and the scoring surfaces, with no access to the organiser's settings or contacts. A speaker gets no admin login at all; the speaker portal shows only their submissions, tasks, and profile.",
     },
     {
       kind: "deflist",
       rows: [
-        { term: "Organizer", definition: "Full admin console: CFP, triage, contacts, agenda, publishing." },
+        { term: "Organiser", definition: "Full admin console: CFP, triage, contacts, agenda, publishing." },
         { term: "Reviewer", definition: "Admin console narrowed to their assigned review queue." },
         { term: "Speaker", definition: "The speaker portal only: their submissions, tasks and profile." },
       ],
