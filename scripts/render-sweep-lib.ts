@@ -554,8 +554,22 @@ export function deriveInteractiveOffenders(
  * `input.chq-check.chq-taskview-check` sightings (`/admin/speakers/tasks/
  * seed_task_0001`) are counted but out of this task's scope (owned by
  * lane v12m-w11-te). See docs/design/audit/admin-390-interactive-
- * offenders-w27.md for the full re-measured, re-classified roster. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 77;
+ * offenders-w27.md for the full re-measured, re-classified roster.
+ *
+ * Wave 23 (task w23-f, DEC-144 wave-23 amendment): ROUTE_MANIFEST widened
+ * with the last three unvisited sub-states (`?section=your-data&edit=1&
+ * intent=new`, `?import=1`, `?history=0` on the submission-detail row),
+ * which widens what this live 390 pass visits. Re-measured total: 103 (77
+ * + 26). The 26 new sightings are `/admin/contacts?import=1` (25x
+ * `input.chq-check`, ContactsTable row-select, `.chq-check-hit` wrap --
+ * the exact same idiom-2 EXEMPT population as the bare `/admin/contacts`
+ * row) and `/admin/submissions/seed_submission_0001?history=0` (1x
+ * `input.chq-check`, same row-select idiom as the sibling `/admin/
+ * submissions/seed_submission_0001` and `?edit=1` rows). The new
+ * `?section=your-data&edit=1&intent=new` row contributed zero interactive
+ * offenders. See docs/design/audit/route-substate-390-sweep-v12.md for the
+ * full classification. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
 
 /** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —
  * only the path and the offender roster, so the pure formatter never has to

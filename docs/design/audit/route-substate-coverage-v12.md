@@ -17,17 +17,24 @@ the same file (a `=== '<literal>'` or `!== '<literal>'` comparison — the
 `tab`/`section`/`view` unions/arrays `routeManifest.test.ts` already owns
 are excluded here to avoid DEC-613's "second copy of a vocabulary" trap),
 and diffs the derived `(route, key, value)` triples against
-`ROUTE_MANIFEST`, imported, never re-typed. **This wave only files the
-roster — `app/src/routeManifest.ts` itself is not edited here** (widening
-it is next wave's act, once this roster exists, so the admin-390 offender
-total another in-flight lane is measuring against stays pinned to the
-CURRENT population for this wave).
+`ROUTE_MANIFEST`, imported, never re-typed.
 
-`ROUTE_SUBSTATE_UNVISITED_CEILING = 10` (two-sided: `test/route-substate
--coverage.scan.test.ts` fails on a rise above 10 and on an unaccounted drop
-below 10 — DEC-808 wave-85 amendment).
+**Wave 23 (task w23-f, DEC-144 wave-23 amendment)**: `app/src/routeManifest
+.ts` was widened with the three rows this doc used to roster as unvisited —
+`/admin/settings?section=your-data&edit=1&intent=new`, `/admin/contacts
+?import=1`, and `/admin/submissions/seed_submission_0001?history=0`. All
+three resolve against `npm run seed` data (reusing `EVENT_SLUG` /
+`SUBMISSION_ID` — no id or slug was invented). Re-measured
+`ROUTE_SUBSTATE_UNVISITED_CEILING` at **0** and lowered it from 3 in the
+same commit as the manifest widening. The tables below are kept as the
+historical record of what those rows were and why each one mints a real,
+reachable screen; none remain unvisited.
 
-## Unvisited rows (10)
+`ROUTE_SUBSTATE_UNVISITED_CEILING = 0` (two-sided: `test/route-substate
+-coverage.scan.test.ts` fails on a rise above 0 and on an unaccounted drop
+below 0 — DEC-808 wave-85 amendment).
+
+## Formerly-unvisited rows (0 remain unvisited; 3 closed in wave 23)
 
 ### `/admin/settings` — the B10 edit-drill family (7 rows)
 
