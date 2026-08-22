@@ -29,10 +29,22 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter } from 'react-router-dom';
 import { AgendaPage } from './Agenda';
 import { mockApi } from '../test-utils/mockApi';
+import { stripCssComments } from '../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Agenda.dc.html');
+const AGENDA_CSS = join(HERE, 'agenda', 'agenda.css');
+
+/** w16-qg (DEC-994): jsdom applies no stylesheet, so a 390 verdict that
+ * never reads agenda.css's own `@media (max-width: 700px)` block is really
+ * a desktop-cascade claim wearing a phone title. Reuse the promoted
+ * brace-depth walk (`test/helpers/css-media-blocks.ts`'s `phoneMediaBlocks`,
+ * itself lifted from Contacts.frame-verdicts.render.test.tsx). */
+function readAgendaPhoneCss(): string {
+  return phoneMediaBlocks(stripCssComments(readFileSync(AGENDA_CSS, 'utf-8'))).join('\n');
+}
 
 /** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
  * literal this file claims. Copied from
@@ -131,6 +143,12 @@ describe('v12 Agenda 390 frame: per-frame render verdict receipt (w14-sc, DEC-97
 
     const phoneAgenda = document.querySelector('.chq-phone-agenda')!;
     const head = phoneAgenda.querySelector('.chq-phone-agenda-head')!;
+
+    // docs/design/Chautauqua Agenda.dc.html:128 `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px`
+    // jsdom never applies this rule, so assert the phone media block itself
+    // carries the frame's :128 head-band geometry (DEC-994).
+    const phoneCss = readAgendaPhoneCss();
+    expect(phoneCss).toMatch(/\.chq-phone-agenda-head\s*\{[^}]*padding:\s*14px 16px;/);
 
     // docs/design/Chautauqua Agenda.dc.html:131 `          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">6 unplaced · 2 clash</span>`
     verbatimLine(131, '          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">6 unplaced · 2 clash</span>');

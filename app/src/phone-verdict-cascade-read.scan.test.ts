@@ -153,7 +153,7 @@ const OFFENDERS = findOffenders(MEMBERS);
 // content/DeliverableDetail.frame390, content/FilesLibrary.frame390,
 // overview/Overview.frame390, review/PlanEditor.frame390,
 // settings/CallForPapersPanel.frame390, submissions/Submissions.frame390.
-export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 9;
+export const PHONE_VERDICT_CASCADE_BLIND_CEILING = 7;
 
 describe('phone-verdict cascade-read lens (DEC-808 wave-12, task w12-xf)', () => {
   it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {
