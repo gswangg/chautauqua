@@ -199,8 +199,8 @@ frame's Name/Surface/Format/Track 2x2 field grid (drawn `max-width:620px`
 at `:1057`) as UNRESOLVED — "an honest absence of a comparable fact" —
 because that ledger's join has no container-grid tier (it grades field
 CONTROLS, not the grid that lays them out). DEC-896's wave-24 amendment
-rules this an actual divergence, not an absence: `settings.css:795`'s
-`.chq-settings-embed-field-pair` declared no max-width at any width, so
+rules this an actual divergence, not an absence: settings.css`.chq-settings-embed-field-pair {`
+declared no max-width at any width, so
 the grid spanned the full 820px settings measure against DESIGN-RULINGS
 B10 ("Field width follows content, not the column"). The frame demands
 the fix directly: `docs/design/Chautauqua Settings.dc.html`'s field-grid
