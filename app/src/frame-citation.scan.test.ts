@@ -215,8 +215,15 @@ const UNRECEIPTED_CLAIM_CEILING = 0;
  * SettingsDrill.savedEmbeds390, cfp-stored-label-register) belong to sibling
  * lanes v12m-w17-c/d/e; the merge train re-seeds this constant to the
  * batch-measured truth (forced to -1, offender list read fresh) once those
- * lanes land, rather than trusting any branch's own note. */
-const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 8;
+ * lanes land, rather than trusting any branch's own note.
+ *
+ * Lowered 8 -> 0 by task w18-j (DEC-998 clause b): sibling lanes
+ * v12m-w17-c/d/e (merges 57629ee2f/a7d77843c/30794fb1b, all landed on main
+ * before this task started) drained the remaining 8 named offenders. Forced
+ * to -1 and re-ran on this worktree's main-based tree: 0 offenders. Not
+ * copied from any lane's own report -- measured fresh, per DEC-989 clause
+ * a. */
+const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 0;
 
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
@@ -258,6 +265,24 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106 requirement, added task w18-j
+  // alongside the constant's own registration into CAMPAIGN_CONSTANT_NAMES /
+  // TIER2_CEILING_NAMES): FAILS when the measured count falls BELOW the
+  // constant, so a stale ceiling that's higher than reality cannot survive a
+  // wave that drains header-scope debt.
+  it(`never measures FEWER phone header-scope-without-receipt offenders than HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_PHONE_CITATIONS);
+    if (offenders.length < HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} phone header-scope-without-receipt offenders, below the ratchet ` +
+          `ceiling of ${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is the ratchet working -- debt got ` +
+          `fixed. Lower the ceiling by replacing the line:\n` +
+          `  const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
@@ -340,8 +365,25 @@ const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
  * `expect(` within EXPECT_PROXIMITY_LINES), paying for its header-block
  * scope citation at :2. Re-measured on this branch by forcing the
  * constant to -1 and reading the offender list, not copied from any
- * audit doc (DEC-989 clause a). */
-const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 0;
+ * audit doc (DEC-989 clause a).
+ *
+ * RAISED 0 -> 1 by task w18-j (DEC-998 clause b): commit fedd86a07 ("Close
+ * the display-face line-height red for settings embed-edit head, DEC-996")
+ * landed AFTER w17-e sealed this at 0 and added a new header-block-scope
+ * citation, test/deviations-ledger.scan.test.ts:416 (`docs/design/
+ * Chautauqua Settings.dc.html:1047` inside a DEC-996 fixture string, above
+ * this file's first describe()), with no other receipted citation into that
+ * frame anywhere else in the file. This is a genuine new offender per this
+ * scan's own contract (computeHeaderScopeWithoutReceiptOffenders), not an
+ * artifact of the forced -1 measurement. Fixing it (adding an in-body
+ * receipted citation to test/deviations-ledger.scan.test.ts) is out of this
+ * task's stated scope (register + re-seed only, no offender-file edits --
+ * see the task's SCOPE FENCE); a ratchet ceiling that omits a measured
+ * offender to keep reading 0 is exactly the citation-not-conformance defect
+ * this constant exists to catch, so the honest re-seed here is 1, not 0.
+ * The next lane to touch test/deviations-ledger.scan.test.ts should drain
+ * this one offender and lower the constant back to 0. */
+const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 1;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
@@ -396,6 +438,24 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106 requirement, added task w18-j
+  // alongside the constant's own registration into CAMPAIGN_CONSTANT_NAMES /
+  // TIER2_CEILING_NAMES): FAILS when the measured count falls BELOW the
+  // constant, so a stale ceiling that's higher than reality cannot survive a
+  // wave that drains header-scope debt.
+  it(`never measures FEWER desktop header-scope-without-receipt offenders than DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_DESKTOP_CITATIONS);
+    if (offenders.length < DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} desktop header-scope-without-receipt offenders, below the ratchet ` +
+          `ceiling of ${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is the ratchet working -- debt ` +
+          `got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
