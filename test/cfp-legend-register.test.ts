@@ -16,9 +16,9 @@
 // ENUMERATION (DEC-180/DEC-808: never a hand-list -- walked programmatically
 // below via extractEyebrowSpans()): every 11px/font-weight:800/uppercase
 // field-eyebrow span AND fieldset legend inside the two "Submit a talk"
-// frame extents this task names -- desktop (docs/design/Chautauqua Public
-// and Portal.dc.html:891-1009, its Format eyebrow at :942) and 390
-// (:1016-1064, its Format legend at :1051). Any ceiling below is forced to
+// frame extents this task names -- desktop (its own docs/design citation
+// receipted beside the DESKTOP_CEILING assertion below) and 390 (:1016-1064,
+// its Format legend at :1051). Any ceiling below is forced to
 // -1 so a shrinking population fails loudly rather than silently passing.
 //
 // CLASSIFICATION (recorded per-entry below, alongside its own citation):
@@ -114,6 +114,9 @@ describe("CFP legend/label register -- enumeration (DEC-613 wave-32, DEC-180, DE
     if (DESKTOP_CEILING !== -1 && spans.length > DESKTOP_CEILING) {
       throw new Error(`desktop offenders beyond ceiling: ${JSON.stringify(spans)}`);
     }
+    // docs/design/Chautauqua Public and Portal.dc.html:891-1009 `<div
+    // style="display:flex; flex-direction:column; gap:14px">` -- the
+    // desktop Submit-a-talk frame extent DESKTOP_FRAME_START/END walks.
     expect(texts).toEqual([
       "Title",
       "Abstract",

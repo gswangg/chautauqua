@@ -125,7 +125,7 @@ function renderAt(path: string) {
   );
 }
 
-describe('v12 frame render verdict "Reviewer scorecard · 390" (docs/design/Chautauqua Review.dc.html:280-345, task w31-i, DEC-976 wave-31)', () => {
+describe('v12 frame render verdict "Reviewer scorecard · 390" (task w31-i, DEC-976 wave-31)', () => {
   it('renders every drawn body element from the real /review/plans/:id/submissions/:id route at phone width', async () => {
     // :283 back link, min-height:44px, '‹ Wave 2 queue' in the frame's own
     // sample data.
@@ -204,8 +204,9 @@ describe('v12 frame render verdict "Reviewer scorecard · 390" (docs/design/Chau
 
     renderAt(`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`);
 
-    // :287 -- exactly one <h1>, its text SHAPE-graded (never the frame's own
-    // "Your AI Pair Programmer Is Lying to You" sample string).
+    // docs/design/Chautauqua Review.dc.html:280-345 `<div style="width:390px;` --
+    // frame extent this describe block grades. :287 -- exactly one <h1>,
+    // SHAPE-graded (never the frame's own sample string).
     await waitFor(() => {
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });

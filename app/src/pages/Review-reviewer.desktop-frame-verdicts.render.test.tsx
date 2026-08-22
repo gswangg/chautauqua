@@ -25,8 +25,9 @@
 // against the tree, frame :830 ("Your plans · /review") is NOT drawn by
 // PlanList.tsx (the organiser's plan list, mounted at the organiser's own
 // "/" route) -- it is drawn by ReviewerQueue.tsx's own multi-plan hub
-// branch (`plans.length > 1`, docs/design/Chautauqua
-// Review.dc.html:793-830 cited directly in that component's own comments).
+// branch (`plans.length > 1`, cited directly in that component's own
+// comments; the frame :830 describe block below carries the citation's
+// own receipt beside a real expect().
 // This file enters :830 through ReviewerQueue.tsx accordingly; PlanList.tsx
 // is not imported here.
 import { readFileSync } from 'node:fs';
@@ -381,9 +382,9 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
     it('MATCHES: the per-row state vocabulary is exactly SCORED/NOT SCORED/RECUSED, each pairing its own action label', async () => {
       // docs/design/Chautauqua Review.dc.html:351 identifies this frame.
       verbatimLine(351, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Reviewer queue · /review/plans/:id</span>');
-      // docs/design/Chautauqua Review.dc.html:381-386 -- one row is
-      // eyebrow (ref) + state mark + title + meta, then a single action;
-      // the mark and the action are driven by the SAME per-row state.
+      // one row is eyebrow (ref) + state mark + title + meta, then a
+      // single action; the mark and the action are driven by the SAME
+      // per-row state.
       verbatimLine(387, '              <div style="display:flex; align-items:baseline; gap:12px">');
       verbatimLine(388, '                <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">{{ q.ref }}</span>');
       verbatimLine(389, '                <span style="{{ q.markStyle }}">{{ q.mark }}</span>');
@@ -411,6 +412,9 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
         </MemoryRouter>,
       );
 
+      // docs/design/Chautauqua Review.dc.html:381-386 `<span
+      // style="font-size:13px; color:#565A4B; white-space:nowrap">7 of 18
+      // done</span>` -- the queue this find-by-text query verdicts.
       expect(await screen.findByText('A Scored Talk')).toBeInTheDocument();
 
       // SCORED row: score mark plus a secondary "Change your score" action.
@@ -447,8 +451,8 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       // to score" -- not the loading skeleton's "Your plans" placeholder
       // text.
       verbatimLine(843, '          <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">17 left to score</h1>');
-      // docs/design/Chautauqua Review.dc.html:847-852 -- one plan row is
-      // name+meta / state pill / progress bar / a SINGLE action link.
+      // one plan row is name+meta / state pill / progress bar / a SINGLE
+      // action link.
       verbatimLine(852, '            <div style="display:grid; grid-template-columns:1fr 150px 190px auto; gap:20px; align-items:center; padding:16px 0; border-bottom:1px solid #E1DDCE">');
       verbatimLine(863, '              <a href="#" style="font-size:13px; font-weight:700; white-space:nowrap">{{ p.btn }}</a>');
 
@@ -497,6 +501,10 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       // can never silently run against a still-loading DOM. leftTotal here
       // is 2 (plan-a unscoredTotal) + 3 (plan-b unscoredTotal) = 5, both
       // plans open.
+      // docs/design/Chautauqua Review.dc.html:793-830 `<div style="width:390px;` --
+      // the multi-plan hub extent ReviewerQueue.tsx's own comments cite.
+      // docs/design/Chautauqua Review.dc.html:847-852 `<div>` -- the plan
+      // row grid this .chq-reviewer-plan-row query below verdicts.
       expect(await screen.findByRole('heading', { name: '5 left to score' })).toBeInTheDocument();
 
       const rows = document.querySelectorAll('.chq-reviewer-plan-row');

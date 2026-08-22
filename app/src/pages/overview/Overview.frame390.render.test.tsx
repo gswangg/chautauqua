@@ -158,7 +158,7 @@ async function mount() {
   await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
 }
 
-describe('Overview 390 frame verdict (task w29-f, docs/design/Chautauqua Overview.dc.html:190-296)', () => {
+describe('Overview 390 frame verdict (task w29-f, docs/design/Chautauqua Overview.dc.html:190-296 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0;`)', () => {
   it('draws the five §-sections in the frame\'s DOM order', async () => {
     await mount();
 
