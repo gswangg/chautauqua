@@ -295,7 +295,7 @@ sibling ledger's own `test/desktop-frames-portal.test.ts` leaves
 "has no feature behind it anywhere in the tree" (`grep -rn "Last year" src/`
 returning nothing, as of that file's own wave). That claim has rotted
 (DEC-976's recurring "grep the tree, not the ledger's own claim" lesson,
-restated at field-guide waves 17/21/25/26): `dispatch.tsx:116` now calls
+restated at field-guide waves 17/21/25/26): `dispatch.tsx` now calls
 `getPriorPublicEvent` (DEC-745, wave-107 amendment) exactly on the
 fresh-empty branch, and `sessions.tsx`'s `.chq-pub-lastyear-rail` renders
 its result — the "Last year" aside genuinely exists and is wired end to

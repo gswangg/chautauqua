@@ -64,7 +64,7 @@ templating vocabulary every list row in the pack uses.
 | Accessibility needs · optional | field caption | `field_accessibility_needs` | **STORED** | Accessibility needs | yes |
 
 "· optional" is not part of any stored label — it is `FormField`'s generic
-`OPTIONAL_SUFFIX` badge (`src/views/form-render.tsx:179`), appended whenever
+`OPTIONAL_SUFFIX` badge (`src/views/form-render.tsx`), appended whenever
 `field.required === false`, identical machinery for every optional field on
 the form. It is page chrome layered on top of a stored label, not a
 renaming of one, and is excluded from the caption column's stored/abbreviated

@@ -2,8 +2,8 @@
 
 `docs/design/Chautauqua Settings.dc.html:275-312` ("Settings" 390 landing)
 was the pack's last unclaimed zero-instrument phone frame: its only prior
-citers, `app/src/pages/settings/settings-phone-frames.test.ts:98` and
-`app/src/pages/settings/settings-phone-390.frames.test.ts:183`, both assert
+citers, `app/src/pages/settings/settings-phone-frames.test.ts` and
+`app/src/pages/settings/settings-phone-390.frames.test.ts`, both assert
 against `SETTINGS_TSX` read as file TEXT — a source scan, not a conformance
 receipt (DEC-976/DEC-967). This is that frame's first real-mount verdict.
 
@@ -19,7 +19,7 @@ hand-listing) and verdicted.
 
 | Frame line | Drawn literal / element | Verdict | Notes |
 |---|---|---|---|
-| :278 | `chautauqua` wordmark span | **NOT INSTRUMENTABLE HERE** | Owned by the app shell, `app/src/App.tsx:228` (`Header()`'s `chq-header` > `chq-wordmark`), not `SettingsPage`. A real mount of `SettingsPage` alone — the harness this task is bound to reuse — mints neither `.chq-header` nor `.chq-wordmark` (confirmed by the receipt's own negative assertion). No Settings-cluster real-mount test wraps `SettingsPage` in the shell `Header`, so this literal has no page-scoped receipt to give; it needs a shell-level (`App.tsx`) frame verdict, out of this lane's owned-file scope. |
+| :278 | `chautauqua` wordmark span | **NOT INSTRUMENTABLE HERE** | Owned by the app shell, `app/src/App.tsx` (`Header()`'s `chq-header` > `chq-wordmark`), not `SettingsPage`. A real mount of `SettingsPage` alone — the harness this task is bound to reuse — mints neither `.chq-header` nor `.chq-wordmark` (confirmed by the receipt's own negative assertion). No Settings-cluster real-mount test wraps `SettingsPage` in the shell `Header`, so this literal has no page-scoped receipt to give; it needs a shell-level (`App.tsx`) frame verdict, out of this lane's owned-file scope. |
 | :279 | right-flushed event-name span (`DevFlow 2027` sample) | **NOT INSTRUMENTABLE HERE** | Same shell ownership as :278 — `App.tsx`'s `Header()` renders `<EventSwitcher />` in the identity slot, not a bare span; also out of scope for a `SettingsPage`-only real mount. |
 | :281 | H1 `Settings` at the 27px cluster-landing register | **MATCHES** | Real mount: `getByRole('heading', {name:'Settings', level:1})` carries class `chq-page-title` only — never `chq-settings-drill-title` (the 26px drill twin), and the page wrapper carries `data-drilled="false"`. settings.css's phone layer (CSS companion, below) confirms no `.chq-page-title` rule outside `[data-drilled='true']` sets 26px, so the un-drilled H1 falls through to `styles.css`'s shared `--chq-type-page-title-phone-size: 27px` — the cluster-landing register, not the drill register. |
 | :285-293 | one row per `mobileGroups` entry: 16px/600 label, `Open` (13px/700, brand-olive), 13px muted detail line | **MATCHES** | `SettingsPage`'s `SECTIONS` array is `mobileGroups`. Row count in the real mount equals `SECTIONS.length` (7, derived from the population, never a hand-listed number — DEC-180). Every row carries its section's `label`/`detail` text (graded by SHAPE per DEC-967, not pinned) on classes `chq-settings-rail-link-label`/`-detail`, and an `Open` span (`chq-settings-rail-link-open`) sharing the label's baseline row wrapper (`chq-settings-rail-link-row`), distinct from the detail line beneath it — same order the frame draws. |

@@ -56,9 +56,9 @@ Literal-by-literal:
    frame's three comma-space-joined emails at :493.
 
 5. **`Import it as` label + option list, `Skip this column` (:494,
-   :968).** MATCHES. `phoneImportTargetOptions` (`ImportWizard.tsx:141-148`)
+   :968).** MATCHES. `phoneImportTargetOptions` (`ImportWizard.tsx`)
    puts `Skip this column` first, matching the desktop `<select>`'s own
-   empty option (`ImportWizard.tsx:968`) — not a separate `(ignore)`
+   empty option (`ImportWizard.tsx`) — not a separate `(ignore)`
    option, per the DEC-825-era copy rule this task's brief named.
 
 6. **Match-summary slot at :507 (`9 rows match an existing contact by

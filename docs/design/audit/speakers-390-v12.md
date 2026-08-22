@@ -28,8 +28,8 @@ and a five-item bottom tab band (`:173-180`, `sc-for list="{{ tabs }}"`)
 below the card list. Neither is drawn by
 `app/src/pages/speakers/OnboardingGrid.tsx` — both are rendered by
 `app/src/App.tsx` (the header's `<span className="chq-wordmark">chautauqua</span>`
-at `App.tsx:228`, and the `<nav className="chq-tabbar">` band built from
-`primaryTabs` at `App.tsx:329` onward). `App.tsx` is not in this task's MAY
+at `App.tsx`, and the `<nav className="chq-tabbar"` band built from
+`primaryTabs` at `App.tsx` onward). `App.tsx` is not in this task's MAY
 FIX list (HARD BAN: "any other file"), and mounting it alongside
 `OnboardingGrid` to reach that chrome would be exactly the "second,
 page-spanning mock stack" DEC-663 warns against for a task that was never
@@ -83,8 +83,8 @@ in drawn order, verified by
 44px floor: both the phone head-actions row and the card-actions row are
 composition-exempt (DEC-393 wave-120 shape 3 — every child is already a
 floored `.chq-btn`, pinned in `speakers.css`'s terminal block by the
-"tap-floor-exempt: composition" comments at `speakers.css:1944-1950` and
-`speakers.css:1981-1987`). The new receipt's second `it()` pins that
+"tap-floor-exempt: composition" comments at `speakers.css` and
+`speakers.css`). The new receipt's second `it()` pins that
 composition comment text and the `flex: 1` stretch rule so a silent strip of
 either would surface as a diff.
 

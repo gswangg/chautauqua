@@ -135,6 +135,7 @@ report, not a pre-send confirmation screen.
 The compose wizard's OTHER two steps (select/template, frames not in this
 task's scope) and Comms' remaining desktop frames (Templates, History,
 landing/overview, and whatever residue the campaign ledger still lists
-after `v12m-w23-e`'s four) are unverdicted by this file. This file also
-does not re-derive whether `v12m-w23-e`'s own 4-of-9 claim is accurate —
-that is out of scope for this measurement-only lane.
+beyond the four verdicted here) are unverdicted by this file. This file
+also does not re-derive whether a prior 4-of-9-frames-covered claim for
+this surface is accurate — that is out of scope for this measurement-only
+lane.

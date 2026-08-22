@@ -53,8 +53,9 @@ single-direction).
 this task's targeted suite).
 
 That test's own comment (lines 337-343) reads the :957-964 gap exactly as
-v12m-w29-c's audit did — "the frame's own caption ... does not exist as
-separate copy on this scorecard" — and asserts
+this file's own earlier finding did (DEC-889 wave-32 amendment) — "the
+frame's own caption ... does not exist as separate copy on this
+scorecard" — and asserts
 `expect(screen.queryByText(/Pick a score, or recuse yourself/)).not.toBeInTheDocument()`.
 That fixture (two criteria, one unscored) will now find the hint this task
 ships (`@testing-library`'s `queryByText` does not filter on the native

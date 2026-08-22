@@ -64,7 +64,7 @@ instead:
 We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
 ```
 
-(plus a separate close-date sentence at `submit-views.tsx:800`, and the
+(plus a separate close-date sentence at `submit-views.tsx`, and the
 `emailDelivered`-gated ":1084 check-spam" note at `:860` — both of those
 build as drawn). This generic body is shared byte-for-byte across all three
 states, and (per DEC-385's wave-30 amendment: "a verdict lane may land its
