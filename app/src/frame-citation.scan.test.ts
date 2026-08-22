@@ -598,12 +598,24 @@ function computeHeaderScopeWithoutReceiptOffenders(
  * pay-for-it rule): the count of (file, frameFile) pairs where the file
  * carries a header-block scope citation into that frame but no fully-
  * receipted (non-header) citation into the same frame elsewhere in the
- * file. Seeded at 22, measured on THIS branch (DEC-989 clause a) by running
- * the scan, not invented as 0 -- this task adds the check but does not fix
- * any of these 22 files' bodies (out of this task's stated scope, which is
- * computeUnreceiptedCitations plus new helpers/controls only). May only be
- * LOWERED as offenders get fixed, never raised to paper over a regression. */
-const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 22;
+ * file. Re-seeded 22 -> 10 (2026-08-22, task w16-qa, DEC-998 clause b) --
+ * forced to -1 and re-measured on THIS branch rather than trusting w14-a's
+ * estimate; 10 offenders, not 22:
+ *   app/src/pages/agenda/PhoneAgenda.clash390.render.test.tsx (Agenda)
+ *   app/src/pages/agenda/PhoneAgenda.clashMove390.render.test.tsx (Agenda)
+ *   app/src/pages/content/FilesLibrary.frame390.render.test.tsx (Content)
+ *   app/src/pages/content/FilesLibrary.session-size-fuse.receipt.render.test.tsx (Content)
+ *   app/src/pages/review/PlanEditor.frame390.render.test.tsx (Review)
+ *   app/src/pages/review/ReviewerQueue.hub390-frame.render.test.tsx (Review)
+ *   app/src/pages/review/Scorecard.unscored390.render.test.tsx (Review)
+ *   app/src/pages/settings/SettingsDrill.publicPages390.render.test.tsx (Settings)
+ *   app/src/pages/settings/SettingsDrill.savedEmbeds390.render.test.tsx (Settings)
+ *   test/cfp-stored-label-register.test.ts (Public and Portal)
+ * This task adds the registration/companion/re-seed only and does not fix
+ * any of these 10 files' bodies (out of scope: FILES YOU OWN is
+ * scripts/exit-predicate.ts and this file only). May only be LOWERED as
+ * offenders get fixed, never raised to paper over a regression. */
+const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 10;
 
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
@@ -667,6 +679,24 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106 requirement / DEC-998 wave-16,
+  // task w16-qa): FAILS when the measured count falls BELOW the constant,
+  // so a stale ceiling that's higher than reality cannot survive a wave
+  // that fixes header-scope receipt debt. Mirrors the shape of
+  // DESKTOP_UNRECEIPTED_CLAIM_CEILING's own companion above.
+  it(`never measures FEWER header-block-without-receipt phone-frame offenders than HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_PHONE_CITATIONS);
+    if (offenders.length < HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} header-block-without-receipt phone-frame offenders, below the ` +
+          `ratchet ceiling of ${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is the ratchet working -- debt ` +
+          `got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
@@ -794,10 +824,14 @@ for (const file of TEST_TARGET_FILES) {
 const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
 
 /** Ratchet ceiling, desktop half of HEADER_SCOPE_WITHOUT_RECEIPT_CEILING's
- * own contract exactly (task w14-a companion). Seeded at 2, measured on
- * THIS branch, not invented as 0 -- may only be LOWERED, never raised to
- * paper over a regression. */
-const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 2;
+ * own contract exactly (task w14-a companion). Re-seeded 2 -> 1
+ * (2026-08-22, task w16-qa, DEC-998 clause b) -- forced to -1 and
+ * re-measured on THIS branch rather than trusting w14-a's estimate; 1
+ * offender, not 2:
+ *   app/src/pages/settings/PortalSettingsPanel.welcome-edit.render.test.tsx
+ *   (Chautauqua Settings.dc.html)
+ * May only be LOWERED, never raised to paper over a regression. */
+const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 1;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
@@ -852,6 +886,23 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106 requirement / DEC-998 wave-16,
+  // task w16-qa): FAILS when the measured count falls BELOW the constant,
+  // so a stale ceiling that's higher than reality cannot survive a wave
+  // that fixes header-scope receipt debt.
+  it(`never measures FEWER header-block-without-receipt desktop-frame offenders than DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_DESKTOP_CITATIONS);
+    if (offenders.length < DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} header-block-without-receipt desktop-frame offenders, below the ` +
+          `ratchet ceiling of ${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is the ratchet working -- ` +
+          `debt got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
