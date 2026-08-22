@@ -367,11 +367,11 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
       1473,
       `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`,
     );
-    // docs/design/Chautauqua Public and Portal.dc.html:1490 `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`
     // DEC-902 wave-20 amendment (task w20-g): the frame draws the back link
     // INSIDE the read-only banner card, right-aligned beside its two
     // sentences -- this test now asserts that placement, not the prior
     // standalone-bottom-of-page one.
+    // docs/design/Chautauqua Public and Portal.dc.html:1490 `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`
     verbatimLine(
       1490,
       `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
@@ -424,7 +424,6 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
   });
 
   it("frame :1473 Welcome lede, DEC-902 wave-19 clause (b): the fixed second sentence renders as its own node even when the organiser has no stored welcome message", async () => {
-    // docs/design/Chautauqua Public and Portal.dc.html:1495 `<span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`
     vi.mocked(getPortalSettingsForEvent).mockResolvedValueOnce({
       id: "ps-1",
       eventId: "evt-1",
@@ -444,6 +443,7 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     // conditional node does not render), but the frame's fixed second
     // sentence -- app-owned chrome per DEC-902 wave-19 clause (b) -- still
     // does: it needs no stored data to be true.
+    // docs/design/Chautauqua Public and Portal.dc.html:1495 `<span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`
     expect(html).not.toContain('<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>');
     expect(html).toContain('<p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>');
   });

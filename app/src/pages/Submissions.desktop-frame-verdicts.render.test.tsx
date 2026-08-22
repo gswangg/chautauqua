@@ -302,12 +302,13 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
       // docs/design/Chautauqua Submissions.dc.html:643 draws a TWO-sentence
       // reason, `All 47 submissions have a decision. Twelve are still
       // waiting on content, if you want the next thing.` -- the frame's
-      // "Twelve" is its own sample data (the tree's ONE spelled-number
-      // vocabulary, spellCount, only spells 0-10 and falls back to the
-      // digit above that, so a live count of 12 renders as "12", not
+      // literal.
+      verbatimLine(643, '          <span style="font-size:16px; line-height:1.65; color:#3F4237; max-width:52ch">All 47 submissions have a decision. Twelve are still waiting on content, if you want the next thing.</span>');
+      // "Twelve" is the frame's own sample data (the tree's ONE spelled-
+      // number vocabulary, spellCount, only spells 0-10 and falls back to
+      // the digit above that, so a live count of 12 renders as "12", not
       // "Twelve" -- DEC-925). The tree now renders both sentences once
       // contentStatusCounts.pending resolves nonzero.
-      verbatimLine(643, '          <span style="font-size:16px; line-height:1.65; color:#3F4237; max-width:52ch">All 47 submissions have a decision. Twelve are still waiting on content, if you want the next thing.</span>');
       const reason = screen.getByText(/have a decision/);
       expect(reason.textContent).toBe('All 47 submissions have a decision. 12 are still waiting on content, if you want the next thing.');
 
