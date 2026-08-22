@@ -187,7 +187,7 @@ const REGISTER: RegisterRow[] = [
   { frameCaption: "Email", verdict: "stored", storedLabel: "Email", fixtureCovered: true },
   { frameCaption: "Company · optional", verdict: "stored", storedLabel: "Company", fixtureCovered: false },
   { frameCaption: "Job title · optional", verdict: "stored", storedLabel: "Job title", fixtureCovered: false },
-  { frameCaption: "Bio · optional", verdict: "conflict", storedLabel: "Speaker bio", fixtureCovered: true },
+  { frameCaption: "Bio · optional", verdict: "stored", storedLabel: "Speaker bio", fixtureCovered: true },
   { frameCaption: "Notes for reviewers · optional", verdict: "stored", storedLabel: "Notes for reviewers", fixtureCovered: true },
   { frameCaption: "Accessibility needs · optional", verdict: "stored", storedLabel: "Accessibility needs", fixtureCovered: true },
 ];
@@ -248,11 +248,11 @@ describe("GET /submit/:eventSlug — stored labels ship, frame abbreviations don
     expect(body).toContain("<legend>Track</legend>");
   });
 
-  it("CONFLICT row (flagged, not fixed by this task -- product byte unchanged): Bio ships the frame's chrome label, not the stored 'Speaker bio', via CFP_BIO_LABEL's display-only override", async () => {
+  it("STORED row (DEC-613 wave-19): Bio ships the stored 'Speaker bio' label, not the frame's 'Bio' abbreviation -- the CFP_BIO_LABEL override was removed", async () => {
     const body = await getSubmitPage();
-    expect(body).toContain(">Bio<");
-    expect(body).not.toContain(">Speaker bio<");
+    expect(body).toContain(">Speaker bio<");
+    expect(body).not.toContain(">Bio<");
     const bioRow = REGISTER.find((r) => r.frameCaption === "Bio · optional");
-    expect(bioRow!.verdict).toBe("conflict");
+    expect(bioRow!.verdict).toBe("stored");
   });
 });
