@@ -81,9 +81,12 @@ afterEach(() => {
 });
 
 describe('v12 frame verdict: Chautauqua Review.dc.html:793 "Your plans · /review" (390 reviewer hub, task w29-i)', () => {
-  // docs/design/Chautauqua Review.dc.html:793 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
-  // -- fully-receipted in-body citation (DEC-808 header-block pay-for-it):
-  // the `verbatimLine` call below reads the design file itself.
+  // DEC-808 wave-20 amendment: the citation formerly repeated here (before
+  // the `it(` line) sat outside EXPECT_PROXIMITY_LINES of the `verbatimLine`
+  // call that receipts it, so it counted as unreceipted even though the
+  // identical citation immediately above the call below (inside the `it(`
+  // body) is fully receipted. Removed as a redundant duplicate rather than
+  // widened -- the in-body citation is this describe block's one receipt.
   it('frame caption + drawn-literal citations (DEC-967 verbatimLine)', () => {
     // w16-qi (DEC-998): pay for this file's header-block scope citation
     // into docs/design/Chautauqua Review.dc.html (the file-header comment

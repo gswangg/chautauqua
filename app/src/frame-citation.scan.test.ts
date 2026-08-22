@@ -215,8 +215,14 @@ const UNRECEIPTED_CLAIM_CEILING = 0;
  * SettingsDrill.savedEmbeds390, cfp-stored-label-register) belong to sibling
  * lanes v12m-w17-c/d/e; the merge train re-seeds this constant to the
  * batch-measured truth (forced to -1, offender list read fresh) once those
- * lanes land, rather than trusting any branch's own note. */
-const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 8;
+ * lanes land, rather than trusting any branch's own note.
+ *
+ * Lowered 8 -> 0 by task w20-d (DEC-808 wave-20 amendment): forced to -1 and
+ * re-measured on this branch tip (never inherited from the declared 8) --
+ * the sibling lanes owning the other named offenders had already landed
+ * their fixes on this branch's main ancestor by wave 20; offender list read
+ * directly, not assumed from 8-1. */
+const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 0;
 
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
@@ -258,6 +264,19 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  it(`never measures FEWER phone-frame header-scope-without-receipt offenders than HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (two-sided ratchet, DEC-808 wave-20 amendment)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_PHONE_CITATIONS);
+    if (offenders.length < HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `${offenders.length} phone-frame header-scope-without-receipt offenders measured, below ` +
+          `HEADER_SCOPE_WITHOUT_RECEIPT_CEILING=${HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is the ratchet ` +
+          `working: an offender got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBe(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
@@ -340,7 +359,15 @@ const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
  * `expect(` within EXPECT_PROXIMITY_LINES), paying for its header-block
  * scope citation at :2. Re-measured on this branch by forcing the
  * constant to -1 and reading the offender list, not copied from any
- * audit doc (DEC-989 clause a). */
+ * audit doc (DEC-989 clause a).
+ *
+ * task w20-d (DEC-808 wave-20 amendment) found a SECOND, later-introduced
+ * offender at this declared ceiling of 0 (test/deviations-ledger.scan.test.ts
+ * -- its DEC-996 bullet names `Chautauqua Settings.dc.html:1047` from its
+ * header block with no paying receipt), fixed it with an in-body
+ * verbatim-line citation, then re-forced to -1 and re-measured: still 0.
+ * The ceiling was never raised; the declared 0 undercounted a live
+ * offender until this fix landed. */
 const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = 0;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
@@ -396,6 +423,19 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
       );
     }
     expect(offenders.length).toBeLessThanOrEqual(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
+  });
+
+  it(`never measures FEWER desktop-frame header-scope-without-receipt offenders than DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING (${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}) without the ceiling being lowered to match (two-sided ratchet, DEC-808 wave-20 amendment)`, () => {
+    const offenders = computeHeaderScopeWithoutReceiptOffenders(TEST_DESKTOP_CITATIONS);
+    if (offenders.length < DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) {
+      throw new Error(
+        `${offenders.length} desktop-frame header-scope-without-receipt offenders measured, below ` +
+          `DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING=${DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING}. This is ` +
+          `the ratchet working: an offender got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBe(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING);
   });
 });
 
