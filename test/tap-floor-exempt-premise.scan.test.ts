@@ -232,7 +232,18 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // by width/height, not this lens's flex+padding grammar -- so it is a
 // predicate-grammar mismatch, not a missing CSS rule, and is recorded for
 // the next wave rather than mis-repaired here (see the audit doc).
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 86;
+//
+// Re-measured task w35-b (DEC-393 wave-35 amendment): grounding the CFP
+// intro-cta/identity-note inline links added two new `inline-in-prose`
+// receipts -- src/routes/public/cfp.css.ts (one comment, two TOKEN-scoped
+// empty rules for both anchors) and src/routes/tools.css.ts (one, for the
+// docs /login reference) -- each a real, named exemption the
+// SSR_UNFLOORED_TOKENS_CEILING scan (app/src/phone-tap-target-ssr.scan.test.ts)
+// requires, but neither names a companion class (DEVIATIONS.md is the
+// grounding authority for these three, not another floored control), so
+// both resolve UNVERIFIABLE-PREMISE exactly like the population's `other`
+// rows -- 98 receipts -> 100, 86 -> 88.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 88;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {

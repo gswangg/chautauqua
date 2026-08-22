@@ -487,6 +487,19 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        exemption -- it is scoped by TOKEN, the classless-anchor scan's own
        grammar, and only ever reaches a classless (unclassed) anchor. */
     .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); }
+
+    /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task
+       w35-b): grounded per the wave-35 ladder as DEVIATIONS.md §9's
+       first and second entries (rung 3, not rung 1/2) -- neither the
+       desktop nor 390 "Submit a talk" frame extent (Chautauqua Public
+       and Portal.dc.html:891-1010 / :1017-1065) draws "Create an
+       account" or "Sign in to the speaker portal" as a control, and the
+       page carries no same-surface floored twin reaching either
+       destination (#chq-cfp-submit-form / /login). No new declaration:
+       this empty rule exists only so the exemption is scoped by TOKEN,
+       matching the JSX class tokens now on both anchors
+       (.chq-cfp-intro-cta-link, .chq-cfp-identity-note-link). */
+    .chq-cfp-intro-cta-link, .chq-cfp-identity-note-link {}
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
