@@ -236,23 +236,38 @@ vi.mock("../src/server/repo/profile", async () => {
   };
 });
 
+// DEC-903 wave-32: the four portal route modules are pure-router imports
+// with no per-test mutable state of their own (every stateful piece --
+// addCoPresenterMock et al. -- lives in the vi.mock factories above and is
+// reset per-test independently of this app). Importing them once and
+// building one shared Hono app amortizes the ~4.8s import cost across all
+// four `it`s instead of paying it fresh in each, which is what pushed the
+// first test alone over vitest's 5000ms default when this file runs inside
+// the full 182-file "390 phone Phone" batch (green alone, red in batch).
+let cachedApp: Promise<Hono<AppEnv>> | undefined;
+
 async function buildApp(): Promise<Hono<AppEnv>> {
-  const { portalRoutes } = await import("../src/routes/portal/index");
-  const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
-  const { portalEditRoutes } = await import("../src/routes/portal/edit");
-  const { portalProfileRoutes } = await import("../src/routes/portal/profile");
-  const app = new Hono<AppEnv>();
-  registerErrorHandler(app);
-  app.use("*", async (c, next) => {
-    c.set("auth", speakerAuth);
-    c.set("db", {} as never);
-    await next();
-  });
-  app.route("/portal", portalRoutes);
-  app.route("/portal", portalTasksRoutes);
-  app.route("/portal", portalEditRoutes);
-  app.route("/portal", portalProfileRoutes);
-  return app;
+  if (!cachedApp) {
+    cachedApp = (async () => {
+      const { portalRoutes } = await import("../src/routes/portal/index");
+      const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+      const { portalEditRoutes } = await import("../src/routes/portal/edit");
+      const { portalProfileRoutes } = await import("../src/routes/portal/profile");
+      const app = new Hono<AppEnv>();
+      registerErrorHandler(app);
+      app.use("*", async (c, next) => {
+        c.set("auth", speakerAuth);
+        c.set("db", {} as never);
+        await next();
+      });
+      app.route("/portal", portalRoutes);
+      app.route("/portal", portalTasksRoutes);
+      app.route("/portal", portalEditRoutes);
+      app.route("/portal", portalProfileRoutes);
+      return app;
+    })();
+  }
+  return cachedApp;
 }
 
 describe("portal 390 frame verdicts — drill/state frames (DEC-976 wave-158)", () => {
