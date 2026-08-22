@@ -79,3 +79,40 @@ export function mergeItinerarySelection(
   }
   return merged.slice(0, MAX_ITINERARY_IDS);
 }
+
+/** DEC-555 wave-29 amendment: the ONE serialized write path for an itinerary
+ * checkbox change. Takes exactly ONE storage snapshot (`stored`, read once
+ * by the caller) and ONE DOM snapshot (`boxes`, the checked state of every
+ * rendered `.chq-itinerary-toggle` at the moment of the change) plus the
+ * `(value, checked)` pair the browser's change event reports, and computes
+ * BOTH the next persisted list and the checkbox states every view must be
+ * redrawn from -- in one shot, off one snapshot.
+ *
+ * This closes two real divergences the previous three-DOM-read shape had:
+ * (1) mirroring the changed value across every box sharing it (DEC-584)
+ * before computing the checked set, and (2) once `mergeItinerarySelection`'s
+ * MAX_ITINERARY_IDS cap trims the merged list, the caller's rendered view
+ * must reflect exactly what got persisted -- never a raw re-read of DOM
+ * `.checked` state, which would keep showing a capped-out row as
+ * checked/saved even though it no longer persists. `boxStates` is the single
+ * source every subsequent render (checkbox sync, updateLink, the schedule
+ * row/overlaps view) must be driven from; no caller may re-derive "current
+ * ids" from the DOM after calling this.
+ *
+ * Pure, DOM-free (same idiom as mergeItinerarySelection/
+ * mirrorItineraryCheckboxes, embedded into the inline script via
+ * `.toString()`), so it's unit-testable without jsdom. */
+export function applyItineraryToggle<T extends { value: string; checked: boolean }>(
+  stored: string[],
+  renderedIds: string[],
+  boxes: T[],
+  changedValue: string,
+  changedChecked: boolean,
+): { ids: string[]; boxes: T[] } {
+  const mirrored = mirrorItineraryCheckboxes(boxes, changedValue, changedChecked);
+  const checkedIds = mirrored.filter((b) => b.checked).map((b) => b.value);
+  const ids = mergeItinerarySelection(stored, renderedIds, checkedIds);
+  const idSet = new Set(ids);
+  const resolved = mirrored.map((b) => (b.checked === idSet.has(b.value) ? b : { ...b, checked: idSet.has(b.value) }));
+  return { ids, boxes: resolved };
+}
