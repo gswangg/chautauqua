@@ -992,8 +992,13 @@ const LEDGER: LedgerEntry[] = [
     key: "breakspanels-outside-the-window-hint-no-longer-matches-chautauqua-agenda-dc-html-244-verbatim",
     status: "honored",
     reason:
-      "the frame's hint sentence unconditionally promises a greyed band for every out-of-window break, but a break whose extent does not intersect the day window at all has no band to grey -- the unclamped arithmetic produced inverted/phantom grid rows. clampBreakToWindow draws a band only where the break's interval intersects the window; a fully-outside break is kept in the list (never dropped, satisfying the frame's own dropping clause) but paints none, and the hint copy states both outcomes. DEC-380 governs: the frame's prose asserted behaviour the code correctly forbids.",
-    honored: { kind: "present", file: "app/src/pages/agenda/gridMath.ts", literal: "export function clampBreakToWindow(", testFile: "app/src/pages/agenda/gridMath.test.ts" },
+      "DEC-021 wave-34: a break with no intersection at all with the day window gets no band (fixed by gridMath.ts's clampBreakToWindow), so BreaksPanel's hint was split into two clauses (still-overlaps -> greyed band; falls-entirely-outside -> no band) to state both outcomes truthfully instead of continuing to assert the frame's disproven unconditional 'always greyed' claim. The frame's own caption is recorded SUPERSEDED in the frame-caption ledger (test/frame-caption-ledger/exclusions/superseded.ts) citing this same ruling.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/agenda/BreaksPanel.tsx",
+      literal: "if it falls entirely outside them, it is listed here but no band is drawn.",
+      testFile: "app/src/pages/agenda/BreaksPanel.render.test.tsx",
+    },
   },
 ];
 

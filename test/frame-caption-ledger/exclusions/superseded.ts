@@ -153,4 +153,16 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/speakers/RemindPreviewModal.tsx's `subtitle` prop composes `` `${countOf(count, 'speaker')} · nothing has been sent yet` `` off the server's own `drafts.length` when `skipped === 0` -- the frame's exact clause, printed only when there is truly nothing to report as skipped (when `skipped > 0` the subtitle states the skip instead, via the shared `remindSkipVocabulary.ts` phrase, so the two clauses never contradict on one line, per DEC-829).",
   },
+  // v12m-w36-a (wave-36, DEC-021 wave-36 amendment): the Agenda frame's
+  // break-hint caption is stale about the fully-outside case since DEC-021
+  // wave-34's break-clamp fix (commit 487b7fb98) and w34-b's matching rewrite
+  // of BreaksPanel.tsx's own hint. Excluded here by citation, per DEC-021
+  // wave-36's own instruction -- never by raising FRAME_CAPTION_UNMATCHED_CEILING.
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 244,
+    text: "A break outside the day's window is kept but flagged — the grid shows it greyed rather than dropping it.",
+    reason:
+      'RULED (DEC-021 wave-34): "a break that intersects the window keeps today\'s flagged-and-clamped band; a break with no intersection gets no band at all — it is surfaced as flagged but never given a fabricated row, and the panel\'s copy must be true of both cases." app/src/pages/agenda/BreaksPanel.tsx:463-464 was rewritten (commit 487b7fb98, w34-b) to be true of both cases, so it no longer renders this frame sentence, which asserts every outside-window break is greyed and drawn -- false for the fully-outside case. Building the frame\'s sentence verbatim would ship a lie about breaks with no intersection at all. The pin that would break: BreaksPanel would have to re-claim a band is always drawn, contradicting DayGrid.tsx\'s gridMath.ts interval arithmetic that deliberately omits one for the no-intersection case.',
+  },
 ];
