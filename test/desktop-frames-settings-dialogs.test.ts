@@ -78,16 +78,20 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
   it('renders the "Invite someone" dialog (create-at-once, no pending state) in PeopleRolesPanel.tsx', () => {
     expect(frameLine(1271)).toContain('Invite someone');
     const src = read('pages/settings/PeopleRolesPanel.tsx');
-    // DEC-967 wave-14m: the `title="Invite someone"` raw-source literal
-    // this test used to assert here went stale under DEC-919 wave-130's
-    // duplicate-rejection retitle -- PeopleRolesPanel.tsx:471 now reads
-    // `title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}`, a
-    // correct change the frame claim survives. That title claim moved to
-    // app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx
-    // (frame :1271 describe block), which mounts the dialog in its real
-    // non-duplicate state and asserts the RENDERED heading instead of a
-    // raw source string. The two source claims below are unaffected by
-    // that retitle and stay pinned here.
+    // DEC-997: the old `title="Invite someone"` raw-source literal went
+    // stale under DEC-919 wave-130's duplicate-rejection retitle -- the
+    // panel grew a duplicate-email refusal state and now reads
+    // `title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}`.
+    // The product got MORE correct and the pin got falsified, so the pin
+    // moves to the live ternary literal rather than being loosened or
+    // deleted: it carries strictly more information than the old one,
+    // encoding both the frame's drawn title and the refusal retitle.
+    // app/src/pages/settings/PeopleRolesPanel.invite.render.test.tsx
+    // already proves this reaches the DOM: it asserts
+    // `getByRole('heading', { name: 'Invite someone' })` in the
+    // non-duplicate state and its sibling asserts the refusal retitle
+    // (`getByRole('heading', { name: 'Nobody was invited' })`).
+    expect(src).toContain("title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}");
     expect(src).toContain("{creating ? 'Creating…' : 'Create the account'}");
     expect(src).toContain('This is the username they sign in with');
   });
