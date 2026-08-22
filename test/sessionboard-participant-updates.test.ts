@@ -187,10 +187,13 @@ describe("DEC-528 (wave 49 amendment): Sessionboard participant UPDATE flush col
     expect(result.updated).toBe(40);
     expect(result.skipped).toEqual([]);
 
-    // Bounded by the distinct (role, order) value-tuple count (6), never by
-    // the 40-row count -- the whole point of the collapse.
+    // Bounded by the distinct (role, order) value-tuple count (6), plus ONE
+    // more `db.update` call for the DEC-725 (wave-17 amendment) touch-on-
+    // write stamp this test's single submission (all 40 rows share it)
+    // collapses to -- never by the 40-row count, the whole point of the
+    // collapse.
     const distinctValueTuples = ROLES.length * ORDERS.length;
-    expect(getUpdateStatementCount()).toBeLessThanOrEqual(distinctValueTuples);
+    expect(getUpdateStatementCount()).toBeLessThanOrEqual(distinctValueTuples + 1);
     expect(getUpdateStatementCount()).toBeGreaterThan(0);
     expect(getUpdateStatementCount()).toBeLessThan(40);
 
