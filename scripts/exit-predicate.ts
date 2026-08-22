@@ -409,6 +409,31 @@ export interface ConstantMatch {
   readonly value: number;
 }
 
+/**
+ * Reads the real campaign corpus off disk: every git-tracked `.ts` file
+ * under `test/`, `app/src/` or `scripts/`, rooted at `repoRoot`. This is
+ * the ONE enumerator `main()` uses to build the corpus it feeds
+ * `buildCampaignReport` -- DEC-613 forbids a second copy of this walk, so
+ * anything (including tests) that needs the real corpus must call this
+ * function rather than re-deriving the git-ls-files/path-filter/read shape
+ * itself. Unlike every other exported function in this module's campaign
+ * section, this one DOES do I/O (git + fs) by design -- it is the seam
+ * between the pure grading functions below and the real tree.
+ */
+export function loadCampaignFiles(repoRoot: string): CampaignFile[] {
+  const trackedPaths = execFileSync(
+    "git",
+    ["ls-files", "--", "test", "app/src", "scripts"],
+    { cwd: repoRoot, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter((p) => p.endsWith(".ts"));
+  return trackedPaths.map((path) => ({
+    path,
+    content: readFileSync(join(repoRoot, path), "utf8"),
+  }));
+}
+
 const CONST_DECL_RE =
   /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*([^;\n]+);[ \t]*$/gm;
 
@@ -900,6 +925,12 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "next dereference into an unhandled 500 -- a server-side request-parsing robustness fact "
     + "about a route's error envelope, not itself a v12 frame or 390-geometry conformance fact "
     + "(test/json-body-door.scan.test.ts, DEC-613 wave-23 amendment).",
+  MINT_DOOR_UNCAPPED_CEILING:
+    "measures how many mint doors (route handlers that insert a new domain row) reference no "
+    + "batch/count MAX_* bound in their own handler body or named repo/** insert function, and "
+    + "carry no `mint-cap-exempt:` comment -- a server-side write-door robustness fact about "
+    + "whether a mint can be flooded with unbounded rows, not itself a v12 frame or 390-geometry "
+    + "conformance fact (test/mint-door-cap-census.scan.test.ts, DEC-180 wave-23 amendment).",
 };
 
 /**
@@ -1265,17 +1296,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   console.log("");
   console.log("-- v12 mobile campaign (DEC-069 wave-116, machine-derived) --");
-  const trackedPaths = execFileSync(
-    "git",
-    ["ls-files", "--", "test", "app/src", "scripts"],
-    { cwd: REPO_ROOT, encoding: "utf8" },
-  )
-    .split("\n")
-    .filter((p) => p.endsWith(".ts"));
-  const campaignFiles: CampaignFile[] = trackedPaths.map((path) => ({
-    path,
-    content: readFileSync(join(REPO_ROOT, path), "utf8"),
-  }));
+  const campaignFiles = loadCampaignFiles(REPO_ROOT);
   const campaignReport = buildCampaignReport(campaignFiles, {
     productSha,
     suiteVerifiedAtSha,

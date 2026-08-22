@@ -9,6 +9,7 @@
 // synthetic set of file contents shaped exactly like the real corpus, so
 // the assertions stay true regardless of what the real scan files measure.
 
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertCampaignPopulationTotal,
@@ -19,6 +20,7 @@ import {
   findCampaignCeilingCandidates,
   findConstantDeclarations,
   formatCampaignReport,
+  loadCampaignFiles,
   OUT_OF_CAMPAIGN_SCOPE,
   type SuiteEvidence,
   TIER2_CEILING_NAMES,
@@ -761,6 +763,117 @@ describe("CAMPAIGN_CONSTANT_NAMES / baseFixture() mirror (DEC-069 wave-5)", () =
             `either this ratchet was retired from scripts/exit-predicate.ts and its fixture row is now ` +
             `stale (delete the row), or it belongs in CAMPAIGN_CONSTANT_NAMES and is missing there.`
         : undefined,
+    ).toEqual([]);
+  });
+});
+
+// DEC-808 wave-27 (task w27-a): every test above this point runs the
+// campaign machinery ONLY over synthetic fixtures shaped like the real
+// corpus -- none of them ever calls the gate against the tree it actually
+// gates. On main (b70a0c0f9) `npx tsx scripts/exit-predicate.ts
+// --product-sha <sha>` THREW out of assertCampaignPopulationTotal before
+// printing a single campaign row, and nothing in this file (or in
+// campaign-ratchet-registration.scan.test.ts, its only indirect sibling)
+// failed. A fixture proves the algorithm; only the real corpus proves the
+// gate is runnable. This describe closes that gap: it reuses
+// loadCampaignFiles, the SAME enumerator scripts/exit-predicate.ts's own
+// main() uses (now exported for exactly this reuse -- DEC-613 forbids a
+// second copy of that git-ls-files/read walk), and exercises the real
+// campaign section functions over the real tree.
+describe("real corpus: the gate this file otherwise only fixtures (DEC-808 wave-27, task w27-a)", () => {
+  const REPO_ROOT = join(import.meta.dirname, "..");
+  const realFiles: CampaignFile[] = loadCampaignFiles(REPO_ROOT);
+
+  // Non-vacuity guard: if loadCampaignFiles is ever pointed at an empty or
+  // wrong root (a broken REPO_ROOT, a git-ls-files invocation that silently
+  // returns nothing), every assertion below about "the real corpus" would
+  // vacuously pass over an empty array. Assert the walk actually found a
+  // non-trivial number of files AND at least one file declaring a known
+  // campaign constant, so a broken root can never leave this describe green
+  // over an empty set.
+  it("non-vacuity: the real corpus walk found a non-trivial number of files and at least one known constant", () => {
+    expect(realFiles.length).toBeGreaterThan(50);
+    const realCandidateNames = new Set(findCampaignCeilingCandidates(realFiles));
+    expect(
+      realCandidateNames.has("CLAIMED_FLOOR"),
+      `expected CLAIMED_FLOOR among the real corpus's declared campaign constants, found: ` +
+        `${[...realCandidateNames].join(", ")}`,
+    ).toBe(true);
+  });
+
+  it("assertCampaignPopulationTotal does not throw over the real corpus (surfaces the offender names verbatim if it does)", () => {
+    const realCandidates = findCampaignCeilingCandidates(realFiles);
+    try {
+      assertCampaignPopulationTotal(realCandidates);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // Re-throw with the original message intact so a real regression
+      // surfaces the missing constant names verbatim in the test failure,
+      // rather than a generic "expected no throw" with the detail lost.
+      throw new Error(
+        `assertCampaignPopulationTotal threw over the REAL repo corpus (not a fixture) -- ` +
+          `register each named constant below in CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES or ` +
+          `OUT_OF_CAMPAIGN_SCOPE in scripts/exit-predicate.ts. Original message:\n${message}`,
+      );
+    }
+  });
+
+  // buildCampaignReport's actual row shape (per its own doc comment): the
+  // two CLAIMED_FLOOR ledgers (desktop + phone, resolved as a co-located
+  // pair, not by bare name) plus exactly one row per TIER2_CEILING_NAMES
+  // entry -- CEILING/EXPECTED_TOTAL*/EXPECTED_DEVIATION_DEFERRED are
+  // consumed to compute the CLAIMED_FLOOR rows' targets, not emitted as
+  // rows of their own. TIER2_CEILING_NAMES is itself the corpus-derived
+  // subset of CAMPAIGN_CONSTANT_NAMES that assertEveryGradedCeilingIsGated
+  // guarantees is exactly "every graded ceiling", so this expected row set
+  // is derived from the exported name lists, never a hardcoded count.
+  it("buildCampaignReport returns without throwing over the real corpus, with exactly one row per graded ratchet", () => {
+    const evidence: SuiteEvidence = {
+      productSha: "real-corpus-smoke-test-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => false,
+    };
+    const report = buildCampaignReport(realFiles, evidence);
+
+    const expectedLabels = new Set<string>([
+      "desktop CLAIMED_FLOOR",
+      "phone CLAIMED_FLOOR",
+      ...TIER2_CEILING_NAMES,
+    ]);
+    const reportedLabels = new Set(report.rows.map((r) => r.label));
+
+    const missingFromReport = [...expectedLabels].filter((label) => !reportedLabels.has(label));
+    expect(
+      missingFromReport,
+      `buildCampaignReport over the real corpus is missing a row for: ${missingFromReport.join(", ")}`,
+    ).toEqual([]);
+
+    const unexpectedInReport = [...reportedLabels].filter((label) => !expectedLabels.has(label));
+    expect(
+      unexpectedInReport,
+      `buildCampaignReport over the real corpus reported a row not derived from ` +
+        `TIER2_CEILING_NAMES/the CLAIMED_FLOOR pair: ${unexpectedInReport.join(", ")}`,
+    ).toEqual([]);
+
+    expect(report.rows.length).toBe(expectedLabels.size);
+  });
+
+  it("formatCampaignReport returns a non-empty string containing every row's constant name, over the real corpus", () => {
+    const evidence: SuiteEvidence = {
+      productSha: "real-corpus-smoke-test-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => false,
+    };
+    const report = buildCampaignReport(realFiles, evidence);
+    const formatted = formatCampaignReport(report);
+
+    expect(formatted.length).toBeGreaterThan(0);
+    const missingLabels = report.rows
+      .map((r) => r.label)
+      .filter((label) => !formatted.includes(label));
+    expect(
+      missingLabels,
+      `formatCampaignReport's output is missing these row labels: ${missingLabels.join(", ")}`,
     ).toEqual([]);
   });
 });
