@@ -87,23 +87,26 @@ vi.mock("../src/auth/claim", async () => {
 // reads from `loggedRows`, populated by mailerSendMock below, exactly like
 // test/contacts-bulk-email-dedupe.test.ts's harness, so a repeat POST sees
 // the prior call's own sent rows.
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -113,15 +116,21 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
-const mailerSendMock = vi.fn(async (message: { to: { email: string }; subject: string }) => {
-  loggedRows.push({ eventId: "ev1", toEmail: message.to.email, subject: message.subject, sentAt: Date.now() });
+const mailerSendMock = vi.fn(async (message: { to: { email: string }; subject: string; text: string }) => {
+  loggedRows.push({
+    eventId: "ev1",
+    toEmail: message.to.email,
+    subject: message.subject,
+    bodyText: message.text,
+    sentAt: Date.now(),
+  });
 });
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: (message: unknown) => mailerSendMock(message as { to: { email: string }; subject: string }),
+      send: (message: unknown) => mailerSendMock(message as { to: { email: string }; subject: string; text: string }),
     })),
   };
 });

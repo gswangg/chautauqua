@@ -184,12 +184,12 @@ const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
 const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 
 const EXPECTED_AUDIT_FILE_COUNT = 101;
-const EXPECTED_TOTAL_TOKEN_COUNT = 153;
+const EXPECTED_TOTAL_TOKEN_COUNT = 152;
 const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
   heading: 15,
   table: 38,
   bullet: 27,
-  fallback: 73,
+  fallback: 72,
 };
 
 // -- Ratchet -------------------------------------------------------------
@@ -240,7 +240,7 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // closing public-390-request-verdicts-v12.md:100 (this task, DEC-902
 // wave-12m amendment). merge train: re-measure after v12m-w15-q,
 // v12m-w15-r and v12m-w16-qe land; this must reach 0.
-export const OPEN_DIVERGENCE_CEILING = 3;
+export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it('enumerates exactly 101 audit files and exactly 153 DIVERGES-token rows (vacuous-population guard)', () => {

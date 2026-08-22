@@ -75,23 +75,26 @@ vi.mock("../src/auth/claim", async () => {
 // Stand-in email_log rows -- the mocked repo.loadRecentlySent reader below
 // reads from this array, so preview and a following send see the SAME
 // snapshot a real D1-backed reader would.
-let loggedRows: { eventId: string; toEmail: string; subject: string; sentAt: number }[] = [];
+let loggedRows: { eventId: string; toEmail: string; subject: string; bodyText: string; sentAt: number }[] = [];
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
     loadRecentlySent: vi.fn(
-      async (_db: unknown, eventId: string, keys: { email: string; subject: string }[], cutoffMs: number) => {
+      async (_db: unknown, eventId: string, keys: { email: string; subject: string; body: string }[], cutoffMs: number) => {
         const map = new Map<string, number>();
         for (const row of loggedRows) {
           if (row.eventId !== eventId) continue;
           if (row.sentAt < cutoffMs) continue;
           const hit = keys.some(
-            (k) => k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() && k.subject === row.subject,
+            (k) =>
+              k.email.trim().toLowerCase() === row.toEmail.trim().toLowerCase() &&
+              k.subject === row.subject &&
+              k.body === row.bodyText,
           );
           if (!hit) continue;
-          const key = dedupeKey(row.toEmail, row.subject);
+          const key = dedupeKey(row.toEmail, row.subject, row.bodyText);
           const existing = map.get(key);
           if (existing === undefined || row.sentAt > existing) map.set(key, row.sentAt);
         }
@@ -101,15 +104,21 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
-const mailerSendMock = vi.fn(async (message: { to: { email: string }; subject: string }) => {
-  loggedRows.push({ eventId: "ev1", toEmail: message.to.email, subject: message.subject, sentAt: Date.now() });
+const mailerSendMock = vi.fn(async (message: { to: { email: string }; subject: string; text: string }) => {
+  loggedRows.push({
+    eventId: "ev1",
+    toEmail: message.to.email,
+    subject: message.subject,
+    bodyText: message.text,
+    sentAt: Date.now(),
+  });
 });
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {
     ...actual,
     makeMailer: vi.fn(() => ({
-      send: (message: unknown) => mailerSendMock(message as { to: { email: string }; subject: string }),
+      send: (message: unknown) => mailerSendMock(message as { to: { email: string }; subject: string; text: string }),
     })),
   };
 });
@@ -167,7 +176,18 @@ describe("preview vs send agreement (DEC-238 wave-17 amendment)", () => {
     // Prime the cross-call dedupe window: ct_1 already has a "recent" send
     // for this exact subject, so both preview and send must report it
     // skipped, not counted toward willSend.
-    loggedRows.push({ eventId: "ev1", toEmail: "ct_1@example.com", subject: "Hi all", sentAt: t0 - 1_000 });
+    loggedRows.push({
+      eventId: "ev1",
+      toEmail: "ct_1@example.com",
+      subject: "Hi all",
+      // DEC-936 wave-17 widened the cross-call key to (email, subject,
+      // body), so the primed row must carry the body the planner keys on.
+      // planBulkEmailSends computes its keys on the UNMINTED preflight
+      // render (DEC-397 wave-62), which is the template text itself here --
+      // this fixture's contacts resolve no merge tokens.
+      bodyText: "See you at {event_name}: {portal_link}",
+      sentAt: t0 - 1_000,
+    });
 
     const contactIds = ALL_CONTACTS.map((c) => c.id); // 7 contacts
 
