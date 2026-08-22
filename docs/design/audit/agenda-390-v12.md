@@ -33,7 +33,9 @@ wave-29's four-condition bar (condition 4: "touches only files the lane
 OWNS"; both fixes below require editing `PhoneAgenda.tsx` and/or
 `phoneSlots.ts`, neither owned here). Recorded as DIVERGES rows:
 
-## DIVERGES 1 -- :161 "Two sessions in this slot" is spelled in the frame; the built disclosure is numeral-based and never spells the word, even at n=2
+## DIVERGES 1 -- :161 "Two sessions in this slot" is spelled in the frame; the built disclosure is numeral-based and never spells the word, even at n=2 -- RESOLVED (task w11-td re-verdict)
+
+**MATCHES, re-verdicted.** `app/src/pages/agenda/PhoneAgenda.tsx` now renders `{capitalizeFirst(spellCount(slot.sessions.length))} {plural(slot.sessions.length, 'session')} in this slot` under its own DEC-380 wave-32 comment quoting this exact frame line (`docs/design/Chautauqua Agenda.dc.html:161`), using the pack's spelled-count grammar (`capitalizeFirst` + `spellCount` + `plural`, `app/src/lib/plural.ts`) rather than the numeral-only `countOf` this row originally found. The DIVERGES paragraph below is retained verbatim as the historical finding; it no longer describes the built tree.
 
 Frame:
 
@@ -65,7 +67,9 @@ Disposition: a copy-only fix (swap `countOf` for a small
 task scoped to that file; not attempted here per DEC-385 wave-29's
 ownership condition.
 
-## DIVERGES 2 -- :171 the frame draws an inline one-tap resolution action on the clash card ("Move DFC-047 to 11:30"); no equivalent control exists in the built component at any state
+## DIVERGES 2 -- :171 the frame draws an inline one-tap resolution action on the clash card ("Move DFC-047 to 11:30"); no equivalent control exists in the built component at any state -- RESOLVED (task w11-td re-verdict)
+
+**MATCHES, re-verdicted.** `app/src/pages/agenda/PhoneAgenda.tsx` computes `computeClashMove(slot.sessions, day, placed, dayStartMin, dayEndMin, gridMin, blockedBreaks)` and renders `<button className="chq-phone-slot-clash-move">{conflictMoveLabel(move.ref, move.startMin)}</button>` under its own DEC-895 wave-33 comment naming this row's ownership fix ("the ONE resolution for THIS clash card"). The DIVERGES paragraph below is retained verbatim as the historical finding; it no longer describes the built tree.
 
 Frame:
 
