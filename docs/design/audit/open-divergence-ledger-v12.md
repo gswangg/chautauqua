@@ -396,7 +396,7 @@ is looking at real new debt and should fail.
 the instrument on the merged tree after this section was written (this
 document is itself in the scanned corpus, so the figures are the
 post-edit ones, per the same rule `v12m-w31-d` applied to its own
-self-referential sentence): `AUDIT_FILE_FLOOR` **118**, `TOKEN_ROW_FLOOR`
+self-referential sentence): `AUDIT_FILE_FLOOR` **119**, `TOKEN_ROW_FLOOR`
 **245**, `SHAPE_FLOORS` **33 heading / 72 table / 31 bullet / 109
 fallback** (summing to 245, which is the arithmetic check that the shape
 split partitions the row population rather than double-counting), and
@@ -416,6 +416,15 @@ an exception list, which is the precise failure DEC-808 and this file's
 own "never hand-curate a row" rule exist to prevent. The cost of the rule
 is four rows of documented over-approximation; the benefit is a
 population anyone can re-derive from the grammar alone.
+
+`AUDIT_FILE_FLOOR` reached **119** later in the same train, when
+`v12m-w31-e` added `docs/design/audit/design-rulings-ledger-v12.md` to the
+corpus. That file contributes ZERO rows -- it is a ledger ABOUT
+`docs/design/DESIGN-RULINGS.md`, and like this document it avoids stating
+verdicts in the three shapes the widened vocabulary triggers on -- so the
+row count, the shape split and the open ceiling are all unmoved by it.
+A new audit file that raises only the file floor is exactly the healthy
+corpus growth DEC-180 reshaped this guard from equality to a floor for.
 
 Two rows in the list above are this document's OWN prose -- the
 `**The ratchet question this raised**` paragraph and the bullet quoting
