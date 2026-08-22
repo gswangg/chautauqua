@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
-import { countOf, capitalizeFirst } from '../../lib/plural';
+import { countOf } from '../../lib/plural';
+import { roleLabel } from '../../lib/role-labels';
 import { EmptyState } from '../../components/EmptyState';
 import { SendFailures } from '../../components/SendFailures';
 import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
@@ -19,10 +20,6 @@ function formatThousands(n: number): string {
 // authorRole (FileComment, src/routes/api/files-comments.ts) but nothing
 // rendered it -- a portal speaker note (no linked user) has authorRole
 // null and must render with no label at all, never a fabricated "(unknown)".
-const COMMENT_ROLE_LABELS: Record<string, string> = { organizer: 'Organizer', reviewer: 'Reviewer' };
-function commentRoleLabel(role: string): string {
-  return COMMENT_ROLE_LABELS[role] ?? capitalizeFirst(role);
-}
 
 interface SendResult {
   sent: number;
@@ -83,7 +80,7 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
                   {me && c.authorUserId === me.userId ? 'You' : c.authorName}
                 </span>
                 {c.authorRole && (
-                  <span className="chq-role-label chq-meta"> ({commentRoleLabel(c.authorRole)})</span>
+                  <span className="chq-role-label chq-meta"> ({roleLabel(c.authorRole)})</span>
                 )}
                 <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
                 <span className="chq-comment-date chq-meta"> · {formatRelative(c.createdAt, now)}</span>

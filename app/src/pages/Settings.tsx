@@ -136,7 +136,7 @@ export const SECTIONS: SettingsSection[] = [
   {
     key: 'people',
     label: 'People and roles',
-    detail: 'Organizers and reviewers on this event',
+    detail: 'Organisers and reviewers on this event',
     Panel: PeopleRolesPanel,
     // Chautauqua Settings.dc.html:976 `Edit people and roles`.
     editTitle: 'Edit people and roles',

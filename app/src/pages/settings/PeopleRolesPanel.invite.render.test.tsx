@@ -118,7 +118,7 @@ describe('PeopleRolesPanel invite dialog', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
 
     const reviewerChip = screen.getByRole('radio', { name: 'Reviewer' });
-    const organizerChip = screen.getByRole('radio', { name: 'Organizer' });
+    const organizerChip = screen.getByRole('radio', { name: 'Organiser' });
     expect(reviewerChip).toHaveAttribute('aria-checked', 'true');
     expect(organizerChip).toHaveAttribute('aria-checked', 'false');
 

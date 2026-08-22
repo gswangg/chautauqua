@@ -15,7 +15,7 @@ export const startHere: DocsArticle = {
     {
       kind: "list",
       items: [
-        "**Organizer** — makes the call for papers, does triage, sets up review plans, runs tasks and comms, and publishes the agenda. The organizer has the admin login and sees every event they have access to.",
+        "**Organiser** — makes the call for papers, does triage, sets up review plans, runs tasks and comms, and publishes the agenda. The organizer has the admin login and sees every event they have access to.",
         "**Reviewer** — scores an assigned set of submissions against a plan's scorecard. A reviewer has a login but sees only the review queue and their own scores, never the full admin console.",
         "**Speaker** — sends a submission, and if the event accepts it, uses the speaker portal: status, tasks, due dates, and their bio. The portal link signs them in, so no account is needed.",
         "**Public** — anyone who reads the published agenda, the session pages, or the speaker directory. The public does not log in and sees only the content an organizer set to visible.",
