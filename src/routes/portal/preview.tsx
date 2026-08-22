@@ -30,13 +30,15 @@ import {
 } from "../../server/not-found";
 import { PublicEmptyState } from "../public/empty-state";
 import { ensureCsrfCookie } from "./tasks/shared";
-import { DEC_747, DEC_322 } from "../../decisions";
+import { DEC_747, DEC_322, DEC_902 } from "../../decisions";
 import { safeImageSrc } from "../../domain/brand-url";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_322;
 
 void DEC_747;
+
+void DEC_902;
 
 export const portalPreviewRoutes = new Hono<AppEnv>();
 
@@ -124,6 +126,17 @@ function PreviewPage(props: {
           the page at all. */}
       <h1 class="chq-portal-hero">Welcome</h1>
       {props.branding.welcomeMessage ? <p class="chq-portal-lede">{props.branding.welcomeMessage}</p> : null}
+      {/* DEC-902 wave-19 clause (b): frame `Chautauqua Public and
+          Portal.dc.html:1495` draws a SECOND sentence after the organizer's
+          own welcome message -- `Everything we need from you is on this
+          page, in order.` The clause rules this line is APP-OWNED CHROME,
+          not stored copy (unlike the sentence above it, which is the
+          organizer's own text in the frame's fictional world, DEC-967): it
+          is a separate node appended after the lede, never concatenated
+          into it and never replacing it, and it renders unconditionally --
+          even when welcomeMessage is null -- because a static orientation
+          line needs no stored data to be true. */}
+      <p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>
       <section aria-label="Resources" class="chq-section">
         <div class="chq-section-label">Resources</div>
         {!props.showResources ? (

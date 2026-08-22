@@ -39,7 +39,8 @@ import { fileURLToPath } from "node:url";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
-import { DEC_029, DEC_919 } from "../src/decisions";
+import { getPortalSettingsForEvent } from "../src/server/repo/portal-config";
+import { DEC_029, DEC_902, DEC_919 } from "../src/decisions";
 
 // DEC-029 (wave-108 amendment, src/decisions-data/DEC-029.md): the edit
 // screen's co-presenter controls are a SECOND SUBMIT of the ONE edit form
@@ -49,6 +50,7 @@ import { DEC_029, DEC_919 } from "../src/decisions";
 // which branch the route takes. Void-referenced so the dependency is
 // compile-checked (src/decisions.ts).
 void DEC_029;
+void DEC_902;
 void DEC_919;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -380,6 +382,10 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
       'Preview · read-only.',
       '<h1 class="chq-portal-hero">Welcome</h1>',
       '<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>',
+      // DEC-902 wave-19 clause (b): the frame's fixed second Welcome
+      // sentence, a separate node appended after the organiser's own
+      // stored lede -- src/routes/portal/preview.tsx:139.
+      '<p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>',
       'aria-label="Resources" class="chq-section"',
       'class="chq-section-label">Resources</div>',
       '<span class="chq-portal-row-title">Speaker guide</span>',
@@ -396,6 +402,31 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     // this task's frame).
     expect(html).toContain('<button type="button" class="chq-portal-preview-download" disabled="" aria-disabled="true"');
     expect((html.match(/<form/g) ?? []).length).toBe(1);
+  });
+
+  it("frame :1473 Welcome lede, DEC-902 wave-19 clause (b): the fixed second sentence renders as its own node even when the organiser has no stored welcome message", async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1495 `<span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`
+    vi.mocked(getPortalSettingsForEvent).mockResolvedValueOnce({
+      id: "ps-1",
+      eventId: "evt-1",
+      welcomeMessage: null,
+      accentColor: null,
+      logoUrl: null,
+      showResources: true,
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    const app = await buildPreviewApp();
+    const res = await app.request("/portal/preview?eventId=evt-1");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // No organiser lede paragraph at all (welcomeMessage is null, so that
+    // conditional node does not render), but the frame's fixed second
+    // sentence -- app-owned chrome per DEC-902 wave-19 clause (b) -- still
+    // does: it needs no stored data to be true.
+    expect(html).not.toContain('<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>');
+    expect(html).toContain('<p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>');
   });
 
   it("frame :1167 'Public sessions · nothing published' (GET /e/devflow/sessions) -- MATCHES: filter chrome hidden, 'The programme is not out yet' headline, 'Last year' aside naming the prior event + a Sessions › escape", async () => {
