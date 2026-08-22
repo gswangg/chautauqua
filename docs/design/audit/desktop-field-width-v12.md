@@ -63,17 +63,18 @@ against the whole file, never `path:NNN`.
 
 ### `Settings · editing the event` (`EventSettingsPanel.tsx`)
 
-4. **Event name, drawn `max-width:420px`.** Frame label "Event name" has
-   no `<SettingsField label="Event name" ...>` call site in
-   `EventSettingsPanel.tsx` -- the code's own label for this field is
-   "Name" (`<SettingsField label="Name" ... width="slug">`). **unresolved**
-   (`no-label-match`) -- a genuine text-label divergence between the frame
-   and the code, but outside this ledger's WIDTH grammar (see
-   Adjudications).
+4. **Event name, drawn `max-width:420px`.** Frame label "Event name"
+   resolves via `EventSettingsPanel.tsx` to
+   `<SettingsField label="Event name" ... width="slug">` (DEC-613 wave-24
+   amendment renamed the field's label from "Name" to the frame's own
+   "Event name"). `--chq-field-w-slug: 420px`. **matches**.
 5. **Starts/Ends pair, drawn `max-width:420px`.** Frame labels "Starts",
-   "Ends" have no matching `<SettingsField label="Starts"|"Ends" ...>` call
-   site -- the code's own labels are "Start date"/"End date". **unresolved**
-   (`no-label-match`), same shape as row 4.
+   "Ends" resolve via `EventSettingsPanel.tsx` to two
+   `<SettingsField ... width="date">` calls labeled "Starts"/"Ends" (DEC-613
+   wave-24 amendment renamed these from "Start date"/"End date"). Pair
+   arithmetic: 200 + 18 (gap) + 200 = 418 ≈ 420 (2px slack). **matches**
+   (EQUIVALENT-AT-THE-DRAWN-WIDTH, same shape as row 1 -- see
+   Adjudications).
 6. **Time zone, drawn `max-width:300px`.** Label "Time zone" resolves via
    `EventSettingsPanel.tsx` to `<SettingsField label="Time zone" width="timezone">`.
    `--chq-field-w-timezone: 300px`. **matches**.
@@ -118,13 +119,14 @@ against the whole file, never `path:NNN`.
 
 ## Grade totals
 
-- **matches: 5** (rows 1, 2, 3, 6, 7)
+- **matches: 7** (rows 1, 2, 3, 4, 5, 6, 7)
 - **diverges: 0**
-- **unresolved: 6** (rows 4, 5, 8, 9, 10, 11)
+- **unresolved: 4** (rows 8, 9, 10, 11)
 
-`FIELD_WIDTH_DIVERGENCE_CEILING = 0`, `FIELD_WIDTH_UNRESOLVED_CEILING = 6`,
-both measured on this branch by forcing to `-1` and reading the printed row
-list, both two-sided per `test/campaign-ratchet-two-sided.scan.test.ts`.
+`FIELD_WIDTH_DIVERGENCE_CEILING = 0`, `FIELD_WIDTH_UNRESOLVED_CEILING = 4`,
+both re-measured on this branch (DEC-613 wave-24 amendment) by forcing to
+`-1` and reading the printed row list, both two-sided per
+`test/campaign-ratchet-two-sided.scan.test.ts`.
 
 ## Adjudications
 
@@ -139,18 +141,19 @@ list, both two-sided per `test/campaign-ratchet-two-sided.scan.test.ts`.
   mechanisms (a fluid `1fr 1fr` track vs. two `auto` tracks sized by their
   own fixed-width children) -- filed as equivalent, no CSS changed.
 
-- **Rows 4 and 5 (Event "Name"/"Start date"/"End date" vs. frame "Event
-  name"/"Starts"/"Ends") are a genuine label-text mismatch, not a width
-  finding.** This ledger's join requires the frame's own label text to
-  literally match a `SettingsField`'s `label` prop -- deliberately, per
-  DEC-393's own "own-text-exact" precedent (fuzzy-matching a near-miss
-  label would risk silently attributing the wrong control's width). The
-  code's `Event name -> Name` / `Starts -> Start date` / `Ends -> End date`
-  shortenings are a real, but out-of-grammar, wording divergence; this
-  ledger neither asserts nor denies a width match for these two rows --
-  it honestly reports UNRESOLVED. (A words-only ledger such as
-  `test/desktop-control-label.scan.test.ts` is the correct instrument for
-  that fact, not this one.)
+- **Rows 4 and 5 were UNRESOLVED before DEC-613's wave-24 amendment, and
+  now resolve.** The prior label mismatch (Event "Name"/"Start date"/"End
+  date" vs. frame "Event name"/"Starts"/"Ends") defeated this ledger's
+  label-exact join, which deliberately never fuzzy-matches a near-miss
+  label (DEC-393's own "own-text-exact" precedent -- fuzzy-matching would
+  risk silently attributing the wrong control's width). DEC-613's wave-24
+  amendment renamed `EventSettingsPanel.tsx`'s three field labels to the
+  frame's own words ("Name" -> "Event name", "Start date" -> "Starts",
+  "End date" -> "Ends"; "Slug" deliberately kept, see DEVIATIONS.md), which
+  drains the join: row 4 resolves via `width="slug"` to
+  `--chq-field-w-slug: 420px` against the drawn 420 (**matches**), and row
+  5's pair resolves the same arithmetic equivalence as row 1's CFP pair,
+  200 + 18 + 200 = 418 ≈ 420 (**matches**, EQUIVALENT-AT-THE-DRAWN-WIDTH).
 
 - **Row 11 (saved-embed 2x2 grid) resolves to a DIFFERENT, non-token
   register, not a B10 field-width divergence.** `EmbedsPanel.tsx` never

@@ -866,6 +866,21 @@ carries this section's ruling in full; these five entries are its record.
   list alone, with no rail slot at all. Stood down as recorded
   deviations, not silently dropped inside a receipt that claims
   re-lining.
+- **Settings · Event's Slug field stays "Slug", not the frame's "Public
+  URL" (DEC-613 wave-24 amendment).** `docs/design/Chautauqua
+  Settings.dc.html:739` `Public URL` labels a field whose drawn value is a
+  full rendered origin+slug (`chautauqua.cc/e/devflow-conf-2027`), but
+  `EventSettingsPanel.tsx`'s control edits the slug segment alone —
+  `app/src/pages/settings/EventSettingsPanel.tsx``value={form.slug}`. The
+  panel's own PATCH payload and `EventSettingsForm` state key are `slug`,
+  never a composed URL, so adopting the frame's label without also
+  building the origin-prefix presentation the label implies would name the
+  field something the input does not accept (typing a bare slug into a
+  field labeled "Public URL" reads as a bug, not fidelity). This wave's
+  companion renames ("Name" -> "Event name", "Start date"/"End date" ->
+  "Starts"/"Ends") adopt the frame verbatim because those three have no
+  such mismatch between the label and what the control edits; Slug is the
+  one outlier, reasoned and recorded rather than silently left stale.
 
 ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
 

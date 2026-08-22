@@ -53,11 +53,20 @@ const FIELD_IDS: Record<EventPatchField, string> = {
   location: 'event-settings-location',
 };
 
+// DEC-613 wave-24 amendment: three of these must read the frame's own
+// words -- docs/design/Chautauqua Settings.dc.html:735 `Event name`,
+// docs/design/Chautauqua Settings.dc.html:752 `Starts`,
+// docs/design/Chautauqua Settings.dc.html:756 `Ends` -- so the error
+// summary names the same words the field itself carries (see the matching
+// SettingsField label props below). Slug stays 'Slug', not the frame's
+// :739 'Public URL', because that frame label is drawn over a rendered
+// origin+slug value while this control edits the slug alone -- see
+// DEVIATIONS.md.
 const FIELD_LABELS: Record<EventPatchField, string> = {
-  name: 'Name',
+  name: 'Event name',
   slug: 'Slug',
-  startDate: 'Start date',
-  endDate: 'End date',
+  startDate: 'Starts',
+  endDate: 'Ends',
   timezone: 'Time zone',
   location: 'Venue',
 };
@@ -438,7 +447,9 @@ export function EventSettingsPanel() {
           <div className="chq-settings-section-head">
             <h3 className="chq-section-label">Name and address</h3>
           </div>
-          <SettingsField label="Name" htmlFor={FIELD_IDS.name} width="slug" hint={fieldErrorHint('name')}>
+          {/* DEC-613 wave-24 amendment: docs/design/Chautauqua Settings.dc.html:735
+              `Event name` -- adopts the frame's own label verbatim. */}
+          <SettingsField label="Event name" htmlFor={FIELD_IDS.name} width="slug" hint={fieldErrorHint('name')}>
             <input
               id={FIELD_IDS.name}
               className={fieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
@@ -470,8 +481,10 @@ export function EventSettingsPanel() {
             <h3 className="chq-section-label">When and where</h3>
           </div>
           <SettingsFieldPair>
+            {/* DEC-613 wave-24 amendment: docs/design/Chautauqua Settings.dc.html:752
+                `Starts` -- adopts the frame's own label verbatim. */}
             <SettingsField
-              label="Start date"
+              label="Starts"
               htmlFor={FIELD_IDS.startDate}
               width="date"
               hint={fieldErrorHint('startDate')}
@@ -482,8 +495,10 @@ export function EventSettingsPanel() {
                 onChange={(next) => update('startDate', next)}
               />
             </SettingsField>
+            {/* DEC-613 wave-24 amendment: docs/design/Chautauqua Settings.dc.html:756
+                `Ends` -- adopts the frame's own label verbatim. */}
             <SettingsField
-              label="End date"
+              label="Ends"
               htmlFor={FIELD_IDS.endDate}
               width="date"
               hint={fieldErrorHint('endDate')}

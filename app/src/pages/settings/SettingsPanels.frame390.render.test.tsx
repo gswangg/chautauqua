@@ -291,7 +291,9 @@ describe('frame :316 Event -- per-field rows and footer, real panel mount (Event
       </MemoryRouter>,
     );
 
-    expect(await screen.findByLabelText('Name')).toBeInTheDocument();
+    // DEC-613 wave-24 amendment: the edit form's Name field now labels
+    // itself 'Event name', matching the frame.
+    expect(await screen.findByLabelText('Event name')).toBeInTheDocument();
     const saveBtn = screen.getByRole('button', { name: 'Save changes' });
     const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
     expect(saveBtn.closest('.chq-settings-edit-footer')).not.toBeNull();
