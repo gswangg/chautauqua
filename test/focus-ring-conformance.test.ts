@@ -141,4 +141,21 @@ describe("focus ring conformance (DEC-409)", () => {
     }
     expect(violations, `banned outline suppression found in: ${violations.join(", ")}`).toEqual([]);
   });
+
+  // DEC-374: the check above must be comment-blind. These two controls pin
+  // that behaviour directly so a future regression to a raw `.includes(...)`
+  // scan (the very defect this wave fixed -- app/src/pages/contacts/contacts.css
+  // was failed for carrying the prohibition "Never `outline: none`" inside a
+  // comment) is caught here, not rediscovered against real product CSS.
+  it("negative control: a comment merely mentioning `outline: none` is not an offender", () => {
+    const src = stripCssComments(
+      "/* Never `outline: none` (DEC-409: no rule may remove an outline) */\n.chq-x { color: red; }",
+    );
+    expect(src.includes("outline: none")).toBe(false);
+  });
+
+  it("positive control: a real `outline: none` declaration is still an offender", () => {
+    const src = stripCssComments(".chq-x:focus { outline: none; }");
+    expect(src.includes("outline: none")).toBe(true);
+  });
 });

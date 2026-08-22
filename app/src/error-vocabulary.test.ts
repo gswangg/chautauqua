@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE; // app/src
@@ -26,13 +27,6 @@ const ERROR_STATES_CSS = readFileSync(ERROR_STATES_PATH, 'utf-8');
 
 const VOCAB_TOKENS = ['chq-field-invalid', 'chq-error-summary', 'chq-field-error', 'chq-form-row-error'];
 
-/** Strips /* ... *\/ block comments so a decision note quoting a class
- * name (e.g. ".chq-field-error is owned by...") is never mistaken for a
- * real declaration site. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 function declaresSelector(css: string, token: string): boolean {
   // A declaration site: the token appears as a class selector (`.token`),
   // bounded so `chq-error-summary` doesn't also match
@@ -40,7 +34,7 @@ function declaresSelector(css: string, token: string): boolean {
   // `{` or another selector -- i.e. it is actually the target of a rule,
   // not prose.
   const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\.${escaped}(?![\\w-])`).test(stripComments(css));
+  return new RegExp(`\\.${escaped}(?![\\w-])`).test(stripCssComments(css));
 }
 
 describe('DEC-124/DEC-958: the admin-SPA error vocabulary lives in ONE module', () => {

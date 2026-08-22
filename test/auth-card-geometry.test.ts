@@ -16,8 +16,15 @@
 //      uniform card gap, with the UA <p> margin zeroed.
 
 import { describe, expect, it } from "vitest";
-import { AUTH_CSS } from "../src/routes/auth.css";
-import { THEME_CSS } from "../src/views/theme";
+import { AUTH_CSS as AUTH_CSS_RAW } from "../src/routes/auth.css";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// DEC-374: match against the comment-stripped source so a comment merely
+// mentioning a selector/token can never satisfy (or falsely fail) an
+// assertion below.
+const AUTH_CSS = stripCssComments(AUTH_CSS_RAW);
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 function extractRule(css: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

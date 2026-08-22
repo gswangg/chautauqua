@@ -94,6 +94,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { flattenMediaRules, splitMediaBlocks } from '../../test/helpers/css-media-blocks';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLES_PATH = join(HERE, 'styles.css');
@@ -108,18 +109,12 @@ function allCssFiles(root: string): string[] {
   return out.sort();
 }
 
-/** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
- * text (a selector, a property) is never mistaken for a real rule. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
 /** Strips every @media block, brace-matched so a NESTED at-rule (contacts.css
  * nests `@media (hover: hover)` inside its terminal `@media (max-width:
  * 700px)`) cannot defeat the strip and leave a whole media block's phone
  * rules to be misread as top-level ones. */
 function stripMedia(css: string): string {
-  return splitMediaBlocks(stripComments(css)).outside;
+  return splitMediaBlocks(stripCssComments(css)).outside;
 }
 
 /** Every top-level `selector { body }` rule, with @media blocks stripped. */
@@ -155,7 +150,7 @@ function referencedTokens(css: string): string[] {
   const out = new Set<string>();
   const re = /var\(\s*(--chq-[A-Za-z0-9-]+)\s*\)/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(stripComments(css))) !== null) {
+  while ((m = re.exec(stripCssComments(css))) !== null) {
     const name = m[1];
     if (name) out.add(name);
   }
@@ -172,7 +167,7 @@ function referencedTokensWithFallback(css: string): string[] {
   const out = new Set<string>();
   const re = /var\(\s*(--chq-[A-Za-z0-9-]+)\s*,/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(stripComments(css))) !== null) {
+  while ((m = re.exec(stripCssComments(css))) !== null) {
     const name = m[1];
     if (name) out.add(name);
   }
@@ -313,7 +308,7 @@ function allTsAndTsxFiles(root: string): string[] {
  * blocks entirely) — a rule that only exists inside a phone-width query is
  * still a rule that must be reachable from markup, per invariant (D). */
 function allRulesIncludingMedia(css: string): Array<{ selector: string; body: string }> {
-  return flattenMediaRules(stripComments(css));
+  return flattenMediaRules(stripCssComments(css));
 }
 
 /** Every distinct `chq-…` class token appearing in a class selector — a
@@ -436,7 +431,7 @@ describe('CSS token + button-face contract (DEC-937)', () => {
     // stripped only, media NOT stripped — a phone-only class is defined).
     const defined = new Set<string>();
     for (const path of CSS_FILES) {
-      const css = stripComments(readFileSync(path, 'utf-8'));
+      const css = stripCssComments(readFileSync(path, 'utf-8'));
       const re = /\.(chq-[A-Za-z0-9-]+)/g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(css)) !== null) {
@@ -509,7 +504,7 @@ describe('CSS token + button-face contract (DEC-937)', () => {
   it('every font-family declaration resolves through var(--chq-font-…) or is inherit (E)', () => {
     const offenders: string[] = [];
     for (const path of CSS_FILES) {
-      const css = stripComments(readFileSync(path, 'utf-8'));
+      const css = stripCssComments(readFileSync(path, 'utf-8'));
       const label = relative(HERE, path);
       for (const { selector, value } of fontFamilyDeclarations(css)) {
         if (selector.trim() === '@font-face') continue; // declares a family, doesn't consume one

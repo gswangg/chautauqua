@@ -4,7 +4,14 @@
 // attribute-selector convention (see src/routes/public/shell.tsx:65-72).
 
 import { describe, expect, it } from "vitest";
-import { THEME_CSS } from "../src/views/theme";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// DEC-374: assertions below match against the comment-stripped source so a
+// comment merely mentioning a token/selector can never satisfy (or falsely
+// fail) a product assertion. Same shared, string-aware stripper used
+// everywhere else (test/helpers/strip-css-comments.ts).
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 const TOKEN_NAMES = [
   "--chq-paper",
@@ -87,7 +94,7 @@ describe("THEME_CSS native control coverage (DEC-585)", () => {
     expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*border:\s*1px solid var\(--chq-border\)[^}]*\}/s);
     // No accent-color survives: a tint on a widget we no longer render
     // would be a dead declaration claiming to own the control's colour.
-    expect(THEME_CSS.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/accent-color/);
+    expect(THEME_CSS).not.toMatch(/accent-color/);
   });
 
   it("fills the checked checkbox and radio with brand and marks them in on-brand", () => {

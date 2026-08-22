@@ -119,4 +119,17 @@
 // after conversion: 29, exactly 34-5, confirmed by forcing this ceiling to
 // -1 again. Ceiling stays at 29 (measured count now sits AT the ceiling,
 // not below it).
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 29;
+// v12m-w5-cd (DEC-374 amendment): converted 6 non-phone-frame offenders to
+// the shared, string-aware test/helpers/strip-css-comments.ts --
+// test/theme.test.ts, test/design-system.test.ts, test/auth-card-shape.
+// test.ts, test/auth-card-geometry.test.ts, test/auth-card-rhythm-w6.
+// test.ts, test/public-css.test.ts. Every assertion in all six still
+// passed once routed through the real stripper -- no vacuous receipt was
+// found in this batch. Re-measured with the ceiling forced to -1: 28
+// offenders remain (down from 34; this task's own brief's separately-cited
+// 29 was the pre-existing ceiling, not a fresh measurement -- re-derived
+// live). Ceiling lowered to match the measured value: 29 -> 28.
+// Thunderdome megabatch integration: w4-bg and w5-cd drained DISJOINT
+// offender sets in the same batch, so neither lane's declared value is the
+// integrated count. Re-derived on the merged tree at megabatch validation.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 28;
