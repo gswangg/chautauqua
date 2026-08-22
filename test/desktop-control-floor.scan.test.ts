@@ -283,7 +283,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
+import { collapseDigitsToSkeleton, enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
 import { DEC_964 } from '../src/decisions';
@@ -1041,15 +1041,13 @@ export function attributeLabelTokensInBlob(label: string, blob: string): string[
 // touching non-digit words -- a date's month name, an email's domain, a
 // button's verb all still have to match letter-for-letter.
 
-/** Collapses every run of ASCII digits in `s` to a single sentinel
- * character, `#` -- never itself a digit, so it can never re-match a real
- * digit run, and never introduced by any other step in this pipeline (no
- * frame label or app string this campaign has ever seen contains a literal
- * `#`, confirmed by the corpus-wide search this wave ran before picking it).
- * Exported so the non-vacuity fixture below can drive it directly. */
-export function collapseDigitsToSkeleton(s: string): string {
-  return s.replace(/\d+/g, '#');
-}
+// `collapseDigitsToSkeleton` itself now lives in ./frame-source-corpus
+// (wave-33, task w33-f amendment) so test/frame-eyebrow-label.scan.test.ts
+// can import the identical sentinel without cross-importing this
+// `.scan.test.ts` file's module (which would drag this file's own
+// `describe` blocks into that ledger's run). Re-exported here so every
+// existing call site in THIS file is unchanged.
+export { collapseDigitsToSkeleton };
 
 /** The same NORMALIZED_BLOBS the own-text tier already searches, with every
  * digit run further collapsed to the skeleton sentinel. Built once at module
