@@ -2246,8 +2246,10 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
     const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
-    expect(within(dialog).getByText(/Riley Moderator/)).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the participant
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Riley Moderator"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('Riley Moderator');
     // Still in the table -- no optimistic removal, no DELETE, until confirmed.
     expect(within(table).getByText('Riley Moderator')).toBeInTheDocument();
 
@@ -2278,10 +2280,10 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
     const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Riley Moderator"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Remove this participant?' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Remove "Riley Moderator"?' })).not.toBeInTheDocument();
     expect(within(table).getByText('Riley Moderator')).toBeInTheDocument();
   });
 
@@ -2313,7 +2315,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
 
     // DEC-941: Remove opens the shared ConfirmDialog naming the participant
     // first -- the DELETE only fires from the dialog's own confirm control.
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Riley Moderator"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove participant' }));
 
     await waitFor(() => {

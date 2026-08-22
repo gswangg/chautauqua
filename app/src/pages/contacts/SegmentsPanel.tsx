@@ -158,9 +158,11 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
       )}
 
       {pendingDelete && (
+        // DEC-941 (wave-23 amendment): title names the segment already held
+        // in pendingDelete; body drops the now-duplicated name (DEC-613).
         <ConfirmDialog
-          title="Delete this segment"
-          body={`Delete "${pendingDelete.name}"? This cannot be undone.`}
+          title={`Delete "${pendingDelete.name}"?`}
+          body="This cannot be undone."
           confirmLabel="Delete segment"
           pending={busy}
           onConfirm={() => remove(pendingDelete.id)}

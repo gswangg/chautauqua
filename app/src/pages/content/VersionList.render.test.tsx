@@ -196,9 +196,11 @@ describe('VersionList', () => {
       render(<VersionList versions={[v1]} onDeleted={onDeleted} />);
 
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-      const dialog = screen.getByRole('dialog');
+      // DEC-941 (wave-23 amendment): the title names the version
+      // (app/src/decisions-data/DEC-941.md).
+      const dialog = screen.getByRole('dialog', { name: 'Delete "slides-v1.pdf"?' });
       expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByText(/slides-v1\.pdf/)).toBeInTheDocument();
+      expect(dialog.getAttribute('aria-label')).toContain('slides-v1.pdf');
 
       fireEvent.click(within(dialog).getByRole('button', { name: 'Delete version' }));
 

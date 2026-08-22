@@ -746,8 +746,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       )}
       {showAddToEvent && <AddToEventModal contact={contactListItem} onClose={() => setShowAddToEvent(false)} />}
       {showDeleteConfirm && (
+        // DEC-941 (wave-23 amendment): the title names the contact already
+        // held in props; the body drops the now-duplicated name (DEC-613).
         <ConfirmDialog
-          title="Delete this contact"
+          title={`Delete "${firstName} ${lastName}"?`}
           body={
             deleteError ? (
               <>
@@ -757,7 +759,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 </p>
               </>
             ) : (
-              `Delete ${firstName} ${lastName}? Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.`
+              `Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.`
             )
           }
           confirmLabel="Delete contact"

@@ -399,9 +399,11 @@ export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: ()
       </div>
 
       {pendingDelete && (
+        // DEC-941 (wave-23 amendment): title names the template already
+        // held in pendingDelete; body drops the now-duplicated name (DEC-613).
         <ConfirmDialog
-          title="Delete this template?"
-          body={`Sends already made keep their copy of "${pendingDelete.name}"'s text. This cannot be undone.`}
+          title={`Delete "${pendingDelete.name}"?`}
+          body="Sends already made keep their copy of the text. This cannot be undone."
           confirmLabel="Delete template"
           pending={deleting}
           onConfirm={() => void confirmRemove()}
