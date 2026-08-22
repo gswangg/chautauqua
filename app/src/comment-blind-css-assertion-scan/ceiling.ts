@@ -96,4 +96,14 @@
 // receipt (a comment-satisfied assertion) was found in this batch.
 // Ceiling lowered by exactly 1, 33 -> 32; v12m-w13-rf drains N more of the
 // same 38 in this batch; the merge train re-measures.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 29;
+// v12m-w5-cd (DEC-374 amendment): converted 6 non-phone-frame offenders to
+// the shared, string-aware test/helpers/strip-css-comments.ts --
+// test/theme.test.ts, test/design-system.test.ts, test/auth-card-shape.
+// test.ts, test/auth-card-geometry.test.ts, test/auth-card-rhythm-w6.
+// test.ts, test/public-css.test.ts. Every assertion in all six still
+// passed once routed through the real stripper -- no vacuous receipt was
+// found in this batch. Re-measured with the ceiling forced to -1: 28
+// offenders remain (down from 34; this task's own brief's separately-cited
+// 29 was the pre-existing ceiling, not a fresh measurement -- re-derived
+// live). Ceiling lowered to match the measured value: 29 -> 28.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 28;

@@ -12,11 +12,17 @@ import { accountRoutes } from "../src/routes/account";
 import { registerNotFoundHandler } from "../src/server/not-found";
 import { registerErrorHandler } from "../src/server/http";
 import { sessionLoader } from "../src/server/middleware";
-import { AUTH_CSS } from "../src/routes/auth.css";
+import { AUTH_CSS as AUTH_CSS_RAW } from "../src/routes/auth.css";
 import { DEMO_IDENTITIES } from "../src/lib/demo-identities";
 import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
 import type { Db } from "../src/server/context";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// DEC-374: match against the comment-stripped source so a comment merely
+// mentioning a selector/token can never satisfy (or falsely fail) an
+// assertion below.
+const AUTH_CSS = stripCssComments(AUTH_CSS_RAW);
 
 function countTags(html: string, tag: string): number {
   const re = new RegExp(`<${tag}[ >]`, "g");

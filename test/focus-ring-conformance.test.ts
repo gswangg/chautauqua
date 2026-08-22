@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 // DEC-409: every interactive element gets a designed focus ring — 2px olive
 // outline, 2px offset — via `:focus-visible`, on both stylesheet roots
@@ -133,11 +134,28 @@ describe("focus ring conformance (DEC-409)", () => {
   it("no scanned stylesheet silences the focus ring with `outline: none` or `outline: 0`", () => {
     const violations: string[] = [];
     for (const file of scannedFiles) {
-      const src = readFileSync(file, "utf8");
+      const src = stripCssComments(readFileSync(file, "utf8"));
       if (src.includes("outline: none") || src.includes("outline: 0")) {
         violations.push(file);
       }
     }
     expect(violations, `banned outline suppression found in: ${violations.join(", ")}`).toEqual([]);
+  });
+
+  // DEC-374: the check above must be comment-blind. These two controls pin
+  // that behaviour directly so a future regression to a raw `.includes(...)`
+  // scan (the very defect this wave fixed -- app/src/pages/contacts/contacts.css
+  // was failed for carrying the prohibition "Never `outline: none`" inside a
+  // comment) is caught here, not rediscovered against real product CSS.
+  it("negative control: a comment merely mentioning `outline: none` is not an offender", () => {
+    const src = stripCssComments(
+      "/* Never `outline: none` (DEC-409: no rule may remove an outline) */\n.chq-x { color: red; }",
+    );
+    expect(src.includes("outline: none")).toBe(false);
+  });
+
+  it("positive control: a real `outline: none` declaration is still an offender", () => {
+    const src = stripCssComments(".chq-x:focus { outline: none; }");
+    expect(src.includes("outline: none")).toBe(true);
   });
 });

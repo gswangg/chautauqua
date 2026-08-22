@@ -1,7 +1,13 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ThemeStyles, THEME_CSS } from "../src/views/theme";
+import { ThemeStyles, THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// DEC-374: match against the comment-stripped source so a comment merely
+// mentioning a token/selector can never satisfy (or falsely fail) an
+// assertion below.
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 const REPO_ROOT = join(__dirname, "..");
 const STYLES_CSS_PATH = join(REPO_ROOT, "app/src/styles.css");
@@ -77,7 +83,7 @@ function listCssFiles(dir: string): string[] {
 }
 
 describe("design system token parity (DEC-367/372)", () => {
-  const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
+  const stylesCss = stripCssComments(readFileSync(STYLES_CSS_PATH, "utf8"));
 
   // DEC-989 Amendment (wave 37) is the one NAMED exception to DEC-372's set
   // equality: the table measure (1440) is an admin-SPA-only class -- nothing
@@ -230,7 +236,7 @@ describe("page stylesheets never redefine a DEC-368 shared class name (DEC-368)"
     for (const file of listCssFiles(PAGES_DIR)) {
       const css = readFileSync(file, "utf8");
       // Strip comments before scanning selectors.
-      const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+      const stripped = stripCssComments(css);
       const ruleRe = /([^{}]+)\{/g;
       let m: RegExpExecArray | null;
       while ((m = ruleRe.exec(stripped))) {
@@ -285,7 +291,7 @@ describe("DEC-379: styles.css closes the SPA's chq-* class vocabulary", () => {
   });
 
   it("--chq-ink-strong is defined in both token files (DEC-379)", () => {
-    const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
+    const stylesCss = stripCssComments(readFileSync(STYLES_CSS_PATH, "utf8"));
     expect(stylesCss).toMatch(/--chq-ink-strong\s*:\s*#2e2a24/i);
     expect(THEME_CSS).toMatch(/--chq-ink-strong\s*:\s*#2e2a24/i);
   });

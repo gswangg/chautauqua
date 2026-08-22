@@ -104,4 +104,15 @@
 // (forms-phone-390) and 6f0b5d48 (contacts head-band-face / rule-builder /
 // rule-chip-dismiss) all land inside this batch. Lowered 88 -> 86 from the
 // re-measured number, never by arithmetic on the batch size.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 86;
+// v12m-w5-cd (DEC-374 amendment): converted 2 local-stripper declarations
+// to the shared import -- app/src/css-contract.scan.test.ts's local
+// `stripComments` (deleted the declaration, every call site now calls the
+// imported `stripCssComments` directly; its sibling `stripTsxComments`,
+// which also strips `//` line comments over .tsx source -- a capability
+// the shared CSS-only helper doesn't have -- was deliberately left alone)
+// and app/src/error-vocabulary.test.ts's local `stripComments` (deleted,
+// replaced with the shared import). Every assertion in both files still
+// passed once routed through the real stripper -- no vacuous receipt was
+// found in this batch. Re-measured with the ceiling forced to -1: 85
+// offenders remain (down from 87). Ceiling lowered to match: 86 -> 85.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 85;

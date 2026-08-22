@@ -8,10 +8,18 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import { validAccent } from "../src/routes/public/shell";
-import { PUBLIC_CSS } from "../src/routes/public/public.css";
-import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
-import { THEME_CSS } from "../src/views/theme";
+import { PUBLIC_CSS as PUBLIC_CSS_RAW } from "../src/routes/public/public.css";
+import { AGENDA_CSS as AGENDA_CSS_RAW } from "../src/routes/public/css/agenda.css";
+import { THEME_CSS as THEME_CSS_RAW } from "../src/views/theme";
 import type { AppEnv } from "../src/server/env";
+import { stripCssComments } from "./helpers/strip-css-comments";
+
+// DEC-374: match against the comment-stripped source so a comment merely
+// mentioning a selector/token can never satisfy (or falsely fail) an
+// assertion below.
+const PUBLIC_CSS = stripCssComments(PUBLIC_CSS_RAW);
+const AGENDA_CSS = stripCssComments(AGENDA_CSS_RAW);
+const THEME_CSS = stripCssComments(THEME_CSS_RAW);
 
 function makeChain(rows: unknown[]) {
   const chain: any = {
@@ -153,7 +161,7 @@ describe("PUBLIC_CSS search box (DEC-919 amendment, wave 40): one compact input 
 // CFP surface renders through) and PUBLIC_CSS (public-surface-only rules,
 // if any ever add one) so this doesn't silently regress on a future rule.
 function ruleBlocksWithAppearanceNone(css: string): string[] {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const stripped = stripCssComments(css);
   const blocks: string[] = [];
   const ruleRe = /[^{}]*\{[^{}]*\}/g;
   let m: RegExpExecArray | null;
