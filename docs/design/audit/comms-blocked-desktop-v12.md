@@ -70,7 +70,9 @@ record via the DEC-660 wave-148 comment this task's receipt corroborates.
 
 ## Frames :686 "What each template renders" and :712 "DevFlow Conf 2027"
 
-**DIVERGES (both).** These two frames are one continuous panel: a 4-up
+**RESOLVED-BY-RULING (DEC-976, wave 9).** See
+`docs/design/DEVIATIONS.md` §8 "A pack frame that documents a VOCABULARY
+is not a screen." These two frames are one continuous panel: a 4-up
 reference gallery of email cards ("Submission received" / "Accepted" /
 "Tasks outstanding" / "Schedule published"), each captioned with an eyebrow
 ("Emails"), a `seenIn`/`seenWhy` provenance note, and a full rendered card
@@ -98,7 +100,7 @@ frame :687).
   rendering the wizard with `{event_name}` in the subject and finding the
   resolved text.
 
-**Recommendation:** `docs/design/DEVIATIONS.md` should record that
+**Recommendation:** landed. `docs/design/DEVIATIONS.md` §8 now records that
 `Chautauqua Comms.dc.html:686-749` ("What each template renders") is a
 documentation/reference panel for the product's email vocabulary, not a
 built screen, per this task's instruction not to construct a new surface
@@ -109,12 +111,13 @@ under the desktop freeze to make it "MATCH."
 | Frame | Verdict |
 | --- | --- |
 | :750 Compose · send blocked | DIVERGES (real cause substitution + table→list shape; population-naming and 3-button footer both hold) |
-| :686 What each template renders | DIVERGES (documents a vocabulary, not a rendered screen — recommend DEVIATIONS) |
-| :712 DevFlow Conf 2027 (template card body) | DIVERGES (same finding as :686; the one interpolation fact it demonstrates is real) |
+| :686 What each template renders | RESOLVED-BY-RULING (DEC-976, wave 9) — see DEVIATIONS.md §8, "documents a vocabulary, not a rendered screen" |
+| :712 DevFlow Conf 2027 (template card body) | RESOLVED-BY-RULING (DEC-976, wave 9) — same finding as :686; the one interpolation fact it demonstrates is real |
 
 3 of 3 frames in this residue slice DIVERGE, none newly broken by this
 task: :750's population-naming and action-row structure are real and
 correct even though the specific "merge field" cause the frame narrates
 isn't the one wired up (a documented, DEC-660-blessed substitution);
 :686/:712 document a reference gallery this app has never built as a
-screen. No desktop byte was moved to produce this verdict.
+screen, now RESOLVED-BY-RULING (DEC-976, wave 9) in DEVIATIONS.md §8. No
+desktop byte was moved to produce this verdict.

@@ -125,7 +125,9 @@ event and no open CFP or published programme.
 
 ## Frame :226 "Docs · the element library"
 
-**UNREACHED.** No route in the app serves this frame. `docsSiteRoutes`
+**RESOLVED-BY-RULING (DEC-976, wave 9).** See `docs/design/DEVIATIONS.md`
+§8 "A pack frame that documents a VOCABULARY is not a screen." No route
+in the app serves this frame. `docsSiteRoutes`
 (`src/routes/docs-site.tsx`) registers exactly two `GET`s -- `/docs` and
 `/docs/:slug` -- and no entry in `DOCS_ARTICLES` names or slugs an
 "element library" article; the frame's content (nine block kinds: prose,
@@ -134,9 +136,10 @@ reflected in the type system instead, as `DocsBlock`'s own closed union
 (`src/routes/docs-content/types.ts`), never rendered as a page of its own.
 `test/frame-caption-ledger/exclusions/explainer.ts` independently treats
 this frame's caption text as design-system reference vocabulary, not
-product copy the app renders, for the same underlying reason. This frame is
-recorded UNREACHED rather than rescued with a new mock stack or a guessed
-route (task contract, DEC-613).
+product copy the app renders, for the same underlying reason. This frame
+was UNREACHED and is now recorded as a ruled non-build rather than
+rescued with a new mock stack or a guessed route (task contract,
+DEC-613).
 
 ## Summary
 
@@ -147,9 +150,9 @@ route (task contract, DEC-613).
 | Home :269 Fresh deploy · desktop | MATCHES |
 | Docs :28 Docs · an article | MATCHES |
 | Docs :119 Docs · the index | MATCHES |
-| Docs :226 Docs · the element library | UNREACHED -- no route serves it |
+| Docs :226 Docs · the element library | RESOLVED-BY-RULING (DEC-976, wave 9) -- see DEVIATIONS.md §8; no route serves it |
 
-5 of 6 frames MATCH as rendered; the sixth is UNREACHED, not a divergence --
+5 of 6 frames MATCH as rendered; the sixth was UNREACHED, not a divergence --
 it is design-system reference material the pack draws as a frame but the
-app never turns into a page. No desktop byte was moved to produce this
-verdict.
+app never turns into a page, now RESOLVED-BY-RULING (DEC-976, wave 9) in
+DEVIATIONS.md §8. No desktop byte was moved to produce this verdict.
