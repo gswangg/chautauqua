@@ -136,7 +136,7 @@ async function enterSelectingWithTicked(count: number) {
   return view;
 }
 
-describe('ContentApp 390 "Content · selecting" (docs/design/Chautauqua Content.dc.html:247-286, DEC-967 shape)', () => {
+describe('ContentApp 390 "Content · selecting" (DEC-967 shape)', () => {
   it('frame citations: :253 the H1, :255-257 the selecting meta triple, :260-261 the chip pair, :269-273 the row template, :279-280 the docked bar', async () => {
     // DEC-967 wave-99 amendment: a frame citation proves the PACK draws
     // this frame; it does not prove the APP renders it. This block adds
@@ -144,6 +144,9 @@ describe('ContentApp 390 "Content · selecting" (docs/design/Chautauqua Content.
     // block itself is not tautological -- the fuller per-region assertions
     // live in the sibling it() blocks below.
     await enterSelectingWithTicked(2);
+    // docs/design/Chautauqua Content.dc.html:247-286 is the whole
+    // "Content · selecting" phone frame, opening with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`.
     expect(screen.getByRole('heading', { level: 1, name: 'Content' })).toBeInTheDocument();
     expect(document.querySelector('.chq-content-phone-selecting-meta')).not.toBeNull();
     const dock = document.querySelector('[data-chq-phone-dock] .chq-bulkbar');

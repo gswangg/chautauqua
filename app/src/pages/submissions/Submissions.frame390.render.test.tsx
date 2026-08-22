@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------
-// "Submissions" 390 (docs/design/Chautauqua Submissions.dc.html:137-181)
+// "Submissions" 390 -- see the describe() below for the frame citation.
 // ---------------------------------------------------------------------
 
 const EVENT_ID = 'evt-frame390-1';
@@ -80,7 +80,7 @@ function renderLanding() {
   );
 }
 
-describe('v12 frame render verdict "Submissions · 390" (docs/design/Chautauqua Submissions.dc.html:137-181, task w31-e, DEC-976 wave-31)', () => {
+describe('v12 frame render verdict "Submissions · 390" (task w31-e, DEC-976 wave-31)', () => {
   beforeEach(() => {
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
   });
@@ -141,6 +141,9 @@ describe('v12 frame render verdict "Submissions · 390" (docs/design/Chautauqua 
 
     renderLanding();
 
+    // docs/design/Chautauqua Submissions.dc.html:137-181 is the whole
+    // "Submissions · 390" phone frame, opening with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`.
     // :144 -- exactly one <h1> reading the frame's literal title.
     await waitFor(() => {
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
@@ -238,7 +241,7 @@ describe('v12 frame render verdict "Submissions · 390" (docs/design/Chautauqua 
 });
 
 // ---------------------------------------------------------------------
-// "Submission detail" 390 (docs/design/Chautauqua Submissions.dc.html:355-393)
+// "Submission detail" 390 -- see the describe() below for the frame citation.
 // ---------------------------------------------------------------------
 
 const SUB_ID = 'sub-detail-390-1';
@@ -324,7 +327,7 @@ function renderDetail() {
   );
 }
 
-describe('v12 frame render verdict "Submission detail · 390" (docs/design/Chautauqua Submissions.dc.html:355-393, task w31-e, DEC-976 wave-31)', () => {
+describe('v12 frame render verdict "Submission detail · 390" (task w31-e, DEC-976 wave-31)', () => {
   it('renders the real /submissions/:id route at phone width: head, answers, reviews, and the three-action dock', async () => {
     // :358 the back link's short phone label.
     verbatimLine(358, '          <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Triage</a>');
@@ -355,10 +358,10 @@ describe('v12 frame render verdict "Submission detail · 390" (docs/design/Chaut
     mockDetailEndpoints();
     renderDetail();
 
-    // :361-362 -- exactly one <h1> reading the seeded talk title (graded
-    // by SHAPE, never pinned to the frame's own sample title -- this test
-    // happens to seed the same string as the frame's sample data, but the
-    // assertion below checks the DOM shape, not that literal).
+    // docs/design/Chautauqua Submissions.dc.html:355-393 opens with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`;
+    // :361-362 draws exactly one <h1>, graded by SHAPE below (never
+    // pinned to the frame's own sample title).
     await waitFor(() => {
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });

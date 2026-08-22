@@ -152,7 +152,7 @@ function renderDetail() {
   );
 }
 
-describe('DeliverableDetail 390 "Session · deliverable" (docs/design/Chautauqua Content.dc.html:373-429, DEC-967 shape)', () => {
+describe('DeliverableDetail 390 "Session · deliverable" (DEC-967 shape)', () => {
   it('frame citations: :375 back link, :376/:377 title+trailer, :380/:381 status band, :383 Approve, :386/:387 chips, :389 caption, :395-399 version row', async () => {
     // DEC-967 wave-99 amendment: a frame citation proves the PACK draws
     // this frame; it does not prove the APP renders it. This block adds
@@ -162,6 +162,9 @@ describe('DeliverableDetail 390 "Session · deliverable" (docs/design/Chautauqua
     mockDetail();
     renderDetail();
     await screen.findByText('slides-v3.pdf');
+    // docs/design/Chautauqua Content.dc.html:373-429 is the whole
+    // "Session · deliverable" phone frame, opening with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`.
     expect(screen.getByRole('heading', { level: 1, name: 'Taming 40-Minute CI' })).toBeInTheDocument();
     expect(document.querySelector('.chq-content-status-band')).not.toBeNull();
 

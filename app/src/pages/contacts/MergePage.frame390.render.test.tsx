@@ -72,7 +72,7 @@ const PREVIEW_FIELDS = [
   { key: 'notes', label: 'Notes', kept: 'Met at PlatformCon.', discarded: [], outcome: 'append' },
 ];
 
-describe('v12 frame render verdict "Merge · 390" (docs/design/Chautauqua Contacts.dc.html:522-546, task w29-a, DEC-976 wave-29)', () => {
+describe('v12 frame render verdict "Merge · 390" (task w29-a, DEC-976 wave-29)', () => {
   it('renders every drawn body element from the real /contacts/merge route', async () => {
     // docs/design/Chautauqua Contacts.dc.html:524 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Duplicates</a>`
     verbatimLine(
@@ -109,6 +109,9 @@ describe('v12 frame render verdict "Merge · 390" (docs/design/Chautauqua Contac
 
     renderAt('/contacts/merge?ids=ct-keep,ct-b,ct-c&keep=ct-keep');
 
+    // docs/design/Chautauqua Contacts.dc.html:522-546 is the whole
+    // "Merge · 390" phone frame, opening with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`.
     // :525 -- exactly one <h1> reading the frame's literal title.
     await waitFor(() => {
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
