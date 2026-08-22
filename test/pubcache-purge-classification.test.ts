@@ -24,10 +24,20 @@
 // check did surface one real, already-safe overlap; see
 // KNOWN_WILDCARD_SHADOW_OVERLAPS below for the finding and why it's fine.
 
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { join } from "node:path";
-import { classifyMutatingPath, matchPattern, NEVER_PUBLIC, PUBLIC_AFFECTING } from "../src/server/pubcache";
+import {
+  PUBVER_KEY,
+  bumpPublicVersionMiddleware,
+  classifyMutatingPath,
+  matchPattern,
+  NEVER_PUBLIC,
+  PUBLIC_AFFECTING,
+} from "../src/server/pubcache";
 import { enumerateRegisteredRoutes } from "./helpers/registered-routes";
+import type { KVStore } from "../src/lib/draft";
+import type { AppEnv } from "../src/server/env";
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -148,5 +158,120 @@ describe("DEC-627: source-scanned mutating routes are all classified", () => {
       throw new Error(`Found ${dupes.length} duplicate pattern(s):\n${dupes.join("\n")}`);
     }
     expect(dupes).toEqual([]);
+  });
+});
+
+// DEC-024 (wave-22 amendment): a membership test ("matches exactly one of
+// the two lists") cannot detect a MISclassification -- the whole failure
+// mode this amendment fixes is a route sitting in the wrong one of two
+// lists it's disjointly a member of. This DIRECTED arm names specific
+// writer routes that MUST resolve to PUBLIC_AFFECTING (not merely "some
+// list"), each paired with the exact public-reader coordinate it justifies
+// the classification against, so a future regression that quietly moves one
+// back to NEVER_PUBLIC fails loudly here even though it would still pass
+// every "matches exactly one list" test above.
+interface DirectedPair {
+  writerRoute: string;
+  publicReaderCoordinate: string;
+  reason: string;
+}
+
+const DIRECTED_PUBLIC_AFFECTING: DirectedPair[] = [
+  {
+    writerRoute: "PATCH /api/v1/forms/:formId",
+    publicReaderCoordinate: "src/server/repo/public/event.ts getPublicCfpWindow",
+    reason:
+      "writes form.openDate/closeDate; getPublicCfpWindow reads exactly those columns for the cached " +
+      "/e/:slug/sessions CFP rail (via src/routes/public/sessions.tsx's formWindowState call).",
+  },
+  {
+    writerRoute: "PATCH /api/v1/fields/:fieldId",
+    publicReaderCoordinate: "src/server/repo/public/event.ts getPublicFormatOptions",
+    reason:
+      "can change a session_format-role field's options (or grant/clear the role itself); " +
+      "getPublicFormatOptions reads that role's options for the cached /e/:slug/sessions format chips.",
+  },
+  {
+    // Non-vacuity control: an already-correct pair, so this arm is not
+    // trivially satisfied by the two new rows alone.
+    writerRoute: "POST /api/v1/events/:eventId/submissions/status",
+    publicReaderCoordinate: "src/server/repo/public/gates.ts visibleSessionConditions (via content_status)",
+    reason: "flips a submission's accepted/visible status, which the public gate reads directly.",
+  },
+];
+
+describe("DEC-024 (wave-22 amendment): directed writer -> PUBLIC_AFFECTING pairs", () => {
+  it("is non-vacuous (more than the two routes this amendment adds)", () => {
+    expect(DIRECTED_PUBLIC_AFFECTING.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("every named writer route classifies public-affecting specifically (not just 'some list')", () => {
+    const offenders: string[] = [];
+    for (const { writerRoute, publicReaderCoordinate, reason } of DIRECTED_PUBLIC_AFFECTING) {
+      const [method, path] = writerRoute.split(" ");
+      const classification = classifyMutatingPath(path!);
+      if (classification !== "public-affecting") {
+        offenders.push(
+          `  ${method} ${path} must classify "public-affecting" (reader: ${publicReaderCoordinate} -- ${reason}) ` +
+            `but classified "${classification}".`,
+        );
+      }
+    }
+    if (offenders.length > 0) {
+      throw new Error(`Found ${offenders.length} misclassified directed writer(s):\n${offenders.join("\n")}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("every directed writer route is a real registered mutating route (no stale/typo'd row)", () => {
+    for (const { writerRoute } of DIRECTED_PUBLIC_AFFECTING) {
+      const [method, path] = writerRoute.split(" ");
+      const live = mutatingRoutes.some((r) => r.method === method && matchPattern(path!, r.fullPath));
+      expect(live, `${writerRoute} does not match any registered mutating route`).toBe(true);
+    }
+  });
+});
+
+// DEC-024 (wave-22 amendment): a request-level receipt that a PATCH to a
+// form's closeDate actually bumps the public version -- the same
+// bumpPublicVersionMiddleware + fakeKv harness test/pubcache.test.ts's own
+// "bumpPublicVersionMiddleware (DEC-427)" describe block uses, reused here
+// rather than inventing a second mock stack.
+function fakeKv(initial: Record<string, string> = {}): KVStore & { store: Record<string, string> } {
+  const store: Record<string, string> = { ...initial };
+  return {
+    store,
+    async get(key) {
+      return key in store ? store[key]! : null;
+    },
+    async put(key, value) {
+      store[key] = value;
+    },
+    async delete(key) {
+      delete store[key];
+    },
+  };
+}
+
+describe("DEC-024 (wave-22 amendment): a form closeDate PATCH bumps the public version", () => {
+  function buildApp(kv: KVStore) {
+    const app = new Hono<AppEnv>();
+    app.use("*", bumpPublicVersionMiddleware);
+    app.patch("/api/v1/forms/:formId", (c) => c.json({ ok: true }, 200));
+    return { app, env: { KV: kv } as unknown as AppEnv["Bindings"] };
+  }
+
+  it("PATCH /api/v1/forms/:formId (closing the CFP) bumps chq:pubver", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+
+    const res = await app.request(
+      "/api/v1/forms/f1",
+      { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ closeDate: 1700000000000 }) },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    expect(kv.store[PUBVER_KEY]).not.toBe("v0");
   });
 });
