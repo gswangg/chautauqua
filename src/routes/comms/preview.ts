@@ -4,7 +4,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { preflightRender, spendsPerSubmissionContent } from "../../domain/compose";
 import { renderEmailHtml } from "../../mail/shell";
@@ -28,9 +28,7 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
   const input = await resolveComposeInput(c, eventId, body);
 
   // DEC-122: loadComposeSubmissions silently excludes ids outside this event

@@ -6,7 +6,7 @@
 // No behavior change from the original file — pure extraction.
 
 import type { AppEnv } from "../../server/env";
-import { ApiError } from "../../server/http";
+import { ApiError, asRequestRecord } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy"; // DEC-422 amendment
 import {
@@ -39,12 +39,10 @@ void DEC_676; // parseCriteriaList's guidance passthrough below
 void DEC_703; // hydrateResultsRows' speakers/trackNames columns below
 void DEC_517; // parseScale/parseCriteriaList's finite checks below
 
-export function asRecord(body: unknown): Record<string, unknown> {
-  if (typeof body !== "object" || body === null) {
-    throw new ApiError("invalid", "Request body must be a JSON object");
-  }
-  return body as Record<string, unknown>;
-}
+// DEC-613 (amendment, wave 23): re-exports the ONE shape predicate from
+// server/http.ts (refuses null AND arrays) under this module's existing
+// name -- every existing call site's import keeps resolving unchanged.
+export const asRecord = asRequestRecord;
 
 export function currentAuth(c: { var: { auth?: { userId: string; role: string; orgId: string } } }) {
   const auth = c.var.auth;
