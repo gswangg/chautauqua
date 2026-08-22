@@ -387,7 +387,31 @@ describe('v12 phone frame "Portal · Your profile" (:531-559, GET /portal/profil
     expect(html).not.toContain(">Cancel<");
   });
 
-  it("DIVERGES: the frame's 'Replace' headshot control label renders nowhere -- the route's empty-headshot state is a plain file input labelled 'Upload a new headshot'", async () => {
+  it("MATCHES (DEC-576 wave-21): the frame's 'Replace' headshot control label renders as the bordered pill when a headshot is already on file", async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:541
+    // `<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>`
+    expect(designLine(541)).toBe(
+      `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>`,
+    );
+    const { getContactProfile } = await import("../src/server/repo/profile");
+    vi.mocked(getContactProfile).mockResolvedValueOnce({
+      id: "ct-1",
+      firstName: "Priya",
+      lastName: "Raman",
+      title: null,
+      company: null,
+      bio: null,
+      headshotUrl: "https://example.test/headshot.jpg",
+      socialLinks: { twitter: "", linkedin: "", github: "", website: "" },
+    });
+    const app = await buildApp();
+    const res = await app.request("/portal/profile");
+    const html = await res.text();
+    expect((html.match(/class="chq-portal-headshot-pick"/g) ?? []).length).toBe(1);
+    expect(html).toContain(">Replace<input");
+  });
+
+  it("MATCHES (DEC-576 wave-21 clause (b)): the control label reads 'Add a headshot' when none is on file", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:541
     // `<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>`
     expect(designLine(541)).toBe(
@@ -396,7 +420,7 @@ describe('v12 phone frame "Portal · Your profile" (:531-559, GET /portal/profil
     const app = await buildApp();
     const res = await app.request("/portal/profile");
     const html = await res.text();
-    expect(html).not.toContain(">Replace<");
-    expect(html).toContain("Upload a new headshot");
+    expect((html.match(/class="chq-portal-headshot-pick"/g) ?? []).length).toBe(1);
+    expect(html).toContain(">Add a headshot<input");
   });
 });

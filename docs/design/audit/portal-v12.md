@@ -252,15 +252,17 @@ checks above do not name:
    register for data-dense surfaces) stays read-only and is unused in this
    hero.
 
-2. **"Portal · Your profile" (:531-559) headshot control label, DIVERGES
-   (new).** The frame draws a bordered pill labelled `Replace` at :541 for
-   the headshot slot. `src/routes/portal/profile.tsx`'s empty-headshot
-   state (this task's fixture has no `headshotUrl`) renders a plain
-   `<label>Upload a new headshot<input type="file" ...></label>` instead —
-   `Replace` renders nowhere in the body. Not previously named in this
-   file's DEC-576/wave-16 entries (which cover the H1 and the dock's
-   missing Cancel only); recorded here as a control-shape gap for the
-   planner, not fixed by this lane.
+2. **"Portal · Your profile" (:531-559) headshot control label, MATCHES
+   (wave-25 receipt, task v12m-w25-a, DEC-576 wave-25 amendment).** The
+   frame draws a bordered pill labelled `Replace` at :541 for the headshot
+   slot. This row originally recorded a DIVERGES finding against a plain
+   `<label>Upload a new headshot<input type="file" ...></label>` — but that
+   finding described the tree BEFORE wave-21's build (below) landed, and
+   the verdict test pinning it (`test/portal-phone-frames.render.test.ts`)
+   was re-graded to MATCHES in the same commit that corrected this row, per
+   the DEC-576 wave-25 amendment ("a DIVERGES verdict whose divergence has
+   been built is stale evidence"). See the RESOLVED narrative immediately
+   below for the construct that closes it.
 
    RESOLVED (wave-21, task w21-a, DEC-576 wave-21 amendment): the control
    now adopts the frame's geometry verbatim. src/routes/portal/profile.tsx`class="chq-portal-headshot-pick"`
