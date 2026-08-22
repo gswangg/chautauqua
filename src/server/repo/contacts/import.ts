@@ -834,10 +834,17 @@ export async function planImportRows(
 
   const fileEmails = new Set<string>();
   const fileLastNames = new Set<string>();
-  for (const { parsed } of rows) {
+  // DEC-456 (wave-6 amendment): line -> normalized email, mirroring
+  // applyImportRows' own `emailByLine` pre-pass so the fill-collision check
+  // below can look up the offered address for a merge line without a second
+  // scan over `rows`.
+  const emailByLine = new Map<number, string>();
+  for (const { line, parsed } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
     if (email && email.trim() !== "" && isValidEmail(email)) {
-      fileEmails.add(normalizeEmail(email));
+      const key = normalizeEmail(email);
+      fileEmails.add(key);
+      emailByLine.set(line, key);
     }
     const lastName = typeof parsed.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
     if (lastName !== "") fileLastNames.add(lastName);
@@ -875,6 +882,33 @@ export async function planImportRows(
   const skipLineSet = new Set(opts?.skipLines ?? []);
   const mergeLines = opts?.mergeLines ?? [];
   const mergeTargetsByLine = await resolveMergeTargets(db, orgId, rows, skipLineSet, mergeLines, byEmail);
+
+  // DEC-456 (wave-6 amendment): the SAME login-identity conflict check
+  // applyImportRows' fill branch enforces (import.ts:588-600) — a merge FILL
+  // (target's stored email is blank) is refused here too, before the dry run
+  // ever previews it as a clean update, when a `schema.user` row already
+  // owns the offered address under a DIFFERENT contact. Batched over every
+  // fill candidate in this file, never a per-line query, same discipline as
+  // applyImportRows' own `userOwnerByEmail` pre-pass -- the two can no
+  // longer disagree about whether a fill is refused.
+  const userOwnerByEmail = new Map<string, { userId: string; contactId: string | null }>();
+  {
+    const fillCandidateEmails = new Set<string>();
+    for (const [line, target] of mergeTargetsByLine) {
+      if (target.email.trim() !== "") continue;
+      const key = emailByLine.get(line);
+      if (key !== undefined) fillCandidateEmails.add(key);
+    }
+    for (const batch of chunkIds([...fillCandidateEmails])) {
+      const owners = await db
+        .select({ id: schema.user.id, contactId: schema.user.contactId, email: schema.user.email })
+        .from(schema.user)
+        .where(inArray(sql`lower(${schema.user.email})`, batch));
+      for (const owner of owners as { id: string; contactId: string | null; email: string }[]) {
+        userOwnerByEmail.set(normalizeEmail(owner.email), { userId: owner.id, contactId: owner.contactId });
+      }
+    }
+  }
 
   const planRows: ImportPlanRow[] = [];
   let created = 0;
@@ -945,6 +979,17 @@ export async function planImportRows(
             "invalid",
             `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
             { mergeLines: `line ${line}: resolves to an update` },
+          );
+        }
+        // DEC-456 (wave-6 amendment): same fill-collision refusal as
+        // applyImportRows' userOwnerByEmail check (import.ts:593-599) -- a
+        // dry run must refuse what the real run refuses.
+        const owner = userOwnerByEmail.get(key);
+        if (owner && owner.contactId !== mergeTarget.id) {
+          throw new ApiError(
+            "invalid",
+            `Line ${line}: this email already belongs to another account`,
+            { mergeLines: `line ${line}: email belongs to another account` },
           );
         }
       }
