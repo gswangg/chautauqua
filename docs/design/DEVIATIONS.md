@@ -259,19 +259,21 @@ survives contact with state:
       (a signature task is a `general`-kind task in this schema) — never
       'Mark the release signed', which names one instance's subject
       matter, not the action.
-    - Portal back-link labels: `docs/design/Chautauqua Public and
-      Portal.dc.html:565` draws the session screen's back link as '‹ Your
-      portal'. The app renders `<PortalBackLink to="/portal/submissions"
-      />` at src/routes/portal/index.tsx`to="/portal/submissions"`,
-      resolved through the DEC-914 table
+    - Portal back-link labels (RETIRED, DEC-029 wave-21): `docs/design/Chautauqua
+      Public and Portal.dc.html:565` draws the session screen's back link
+      as '‹ Your portal'. The app used to render `<PortalBackLink
+      to="/portal/submissions" />` at src/routes/portal/index.tsx, resolved
+      through the DEC-914 table
       src/routes/portal/shared.tsx`Your submissions` (`PORTAL_BACK_LINKS`)
-      rather than the literal '‹ Your portal'. That table exists precisely
-      so a link's label can never disagree with the route it lands on —
-      the session card the speaker opened came from the submissions list,
-      not the portal home, and the app's back link drills up to the
-      screen the card actually came from. A frame drawn once cannot see
-      which list a given detail screen was reached from; the routing
-      table can, and governs.
+      to '‹ Your submissions' rather than the frame's literal — the same
+      divergence existed on the tasks drill (frame :507, was
+      `to="/portal/tasks"` → '‹ Your tasks'). DEC-029's wave-21 amendment
+      repointed both hrefs at `/portal` (the frame's drawn destination for
+      every 390 drill except the session-edit one), so both now render
+      src/routes/portal/index.tsx`<PortalBackLink to="/portal" />` and
+      src/routes/portal/tasks/views.tsx`<PortalBackLink to="/portal" />`,
+      resolving through the same DEC-914 table to the frame's own '‹ Your
+      portal' — no override needed any more.
     - Docs article pager: `docs/design/Chautauqua Docs.dc.html:201-202`
       draw the phone pager as '‹ Previous' and 'Next ›'. `DocsPager` in
       src/routes/docs-site.tsx`function DocsPager(` renders

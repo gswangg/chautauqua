@@ -140,8 +140,12 @@ describe("TaskFormPage adopts the portal dock band (DEC-576 wave-128)", () => {
     expect(html).not.toMatch(/Save draft/);
   });
 
-  it("the back link is unchanged, and the primary carries the frame's verb 'Send this in' (DEC-576 wave-129) in both copies", () => {
-    expect(html).toContain('<a href="/portal/tasks" class="chq-portal-back">');
+  it("the back link matches the frame (DEC-029 wave-21), and the primary carries the frame's verb 'Send this in' (DEC-576 wave-129) in both copies", () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:507
+    // `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>`
+    // -- the href now points at /portal so PORTAL_BACK_LINKS resolves the
+    // same label.
+    expect(html).toContain('<a href="/portal" class="chq-portal-back">');
     expect(html).not.toContain(">Submit<");
     expect((html.match(/>Send this in</g) ?? []).length).toBe(2);
   });

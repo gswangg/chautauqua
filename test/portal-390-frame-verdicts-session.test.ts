@@ -17,32 +17,31 @@
 // docs/design/audit/portal-v12.md this batch):
 //
 // 1. docs/design/Chautauqua Public and Portal.dc.html:502 "Portal · Hotel
-//    stay form" (GET /portal/tasks/assign-form-1/form) — DIVERGES. The
-//    frame's dock (:518-521) draws a primary+secondary pair ("Send this
-//    in" + "Save draft"); src/routes/portal/tasks/views.tsx's taskFormDock
-//    renders only the primary. The comment at views.tsx:374-375 already
-//    states this is deliberate ("DEVIATIONS.md §6 defers hotel-form
-//    save-draft as unbuilt") and test/frame-control-label.scan.test.ts has
-//    no blessed-label entry for :520 "Save draft" (unlike :494 "Later",
-//    which IS blessed) — so "Save draft" is a real, still-unbuilt gap, not
-//    a mis-citation. The frame's back link at :507 "‹ Your portal" also
-//    diverges from the rendered "‹ Your tasks" (PortalBackLink resolves
-//    "/portal/tasks" through the DEC-914 table) — already a catalogued
-//    entry in test/frame-control-label.scan.test.ts:576-581 (blessed as
-//    PortalBackLink-composed), so not re-litigated as a fresh finding here.
+//    stay form" (GET /portal/tasks/assign-form-1/form) — DIVERGES on the
+//    dock secondary only. The frame's dock (:518-521) draws a
+//    primary+secondary pair ("Send this in" + "Save draft");
+//    src/routes/portal/tasks/views.tsx's taskFormDock renders only the
+//    primary. The comment at views.tsx:374-375 already states this is
+//    deliberate ("DEVIATIONS.md §6 defers hotel-form save-draft as
+//    unbuilt") and test/frame-control-label.scan.test.ts has no
+//    blessed-label entry for :520 "Save draft" (unlike :494 "Later", which
+//    IS blessed) — so "Save draft" is a real, still-unbuilt gap, not a
+//    mis-citation. The frame's back link at :507 "‹ Your portal" now
+//    MATCHES (DEC-029 wave-21: the href was repointed to /portal, so the
+//    DEC-914 table resolves the same "Your portal" label).
 //
 // 2. docs/design/Chautauqua Public and Portal.dc.html:560 "Portal · Your
-//    session" (GET /portal/submissions/sub-mine) — MATCHES, with one
-//    already-catalogued label divergence. The frame's dock (:587-589) draws
-//    "Upload slides" (primary) + "Edit" (secondary); this fixture has no
-//    file_request task candidate for "sub-mine" so only the secondary
-//    renders (data-dependent, not a code defect — SubmissionDetailPage's
-//    dock is `fileRequestTask ? primary : null` + `editable ? secondary :
-//    null`), and its label is "Edit submission", not the frame's bare
-//    "Edit" — an expansion for clarity, uncatalogued in
-//    test/frame-control-label.scan.test.ts but not a broken/missing
-//    control. The back link ("‹ Your submissions" vs frame's "‹ Your
-//    portal" at :565) is the DEVIATIONS.md-sanctioned entry quoted below.
+//    session" (GET /portal/submissions/sub-mine) — MATCHES, including the
+//    back link (DEC-029 wave-21 fixed the "‹ Your submissions" vs frame's
+//    "‹ Your portal" at :565 divergence by repointing the href to
+//    /portal). The frame's dock (:587-589) draws "Upload slides" (primary)
+//    + "Edit" (secondary); this fixture has no file_request task candidate
+//    for "sub-mine" so only the secondary renders (data-dependent, not a
+//    code defect — SubmissionDetailPage's dock is `fileRequestTask ?
+//    primary : null` + `editable ? secondary : null`), and its label is
+//    "Edit submission", not the frame's bare "Edit" — an expansion for
+//    clarity, uncatalogued in test/frame-control-label.scan.test.ts but
+//    not a broken/missing control.
 //
 // 3. docs/design/Chautauqua Public and Portal.dc.html:597 "Portal · Edit
 //    your session" (GET /portal/submissions/s1/edit) — MATCHES. The

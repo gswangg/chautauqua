@@ -70,6 +70,18 @@ task-list dock \"Later\""). The primary control ("Mark the release signed")
 remains legitimate geometry for whatever primary action a future task
 routes into the dock, per that same DEVIATIONS entry.
 
+**Retired (DEC-903 clause (a), wave-21 amendment):** this finding's own
+disposition — that the profile Save "is not pinned to a bottom dock" — is a
+fossil. The tree already builds the dock content this section says is
+missing: src/routes/portal/profile.tsx`profileDock`,
+src/routes/portal/tasks/views.tsx`taskFormDock` and
+src/routes/portal/tasks/views.tsx`tasksPageDockPrimary`, all rendered
+through the `dock` prop on src/routes/portal/shared.tsx`dock?: unknown;`.
+The missing Cancel is separately blessed, not open, in
+`docs/design/DEVIATIONS.md` ("Portal · Your profile dock has no Cancel").
+This section's wave-125 text further down this same file already
+contradicts its own header the same way — see that later entry.
+
 ---
 
 # Portal v12 phone fidelity — findings (w3-b)
@@ -293,6 +305,23 @@ the frame's placeholder literal is illustrative (matching DEC-925's
 numeral-vs-word precedent above) and no fix is needed, or the two frames'
 own bytes should read their contextual destination the way :602 already
 does.
+
+**Ruled and fixed (DEC-029 wave-21 amendment):** the planner ruling landed
+on the second option — the frame is authority over the DESTINATION, not
+just the label, so both drills' hrefs move to `/portal` rather than the
+label map growing an override. src/routes/portal/tasks/views.tsx and
+src/routes/portal/index.tsx both now render
+src/routes/portal/index.tsx`<PortalBackLink to="/portal" />`, which
+`PORTAL_BACK_LINKS` resolves to the frame's own `‹ Your portal` at both
+sites — the back-link literal no longer differs from either frame.
+`test/portal-session-phone-frames.render.test.ts`,
+`test/portal-task-form-dock.test.ts`,
+`test/portal-submissions-route.test.ts` and
+`test/portal-dashboard-session-390-frame-verdicts.test.ts` were updated to
+assert the match. Desktop is unaffected only in the sense that no width
+split was introduced — DESIGN-RULINGS.md item 6 rules the portal has no
+separate desktop design, so this is now the shape at every width, not a
+phone-only fix.
 
 ## Frame :1561 "Portal · Resources" (GET /portal/resources) — MATCHES
 

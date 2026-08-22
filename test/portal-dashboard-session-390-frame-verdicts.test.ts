@@ -337,14 +337,12 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // The frame's own back label at :565 is "‹ Your portal"; PortalBackLink
-    // resolves this route's back link through src/routes/portal/shared.tsx's
-    // PORTAL_BACK_LINKS table to "Your submissions" instead -- an already
-    // catalogued DEVIATIONS.md-sanctioned label divergence
-    // (test/portal-390-frame-verdicts-session.test.ts, wave-158), not
-    // re-litigated as a new finding here.
-    expect(html).toContain('<a href="/portal/submissions" class="chq-portal-back">');
-    expect(html).toContain("‹ Your submissions");
+    // The frame's own back label at :565 is "‹ Your portal"; DEC-029
+    // wave-21 repoints this route's back link to /portal, so
+    // PORTAL_BACK_LINKS (src/routes/portal/shared.tsx) now resolves the
+    // same "Your portal" label -- MATCHES, no longer a divergence.
+    expect(html).toContain('<a href="/portal" class="chq-portal-back">');
+    expect(html).toContain("‹ Your portal");
 
     // docs/design/Chautauqua Public and Portal.dc.html:566 `        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Your session</h1>`
     expect(html).toContain('<h1 class="chq-portal-hero chq-portal-hero-drill">Your session</h1>');
@@ -394,7 +392,7 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(html).toContain('<div class="chq-portal-dock"><a href="/portal/submissions/sub-mine/edit" class="chq-btn chq-btn-secondary">Edit submission</a></div>');
 
     // Order sanity: back link -> H1 -> status badge -> title -> meta -> placement -> Abstract -> Slides.
-    const backIdx = html.indexOf('<a href="/portal/submissions" class="chq-portal-back">');
+    const backIdx = html.indexOf('<a href="/portal" class="chq-portal-back">');
     const h1Idx = html.indexOf('<h1 class="chq-portal-hero chq-portal-hero-drill">Your session</h1>');
     const badgeIdx = html.indexOf('<span class="chq-flag chq-portal-status-badge">');
     const titleIdx = html.indexOf('<h2 class="chq-portal-session-title">');
