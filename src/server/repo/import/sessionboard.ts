@@ -12,7 +12,7 @@ import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { isValidEmail, normalizeEmail } from "../../../domain/email";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 import { updateSubmissionStatuses } from "../submissions/status";
-import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
+import { touchSubmissions, touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
 import { DEC_604, DEC_612, DEC_717 } from "../../../decisions";
 import {
@@ -575,6 +575,13 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     };
     const createRows: ParticipantCreateRow[] = [];
     const updateRows: ParticipantUpdateRow[] = [];
+    // DEC-725 (wave-17 amendment): submission ids touched by either a create
+    // or an update row below -- collected alongside those pushes (never
+    // re-derived from the finished arrays' own shapes, since
+    // ParticipantUpdateRow carries a participant id, not a submissionId) so
+    // touchSubmissions can be called once, after the writes, with the same
+    // `ts` those rows use.
+    const touchedSubmissionIds = new Set<string>();
     const ts = now();
 
     for (const plan of plans) {
@@ -658,6 +665,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             createdAt: ts,
             updatedAt: ts,
           });
+          touchedSubmissionIds.add(submissionId);
         }
         pairMap.set(pairKey, id);
         created++;
@@ -673,6 +681,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             ...(hasRole ? { role: v.role as string } : {}),
             ...(hasOrder ? { order: parseValidatedOrder(v.order as string) } : {}),
           });
+          touchedSubmissionIds.add(submissionId);
         }
       }
       updated++;
@@ -684,6 +693,15 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         await db.insert(schema.participant).values(chunk);
       }
       await flushParticipantUpdates(db, updateRows, ts);
+      // DEC-725 (wave-17 amendment): the last participant writer that
+      // skipped the touch-on-write contract -- an EXISTS-over-dependents
+      // predicate cannot see a dependent write, so the writer itself must
+      // stamp every submission whose participant SET just changed (create
+      // or update), mirroring src/server/repo/participants.ts's
+      // removeParticipantRow. Uses this branch's own `ts` so the stamp and
+      // the row writes agree; skipped entirely on a dry run (no writes at
+      // all, guarded by the enclosing `if (!dryRun)`).
+      await touchSubmissions(db, [...touchedSubmissionIds], ts);
     }
 
     return { created, updated, skipped };
