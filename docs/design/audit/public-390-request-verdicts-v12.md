@@ -116,13 +116,13 @@ table below — not a third copy of the request assertions themselves.
    `<legend>{field.label}</legend>` renders the organiser's
    own stored field label, and the frame's bare word is a sampled fixture
    value, not a string to ship (DEC-613 wave-27). `Save draft`/`Draft` is
-   ruled at `docs/design/DEVIATIONS.md:765`: "CFP wizard dock's `Save
-   draft` vs the frame's `Draft` — ALREADY RULED, recorded here only so
+   ruled at docs/design/DEVIATIONS.md`ALREADY RULED` (quoting: "CFP wizard
+   dock's `Save draft` vs the frame's `Draft` — ALREADY RULED, recorded here only so
    the ledger stops re-filing it. `src/routes/public/cfp.css.ts` states the
    disposition in the sheet itself: the accessible name stays 'Save draft'
    per DEC-613's wave-96 amendment, one control with one name at every
    width, and the frame's `Draft` is a drawing abbreviation rather than a
-   label to ship." No lane action follows from this row; both halves were
+   label to ship.") No lane action follows from this row; both halves were
    already dead before this wave, this entry only stops the ledger
    re-filing them.
 3. **No action needed on the six public-site frames' request coverage
