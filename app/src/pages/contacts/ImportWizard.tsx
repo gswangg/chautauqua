@@ -724,6 +724,12 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       size="wide"
       actions={actions}
       backLink={{ label: '‹ Contacts', onClick: onClose }}
+      // v12m-w30-d: frame verdict for "Import CSV · 390" (docs/design/
+      // Chautauqua Contacts.dc.html:487-517) is 8/10 literal-exact; see
+      // docs/design/audit/contacts-import-390-v12.md for the one filed
+      // shape divergence (:491's file summary line) and the citation to
+      // contacts-v12.md findings 1/2's already-RESOLVED match-summary
+      // (:507) substitution. Pinned by ImportWizard.frame390.render.test.tsx.
     >
       <ol className="chq-steps" aria-label="Import steps">
         <li className={`chq-step${step > 1 ? ' is-done' : step === 1 ? ' is-current' : ''}`}>Choose file</li>
