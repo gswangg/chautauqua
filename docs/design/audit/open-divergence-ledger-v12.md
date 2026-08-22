@@ -22,20 +22,25 @@ literal token, since it lives outside docs/design/audit/**.
 ## Population and grammar
 
 Derived, never hand-listed, per DEC-808: `readdirSync docs/design/audit`
-for `*.md`, a FLAT (non-recursive) listing identical in shape to the two
-frame ledgers' own `designFiles()` -- 101 files (including this document itself). A nested
-`docs/design/audit/settings-v12/` directory holds three further `.md`
-files this scan does not reach, mirroring the task brief's literal
-instruction rather than inventing a wider walk.
+for `*.md`, walked RECURSIVELY (DEC-099 wave-24 amendment) so a nested
+directory cannot hide rows from the population -- per DEC-367/DEC-808 "a
+directory is not a population" -- 105 files (including this document
+itself). The `docs/design/audit/settings-v12/` directory (three further
+`.md` files: `w10-frame-verdicts.md`, `w3-landing-drills.md`,
+`w3f-cfp-public-portal.md`) is now reached; a non-vacuity assertion in the
+scan itself pins that at least one row resolves from a nested path, so a
+future flattening cannot silently re-open the blind spot.
 
-Within each of the 101 files, every raw-text occurrence of the marker word
-opens one row, keyed `file:line` -- 152 rows measured live on this branch
-at `52bd83f65` (superseding the `203` figure this section previously
-carried; a grep for that superseded literal across `docs/design/audit/**`
-and `src/decisions-data/**` at re-baseline time found no other document
-citing it as an authority, so unlike `133` below it carries no living
-citer and is dropped rather than kept in a superseded clause -- DEC-995
-only preserves a superseded figure where a citer depends on it).
+Within each of the 105 files, every raw-text occurrence of the marker word
+opens one row, keyed `file:line` -- 160 rows measured live on this branch
+(102 files / 158 rows under the prior flat walk, +3 files / +2 rows from
+the newly-reached `settings-v12/w10-frame-verdicts.md`; superseding the
+`203` figure this section previously carried; a grep for that superseded
+literal across `docs/design/audit/**` and `src/decisions-data/**` at
+re-baseline time found no other document citing it as an authority, so
+unlike `133` below it carries no living citer and is dropped rather than
+kept in a superseded clause -- DEC-995 only preserves a superseded figure
+where a citer depends on it).
 
 A row is ADJUDICATED when its own line, or "the paragraph it heads",
 carries a `DEC-NNN` citation or names `docs/design/DEVIATIONS.md`;
@@ -52,18 +57,21 @@ documented in the scan file's own header comment.
 
 ## Measured result
 
-Re-baselined live at `52bd83f65` (wave 21, DEC-099 amendment), by running
-the instrument itself rather than reading this section's own prior prose
--- the same discipline the ratchet already binds the CODE to, applied here
-to the document that reports it.
+Re-baselined live on branch `v12m-w24-a` (wave 24, DEC-099 amendment), by
+running the instrument itself rather than reading this section's own
+prior prose -- the same discipline the ratchet already binds the CODE to,
+applied here to the document that reports it.
 
-- 101 audit files scanned (this document itself is the 101st, contributing 0 rows since it never spells the marker).
-- 152 total marker-token rows.
+- 105 audit files scanned, recursively (this document itself is one of them, contributing 0 rows since it never spells the marker).
+- 160 total marker-token rows.
 - **0 open** (no DEC-NNN citation or DEVIATIONS.md reference is missing from any row).
-- 152 adjudicated (a DEC ruling or a DEVIATIONS.md entry settles every
+- 160 adjudicated (a DEC ruling or a DEVIATIONS.md entry settles every
   one of them, even though the marker word remains in the prose as
   historical narration -- the audit corpus is append-only, per its own
-  established convention).
+  established convention). This includes the two rows newly reached in the
+  `docs/design/audit/settings-v12/` directory (the file's two marker-word
+  lines, both TABLE-shape and both already carrying a DEC-919 citation on
+  their own line).
 
 Superseded figure, kept per DEC-995 (the same shape `DESIGN-RULINGS.md:191`
 uses to keep its own superseded grid paraphrase alive for its citers):
@@ -87,13 +95,14 @@ three OPEN rows).
 
 goalComplete for this ledger is `OPEN_DIVERGENCE_CEILING` reaching 0 --
 every recorded divergence in the pack either fixed or settled by a
-citable ruling. **That is now SATISFIED**, measured live at `52bd83f65`
-(13/13 `test/open-divergence-ledger.scan.test.ts` assertions passing,
-including the two-sided ratchet in both directions). What this DOES mean:
+citable ruling. **That is now SATISFIED**, measured live on branch
+`v12m-w24-a` (14/14 `test/open-divergence-ledger.scan.test.ts` assertions
+passing, including the two-sided ratchet in both directions and the wave-24
+nested-path non-vacuity assertion). What this DOES mean:
 every row this instrument's grammar can see -- heading, table, bullet and
 fallback shapes alike -- carries a `DEC-NNN` citation or a
 `docs/design/DEVIATIONS.md` reference in its own line or the paragraph it
-heads. What it does NOT mean: that every one of those 152 citations
+heads. What it does NOT mean: that every one of those 160 citations
 resolves to a construct that actually ships the frame's behaviour. A row
 adjudicated by a citation is not a row built (field-guide wave 152-176:
 "a DRAINED LEDGER MEASURES CITATION NOT CONFORMANCE"); `src/decisions-
