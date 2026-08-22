@@ -641,6 +641,15 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // phone block that actually draws the frame
   // (app/src/phone-verdict-cascade-read.scan.test.ts).
   "PHONE_VERDICT_CASCADE_BLIND_CEILING",
+  // wave-13m (task w13-xa, DEC-069 amendment): open-divergence ledger --
+  // grades how many of the audit corpus's own recorded `**DIVERGES**` rows
+  // (docs/design/audit/*.md) are still OPEN (no DEC-NNN citation or
+  // docs/design/DEVIATIONS.md reference in the row's own line or the
+  // paragraph it heads) rather than adjudicated, the population the two
+  // saturated frame-coverage ledgers (CLAIMED_FLOOR) never measure -- a
+  // GRADED, GATING conformance ratchet, not a citation-form or
+  // instrument-soundness fact (test/open-divergence-ledger.scan.test.ts).
+  "OPEN_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -730,6 +739,10 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
   // above -- never a declared-but-unread knob (DEC-851/DEC-988).
   "PHONE_VERDICT_CASCADE_BLIND_CEILING",
+  // wave-13m (task w13-xa): open-divergence ledger, wired into TIER2 in the
+  // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "OPEN_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -846,6 +859,13 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "join could not resolve to a matching component call site -- an instrument-completeness "
     + "fact about the ledger's own join technique, not itself a v12 frame or 390-geometry "
     + "conformance fact, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
+  CONFIRM_TITLE_OBJECT_CEILING:
+    "measures the whole app's `<ConfirmDialog title=` idiom ADOPTION -- the scan's own header "
+    + "(app/src/confirm-title-object.scan.test.ts) declares its population is every "
+    + "ConfirmDialog call site, not only irreversible/destructive ones, and states it 'does not "
+    + "require them to change; it only measures the idiom's current adoption' -- an adoption "
+    + "meter over the whole call-site population, not a v12 frame or 390-geometry conformance "
+    + "fact (DEC-808 wave-13m amendment).",
 };
 
 /**
