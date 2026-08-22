@@ -422,6 +422,101 @@ export function extractPairGap(css: string): number | null {
 }
 const PAIR_GAP = extractPairGap(SETTINGS_CSS);
 
+// -- Wave-26 amendment (DEC-808): PLAIN-LABEL PAIR WRAPPER tier -------------
+// The match side above only ever resolves a <SettingsField label="…"
+// width="…"> call site. Draining the 4 unresolved rows exposed a SECOND,
+// real match shape the join never covered: a plain `<label>TEXT` pair (no
+// SettingsField, no --chq-field-w-* token) whose own wrapper class carries
+// a LITERAL `max-width:<N>px` in settings.css -- e.g.
+// EmbedsPanel.tsx's `.chq-settings-embed-field-pair` (DEC-896 wave-24
+// amendment already adjudicates this exact 620px as EQUIVALENT-AT-THE-
+// DRAWN-WIDTH). This tier is scoped to PAIR rows only (the shape it was
+// found for) and requires BOTH member labels to occur, in order, as a
+// `<label>`'s own immediate leading text inside exactly one wrapper class
+// occurrence -- never a first-match pick (two occurrences, or two distinct
+// classes, both leave the row honestly UNRESOLVED, same discipline as the
+// SettingsField-pair tier above).
+
+function escapeRegExpLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const LITERAL_MAX_WIDTH_CLASS_RE = /\.([a-zA-Z0-9_-]+)\s*\{([^}]*)\}/g;
+
+/** class name -> its own literal (non `--chq-field-w-*` token) max-width,
+ * FIRST top-level occurrence only (DEC-385 base/unqualified value, same
+ * convention `extractPairGap` above already uses -- an @media override
+ * never displaces the base declaration this tier reads). Exported for the
+ * non-vacuity fixture below. */
+export function extractLiteralMaxWidthClasses(css: string): Map<string, number> {
+  const map = new Map<string, number>();
+  LITERAL_MAX_WIDTH_CLASS_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = LITERAL_MAX_WIDTH_CLASS_RE.exec(css))) {
+    const cls = m[1]!;
+    const body = m[2]!;
+    if (map.has(cls)) continue;
+    if (body.includes('var(--chq-field-w-')) continue; // token-based -- the SettingsField tier already owns this
+    const mw = body.match(/max-width:\s*(\d+)px/);
+    if (!mw) continue;
+    map.set(cls, Number(mw[1]));
+  }
+  return map;
+}
+
+const PLAIN_LABEL_LEADING_TEXT_RE = /<label>([^<]*)</g;
+/** Bounded like `forwardLabels`'s own window -- a wrapper's two member
+ * labels sit within its own immediate children, never several sections
+ * away. */
+const PLAIN_LABEL_WINDOW = 2000;
+
+export interface PlainLabelPairResolution {
+  className: string;
+  declaredWidth: number;
+}
+
+/** Resolves a pair row's two member labels against every class in
+ * `literalMaxWidthClasses` that (a) appears as `className="<class>"`
+ * literally in `source` and (b) whose own immediate-children `<label>`
+ * texts are, in order, EXACTLY [label0, label1]. Honesty: more than one
+ * qualifying (class, occurrence) pair -- even the same class twice, or two
+ * different classes -- returns null rather than picking a winner. Exported
+ * for the non-vacuity fixture below. */
+export function resolvePlainLabelPair(
+  source: string,
+  literalMaxWidthClasses: ReadonlyMap<string, number>,
+  label0: string,
+  label1: string
+): PlainLabelPairResolution | null {
+  const matches: PlainLabelPairResolution[] = [];
+  for (const [cls, px] of literalMaxWidthClasses) {
+    const classAttrRe = new RegExp(`className="${escapeRegExpLiteral(cls)}"`, 'g');
+    let cm: RegExpExecArray | null;
+    while ((cm = classAttrRe.exec(source))) {
+      const windowText = source.slice(cm.index, cm.index + PLAIN_LABEL_WINDOW);
+      PLAIN_LABEL_LEADING_TEXT_RE.lastIndex = 0;
+      const found: string[] = [];
+      let lm: RegExpExecArray | null;
+      while ((lm = PLAIN_LABEL_LEADING_TEXT_RE.exec(windowText))) {
+        const text = lm[1]!.trim();
+        if (text.length === 0) continue;
+        found.push(text);
+        if (found.length >= 2) break;
+      }
+      if (found[0] === label0 && found[1] === label1) {
+        matches.push({ className: cls, declaredWidth: px });
+      }
+    }
+  }
+  if (matches.length !== 1) return null;
+  return matches[0]!;
+}
+
+const LITERAL_MAX_WIDTH_CLASSES = extractLiteralMaxWidthClasses(SETTINGS_CSS);
+const SETTINGS_SOURCE_BLOB = settingsSourceFiles()
+  .map((f) => readFileSync(f, 'utf-8'))
+  .join('\n');
+
 // -- Join + grade -------------------------------------------------------
 
 export type FieldWidthStatus = 'matches' | 'diverges' | 'unresolved';
@@ -476,8 +571,23 @@ function gradeRow(row: DrawnFieldWidth): GradedFieldWidth {
         pairEquivalent: status === 'matches',
       };
     }
-    // Either member (or the pair rule's own gap) failed to resolve -- an
-    // honest UNRESOLVED, never a guessed partial sum.
+    // Either member (or the pair rule's own gap) failed to resolve via the
+    // SettingsField-pair tier -- try the wave-26 PLAIN-LABEL PAIR WRAPPER
+    // tier before giving up (DEC-808 wave-26 amendment).
+    const plain = resolvePlainLabelPair(SETTINGS_SOURCE_BLOB, LITERAL_MAX_WIDTH_CLASSES, labels[0]!, labels[1]!);
+    if (plain !== null) {
+      const status: FieldWidthStatus = Math.abs(plain.declaredWidth - row.drawnWidth) <= 2 ? 'matches' : 'diverges';
+      return {
+        row,
+        status,
+        reason: null,
+        labels,
+        declaredWidth: plain.declaredWidth,
+        pairEquivalent: status === 'matches',
+      };
+    }
+    // Neither tier resolved -- an honest UNRESOLVED, never a guessed
+    // partial sum.
     return { row, status: 'unresolved', reason: 'no-label-match', labels, declaredWidth: null, pairEquivalent: false };
   }
 
@@ -509,7 +619,7 @@ const UNRESOLVED: GradedFieldWidth[] = GRADED.filter((r) => r.status === 'unreso
 // own reasoning: a new non-zero row in the exit gate would move the
 // campaign's goalposts mid-convergence.
 export const FIELD_WIDTH_DIVERGENCE_CEILING = 0;
-export const FIELD_WIDTH_UNRESOLVED_CEILING = 4;
+export const FIELD_WIDTH_UNRESOLVED_CEILING = 3;
 
 describe('B10 desktop field-width ledger (DEC-896/DEC-808 wave-28, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 6 desktop "Settings · editing" frames, 2 excluded per DEVIATIONS §6', () => {
@@ -597,6 +707,65 @@ describe('B10 desktop field-width ledger (DEC-896/DEC-808 wave-28, v12 mobile ca
     const fabricatedPairCss = '.chq-settings-field-pair { display: grid; gap: 18px; }';
     expect(extractPairGap(fabricatedPairCss)).toBe(18);
     expect(extractPairGap('.chq-unrelated { gap: 4px; }')).toBeNull();
+  });
+
+  it('non-vacuity: wave-26 PLAIN-LABEL PAIR WRAPPER tier over a fabricated source+css pair', () => {
+    // POSITIVE: a fabricated class with a literal (non-token) max-width
+    // whose fabricated source has exactly one occurrence with both member
+    // labels resolves.
+    const fabricatedCss = [
+      '.zzy-plain-pair { display: grid; gap: 12px; max-width: 555px; }',
+      '.zzy-token-pair { display: grid; max-width: var(--chq-field-w-name); }',
+    ].join('\n');
+    const classes = extractLiteralMaxWidthClasses(fabricatedCss);
+    expect(classes.get('zzy-plain-pair')).toBe(555);
+    // NEGATIVE: a token-based max-width is the SettingsField tier's own
+    // territory, never double-counted here.
+    expect(classes.has('zzy-token-pair')).toBe(false);
+
+    const fabricatedSource = [
+      '<div className="zzy-plain-pair">',
+      '  <label>',
+      '    Zzy First',
+      '    <input />',
+      '  </label>',
+      '  <label>',
+      '    Zzy Second',
+      '    <input />',
+      '  </label>',
+      '</div>',
+    ].join('\n');
+    const resolved = resolvePlainLabelPair(fabricatedSource, classes, 'Zzy First', 'Zzy Second');
+    expect(resolved).toEqual({ className: 'zzy-plain-pair', declaredWidth: 555 });
+
+    // NEGATIVE: labels out of order, or a label that is not present, never
+    // resolve.
+    expect(resolvePlainLabelPair(fabricatedSource, classes, 'Zzy Second', 'Zzy First')).toBeNull();
+    expect(resolvePlainLabelPair(fabricatedSource, classes, 'Zzy First', 'Zzy Unmentioned')).toBeNull();
+
+    // NEGATIVE (honesty clause): two occurrences of the same class, each
+    // pairing DIFFERENT labels, is ambiguous -- neither wins.
+    const twoOccurrenceSource =
+      fabricatedSource +
+      '\n<div className="zzy-plain-pair">\n  <label>\n    Zzy First\n    <input />\n  </label>\n  <label>\n    Zzy Third\n    <input />\n  </label>\n</div>';
+    expect(resolvePlainLabelPair(twoOccurrenceSource, classes, 'Zzy First', 'Zzy Second')).not.toBeNull();
+    const ambiguousClasses = new Map(classes);
+    ambiguousClasses.set('zzy-plain-pair-2', 555);
+    const ambiguousSource = fabricatedSource.replace('zzy-plain-pair"', 'zzy-plain-pair-2"') + '\n' + fabricatedSource;
+    expect(resolvePlainLabelPair(ambiguousSource, ambiguousClasses, 'Zzy First', 'Zzy Second')).toBeNull();
+  });
+
+  it('the wave-26-drained embed pair (Name/Surface) resolves via the plain-label tier', () => {
+    // EmbedsPanel.tsx has no <SettingsField> at all -- the recipe's
+    // Name/Surface pair renders via plain <label> text inside
+    // .chq-settings-embed-field-pair, whose own literal max-width:620px
+    // (DEC-896 wave-24 amendment) matches the drawn 620px exactly.
+    const embedPair = GRADED.find(
+      (r) => r.row.frameTitle === 'Settings · editing one saved embed' && r.row.isPair
+    );
+    expect(embedPair?.status).toBe('matches');
+    expect(embedPair?.declaredWidth).toBe(620);
+    expect(embedPair?.pairEquivalent).toBe(true);
   });
 
   it('every row is accounted for exactly once across matches/diverges/unresolved', () => {
