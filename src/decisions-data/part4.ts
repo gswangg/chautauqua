@@ -372,5 +372,5 @@ export const DEC_994 = "A cascade-blind phone verdict is closed by a load-bearin
 export const DEC_995 = "A ruling that PARAPHRASES a frame's geometry is corrected by ADDING the frame's numbers beside the paraphrase, never by replacing them";
 export const DEC_996 = "A frame's inline `line-height:1` on a display face never licenses one in a stylesheet — the declaration is omitted and the omission recorded as a frame-cited deviation";
 export const DEC_997 = "A raw-source pin falsified by a CORRECT product change is re-anchored on the render receipt that already exists — never loosened to a substring, never deleted";
-export const DEC_998 = "The Content detail links straight into the submission's edit form, its history and its speakers — which means those two panels become URL state";
-export const DEC_999 = "A public agenda block is a content-sized box in its own lane; the day grid neither clips a block nor lets one lane overrun another";
+export const DEC_998 = "The two header-block receipt ceilings are GRADED and GATED campaign ratchets, re-seeded from measurement — never excused, never left on a lane's out-of-scope estimate";
+export const DEC_999 = "A scan's own non-vacuity anchor is keyed on CONTENT, never on a source line number";
