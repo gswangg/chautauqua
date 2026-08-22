@@ -3,10 +3,14 @@
 // and the chosen role is what POST /contacts/:id/add-to-event sends. The
 // old hardcoded explanatory sentence is gone.
 //
-// DEC-764: the title field starts empty (no `Invited: <name>` prefill),
-// 'Add them' is disabled until a title is typed, the dialog states its
-// no-email consequence up front, and the success copy names the role
-// actually chosen.
+// DEC-764: the title field starts empty (no `Invited: <name>` prefill), the
+// dialog states its no-email consequence up front, and the success copy
+// names the role actually chosen.
+//
+// DEC-909 wave-18 amendment: the session title is OPTIONAL on this door too
+// (the field carries the shared FormRow ' · optional' suffix, not an
+// asterisk) -- 'Add them' is never disabled on a blank title, only on a
+// missing event selection.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -75,7 +79,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     expect(screen.getByText(/no email is sent/i)).toBeInTheDocument();
   });
 
-  it('starts with no title prefill and disables Add them until a title is typed (DEC-764)', async () => {
+  it('starts with no title prefill, states its own optionality, and never disables Add them on a blank title (DEC-764, DEC-909 wave-18)', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
@@ -91,18 +95,25 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
-    const titleInput = screen.getByLabelText('Session title') as HTMLInputElement;
+    // DEC-909 wave-18: the field states its own optionality through the
+    // shared FormRow renderer -- no asterisk, no second grammar.
+    expect(screen.getByText('· optional')).toBeInTheDocument();
+
+    const titleInput = screen.getByLabelText(/Session title/) as HTMLInputElement;
     expect(titleInput.value).toBe('');
     expect(titleInput).not.toHaveValue('Invited: Priya Raman');
 
+    // Never blocked on a blank/whitespace title -- only a missing event
+    // selection disables the primary action (see the DEC-795 describe block
+    // below for that case).
     const addButton = screen.getByRole('button', { name: 'Add them' });
-    expect(addButton).toBeDisabled();
+    expect(addButton).not.toBeDisabled();
 
     fireEvent.change(titleInput, { target: { value: 'Keynote: Priya' } });
     expect(addButton).not.toBeDisabled();
 
     fireEvent.change(titleInput, { target: { value: '   ' } });
-    expect(addButton).toBeDisabled();
+    expect(addButton).not.toBeDisabled();
   });
 
   it('sends the chosen role in the POST body and names it in the success copy', async () => {
@@ -124,7 +135,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
 
     const nonDefault = PARTICIPANT_ROLE_OPTIONS[1]!;
     fireEvent.click(screen.getByRole('button', { name: nonDefault.label }));
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Panel: Priya' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Panel: Priya' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
 
     await waitFor(() => {
@@ -161,7 +172,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Keynote: Priya' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Keynote: Priya' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
 
     await waitFor(() => {
@@ -240,7 +251,7 @@ describe('AddToEventModal advisory when the contact already has a submission on 
     expect(screen.getByRole('button', { name: 'Add another session' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add them' })).not.toBeInTheDocument();
     // Never blocked: the primary action stays enabled once a title exists.
-    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Second talk' } });
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Second talk' } });
     expect(screen.getByRole('button', { name: 'Add another session' })).not.toBeDisabled();
   });
 

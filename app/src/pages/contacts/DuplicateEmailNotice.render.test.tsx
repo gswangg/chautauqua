@@ -98,4 +98,36 @@ describe('DuplicateEmailNotice', () => {
     );
     await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Priya Raman'));
   });
+
+  // DEC-909 wave-18 amendment: RosterPanel's sessionTitle is optional, and
+  // this component already forwards it as-typed (`.trim()`, never a
+  // required-field guard) -- so a blank session title reaching this button
+  // must succeed against the server's now-optional `title`, not 400.
+  it('DEC-909 wave-18: the "Add <name> to this event" path succeeds with a blank session title', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      items: [{ id: 'ct-match', firstName: 'Priya', lastName: 'Raman', email: 'priya@example.com' }],
+    });
+    apiPostMock.mockResolvedValueOnce({ id: 'sub-1' });
+    const onAdded = vi.fn();
+
+    renderNotice({
+      email: 'priya@example.com',
+      addToEvent: { eventId: 'evt-1', sessionTitle: '   ', onAdded },
+    });
+
+    const addButton = await screen.findByRole('button', { name: 'Add Priya Raman to this event' });
+    fireEvent.click(addButton);
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith('/contacts/ct-match/add-to-event', {
+        eventId: 'evt-1',
+        title: '',
+        role: 'speaker',
+      }),
+    );
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Priya Raman'));
+    // No error rendered -- the mocked apiPost resolved, exactly as it would
+    // against the real server once title is optional on this door.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

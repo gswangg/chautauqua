@@ -56,13 +56,22 @@ void DEC_290;
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY
 void DEC_466; // /contacts/duplicates bounded below via the blessed JS-slice (DEC-461(e))
 // Compile-checked dependency marker: POST /contacts/:id/add-to-event below
-// rejects a blank title rather than inventing one (DEC-764).
+// never invents a title -- an omitted/blank one stays "" rather than
+// falling back to something like 'Invited: <name>' (DEC-764; DEC-909
+// wave-18 amendment supersedes DEC-764's "REQUIRED" clause specifically for
+// this door, making the field optional the same way POST /contacts's
+// eventId branch already is).
 void DEC_764;
 // Compile-checked dependency marker: POST /contacts/:id/add-to-event below
 // validates role against PARTICIPANT_ROLE_OPTIONS and passes both role and
-// the owned contact row (never re-resolved by email) to pushContactToEvent
-// (DEC-765).
+// the owned contact row (never re-resolved by email) to
+// attachOrCreateRosterSession (DEC-765).
 void DEC_765;
+// Compile-checked dependency marker: POST /contacts/:id/add-to-event below
+// routes through attachOrCreateRosterSession -- the SAME predicate
+// POST /contacts's eventId branch uses, never a second copy of the
+// match-then-mint logic -- and treats `title` as optional (DEC-909 wave-18
+// amendment clauses a+b, extending the wave-128 ruling to this second door).
 // Compile-checked dependency marker: POST /contacts below never invents a
 // `sessionTitle` -- an omitted/blank one stays "" rather than falling back
 // to something like 'Invited: <name>' (DEC-810, DEC-909 wave-128 clause a
@@ -545,15 +554,20 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const event = await getEventForOrg(c.var.db, body.eventId, orgId);
     if (!event) throw new ApiError("not_found", "Event not found");
 
-    // DEC-764: the server no longer invents a title — a blank field is
-    // rejected rather than silently falling back to 'Invited: <name>'.
-    if (typeof body.title !== "string" || body.title.trim() === "") {
-      throw new ApiError("invalid", "Validation failed", { title: "required" });
+    // DEC-909 wave-18 amendment clause (a): this is the SECOND roster-add
+    // door (the first is POST /contacts's eventId branch), and it now shares
+    // the same optional-title contract -- a blank/omitted title is no longer
+    // a 400, it becomes "" and attachOrCreateRosterSession's own contract
+    // handles it (never merges a blank-titled add onto anything). Length is
+    // still capped -- DEC-417 doesn't relax just because the field became
+    // optional.
+    if (body.title !== undefined && typeof body.title !== "string") {
+      throw new ApiError("invalid", "Validation failed", { title: "must be a string" });
     }
-    if (body.title.length > MAX_NAME_LENGTH) {
+    if (typeof body.title === "string" && body.title.length > MAX_NAME_LENGTH) {
       throw new ApiError("invalid", "Validation failed", { title: overCapFieldMessage(body.title.length, MAX_NAME_LENGTH) }); // DEC-417
     }
-    const title = body.title;
+    const title = typeof body.title === "string" ? body.title.trim() : "";
 
     // DEC-765: role reaches participant.role, validated against the app's
     // own vocabulary (never a free-text value from the modal).
@@ -565,7 +579,11 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       role = body.role;
     }
 
-    const submissionId = await repo.pushContactToEvent(c.var.db, event.id, orgId, contact, title, role);
+    // DEC-909 wave-18 amendment clause (b): this door shares the SAME
+    // match-then-mint predicate as POST /contacts, not a second copy of it --
+    // an exact-title match against this event's existing sessions attaches
+    // rather than minting a duplicate.
+    const submissionId = await repo.attachOrCreateRosterSession(c.var.db, event.id, orgId, contact, title, role);
     return c.json({ submissionId }, 201);
   });
 }
