@@ -55,7 +55,7 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
-import { DEC_385, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
+import { DEC_385, DEC_651, DEC_747, DEC_781, DEC_919 } from '../../../../src/decisions';
 import './settings-lists.css';
 import './settings-drill-rows.css';
 
@@ -63,6 +63,7 @@ void DEC_747; // the invite/reset flows below implement wave-58's amendment (ver
 void DEC_781; // the frame's two consequence sentences for this edit view have two different homes
 void DEC_385; // settings-drill-rows.css: page-local sheet, terminal max-width block
 void DEC_919; // wave-156: the read drill's own "Invite someone" footer primary (:568), opening the existing invite dialog directly -- not a form submit
+void DEC_651; // wave-9 amendment: Frame :1352 "Invite · rejected" -- retitled header + the escape control lives in the actions row, third, after Cancel
 
 const SECTION_KEY = 'people';
 
@@ -447,7 +448,11 @@ export function PeopleRolesPanel() {
       {inviting && !(revealedPassword && revealedPassword.context === 'invite') ? (
         <ModalFrame
           as="form"
-          title="Invite someone"
+          // DEC-651 wave-9 amendment, frame :1359: on a duplicate-email
+          // refusal the header retitles to "Nobody was invited" -- driven
+          // by the SAME `duplicateUser` predicate as the subtitle below so
+          // the two can never disagree (DEC-613: one predicate).
+          title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}
           // DEC-650 amendment (wave 134), :1360: the rejected-duplicate
           // subtitle, alongside (never replacing) the field-level refusal
           // FormRow already renders on the email input below.
@@ -473,6 +478,14 @@ export function PeopleRolesPanel() {
               <button type="button" className="chq-btn chq-btn-secondary" onClick={closeInviteDialog}>
                 Cancel
               </button>
+              {/* DEC-651 wave-9 amendment, frame :1384: the escape route is
+                  the actions row's THIRD control, after Cancel -- not a
+                  child of the error-alert body above the actions row. */}
+              {duplicateUser ? (
+                <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+                  Open {personLabel(duplicateUser)}&apos;s row
+                </button>
+              ) : null}
             </>
           }
         >
@@ -494,14 +507,12 @@ export function PeopleRolesPanel() {
             We generate a password and show it to you once, on the next screen. There is no pending invitation to
             chase.
           </p>
+          {/* DEC-651 wave-9 amendment: the escape route used to render here,
+              inside the error-alert body; frame :1384 draws it as the
+              actions row's third control instead (see `actions` above). */}
           {error && (
             <div className="chq-error" role="alert">
               {error}
-              {duplicateUser ? (
-                <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
-                  Open {personLabel(duplicateUser)}&apos;s row
-                </button>
-              ) : null}
             </div>
           )}
           {/* DEC-650 amendment (wave 133), :1367: the invite REJECTED
