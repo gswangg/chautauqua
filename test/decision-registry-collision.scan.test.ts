@@ -162,31 +162,41 @@ describe("decision-registry collision scan (DEC-976 wave-155, task w11-pd)", () 
     expect(content.toLowerCase()).toMatch(/line-height/);
   });
 
-  it("each campaign-governing note names a real divergent decisions/DEC-NNN.md H1 (positive control)", () => {
-    const notedIds = [
-      "DEC-991",
-      "DEC-393",
-      "DEC-385",
-      "DEC-253",
-      "DEC-367",
-      "DEC-374",
-      "DEC-728",
-      "DEC-967",
-      "DEC-976",
-      "DEC-989",
-      "DEC-381",
-    ];
-    const { divergences } = measure();
-    const byId = new Map(divergences.map((d) => [d.id, d]));
-    for (const id of notedIds) {
-      const d = byId.get(id);
-      expect(d, `${id} did not measure as title-divergent -- it must not be in the noted set`).toBeDefined();
-      expect(d!.noted, `${id} has no registry note`).toBe(true);
-    }
-  });
+  // Bidirectional invariant derived from the tree (DEC-976 wave-25
+  // amendment), replacing both the hand-listed `notedIds` positive control
+  // and the single DEC-808 negative case above -- a hand-listed population
+  // is not a population (DEC-180) and reddens on the next id reuse (this
+  // wave's DEC-808 collision is exactly that: scribe wave 24 reused the
+  // DEC-808 id, its src/decisions-data/DEC-808.md now opens with a registry
+  // note and its H1 diverges, which the old negative case asserted could
+  // never happen).
+  it(
+    "every src/decisions-data/DEC-*.md file whose FIRST line is a registry note measures as " +
+      "title-divergent and noted",
+    () => {
+      const { srcFiles, divergences } = measure();
+      const byId = new Map(divergences.map((d) => [d.id, d]));
+      const firstLineNoted = srcFiles
+        .filter((f) => readFileSync(join(decisionsDataDir, f), "utf8").split("\n")[0]!.startsWith("> Registry note:"))
+        .map((f) => f.replace(/\.md$/, ""));
+      expect(firstLineNoted.length).toBeGreaterThan(0);
+      for (const id of firstLineNoted) {
+        const d = byId.get(id);
+        expect(
+          d,
+          `${id}'s src/decisions-data file opens with a registry note but does not measure title-divergent ` +
+            `against decisions/${id}.md`,
+        ).toBeDefined();
+        expect(d!.noted, `${id}'s first-line registry note did not match REGISTRY_NOTE_RE`).toBe(true);
+      }
+    },
+  );
 
-  it("DEC-808 was correctly dropped from the task's candidate note list (it does not measure as title-divergent)", () => {
+  it("every title-divergent id carries a registry note (no divergence escapes noting)", () => {
     const { divergences } = measure();
-    expect(divergences.some((d) => d.id === "DEC-808")).toBe(false);
+    expect(divergences.length).toBeGreaterThan(0);
+    for (const d of divergences) {
+      expect(d.noted, `${d.id} measures title-divergent but has no registry note`).toBe(true);
+    }
   });
 });
