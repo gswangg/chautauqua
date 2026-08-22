@@ -21,7 +21,14 @@
 //     ceiling without the ceiling itself being lowered in the same commit
 //   - the vacuity clause (d): the roster's own "Vacuous-narrow count: N"
 //     line is checked against PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR, two-sided
-//     the same way
+//     the same way -- DEC-180 wave-35 amendment: this floor is a DEFECT
+//     COUNT that must fall to 0 (the BLOCKING public gate now grades
+//     INTERACTIVE_CONTROL_SELECTOR, scripts/render-sweep.ts, so a route
+//     passing vacuously means it drew NO interactive control at all), never
+//     a stable fact to be kept in sync for its own sake -- the two-sided
+//     shape still forces the constant to be lowered in the SAME commit that
+//     causes the count to fall (never left stale-high), but staying at 4
+//     forever is itself the thing wave-35 files as wrong.
 //   - a vacuity tripwire: the parsed roster is non-empty, so a row-format
 //     drift that silently parses to zero rows cannot pass by accident.
 import { readFileSync } from "node:fs";
@@ -158,16 +165,27 @@ describe("public-390-offender-roster (DEC-808 wave-30 amendment)", () => {
     expect(RECORDED_VACUITY.total).toBe(MOBILE_ROUTE_MANIFEST.length);
   });
 
+  // DEC-180 wave-35 amendment: PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR is a
+  // DEFECT COUNT that must fall to 0 (a vacuously-passing route means it
+  // drew no interactive control at all under the now-blocking
+  // INTERACTIVE_CONTROL_SELECTOR population), not a stable population fact
+  // -- so this companion stays two-sided (regression above the floor is
+  // still red, AND a fall below the floor without lowering the constant is
+  // still red, forcing the sync to land in the SAME commit that earns it)
+  // but its direction is explicitly FALLING: the floor's own doc comment
+  // (scripts/render-sweep-lib.ts) must read as a target trending toward 0,
+  // never as a number this test exists to keep stable.
   it("the vacuous-narrow count is <= PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR's ceiling side (never raised by this task)", () => {
     expect(RECORDED_VACUITY.vacuous).toBeLessThanOrEqual(PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR);
   });
 
-  it("does not fall stale below PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR (two-sided companion, clause d)", () => {
+  it("does not fall stale below PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR without the constant itself falling too (two-sided, falling-direction companion, clause d)", () => {
     expect(
       RECORDED_VACUITY.vacuous,
       `PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR = ${PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR} is stale -- ` +
-        `the roster's recorded vacuous-narrow count dropped to ${RECORDED_VACUITY.vacuous}. Lower the constant in ` +
-        `scripts/render-sweep-lib.ts in the same commit that closed the gap.`,
+        `the roster's recorded vacuous-narrow count dropped to ${RECORDED_VACUITY.vacuous}. This floor is a defect ` +
+        `count that must fall to 0 (DEC-180 wave-35), so a drop is progress, not noise -- lower the constant in ` +
+        `scripts/render-sweep-lib.ts in the same commit that closed the gap, rather than leaving it stale-high.`,
     ).toBeGreaterThanOrEqual(PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR);
   });
 });

@@ -193,19 +193,17 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: "/account/password", role: "speaker" },
 ] as const;
 
-/** Selector list for "primary nav/filter/submit controls" (DEC-253): surface
- * nav, search/track-filter forms, submit/save-draft buttons, and the portal
- * sign-out/nav controls. Deliberately excludes secondary inline links (e.g.
- * per-card "View"/"Show more") — those aren't the primary navigation the
- * mobile bar is graded on. */
-const MOBILE_CONTROL_SELECTOR = [
-  "nav a",
-  "form[role='search'] input",
-  "form[role='search'] button",
-  "form button[type='submit']",
-  "form input[type='submit']",
-  "header form button",
-].join(", ");
+// DEC-180/DEC-996 wave-35 amendment: MOBILE_CONTROL_SELECTOR — a hand-written
+// six-selector list whose own comment said it "deliberately excludes
+// secondary inline links" — is RETIRED. It was a hand-listed population
+// (DEC-180: a hand-listed population is not a population), the exact defect
+// the admin mobile pass already fixed at w7-dd by switching to the derived
+// INTERACTIVE_CONTROL_SELECTOR. The BLOCKING public mobile gate
+// (visitMobileRoute's minControlHeight/minControlWidth, DEC-253's own
+// contract) now grades INTERACTIVE_CONTROL_SELECTOR too — the SAME predicate
+// the advisory offender pass and the admin gate already run (DEC-613: one
+// predicate, never a second copy). See INTERACTIVE_CONTROL_SELECTOR's
+// definition and w7-dd's comment in scripts/render-sweep-lib.ts.
 
 // DEC-387: admin mobile pass (390x844, advisory) — the organizer + reviewer
 // entries of ROUTE_MANIFEST, with the "/admin/*" catch-all excluded (it's
@@ -275,14 +273,17 @@ function allSrcTsSourceFiles(root: string): string[] {
 /** DEC-996 wave-24 amendment: derives the exempt class-token set for
  * `formatAdminMobileOffenderLedger`'s classifier from THIS run's own
  * offender lines against the tree's own receipts — never a hand-written
- * array (DEC-180). Two idioms, same as
+ * array (DEC-180). Idioms, same as
  * test/admin-390-offender-roster.scan.test.ts derives independently:
  * (1) a `tap-floor-exempt:` CSS comment naming the class's own rule,
  * checked via app/src/phone-tap-target-scan/core.ts's
  * `hasExemptionForToken` over every app/src/**\/*.css and src/**\/*.ts(x)
  * file; (2) the `.chq-check-hit` wrapper idiom — `chq-check` is EXEMPT
  * whenever app/src/styles.css's own `.chq-check-hit` rule carries the
- * 44px floor. */
+ * 44px floor; (3) DEC-996 wave-35 amendment — the GENERIC ancestor
+ * label-wrapper idiom (see deriveAncestorWrapperExemptTokens below), which
+ * this idiom-2 case is now one hand-coded instance of but is kept
+ * byte-identical so no prior classification changes. */
 function deriveAdminMobileExemptSelectors(offenderLines: readonly string[]): Set<string> {
   const candidateTokens = new Set<string>();
   for (const line of offenderLines) {
@@ -305,7 +306,101 @@ function deriveAdminMobileExemptSelectors(offenderLines: readonly string[]): Set
     if (/\.chq-check-hit\s*\{[^}]*min-height\s*:\s*44px/.test(stylesCss)) exempt.add("chq-check");
   }
 
+  for (const token of deriveAncestorWrapperExemptTokens(offenderLines, sourceTexts)) exempt.add(token);
+
   return exempt;
+}
+
+/** DEC-996 wave-35 amendment: the GENERIC ancestor label-wrapper idiom —
+ * `classifyAdminMobileOffender` (scripts/render-sweep-lib.ts) resolves EXEMPT
+ * by matching class tokens on the offender's OWN printed selector; a
+ * classless interactive element (a bare `<input>`) had no token to match
+ * even when its nearest ancestor already carries the 44px floor (a
+ * `<label class="chq-cfp-option">` wrap, `min-height:46px` in
+ * src/routes/public/cfp.css.ts and src/routes/portal/portal.css.ts). The
+ * sweep's own `describeInteractive` (below, in visitMobileRoute's
+ * page.evaluate) now prints that ancestor as the selector's leading compound
+ * for a classless element — `label.chq-cfp-option > input` — so this
+ * function only needs to derive which ANCESTOR tokens qualify: any `chq-`
+ * class token that (a) appears before a literal `" > "` in a printed
+ * offender's selector part (i.e. it was emitted as an ANCESTOR compound, not
+ * the interactive element's own class — this is what distinguishes a
+ * wrapper receipt from an ordinary element receipt) and (b) has its own CSS
+ * rule (a solitary `.token { ... }` selector, not a compound like
+ * `.token.other`) somewhere in the tree carrying `min-height` >= 44px. This
+ * is the `.chq-check-hit` idiom above GENERALIZED — never a second
+ * hard-coded class name (DEC-180). */
+export function deriveAncestorWrapperExemptTokens(
+  offenderLines: readonly string[],
+  sourceTexts: readonly string[],
+): Set<string> {
+  const ancestorTokens = new Set<string>();
+  for (const line of offenderLines) {
+    const selectorPart = line.split(/\s+w=/)[0] ?? line;
+    const arrowIndex = selectorPart.indexOf(" > ");
+    if (arrowIndex === -1) continue; // no ancestor compound printed, nothing to derive here
+    const ancestorPart = selectorPart.slice(0, arrowIndex);
+    for (const m of ancestorPart.matchAll(/\.[a-zA-Z0-9_-]+/g)) ancestorTokens.add(m[0].slice(1));
+  }
+
+  const exempt = new Set<string>();
+  for (const token of ancestorTokens) {
+    if (!token.startsWith("chq-")) continue; // DEC-180: only the pack's own design-system tokens qualify
+    const rule = new RegExp(`\\.${token}\\s*\\{([^}]*)\\}`, "g");
+    for (const text of sourceTexts) {
+      let m: RegExpExecArray | null;
+      while ((m = rule.exec(text)) !== null) {
+        const heightMatch = m[1]?.match(/min-height\s*:\s*(\d+(?:\.\d+)?)px/);
+        if (heightMatch && heightMatch[1] !== undefined && Number(heightMatch[1]) >= 44) {
+          exempt.add(token);
+          break;
+        }
+      }
+      if (exempt.has(token)) break;
+    }
+  }
+  return exempt;
+}
+
+/** DEC-996 wave-35 amendment: structural-only descriptor (DEC-401: tag + up
+ * to 3 classes, never text) — the pure shape the browser-side `describe`/
+ * `describeInteractive` closures inside visitMobileRoute's page.evaluate
+ * (below) build from a real Element. Kept here, exported, so the
+ * ancestor-walk ALGORITHM those closures implement is independently
+ * unit-testable without playwright/jsdom (page.evaluate's own closure body
+ * is stringified and run inside the browser, so it cannot itself import or
+ * call this function — the two are the same algorithm, kept in sync by
+ * comment cross-reference, same idiom test/admin-390-offender-roster.scan.
+ * test.ts uses to derive its own population independently of the sweep). */
+export interface ElementDescriptor {
+  readonly tag: string;
+  readonly classes: readonly string[];
+}
+
+function describeElementDescriptor(d: ElementDescriptor): string {
+  return d.classes.length > 0 ? `${d.tag}.${d.classes.slice(0, 3).join(".")}` : d.tag;
+}
+
+/** DEC-996 wave-35 amendment: the selector-shape fix itself. An element that
+ * carries its own class is described exactly as before (byte-identical to
+ * pre-wave-35 `describe`). A classless interactive element (a bare
+ * `<input>`) instead walks `ancestors` (ordered nearest-parent-first, the
+ * same walk visitMobileRoute's page.evaluate performs up to but excluding
+ * body/html) for the first ancestor that carries any class, and prints
+ * `${ancestorDescriptor} > ${tag}` — e.g. `label.chq-cfp-option > input` —
+ * so `classifyAdminMobileOffender`'s existing class-token match
+ * (scripts/render-sweep-lib.ts) can reach the wrapper's receipt with no
+ * second predicate (DEC-613). An element with no classed ancestor at all
+ * falls back to its own (classless) descriptor, unchanged. */
+export function describeInteractiveElement(
+  element: ElementDescriptor,
+  ancestors: readonly ElementDescriptor[],
+): string {
+  if (element.classes.length > 0) return describeElementDescriptor(element);
+  for (const ancestor of ancestors) {
+    if (ancestor.classes.length > 0) return `${describeElementDescriptor(ancestor)} > ${element.tag}`;
+  }
+  return describeElementDescriptor(element);
 }
 
 interface Persona {
@@ -1203,16 +1298,21 @@ async function visitMobileRoute(
   context: BrowserContext,
   baseUrl: string,
   entry: MobileRouteEntry,
-  controlSelector: string = MOBILE_CONTROL_SELECTOR,
+  // DEC-180/DEC-996 wave-35 amendment: defaults to INTERACTIVE_CONTROL_
+  // SELECTOR — MOBILE_CONTROL_SELECTOR (the hand-listed six-selector list)
+  // is retired. Both the admin pass and the public pass now pass this same
+  // derived population explicitly for the BLOCKING minControlHeight/
+  // minControlWidth measurement (DEC-253's own contract, DEC-613: one
+  // predicate, never a second copy).
+  controlSelector: string = INTERACTIVE_CONTROL_SELECTOR,
   fontFloorResults?: FontFloorResult[],
   // DEC-808 wave-30 amendment: the population `interactiveMeasurements` is
   // collected over — defaults to controlSelector so every existing call
-  // site (the admin pass) is byte-identical without passing this. The
-  // public pass below passes INTERACTIVE_CONTROL_SELECTOR here while
-  // controlSelector stays MOBILE_CONTROL_SELECTOR, so minControlHeight/
-  // minControlWidth (the BLOCKING public-pass contract, DEC-253) keep
-  // measuring the narrow population in the SAME page load that now also
-  // reports the wide population's offenders advisorily.
+  // site is byte-identical without passing this. Since wave-35 retired the
+  // narrow/wide split for the public pass (both controlSelector and
+  // offenderSelector are now INTERACTIVE_CONTROL_SELECTOR there too), this
+  // parameter is kept only so a future caller could still split the two
+  // populations without a signature change.
   offenderSelector: string = controlSelector,
   // DEC-808 wave-30 amendment: threaded straight to evaluateMobileRoute.
   // Defaults true (byte-identical for the admin pass and every existing
@@ -1251,6 +1351,25 @@ async function visitMobileRoute(
       const tag = el.tagName.toLowerCase();
       const classes = Array.from(el.classList).slice(0, 3);
       return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+    };
+
+    // DEC-996 wave-35 amendment: describeInteractiveElement's browser-side
+    // twin (scripts/render-sweep.ts's exported pure `describeInteractiveElement`
+    // documents/unit-tests this same algorithm) — a classless interactive
+    // element (a bare `<input>`) has no class token `classifyAdminMobileOffender`
+    // can match, even when its nearest ancestor already carries the 44px
+    // floor (e.g. `<label class="chq-cfp-option">`, min-height:46px). Walk
+    // up to (but not including) body/html for the first classed ancestor and
+    // print `${ancestorDescriptor} > ${tag}`; an element with its own class
+    // is described exactly as `describe` above (byte-identical).
+    const describeInteractive = (el: Element): string => {
+      if (el.classList.length > 0) return describe(el);
+      let p = el.parentElement;
+      while (p && p !== document.body && p !== document.documentElement) {
+        if (p.classList.length > 0) return `${describe(p)} > ${el.tagName.toLowerCase()}`;
+        p = p.parentElement;
+      }
+      return describe(el);
     };
 
     // DEC-424: an element deliberately held inside a horizontal scroller
@@ -1309,10 +1428,12 @@ async function visitMobileRoute(
     let minControlHeight: number | null = null;
     let minControlWidth: number | null = null;
     let minControlSelector: string | null = null;
-    // DEC-367: the 44px floor's second dimension, over the narrow
-    // controlSelector population only — this is the BLOCKING public-pass
-    // contract (DEC-253) and must stay untouched by the DEC-808 wave-30
-    // offenderSelector widening below.
+    // DEC-367: the 44px floor's second dimension, over controlSelector — this
+    // is the BLOCKING public-pass contract (DEC-253). DEC-180/DEC-996
+    // wave-35 amendment: controlSelector is now INTERACTIVE_CONTROL_SELECTOR
+    // for both the admin and the public pass (the narrow hand-listed
+    // MOBILE_CONTROL_SELECTOR population is retired), so this measurement
+    // and the offenderSelector widening below now share one population.
     for (const el of controls) {
       if (el.offsetParent === null) continue; // visible only (not display:none)
       const rect = el.getBoundingClientRect();
@@ -1325,22 +1446,24 @@ async function visitMobileRoute(
       }
     }
 
-    // DEC-253/DEC-367/DEC-808 wave-155/wave-30 amendment: every visible
-    // control's own structural box, over offenderSelector — the admin pass
-    // still hands the same selector here as controlSelector (default
-    // parameter, byte-identical), but the DEC-808 wave-30 public pass hands
-    // the widened INTERACTIVE_CONTROL_SELECTOR while controlSelector above
-    // stays the narrow MOBILE_CONTROL_SELECTOR — handed to the pure
+    // DEC-253/DEC-367/DEC-808 wave-155/wave-30 amendment (DEC-180/DEC-996
+    // wave-35: the admin pass and the public pass now both hand
+    // INTERACTIVE_CONTROL_SELECTOR for controlSelector too — the narrow
+    // MOBILE_CONTROL_SELECTOR split is retired): every visible control's own
+    // structural box, over offenderSelector, handed to the pure
     // deriveInteractiveOffenders in render-sweep-lib.ts so the gate can
-    // report every offender, not just the shortest narrow-population
-    // control.
+    // report every offender, not just the shortest control. DEC-996 wave-35
+    // amendment: uses describeInteractive, not describe — a classless
+    // element (bare `<input>`) prints its nearest classed ancestor
+    // (`label.chq-cfp-option > input`) so classifyAdminMobileOffender's
+    // class-token match can reach a wrapper's tap-floor receipt.
     const offenderControls = Array.from(document.querySelectorAll(selectors.offenderSelector)) as HTMLElement[];
     const measurements: InteractiveMeasurement[] = [];
     for (const el of offenderControls) {
       if (el.offsetParent === null) continue; // visible only (not display:none)
       const rect = el.getBoundingClientRect();
       measurements.push({
-        selector: describe(el),
+        selector: describeInteractive(el),
         tagName: el.tagName.toLowerCase(),
         width: rect.width,
         height: rect.height,
@@ -1527,20 +1650,24 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        // DEC-808 wave-30 amendment: offenderSelector widens to
-        // INTERACTIVE_CONTROL_SELECTOR (same population the admin pass
-        // already grades) while controlSelector stays MOBILE_CONTROL_
-        // SELECTOR — minControlHeight/minControlWidth (the BLOCKING public
-        // gate) keep measuring the narrow population; offendersBlocking is
+        // DEC-180/DEC-996 wave-35 amendment: controlSelector switches from
+        // the hand-listed MOBILE_CONTROL_SELECTOR to INTERACTIVE_CONTROL_
+        // SELECTOR — the SAME predicate the admin gate runs (DEC-613: one
+        // predicate, never a second copy) — so minControlHeight/
+        // minControlWidth (the BLOCKING public gate, DEC-253's own contract)
+        // now measure the derived population instead of the narrow hand-list
+        // that "deliberately excludes secondary inline links". offenderSelector
+        // is the same population (identical to controlSelector, one page
+        // load, one measurement); offendersBlocking stays
         // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING (false on landing) so the
-        // wider population is reported (interactiveOffenders) but never
-        // flips this pass's exit code.
+        // per-offender ceiling (a different, advisory check) never flips
+        // this pass's exit code on its own.
         mobileResults.push(
           await visitMobileRoute(
             context,
             baseUrl,
             entry,
-            MOBILE_CONTROL_SELECTOR,
+            INTERACTIVE_CONTROL_SELECTOR,
             fontFloorResults,
             INTERACTIVE_CONTROL_SELECTOR,
             PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING,
@@ -1590,6 +1717,17 @@ async function main(): Promise<void> {
     const publicMobileExemptTokens = deriveAdminMobileExemptSelectors(
       mobileResults.flatMap((r) => r.interactiveOffenders),
     );
+    // DEC-180 wave-35 amendment: `r.minControlHeight` is now measured over
+    // INTERACTIVE_CONTROL_SELECTOR (the narrow MOBILE_CONTROL_SELECTOR
+    // population this vacuity clause originally named is retired above), so
+    // `vacuousNarrow` here means "the BLOCKING population itself matched
+    // zero elements" — a route with genuinely no interactive control at
+    // 390px. This is a defect count that must fall to 0 as vacuous routes
+    // are fixed or found to be legitimately controlless, never a stable
+    // fact to keep in sync (PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR's own doc
+    // comment and companion test, scripts/render-sweep-lib.ts /
+    // test/public-390-offender-roster.scan.test.ts, carry the corrected
+    // framing).
     const publicMobileVacuityRows: PublicMobileVacuityRow[] = mobileResults.map((r) => ({
       path: r.entry.path,
       vacuousNarrow: r.minControlHeight === null,
