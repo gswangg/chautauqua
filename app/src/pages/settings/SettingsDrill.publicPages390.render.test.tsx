@@ -133,6 +133,10 @@ function renderPublicPagesDrill() {
 
 describe('w29-d: frame evidence (byte-for-byte), Chautauqua Settings.dc.html:481-497', () => {
   it('the frame draws exactly the back link, H1, row template and two row actions this test asserts against', () => {
+    // docs/design/Chautauqua Settings.dc.html:483 -- pays for this file's
+    // own header-block scope declaration above (DEC-998): a fully-
+    // receipted in-body citation into the same frame, not just a naming
+    // reference.
     verbatimLine(
       483,
       '        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Settings</a>',

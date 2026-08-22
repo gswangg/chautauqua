@@ -11,9 +11,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, cleanup, within, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsPage } from '../Settings';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(HERE, '..', '..', '..', '..');
+const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Settings.dc.html');
+
+/** DEC-967 shape, copied from the sibling 390 verdict files' own
+ * `verbatimLine`: read the ACTUAL design-file line and assert it
+ * byte-for-byte matches the literal this file claims. Pays for this file's
+ * own header-block scope declaration above (DEC-998) -- a fully-receipted
+ * in-body citation into the SAME desktop frame extent (the 1600px section
+ * opened at :873, no width:390px/height:844 line between there and :905),
+ * not just a naming reference. */
+function verbatimLine(lineNo: number, literal: string): void {
+  const lines = readFileSync(DESIGN_FILE, 'utf-8').split('\n');
+  const line = lines[lineNo - 1];
+  if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
+  expect(line).toBe(literal);
+}
 
 const EVENT_ID = 'evt-w9-ri-portal-welcome-edit';
 
@@ -70,6 +91,11 @@ function renderPortalEdit(welcomeMessage: string | null) {
 
 describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC-919 wave-9 amendment)', () => {
   it('frame :905 -- renders the boxed readout of the STORED welcome text above the editable textarea', async () => {
+    // docs/design/Chautauqua Settings.dc.html:905
+    verbatimLine(
+      905,
+      '              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>',
+    );
     const stored = 'Glad you could make it.\n\nSee you at the podium.';
     renderPortalEdit(stored);
     const section = screen.getByRole('region', { name: 'Speaker portal' });

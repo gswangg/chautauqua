@@ -21,10 +21,13 @@ import { fileURLToPath } from 'node:url';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsPage } from '../Settings';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Settings.dc.html');
+const SETTINGS_CSS_FILE = join(HERE, 'settings.css');
 
 /** Copied verbatim from Settings.frame-verdicts.render.test.tsx's own
  * `verbatimLine` (DEC-967 shape: a citation that can never silently rot to
@@ -34,6 +37,23 @@ function verbatimLine(lineNo: number, literal: string): void {
   const line = lines[lineNo - 1];
   if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
   expect(line).toBe(literal);
+}
+
+/** DEC-994 w16m: this file cited :453's full-width Copy link pill without
+ * ever reading settings.css's phone cascade, so the 390 verdict above is
+ * really an un-cascaded desktop claim (jsdom applies no @media). Read the
+ * ONE `@media (max-width: 700px)` block via the shared brace-depth helper
+ * and pull the `.chq-settings-cfp-copy-btn` rule body out of it -- the
+ * class the 44px-floor `it` below already asserts is on the Copy link
+ * button. */
+function copyBtnPhoneRule(): string {
+  const css = stripCssComments(readFileSync(SETTINGS_CSS_FILE, 'utf-8'));
+  const blocks = phoneMediaBlocks(css);
+  expect(blocks.length).toBeGreaterThan(0);
+  const phone = blocks.join('\n');
+  const match = phone.match(/\.chq-settings-cfp-copy-btn\s*\{([^}]*)\}/);
+  expect(match, 'no phone rule for .chq-settings-cfp-copy-btn').not.toBeNull();
+  return match![1]!;
 }
 
 const EVENT_ID = 'evt-w30-f-cfp-390';
@@ -194,5 +214,20 @@ describe('Settings · Call for papers 390 drill', () => {
     for (const control of editControls) {
       expect(control.className).toMatch(/chq-settings-inline-action/);
     }
+  });
+
+  // The Copy link pill draws full-width under the Public link readout box
+  // at phone width. jsdom applies no @media (DEC-976), so the DOM-only
+  // assertions above never actually cascade this -- read settings.css's
+  // own phone block and assert the geometry the frame needs is really
+  // declared there.
+  it('phone cascade: settings.css actually stretches the Copy link pill full-width under the max-width:700px block (frame :453)', async () => {
+    // docs/design/Chautauqua Settings.dc.html:453
+    verbatimLine(
+      453,
+      '          <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:4px">Copy link</span>',
+    );
+    const rule = copyBtnPhoneRule();
+    expect(rule).toMatch(/width:\s*100%/);
   });
 });
