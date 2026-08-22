@@ -880,6 +880,19 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "require them to change; it only measures the idiom's current adoption' -- an adoption "
     + "meter over the whole call-site population, not a v12 frame or 390-geometry conformance "
     + "fact (DEC-808 wave-13m amendment).",
+  AUDIT_GREP_NEGATIVE_STALE_CEILING:
+    "measures TEST-INSTRUMENT SOUNDNESS -- how many of docs/design/audit/**/*.md's own "
+    + "hand-run 'grepped X for Y: zero hits' claims no longer hold against the tree. It grades "
+    + "the audit corpus's own claim hygiene (DEC-069 wave-19 clause (b)), not itself a v12 frame "
+    + "or 390-geometry conformance fact about any one screen (test/audit-gap-row-staleness.scan.test.ts, "
+    + "DEC-808 wave-24 amendment).",
+  UNRESOLVED_COUNT_TRIPWIRE:
+    "measures how many drawn phone controls the frame-control-floor ledger's own label/token/rule "
+    + "join could not resolve (no-label-match/no-token/no-rule/no-control-shape) -- an "
+    + "instrument-completeness fact about that ledger's own join technique, not itself a v12 frame "
+    + "or 390-geometry conformance fact, the same disposition already given to "
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-control-floor.scan.test.ts, DEC-808 wave-24 "
+    + "amendment).",
 };
 
 /**
