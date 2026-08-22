@@ -158,6 +158,14 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // ---------------------------------------------------------------------
   // Frame :1271 "Invite someone"
   // ---------------------------------------------------------------------
+  // DEC-967 wave-14m: this describe block's title claim (frame :1271, the
+  // "Invite someone" label) was moved here from
+  // test/desktop-frames-settings-dialogs.test.ts, whose raw-source pin on
+  // `title="Invite someone"` went stale under DEC-919 wave-130's
+  // duplicate-rejection retitle -- PeopleRolesPanel.tsx:471 now reads
+  // `title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}`, a
+  // correct change the frame claim survives. Asserted below against the
+  // RENDERED non-duplicate-state dialog heading, never a raw source string.
   describe('frame :1271 "Invite someone"', () => {
     it('MATCHES: opened from the real "Invite someone" control at ?section=people, header carries title+subtitle+Close, primary "Create the account" precedes "Cancel"', async () => {
       renderSection('people');
@@ -167,6 +175,9 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
       fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
 
       const dialog = screen.getByRole('dialog');
+      // docs/design/Chautauqua Settings.dc.html:1271 -- frame label `Invite someone`.
+      verbatimLine(1271, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Invite someone</span>');
+      expect(dialog.querySelector('.chq-modal-title')).toHaveTextContent('Invite someone');
       // docs/design/Chautauqua Settings.dc.html:1278 -- title `Invite someone`.
       verbatimLine(1278, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Invite someone</span>');
       expect(within(dialog).getByText('Invite someone')).toBeInTheDocument();

@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { stripCommentsAndTemplateLiterals } from '../../test/helpers/strip-template-literals';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..');
@@ -35,11 +36,6 @@ function allTestFiles(root: string): string[] {
   return out.sort();
 }
 
-/** Strip `//` line comments and `/* *\/` block comments before scanning. */
-function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-}
-
 // Matches `expect(<literal>).toBe(<same literal>)` or `.toEqual(<same
 // literal>)` where <literal> is one of: `true`, `false`, a bare integer, or
 // a single- or double-quoted string with no interpolation/escaping inside
@@ -48,7 +44,13 @@ const LITERAL = String.raw`(?:true|false|-?\d+|'[^'\\]*'|"[^"\\]*")`;
 const TAUTOLOGY_RE = new RegExp(`expect\\(\\s*(${LITERAL})\\s*\\)\\s*\\.\\s*to(?:Be|Equal)\\(\\s*(${LITERAL})\\s*\\)`, 'g');
 
 function findTautologies(src: string): string[] {
-  const code = stripComments(src);
+  // DEC-374 wave-14m amendment: strip comments AND blank backtick
+  // template-literal contents (via the shared, imported stripper -- DEC-613,
+  // never a second hand-rolled copy) before matching, so a synthetic fixture
+  // string embedded in a template literal (a positive control for some
+  // OTHER scan, which must itself contain a vacuous assertion to be a
+  // control at all) is never mistaken for this file's own real assertion.
+  const code = stripCommentsAndTemplateLiterals(src);
   const offenders: string[] = [];
   let match: RegExpExecArray | null;
   TAUTOLOGY_RE.lastIndex = 0;
@@ -88,6 +90,41 @@ describe('no tautological assertion survives in any test file (DEC-967 wave-57 a
     // A tautology mentioned only in prose (a comment) must not trip the scan.
     const trueTautology = ['expect(', 'true', ').toBe(', 'true', ')'].join('');
     expect(findTautologies(`// old code used to say ${trueTautology} here\nit('x', () => { expect(1).toBe(2); });`)).toEqual([]);
+  });
+
+  // DEC-374 wave-14m amendment: this scan's own positive control above
+  // (":81") notes it must be built via array-join so THIS file's source
+  // text never contains a literal tautology -- but a scan that flattens a
+  // whole file to a string is also blind to a SYNTHETIC test file's own
+  // tautology-shaped fixture, embedded as a template-literal string, that
+  // is a POSITIVE CONTROL for some other scan (it must contain a vacuous
+  // assertion to be a control at all -- e.g.
+  // app/src/phone-verdict-cascade-read.scan.test.ts's neverReadsStylesheet
+  // fixtures). findTautologies must not flag text living only inside a
+  // backtick template literal.
+  it('a tautology-shaped fixture embedded inside a template literal (a synthetic source string) is NOT flagged', () => {
+    const trueTautology = ['expect(', 'true', ').toBe(', 'true', ')'].join('');
+    const fileSource = [
+      "const syntheticSource = `",
+      "  import { describe, it, expect } from 'vitest';",
+      "  describe('fake', () => {",
+      `    it('x', () => { ${trueTautology}; });`,
+      "  });",
+      '`;',
+    ].join('\n');
+    expect(findTautologies(fileSource)).toEqual([]);
+  });
+
+  // Negative control on the fix itself: stripping template-literal content
+  // must not become so broad it swallows a REAL, non-fixture tautology
+  // that sits outside any template literal in the same synthetic source.
+  it('NEGATIVE control: a real, non-fixture tautology in a synthetic source (alongside an unrelated template literal) is still flagged', () => {
+    const trueTautology = ['expect(', 'true', ').toBe(', 'true', ')'].join('');
+    const fileSource = [
+      "const label = `some template literal string, unrelated to the assertion below`;",
+      `it('x', () => { ${trueTautology}; });`,
+    ].join('\n');
+    expect(findTautologies(fileSource)).toEqual([trueTautology]);
   });
 
   for (const file of allFiles) {
@@ -198,14 +235,16 @@ interface FrameBlock {
  * characters are copied through unchanged.
  *
  * This is a SINGLE-PASS, context-aware tokenizer -- deliberately not "strip
- * comments with one global regex, then re-scan for strings/regex"
- * (`stripComments` above). That two-pass shape corrupts THIS VERY FILE when
- * applied to itself: `TAUTOLOGY_RE`'s own source text contains a literal
- * "//" (the escaped-slash immediately before its closing delimiter), which
- * a blind `/\/\/.*$/gm` reads as a comment start and truncates the rest of
- * that line -- a citation-is-not-an-assertion scan that cannot assert about
- * its own file is exactly the shape this amendment exists to catch, so this
- * derived check does not reuse `stripComments`.
+ * comments/templates with one pass, then re-scan for strings/regex"
+ * (`stripCommentsAndTemplateLiterals`, imported above). A naive
+ * regex-only comment stripper corrupts THIS VERY FILE when applied to
+ * itself: `TAUTOLOGY_RE`'s own source text contains a literal "//" (the
+ * escaped-slash immediately before its closing delimiter), which a blind
+ * `/\/\/.*$/gm` reads as a comment start and truncates the rest of that
+ * line -- a citation-is-not-an-assertion scan that cannot assert about its
+ * own file is exactly the shape this amendment exists to catch, so this
+ * derived check does not reuse `stripCommentsAndTemplateLiterals` either
+ * (it also has no notion of a regex literal, which this mask needs).
  *
  * JSX (this population includes `.tsx`) gets two explicit guards: a bare
  * `/` is never a regex start immediately before `>` (`<Foo />`) or

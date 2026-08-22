@@ -78,7 +78,16 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
   it('renders the "Invite someone" dialog (create-at-once, no pending state) in PeopleRolesPanel.tsx', () => {
     expect(frameLine(1271)).toContain('Invite someone');
     const src = read('pages/settings/PeopleRolesPanel.tsx');
-    expect(src).toContain("title=\"Invite someone\"");
+    // DEC-967 wave-14m: the `title="Invite someone"` raw-source literal
+    // this test used to assert here went stale under DEC-919 wave-130's
+    // duplicate-rejection retitle -- PeopleRolesPanel.tsx:471 now reads
+    // `title={duplicateUser ? 'Nobody was invited' : 'Invite someone'}`, a
+    // correct change the frame claim survives. That title claim moved to
+    // app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx
+    // (frame :1271 describe block), which mounts the dialog in its real
+    // non-duplicate state and asserts the RENDERED heading instead of a
+    // raw source string. The two source claims below are unaffected by
+    // that retitle and stay pinned here.
     expect(src).toContain("{creating ? 'Creating…' : 'Create the account'}");
     expect(src).toContain('This is the username they sign in with');
   });
