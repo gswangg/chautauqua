@@ -153,7 +153,18 @@ function renderDetail() {
 }
 
 describe('DeliverableDetail 390 "Session · deliverable" (docs/design/Chautauqua Content.dc.html:373-429, DEC-967 shape)', () => {
-  it('frame citations: :375 back link, :376/:377 title+trailer, :380/:381 status band, :383 Approve, :386/:387 chips, :389 caption, :395-399 version row', () => {
+  it('frame citations: :375 back link, :376/:377 title+trailer, :380/:381 status band, :383 Approve, :386/:387 chips, :389 caption, :395-399 version row', async () => {
+    // DEC-967 wave-99 amendment: a frame citation proves the PACK draws
+    // this frame; it does not prove the APP renders it. This block adds
+    // one real render assertion alongside its verbatimLine() quotes so the
+    // block itself is not tautological -- the fuller per-region assertions
+    // live in the sibling it() blocks below.
+    mockDetail();
+    renderDetail();
+    await screen.findByText('slides-v3.pdf');
+    expect(screen.getByRole('heading', { level: 1, name: 'Taming 40-Minute CI' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-content-status-band')).not.toBeNull();
+
     verbatimLine(
       375,
       '        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Content</a>',

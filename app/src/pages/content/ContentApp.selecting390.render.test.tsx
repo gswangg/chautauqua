@@ -137,7 +137,19 @@ async function enterSelectingWithTicked(count: number) {
 }
 
 describe('ContentApp 390 "Content · selecting" (docs/design/Chautauqua Content.dc.html:247-286, DEC-967 shape)', () => {
-  it('frame citations: :253 the H1, :255-257 the selecting meta triple, :260-261 the chip pair, :269-273 the row template, :279-280 the docked bar', () => {
+  it('frame citations: :253 the H1, :255-257 the selecting meta triple, :260-261 the chip pair, :269-273 the row template, :279-280 the docked bar', async () => {
+    // DEC-967 wave-99 amendment: a frame citation proves the PACK draws
+    // this frame; it does not prove the APP renders it. This block adds
+    // one real render assertion alongside its verbatimLine() quotes so the
+    // block itself is not tautological -- the fuller per-region assertions
+    // live in the sibling it() blocks below.
+    await enterSelectingWithTicked(2);
+    expect(screen.getByRole('heading', { level: 1, name: 'Content' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-content-phone-selecting-meta')).not.toBeNull();
+    const dock = document.querySelector('[data-chq-phone-dock] .chq-bulkbar');
+    expect(dock).not.toBeNull();
+    expect(within(dock as HTMLElement).getByRole('button', { name: 'Approve 2' })).toBeInTheDocument();
+
     verbatimLine(
       253,
       '        <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>',

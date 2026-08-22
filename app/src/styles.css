@@ -2457,6 +2457,19 @@ select:focus-visible,
     min-height: 44px;
   }
 
+  /* .chq-pill's non-zero horizontal padding (5px 12px, desktop rule
+     above) clears the 44px floor on most labels but not on a short one
+     ("Files") -- same width-floor gap shape as .chq-link-button below
+     (min-height alone is not a min-width guarantee). Scoped to .chq-pill
+     alone (not the shared min-height block above) so .chq-rail-link/
+     .chq-checkbox-label/.chq-btn-tertiary, whose own content already
+     reliably clears 44px, are untouched (docs/design/audit/
+     admin-390-interactive-offenders-w27.md row 11). */
+  .chq-pill {
+    min-width: 44px;
+    justify-content: center;
+  }
+
   .chq-btn-tertiary {
     border-radius: var(--chq-r-ctl-phone);
   }
@@ -2732,8 +2745,10 @@ select:focus-visible,
      desktop declaration. */
   .chq-link-button {
     min-height: 44px;
+    min-width: 44px;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 0 6px;
   }
 

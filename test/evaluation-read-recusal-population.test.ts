@@ -375,14 +375,6 @@ const EXEMPTIONS: RecusalExemption[] = [
     reason:
       "feeds the /progress and /remind completed-vs-assigned tally -- a coverage metric (how much review work is done), not a scoring result; a recused reviewer's evaluation still represents completed review work for that purpose",
   },
-  // --- KNOWN GAP: a genuine SCORING READ this lane does not own. ---
-  {
-    file: "src/server/repo/review/evaluations.ts",
-    fn: "listEvaluationsForSubmission",
-    category: "KNOWN_GAP",
-    reason: "SCORING READ — gap, owned by v12m-w34-b (wave 34); delete this row when that lane lands",
-    verdict: "owed",
-  },
 ];
 
 function walkRepoTsFiles(dir: string): string[] {
