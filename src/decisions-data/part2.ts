@@ -5,7 +5,7 @@
 
 export const DEC_210 = "Stage-1 exit reopened: DEC-208 ledger predicate was satisfied at 6807b67 but four verified product defects supersede it; wave 23 runs a fresh battery at the new DEC-114 sha";
 export const DEC_211 = "Every evaluation write and read on /api/v1/review/* must verify the submission belongs to the plan's event, for organizers as well as reviewers";
-export const DEC_212 = "Rating-less scorecards are legal; aggregateSubmission returns {count: evals.length, average: 0, perCriterion: {}} when the criteria list is empty; computeWeightedScore keeps its empty-list throw";
+export const DEC_212 = "Amendment (wave 34): completeness is a NUMERIC test, not a presence test — one function decides both the guard and the arithmetic";
 export const DEC_213 = "Per-round criteria freeze: PATCH /api/v1/plans/:id must reject any roundCriteria change that alters the RESOLVED criteria of a round that already has evaluations; future rounds without evaluations stay editable";
 export const DEC_214 = "Speaker-side kind gates on PATCH /api/v1/task-assignments/:id: an owning speaker may only complete 'form' with a saved response and 'file_request' with an uploaded file; organizer overrides stay unrestricted";
 export const DEC_215 = "Org-user temp-password re-issue: POST /api/v1/users/:id/reset-password (organizer-only, own org, csrfJson) returns a fresh one-time password in the JSON response and revokes the target's sessions; never emailed";
@@ -64,7 +64,7 @@ export const DEC_267 = "Every FK column is indexed, enforced by a schema tripwir
 export const DEC_268 = "The documented zero-setup Quickstart must produce a working /admin: predev builds the SPA bundle, render-sweep builds before boot, and a missing admin shell fails loudly instead of returning a bare 404";
 export const DEC_269 = "task-w2-g Finding 2 (off-origin claim link) is a STALE false negative and is CLOSED with no code action; per-lane sha derivation is the root cause";
 export const DEC_270 = "Wave 6 is the exit battery and nothing else; the PLANNER names the literal frozen sha and lanes never derive one (supersedes DEC-256 steps 1-2 and DEC-262's quiescence procedure)";
-export const DEC_271 = "Amendment (wave 110): a recusal RETRACTS the score -- every downstream read anti-joins review_recusal, not just the queue";
+export const DEC_271 = "Amendment (wave 34): the recusal anti-join is a POPULATION of evaluation reads, not the two the last lens happened to name";
 export const DEC_272 = "ABS-14 (AI-assisted triage) is formally WAIVED for stage 1 and may not be listed as an open item again";
 export const DEC_273 = "'unreviewed -> approve/maybe/deny' is a reviewer RECOMMENDATION expressed as a scorecard criterion, never a sixth submission-status literal; the seeded demo says the customer's words";
 export const DEC_274 = "Public visibility is TWO predicates, not one: visibleSessionConditions (accepted + content-approved) gates sessions, visibleParticipantConditions (visible + invite-state) gates speakers, and session-rooted queries stop inner-joining participant";
