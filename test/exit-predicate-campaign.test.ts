@@ -469,6 +469,22 @@ describe("findCampaignCeilingCandidates", () => {
     ];
     expect(findCampaignCeilingCandidates(files)).toEqual(["WIDGET_CEILING"]);
   });
+
+  it("finds a _CEILING constant declared INDENTED inside a describe block, not only at true top level (DEC-808 wave-32: narrowing the regex to top-level-only would let a lane hide a ratchet by nesting it)", () => {
+    const files: CampaignFile[] = [
+      {
+        path: "app/src/nested.scan.test.ts",
+        content:
+          "describe(\"outer\", () => {\n" +
+          "  const FOO_CEILING = 3;\n" +
+          "  it(\"does a thing\", () => {\n" +
+          "    expect(FOO_CEILING).toBe(3);\n" +
+          "  });\n" +
+          "});\n",
+      },
+    ];
+    expect(findCampaignCeilingCandidates(files)).toEqual(["FOO_CEILING"]);
+  });
 });
 
 describe("assertCampaignPopulationTotal", () => {
