@@ -395,7 +395,11 @@ export function buildReminderMessage(
   firstName: string,
   now: number,
   timeZone: string,
-): { subject: string; text: string } {
+): {
+  subject: string;
+  text: string;
+  parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
+} {
   const openCount = assignments.length;
   const overdueCount = assignments.filter(
     (a) => a.dueDate !== null && now > dayLabelEndInstant(a.dueDate, timeZone),
@@ -417,9 +421,10 @@ export function buildReminderMessage(
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
   const portalLine = renderTemplate("{portal_link}", { portal_link: portalLink });
   const signature = renderTemplate("— The {event_name} team", { event_name: eventName });
+  const greeting = `Hi ${firstName},`;
 
   const text = [
-    `Hi ${firstName},`,
+    greeting,
     "",
     nudge,
     "",
@@ -430,7 +435,11 @@ export function buildReminderMessage(
     "",
     signature,
   ].join("\n");
-  return { subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`, text };
+  return {
+    subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`,
+    text,
+    parts: { greeting, nudge, stillToDo: taskLines, portalLine, signature },
+  };
 }
 
 /** Sends one reminder email per contact via `mailer`. DEC-023 amendment
@@ -861,6 +870,7 @@ export async function previewRemindNow(
     name: string;
     subject: string;
     text: string;
+    parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
     tasks: { title: string; dueLabel: string; overdue: boolean }[];
   }[];
   skipped: number;
@@ -921,6 +931,7 @@ export async function previewRemindNow(
     name: string;
     subject: string;
     text: string;
+    parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
     tasks: { title: string; dueLabel: string; overdue: boolean }[];
   }[] = [];
   for (const group of plan.groups) {
@@ -929,7 +940,7 @@ export async function previewRemindNow(
     if (!first) continue;
     const portalLink = portalLinkMap.get(group.contactId);
     if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
-    const { subject, text } = buildReminderMessage(
+    const { subject, text, parts } = buildReminderMessage(
       eventName,
       group.assignments,
       portalLink,
@@ -943,6 +954,7 @@ export async function previewRemindNow(
       name: `${first.firstName} ${first.lastName}`.trim(),
       subject,
       text,
+      parts,
       tasks: buildReminderTaskSummaries(group.assignments, now.getTime(), first.timezone),
     });
   }
