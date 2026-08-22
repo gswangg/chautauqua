@@ -319,7 +319,15 @@ render verdicts` describe block, likewise real requests, and verdicts
   `:1532` (CFP not open yet), and `:894` (Submit a talk · open) are
   render-verdicted by `test/cfp-desktop-frame-verdicts.test.ts`
   (bare-path citation per DEC-967: no `:line`, resolved against the whole
-  file).
+  file). The first three additionally carry a third, independent
+  real-request verdict in `test/portal-desktop-frame-verdicts.test.ts`
+  (DEC-976 wave-22 amendment) — the file this document's own
+  `:1373`/`:1473`/`:1167` section names as the home for this shape.
+  `:1101` MATCHES; `:1532` MATCHES; `:1211` diverges on the
+  rejected-state dock note only, the same narrow gap this document's
+  task-w24-i section above and `docs/design/audit/cfp-desktop-v12.md`
+  already adjudicated under DEC-902's wave-20 amendment, disposition (a)
+  — not new debt.
 - `:28, :132, :249, :680, :730, :779` — six of the seven non-portal public
   frames in this file — are render-verdicted by `test/public-desktop-frame-verdicts.test.ts`
   (bare-path citation, same reason).
