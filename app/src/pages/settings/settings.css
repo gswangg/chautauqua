@@ -2891,4 +2891,18 @@
   .chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action {
     display: none;
   }
+
+  /* DEC-393 wave-13-xi: .chq-settings-embed-back (:846) is a bare row-action
+     anchor ("‹ Public pages") with font/colour only and no floor at any
+     width -- a genuine defect, not an existing-desktop-geometry rule to
+     protect. Floored here per the 44px-floor + flex-centre + horizontal-
+     padding triple; desktop keeps its unfloored font/colour-only rule
+     untouched (DEC-385 single-direction). */
+  .chq-settings-embed-back {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    margin: 0 -12px;
+  }
 }

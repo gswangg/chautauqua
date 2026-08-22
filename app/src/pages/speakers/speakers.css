@@ -269,8 +269,12 @@
   border-bottom: 1px solid var(--chq-rule);
 }
 
+/* DEC-937 wave-13m amendment: no CSS fallback on a design token -- the
+   token is unconditionally defined in styles.css, so a fallback only ever
+   fires when the design system itself has broken, silently painting an
+   off-system face right when conformance matters most. */
 .chq-speakers-remind-card-subject {
-  font-family: var(--chq-font-display, inherit);
+  font-family: var(--chq-font-display);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -2410,5 +2414,18 @@ button.chq-speakers-status-overdue:hover {
     display: flex;
     align-items: center;
     padding: 0 12px;
+  }
+
+  /* DEC-393 wave-13-xi: the desktop rule (:312) already declares the
+     min-height/flex-centre/padding triple, but at top level -- the scan
+     requires the floor restated inside a narrow media block on the anchor
+     itself (or a selector reaching it). Restated verbatim here rather than
+     exempted: this is a real row-action anchor, not a principled carve-out.
+     Desktop's top-level rule is untouched (DEC-385 single-direction). */
+  .chq-speakers-remind-card-cta {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
   }
 }
