@@ -102,11 +102,35 @@ describe('contacts.css one narrowing caption at 390 (DEC-930 wave-16-r5 amendmen
     expect(idMatch).not.toBeNull();
     const idVar = idMatch![1]!;
 
-    const groupMatch = PANEL.match(
-      /className="chq-contacts-filter-chipstrip"[^>]*aria-labelledby=\{(\w+)\}/,
+    // Locate the `.chq-contacts-filter-chipstrip` group's whole opening tag
+    // (attribute ORDER is not asserted -- role/className/aria-labelledby may
+    // land in any order). The tag cannot be bounded by the first bare `>`:
+    // the aria-labelledby ternary's own condition
+    // (`activeRules(rules).length > 0 ? ... : undefined`) contains a `>`
+    // that is not the tag's close. The tag's real close is the lone `>` on
+    // its own line that JSX prints after the last attribute.
+    const chipstripAttrIdx = PANEL.indexOf('className="chq-contacts-filter-chipstrip"');
+    expect(chipstripAttrIdx).toBeGreaterThan(-1);
+    const tagStart = PANEL.lastIndexOf('<div', chipstripAttrIdx);
+    expect(tagStart).toBeGreaterThan(-1);
+    const tagEndIdx = PANEL.indexOf('\n    >', chipstripAttrIdx);
+    expect(tagEndIdx).toBeGreaterThan(-1);
+    const openTag = PANEL.slice(tagStart, tagEndIdx);
+
+    expect(openTag).toMatch(/role="group"/);
+
+    const ariaMatch = openTag.match(/aria-labelledby=\{([\s\S]*)\}\s*$/);
+    expect(ariaMatch).not.toBeNull();
+    const ariaExpr = ariaMatch![1]!;
+
+    // The group's accessible name is the caption span's id exactly when
+    // `activeRules(rules).length > 0`, and stands down (no accessible name
+    // via this attribute) with the caption otherwise.
+    const ternaryMatch = ariaExpr.match(
+      /^activeRules\(rules\)\.length > 0 \? (\w+) : undefined$/,
     );
-    expect(groupMatch).not.toBeNull();
-    expect(groupMatch![1]).toBe(idVar);
+    expect(ternaryMatch).not.toBeNull();
+    expect(ternaryMatch![1]).toBe(idVar);
 
     // The desktop builder caption carries no id and is referenced by no
     // aria-labelledby anywhere in the file.

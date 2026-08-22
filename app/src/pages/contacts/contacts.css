@@ -1574,7 +1574,12 @@
      from branch v12m-w16-ui-r3-c with `max-width: 46vw; min-width: 0`,
      the correct merged value is `min-width: 44px`, not that rule's `0`
      -- `max-width` (not `min-width`) is what forces its ellipsis, and
-     46vw at 390px is 179px, well above the 44px floor. */
+     46vw at 390px is 179px, well above the 44px floor. MERGE RESOLVED
+     (wave-4 w4-bd): the second rule landed at ~:1846 from branch
+     v12m-w16-ui-r3-c and did carry `min-width: 0`, cancelling this rule's
+     44px width floor per src/decisions-data/DEC-393.md/src/decisions-data/DEC-919.md -- fixed by dropping that
+     `min-width: 0` from the later rule and keeping its `max-width: 46vw`
+     plus the overflow/ellipsis trio, exactly as this note predicted. */
   .chq-contacts-filter-rule-chip-edit {
     min-height: 44px;
     min-width: 44px;
@@ -1845,7 +1850,6 @@
      kept and only the overflow/size properties are added. */
   .chq-contacts-filter-rule-chip-edit {
     max-width: 46vw;
-    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
