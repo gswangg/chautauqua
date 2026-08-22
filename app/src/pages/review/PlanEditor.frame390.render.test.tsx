@@ -464,37 +464,75 @@ describe('Plan editor · 390 shipped anatomy (matches the frame)', () => {
   });
 });
 
-describe('Plan editor · 390 DIVERGENCES from the frame (real gaps, not fixed here -- DEC-385 wave-29 condition 4 fails: fixing needs app/src/pages/review/PlanEditor.tsx, which this task does not own)', () => {
-  it(':612/:627 "Options"/"Weight" eyebrows have NO phone-visible text counterpart -- only an aria-hidden desktop head-row cell carries those words, unconditionally at every width', async () => {
+describe('Plan editor · 390 CONFORMANCE (v12m-w31-a/DEC-745 wave-31 amendment: the two elements below were built to close the gaps this describe block used to memorialize)', () => {
+  it(':612/:627 the "Options"/"Weight" eyebrows render, phone-visible, per criterion -- a real label for the options block / weight cell, not aria-hidden', async () => {
     stubPhoneMatchMedia();
     mockPlan();
     const { container } = renderEditor();
 
     await screen.findByDisplayValue(PLAN_NAME);
-    // The only "Weight"/"Options" text nodes anywhere in the tree are the
-    // aria-hidden desktop head-row's column labels (chq-review-criteria-head-row,
-    // itself aria-hidden="true" and rendered unconditionally, not phone-only).
+    // The dropdown criterion ("Format") carries the Options eyebrow, sibling
+    // of its option rows inside .chq-review-criterion-options.
+    const optionsBlock = container.querySelector('.chq-review-criterion-options')!;
+    expect(optionsBlock).not.toBeNull();
+    const optionsEyebrow = optionsBlock.querySelector('.chq-review-criterion-field-eyebrow')!;
+    expect(optionsEyebrow).not.toBeNull();
+    expect(optionsEyebrow.textContent).toBe('Options');
+    expect(optionsEyebrow.getAttribute('aria-hidden')).not.toBe('true');
+    expect(optionsBlock.getAttribute('aria-labelledby')).toContain(optionsEyebrow.id);
+
+    // The rating criterion ("Content") carries the Weight eyebrow, sibling
+    // of its weight input inside .chq-review-criterion-weight.
+    const weightCell = container.querySelector('.chq-review-criterion-weight')!;
+    expect(weightCell).not.toBeNull();
+    const weightEyebrow = weightCell.querySelector('.chq-review-criterion-field-eyebrow')!;
+    expect(weightEyebrow).not.toBeNull();
+    expect(weightEyebrow.textContent).toBe('Weight');
+    expect(weightEyebrow.getAttribute('aria-hidden')).not.toBe('true');
+    const weightInput = weightCell.querySelector('input[type="number"]')!;
+    expect(weightInput.getAttribute('aria-labelledby')).toContain(weightEyebrow.id);
+
+    // The aria-hidden desktop head-row still carries the same two words,
+    // unconditionally -- these per-criterion eyebrows are IN ADDITION to it,
+    // never a replacement.
     const headRow = container.querySelector('.chq-review-criteria-head-row');
     expect(headRow).not.toBeNull();
     expect(headRow!.getAttribute('aria-hidden')).toBe('true');
     expect(headRow!.textContent).toContain('Weight');
-    // No SECOND, phone-scoped "Weight"/"Options" eyebrow exists per criterion
-    // row the way the frame draws one inline with each criterion's own
-    // weight/options block.
-    const criterionScopedWeightLabels = container.querySelectorAll(
-      '.chq-review-criterion-row .chq-review-criterion-weight-label, .chq-review-criterion-options .chq-review-criterion-options-label',
-    );
-    expect(criterionScopedWeightLabels.length).toBe(0);
   });
 
-  it(':640 consequence line keeps the frame\'s "N of about M · " prefix but a DIFFERENT second clause ("more than that and reviewers rush the last ones", not "the two scored ones average by weight")', async () => {
+  it(':612/:627 the eyebrow class is display:none at every width EXCEPT the terminal phone block, which restores the frame\'s register -- jsdom applies no stylesheet (see readReviewPhoneLayer\'s own comment above), so desktop non-painting is a source-level assertion against review.css itself, not a DOM style read', () => {
+    const fullCss = stripCssComments(readFileSync(REVIEW_CSS, 'utf-8'));
+    const phoneLayer = readReviewPhoneLayer();
+    const topLevelCss = fullCss.slice(0, fullCss.indexOf(phoneLayer));
+
+    // Exactly one declaration outside the phone block, and it hides the class.
+    expect(topLevelCss).toMatch(/\.chq-review-criterion-field-eyebrow\s*\{\s*display:\s*none;\s*\}/);
+    // Inside the terminal phone block, the SAME class is restored to the
+    // frame's own register (:612/:627 -- 11px/800/0.1em/uppercase/muted).
+    expect(phoneLayer).toMatch(
+      /\.chq-review-criterion-field-eyebrow\s*\{[^}]*display:\s*block;[^}]*font-size:\s*11px;[^}]*font-weight:\s*800;[^}]*letter-spacing:\s*0\.1em;[^}]*text-transform:\s*uppercase;[^}]*color:\s*var\(--chq-muted\);[^}]*\}/,
+    );
+  });
+
+  it(':640 consequence line keeps the frame\'s "N of about M · " prefix; the phone second clause carries the plan-wide "Scores average by weight" sentence\'s own words in the frame\'s slot (DEC-613/DEC-582 fixture-data carve-out -- never the frame\'s literal number-word "the two scored ones"), desktop stays byte-identical to what it shipped', async () => {
     stubPhoneMatchMedia();
     mockPlan();
     renderEditor();
 
     const line = await screen.findByText(/^\d+ of about \d+ · /);
-    expect(line.textContent).toBe('2 of about 7 · more than that and reviewers rush the last ones');
+    expect(line.textContent).toBe('2 of about 7 · scores average by weight');
     expect(line.textContent).not.toContain('the two scored ones average by weight');
+    expect(line.textContent).not.toContain('more than that and reviewers rush the last ones');
+  });
+
+  it(':640 desktop keeps the shipped "more than that and reviewers rush the last ones" clause byte-identically -- the phone clause above never leaks to desktop width', async () => {
+    mockPlan();
+    renderEditor();
+
+    const line = await screen.findByText(/^\d+ of about \d+ · /);
+    expect(line.textContent).toBe('2 of about 7 · more than that and reviewers rush the last ones');
+    expect(line.textContent).not.toContain('scores average by weight');
   });
 
   // This test used to record a DIVERGENCE: the phone cap row rendered

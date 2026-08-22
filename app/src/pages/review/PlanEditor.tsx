@@ -2025,6 +2025,23 @@ export function PlanEditor() {
                     </select>
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
+                        {/* v12m-w31-a/DEC-745 (wave-31 amendment): `Chautauqua
+                            Review.dc.html:627` draws a "Weight" eyebrow directly
+                            above the weight cell -- the product previously had
+                            no phone-visible counterpart at all (the desktop
+                            head-row that spells "Weight" is aria-hidden and
+                            unconditional). display:none at every width except
+                            the terminal phone block below (DEC-385); it is the
+                            real phone label for the weight input, not
+                            decorative, so it is NOT aria-hidden -- narrowest
+                            association is id + aria-labelledby on the input,
+                            replacing the input's own bare aria-label. */}
+                        <span
+                          className="chq-review-criterion-field-eyebrow"
+                          id={`criterion-${criterion.id}-weight-eyebrow`}
+                        >
+                          Weight
+                        </span>
                         <input
                           id={`criterion-${criterion.id}-weight`}
                           type="number"
@@ -2035,7 +2052,7 @@ export function PlanEditor() {
                           }
                           min={0}
                           step="0.1"
-                          aria-label={`${criterion.label || 'criterion'} weight`}
+                          aria-labelledby={`criterion-${criterion.id}-weight-eyebrow criterion-${criterion.id}-label`}
                           aria-invalid={
                             submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]
                               ? 'true'
@@ -2064,9 +2081,36 @@ export function PlanEditor() {
                       // print, so this never re-sorts.
                       <div
                         className="chq-review-criterion-options"
-                        aria-label={`${criterion.label || 'criterion'} options`}
+                        aria-labelledby={`criterion-${criterion.id}-options-eyebrow criterion-${criterion.id}-label`}
                         id={`criterion-${criterion.id}-options`}
                       >
+                        {/* v12m-w31-a/DEC-745 (wave-31 amendment): `Chautauqua
+                            Review.dc.html:612` draws an "Options" eyebrow
+                            immediately above the option rows -- the product
+                            previously had nothing labelling this block at
+                            phone width (the desktop head-row that spells
+                            "Options" is aria-hidden and unconditional, not a
+                            phone-visible substitute). The eyebrow is
+                            display:none at every width except the terminal
+                            phone block below (DEC-385); it is the options
+                            block's accessible name (not aria-hidden -- it is
+                            the real phone label for the option rows'
+                            drag/label/Remove controls), narrowest association
+                            via id + aria-labelledby. The frame also pairs this
+                            eyebrow with the "N of M" count on the same line
+                            (:613); that count stays in its already-shipped
+                            footer position below the rows (unchanged, DEC-385
+                            desktop-frozen -- relocating it would reflow the
+                            footer's desktop line, which this task's OWNS list
+                            (review.css phone block only) cannot repair with a
+                            top-level declaration change). Recorded as a
+                            DIVERGES row in review-admin-v12.md. */}
+                        <span
+                          className="chq-review-criterion-field-eyebrow"
+                          id={`criterion-${criterion.id}-options-eyebrow`}
+                        >
+                          Options
+                        </span>
                         {(criterion.options ?? []).map((option, optionIndex) => {
                           const optionKey = `${criterion.id}:${optionIndex}`;
                           return (
@@ -2278,9 +2322,29 @@ export function PlanEditor() {
                       </button>
                     </div>
                   )}
-                  <span className="chq-review-criteria-cap-notice">
-                    {editingCriteria.length} of about {MAX_PLAN_CRITERIA} · more than that and reviewers rush the last ones
-                  </span>
+                  {/* v12m-w31-a/DEC-745 (wave-31 amendment): `Chautauqua
+                      Review.dc.html:640` draws this consequence line's second
+                      clause as "the two scored ones average by weight" at
+                      phone width -- desktop keeps its shipped "more than that
+                      and reviewers rush the last ones" byte-identically
+                      (DEC-385). The frame's "two" is a NUMBER-WORD SAMPLED
+                      FROM THE FRAME'S OWN FIXTURE (3 mock criteria, 2 of them
+                      weighted) -- DEC-613/DEC-582's fixture-data carve-out
+                      forbids shipping a number-word grammar to match a mock,
+                      so the phone clause carries the words of the sentence
+                      already shipped elsewhere on this page ("Scores average
+                      by weight", the section eyebrow above) in the frame's
+                      slot, composed the same phone-node-beside-desktop-node
+                      way capRowSummaryLinePhone already is in this file. */}
+                  {isPhone ? (
+                    <span className="chq-review-criteria-cap-notice">
+                      {editingCriteria.length} of about {MAX_PLAN_CRITERIA} · scores average by weight
+                    </span>
+                  ) : (
+                    <span className="chq-review-criteria-cap-notice">
+                      {editingCriteria.length} of about {MAX_PLAN_CRITERIA} · more than that and reviewers rush the last ones
+                    </span>
+                  )}
                 </div>
               </>
             );
