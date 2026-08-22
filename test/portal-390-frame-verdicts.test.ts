@@ -191,6 +191,66 @@ vi.mock("../src/server/repo/profile", async () => {
   };
 });
 
+// DEC-613 wave-9 amendment: extending this SAME mock set (never a second
+// makeChain-style fake-db stack) is how the harness reaches
+// /portal/preview -- portalPreviewRoutes' GET /preview handler reads
+// getEventForOrg (repo/events) and getPortalSettingsForEvent/
+// listResourcesForEvent (repo/portal-config) directly against c.var.db, none
+// of which the four mocks above touch. `c.set("db", {} as never)` stays
+// valid below precisely because these two additions cover the only db
+// reads the preview route makes.
+vi.mock("../src/server/repo/events", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+  return {
+    ...actual,
+    getEventForOrg: vi.fn(async () => ({
+      id: "evt-1",
+      orgId: "org-1",
+      name: "Arbitrary Con",
+      slug: "arbitrary-con",
+      startDate: "2027-05-12",
+      endDate: "2027-05-14",
+      location: null,
+      timezone: "UTC",
+      recordPrefix: "SES",
+      branding: {},
+      createdAt: 0,
+      updatedAt: 0,
+    })),
+  };
+});
+
+vi.mock("../src/server/repo/portal-config", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/portal-config")>(
+    "../src/server/repo/portal-config",
+  );
+  return {
+    ...actual,
+    getPortalSettingsForEvent: vi.fn(async () => ({
+      eventId: "evt-1",
+      welcomeMessage: "Thanks for speaking at Arbitrary Con.",
+      accentColor: null,
+      logoUrl: null,
+      showResources: true,
+    })),
+    listResourcesForEvent: vi.fn(async () => [
+      {
+        id: "r1",
+        eventId: "evt-1",
+        kind: "file",
+        title: "Speaker guide",
+        content: null,
+        fileId: "f1",
+        position: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ]),
+  };
+});
+
+const organizerAuth: AuthInfo = { userId: "u-org", role: "organizer", orgId: "org-1" };
+
 async function buildApp(): Promise<Hono<AppEnv>> {
   const { portalRoutes } = await import("../src/routes/portal/index");
   const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
@@ -207,6 +267,23 @@ async function buildApp(): Promise<Hono<AppEnv>> {
   app.route("/portal", portalTasksRoutes);
   app.route("/portal", portalEditRoutes);
   app.route("/portal", portalProfileRoutes);
+  return app;
+}
+
+/** Frame :1473 is organizer-only (portalPreviewRoutes' own guard) --
+ * a distinct app-builder carrying organizerAuth rather than buildApp()'s
+ * speakerAuth, same shape as buildApp() above (DEC-613: vary path/auth
+ * fixtures, never the mock-target vocabulary). */
+async function buildPreviewApp(): Promise<Hono<AppEnv>> {
+  const { portalPreviewRoutes } = await import("../src/routes/portal/preview");
+  const app = new Hono<AppEnv>();
+  registerErrorHandler(app);
+  app.use("*", async (c, next) => {
+    c.set("auth", organizerAuth);
+    c.set("db", {} as never);
+    await next();
+  });
+  app.route("/portal", portalPreviewRoutes);
   return app;
 }
 
@@ -355,5 +432,119 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     ]);
     // No docked control on this page (unlike tasks/profile above).
     expect(html).not.toContain('class="chq-portal-dock"');
+  });
+});
+
+// DEC-613 wave-9 amendment: docs/design/audit/portal-desktop-v12.md:156's
+// UNREACHED verdict for this DESKTOP (1600) frame named the missing
+// capability -- the mock-set extension above IS that capability, so this
+// describe block reaches it off a REAL GET /portal/preview request (organizer
+// auth) through the SAME harness, never a second fake-db stack.
+describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html:1473, w9-re)", () => {
+  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: banner/back-link/meta-sentence order and the 'Not shown here' chip set both differ from the frame", async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:1473
+    verbatimLine(
+      1473,
+      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`,
+    );
+    const app = await buildPreviewApp();
+    const res = await app.request("/portal/preview?eventId=evt-1");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // Structural anatomy MATCHES: read-only banner, Welcome hero + lede,
+    // Resources section (naming the fixture's one resource), Not-shown-here
+    // section, in that top-to-bottom order.
+    expectInOrder(html, [
+      'class="chq-portal-preview-banner" role="note"',
+      'Preview · read-only.',
+      '<h1 class="chq-portal-hero">Welcome</h1>',
+      '<p class="chq-portal-lede">Thanks for speaking at Arbitrary Con.</p>',
+      'aria-label="Resources" class="chq-section"',
+      '<span class="chq-portal-row-title">Speaker guide</span>',
+      'aria-label="Not shown here" class="chq-section"',
+    ]);
+
+    // docs/design/Chautauqua Public and Portal.dc.html:1490
+    verbatimLine(
+      1490,
+      `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
+    );
+    // DIVERGES: the frame draws '‹ Back to settings' INSIDE the read-only
+    // banner card (margin-left:auto, same row as the two banner sentences,
+    // frame :1476-1490). The route instead renders it as a standalone link
+    // at the very BOTTOM of the page, after the "Not shown here" section --
+    // the banner paragraph (`.chq-portal-preview-banner`) carries no link at
+    // all.
+    const bannerOpen = html.indexOf('class="chq-portal-preview-banner"');
+    const bannerClose = html.indexOf("</p>", bannerOpen);
+    expect(html.slice(bannerOpen, bannerClose)).not.toContain("Back to settings");
+    // Checked as an actual rendered <a class="..."> use, never a bare
+    // substring -- the class token also appears inertly inside the page's
+    // inlined <style> block and a nearby source comment (DEC-976's "a CSS
+    // selector definition can't be mistaken for a rendered element" rule).
+    const backLinkAnchor = '<a class="chq-portal-standalone-link" href="/admin/settings?section=portal">';
+    expect(html).toContain(backLinkAnchor + "‹ Back to settings</a>");
+    const backLinkIdx = html.indexOf(backLinkAnchor);
+    const notShownIdx = html.indexOf('aria-label="Not shown here"');
+    expect(backLinkIdx).toBeGreaterThan(notShownIdx);
+
+    // docs/design/Chautauqua Public and Portal.dc.html:1495
+    verbatimLine(
+      1495,
+      `          <span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`,
+    );
+    // DIVERGES: the frame's Welcome lede is TWO sentences -- the stored
+    // welcome message, then a fixed "Everything we need from you is on this
+    // page, in order." The route renders only the stored message; no such
+    // fixed second sentence exists anywhere in preview.tsx.
+    expect(html).not.toContain("Everything we need from you is on this page, in order.");
+
+    // docs/design/Chautauqua Public and Portal.dc.html:1523
+    verbatimLine(
+      1523,
+      `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
+    );
+    // DIVERGES: the frame places this sentence at the very END of the
+    // page, trailing the "Not shown here" chips. The route renders the same
+    // sentence (verbatim) but much earlier -- immediately after the banner,
+    // before the Welcome h1 -- so it precedes the Resources/Not-shown-here
+    // sections the frame trails it with.
+    expect(html).toContain("To see a real speaker&#39;s portal you would have to be them — this preview deliberately cannot.");
+    const metaIdx = html.indexOf("To see a real speaker's portal you would have to be them");
+    const welcomeIdx = html.indexOf('<h1 class="chq-portal-hero">Welcome</h1>');
+    expect(metaIdx).toBeLessThan(welcomeIdx);
+
+    // docs/design/Chautauqua Public and Portal.dc.html:1518-1521
+    verbatimLine(
+      1518,
+      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their tasks</span>`,
+    );
+    verbatimLine(
+      1519,
+      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their session</span>`,
+    );
+    verbatimLine(
+      1520,
+      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their files</span>`,
+    );
+    verbatimLine(
+      1521,
+      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their notes</span>`,
+    );
+    // DIVERGES: the frame's "Not shown here" chip row reads FOUR chips --
+    // Their tasks / Their session / Their files / Their notes. The route's
+    // own header comment (preview.tsx:60-63) says this list is drawn from
+    // what the route declines to load (submissions/tasks/files) and ships
+    // THREE chips with different labels -- Their submissions / Their tasks /
+    // Their uploaded files. Neither "Their session" nor "Their notes" render
+    // at all; "Their files" ships as "Their uploaded files" instead.
+    expect(html).toContain('chq-portal-not-shown-chip">Their submissions</li>');
+    expect(html).toContain('chq-portal-not-shown-chip">Their tasks</li>');
+    expect(html).toContain('chq-portal-not-shown-chip">Their uploaded files</li>');
+    expect(html).not.toContain(">Their session<");
+    expect(html).not.toContain(">Their notes<");
+    expect(html).not.toContain('chq-portal-not-shown-chip">Their files</li>');
+    expect((html.match(/<li class="chq-portal-not-shown-chip">/g) ?? []).length).toBe(3);
   });
 });
