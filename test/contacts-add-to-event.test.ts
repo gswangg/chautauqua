@@ -13,6 +13,15 @@
 // invisible on the Speakers onboarding grid. The old select-queue fake db
 // couldn't model the extra selects/inserts that planning performs, so this
 // is now a small in-memory table double instead.
+//
+// DEC-909 wave-18 amendment (task w18-g): this is the SECOND door the
+// wave-128 amendment names -- the route now takes an optional `title`
+// (clause a) and routes through repo.attachOrCreateRosterSession, the SAME
+// match-then-mint predicate POST /contacts's eventId branch uses (clause
+// b), never a second copy of it. fakeDb below gained a `seedSubmissions`
+// param and an `orderBy` no-op on its select chain (findSubmissionByExactTitle's
+// shape), adapted from test/contacts-roster-add-session-optional.test.ts's
+// identical fake.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -66,11 +75,11 @@ const EVENT_ORG_A = {
  * contact/event/submission under test, so "return the whole table" is
  * equivalent to "return the filtered rows" for these tests' purposes.
  */
-function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
+function fakeDb(seedContacts: unknown[], seedEvents: unknown[], seedSubmissions: unknown[] = []) {
   const state = {
     contact: [...seedContacts] as any[],
     event: [...seedEvents] as any[],
-    submission: [] as any[],
+    submission: [...seedSubmissions] as any[],
     participant: [] as any[],
     task: [] as any[],
     taskAssignment: [] as any[],
@@ -112,6 +121,7 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
+      orderBy: () => chain,
       // DEC-111 amendment (waves 48 and 55): getOrCreateTask and
       // getOrCreateFormTaskForm both do insert-on-conflict-do-nothing-then-
       // select-limit(1) lookups keyed by (eventId, title); this fake ignores WHERE
@@ -123,10 +133,16 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
       // this specific insert/select pair just touched" without real WHERE
       // filtering — correct for this test's single-contact, no-pre-existing
       // -row scenario, where every getOrCreateTask/getOrCreateFormTaskForm
-      // call is for a title it hasn't seen yet.
+      // call is for a title it hasn't seen yet. DEC-909 clause (b)'s
+      // findSubmissionByExactTitle does the same insert-shape lookup
+      // (.select().from(submission).where(...).orderBy(...).limit(1)) --
+      // this fake's WHERE-ignorant tail heuristic works for it too, since
+      // every scenario below seeds exactly the one submission (if any)
+      // relevant to what it's testing.
       limit: (n: number) => ({
         innerJoin: () => chain,
         where: () => chain,
+        orderBy: () => chain,
         then: (resolve: (v: unknown[]) => void) => resolve(rows.slice(-n)),
       }),
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
@@ -298,32 +314,90 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
   });
 
-  it("400s a blank title instead of inventing one (DEC-764)", async () => {
-    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+  it("DEC-909 wave-18 clause (a): a blank title is accepted, minting a session the way POST /contacts does", async () => {
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
       jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "   " }),
     );
 
-    expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(json.error.fields).toEqual({ title: "required" });
-    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+    expect(res.status).toBe(201);
+    const submissionInsert = inserts.find((i) => i.table === schema.submission)!.vals as any;
+    // Never invented: a blank title stays "", never a fallback.
+    expect(submissionInsert.title).toBe("");
+    expect(state.submission[0].status).toBe("accepted");
   });
 
-  it("400s a missing title", async () => {
-    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+  it("DEC-909 wave-18 clause (a): an omitted title is accepted, minting a session with an empty title", async () => {
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
       jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1" }),
     );
 
+    expect(res.status).toBe(201);
+    const submissionInsert = inserts.find((i) => i.table === schema.submission)!.vals as any;
+    expect(submissionInsert.title).toBe("");
+    expect(state.submission[0].status).toBe("accepted");
+  });
+
+  it("400s an over-cap title even though the field is optional (DEC-417)", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "x".repeat(201) }),
+    );
+
     expect(res.status).toBe(400);
     const json = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(json.error.fields).toEqual({ title: "required" });
+    expect(json.error.fields?.title).toBeTruthy();
     expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+  });
+
+  it("DEC-909 wave-18 clause (b): an exactly-matching title attaches to the existing submission and returns its id, minting no second session", async () => {
+    const existingSession = {
+      id: "sub-existing",
+      eventId: "event-1",
+      formId: null,
+      seq: 1,
+      title: "Lightning talks",
+      description: null,
+      trackId: null,
+      additionalTrackIdsJson: null,
+      status: "accepted",
+      contentStatus: "pending",
+      acceptedAt: new Date(600),
+      icsSequence: 0,
+      externalRef: null,
+      createdAt: new Date(600),
+      updatedAt: new Date(600),
+    };
+    const { db, inserts, state } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A], [existingSession]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "Lightning talks" }),
+    );
+
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as { submissionId: string };
+    expect(json.submissionId).toBe("sub-existing");
+    // No new submission minted -- still exactly the one seeded session.
+    expect(state.submission).toHaveLength(1);
+    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+
+    // The contact attaches as an ACTIVE participant on the EXISTING session
+    // (DEC-829's ACTIVE predicate: visible, inviteStatus 'none' -- the same
+    // shape a batch roster import gives, not 'invited').
+    const participantInsert = inserts.find((i) => i.table === schema.participant)!.vals as any;
+    expect(participantInsert.submissionId).toBe("sub-existing");
+    expect(participantInsert.contactId).toBe("contact-1");
+    expect(participantInsert.visible).toBe(true);
+    expect(participantInsert.inviteStatus).toBe("none");
+    expect(participantInsert.role).toBe("speaker");
   });
 
   it("links the CRM contact by id -- a case/whitespace-differing email never mints a second contact row (DEC-765)", async () => {

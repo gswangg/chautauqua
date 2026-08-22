@@ -8,21 +8,27 @@ import type { ContactDetail, ContactListItem } from './types';
 // control that lies about two of its options ('reviewer' is an account
 // role, 'guest' has no representation in the data model).
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
-import { DEC_393, DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
+import { DEC_393, DEC_764, DEC_765, DEC_795, DEC_909 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { plural } from '../../lib/plural';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
-// Compile-checked dependency markers: no `Invited: <name>` prefill, the
-// title field is required before submit, and the confirmation names the
-// role actually chosen (DEC-764); role is threaded through to the POST
-// body (DEC-765). The Event select defaults to the event in context, and an
-// existing roster spot on the selected event is an advisory, never a block
-// (DEC-795).
+// Compile-checked dependency markers: no `Invited: <name>` prefill, and the
+// confirmation names the role actually chosen (DEC-764; DEC-909 wave-18
+// amendment supersedes the old "required before submit" half of DEC-764 on
+// this door); role is threaded through to the POST body (DEC-765). The
+// Event select defaults to the event in context, and an existing roster
+// spot on the selected event is an advisory, never a block (DEC-795).
 void DEC_764;
 void DEC_765;
 void DEC_795;
 void DEC_393; // wave-17: the "As" role buttons (chq-btn chq-add-to-event-role-btn, below) reach `Chautauqua Contacts.dc.html`:602's own 46px desktop floor via contacts-panels.css
+// DEC-909 wave-18 amendment clause (a): the session title is optional on
+// this door too -- no client-side "Enter a session title." guard, the
+// FormRow states its own optionality through the shared `optional` prop
+// (no asterisk, no second grammar), and the primary button is never
+// disabled on a blank title.
+void DEC_909;
 
 interface EventOption {
   id: string;
@@ -84,10 +90,6 @@ export function AddToEventModal({ contact, onClose }: Props) {
       setError('Select an event.');
       return;
     }
-    if (title.trim() === '') {
-      setError('Enter a session title.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -117,7 +119,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
             <button
               type="button"
               className="chq-btn chq-btn-primary"
-              disabled={busy || !eventId || title.trim() === ''}
+              disabled={busy || !eventId}
               onClick={confirm}
             >
               {alreadyOnRoster ? 'Add another session' : 'Add them'}
@@ -180,7 +182,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
               ))}
             </div>
           </FormRow>
-          <FormRow label="Session title" htmlFor="add-to-event-title">
+          <FormRow label="Session title" htmlFor="add-to-event-title" optional>
             <input
               id="add-to-event-title"
               className="chq-input"
