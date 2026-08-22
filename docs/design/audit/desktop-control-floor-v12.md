@@ -179,7 +179,7 @@ re-judging it. Every excluded row is counted once in
 `ok + offender + unresolved + excluded = 266` (asserted by "every row is
 accounted for exactly once", `test/desktop-control-floor.scan.test.ts`).
 
-## Offenders: 2 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 2`, unchanged by wave 27's widening -- see "WAVE 27" above)
+## Offenders: 0 (ceiling `DESKTOP_FLOOR_DIVERGENCE_CEILING = 0` as of wave 26 -- both prior survivors reclassified `unresolved`/`cross-surface-match`; see "WAVE 26" below)
 
 ### RESOLVED (wave 17, DEC-393): the two role-chip strips, and this
 ### section's own stale resolution corrected
@@ -235,23 +235,18 @@ scoped to fix:
   align-items: center; padding: 10px 16px`, so the appended byte alone
   completes all three of DESIGN-RULINGS:189's required properties.
 
-  **The ledger's own count cannot reflect this fix, by the same
-  construction as the "Waitlist" survivor below**: the row's resolution
-  stays mis-attributed to `chq-pill`/PeopleRolesPanel (now declaring 44px
-  via the wave-156 Settings fix above), which is still `< 46` against
-  this row's own 46px drawn floor -- the JOIN has no way to relocate
-  itself to a dynamically-rendered control's class, so it keeps grading
-  this row against the WRONG element. The real control is genuinely
-  floored in product CSS (see the receipt test
+  **The ledger's own count could not reflect this fix by the JOIN's own
+  construction**: the row's resolution stays mis-attributed to
+  `chq-pill`/PeopleRolesPanel (declaring 44px via the wave-156 Settings fix
+  above), which is still `< 46` against this row's own 46px drawn floor --
+  the JOIN has no way to relocate itself to a dynamically-rendered control's
+  class, so it kept grading this row against the WRONG element. The real
+  control is genuinely floored in product CSS (see the receipt test
   `app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts`, which
-  asserts the frame line and the CSS rule byte-for-byte); this row simply
-  cannot be drained by construction. `DESKTOP_FLOOR_DIVERGENCE_CEILING`
-  stays at its already-measured value of `2` (re-measured on this branch
-  by forcing it to `-1`: unchanged before and after this wave's CSS
-  change, since the mis-attributed row's resolved-token height moved from
-  0px to 44px but never reaches the drawn 46px) -- NOT driven to `1` or `0`
-  on judgment, per this task's own instruction and the "Waitlist"
-  precedent immediately below.
+  asserts the frame line and the CSS rule byte-for-byte). **WAVE 26
+  (DEC-964 amendment): this is now handled by name, not left as an
+  unreachable count** -- see "WAVE 26" below, where this exact row
+  reclassifies `unresolved`/`cross-surface-match`.
 
 ### The one genuine survivor (1 row, carried forward from wave 155/151)
 
@@ -260,9 +255,13 @@ scoped to fix:
   resolves to `chq-overview-btn chq-overview-btn-waitlist`, declared 0px.
   See "The one genuine survivor" above -- the real control
   (`.chq-detail-decision-secondary-pair .chq-btn`) is now floored at 44px
-  in product CSS; this ledger row cannot reflect that fix by construction
-  (a static text-match join, and the real control's label is rendered via
-  a JSX expression, never a literal string).
+  in product CSS, receipted byte-for-byte by
+  `app/src/pages/submissions/submissions-decision-pair-floor.scan.test.ts`
+  (the real control's label is rendered via a JSX expression, never a
+  literal string, which is exactly why the static text-match join can never
+  relocate to it). **WAVE 26 (DEC-964 amendment): this is now handled by
+  name, not left as an unreachable count** -- see "WAVE 26" below, where
+  this exact row reclassifies `unresolved`/`cross-surface-match`.
 
 ### Resolved by the repair (12 rows from the wave-151/155 population)
 
@@ -442,3 +441,25 @@ This wave added the SAME composed-label resolution tier the phone sibling ledger
 - POST-WIDENING (own-text + attribute + composed tiers): **2 offenders, 137 unresolved -- byte-identical, zero rows moved.**
 
 The tier genuinely resolves nothing on the desktop half. Reason: this campaign's one known composed-label match -- `src/domain/schedule-copy.ts`'s `conflictMoveLabel` (`` `Move ${ref} to ${clockHMM(startMin)}` ``), rendering "Move DFC-047 to 11:30" -- is drawn only inside a PHONE (width:390px height:844) frame extent in its own source `.dc.html` file (docs/design/Chautauqua Agenda.dc.html and docs/design/Chautauqua Overview.dc.html both draw it inside a phone frame only), so it never enters this file's own `!isPhone`-filtered `DESKTOP_FRAMES` population at all -- there is no desktop-frame row for the tier to have a chance at. Neither `DESKTOP_FLOOR_DIVERGENCE_CEILING` nor `DESKTOP_FLOOR_UNRESOLVED_CEILING` moved; both stay at their pre-widening values. A widening that finds nothing is a real, honestly-reported result, not an invented one.
+
+## WAVE 26 (DEC-964 amendment, task w26-h): a cross-surface own-text match is a join artifact, not a divergence
+
+Both remaining `DESKTOP_FLOOR_DIVERGENCE_CEILING = 2` survivors were, on inspection, the identical shape: the row's ONLY own-text match in the whole corpus resolves into a source file that renders no frame belonging to the SAME `.dc.html` cluster as the drawn row, because the real control renders its label dynamically (never a hardcoded string an own-text join can land on). `test/desktop-control-floor.scan.test.ts`'s `gradeControl` now grades this shape a new UNRESOLVED disposition, reason `cross-surface-match`, in the same corroboration-drop family as the file's existing `no-control-shape` guard -- gated on THREE conditions, none loosenable from the tests below: (1) the row's own-text tier matched into EXACTLY ONE source file corpus-wide (`crossSurfaceDisposition`'s multi-source negative control); (2) that source file's cluster membership (derived from `ALL_CONTROLS` itself -- every OTHER row's OK-graded, UNAMBIGUOUS single-source own-text match, never a hand-listed file→cluster table) does NOT include this row's own `.dc.html` file (the same-cluster negative control); (3) a NAMED receipt test is registered for this exact `(fileName, line)` coordinate AND that receipt's file, read at module load, still matches the exact `min-height:NNpx` regex this table claims (the no-receipt negative control, and a fail-loud module-load assertion if a registered receipt ever stops asserting what it claims).
+
+**Why the cluster map itself had to exclude ambiguous matches:** an early version of `buildSourceFileClusters` credited a source file with cluster membership for EVERY OK-graded own-text match, including generic, shared-vocabulary labels ("Cancel", "Save", …) that match dozens of source files at once. Measured: under that version, `PeopleRolesPanel.tsx` ended up "belonging" to 9 of the 12 `.dc.html` clusters (including Contacts itself), because enough generic labels happen to render there too -- which made the Contacts:602 row's own mis-match look like a same-cluster match and the disposition never fired. Restricting cluster-membership contribution to UNAMBIGUOUS (single-source-file) OK matches only closes this: a generic label naturally matches many files at once and is excluded by construction, while `PeopleRolesPanel.tsx`'s genuine, unambiguous "Reviewer" match correctly credits only `Chautauqua Settings.dc.html`.
+
+**Both reclassified rows, full receipts:**
+
+- `docs/design/Chautauqua Contacts.dc.html`:602 -- "Reviewer" (frame "Add to an event", `min-height:46px`). Own-text match: exactly one source file, `app/src/pages/settings/PeopleRolesPanel.tsx`. That file's cluster membership (unambiguous OK matches only): `{ Chautauqua Settings.dc.html }` -- does NOT include Contacts. Receipt: `app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts`, asserting the frame line byte-for-byte and `.chq-btn.chq-add-to-event-role-btn { min-height: 46px; }` in `app/src/pages/contacts/contacts-panels.css`. Reclassifies `unresolved`/`cross-surface-match`.
+- `docs/design/Chautauqua Submissions.dc.html`:314 -- "Waitlist" (frame "Submission detail · /submissions/:id", `min-height:44px`). Own-text match: exactly one source file, `app/src/pages/submissions/SubmissionDetailPage.tsx` (the "Waitlist" literal lives on Overview's phone-hidden `chq-overview-btn-waitlist` queue-move button, a DIFFERENT `.chq-` token set the join resolves against). Receipt: `app/src/pages/submissions/submissions-decision-pair-floor.scan.test.ts` (new this wave), asserting the frame line byte-for-byte, that `SubmissionDetailPage.tsx` renders the secondary-pair label via `decisionActionLabel(status)` (never a literal `>Waitlist<`), and that `app/src/pages/submissions/detail.css`'s TOP-LEVEL (desktop, non-`@media`) `.chq-detail-decision-secondary-pair .chq-btn` rule already declares `min-height: 44px`. Reclassifies `unresolved`/`cross-surface-match`.
+
+**MEASURED (this branch, forcing both ceilings to `-1` before AND after adding the disposition):**
+
+| | offenders | unresolved |
+|---|---|---|
+| PRE (wave-23 tree) | 2 | 137 |
+| POST (wave-26 disposition added) | 0 | 139 |
+
+Exactly the 2 reclassified rows moved; every other row's status is unchanged (verified by the file's own `ok + offender + unresolved + excluded = 266` accounting assertion, still green). `DESKTOP_FLOOR_DIVERGENCE_CEILING` lowered `2 -> 0`; `DESKTOP_FLOOR_UNRESOLVED_CEILING` raised `137 -> 139`. Zero product CSS bytes moved -- this wave is instrument-only; both real controls were already floored correctly in product CSS by prior waves (Contacts wave-17, Submissions wave-157), and this wave's only job was teaching the LEDGER to stop asserting a false divergence against them.
+
+**Never a blanket escape (synthetic controls, `test/desktop-control-floor.scan.test.ts`'s own non-vacuity suite):** a same-cluster match never crosses over regardless of receipt registration; a cross-cluster match with no registered receipt stays a real OFFENDER; a match spanning more than one distinct source file (not "ITS ONLY own-text match") stays a real OFFENDER; and every registered receipt is verified LIVE against the real corpus at module load, not merely declared.

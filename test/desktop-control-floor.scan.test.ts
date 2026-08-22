@@ -286,6 +286,8 @@ import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
+import { DEC_964 } from '../src/decisions';
+void DEC_964; // wave-26 amendment: a cross-surface own-text match (the join's ONLY match resolves into a source file that renders no frame in the same .dc.html cluster) grades UNRESOLVED, never OFFENDER -- gated on a positive receipt test, never a blanket escape.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -1032,7 +1034,7 @@ export type RowStatus = 'ok' | 'offender' | 'unresolved' | 'excluded';
 export interface GradedRow {
   control: DrawnControl;
   status: RowStatus;
-  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'frame-content' | null;
+  reason: 'no-label-match' | 'no-token' | 'no-rule' | 'no-control-shape' | 'frame-content' | 'cross-surface-match' | null;
   tokens: string[];
   declaredMinHeight: number | null;
   /** Set only when status === 'excluded': the source table's own reason
@@ -1042,6 +1044,11 @@ export interface GradedRow {
    * "newly-resolved" naming -- not part of the grading grammar itself.
    * WAVE 23 (DEC-393 amendment) adds 'composed'. */
   matchTier: 'own-text' | 'attribute' | 'composed' | null;
+  /** WAVE 26 amendment (DEC-964): set only when reason === 'cross-surface-match'
+   * -- the repo-relative path of the named receipt test that asserts the
+   * REAL control's floor byte-for-byte, carried onto the row so the ledger
+   * prints it (never a bare assertion with no citation). */
+  receiptPath: string | null;
 }
 
 /** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
@@ -1055,26 +1062,41 @@ export interface GradedRow {
  * table-column label class, …) the pack happens to draw bordered is not
  * the app rendering a bare label as a control, it is the JOIN's own
  * conservatism finding a real element with no control face to grade. */
-function gradeControl(control: DrawnControl): GradedRow {
+/** WAVE 26 amendment (DEC-964): grades one control WITHOUT the
+ * cross-surface-match reclassification below, additionally returning the
+ * set of source files the own-text tier matched into (unpopulated for any
+ * other tier). Split out of `gradeControl` so (a) the cross-surface disposition
+ * can be driven by real per-row match data instead of re-deriving it, and
+ * (b) `SOURCE_FILE_CLUSTERS` below can be built from this SAME function over
+ * the real `ALL_CONTROLS` population -- never a second, independently-written
+ * join. */
+function gradeControlPreCrossSurface(control: DrawnControl): { row: GradedRow; ownTextSourceFiles: Set<string> } {
+  const ownTextSourceFiles = new Set<string>();
   const frameContentReason = frameContentExclusionFor(control);
   if (frameContentReason !== null) {
     return {
-      control,
-      status: 'excluded',
-      reason: 'frame-content',
-      tokens: [],
-      declaredMinHeight: null,
-      excludedReason: frameContentReason,
-      matchTier: null,
+      row: {
+        control,
+        status: 'excluded',
+        reason: 'frame-content',
+        tokens: [],
+        declaredMinHeight: null,
+        excludedReason: frameContentReason,
+        matchTier: null,
+        receiptPath: null,
+      },
+      ownTextSourceFiles,
     };
   }
 
   let tokens: string[] = [];
   let ownTextMatched = false;
-  for (const blob of NORMALIZED_BLOBS) {
+  for (let i = 0; i < NORMALIZED_BLOBS.length; i++) {
+    const blob = NORMALIZED_BLOBS[i]!;
     for (const idx of allBoundaryMatches(control.label, blob)) {
       if (!ownTextEquals(control.label, blob, idx)) continue;
       ownTextMatched = true;
+      ownTextSourceFiles.add(SOURCE_FILES[i]!);
       tokens.push(...classTokensNear(blob, idx));
     }
   }
@@ -1115,10 +1137,16 @@ function gradeControl(control: DrawnControl): GradedRow {
         : null;
 
   if (!ownTextMatched && !attrMatched && !composedMatched) {
-    return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
+    return {
+      row: { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
+      ownTextSourceFiles,
+    };
   }
   if (tokens.length === 0) {
-    return { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
+    return {
+      row: { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
+      ownTextSourceFiles,
+    };
   }
 
   let best: number | null = null;
@@ -1131,10 +1159,16 @@ function gradeControl(control: DrawnControl): GradedRow {
     if (maxMinHeight !== null && (best === null || maxMinHeight > best)) best = maxMinHeight;
   }
   if (!anyRule) {
-    return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
+    return {
+      row: { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
+      ownTextSourceFiles,
+    };
   }
   if (!anyControlShaped) {
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
+    return {
+      row: { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null, matchTier, receiptPath: null },
+      ownTextSourceFiles,
+    };
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
@@ -1145,9 +1179,169 @@ function gradeControl(control: DrawnControl): GradedRow {
     // resolving purely by co-incidence of a shared class list. Grading this
     // OFFENDER would put min-height on a heading; drop to UNRESOLVED,
     // honest per the file's own existing chq-chipstrip precedent.
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null, matchTier };
+    return {
+      row: { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null, matchTier, receiptPath: null },
+      ownTextSourceFiles,
+    };
   }
-  return { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null, matchTier };
+  return {
+    row: { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null, matchTier, receiptPath: null },
+    ownTextSourceFiles,
+  };
+}
+
+// -- WAVE 26 amendment (DEC-964): cross-surface-match disposition ----------
+// "A join that lands on another surface is not evidence about this one."
+// A row whose sole own-text match resolves into a source file that renders
+// NO frame belonging to the same .dc.html cluster as the drawn row is a
+// JOIN artifact, not a divergence -- exactly the shape DEC-964's wave-26
+// amendment names for Chautauqua Contacts.dc.html:602 ("Reviewer", resolving
+// into PeopleRolesPanel.tsx, a Settings-only file) and Chautauqua
+// Submissions.dc.html:314 ("Waitlist", resolving into Overview's queue-move
+// button, a different page's control). This is INSTRUMENT ONLY -- it moves
+// no product CSS byte, and it can never be used as a blanket escape: it
+// requires (a) the row's own-text tier matched into EXACTLY ONE source file
+// corpus-wide, (b) that file renders no OTHER control (via a real, OK-graded
+// own-text match) belonging to the SAME .dc.html cluster, and (c) a named
+// receipt test already asserts the real control's floor byte-for-byte, with
+// its path carried onto the row.
+
+/** True when `sourceFile` renders SOME frame belonging to the `.dc.html`
+ * cluster named by `clusterFileName`, per `sourceFileClusters` (built from
+ * OK-graded own-text matches only -- see `buildSourceFileClusters` below).
+ * Exported for the non-vacuity fixture below (fabricated cluster map, never
+ * the real corpus). */
+export function crossSurfaceDisposition(
+  clusterFileName: string,
+  receiptKey: string,
+  ownTextSourceFiles: ReadonlySet<string>,
+  sourceFileClusters: ReadonlyMap<string, ReadonlySet<string>>,
+  receiptIndex: ReadonlyMap<string, { receiptPath: string }>
+): { crossSurface: boolean; receiptPath: string | null } {
+  // "ITS ONLY own-text match" -- a control whose label matched more than one
+  // distinct source file is not eligible; a multi-file match is not the
+  // single-mismatch shape this disposition exists to catch.
+  if (ownTextSourceFiles.size !== 1) return { crossSurface: false, receiptPath: null };
+  const [onlySourceFile] = ownTextSourceFiles;
+  const clusters = sourceFileClusters.get(onlySourceFile!) ?? new Set<string>();
+  // Same-cluster match: the source file genuinely renders (per an OK-graded
+  // row) something belonging to this row's own cluster -- not cross-surface,
+  // grades normally (stays OFFENDER, a real divergence).
+  if (clusters.has(clusterFileName)) return { crossSurface: false, receiptPath: null };
+  // Cross-cluster match, but with no named receipt in the gate table: stays
+  // OFFENDER -- this disposition is never usable without a positive receipt.
+  const receipt = receiptIndex.get(receiptKey);
+  if (!receipt) return { crossSurface: false, receiptPath: null };
+  return { crossSurface: true, receiptPath: receipt.receiptPath };
+}
+
+/** Builds the source-file -> cluster-membership map from `controls`, using
+ * ONLY rows that grade 'ok' via the own-text tier (never 'offender' -- an
+ * offender row's own match is exactly what might be a cross-surface
+ * mismatch, so it must never contribute to the population that judges it or
+ * any other row). Derived entirely from `ALL_CONTROLS` (the frame population
+ * this scan already walks), never a hand-listed file:cluster table. */
+function buildSourceFileClusters(controls: readonly DrawnControl[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const control of controls) {
+    const { row, ownTextSourceFiles } = gradeControlPreCrossSurface(control);
+    if (row.status !== 'ok' || row.matchTier !== 'own-text') continue;
+    // Require an UNAMBIGUOUS single-source own-text match to contribute a
+    // cluster membership: a generic, shared-vocabulary label ("Cancel",
+    // "Save", ...) matches own-text in dozens of source files at once, and
+    // treating every one of those as "belongs to this row's cluster" would
+    // make nearly every file claim membership in nearly every cluster --
+    // exactly the noise this disposition exists to reject, not launder.
+    // Only a label whose OK match resolves into exactly one source file is
+    // real evidence that file renders THIS row's own cluster.
+    if (ownTextSourceFiles.size !== 1) continue;
+    const [onlySourceFile] = ownTextSourceFiles;
+    let set = map.get(onlySourceFile!);
+    if (!set) {
+      set = new Set<string>();
+      map.set(onlySourceFile!, set);
+    }
+    set.add(control.fileName);
+  }
+  return map;
+}
+
+const SOURCE_FILE_CLUSTERS: Map<string, Set<string>> = buildSourceFileClusters(ALL_CONTROLS);
+
+/** One (fileName, line) -> receipt-test entry per row this disposition may
+ * ever apply to. A POSITIVE gate, never a blanket escape: at module load,
+ * every entry's receipt file must exist AND its content must still match
+ * `floorAssertionRe` (the real control's floor, byte-for-byte) -- if a
+ * receipt stops asserting what this table claims, the module fails to load
+ * (fail loudly) rather than silently keep draining the row. */
+interface CrossSurfaceReceipt {
+  fileName: string;
+  line: number;
+  /** Repo-relative path, printed on the row so the ledger can cite it. */
+  receiptPath: string;
+  floorAssertionRe: RegExp;
+}
+
+const CROSS_SURFACE_RECEIPTS: CrossSurfaceReceipt[] = [
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 602,
+    receiptPath: 'app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts',
+    floorAssertionRe: /min-height:\s*46px/,
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 314,
+    receiptPath: 'app/src/pages/submissions/submissions-decision-pair-floor.scan.test.ts',
+    floorAssertionRe: /min-height:\s*44px/,
+  },
+];
+
+const CROSS_SURFACE_RECEIPT_INDEX: Map<string, { receiptPath: string }> = (() => {
+  const map = new Map<string, { receiptPath: string }>();
+  for (const r of CROSS_SURFACE_RECEIPTS) {
+    const full = join(REPO_ROOT, r.receiptPath);
+    const content = readFileSync(full, 'utf-8');
+    if (!r.floorAssertionRe.test(content)) {
+      throw new Error(
+        `cross-surface receipt ${r.receiptPath} no longer asserts ${r.floorAssertionRe} for ` +
+          `${r.fileName}:${r.line} -- this disposition may only fire on a POSITIVE, live receipt.`
+      );
+    }
+    map.set(`${r.fileName}:${r.line}`, { receiptPath: r.receiptPath });
+  }
+  return map;
+})();
+
+/** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
+ * class attribute of the element whose OWN text content IS the label --
+ * every boundary-anchored occurrence in every blob (`allBoundaryMatches`),
+ * kept only when `ownTextEquals` confirms the enclosing tag's full text
+ * node is exactly the label, never the nearest-preceding-class read a mere
+ * substring match used to license. A row with a resolved token set but no
+ * CONTROL-SHAPED member (iii) grades UNRESOLVED rather than OFFENDER: a
+ * typography/eyebrow class (`.chq-page-title`, `.chq-section-label`, a
+ * table-column label class, …) the pack happens to draw bordered is not
+ * the app rendering a bare label as a control, it is the JOIN's own
+ * conservatism finding a real element with no control face to grade.
+ * WAVE 26 amendment (DEC-964): an OFFENDER row whose sole own-text match is
+ * a cross-surface mismatch (see above) is reclassified UNRESOLVED, gated on
+ * a named, live receipt. */
+function gradeControl(control: DrawnControl): GradedRow {
+  const { row, ownTextSourceFiles } = gradeControlPreCrossSurface(control);
+  if (row.status === 'offender' && row.matchTier === 'own-text') {
+    const disp = crossSurfaceDisposition(
+      control.fileName,
+      `${control.fileName}:${control.line}`,
+      ownTextSourceFiles,
+      SOURCE_FILE_CLUSTERS,
+      CROSS_SURFACE_RECEIPT_INDEX
+    );
+    if (disp.crossSurface) {
+      return { ...row, status: 'unresolved', reason: 'cross-surface-match', receiptPath: disp.receiptPath };
+    }
+  }
+  return row;
 }
 
 const GRADED: GradedRow[] = ALL_CONTROLS.map(gradeControl);
@@ -1161,7 +1355,21 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // printed row list. Two-sided per DEC-808 (every ratchet in this campaign
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
-export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
+// WAVE 26 amendment (DEC-964, task w26-h): both prior survivors --
+// `Chautauqua Contacts.dc.html`:602 ("Reviewer") and `Chautauqua
+// Submissions.dc.html`:314 ("Waitlist") -- were join artifacts, not
+// divergences: each row's ONLY own-text match resolves into a source file
+// that renders no frame in its own `.dc.html` cluster (PeopleRolesPanel.tsx
+// is Settings-only; Overview's queue-move button is a different page), and
+// each real control is genuinely floored in product CSS with a named,
+// live receipt (`app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts`,
+// `app/src/pages/submissions/submissions-decision-pair-floor.scan.test.ts`).
+// Both now grade `unresolved`/`cross-surface-match` instead of `offender`.
+// Re-measured on this branch (forcing both ceilings to -1 before AND after):
+// 0 offenders (was 2), 139 unresolved (was 137 -- exactly the 2 rows that
+// moved). See docs/design/audit/desktop-control-floor-v12.md's "WAVE 26"
+// section for the full receipt.
+export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
 // WAVE 23 (DEC-393 amendment, task w23-g): the composed-label tier
 // (test/helpers/composed-label-resolve.ts, shared with the phone half)
@@ -1178,7 +1386,7 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
 // finds nothing is a real result, not a bug; see
 // docs/design/audit/desktop-control-floor-v12.md's "WAVE 23" section for
 // the full before/after receipt.
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 137;
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 139;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
@@ -1488,5 +1696,72 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(gradedOutside.status).not.toBe('excluded');
     expect(gradedOutside.status).toBe('unresolved');
     expect(gradedOutside.reason).toBe('no-label-match');
+  });
+
+  it('non-vacuity: cross-surface-match disposition -- fabricated positive (cross-cluster + receipt) vs two negatives (same-cluster; cross-cluster with no receipt), over a fabricated cluster map, never the real corpus', () => {
+    const fabricatedClusters = new Map<string, ReadonlySet<string>>([
+      ['zzy-source-a.tsx', new Set(['Chautauqua Zzy.dc.html'])],
+      ['zzy-source-b.tsx', new Set(['Chautauqua Other.dc.html'])],
+    ]);
+    const fabricatedReceiptIndex = new Map<string, { receiptPath: string }>([
+      ['Chautauqua Zzy.dc.html:1', { receiptPath: 'zzy/receipt.scan.test.ts' }],
+    ]);
+
+    // POSITIVE: the drawn row's cluster ('Chautauqua Zzy.dc.html') is NOT a
+    // member of the only matched source file's cluster set
+    // ('Chautauqua Other.dc.html' only), and a receipt IS registered for
+    // this exact row -- crosses over, carries the receipt path.
+    const positive = crossSurfaceDisposition(
+      'Chautauqua Zzy.dc.html',
+      'Chautauqua Zzy.dc.html:1',
+      new Set(['zzy-source-b.tsx']),
+      fabricatedClusters,
+      fabricatedReceiptIndex
+    );
+    expect(positive).toEqual({ crossSurface: true, receiptPath: 'zzy/receipt.scan.test.ts' });
+
+    // NEGATIVE: a SAME-cluster match (the matched source file's cluster set
+    // DOES include this row's own cluster) never crosses over, receipt or
+    // not -- this is a genuine, real-control match, not a join artifact.
+    const sameCluster = crossSurfaceDisposition(
+      'Chautauqua Zzy.dc.html',
+      'Chautauqua Zzy.dc.html:1',
+      new Set(['zzy-source-a.tsx']),
+      fabricatedClusters,
+      fabricatedReceiptIndex
+    );
+    expect(sameCluster).toEqual({ crossSurface: false, receiptPath: null });
+
+    // NEGATIVE: a cross-cluster match with NO registered receipt stays a
+    // real OFFENDER -- this disposition can never be a blanket escape.
+    const noReceipt = crossSurfaceDisposition(
+      'Chautauqua Zzy.dc.html',
+      'Chautauqua Zzy.dc.html:999',
+      new Set(['zzy-source-b.tsx']),
+      fabricatedClusters,
+      fabricatedReceiptIndex
+    );
+    expect(noReceipt).toEqual({ crossSurface: false, receiptPath: null });
+
+    // NEGATIVE: matching more than one distinct source file is not the
+    // "ITS ONLY own-text match" shape this disposition targets -- stays
+    // OFFENDER regardless of cluster membership or receipt registration.
+    const multiSource = crossSurfaceDisposition(
+      'Chautauqua Zzy.dc.html',
+      'Chautauqua Zzy.dc.html:1',
+      new Set(['zzy-source-a.tsx', 'zzy-source-b.tsx']),
+      fabricatedClusters,
+      fabricatedReceiptIndex
+    );
+    expect(multiSource).toEqual({ crossSurface: false, receiptPath: null });
+
+    // POSITIVE receipt gate is LIVE against the real corpus: every
+    // registered receipt file genuinely asserts the floor it claims (module
+    // load already threw above if not); confirm the index carries both real
+    // rows this wave discharges.
+    expect([...CROSS_SURFACE_RECEIPT_INDEX.keys()].sort()).toEqual([
+      'Chautauqua Contacts.dc.html:602',
+      'Chautauqua Submissions.dc.html:314',
+    ]);
   });
 });
