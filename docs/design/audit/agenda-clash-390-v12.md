@@ -51,42 +51,33 @@ coordinate `Chautauqua Agenda.dc.html:161`.
 - New file `app/src/pages/agenda/PhoneAgenda.clash390.render.test.tsx`
   (PART 4 below) is the frame-anchored receipt.
 
-### NOT converted — flagged for the merge train
+### Flagged for the merge train — since CONVERTED at megabatch integration
 
-**`v12m-w29-g`'s UNMERGED branch file
-`app/src/pages/agenda/PhoneAgenda.frame390.render.test.tsx`** (does not
-exist on `main`, cannot be edited from this worktree) pins the numeral
-shape:
+The three files below pinned the numeral shape and were out of this
+task's owned-file scope, so this lane flagged them rather than reaching
+into them. All three have since been converted, and the spelled form is
+now the only shape asserted anywhere:
 
-- `:232` — `toMatch(/^\d+ sessions? in this slot$/)` → convert to
-  `toMatch(/^(Two|Three) sessions? in this slot$/)` (or the exact spelled
-  string for that test's fixture N).
-- `:233` — `toBe('2 sessions in this slot')` → convert to
-  `toBe('Two sessions in this slot')`.
+- `app/src/pages/agenda/PhoneAgenda.frame390.render.test.tsx` — was
+  `v12m-w29-g`'s then-unmerged branch file. Its shape assertion now reads
+  `toMatch(/^[A-Z][a-z]+ sessions? in this slot$/)` and its exact-string
+  assertion `toBe('Two sessions in this slot')`.
+- `app/src/pages/agenda/Agenda.render.test.tsx` — both assertions
+  converted, inside the `describe('AgendaPage phone tap-to-place
+  (DEC-380)')` block (stubs `stubPhoneMatchMedia()`), a **phone** verdict
+  and so never a STOP trigger for PART 2's grep instruction.
 
-**Two more UNOWNED, already-on-`main` files pin the same numeral shape
-and were left unconverted** (out of this task's owned-file scope; the
-merge train must convert them alongside the branch file above or they go
-red the moment this branch lands):
-
-- `app/src/pages/agenda/Agenda.render.test.tsx:1418` —
-  `expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();`
-  → `'Two sessions in this slot'`. This is inside the
-  `describe('AgendaPage phone tap-to-place (DEC-380)')` block (stubs
-  `stubPhoneMatchMedia()`) — a **phone** verdict, not desktop, so it does
-  not trip the STOP condition in PART 2's grep instruction.
-- `app/src/pages/agenda/Agenda.render.test.tsx:1494-1495` —
-  `expect(screen.getByText('3 sessions in this slot')).toBeInTheDocument();`
-  and `expect(screen.queryByText('Two sessions in this slot')).toBeNull();`
-  → the second line inverts to
-  `expect(screen.queryByText('3 sessions in this slot')).toBeNull();` and
-  the first becomes `'Three sessions in this slot'`. Also inside the same
-  phone `describe` block.
-- app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx`getByText`
-  (near lines 65-66, 76-77, 121) — four assertions on `'2 sessions in this slot'` /
-  `'3 sessions in this slot'` (`getByText`/`queryByText` pairs), all
-  phone-scoped (mounts `PhoneAgenda` directly). Convert to the spelled
-  forms the same way as `PhoneAgenda.w49.render.test.tsx` above.
+  One deliberate deviation from the conversion sketched here: the
+  three-session case keeps
+  `expect(screen.queryByText('Two sessions in this slot')).toBeNull();`
+  rather than inverting to the numeral `'3 sessions in this slot'`. With
+  the spelled grammar the numeral string can never render for any N, so
+  asserting its absence would be vacuous; asserting that the WRONG
+  SPELLED count is absent is what actually falsifies a hardcoded "Two".
+- `app/src/pages/agenda/PhoneAgenda.falsifiability.render.test.tsx` —
+  the four `getByText`/`queryByText` assertions converted to the spelled
+  forms, the same way as `PhoneAgenda.w49.render.test.tsx` above, keeping
+  the two-way/three-way pair that proves the count is derived.
 
 **Pre-commit grep confirmed no DESKTOP frame verdict pins the numeral
 form** — `grep -rn "in this slot" app/ test/ docs/design/` turned up only
