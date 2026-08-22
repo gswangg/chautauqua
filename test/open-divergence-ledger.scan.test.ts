@@ -452,7 +452,6 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-<<<<<<< HEAD
 //
 // LOWERED 24 -> 16 (task v12m-w34-e, DEC-099 wave-34 clause (a), Comms +
 // Contacts half). All 8 closed rows were ALREADY adjudicated -- their DEC
