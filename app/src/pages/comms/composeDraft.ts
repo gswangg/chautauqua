@@ -26,9 +26,18 @@ export interface ComposeDraft {
   updatedAt: number;
 }
 
+// DEC-621 (wave-25 amendment): storageKey carries no user/org scoping, so on
+// a shared browser (including the seeded demo personas an eval judge
+// drives) the next organizer's Comms 390 landing rendered the PREVIOUS
+// user's subject line and recipient count inside this frame's "Draft in
+// progress" card. clearAllComposeDrafts() below is the sign-out-time fix;
+// COMPOSE_DRAFT_KEY_PREFIX is hoisted here so storageKey and the sweep share
+// one source for the prefix.
+const COMPOSE_DRAFT_KEY_PREFIX = 'chq.composeDraft.';
+
 function storageKey(eventId: string): string {
   if (!eventId) throw new Error('composeDraft: eventId is required');
-  return `chq.composeDraft.${eventId}`;
+  return `${COMPOSE_DRAFT_KEY_PREFIX}${eventId}`;
 }
 
 function assertValidDraft(value: unknown): asserts value is ComposeDraft {
@@ -71,4 +80,23 @@ export function writeComposeDraft(eventId: string, draft: ComposeDraft): void {
 /** Clears the draft for `eventId`, e.g. on a successful send. */
 export function clearComposeDraft(eventId: string): void {
   window.localStorage.removeItem(storageKey(eventId));
+}
+
+/** Clears every stored compose draft, across all events. Called from
+ * signOut() (DEC-621 wave-25 amendment) so a shared browser never carries
+ * one organizer's in-progress draft into the next organizer's session --
+ * see the module doc comment above COMPOSE_DRAFT_KEY_PREFIX. Collects the
+ * matching keys first and only then removes them, so removing a key mid-scan
+ * can't shift `localStorage`'s live index and skip the next one. */
+export function clearAllComposeDrafts(): void {
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (key !== null && key.startsWith(COMPOSE_DRAFT_KEY_PREFIX)) {
+      keysToRemove.push(key);
+    }
+  }
+  for (const key of keysToRemove) {
+    window.localStorage.removeItem(key);
+  }
 }
