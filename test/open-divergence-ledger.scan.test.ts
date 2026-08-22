@@ -439,7 +439,7 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
-export const OPEN_DIVERGENCE_CEILING = 24;
+export const OPEN_DIVERGENCE_CEILING = 15;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {

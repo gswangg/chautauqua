@@ -899,6 +899,17 @@ const LEDGER: LedgerEntry[] = [
       { kind: "absent", term: "CFP_BIO_LABEL" },
     ],
   },
+  {
+    key: "cfp-form-builders-add-a-question-copy-and-delete-this-question-render-as-real-button-s-not-the-frames-a-href-dec-663-wave-34-amendment",
+    status: "honored",
+    reason:
+      "DEC-663 wave-34 amendment: a .dc.html frame is a static drawing, so a `<a href=\"#\">` there is a control TREATMENT, never a claim about the shipped element type. `Add a question` (frame :433), `Copy` (frame :455) and `Delete this question` (frame :722) each write local state or copy to the clipboard and never navigate, so the product ships <button> for each -- the pack governs text, position and geometry, never element type. Blesses what is already built; closes submissions-desktop-v12.md's two open :399 control-type rows.",
+    honored: [
+      { kind: "present", file: "app/src/pages/forms/FormsPage.tsx", literal: 'className="chq-link-button chq-forms-add-question"', testFile: "app/src/pages/Submissions.desktop-frame-verdicts.render.test.tsx" },
+      { kind: "present", file: "app/src/pages/forms/FormsPage.tsx", literal: 'className="chq-btn chq-btn-tertiary" onClick={() => void handleCopyPublicLink()}', testFile: "app/src/pages/Submissions.desktop-frame-verdicts.render.test.tsx" },
+      { kind: "present", file: "app/src/pages/forms/FieldModal.tsx", literal: "Delete this question", testFile: "app/src/pages/Submissions.desktop-frame-verdicts.render.test.tsx" },
+    ],
+  },
   // ---- ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -------
   {
     key: "a-pack-frame-that-documents-a-vocabulary-is-not-a-screen",
@@ -1142,9 +1153,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     expect(bySection.get("## 4a. Docs screenshots: tall frames, prepared states, and focus (USER RULINGS 2026-08-16 / 2026-08-17)")).toBe(4);
     expect(bySection.get("## 5. Pending adjudication (not yet blessed — sweep should verdict)")).toBe(1);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
-    expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(17);
+    expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(18);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
-    expect(derived.length).toBe(76);
+    expect(derived.length).toBe(77);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {

@@ -69,7 +69,7 @@ to its own heading -- same reasoning
 `test/design-rulings-ledger.scan.test.ts` applies to its `## A.`/`## B.`
 section dividers -- rather than force-fit to `## 6`'s citation.
 
-### ## 7. Settled frame divergences (wave 16 amendment, DEC-663) -- 17 rows, all honored
+### ## 7. Settled frame divergences (wave 16 amendment, DEC-663) -- 18 rows, all honored
 
 | key | citation(s) |
 |---|---|
@@ -90,11 +90,12 @@ section dividers -- rather than force-fit to `## 6`'s citation.
 | `notes-for-reviewers-placeholder-cfp-notes-for-reviewers-placeholder` | `src/routes/public/submit-views.tsx` `const CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER = "Never shown publicly";` |
 | `accessibility-needs-placeholder-cfp-accessibility-needs-placeholder` | `src/routes/public/submit-views.tsx` `const CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER = "Goes to the venue team only";` |
 | `bio-label-deliberately-not-overridden` | `src/routes/public/submit-views.tsx` -- the citation is an ABSENCE, verified as one: `displayFields`' `bio` branch returns `{ ...f, helpText: CFP_BIO_HELP_TEXT }`, touching `helpText` alone, and no `CFP_BIO_LABEL`-shaped constant exists in the file (DEC-613 wave-27: a frame's abbreviated legend never renames stored data) |
+| `cfp-form-builders-add-a-question-copy-and-delete-this-question-render-as-real-buttons-not-the-frames-a-href-dec-663-wave-34-amendment` | `app/src/pages/submissions/FieldList.tsx`/`FieldModal.tsx` `chq-forms-add-question` / `chq-btn-tertiary` Copy / the edit-a-question modal's destructive footer control (DEC-663 wave-34 amendment; closes `submissions-desktop-v12.md`'s two open `:399` control-type rows, task w34-f) |
 
 Every claim in this section was already recorded as "settled" in
 DEVIATIONS.md's own prose; this wave's job was verifying each cited artifact
-actually exists and carries the cited literal (all seventeen do) rather than
-inventing new dispositions.
+actually exists and carries the cited literal (all seventeen do, plus one
+new row added by task w34-f) rather than inventing new dispositions.
 
 **Merge-train addendum (wave-31 megabatch).** The seven rows after
 `settings-events-slug-field-...` above were NOT added by task `v12m-w31-c`.
@@ -120,7 +121,7 @@ All seven verified against the live tree (the five `CFP_*` constants at
 | `settings-950s-edit-footer-keeps-its-single-close` | `app/src/pages/settings/PeopleRolesPanel.tsx` the edit-drill footer's `onClick={closeEdit}` primary button |
 | `contacts-720s-single-stage-pill-page-is-the-phone-register` | `app/src/pages/contacts/PipelineBoard.tsx` `function stageEmptyBody(...)` |
 
-## Re-measured population (was 49 across four sections; now 76 across all nine)
+## Re-measured population (was 49 across four sections; now 77 across all nine)
 
 | section | rows |
 |---|---|
@@ -131,9 +132,9 @@ All seven verified against the live tree (the five `CFP_*` constants at
 | ## 4a. Docs screenshots | 4 |
 | ## 5. Pending adjudication | 1 (divider) |
 | ## 6. Deferred post-deadline | 22 |
-| ## 7. Settled frame divergences | 17 |
+| ## 7. Settled frame divergences (section label, DEC-099 wave-34 clause (b) population artifact; rows honored per DEC-663) | 18 |
 | ## 8. Wave 9 rulings | 4 |
-| **total** | **76** |
+| **total** | **77** |
 
 ## Gaps a later wave can drain
 
