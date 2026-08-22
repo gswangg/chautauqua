@@ -840,7 +840,11 @@
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.04em;
-  line-height: 1;
+  /* DEC-991 wave-156: BAN GOVERNS, DELETE NEVER SUBSTITUTE -- no frame
+     mandate for line-height:1 on this h1 (the pack's only lh:1 near the
+     embed-edit frame is the 22px wordmark span), so the declaration is
+     deleted outright, same as agenda.css's .chq-phone-agenda-wordmark and
+     .chq-phone-agenda-h1 (never given a line-height:1 either). */
 }
 
 .chq-settings-embed-back {
