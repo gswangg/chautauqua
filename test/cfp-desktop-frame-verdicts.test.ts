@@ -265,7 +265,7 @@ describe("CFP / public-submit SSR DESKTOP (1600) frame render verdicts (task w26
     expect(html).toMatch(/Browse the sessions\s*(?:&rsaquo;|›)/);
   });
 
-  it('frame :1211 Submit a talk · rejected on submit -- DIVERGES (dock note): the top-of-form summary reads "Three things need fixing before this can be sent" and every typed answer survives the re-render, MATCHING the frame\'s error-summary structure; the frame\'s rejected-state dock note reads "Saving a draft skips these checks" where the tree keeps the fresh-form note ("We email a confirmation with a link to your portal") unconditionally', async () => {
+  it('frame :1211 Submit a talk · rejected on submit -- MATCHES (DEC-902 wave-18): the top-of-form summary reads "Three things need fixing before this can be sent" and every typed answer survives the re-render, matching the frame\'s error-summary structure; the frame\'s rejected-state dock note reads "Saving a draft skips these checks" and the tree now renders it verbatim on this branch', async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1211 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk · rejected on submit</span>`
     verbatimLine(
       1211,
@@ -330,13 +330,11 @@ describe("CFP / public-submit SSR DESKTOP (1600) frame render verdicts (task w26
     expect(html).toContain('class="chq-btn chq-btn-secondary chq-cfp-save-draft"');
     expect(html).toContain("Save draft");
     // The frame's own dock note on THIS state reads "Saving a draft skips
-    // these checks" -- the tree's actions note is not error-state-aware
-    // (submit-views.tsx:748 renders the same fresh-form sentence
-    // unconditionally, with no branch on `errors`/`trackError`) -- a real,
-    // narrow divergence.
+    // these checks" (DEC-902 wave-18: the actions note now branches on the
+    // same errors/trackError population the error summary above reads).
     expect(html).toContain('class="chq-cfp-actions-note"');
-    expect(html).toContain("We email a confirmation with a link to your portal");
-    expect(html).not.toContain("Saving a draft skips these checks");
+    expect(html).toContain("Saving a draft skips these checks");
+    expect(html).not.toContain("We email a confirmation with a link to your portal");
   });
 
   it('frame :1532 CFP not open yet · /submit/:slug -- MATCHES: heading leads with the open date, "You will not need an account.", one way-forward link (falls back to "Browse the sessions ›" when no qualifying prior edition exists, DEC-745 wave-150 amendment)', async () => {

@@ -480,6 +480,45 @@ describe("PUBLIC SSR 390 frame render verdicts (task w14-sf, DEC-976 wave-158 SS
     expect(saveDraftMatch).toBeTruthy();
     expect(saveDraftMatch![1]!.trim()).toBe("Save draft");
     expect(saveDraftMatch![1]!.trim()).not.toBe("Draft");
+
+    // DEC-902 (wave 18 amendment): the dock note itself -- fresh GET, no
+    // errors/trackError, so the confirmation sentence renders (the same
+    // markup branch as the desktop 1600 fresh-form frame; the note is
+    // desktop-only via cfp.css.ts's max-width:700px block, this asserts
+    // the SSR markup, not width-scoped visibility).
+    expect(html).toContain('class="chq-cfp-actions-note"');
+    expect(html).toContain("We email a confirmation with a link to your portal");
+    expect(html).not.toContain("Saving a draft skips these checks");
+  });
+
+  it("Submit a talk, rejected -- DEC-902 (wave 18 amendment): a re-render after an invalid POST carries the SAME dock-note branch as the desktop 1600 rejected-on-submit frame (:1211) -- \"Saving a draft skips these checks\", reading the same errors/trackError population as the top-of-form summary, never a second independently-derived predicate", async () => {
+    const db = submitFakeDb([[SUBMIT_EVENT_ROW], [SUBMIT_FORM_ROW], SUBMIT_FIELD_ROWS, [SUBMIT_TRACK_ROW]]).db;
+    const app = appWithDb(db);
+    const form = new FormData();
+    form.set(CSRF_COOKIE_NAME, CSRF_TOKEN);
+    // title left blank -> required error, forcing the rejected branch.
+    form.set("field__title", "");
+    form.set("field__description", "A talk about CI.");
+    form.set("speaker_name", "Priya Raman");
+    form.set("field__email", "priya@example.com");
+    form.set("field__field_session_format", "Talk (30 min)");
+    form.set("trackIds", "track-1");
+    const req = new Request("http://local/submit/test-conf", {
+      method: "POST",
+      headers: { cookie: `${CSRF_COOKIE_NAME}=${CSRF_TOKEN}` },
+      body: form,
+    });
+    const res = await app.request(req, undefined, {
+      KV: submitFakeKv(),
+      FILES: fakeFilesBucket(),
+    } as unknown as AppEnv["Bindings"]);
+    expect(res.status).toBe(400);
+    const html = await res.text();
+
+    expect(html).toContain('class="chq-error-summary"');
+    expect(html).toContain('class="chq-cfp-actions-note"');
+    expect(html).toContain("Saving a draft skips these checks");
+    expect(html).not.toContain("We email a confirmation with a link to your portal");
   });
 
   it("frame :1074 Submitted -- MATCHES (DEC-908 wave-16 amendment): the confirmation card carries the frame's third speaker·company line, and the way-forward link reads \"Browse the sessions\"", async () => {
