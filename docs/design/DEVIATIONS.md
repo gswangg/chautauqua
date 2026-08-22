@@ -1009,4 +1009,22 @@ DIVERGES rows for this same population cite this subsection.
   `stageEmptyBody()` naming the structurally immediately-preceding stage
   (Interested) rather than the frame's copy's two-back reference
   (Contacted) is the correct derivation of the frame's own sentence, not
+
+## 9. Wave 34 rulings (DEC-021 wave-34 amendment)
+
+- **`BreaksPanel`'s outside-the-window hint no longer matches
+  `Chautauqua Agenda.dc.html:244` verbatim.** The frame's sentence — "A
+  break outside the day's window is kept but flagged — the grid shows it
+  greyed rather than dropping it." — unconditionally promises a greyed
+  band for every out-of-window break. DEC-021 wave-34 found that promise
+  false for a break whose extent doesn't intersect the day window at all
+  (07:00-08:00 against a 09:00-18:00 grid produced an inverted
+  `grid-row: 2 / -2`; 19:00-20:00 produced `42 / 38`, painting a phantom
+  band). The fix (`clampBreakToWindow` in `gridMath.ts`) draws a band only
+  when the break's interval intersects the window; a fully-outside break
+  is kept in the list (never dropped, satisfying the frame's dropping
+  clause) but paints no band. `BreaksPanel.tsx`'s hint copy was split into
+  two clauses to state both outcomes truthfully rather than continue
+  asserting the frame's now-disproven unconditional case. DEC-380 governs:
+  the frame's prose asserted behaviour the code (correctly) forbids.
   a defect. DEC-976 wave-9 amendment.

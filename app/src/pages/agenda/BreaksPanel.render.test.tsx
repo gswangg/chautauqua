@@ -108,13 +108,16 @@ describe('BreaksPanel', () => {
     expect(within(row).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
-  // frame 06--02: the add row's second mandated copy line, verbatim.
-  it("shows the outside-the-window hint verbatim above the add row's primary", () => {
+  // frame 06--02's copy line, amended per DEC-021 wave-34 (docs/design/DEVIATIONS.md
+  // §9): the frame's unconditional "shows it greyed" promise was false for a
+  // break whose extent doesn't intersect the day window at all, so the hint
+  // now states both outcomes truthfully.
+  it("shows the outside-the-window hint above the add row's primary, true of both the overlapping and fully-outside cases", () => {
     render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     expect(
       screen.getByText(
-        "A break outside the day's window is kept but flagged — the grid shows it greyed rather than dropping it.",
+        "A break outside the day's window is kept but flagged. If it still overlaps the visible hours, the grid shows it greyed; if it falls entirely outside them, it is listed here but no band is drawn.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add the break' })).toBeInTheDocument();

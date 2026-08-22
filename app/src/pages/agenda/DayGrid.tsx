@@ -5,6 +5,7 @@ import { SessionCard } from './SessionCard';
 import { clusterConflictCaption } from './ConflictChip';
 import {
   assignLanes,
+  clampBreakToWindow,
   gridRowEnd,
   minutesToGridRow,
   snapToGrid,
@@ -496,17 +497,17 @@ export function DayGrid({
           arithmetic. */}
       {dayBreaks.map((brk) => {
         const brkEndMin = brk.startMin + brk.durationMin;
-        // DEC-021 amendment (w61-d): a break added before the event's dates
-        // moved (or edited past the day's window) is never dropped from the
-        // grid -- it is kept but flagged, clamped to the visible rows so it
-        // paints inside the grid rather than spilling into a row that
-        // doesn't exist, and muted per the B8 vocabulary rather than reading
-        // as a normal band.
+        // DEC-021 amendment (w61-d, w34-b): a break added before the event's
+        // dates moved (or edited past the day's window) is never dropped
+        // from the grid's data -- it stays flagged. But its band is only
+        // DRAWN when its extent still intersects the day window (clamped as
+        // one interval, not two independent bounds, DEC-021 w34): a break
+        // entirely outside [dayStartMin, dayEndMin) renders no band at all
+        // rather than a fabricated/inverted grid-row.
         const flagged = brk.startMin < dayStartMin || brkEndMin > dayEndMin;
-        const clampedStart = Math.max(brk.startMin, dayStartMin);
-        const clampedEnd = Math.min(brkEndMin, dayEndMin);
-        const rowStart = minutesToGridRow(clampedStart, dayStartMin, gridMin);
-        const rowEnd = gridRowEnd(clampedEnd, dayStartMin, gridMin);
+        const clamped = clampBreakToWindow(brk.startMin, brkEndMin, dayStartMin, dayEndMin, gridMin);
+        if (clamped === null) return null;
+        const { rowStart, rowEnd } = clamped;
         return (
           <div
             key={`break-${brk.id}`}
