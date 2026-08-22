@@ -195,8 +195,12 @@ describe("applyImportRows (DEC-356: file-keyed lookup, not org-wide select)", ()
       rowsFor(["dup@example.com", "DUP@example.com", " dup@example.com "]),
     );
 
+    // DEC-663 (wave-8 amendment, w8-d): created/updated are deduped CONTACT
+    // counts, not per-CSV-line tallies. All three lines resolve to the SAME
+    // contact (created by the first) -- it is counted once, as created,
+    // never also as updated by the two later lines that patch it.
     expect(result.created).toBe(1);
-    expect(result.updated).toBe(2);
+    expect(result.updated).toBe(0);
     expect(result.contactIds).toHaveLength(1);
     expect(rows()).toHaveLength(1);
   });

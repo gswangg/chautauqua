@@ -352,11 +352,11 @@ describe("POST /api/v1/contacts/import mergeLines (DEC-663 wave-64 amendment)", 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { created: number; updated: number };
     expect(body.created).toBe(0);
-    // Both rows resolve to an update against the same contact -- counted
-    // per-row (matching applyImportRows' existing within-file-duplicate
-    // convention: two occurrences of the same email are two update events),
-    // never a second created row.
-    expect(body.updated).toBe(2);
+    // DEC-663 (wave-8 amendment, w8-d): created/updated are deduped CONTACT
+    // counts, not per-CSV-line tallies. Both rows resolve to an update
+    // against the SAME contact -- counted once, never a second created row
+    // and never inflated to one update per line.
+    expect(body.updated).toBe(1);
     expect(rows()).toHaveLength(1);
     const row = rows()[0] as Record<string, unknown>;
     expect(row.bio).toBe("Second pass bio.");
@@ -764,8 +764,11 @@ describe("mergeLines vs. a same-file create of the same email (w11-dd)", () => {
     // mid-file collision this task's fix addresses) and is out of scope
     // here; flagged for the merge train rather than silently patched.
     const result = await repo.applyImportRows(db, "org-1", rowsIn, opts);
+    // DEC-663 (wave-8 amendment, w8-d): created/updated are deduped CONTACT
+    // counts, not per-CSV-line tallies. Both lines resolve to the same
+    // merged contact -- counted once as updated.
     expect(result.created).toBe(0);
-    expect(result.updated).toBe(2);
+    expect(result.updated).toBe(1);
     expect(rows()).toHaveLength(1);
     expect((rows()[0] as { id: string; email: string }).id).toBe("ct_blank");
     expect((rows()[0] as { email: string }).email).toBe("ada@newmail.example.com");
