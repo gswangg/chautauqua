@@ -3,12 +3,15 @@
 // blocking gate's missing half". This scan reads the roster this task wrote
 // (docs/design/audit/admin-390-interactive-offenders-w27.md) and checks it
 // against the tree, never against a hand-copied second population:
-//   - the roster's own recorded total is what its own rows sum to
-//     (self-consistency -- the roster cannot silently drift from its table)
 //   - every route it names is a REAL member of ADMIN_MOBILE_ROUTE_MANIFEST,
 //     imported from scripts/render-sweep.ts, never hand-listed (DEC-180)
-//   - the recorded total is <= ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
-//     imported from scripts/render-sweep-lib.ts, never copied as a literal
+//   - the roster's own row table sums to EXACTLY
+//     ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING, imported from
+//     scripts/render-sweep-lib.ts, the ONE owner of the measured number
+//     (DEC-996 wave-28 amendment: no separate "Measured total: **N**"
+//     prose literal is parsed and cross-checked any more -- that was the
+//     two-copies-joined-by-a-text-parser shape that let the roster and the
+//     constant drift to 103 vs 77 in the same merge train, DEC-613)
 //   - a vacuity tripwire: the parsed roster is non-empty, so a row-format
 //     drift that silently parses to zero rows cannot pass by accident.
 import { readdirSync, readFileSync } from "node:fs";
@@ -74,16 +77,19 @@ function parseRosterRows(markdown: string): RosterRow[] {
 
 const ROSTER_ROWS = parseRosterRows(ROSTER_TEXT);
 
-/** The roster's own recorded grand total, from its "Measured total: **N**"
- * line -- the receipt this scan checks the parsed rows' sum against, so a
- * hand-edit to one without the other cannot pass silently. */
-function recordedTotal(markdown: string): number {
-  const m = markdown.match(/Measured total: \*\*(\d+)\*\*/);
-  if (!m) throw new Error("admin-390-offender-roster: no 'Measured total: **N**' line found in roster");
-  return Number(m[1]);
-}
-
-const RECORDED_TOTAL = recordedTotal(ROSTER_TEXT);
+/** DEC-996 wave-28 amendment: the roster and the ceiling constant are now
+ * ONE owner rather than two independently-typed copies joined by a text
+ * parser (the DEC-613 shape the campaign applied to this exact constant
+ * once before and lost, wave-85 amendment) -- this scan no longer parses a
+ * separate "Measured total: **N**" prose literal out of the roster and
+ * cross-checks it against the constant; it sums the roster's own per-row
+ * table (real, structurally-checked audit content: every route a real
+ * ADMIN_MOBILE_ROUTE_MANIFEST member, below) and compares THAT directly to
+ * ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING, imported from the module
+ * that owns the measurement. A hand-edit to one without the other cannot
+ * pass silently: either the row table's own sum drifts from the imported
+ * constant, or a route stops resolving against the manifest. */
+const ROSTER_ROW_SUM = ROSTER_ROWS.reduce((acc, r) => acc + r.count, 0);
 
 /** Every route path ADMIN_MOBILE_ROUTE_MANIFEST actually names, as a Set --
  * imported from source (scripts/render-sweep.ts), never hand-listed
@@ -306,15 +312,6 @@ describe("admin-390-offender-roster (DEC-851 amendment, wave 27)", () => {
     expect(ROSTER_ROWS.length).toBeGreaterThan(0);
   });
 
-  it("the roster's own recorded total equals the sum of its own parsed rows", () => {
-    const summed = ROSTER_ROWS.reduce((acc, r) => acc + r.count, 0);
-    expect(summed).toBe(RECORDED_TOTAL);
-  });
-
-  it("the recorded total is <= ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (never raised by this task)", () => {
-    expect(RECORDED_TOTAL).toBeLessThanOrEqual(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING);
-  });
-
   it("every route the roster names is a real member of ADMIN_MOBILE_ROUTE_MANIFEST, imported from source", () => {
     expect(MANIFEST_PATHS.size).toBeGreaterThan(0);
     const unmatched: string[] = [];
@@ -337,25 +334,25 @@ describe("admin-390-offender-roster (DEC-851 amendment, wave 27)", () => {
     expect(duplicated.size).toBeGreaterThan(0);
   });
 
-  // Two-sided companion (DEC-808 wave-85 amendment). Restored by the wave-13m
-  // merge train: v12m-w13-xb removed the exact-equality pin
-  // `expect(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING).toBe(79)` from
-  // test/render-sweep-lib.test.ts because the pinned 79 and the lib's own
-  // measured 77 were two different live runs, and restating the number there
-  // duplicated the lib's ownership of it. That deletion was right on its own
-  // terms, but the pin was ALSO the only thing supplying this ratchet's
-  // BELOW direction (the detector credits a single-`it` exact-equality pin as
-  // two-sided), so removing it left the ceiling one-sided and turned
-  // test/campaign-ratchet-two-sided.scan.test.ts red. The BELOW direction
-  // belongs here rather than back in the lib test: the governed measurement is
-  // the roster's own RECORDED_TOTAL, so this asserts against the measurement
-  // instead of re-stating the literal xb correctly refused to duplicate.
-  it("does not fall stale below ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (two-sided companion, DEC-808 wave-85 amendment)", () => {
+  // DEC-996 wave-28 amendment: ONE owner, not two independently-typed
+  // copies joined by a text parser (the DEC-613 shape lost at the wave-85
+  // amendment this replaces -- see the removed `recordedTotal()`/
+  // `RECORDED_TOTAL` parse of the roster's own "Measured total: **N**"
+  // prose line above). ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING
+  // (scripts/render-sweep-lib.ts) is the module that owns the measurement;
+  // this exact-equality pin against ROSTER_ROW_SUM is BOTH directions at
+  // once (the two-sided-ratchet detector credits a single-`it`
+  // exact-equality pin as two-sided, same shape as the pre-wave-13m pin
+  // this restores) -- a roster edit that drops a row redlines this the same
+  // way a roster edit that adds one does, and neither can be "fixed" by
+  // silently moving the other number to match.
+  it("the roster's own row table sums to exactly ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING (two-sided, DEC-996 wave-28 amendment)", () => {
     expect(
-      RECORDED_TOTAL,
-      `ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = ${ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING} is stale -- ` +
-        `the roster's recorded total dropped to ${RECORDED_TOTAL}. Lower the constant in ` +
-        `scripts/render-sweep-lib.ts in the same commit that closed the gap.`,
-    ).toBeGreaterThanOrEqual(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING);
+      ROSTER_ROW_SUM,
+      `ROSTER_ROW_SUM = ${ROSTER_ROW_SUM} != ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = ` +
+        `${ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING} -- re-derive the population from the tree ` +
+        `(npm run db:migrate && npm run seed && npm run gate:render-sweep) rather than editing either ` +
+        `number to match the other; then update BOTH the roster's table and the constant from that run.`,
+    ).toBe(ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING);
   });
 });

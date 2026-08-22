@@ -2,154 +2,154 @@
 
 MACHINE-WRITTEN by `npm run gate:render-sweep` (scripts/render-sweep.ts). Do not hand-edit — the next gate run overwrites this file unconditionally.
 
-Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path.
+Lists every visible interactive control under the 44px tap-target floor (`MIN_TAP_TARGET_PX`, either dimension) found by the admin 390x844 mobile pass, one route section per route with at least one offender, sorted by route path. Each line is classified EXEMPT (naming the receipt token that reaches it) or CANDIDATE (DEC-996 wave-24 amendment) — a bare count over this mixed population is not a measurement.
 
 ## /admin/contacts
 
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/contacts?import=1
 
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/content/seed_submission_0001
 
-- input.chq-file.chq-content-upload-input w=1px h=44px
+- input.chq-file.chq-content-upload-input w=1px h=44px — **EXEMPT** (receipt: `chq-content-upload-input`)
 
 ## /admin/overview
 
-- a.chq-overview-link-inline w=135px h=15px
+- a.chq-overview-link-inline w=135px h=15px — **EXEMPT** (receipt: `chq-overview-link-inline`)
 
 ## /admin/review/plans/new
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/review/plans/seed_evaluation_plan_0001
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/review/plans/seed_evaluation_plan_0001/submissions/seed_submission_0002
 
-- input.chq-review-choice-input w=18px h=18px
-- input.chq-review-choice-input w=18px h=18px
-- input.chq-review-choice-input w=18px h=18px
-- input.chq-check w=18px h=18px
+- input.chq-review-choice-input w=18px h=18px — **EXEMPT** (receipt: `chq-review-choice-input`)
+- input.chq-review-choice-input w=18px h=18px — **EXEMPT** (receipt: `chq-review-choice-input`)
+- input.chq-review-choice-input w=18px h=18px — **EXEMPT** (receipt: `chq-review-choice-input`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/settings?section=portal&edit=1
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/speakers/tasks/seed_task_0001
 
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
-- input.chq-check.chq-taskview-check w=18px h=18px
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/submissions
 
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/submissions/seed_submission_0001
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/submissions/seed_submission_0001?edit=1
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /admin/submissions/seed_submission_0001?history=0
 
-- input.chq-check w=18px h=18px
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
 ## /dev/mailbox
 
-- a.chq-wordmark w=113px h=28px
+- a.chq-wordmark w=113px h=28px — **EXEMPT** (receipt: `chq-wordmark`)
 
 ## /dev/mailbox/seed_email_log_0001
 
-- a.chq-wordmark w=113px h=28px
+- a.chq-wordmark w=113px h=28px — **EXEMPT** (receipt: `chq-wordmark`)
 
-Measured total: 103 (ceiling 103)
+Measured total: 103 (exempt: 103, candidate defects: 0)
