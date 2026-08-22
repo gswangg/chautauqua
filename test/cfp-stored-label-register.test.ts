@@ -20,11 +20,27 @@
 // frames of Chautauqua Public and Portal.dc.html, resolved to STORED,
 // CHROME, or CONFLICT) that this suite's REGISTER mirrors and pins.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const DESIGN_FILE = join(HERE, "..", "docs", "design", "Chautauqua Public and Portal.dc.html");
+
+/** DEC-967 shape: read the ACTUAL line, assert it byte-for-byte matches the
+ * literal this file claims (copied from
+ * app/src/pages/agenda/PhoneAgenda.clash390.render.test.tsx's verbatimLine). */
+function verbatimLine(lineNo: number, literal: string): void {
+  const lines = readFileSync(DESIGN_FILE, "utf-8").split("\n");
+  const line = lines[lineNo - 1];
+  if (line === undefined) throw new Error(`design file has no line ${lineNo}`);
+  expect(line).toBe(literal);
+}
 
 const EVENT_ROW = {
   id: "event-1",
@@ -179,6 +195,11 @@ describe("CFP stored-label register — vacuity tripwire", () => {
   });
 
   it("contains the Format/Session format row that motivated this amendment", () => {
+    // In-body receipt (DEC-998 wave-17, task w17-c): docs/design/Chautauqua Public and Portal.dc.html:1051 draws `          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>`, checked byte-for-byte by verbatimLine() immediately below.
+    verbatimLine(
+      1051,
+      '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>',
+    );
     const row = REGISTER.find((r) => r.frameCaption === "Format");
     expect(row).toBeDefined();
     expect(row!.verdict).toBe("stored");

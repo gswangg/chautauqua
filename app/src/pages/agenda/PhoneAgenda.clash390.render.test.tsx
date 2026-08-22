@@ -79,6 +79,7 @@ function baseProps(placed: PlacedAgendaSession[]) {
 
 describe('v12 frame: Agenda 390 clash card flag spells its count (DEC-380 wave-32)', () => {
   it('a 2-session clash reads "Two sessions in this slot", not the numeral', () => {
+    // In-body receipt (DEC-998 wave-17, task w17-c): docs/design/Chautauqua Agenda.dc.html:161 draws `                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>`, checked byte-for-byte by verbatimLine() immediately below.
     verbatimLine(
       161,
       `                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>`,
