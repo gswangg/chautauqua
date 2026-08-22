@@ -19,52 +19,62 @@
 > below, per this document's own rule above — the builds that closed them
 > landed in the same batch.
 
-`test/frame-caption-ledger.scan.test.ts`'s own population/match/exclusion
-machinery, forced to `-1` on this branch, measures **14** unmatched captions
-— one fewer than the inherited **15** ceiling, because this task disposed
-Chautauqua Settings.dc.html:1422 ("Downloaded 18 times by 12 speakers") into
-the new UNBACKED exclusion table (`exclusions.ts`, DEC-032; see
-`DEVIATIONS.md` §6 and `app/src/pages/settings/ResourcesPanel.tsx`'s header
-comment). This lane owns no other row — the 14 remaining below are the same
-class of genuine, out-of-scope gap the prior wave's custodian left in the
-graded population, each re-verified rather than re-typed from the old table.
+**SUPERSEDED historical snapshot (kept per this document's own rule at the
+top — a row is re-graded in place, never deleted).** At the time this
+paragraph was written, `test/frame-caption-ledger.scan.test.ts`'s own
+population/match/exclusion machinery, forced to `-1` on that branch,
+measured **14** unmatched captions — one fewer than the inherited **15**
+ceiling, because that task disposed Chautauqua Settings.dc.html:1422
+("Downloaded 18 times by 12 speakers") into the new UNBACKED exclusion table
+(`exclusions.ts`, DEC-032; see `DEVIATIONS.md` §6 and
+`app/src/pages/settings/ResourcesPanel.tsx`'s header comment), and recorded
+the other 14 rows as "the same class of genuine, out-of-scope gap." That
+claim is now FALSE (DEC-069 wave-19 clause (a)): all 14 table rows below —
+the 3 already CLOSED at merge time plus the 11 this wave re-verdicts CLOSED
+— are built. `FRAME_CAPTION_UNMATCHED_CEILING` already reads `0` in
+`test/frame-caption-ledger/ceiling.ts` (re-seeded by an earlier merge train),
+so the live scan already agrees with this: nothing here contradicts the
+current ceiling, only this document's own prose had not caught up to it.
 
-**Correction to the inherited table (field-guide finding, this task):**
-Overview.dc.html:164's blocker was recorded as "no duration field reaches
-the unplaced-row payload." That is now false — `DescribedUnplaced`
-(`src/server/repo/agenda/types.ts`) has carried `durationMin` since DEC-895,
-and every unplaced row the client actually holds includes it. The real
-blocker, confirmed by reading `src/server/repo/overview.ts`, is different:
-`unplacedDetailRows` is a `LIMIT ROW_CAP` query (see that file's own "the
-unplaced detail rows are their own LIMIT ROW_CAP query" comment, :327-329),
-so `AgendaWorkSection.tsx`'s `extraUnplaced` count
-(`payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length`) is
-computed from a total the client has a COUNT for but no DETAIL rows for —
-the client never receives the duration of the rows past the cap at all.
-Deriving "all need 120 minutes" from the visible capped rows would be
-exactly DEC-936's "one row elected to speak for the rest" — not a smaller
-version of the old gap, a different one. `Overview.tsx`'s own
-`waitingDaysLabel` comment ("never dropped like the unplaced row's duration
-— which the server never sends") is itself stale prose from before DEC-895
-landed `durationMin`; it should be corrected by whichever lane next touches
-that file, not by this one (out of this task's owned files).
+**Correction to the inherited table, itself now superseded (field-guide
+finding, wave-148 task; kept for history, see the wave-19 row below for the
+current verdict):** Overview.dc.html:164's blocker was recorded as "no
+duration field reaches the unplaced-row payload." That was already false by
+wave-148 — `DescribedUnplaced` (`src/server/repo/agenda/types.ts`) has
+carried `durationMin` since DEC-895. The wave-148 correction re-recorded the
+blocker as `unplacedDetailRows`' `LIMIT ROW_CAP` starving the client of
+duration DATA for rows past the cap. That in turn is now also closed — see
+the wave-19 row below: DEC-895's own wave-148 amendment added a dedicated
+remainder query (`unplacedRemainderCount` in `src/server/repo/overview.ts`)
+that fetches exactly that data for the rows past the cap, so this whole
+paragraph's blocker no longer reproduces either.
+
+**Wave-19 re-verdict (DEC-069 wave-19 clause (a)):** every one of the eleven
+rows below was re-grepped against the tree this wave and every single one is
+now CLOSED — the row's recorded blocker no longer reproduces; the build that
+closed it landed in an earlier wave (mostly wave-148/wave-150) and the row
+was simply never re-verified against it. Only the two rows already marked
+CLOSED before this wave (Portal :444/:445, :847) needed no work. Citations
+below use the drift-proof bare-path shape (`test/citation-form-drift.scan.test.ts`):
+a bare path immediately followed by a backtick-quoted literal that must
+resolve verbatim anywhere in the cited file, never a `path:line` pin.
 
 | Frame | Line | Drawn text | Named blocker (re-verified this branch) |
 |---|---|---|---|
-| Chautauqua Comms.dc.html | 757 | "Comms · Compose · step 3" | Re-verified: the whole "Compose · send blocked" 1600px exhibit is unbuilt — `app/src/pages/comms/ComposeWizard.tsx` has no step-breadcrumb header render site of any kind (grepped for a step-index heading pattern; none exists), so this line's own referent is missing, not just its wording. |
-| Chautauqua Comms.dc.html | 769 | "Your body uses {session_time}, and three of these speakers have no slot yet. They would receive the literal text "{session_time}"." | Re-verified: `session_time` is a real merge field (`src/mail/render.ts`'s `MERGE_FIELDS`/`MERGE_FIELD_SAMPLES`, DEC-660 wave-142) and `src/routes/comms/compose-core.ts:347-349` resolves it per-recipient from the same `icsScheduleMap` the compose table's Slot column uses, `null` for an unscheduled recipient. Still missing: the compose-time warning **banner** naming `{session_time}` usage against unscheduled recipients — grepped `app/src/pages/comms/ComposeWizard.tsx` for any `session_time`/banner reference naming it: zero hits; the nearest analogue (`{feedback}`-needs-a-plan reveal) is a different mechanism for a different merge field. |
-| Chautauqua Overview.dc.html | 164 | "3 more unplaced · all need 120 minutes" | Corrected this task (see note above): not a missing `durationMin` field (DEC-895 landed it) — the blocker is `src/server/repo/overview.ts`'s `unplacedDetailRows` being a `LIMIT ROW_CAP` query, so the client holds a total COUNT but no duration DATA for any row past the cap. Composing "all need 120 minutes" from the visible rows would speak for rows the client cannot see (DEC-936). |
+| Chautauqua Comms.dc.html | 757 | "Comms · Compose · step 3" | **CLOSED (re-verified wave-19).** The recorded blocker no longer reproduces: the wizard now portals a step-breadcrumb header, app/src/pages/comms/ComposeWizard.tsx`<p className="chq-comms-wizard-breadcrumb">Comms · Compose · step {currentIndex + 1}</p>`, into the header slot — not "no render site of any kind" as recorded. |
+| Chautauqua Comms.dc.html | 769 | "Your body uses {session_time}, and three of these speakers have no slot yet. They would receive the literal text "{session_time}"." | **CLOSED (re-verified wave-19).** The recorded "zero hits" no longer holds: app/src/pages/comms/ComposeWizard.tsx`SLOT_DEPENDENT_MERGE_FIELDS` (DEC-660 wave-148, the file's own comment at this line names frame :769 directly) drives `usedSlotDependentFields`, rendered as the exact pre-emptive advisory banner this row said was missing. |
+| Chautauqua Overview.dc.html | 164 | "3 more unplaced · all need 120 minutes" | **CLOSED (re-verified wave-19).** The prior "Corrected this task" note above (DEC-936, `unplacedDetailRows`' `LIMIT ROW_CAP`) is itself now stale: src/server/repo/overview.ts`unplacedRemainderCount` (DEC-895 wave-148 amendment, the file's own comment names frame :164 by the "unplaced REMAINDER" phrase) is a dedicated remainder query that fetches session_format/duration answers for every row past the cap, not just the visible ones — the client no longer has to speak for rows it cannot see. |
 | Chautauqua Public and Portal.dc.html | 444 | "Talk, 30 min · Platform &amp; Infra · accepted 14 Mar" | **CLOSED (DEC-908, wave-150).** The recorded blocker no longer reproduces: the portal home's `SessionCard` now composes the frame's format-first meta order, src/routes/portal/index.tsx`const formatLabel =` deriving the clause through the one `sessionFormatLabel` vocabulary and placing it ahead of track-name and the accepted-at clause — never a second '(N min)' parser, and omitted rather than fabricated when the stored answer carries no parseable duration (DEC-895). |
 | Chautauqua Public and Portal.dc.html | 445 | "Slides v3 · with the organisers" | **CLOSED (DEC-908, wave-150).** The recorded blocker no longer reproduces: the same card's deliverable line now carries the version + review-status clause the frame draws, src/routes/portal/index.tsx`v{deliverableVersionOrThrow(deliverable)} · with the organisers`, built from the SAME vocabulary the submission detail page already established — and failing loudly rather than defaulting when the stored version is null (DEC-818). |
-| Chautauqua Public and Portal.dc.html | 620 | "Talk, 30 min · set by the organisers" | Re-verified: grepped `src/server/repo/portal-edit.ts` and `src/routes/portal/edit.tsx` for `durationMin`/"Session length" — zero hits. `EditableSubmissionData` carries no duration field, and there is no read-only "Session length" row to render one. |
+| Chautauqua Public and Portal.dc.html | 620 | "Talk, 30 min · set by the organisers" | **CLOSED (re-verified wave-19).** The recorded "zero hits" no longer holds: src/routes/portal/edit.tsx`Session length` renders a read-only section label row (`<div class="chq-section-label">Session length</div>`) between the format and audience-level rows, exactly as the frame draws — this file's own comment at that line cites frame :620/:1405 by name. |
 | Chautauqua Public and Portal.dc.html | 847 | "Evaluating Agents runs 10:00–12:00, over both Taming 40-Minute CI and Your AI Pair Programmer." | **CLOSED (DEC-555, wave-148 amendment).** The recorded blocker no longer reproduces: the overlaps panel now emits one sentence per COVERING session, naming its own clock range and every title it covers — src/routes/public/agenda-itinerary-script.tsx`item.title + ' runs '` composes exactly the frame's richer clause. The simpler per-pair sentence survives only for a saved item that carries no range at all. |
-| Chautauqua Public and Portal.dc.html | 1080 | "Talk, 30 min · Platform &amp; Infra · intermediate" | Re-verified: the CFP confirmation card's `meta` (`class="chq-cfp-confirm-card-meta"`, `src/routes/public/submit-views.tsx:787`) composes track-then-format only, and `test/cfp-confirmation-email-honesty.test.ts:318` pins that exact order/content (`Main Track · Talk (45 min)`) — reordering to format-then-track or adding the frame's third audience-level clause risks breaking that pin. |
-| Chautauqua Public and Portal.dc.html | 1130 | "Lightning talk, 10 min · Developer Experience" | Same `chq-cfp-confirm-card-meta` slot and same pinned-order conflict as :1080 above. |
-| Chautauqua Public and Portal.dc.html | 1153 | "Panel, 45 min · AI Engineering" | Same `chq-cfp-confirm-card-meta` slot and same pinned-order conflict as :1080/:1130 above. |
-| Chautauqua Public and Portal.dc.html | 1405 | "Talk, 30 min · set by the organisers" | Same gap as :620 above — no duration field on `EditableSubmissionData`; this is the desktop rendering of the identical edit-page slot. |
-| Chautauqua Review.dc.html | 598 | "AI Engineering · closes 30 Aug · 2 reviews per talk" | Re-verified: grepped `app/src/pages/review/PlanEditor.tsx` for a track/close-date/reviews-per-talk composing site — zero hits. Opens/Closes/Reviews-per-talk render as three separate editable form fields, never joined into one subtitle. |
-| Chautauqua Settings.dc.html | 1515 | "Step 2 of 3 · what we found" | Re-verified: `app/src/pages/settings/SessionboardImportPanel.tsx` is a full panel, not a `ModalFrame`-based dialog — it has no title/subtitle header slot to carry this sentence. Its own step state renders only via a `<ol className="chq-steps">` chip list (:249) — no combined "Step N of 3 · phase label" caption anywhere in the component. |
-| Chautauqua Speakers.dc.html | 499 | "3 speakers · nothing has been sent yet" | Re-verified: `app/src/pages/speakers/RemindPreviewModal.tsx`'s modal subtitle composes only `countOf(count, 'recipient')` (e.g. "3 recipients") from the live draft count — real data, but no "nothing has been sent yet" clause exists anywhere in the component (this is a preview, before any send). Narrowest reading of a genuine gap, not a near-miss word swap. |
+| Chautauqua Public and Portal.dc.html | 1080 | "Talk, 30 min · Platform &amp; Infra · intermediate" | **CLOSED (DEC-908, wave-148 amendment; re-verified wave-19).** The recorded "track-then-format only" pin no longer holds: src/routes/public/submit-views.tsx`chq-cfp-confirm-card-meta` now composes format, track AND the frame's third audience-level clause in frame order, and `test/cfp-confirmation-email-honesty.test.ts`'s own `describe("CFP confirmation card states format, track and audience level in frame order (DEC-908 wave-148 amendment)"` pins `Talk, 45 min · Main Track · intermediate` — the very order/content this row said risked breaking a pin now IS the pinned behaviour. |
+| Chautauqua Public and Portal.dc.html | 1130 | "Lightning talk, 10 min · Developer Experience" | **CLOSED (DEC-908, wave-148 amendment; re-verified wave-19).** Same `chq-cfp-confirm-card-meta` slot as :1080 above, now closed the same way — format/track/audience-level in frame order, pinned by the same test. |
+| Chautauqua Public and Portal.dc.html | 1153 | "Panel, 45 min · AI Engineering" | **CLOSED (DEC-908, wave-148 amendment; re-verified wave-19).** Same `chq-cfp-confirm-card-meta` slot as :1080/:1130 above, closed the same way. |
+| Chautauqua Public and Portal.dc.html | 1405 | "Talk, 30 min · set by the organisers" | **CLOSED (re-verified wave-19).** Same fix as :620 above — this is the desktop rendering of the identical edit-page "Session length" row, src/routes/portal/edit.tsx`Session length`, which now renders. |
+| Chautauqua Review.dc.html | 598 | "AI Engineering · closes 30 Aug · 2 reviews per talk" | **CLOSED (DEC-709 wave-148 amendment; re-verified wave-19).** The recorded "zero hits" no longer holds: app/src/pages/review/PlanEditor.tsx`planHeadSubtitle` composes tracks/closes-date/reviews-per-talk into exactly this " · "-joined subtitle, dropping any clause whose input is null — the file's own comment at this function cites frame :598 by name. |
+| Chautauqua Settings.dc.html | 1515 | "Step 2 of 3 · what we found" | **CLOSED (re-verified wave-19).** The recorded "no title/subtitle header slot" no longer holds: app/src/pages/settings/SessionboardImportPanel.tsx`chq-settings-section-caption` now renders a combined `Step ${step} of 3 · ${...}` caption directly under the panel head, matching the frame's clause verbatim in shape. |
+| Chautauqua Speakers.dc.html | 499 | "3 speakers · nothing has been sent yet" | **CLOSED (re-verified wave-19).** The recorded "no such clause exists anywhere" no longer holds: app/src/pages/speakers/RemindPreviewModal.tsx`nothing has been sent yet` is rendered verbatim as the modal subtitle whenever `skipped === 0`, alongside the live `countOf(count, 'speaker')` count. |
 
 ## Disposed this task (see `test/frame-caption-ledger/exclusions.ts`'s `UNBACKED_EXCLUSIONS` for the full citation)
 
