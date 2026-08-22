@@ -358,7 +358,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
               aria-invalid={fieldErrors.subject ? true : undefined}
             />
           </FormRow>
-          <FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>
+          <FormRow label="Message" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>
             <textarea
               id="bulk-email-body"
               className="chq-textarea"

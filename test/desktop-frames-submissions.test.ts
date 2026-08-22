@@ -185,7 +185,7 @@ describe("desktop frame claims: Submissions + CFP-forms cluster (docs/design/Cha
     // is the substantial half` (the frame's own caption for this modal,
     // echoed by the field's own fieldset legend).
     const fieldModal = readSrc("app/src/pages/forms/FieldModal.tsx");
-    expect(fieldModal).toContain("Options (one per line)");
+    expect(fieldModal).toContain("Options · one per line");
     expect(fieldModal).toContain("Conditional visibility");
   });
 });

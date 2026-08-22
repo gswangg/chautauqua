@@ -1,4 +1,4 @@
-# Drawn FIELD-label ledger (DEC-613 wave-25, task w25-i; re-measured wave-28)
+# Drawn FIELD-label ledger (DEC-613 wave-25, task w25-i; re-measured wave-28, wave-33)
 
 This ledger was built while several product lanes were still repairing rows
 it counts. Every one of those lanes (Settings Event name/Starts/Ends,
@@ -9,6 +9,13 @@ made this ledger the sole surviving drawn-FIELD-label instrument after
 resolving a duplicate-instrument conflict with the now-retired
 `test/frame-field-label.scan.test.ts` (see DEC-613's wave-28 amendment for
 the full symmetric-difference evidence).
+
+Wave-33's task w33-c (implementing DEC-613's own still-unbuilt wave-32
+amendment) adopted two of the drawn labels below into product code (Contacts
+"Message", Submissions "Options · one per line") and verified the third
+(Comms "From which plan") was already built, retiring all three rows from
+the open-divergences list — see "Divergences" below for the retirement note
+and the per-row table for each row's current HARDCODED-MATCHES citation.
 
 ## Why this ledger exists
 
@@ -97,7 +104,7 @@ Each row gets one of four verdicts:
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
 
-**Totals (DEC-613 wave-28 re-measurement): 100 HARDCODED-MATCHES, 6
+**Totals (DEC-613 wave-33 re-measurement, task w33-c): 103 HARDCODED-MATCHES, 3
 HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED** — partitions the
 128-row population exactly; see the per-row table below for every
 DIVERGES row's own citation.
@@ -106,19 +113,22 @@ A first-pass automated corpus search miscited a few rows (a coincidental
 boundary-anchored match on an unrelated string — e.g. "Email" matching
 `BulkEmailModal.tsx`'s `` `Email ${countOf(...)}` `` template before the
 real `auth-views.tsx` site was found, or "Message" matching
-`email-binding.ts`'s `Message-ID:` mail header before the real, diverging
-`BulkEmailModal.tsx` "Body" label was found by hand). Every row below was
-individually verified against this branch's tree; the "Message"/"Body" case
-surfaced a genuine, previously unrecorded divergence and is graded
-accordingly, not silently kept as a false match.
+`email-binding.ts`'s `Message-ID:` mail header before the real
+`BulkEmailModal.tsx` site was found by hand). Every row below was
+individually verified against this branch's tree. Wave-33's task w33-c
+adopted the frame's "Message" (Contacts) and "Options · one per line"
+(Submissions) spellings into the two components that used to diverge, and
+verified `ComposeWizard.tsx` (Comms "From which plan") already rendered the
+frame's exact words — all three rows now grade HARDCODED-MATCHES.
 
 ## Ratchets
 
 Two-sided per DEC-808, seeded at the measured value on this branch (DEC-613
-wave-28 amendment: DIVERGENCE_CEILING re-measured 5 -> 6 after the
-population widened and absorbed one new real divergence):
+wave-33 amendment, task w33-c: DIVERGENCE_CEILING re-measured 6 -> 3 after
+the Contacts "Message", Submissions "Options · one per line", and Comms
+"From which plan" rows were adopted/verified matches):
 
-- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6`
+- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 3`
 - `DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1`
 
 Registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`, the
@@ -132,33 +142,28 @@ Every row below is individually adjudicated (a DEC-613 citation resolving
 it as a real, recorded outlier, or a `docs/design/DEVIATIONS.md` section)
 so no row is silently OPEN against `test/open-divergence-ledger.scan.test.ts`.
 
-1. `Chautauqua Comms.dc.html:102` "From which plan" vs.
-   `app/src/pages/comms/ComposeWizard.tsx`'s "Evaluation plan" — DEC-613's
-   own already-named, still-open outlier (DEC-613, opening paragraph).
-2. `Chautauqua Contacts.dc.html:562` "Message" vs.
-   `app/src/pages/contacts/BulkEmailModal.tsx`'s "Body" — newly found by
-   this ledger; adjudicated here under DEC-613's adoption rule (an 11px
-   label span over an input-shaped box is the product's field label) as a
-   genuine, still-open outlier with no blessing on record. No lane has
-   picked this row up; it stays a real, counted divergence against
-   `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING`, not a deferred one.
-3. `Chautauqua Settings.dc.html:739` and `:1253` (two drawn instances of
+1. `Chautauqua Settings.dc.html:739` and `:1253` (two drawn instances of
    the same field) "Public URL" vs. `EventSettingsPanel.tsx`'s "Slug" —
    blessed, recorded divergence, `docs/design/DEVIATIONS.md` §7 (DEC-613's
    own carve-out for this exact row).
-4. `Chautauqua Settings.dc.html:1429` "Type the file name to confirm" vs.
+2. `Chautauqua Settings.dc.html:1429` "Type the file name to confirm" vs.
    `app/src/components/ConfirmDialog.tsx`'s composed
    `Type "${confirmPhrase}" to confirm` — newly found by this ledger;
    adjudicated here under DEC-613's adoption rule as a genuine, still-open
    outlier (the composed phrase is the confirm-phrase's own value threaded
    into the label, not a formatting variant of the frame's generic
    instruction text) with no blessing on record.
-5. `Chautauqua Submissions.dc.html:693` "Options · one per line" vs.
-   `app/src/pages/forms/FieldModal.tsx`'s "Options (one per line)" —
-   wave-28 DEC-613 amendment: found by the widened population step
-   (`tailOpensInputBox`'s caption-sibling clause). Adjudicated here under
-   DEC-613's adoption rule as a genuine, still-open punctuation outlier
-   (middle-dot vs. parenthetical) with no blessing on record.
+
+(DEC-613 wave-33, task w33-c: the two rows formerly numbered 1 and 2 here —
+`Chautauqua Comms.dc.html:102` "From which plan" vs. `ComposeWizard.tsx`'s
+then-"Evaluation plan", and `Chautauqua Contacts.dc.html:562` "Message" vs.
+`BulkEmailModal.tsx`'s then-"Body" — and the row formerly numbered 5,
+`Chautauqua Submissions.dc.html:693` "Options · one per line" vs.
+`FieldModal.tsx`'s then-"Options (one per line)", are retired from this
+list: `ComposeWizard.tsx` was verified to already render "From which plan"
+verbatim, and `BulkEmailModal.tsx`/`FieldModal.tsx` adopted the frame's
+"Message"/"Options · one per line" spellings. All three now grade
+HARDCODED-MATCHES in the table below.)
 
 ## Unresolved
 
@@ -212,7 +217,7 @@ per-row Citation column always names the specific site.
 
 | Line | Label | Grade | Reason | Citation |
 |---|---|---|---|---|
-| 102 | From which plan | HARDCODED-DIVERGES | DEC-613's own named, still-open outlier: the frame draws "From which plan" but the compose wizard's control reads "Evaluation plan" -- different words, same field. | app/src/pages/comms/ComposeWizard.tsx`Evaluation plan` |
+| 102 | From which plan | HARDCODED-MATCHES | wave-33 (task w33-c): verified the compose wizard already renders the frame's exact words; the "Evaluation plan" shortening the divergence used to cite survives only inside this file's own explanatory comment. | app/src/pages/comms/ComposeWizard.tsx`From which plan` |
 | 255 | Subject | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/comms/ComposeWizard.tsx`<FormRow label="Subject" htmlFor="compose-subject">` |
 | 259 | Body | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/comms/ComposeWizard.tsx`<FormRow label="Body" htmlFor="compose-body">` |
 
@@ -221,7 +226,7 @@ per-row Citation column always names the specific site.
 | Line | Label | Grade | Reason | Citation |
 |---|---|---|---|---|
 | 559 | Subject | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>` |
-| 562 | Message | HARDCODED-DIVERGES | The bulk-email dialog's frame draws a "Message" eyebrow over the body textarea, but BulkEmailModal.tsx labels the same control "Body" -- different words, same field, adjudicated a genuine open outlier under DEC-613's adoption rule. Found by this ledger's own boundary-anchored corpus search coincidentally landing on an unrelated "Message-ID:" mail header literal before this real divergence was hand-verified. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
+| 562 | Message | HARDCODED-MATCHES | wave-33 (task w33-c): adopted the frame's "Message" spelling into BulkEmailModal.tsx's FormRow label (the htmlFor/name/error wiring and the bodyText field id were left untouched -- label only). | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Message" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>` |
 | 566 | Template | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Template" htmlFor="bulk-email-template" optional>` |
 | 595 | Event | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/contacts/AddToEventModal.tsx`<FormRow label="Event">` |
 | 654 | Why them | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). | app/src/pages/contacts/PipelineBoard.tsx`<OptionalFieldRow label="Why them" htmlFor="pipeline-enroll-rationale" helper="One line · shown on the card">` |
@@ -353,7 +358,7 @@ per-row Citation column always names the specific site.
 | 674 | Kind | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Kind" htmlFor="field-kind">` |
 | 679 | Label | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Label" htmlFor="field-label" help="What the submitter reads">` |
 | 684 | Help text · optional | HARDCODED-MATCHES | FieldModal composes label="Help text" plus the same shared OPTIONAL_SUFFIX constant as the Contacts rows above. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Help text" htmlFor="field-help-text" optional>` |
-| 693 | Options · one per line | HARDCODED-DIVERGES | The frame draws "Options · one per line" (a middle-dot separator, the pack's own composition convention) but FieldModal.tsx's FormRow spells it "Options (one per line)" (a parenthetical) -- different punctuation, same field (wave-28 DEC-613 amendment: found by the widened tailOpensInputBox caption-sibling clause). Adjudicated a genuine open outlier under DEC-613's adoption rule. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Options (one per line)" htmlFor="field-options" optional>` |
+| 693 | Options · one per line | HARDCODED-MATCHES | wave-33 (task w33-c): adopted the frame's middle-dot "Options · one per line" spelling into FieldModal.tsx's FormRow label, retiring the parenthetical "Options (one per line)" divergence. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Options · one per line" htmlFor="field-options" optional>` |
 | 706 | Field | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Field" htmlFor="field-rule-trigger">` |
 | 710 | Is | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Is" htmlFor="field-rule-op">` |
 | 714 | Value | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/forms/FieldModal.tsx`<FormRow label="Value" htmlFor="field-rule-value">` |

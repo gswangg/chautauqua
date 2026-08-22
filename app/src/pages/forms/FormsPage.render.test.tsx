@@ -184,7 +184,7 @@ describe('FormsPage render smoke', () => {
     expect(screen.getByLabelText('Help text', { selector: 'textarea', exact: false })).toHaveClass('chq-textarea');
     expect(screen.getByLabelText('Required', { selector: 'input' })).toHaveClass('chq-check');
     expect(
-      screen.getByLabelText('Options (one per line)', { selector: 'textarea', exact: false }),
+      screen.getByLabelText('Options · one per line', { selector: 'textarea', exact: false }),
     ).toHaveClass('chq-textarea');
     expect(fieldSelect).toHaveClass('chq-select');
     expect(screen.getByLabelText('Is', { selector: 'select' })).toHaveClass('chq-select');

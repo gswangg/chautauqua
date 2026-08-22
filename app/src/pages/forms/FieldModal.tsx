@@ -262,7 +262,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
         )}
 
         {kind === 'dropdown' && (
-          <FormRow label="Options (one per line)" htmlFor="field-options" optional>
+          <FormRow label="Options · one per line" htmlFor="field-options" optional>
             <textarea
               id="field-options"
               className="chq-textarea"

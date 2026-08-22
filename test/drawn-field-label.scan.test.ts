@@ -322,12 +322,6 @@ const STORED: Record<string, { reason: string; citation: string }> = {
 };
 
 const DIVERGES: Record<string, { reason: string; citation: string }> = {
-  'Chautauqua Comms.dc.html:102': {
-    reason:
-      'DEC-613\'s own named, still-open outlier: the frame draws "From which plan" but the compose ' +
-      'wizard\'s control reads "Evaluation plan" -- different words, same field.',
-    citation: 'app/src/pages/comms/ComposeWizard.tsx`Evaluation plan`',
-  },
   'Chautauqua Settings.dc.html:739': {
     reason:
       'Blessed, recorded divergence (docs/design/DEVIATIONS.md §7): the frame\'s "Public URL" names a ' +
@@ -342,30 +336,12 @@ const DIVERGES: Record<string, { reason: string; citation: string }> = {
       '(docs/design/DEVIATIONS.md §7).',
     citation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
   },
-  'Chautauqua Contacts.dc.html:562': {
-    reason:
-      'The bulk-email dialog\'s frame draws a "Message" eyebrow over the body textarea, but ' +
-      'BulkEmailModal.tsx labels the same control "Body" -- different words, same field. Found by ' +
-      'this ledger\'s own boundary-anchored corpus search coincidentally landing on an unrelated ' +
-      '"Message-ID:" mail header literal in src/mail/email-binding.ts before this real divergence was ' +
-      'hand-verified.',
-    citation: 'app/src/pages/contacts/BulkEmailModal.tsx`<FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>`',
-  },
   'Chautauqua Settings.dc.html:1429': {
     reason:
       'The frame draws a generic instruction label ("Type the file name to confirm") over a box ' +
       'holding the actual filename; ConfirmDialog\'s irreversible-weight prompt instead composes the ' +
       'phrase directly INTO the label text itself -- different words, not a formatting variant.',
     citation: 'app/src/components/ConfirmDialog.tsx`{`Type "${confirmPhrase}" to confirm`}`',
-  },
-  // Wave-28 DEC-613 amendment: found by the widened tailOpensInputBox
-  // population step (see its own header).
-  'Chautauqua Submissions.dc.html:693': {
-    reason:
-      'The FieldModal options-list textarea\'s frame label draws "Options · one per line" (a middle-dot ' +
-      'separator, the pack\'s own composition convention) but FieldModal.tsx\'s FormRow spells it ' +
-      '"Options (one per line)" (a parenthetical) -- different punctuation, same field.',
-    citation: 'app/src/pages/forms/FieldModal.tsx`<FormRow label="Options (one per line)" htmlFor="field-options" optional>`',
   },
 };
 
@@ -463,7 +439,15 @@ const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
 // those 7 grade MATCHES/STORED, 1 (Submissions "Options · one per line")
 // grades a real new DIVERGES, forcing 5 -> 6. Never guessed, forced to -1
 // and re-measured on this branch.
-export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 6;
+// Wave-33 (task w33-c, implementing DEC-613's own wave-32 amendment):
+// BulkEmailModal.tsx's "Body" adopted the frame's "Message", FieldModal.tsx's
+// "Options (one per line)" adopted the frame's middle-dot "Options · one per
+// line" spelling, and ComposeWizard.tsx was verified to already render
+// "From which plan" verbatim (the "Evaluation plan" shortening the old
+// DIVERGES row cited survives only inside that file's own comment) -- all
+// three rows now grade MATCHES, forcing 6 -> 3. Never guessed, forced to -1
+// and re-measured on this branch.
+export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 3;
 export const DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1;
 
 describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w25-i)', () => {
@@ -557,7 +541,11 @@ describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w
     const fromWhichPlan = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Comms.dc.html' && r.row.label === 'From which plan'
     );
-    expect(fromWhichPlan?.status).toBe('diverges');
+    // wave-33's task w33-c verified ComposeWizard.tsx already renders
+    // "From which plan" verbatim -- the "Evaluation plan" shortening
+    // survives only inside that file's own explanatory comment -- so this
+    // ledger now measures a match, not a stale divergence.
+    expect(fromWhichPlan?.status).toBe('matches');
     const eventName = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Settings.dc.html' && r.row.label === 'Event name'
     );

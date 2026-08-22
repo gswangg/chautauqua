@@ -34,7 +34,7 @@ describe('FieldModal dropdown options cap (MAX_FIELD_OPTIONS)', () => {
     fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
     expect(screen.getByText(`0 of ${MAX_FIELD_OPTIONS} options`)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/Options \(one per line\)/, { selector: 'textarea' }), {
+    fireEvent.change(screen.getByLabelText(/Options · one per line/, { selector: 'textarea' }), {
       target: { value: 'Beginner\nIntermediate\nAdvanced' },
     });
     expect(screen.getByText(`3 of ${MAX_FIELD_OPTIONS} options`)).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('FieldModal dropdown options cap (MAX_FIELD_OPTIONS)', () => {
     fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
 
     const options = Array.from({ length: MAX_FIELD_OPTIONS + 1 }, (_, i) => `opt-${i}`).join('\n');
-    fireEvent.change(screen.getByLabelText(/Options \(one per line\)/, { selector: 'textarea' }), {
+    fireEvent.change(screen.getByLabelText(/Options · one per line/, { selector: 'textarea' }), {
       target: { value: options },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save the question' }));
