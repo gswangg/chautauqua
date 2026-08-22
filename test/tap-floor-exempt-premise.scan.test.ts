@@ -162,6 +162,34 @@ function hasFlexCenter(body: string): boolean {
   return /display\s*:\s*(inline-)?flex/.test(body) && /align-items\s*:\s*center/.test(body);
 }
 
+/** DEC-393 wave-34: a SECOND floor-grammar tier, for a REPLACED-CONTENT
+ * companion (an `<img>` or an element the sheet itself styles alongside an
+ * `img` element selector, e.g. `.chq-foo img, .chq-foo-fallback { ... }`).
+ * There is no text content to centre or pad around, so DESIGN-RULINGS.md's
+ * hit-box floor is reached by the companion's OWN resolved width/height (or
+ * min-width/min-height) rules putting BOTH axes at >=44px -- independent of
+ * display:flex / align-items / padding, which this tier never requires.
+ * Derived from the sheet's own rules (which selectors co-occur with `img`,
+ * what px sizes those rules declare), never a hand-listed selector
+ * allowlist (DEC-367/DEC-808: a directory, and by extension an allowlist,
+ * is not a population). */
+function isReplacedContentSelector(selector: string): boolean {
+  return /\bimg\b/.test(selector);
+}
+
+function maxPxAxis(body: string, prop: "width" | "height"): number {
+  let max = -Infinity;
+  const plain = new RegExp(`(?<![\\w-])${prop}\\s*:\\s*(\\d+(?:\\.\\d+)?)px`, "g");
+  const min = new RegExp(`min-${prop}\\s*:\\s*(\\d+(?:\\.\\d+)?)px`, "g");
+  for (const m of body.matchAll(plain)) max = Math.max(max, Number(m[1]));
+  for (const m of body.matchAll(min)) max = Math.max(max, Number(m[1]));
+  return max;
+}
+
+function hasWidthHeightFloor(body: string): boolean {
+  return maxPxAxis(body, "width") >= 44 && maxPxAxis(body, "height") >= 44;
+}
+
 function horizontalPaddingNonZero(body: string): boolean {
   const nonZero = (v: string | undefined) => {
     const t = (v ?? "").trim();
@@ -192,7 +220,8 @@ export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: stri
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "no companion class named in the reason (distinct from the receipted selector itself)" };
   }
   const tokenRe = new RegExp(`\\.${escapeRe(companion)}(?![\\w-])`);
-  const bodies = allChunks.filter((c) => tokenRe.test(c.selector)).map((c) => c.body);
+  const matchingChunks = allChunks.filter((c) => tokenRe.test(c.selector));
+  const bodies = matchingChunks.map((c) => c.body);
   if (bodies.length === 0) {
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: `companion .${companion} has no discoverable CSS rule` };
   }
@@ -201,13 +230,23 @@ export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: stri
   // and adds min-height/padding on a later grouped phone-media rule for the
   // SAME selector -- the floor is the CASCADE, not any one rule in isolation.
   const merged = bodies.join("\n");
-  const floored = hasMinHeightFloor(merged) && hasFlexCenter(merged) && horizontalPaddingNonZero(merged);
+  const flexFloored = hasMinHeightFloor(merged) && hasFlexCenter(merged) && horizontalPaddingNonZero(merged);
+  // Second tier (DEC-393 wave-34): a companion the sheet itself styles
+  // alongside an `img` element selector carries no text to centre or pad
+  // around, so its own width/height (or min-width/min-height) rules reaching
+  // >=44px on BOTH axes satisfies the hit-box floor without flex/padding.
+  const replacedContent = matchingChunks.some((c) => isReplacedContentSelector(c.selector));
+  const widthHeightFloored = replacedContent && hasWidthHeightFloor(merged);
+  const floored = flexFloored || widthHeightFloored;
   const present = new RegExp(`\\b${companion}\\b`).test(allText);
   if (floored && present) {
-    return { ...receipt, verdict: "VERIFIED", detail: `companion .${companion} declares min-height:44px + centred flex + non-zero horizontal padding (merged across ${bodies.length} rule(s)) and appears in real markup` };
+    const detail = flexFloored
+      ? `companion .${companion} declares min-height:44px + centred flex + non-zero horizontal padding (merged across ${bodies.length} rule(s)) and appears in real markup`
+      : `companion .${companion} is a replaced-content box (co-styled with an img selector) whose own width/height rules put both axes at >=44px (merged across ${bodies.length} rule(s)) and appears in real markup`;
+    return { ...receipt, verdict: "VERIFIED", detail };
   }
   if (!floored) {
-    return { ...receipt, verdict: "FALSE-PREMISE", detail: `companion .${companion} found (${bodies.length} rule(s), merged) but does not satisfy the 44px-floor grammar (min-height:44px + centred flex + non-zero horizontal padding)` };
+    return { ...receipt, verdict: "FALSE-PREMISE", detail: `companion .${companion} found (${bodies.length} rule(s), merged) but does not satisfy the 44px-floor grammar (min-height:44px + centred flex + non-zero horizontal padding, or, for a replaced-content companion, own width/height >=44px on both axes)` };
   }
   return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: `companion .${companion} is floored but was not found in any product markup source` };
 }
@@ -218,22 +257,28 @@ const ALL_CHUNKS = FILES.flatMap((f) => cssRegionsOf(f).flatMap((region) => rule
 const RECEIPTS = allReceipts(FILES);
 const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 
-// Ratchets (DEC-393 wave-30 amendment, task w30-b). Seeded by measuring the
-// real corpus once (98 receipts: 19 composition, 11 inline, 68 other) --
-// docs/design/audit/tap-floor-exempt-premise-v12.md is the full roster.
-// UNVERIFIABLE-PREMISE is expected to be large this wave (every `other`
-// reason, and every composition/inline receipt this instrument's
-// necessarily-narrow companion-name heuristic cannot resolve) -- it is a
-// roster count, not a defect count, and is two-sided only so a future wave
-// narrowing the instrument (or widening its grammar) re-measures honestly
-// rather than drifting silently. FALSE-PREMISE is a real 44px defect count;
-// the one instance this wave found (cards.css.ts:239, .chq-pub-headshot-
-// fallback) is a REPLACED-CONTENT sizing claim -- an img/fallback box filled
-// by width/height, not this lens's flex+padding grammar -- so it is a
-// predicate-grammar mismatch, not a missing CSS rule, and is recorded for
-// the next wave rather than mis-repaired here (see the audit doc).
+// Ratchets (DEC-393 wave-30 amendment, task w30-b; re-measured wave-34,
+// task w34-h). Seeded by measuring the real corpus once (98 receipts: 19
+// composition, 11 inline, 68 other) -- docs/design/audit/tap-floor-exempt-
+// premise-v12.md is the full roster. UNVERIFIABLE-PREMISE is expected to be
+// large this wave (every `other` reason, and every composition/inline
+// receipt this instrument's necessarily-narrow companion-name heuristic
+// cannot resolve) -- it is a roster count, not a defect count, and is
+// two-sided only so a future wave narrowing the instrument (or widening its
+// grammar) re-measures honestly rather than drifting silently.
+// FALSE-PREMISE is a real 44px defect count. Wave 30 found one instance
+// (cards.css.ts:239, .chq-pub-headshot-fallback) and recorded it as a
+// predicate-grammar mismatch rather than a missing CSS rule: a
+// REPLACED-CONTENT companion (an img/fallback box filled by width/height)
+// satisfies DESIGN-RULINGS' hit-box floor with no text to centre or pad
+// around, which this instrument's flex+padding-only grammar could not see.
+// Wave 34 gives the instrument a second, width/height-based floor-grammar
+// tier for exactly that shape (a companion co-styled with an `img` element
+// selector whose own width/height rules put both axes at >=44px) -- forced
+// to -1 and re-measured, the row now resolves VERIFIED and the ceiling
+// drops to 0. Re-measured, unchanged: 86.
 export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 86;
-export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
+export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
   it("this instrument is DEC-393's own wave-30 amendment build (durable decision doc, cited by directory per DEC-976 -- a DEC_NNN registry constant is mutable and asserts nothing durable)", () => {
@@ -299,6 +344,52 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     const row = ROSTER.find((r) => r.file === "src/routes/public/css/agenda.css.ts" && r.reason.startsWith("inline-in-prose -- DEC-393 wave-30"));
     expect(row, "the rewritten day-footer receipt must still be in the swept population").toBeDefined();
     expect(row?.verdict).toBe("VERIFIED");
+  });
+
+  it("the wave-34 worked example: cards.css.ts's headshot-link composition receipt names its replaced-content companion and now resolves VERIFIED", () => {
+    const row = ROSTER.find((r) => r.file === "src/routes/public/css/cards.css.ts" && r.receiptedClasses.includes("chq-pub-headshot-link"));
+    expect(row, "the headshot-link receipt must still be in the swept population").toBeDefined();
+    expect(row?.verdict).toBe("VERIFIED");
+    expect(row?.detail).toMatch(/replaced-content/);
+  });
+
+  it("positive control (DEC-393 wave-34, second tier): a replaced-content companion (co-styled with an img selector) reaching >=44px on both axes resolves VERIFIED with no flex/padding at all", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- .chq-fake-replaced-companion carries the box",
+      receiptedClasses: ["chq-fake-target"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-wrap img, .chq-fake-replaced-companion", body: "width:64px; height:64px; object-fit:cover;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<div class="chq-fake-replaced-companion"></div>');
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (i, DEC-393 wave-34): a replaced-content companion sized under 44px on an axis still resolves FALSE-PREMISE", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- .chq-fake-small-replaced-companion carries the box",
+      receiptedClasses: ["chq-fake-target"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-wrap img, .chq-fake-small-replaced-companion", body: "width:40px; height:40px; object-fit:cover;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<div class="chq-fake-small-replaced-companion"></div>');
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  it("negative control (ii, DEC-393 wave-34): a TEXT-BEARING companion sized >=44px with no flex/padding and no img pairing still resolves FALSE-PREMISE -- the new tier never weakens the existing grammar for text controls", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- .chq-fake-text-companion carries the box",
+      receiptedClasses: ["chq-fake-target"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-text-companion", body: "width:100px; height:100px; font-size:14px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-text-companion">Some label text</a>');
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
   });
 
   it(`FALSE-PREMISE ceiling: at most ${TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING} receipt(s) claim a companion floor that isn't real`, () => {

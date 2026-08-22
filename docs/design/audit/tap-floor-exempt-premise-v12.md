@@ -1,4 +1,4 @@
-# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment)
+# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment, second floor-grammar tier added wave-34)
 
 Instrument: `test/tap-floor-exempt-premise.scan.test.ts`. Population: every
 real `/* tap-floor-exempt: ... */` (or JSX `{/* ... */}`) comment under
@@ -10,13 +10,25 @@ undeclared.ts`'s literal `<reason>` grammar placeholder). Measured: **98
 receipts** — 19 `composition`, 11 `inline-*`, 68 `other` (by the reason's own
 first word).
 
+Wave 34 gave the instrument a SECOND floor-grammar tier, derived from the
+sheet's own rules (never a hand-listed selector allowlist, DEC-367/DEC-808):
+a companion co-styled with an `img` element selector in the same CSS rule
+(the pack's own idiom for pairing a real `<img>` with its no-photo fallback,
+e.g. `.chq-foo img, .chq-foo-fallback { ... }`) satisfies the 44px hit-box
+floor through its OWN resolved width/height (or min-width/min-height) rules
+reaching >=44px on BOTH axes — independent of `display:flex` /
+`align-items:center` / padding, which a replaced-content box (no text to
+centre or pad around) has no reason to declare. Re-measured by forcing both
+ceilings to `-1` and reading the roster back: `FALSE-PREMISE` 1 -> **0**;
+`UNVERIFIABLE-PREMISE` unchanged at **86**.
+
 ## Verdict counts
 
 | Verdict | Count | Meaning |
 |---|---|---|
-| VERIFIED | 11 | the receipt names a companion class, and that class carries a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it — this codebase's idiom splits display/align-items on a base rule from min-height/padding on a phone-media rule for the same selector), and the companion appears in real product markup. |
+| VERIFIED | 12 | the receipt names a companion class, and that class satisfies EITHER floor-grammar tier: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it — this codebase's idiom splits display/align-items on a base rule from min-height/padding on a phone-media rule for the same selector), or (2) wave-34's replaced-content tier — the companion is co-styled with an `img` element selector and its own merged width/height (or min-width/min-height) rules put both axes at >=44px — and the companion appears in real product markup. |
 | UNVERIFIABLE-PREMISE | 86 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, or a `composition`/`inline-*` reason names no companion class distinct from the receipted selector itself. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 1 | the receipt names a companion class that is real but does NOT carry the 44px-floor grammar this instrument checks for. |
+| FALSE-PREMISE | 0 | the receipt names a companion class that is real but does NOT carry either floor-grammar tier this instrument checks for. |
 
 ## The worked example (built this wave)
 
@@ -32,30 +44,37 @@ a pin asserting `.chq-pub-day-switcher`/`.chq-pub-day-pill` render on a real
 `/e/:slug/agenda` request at 390, so the premise cannot rot silently. Now
 resolves VERIFIED (see roster below).
 
-## The one FALSE-PREMISE row: a predicate-grammar mismatch, not a missing rule
+## The former FALSE-PREMISE row, now VERIFIED: a second floor-grammar tier closed the predicate-grammar mismatch
 
 `src/routes/public/css/cards.css.ts` `.chq-pub-headshot-link`'s
 `composition` receipt names `.chq-pub-headshot-fallback` as the floored
-companion, but that class's real claim is a REPLACED-CONTENT sizing one — the
-anchor "carries no size of its own"; its `<img>`/`.chq-pub-headshot-fallback`
-child is sized to fill a >=44px tile via width/height rules
-(`.chq-pub-speaker-list-photo .chq-pub-headshot-fallback` 76px/64px,
-`.chq-pub-speaker-grid img, .chq-pub-headshot-fallback` 100% of a >=~106px
-tile) — never this instrument's flex+padding grammar, because there is no
-text content to centre or pad around. This is a genuine narrowing gap in
-THIS instrument's grammar (DESIGN-RULINGS.md's 44px floor is about the HIT
-BOX, which a sized replaced-content box satisfies without flex/padding at
-all), not a real 44px defect — recorded here rather than mis-"repaired" with
-an inapplicable flex/padding rule. Next wave: either give this instrument a
-second (width/height-based) floor-grammar tier for replaced-content
-companions, or move this one receipt to a `replaced-content` reason family
-with its own predicate.
+companion. That class's real claim was always a REPLACED-CONTENT sizing one
+— the anchor "carries no size of its own"; its `<img>`/
+`.chq-pub-headshot-fallback` child is sized to fill a >=44px tile via
+width/height rules (`.chq-pub-speaker-list-photo .chq-pub-headshot-fallback`
+76px/64px, `.chq-pub-speaker-grid img, .chq-pub-headshot-fallback` 100% of a
+>=~106px tile, both co-styled with an `img` element selector in the same
+rule) — never the flex+padding grammar this instrument checked before wave
+34, because there is no text content to centre or pad around. DESIGN-
+RULINGS.md's 44px floor is about the HIT BOX, which a sized replaced-content
+box satisfies without flex/padding at all; the gap was in THIS instrument's
+grammar, not a real 44px defect. Wave 34 built the second tier the previous
+wave named as its first option: a companion co-styled with an `img` element
+selector (derived from the sheet's own rules, never a hand-listed
+allowlist) is judged on its own merged width/height rules reaching >=44px on
+both axes, independent of flex/padding. `.chq-pub-headshot-fallback`'s
+merged rules carry an explicit `width:76px; height:76px` (the list-view
+size), which alone clears both axes, so the row now resolves VERIFIED. The
+new tier is guarded by two negative controls in the scan itself (a
+replaced-content companion sized 40px still grades FALSE-PREMISE; a
+text-bearing companion with no `img` pairing and no flex/padding still
+grades FALSE-PREMISE even when sized >=44px), so it cannot silently pass a
+real text-control defect through the replaced-content door.
 
 ## Full roster (98 rows)
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
-| FALSE-PREMISE | composition | `src/routes/public/css/cards.css.ts` | companion .chq-pub-headshot-fallback found (4 rule(s), merged) but does not satisfy the 44px floor grammar |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css:1003` | no companion class named in reason text (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css:76` | no companion class named in reason text (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css:429` | no companion class named in reason text (distinct from the receipted selector itself) |
@@ -153,3 +172,4 @@ with its own predicate.
 | VERIFIED | composition | `src/routes/public/css/agenda.css.ts:581` | companion .chq-pub-day-pill floored (min-height:44px+flex+centre+h-padding across 1 rule(s)) and present in markup |
 | VERIFIED | composition | `src/routes/public/css/agenda.css.ts:814` | companion .chq-pub-day-pill floored (min-height:44px+flex+centre+h-padding across 1 rule(s)) and present in markup |
 | VERIFIED | inline | `src/routes/public/css/agenda.css.ts:793` | companion .chq-pub-day-pill floored (min-height:44px+flex+centre+h-padding across 1 rule(s)) and present in markup |
+| VERIFIED | composition | `src/routes/public/css/cards.css.ts:239` | companion .chq-pub-headshot-fallback is a replaced-content box (co-styled with an img selector) whose own width/height rules put both axes at >=44px and present in markup |
