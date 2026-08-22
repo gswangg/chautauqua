@@ -229,17 +229,16 @@ each drill frame), back-link presence on the two drill frames, and full
 static control-label coverage — and surfaces two findings the order-only
 checks above do not name:
 
-1. **"Speaker portal" (:414-472) H1 literal, DIVERGES (new).** The frame's
-   hero (:420, `Two things to do`) spells its count in words. The route's
-   H1 (`src/routes/portal/index.tsx`) composes the same copy through
-   `src/domain/count-copy.ts`'s `countOf` (DEC-925, the one count-phrase
-   helper for the whole codebase), which always renders a numeral — with
-   this task's 2-pending-task fixture the real text is `2 things to do`,
-   not byte-equal to the frame's spelled-out `Two`. Read as illustrative
-   mockup copy, not a literal requirement (DEC-925's helper is used
-   uniformly across the tree and a numeral-vs-word difference is not a
-   markup or geometry defect) — flagged for the planner in case a future
-   ruling wants the frame's exact wording enforced instead.
+1. **"Speaker portal" (:414-472) H1 literal, CONFORMS (DEC-380 wave-22
+   amendment, task w22-d).** The frame's hero (:420, `Two things to do`)
+   spells its count in words. `src/routes/portal/index.tsx` now composes
+   the H1 through `src/domain/count-copy.ts`'s `capitalizeFirst(spellCount(n))`
+   + `plural(n, "thing")` pair — the same mechanism DEC-380's agenda-clash
+   amendment already ruled for `Two sessions in this slot` — so with this
+   task's 2-pending-task fixture the real text is `Two things to do`,
+   byte-equal to the frame's literal. `countOf` (DEC-925, the numeral
+   register for data-dense surfaces) stays read-only and is unused in this
+   hero.
 
 2. **"Portal · Your profile" (:531-559) headshot control label, DIVERGES
    (new).** The frame draws a bordered pill labelled `Replace` at :541 for

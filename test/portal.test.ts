@@ -90,7 +90,7 @@ const inviteFixture: PortalInvitation = {
 };
 
 describe("PortalPage worklist headline (DEC-590)", () => {
-  it("counts exactly the rendered rows: two pending tasks + one pending invitation -> '3 things to do'", async () => {
+  it("counts exactly the rendered rows: two pending tasks + one pending invitation -> 'Three things to do'", async () => {
     mockTasks = [
       taskFixture({ id: "a1", title: "Sign the W-9", status: "pending" }),
       taskFixture({ id: "a2", title: "Upload headshot", kind: "file_request", status: "complete" }),
@@ -101,7 +101,7 @@ describe("PortalPage worklist headline (DEC-590)", () => {
     const res = await app.request("/portal");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toMatch(/<h1[^>]*>\s*3 things to do\s*<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>\s*Three things to do\s*<\/h1>/);
     // exactly the pending rows render — the completed task never shows up
     // in the worklist section.
     expect(html).toContain("Sign the W-9");
@@ -118,22 +118,22 @@ describe("PortalPage worklist headline (DEC-590)", () => {
     expect(html).toMatch(/<input type="hidden" name="action" value="decline"/);
   });
 
-  it("reads '1 thing to do' (singular) when exactly one row is pending", async () => {
+  it("reads 'One thing to do' (singular) when exactly one row is pending", async () => {
     mockTasks = [taskFixture({ id: "a1", title: "Only task", status: "pending" })];
     mockInvitations = [];
     const app = await buildPortalApp();
     const res = await app.request("/portal");
     const html = await res.text();
-    expect(html).toMatch(/<h1[^>]*>\s*1 thing to do\s*<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>\s*One thing to do\s*<\/h1>/);
   });
 
-  it("reads '0 things to do' when nothing is pending", async () => {
+  it("reads 'Zero things to do' when nothing is pending", async () => {
     mockTasks = [taskFixture({ id: "a1", title: "Done already", status: "complete" })];
     mockInvitations = [];
     const app = await buildPortalApp();
     const res = await app.request("/portal");
     const html = await res.text();
-    expect(html).toMatch(/<h1[^>]*>\s*0 things to do\s*<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>\s*Zero things to do\s*<\/h1>/);
   });
 });
 
@@ -248,7 +248,7 @@ describe("portal home rebuild to the mock (w15-b)", () => {
     const app = await buildPortalApp();
     const res = await app.request("/portal");
     const html = await res.text();
-    expect(html).toMatch(/<h1[^>]*>\s*2 things to do\s*<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>\s*Two things to do\s*<\/h1>/);
     expect(html).toContain("Sign the W-9");
     expect(html).toContain(inviteFixture.title);
     // the completed task shows up in Done, not the worklist count.
