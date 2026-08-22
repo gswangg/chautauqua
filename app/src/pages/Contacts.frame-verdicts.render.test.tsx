@@ -119,13 +119,12 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // FilterRulesPanel.tsx renders it as `.chq-contacts-filter-chipstrip`.
     const chipstrip = document.querySelector('.chq-contacts-filter-chipstrip');
     expect(chipstrip).not.toBeNull();
-    // docs/design/Chautauqua Contacts.dc.html:188 `          <span style="flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B; min-height:44px; display:flex; align-items:center">All of</span>`
-    // -- DEC-919 (wave-16 amendment): :188-189 draws `All of` HEADING a
+    // DEC-919 (wave-16 amendment): :188-189 draws `All of` HEADING a
     // non-empty `sc-for` run over `{{ activeRules }}`, never an empty one,
     // so FilterRulesPanel.tsx stands the caption slot down rather than
     // asserting "All of" over nothing. This landing fixture seeds no active
     // rule, so the frame-faithful state HERE is the caption absent -- and,
-    // per DEC-930, the group's aria-labelledby standing down with it so the
+    // per DEC-930, the group's aria-labelledby stands down with it so the
     // accessible name never points at a node that is not rendered.
     //
     // The ink itself is verdicted in the state the frame actually draws it
@@ -133,6 +132,7 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // and FilterRulesPanel.ruleChips.render.test.tsx, so asserting presence
     // here would not add a receipt -- it would only re-pin the pre-wave-16
     // unconditional caption this file used to see.
+    // docs/design/Chautauqua Contacts.dc.html:188 `          <span style="flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B; min-height:44px; display:flex; align-items:center">All of</span>`
     expect(within(chipstrip as HTMLElement).queryByText('All of')).toBeNull();
     expect((chipstrip as HTMLElement).hasAttribute('aria-labelledby')).toBe(false);
     // docs/design/Chautauqua Contacts.dc.html:192 `          <span style="flex-shrink:0; border:1px dashed #A9AE94; border-radius:4px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:700; color:#4E5C31">+ Rule</span>`
@@ -143,7 +143,6 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // -- the All/Speakers/Reviewers pill row; SegmentPillStrip.tsx renders
     // it as `.chq-contacts-segment-pills`, an "All" pill plus one
     // "{name} · {count}" pill per saved segment.
-    // docs/design/Chautauqua Contacts.dc.html:194-196 `          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">All</span>`
     //
     // DEC-678 (wave-16 r4 amendment): a settled-empty single-option filter
     // strip STANDS DOWN rather than rendering a lone inert control -- a
@@ -156,6 +155,7 @@ describe('v12 Contacts 390 frames: per-frame render verdict receipts (w13-ri, DE
     // The "All" pill's own ink is verdicted where segments exist, in
     // ContactsApp.head390.render.test.tsx. Asserting presence here would
     // re-pin the pre-DEC-678 always-on strip this file used to see.
+    // docs/design/Chautauqua Contacts.dc.html:194-196 `          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">All</span>`
     expect(document.querySelector('.chq-contacts-segment-pills')).toBeNull();
 
     // Below the now-conforming head band, the body still diverges: the

@@ -1416,11 +1416,11 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     // DEC-380 amendment (w12-a): derived from slot.sessions.length, not a
     // hardcoded count -- the three-way case below is the falsifier.
     // DEC-380 wave-32: this ONE flag composes the pack's SPELLED-count
-    // grammar (capitalizeFirst + spellCount + plural) because frame
-    // docs/design/Chautauqua Agenda.dc.html:161 draws it spelled; the
-    // numeral countOf() form still owns the data-dense registers
-    // elsewhere in this file, so this expectation is deliberately the odd
-    // one out rather than evidence of a drift.
+    // grammar (capitalizeFirst + spellCount + plural) because the frame
+    // draws it spelled; the numeral countOf() form still owns the
+    // data-dense registers elsewhere in this file, so this expectation is
+    // deliberately the odd one out rather than evidence of a drift.
+    // docs/design/Chautauqua Agenda.dc.html:161 `                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>`
     expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();
   });
 
