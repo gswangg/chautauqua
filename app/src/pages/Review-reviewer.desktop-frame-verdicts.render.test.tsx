@@ -164,9 +164,13 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       // below (a `.chq-review-reviews-row` is a real `<tr>` inside the
       // SAME `table-layout:fixed` results table, so it inherits that
       // table's column tracks by construction -- whatever they measure).
+      // DEC-995 (executed task w16-qf): line 191 now states the frame's
+      // own track set FIRST and named as the authority, keeping the old
+      // paraphrase verbatim inside a superseded-paraphrase clause so every
+      // other citer into :191 still resolves.
       verbatimRulingLine(
         191,
-        "Applied to item 27: the expanded reviews band repeats the results table's `44px 1fr 150px 130px 92px 92px auto` grid, so each reviewer's score sits under the Score column and their name under Submission — with the rubric chips on a second line inside the same track.",
+        "Applied to item 27: the expanded reviews band repeats the results table's `44px 1fr 132px 118px 190px 84px auto` grid (Chautauqua Review.dc.html:124, named as the authority per DEC-902 wave-12m; superseded paraphrase, kept verbatim because 13 citations still quote it: `44px 1fr 150px 130px 92px 92px auto`), so each reviewer's score sits under the Score column and their name under Submission — with the rubric chips on a second line inside the same track.",
       );
 
       mockApi({
