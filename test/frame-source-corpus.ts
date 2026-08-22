@@ -192,6 +192,25 @@ function isAlnum(ch: string | undefined): boolean {
   return ch !== undefined && /[A-Za-z0-9]/.test(ch);
 }
 
+/** Collapses every run of ASCII digits in `s` to a single sentinel
+ * character, `#` -- never itself a digit, so it can never re-match a real
+ * digit run, and never introduced by any other step in this pipeline (no
+ * frame label or app string this campaign has ever seen contains a literal
+ * `#`, confirmed by the corpus-wide search wave-29 ran before picking it).
+ * Hoisted here (wave-33, task w33-f) from
+ * test/desktop-control-floor.scan.test.ts -- that file re-exports it
+ * unchanged so its own call sites are untouched -- so a second ledger
+ * (test/frame-eyebrow-label.scan.test.ts) can run the identical
+ * digit-collapsed join without cross-importing a `.scan.test.ts` file's
+ * module (which drags that file's own `describe` blocks into the importing
+ * file's run, measured directly this wave: importing
+ * `labelsInFrameText` from `./frame-control-label.scan.test` already does
+ * this to this ledger's own suite). A second copy of this sentinel is
+ * exactly the vocabulary-fork DEC-613 forbids. */
+export function collapseDigitsToSkeleton(s: string): string {
+  return s.replace(/\d+/g, '#');
+}
+
 /** True when `label` (whitespace-collapsed) occurs verbatim, word-boundary
  * anchored, in some already-normalized source blob. A needle whose first or
  * last character is alphanumeric may not sit directly against another
