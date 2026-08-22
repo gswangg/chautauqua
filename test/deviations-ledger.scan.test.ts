@@ -869,6 +869,24 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     const problems = findDeviationsProblems(derived, LEDGER, realResolvers);
     expect(problems, problems.join("\n")).toEqual([]);
   });
+
+  // DEC-808 wave-20 amendment: this file's DEC-996 bullet (line 416) names
+  // the Settings frame from inside the file's header block (above the
+  // first describe(), naming shorthand only) -- the header-block
+  // exemption's companion rule requires at least one fully-receipted,
+  // non-header citation into that same frame elsewhere in the file to pay
+  // for it. This is that citation: a backtick quote read verbatim from the
+  // frame line, immediately followed by a real expect(...).toBe(...)
+  // pinning it (DEC-967 verbatimLine idiom).
+  // docs/design/Chautauqua Settings.dc.html:1047 `              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>`
+  it("DEC-996 citation is verbatim: the Settings frame's :1047 h1 draws the literal this ledger's bullet cites", () => {
+    const settingsDesignFile = join(ROOT, "docs", "design", "Chautauqua Settings.dc.html");
+    const lines = readFileSync(settingsDesignFile, "utf8").split("\n");
+    const line = lines[1047 - 1];
+    expect(line).toBe(
+      "              <h1 style=\"margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1\">AI track sessions</h1>",
+    );
+  });
 });
 
 describe("findDeviationsProblems negative controls (DEC-099: every scan ships one)", () => {
