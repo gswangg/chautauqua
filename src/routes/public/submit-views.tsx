@@ -5,7 +5,9 @@
 // notice vs. draft-resume banner), DEC-301/DEC-416 (empty track offer),
 // DEC-321 (optional speaker profile fields), DEC-371/DEC-374 (shared theme
 // CSS + validated accent), DEC-377 (no delivery-window promise in the
-// confirmation copy).
+// confirmation copy). DEC-902 (wave 18 amendment): the rejected-on-submit
+// dock note branches on the same errors/trackError population the
+// top-of-form error summary reads and adopts the frame's literal.
 
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
@@ -18,6 +20,9 @@ import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { CfpStepsScript } from "./cfp-steps-script";
 import { eventDatesLine, validAccent, surfacePath } from "./shell";
+import { DEC_902 } from "../../decisions";
+
+void DEC_902; // compile-checked dependency marker, DEC-902 wave-18 amendment
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
 import type { PublicEvent } from "../../server/repo/public";
@@ -749,7 +754,25 @@ export function SubmitPage(props: {
               <button type="button" class="chq-btn chq-btn-secondary chq-cfp-step-back">
                 Back
               </button>
-              <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
+              {/* DEC-902 (wave 18 amendment): the dock note reads the SAME
+                  error state the top-of-form summary above already reads
+                  (summaryProblems.length -- errors/trackError, the same
+                  population thingsNeedFixingHeading uses), never a second
+                  independently-derived notion of "this render was
+                  rejected". Frame :1211 (rejected-on-submit, 1600) draws
+                  "Saving a draft skips these checks" here; frame :894/:1014
+                  (the fresh-form states) draw "We email a confirmation with
+                  a link to your portal". This note is desktop-only
+                  (cfp.css.ts's max-width:700px block sets
+                  .chq-cfp-actions-note{display:none}), so the branch is a
+                  markup change that reaches both widths but is only ever
+                  visible at the width the frame demands it -- the campaign
+                  mandate's named desktop-freeze exception. */}
+              <span class="chq-cfp-actions-note">
+                {summaryProblems.length > 0
+                  ? "Saving a draft skips these checks"
+                  : "We email a confirmation with a link to your portal"}
+              </span>
             </div>
           </form>
         {/* w5-c: the "already have an account?" identity note renders

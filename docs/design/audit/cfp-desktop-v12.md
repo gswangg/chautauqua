@@ -62,7 +62,12 @@ empty — `ClosedPage`, `submit-views.tsx:100`).
 ## Frame :1211 "Submit a talk · rejected on submit" [1211-1299]
 
 **DIVERGES** (dock note only -- a wording-only residual adjudicated under
-DEC-902 wave-14m, disposition (a): see the dock-note bullet below).
+DEC-902 wave-14m, disposition (a); DISCHARGED this wave, DEC-902 wave-18
+amendment: `.chq-cfp-actions-note` now branches on the rejected-state
+predicate and ships the frame's literal verbatim -- see the dock-note
+bullet below. This row's marker word stays put per DEC-903 wave-18 -- the
+row is a receipt of the fix, not new debt, and the ledger's own population
+count must not move just because an adjudicated row got built).
 Entered via `POST /submit/:eventSlug`
 (`publicSubmitPostRoutes`) with an invalid submission (blank required
 title, an over-length description, no track selected — three problems, not
@@ -84,21 +89,20 @@ spelled-count heading, per this file's structural-only contract).
   MATCHES; both controls persist unchanged into the rejected state.
 - The frame's OWN dock note on this rejected state reads "Saving a draft
   skips these checks" (frame :1291, distinct from the fresh-form state's
-  "We email a confirmation with a link to your portal"). The tree's
-  `.chq-cfp-actions-note` (`submit-views.tsx:748`) renders the SAME
-  fresh-form sentence unconditionally — it never branches on
-  `errors`/`trackError` — so the rejected-state page still reads "We email
-  a confirmation with a link to your portal" instead of the frame's
-  error-specific caution. A real, narrow divergence: the note text is not
-  error-state-aware. Adjudicated under DEC-902 wave-14m's wording-only
-  ruling: the app's sentence carries no MORE information than the frame's
-  (both are static, one-line captions; the frame's is simply the
-  state-correct one), so disposition (a) applies -- a future lane should
-  make `.chq-cfp-actions-note` branch on `errors`/`trackError` and adopt
-  the frame's literal for the rejected state in the same commit. This
-  citation adjudicates the row; the wording change itself is not made
-  here (this task's scope is audit-file adjudication only, DEC-651
-  measurement-only, no product byte moved).
+  "We email a confirmation with a link to your portal"). **BUILT** (DEC-902
+  wave-18 amendment, discharging the wave-14m disposition-(a) work item):
+  the tree's `.chq-cfp-actions-note` (`submit-views.tsx`) now branches on
+  the same `errors`/`trackError` population `ErrorSummary` already reads
+  (`summaryProblems.length > 0`) and renders the frame's literal verbatim
+  on the rejected re-render, while the fresh-form GET keeps "We email a
+  confirmation with a link to your portal" unchanged. One predicate, no
+  second independently-derived notion of "rejected". Render receipt:
+  `test/cfp-desktop-frame-verdicts.test.ts`'s frame :1211 case (POST an
+  invalid submission, assert the frame's literal and the absence of the
+  fresh-form sentence) and `test/public-390-frame-verdicts.test.ts`'s
+  "Submit a talk, rejected" case (same predicate, SSR markup, note is
+  desktop-only via `cfp.css.ts`'s `max-width:700px` block per the
+  campaign's single-direction responsive rule, DEC-385).
 - Field border/background recolor on errored controls (`#1B1D17` outline,
   frame :1236/:1264) is inherently a CSS fact — not re-asserted here as a
   style read; verdicting it would require reading `cfp.css.ts`'s own rule
@@ -141,14 +145,18 @@ runs — `NotYetOpenPage`, `submit-views.tsx:156`).
 | --- | --- |
 | :894 Submit a talk · /submit/:slug | DIVERGES (blessed, DEC-976 wave-25) |
 | :1101 CFP closed | MATCHES |
-| :1211 Submit a talk · rejected on submit | DIVERGES (dock note, real -- adjudicated DEC-902 wave-14m disposition (a), not yet built) |
+| :1211 Submit a talk · rejected on submit | DIVERGES (dock note, adjudicated DEC-902 wave-14m disposition (a) -- BUILT DEC-902 wave-18 amendment) |
 | :1532 CFP not open yet · /submit/:slug | MATCHES |
 
 2 of 4 frames MATCH exactly as rendered; the two DIVERGES rows are (a) a
 previously-ruled, already-blessed label-wording deviation shared with the
-390 half of this same surface (`DEC_976` wave-25 amendment), and (b) one
-real, narrow gap — the rejected-state dock note is not error-state-aware,
-adjudicated under DEC-902 wave-14m's wording-only-residual ruling
-(disposition (a): the app's wording carries no more information than the
-frame's, so a future lane should adopt the frame's literal) but not yet
-built. No byte was moved to produce this verdict.
+390 half of this same surface (`DEC_976` wave-25 amendment), and (b) the
+rejected-state dock note, whose error-state-awareness gap was adjudicated
+under DEC-902 wave-14m's wording-only-residual ruling (disposition (a): the
+app's wording carries no more information than the frame's, so a future
+lane should adopt the frame's literal) and has now been built: DEC-902
+wave-18 amendment discharges disposition (a) -- `.chq-cfp-actions-note`
+branches on the rejected-state predicate and ships the frame's literal
+verbatim, receipted by real-request tests in both
+`test/cfp-desktop-frame-verdicts.test.ts` and
+`test/public-390-frame-verdicts.test.ts`.
