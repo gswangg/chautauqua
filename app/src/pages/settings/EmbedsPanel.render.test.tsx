@@ -1,7 +1,7 @@
 // EMB-15 / DEC-289 render smoke test: mounts EmbedsPanel against a mocked
 // event fetch and asserts the live snippet reacts to format + knob changes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { EmbedsPanel } from './EmbedsPanel';
@@ -393,9 +393,11 @@ describe('EmbedsPanel', () => {
     });
   });
 
-  // DEC-822: opened at ?embed=<id>, the builder loads that row's saved
-  // recipe, heads itself 'Editing · <name>', and Save PATCHes it.
-  it('loads a saved embed at ?embed=<id>, heads itself "Editing · <name>", and Save PATCHes it', async () => {
+  // DEC-728 (wave-7 amendment, :1030-1036): opened at ?embed=<id>, the
+  // builder loads that row's saved recipe and heads itself with the
+  // embed's OWN name as its H1 (never "Editing · <name>"), and Save
+  // PATCHes it.
+  it('loads a saved embed at ?embed=<id>, heads itself with the embed\'s own name, and Save PATCHes it', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-42', name: 'Keynotes', color: null }]),
@@ -414,8 +416,12 @@ describe('EmbedsPanel', () => {
     renderPanel([`/settings?embed=emb-1`]);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Editing · Homepage widget' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Homepage widget', level: 1 })).toBeInTheDocument();
     });
+    // DEC-728 (:1030-1036): back link above the H1, right-flushed On/Off
+    // status beside it.
+    expect(screen.getByRole('link', { name: '‹ Public pages' })).toBeInTheDocument();
+    expect(screen.getByText('On')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Homepage widget');
     expect(screen.getByLabelText('Surface')).toHaveValue('speakers');
     expect(screen.getByLabelText('Search')).toHaveValue('ai');
@@ -442,6 +448,96 @@ describe('EmbedsPanel', () => {
         format: 'json',
         options: { q: 'ai', limit: 5 },
       });
+    });
+  });
+
+  // DEC-728 (:1096-1101): the editing view's own footer -- a tertiary
+  // "Turn this embed off" far left, Cancel/Save changes right-flushed --
+  // replacing the lone Save button the non-editing state still ships.
+  it('the non-editing state ships Save embed alone -- no footer, no back link, no status', async () => {
+    mockEvent();
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Save embed' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '‹ Public pages' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Turn this embed off' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+  });
+
+  it('the editing state ships the three-control footer, and Turn this embed off drives a confirm dialog', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        {
+          id: 'emb-1',
+          name: 'Homepage widget',
+          surface: 'sessions',
+          format: 'iframe',
+          options: {},
+          enabled: true,
+        },
+      ]),
+      [`PATCH /api/v1/embeds/emb-1`]: { id: 'emb-1', name: 'Homepage widget', enabled: false },
+    });
+    renderPanel([`/settings?embed=emb-1`]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Homepage widget', level: 1 })).toBeInTheDocument();
+    });
+
+    // Turn off / Cancel / Save changes, none disabled by each other.
+    expect(screen.getByRole('button', { name: 'Turn this embed off' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    expect(screen.getByText('On')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn this embed off' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Turn off Homepage widget?')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Turn it off' }));
+
+    // The dialog closes and the status flips to Off -- the SAME PATCH
+    // shape SavedEmbedsPanel's own row action drives (useEmbedToggleOff).
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Off')).toBeInTheDocument();
+  });
+
+  // DEC-728: Cancel drops ?embed= from the URL rather than saving, leaving
+  // the row untouched.
+  it('Cancel drops ?embed= from the URL without saving', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        {
+          id: 'emb-1',
+          name: 'Homepage widget',
+          surface: 'sessions',
+          format: 'iframe',
+          options: {},
+          enabled: true,
+        },
+      ]),
+    });
+    renderPanel([`/settings?embed=emb-1`]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Homepage widget', level: 1 })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // No write is ever issued -- Cancel only rewrites the URL (the caller,
+    // PublicPagesPanel, is what actually unmounts this view once ?embed= is
+    // gone; that wiring is outside this component).
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/api/v1/embeds/emb-1'))).toBe(false);
     });
   });
 });

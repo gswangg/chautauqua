@@ -7,10 +7,12 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { capitalizeFirst } from '../../lib/plural';
 import { EmbedCodeReadout } from './EmbedCodeReadout';
+import { useEmbedToggleOff } from './SavedEmbedsPanel';
 import {
   buildEmbedUrl,
   buildSnippet,
@@ -26,6 +28,13 @@ import {
 } from './embedSnippet';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 import { MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from '../../../../src/server/repo/public/bounds';
+import { DEC_728 } from '../../../../src/decisions';
+
+// DEC-728 (wave-7 amendment): the editing view is a subscreen carrying the
+// frame's head (back link + name-as-H1 + On/Off status) and its
+// three-control footer (Turn this embed off / Cancel / Save changes) --
+// docs/design/Chautauqua Settings.dc.html:1030-1036, :1096-1101.
+void DEC_728;
 
 // DEC-822/DEC-839: the shape a saved embed row comes back as from GET
 // /events/:eventId/embeds (src/server/repo/embeds.ts's EmbedRecord,
@@ -39,6 +48,7 @@ interface SavedEmbedRow {
   surface: string;
   format: string;
   options: StoredEmbedOptions;
+  enabled: boolean;
 }
 
 interface StoredEmbedOptions {
@@ -98,16 +108,22 @@ function formatsFor(surface: EmbedSurface): EmbedFormat[] {
 
 export function EmbedsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   // DEC-822: ?embed=<id> puts the builder into edit mode for that saved
-  // embed — it loads the row (name + full recipe), heads itself
-  // 'Editing · <name>', and Save PATCHes it instead of creating a new one.
+  // embed — it loads the row (name + full recipe), heads itself with the
+  // embed's own name (DEC-728), and Save PATCHes it instead of creating a
+  // new one.
   const embedIdParam = searchParams.get('embed');
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  // DEC-728: the frame's status line (:1033) states whether the embed is
+  // On or Off. A freshly-created embed (no ?embed= row to load, editingId
+  // set locally by handleSave's POST response) starts On, matching the
+  // server's own default for a new row.
+  const [enabled, setEnabled] = useState(true);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
@@ -175,6 +191,7 @@ export function EmbedsPanel() {
         if (!found) return;
         setEditingId(found.id);
         setName(found.name);
+        setEnabled(found.enabled);
         setSurface(found.surface as EmbedSurface);
         setFormat(found.format as EmbedFormat);
         const opts: StoredEmbedOptions = found.options ?? {};
@@ -203,6 +220,40 @@ export function EmbedsPanel() {
     setFields((current) =>
       current.includes(field) ? current.filter((f) => f !== field) : [...current, field],
     );
+  }
+
+  // DEC-728 (:1096-1101): "Turn this embed off" drives the SAME toggle-off
+  // confirm path SavedEmbedsPanel's own row action owns (useEmbedToggleOff,
+  // exported from that file) rather than a second implementation. Its
+  // field errors have no per-row home here (there is one embed on screen),
+  // so they route into this form's own saveFieldErrors/saveError banners --
+  // the same KNOWN_SAVE_FIELDS unknown-key rendering this form already
+  // gives every other writer.
+  const {
+    pendingToggleOff,
+    setPendingToggleOff,
+    togglingOff,
+    handleConfirmToggleOff,
+  } = useEmbedToggleOff(
+    (fields) => setSaveFieldErrors((prev) => ({ ...prev, ...fields })),
+    (message) => setSaveError(message),
+    () => setEnabled(false),
+  );
+
+  // DEC-728: "‹ Public pages" and "Cancel" both leave the editing view
+  // without saving -- when opened at ?embed=<id> (DEC-822) that means
+  // dropping the param so the caller's own `embedOpen` check (PublicPages
+  // Panel.tsx) goes false again and this view unmounts, discarding every
+  // uncommitted field. A build-from-scratch session opened via "Embed
+  // code" (no ?embed= param yet) has no URL state to drop; there is no
+  // prop on this component for its mounting parent to close it from here,
+  // so for that path Cancel/Back are a no-op today -- flagged, not solved,
+  // this task's owned files are this panel + its stylesheet + its test.
+  function handleCancelEdit() {
+    if (!embedIdParam) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('embed');
+    setSearchParams(next, { replace: true });
   }
 
   // DEC-822: the builder's PRIMARY action — writes the FULL current knob
@@ -274,7 +325,34 @@ export function EmbedsPanel() {
 
   return (
     <section className="chq-settings-panel chq-embeds-panel" aria-label="Embeds">
-      <h2>{editingId ? `Editing · ${name || '…'}` : 'Embeds'}</h2>
+      {editingId ? (
+        // DEC-728 (:1030-1036): the editing view's own head -- a "‹ Public
+        // pages" back link stacked above an H1 that IS the embed's own
+        // name (never "Editing · <name>"), with a right-flushed On/Off
+        // status. The frame's status reads "On · in use on <host>", but no
+        // endpoint stores where an embed is pasted (SavedEmbedsPanel.tsx's
+        // own comment above its row markup records the same absence for
+        // that row's `{{ e.used }}` cell) -- Copy rule 3 forbids asserting
+        // what no endpoint stores, so only "On"/"Off" renders.
+        <div className="chq-settings-embed-edit-head">
+          <div className="chq-settings-embed-edit-head-left">
+            <a
+              href="#"
+              className="chq-settings-embed-back"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelEdit();
+              }}
+            >
+              ‹ Public pages
+            </a>
+            <h1>{name || '…'}</h1>
+          </div>
+          <span className="chq-settings-embed-edit-status">{enabled ? 'On' : 'Off'}</span>
+        </div>
+      ) : (
+        <h2>Embeds</h2>
+      )}
       <p>
         Build a share link for a public surface (chromeless, no login required) — pick a surface, an
         output format, and any filters or branding, then Save it as a named embed (or copy the URL/snippet
@@ -536,14 +614,49 @@ export function EmbedsPanel() {
           ) : null}
 
           <div className="chq-embeds-output">
-            <button
-              type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={saving || !name.trim()}
-              onClick={() => void handleSave()}
-            >
-              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save embed'}
-            </button>
+            {editingId ? (
+              // DEC-728 (:1096-1101): the editing view's own footer -- a
+              // tertiary "Turn this embed off" far left (reusing
+              // SavedEmbedsPanel's own toggle-off confirm path, above),
+              // then Cancel/Save changes right-flushed. Reuses the shared
+              // chq-settings-edit-footer row grammar (SettingsEditForm.tsx)
+              // rather than a page-local footer layout.
+              <div className="chq-settings-edit-footer">
+                <div className="chq-settings-edit-footer-destructive">
+                  <button
+                    type="button"
+                    className="chq-link-button"
+                    onClick={() => setPendingToggleOff({ id: editingId, name })}
+                  >
+                    Turn this embed off
+                  </button>
+                </div>
+                <div className="chq-settings-edit-footer-secondary">
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={handleCancelEdit}>
+                    Cancel
+                  </button>
+                </div>
+                <div className="chq-settings-edit-footer-primary">
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-primary"
+                    disabled={saving || !name.trim()}
+                    onClick={() => void handleSave()}
+                  >
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                disabled={saving || !name.trim()}
+                onClick={() => void handleSave()}
+              >
+                {saving ? 'Saving…' : 'Save embed'}
+              </button>
+            )}
             {saveError ? (
               <div className="chq-error" role="alert">
                 {saveError}
@@ -584,6 +697,18 @@ export function EmbedsPanel() {
             </p>
           </div>
         </div>
+      ) : null}
+      {pendingToggleOff ? (
+        // Same copy/weight as SavedEmbedsPanel's row action (DEC-941):
+        // reversible, one sentence, no typed phrase.
+        <ConfirmDialog
+          title={`Turn off ${pendingToggleOff.name}?`}
+          body="The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted."
+          confirmLabel="Turn it off"
+          pending={togglingOff}
+          onConfirm={() => void handleConfirmToggleOff()}
+          onCancel={() => setPendingToggleOff(null)}
+        />
       ) : null}
     </section>
   );
