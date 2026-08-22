@@ -154,7 +154,7 @@ async function advanceToPreviewStep() {
     target: { value: 'Hi {speaker_name}, congratulations on your talk.' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-  await screen.findByText('Attachments');
+  await screen.findByText('Attachments and merge fields');
 }
 
 async function advanceToSendReport() {
@@ -206,7 +206,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       ).toBeInTheDocument();
     });
 
-    it('DIVERGES: the panel title drops "and merge fields" -- frame draws "Attachments and merge fields", the tree renders "Attachments"', async () => {
+    it('MATCHES: the panel title reads "Attachments and merge fields", the frame\'s literal (DEC-902 wave-19 clause (a))', async () => {
       await advanceToPreviewStep();
       // docs/design/Chautauqua Comms.dc.html:96 --
       // `<span ...>Attachments and merge fields</span>`
@@ -214,8 +214,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
         96,
         '              <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:14px; font-weight:700">Attachments and merge fields</span>',
       );
-      expect(screen.queryByText('Attachments and merge fields')).not.toBeInTheDocument();
-      expect(screen.getByText('Attachments')).toBeInTheDocument();
+      expect(screen.getByText('Attachments and merge fields')).toBeInTheDocument();
     });
 
     it('MATCHES: "Include reviewer feedback" and "Attach calendar invite" toggles both render, in the frame\'s order', async () => {

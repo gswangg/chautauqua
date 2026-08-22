@@ -1398,7 +1398,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             )}
 
             <div className="chq-comms-panel">
-              <span className="chq-comms-panel-title">Attachments</span>
+              {/* DEC-902 wave-19 clause (a): docs/design/Chautauqua Comms.dc.html:96
+                  draws `Attachments and merge fields` -- the tree's shorter wording
+                  carried no extra information, so the frame's literal ships verbatim. */}
+              <span className="chq-comms-panel-title">Attachments and merge fields</span>
               <label className="chq-comms-toggle">
                 <input
                   type="checkbox"

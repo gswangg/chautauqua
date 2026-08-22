@@ -55,17 +55,14 @@ visibility-gating divergences.**
   submissions→recipients relationship explicitly. Additive, not
   contradictory — filed as a divergence because it is content the frame
   does not draw, not because it is wrong.
-- **DIVERGES**: the attachments panel title drops "and merge fields" —
-  the frame draws "Attachments and merge fields" (frame :96); the tree
-  renders "Attachments" only (`ComposeWizard.tsx`'s `.chq-comms-panel-title`
-  span). Governed by DEC-902 wave-14m: the tree's wording carries no more
-  information than the frame's (it is strictly shorter, not a richer or
-  live-derived label), so this row takes disposition (a) — the frame's
-  literal is the one to adopt — not disposition (b), and it is never filed
-  as "measurement only, desktop is frozen." Adopting the literal is a
-  one-line component edit outside this measurement-only lane's file scope
-  (`docs/design/audit/**` only); it is flagged here as the buildable
-  follow-on this row leaves for the next code lane, not left unclassified.
+- **CLOSED** (was DIVERGES): the attachments panel title dropped "and
+  merge fields" against the frame's "Attachments and merge fields" (frame
+  :96). Governed by DEC-902 wave-14m disposition (a) — the tree's wording
+  carried no more information than the frame's (strictly shorter, not a
+  richer or live-derived label) — and discharged by DEC-902 wave-19: the
+  panel title now reads "Attachments and merge fields" verbatim
+  (`ComposeWizard.tsx`'s `.chq-comms-panel-title` span). No longer a
+  buildable follow-on; the frame's literal is what ships.
 - "Include reviewer feedback" and "Attach calendar invite" toggles (frame
   :99, :108) MATCH by text and order.
 - **DIVERGES**: the "From which plan" evaluation-plan selector is

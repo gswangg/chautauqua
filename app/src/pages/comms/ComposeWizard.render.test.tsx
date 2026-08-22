@@ -294,7 +294,7 @@ describe('ComposeWizard recipient picker', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     expect(screen.queryByRole('button', { name: /^Send \d+ emails?$/ })).not.toBeInTheDocument();
 
     const nextToSend = screen.getByRole('button', { name: 'Next: send ›' });
@@ -403,7 +403,7 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('titles the preview-step panel "Attachments" (attachments only)', async () => {
+  it('titles the preview-step panel "Attachments and merge fields" (DEC-902 wave-19 clause (a), the frame\'s literal)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -425,8 +425,7 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    expect(await screen.findByText('Attachments')).toBeInTheDocument();
-    expect(screen.queryByText('Attachments and merge fields')).not.toBeInTheDocument();
+    expect(await screen.findByText('Attachments and merge fields')).toBeInTheDocument();
   });
 });
 
@@ -645,7 +644,7 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     return fetchMock;
   }
 
@@ -719,7 +718,7 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     return fetchMock;
   }
 
@@ -879,7 +878,7 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
   }
 
   it('renders name on the first line and "<email> · <ref>" on the second, with the scheduled flag ungated', async () => {
@@ -1072,7 +1071,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
@@ -1137,7 +1136,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
@@ -1174,7 +1173,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
@@ -1217,7 +1216,7 @@ describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)',
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
@@ -1311,7 +1310,7 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
   }
 
   it('rows print "Scheduled" and the no-slot caption is absent when scheduled is true but ics was never sent', async () => {
@@ -1519,7 +1518,7 @@ describe('ComposeWizard evaluation-plan select is a parameter of Include reviewe
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
 
     expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
 
@@ -1720,7 +1719,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     fireEvent.keyDown(subject, { key: 'Enter' });
 
-    expect(await screen.findByText('Attachments')).toBeInTheDocument();
+    expect(await screen.findByText('Attachments and merge fields')).toBeInTheDocument();
   });
 
   it('Enter on step 4 does NOT send -- a deliberate send stays a deliberate click', async () => {
@@ -1746,7 +1745,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
     await waitFor(() => expect(screen.getByLabelText('Subject')).toHaveValue('You are in'));
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
@@ -1812,7 +1811,7 @@ describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wav
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     // 3 recipients rendered, but only 1 will actually send -- the quiet
     // note under Next:send names the other 2 before the organizer commits.
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
@@ -1869,7 +1868,7 @@ describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wav
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
     fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
     const sendButton = await screen.findByRole('button', { name: 'Send 1 email' });
@@ -1926,7 +1925,7 @@ describe('ComposeWizard states the submissions -> recipients relationship once (
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
-    await screen.findByText('Attachments');
+    await screen.findByText('Attachments and merge fields');
   }
 
   it('one-speaker case: 1 submission resolved to 1 recipient (counts equal, still honest)', async () => {
