@@ -24,6 +24,7 @@ export {
   EvaluationScoresJsonError,
   parseEvaluationScoresJson,
   numericScoresFor,
+  numericScoresOrNull,
 } from "./evaluation/scores-json";
 
 export {

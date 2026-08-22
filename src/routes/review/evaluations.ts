@@ -12,11 +12,12 @@ import { getSubmissionOwnership } from "../../server/repo/submissions";
 import { listEvaluationsForSubmission, listPlanCriteriaByIds } from "../../server/repo/review/evaluations";
 import { getPlanForOrg } from "../../server/repo/review/plans";
 import { countAssignedReviewersForSubmission } from "../../server/repo/review/reviewers";
-import { criteriaForRound, computeWeightedScore, type EvaluationCriterionDef } from "../../domain/evaluation";
-import { DEC_596, DEC_723, DEC_736, DEC_763 } from "../../decisions";
+import { criteriaForRound, computeWeightedScore, numericScoresOrNull, type EvaluationCriterionDef } from "../../domain/evaluation";
+import { DEC_212, DEC_596, DEC_723, DEC_736, DEC_763 } from "../../decisions";
 
 void DEC_596; // organiser reads the same evaluation the reviewer wrote, across every plan
 void DEC_723; // each item carries its own round's criteria + the plan's weighted score
+void DEC_212; // wave-34 amendment: numericScoresOrNull decides completeness AND supplies the arithmetic-safe record, so the guard and the score can never disagree
 void DEC_736; // reviewerName is always populated -- anonymization never hides the reviewer from the organiser
 void DEC_763; // an optional ?planId= scopes the row disclosure to the plan the caller is looking at
 
@@ -60,19 +61,17 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
       weight: c.weight ?? 0,
     }));
     const ratingCriteria: EvaluationCriterionDef[] = roundCriteria.filter((c) => c.kind === "rating");
-    // DEC-723: null when there are no rating criteria, or any rating
-    // criterion has no value in `scores` -- an incomplete review has no
-    // score; a read must never throw computeWeightedScore's invariant.
-    const complete =
-      ratingCriteria.length > 0 &&
-      ratingCriteria.every((c) => r.scores[c.id] !== undefined && r.scores[c.id] !== null);
-    const score = complete
-      ? computeWeightedScore(
-          r.scores as Record<string, number>,
-          ratingCriteria.map((c) => ({ id: c.id, label: c.label, weight: c.weight as number })),
-          plan.scale,
-        )
-      : null;
+    // DEC-212 (wave-34 amendment): numericScoresOrNull is the ONE function
+    // that decides both completeness and the arithmetic-safe record, so the
+    // guard and the score can never disagree -- null when there are no
+    // rating criteria, any rating criterion has no value in `scores`, or a
+    // value is present but not a finite number (a dropdown-shaped string
+    // leaked under a rating criterion id). No cast: this read spans every
+    // evaluation a submission has ever carried, so a corrupt historical row
+    // degrades to score: null instead of 500ing the whole list.
+    const ratingCriteriaDef = ratingCriteria.map((c) => ({ id: c.id, label: c.label, weight: c.weight as number }));
+    const numeric = numericScoresOrNull(r.scores, ratingCriteriaDef);
+    const score = numeric ? computeWeightedScore(numeric, ratingCriteriaDef, plan.scale) : null;
 
     return {
       planId: r.planId,
