@@ -540,10 +540,13 @@ describe('ContactDrawer delete (DEC-758)', () => {
 
     fireEvent.click(deleteTrigger);
 
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    // DEC-941 (wave-23 amendment): the confirm's title names the contact
+    // (app/src/decisions-data/DEC-941.md).
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete "Priya Raman"?' });
+    expect(confirmDialog.getAttribute('aria-label')).toContain('Priya Raman');
     expect(
       within(confirmDialog).getByText(
-        'Delete Priya Raman? Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.',
+        'Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.',
       ),
     ).toBeInTheDocument();
     expect(within(confirmDialog).getByRole('button', { name: 'Delete contact' })).toBeInTheDocument();
@@ -570,7 +573,7 @@ describe('ContactDrawer delete (DEC-758)', () => {
     await waitFor(() => expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument());
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete this contact' }));
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete "Priya Raman"?' });
     fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Delete contact' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
@@ -599,7 +602,7 @@ describe('ContactDrawer delete (DEC-758)', () => {
     await waitFor(() => expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument());
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete this contact' }));
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete "Priya Raman"?' });
     fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Delete contact' }));
 
     await waitFor(() => {
@@ -618,6 +621,6 @@ describe('ContactDrawer delete (DEC-758)', () => {
     // own dismissal fired -- the drawer and its confirm step stay open.
     expect(onSaved).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Contact detail' })).toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: 'Delete this contact' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Delete "Priya Raman"?' })).toBeInTheDocument();
   });
 });

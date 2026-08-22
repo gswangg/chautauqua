@@ -1600,8 +1600,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       )}
 
       {removingTask && (
+        // DEC-941 (wave-23 amendment): title names the task already held in
+        // removingTask.
         <ConfirmDialog
-          title="Remove task"
+          title={`Remove "${removingTask.title}"?`}
           body={
             removePreviewError
               ? `Could not load the delete preview: ${removePreviewError}`

@@ -246,10 +246,12 @@ describe('TemplatesTab', () => {
     const editorSection = document.querySelector('.chq-comms-editor') as HTMLElement;
     fireEvent.click(within(editorSection).getByRole('button', { name: 'Delete' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Delete this template?')).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the template
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = screen.getByRole('dialog', { name: 'Delete "Acceptance"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('Acceptance');
     expect(
-      within(dialog).getByText('Sends already made keep their copy of "Acceptance"\'s text. This cannot be undone.'),
+      within(dialog).getByText('Sends already made keep their copy of the text. This cannot be undone.'),
     ).toBeInTheDocument();
 
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(

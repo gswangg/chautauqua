@@ -193,8 +193,10 @@ describe('SubmissionDetailPage route-param reset (DEC-678 wave-118)', () => {
     expect(searchInput).toHaveValue('Ada Lovelace');
 
     // Open the remove-participant confirm dialog for A's co-presenter.
+    // DEC-941 (wave-23 amendment): the title names the participant
+    // (app/src/decisions-data/DEC-941.md).
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    expect(await screen.findByText(/Submission A Co-presenter will be removed/)).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Remove "Submission A Co-presenter"?' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: 'Next submission' }));
 
@@ -202,7 +204,7 @@ describe('SubmissionDetailPage route-param reset (DEC-678 wave-118)', () => {
 
     // pendingRemoveParticipant reset: no dialog naming A's co-presenter
     // survives onto B (and it must not fire its DELETE against B's roster).
-    expect(screen.queryByText(/Submission A Co-presenter will be removed/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Remove "Submission A Co-presenter"?' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remove participant' })).not.toBeInTheDocument();
 
     // coPresenterQuery reset: B's search box starts empty, not A's draft text.

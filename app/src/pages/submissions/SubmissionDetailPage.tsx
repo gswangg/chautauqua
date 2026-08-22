@@ -2034,9 +2034,12 @@ export function SubmissionDetailPage() {
       {isPhone && <div className="chq-phone-dock">{decisionRail}</div>}
 
       {pendingRemoveParticipant && (
+        // DEC-941 (wave-23 amendment): title names the participant already
+        // held in pendingRemoveParticipant; body drops the now-duplicated
+        // name (DEC-613).
         <ConfirmDialog
-          title="Remove this participant?"
-          body={<p>{pendingRemoveParticipant.name} will be removed from this session. This cannot be undone.</p>}
+          title={`Remove "${pendingRemoveParticipant.name}"?`}
+          body={<p>They will be removed from this session. This cannot be undone.</p>}
           confirmLabel="Remove participant"
           pending={removingParticipantId === pendingRemoveParticipant.id}
           onConfirm={() => void removeParticipant(pendingRemoveParticipant)}

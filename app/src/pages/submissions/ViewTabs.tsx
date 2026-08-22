@@ -336,9 +336,11 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields
       )}
 
       {pendingDelete && (
+        // DEC-941 (wave-23 amendment): title names the view already held in
+        // pendingDelete; body drops the now-duplicated name (DEC-613).
         <ConfirmDialog
-          title="Delete this view?"
-          body={`Only the saved filter "${pendingDelete.name}" goes — no submissions are affected.`}
+          title={`Delete "${pendingDelete.name}"?`}
+          body="Only the saved filter goes — no submissions are affected."
           confirmLabel="Delete view"
           pending={deleting}
           onConfirm={() => void confirmDeleteView()}

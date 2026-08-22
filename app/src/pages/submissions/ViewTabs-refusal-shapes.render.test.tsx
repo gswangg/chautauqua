@@ -62,7 +62,9 @@ function renderTabs() {
 async function deleteView() {
   await screen.findByRole('button', { name: 'AI track, unread' });
   fireEvent.click(screen.getByRole('button', { name: 'Delete view AI track, unread' }));
-  await screen.findByText(/Only the saved filter "AI track, unread" goes/);
+  // DEC-941 (wave-23 amendment): the title names the view
+  // (app/src/decisions-data/DEC-941.md).
+  await screen.findByRole('dialog', { name: 'Delete "AI track, unread"?' });
   fireEvent.click(screen.getByRole('button', { name: 'Delete view' }));
 }
 

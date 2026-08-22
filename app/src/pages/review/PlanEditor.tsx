@@ -2855,8 +2855,10 @@ export function PlanEditor() {
       )}
 
       {deletePlanConfirmOpen && deletePreview && (
+        // DEC-941 (wave-23 amendment): title names the plan already held in
+        // the form's own draft state.
         <ConfirmDialog
-          title="Delete evaluation plan"
+          title={`Delete "${draft.name}"?`}
           body={`This will permanently delete ${countOf(deletePreview.evaluationsSubmitted, 'submitted evaluation')} and ${countOf(deletePreview.evaluationsDraft, 'draft evaluation')}, ${countOf(deletePreview.reviewers, 'reviewer assignment')}, and ${countOf(deletePreview.recusals, 'recusal')}. This plan's results table and CSV export go with it.`}
           confirmLabel="Delete plan"
           pending={saving}
@@ -2888,9 +2890,12 @@ export function PlanEditor() {
       )}
 
       {pendingUnassignReviewer && (
+        // DEC-941 (wave-23 amendment): title names the reviewer already held
+        // in pendingUnassignReviewer; body drops the now-duplicated name
+        // (DEC-613).
         <ConfirmDialog
-          title="Remove this reviewer?"
-          body={`${pendingUnassignReviewer.displayName} loses their queue on this plan. Scores they have already submitted stay.`}
+          title={`Remove "${pendingUnassignReviewer.displayName}"?`}
+          body="They lose their queue on this plan. Scores they have already submitted stay."
           confirmLabel="Remove reviewer"
           pending={unassigningReviewer}
           onConfirm={() => void confirmUnassignReviewer()}

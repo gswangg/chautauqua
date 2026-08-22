@@ -1339,7 +1339,10 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    // DEC-941 (wave-23 amendment): the title names the task
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Sign speaker agreement"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('Sign speaker agreement');
 
     // Server-side counts (812/401), never the grid page's -- TASK_GRID only
     // seeds a handful of rows, so a passing assertion here proves the
@@ -1362,7 +1365,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     });
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Remove task' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Remove "Sign speaker agreement"?' })).not.toBeInTheDocument();
     });
 
     // Refetches the grid (not a client-side splice) -- one more GET beyond
@@ -1404,7 +1407,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Sign speaker agreement"?' });
     expect(dialog).toHaveTextContent('Counting affected speakers');
     expect(within(dialog).getByRole('button', { name: 'Remove task' })).toBeDisabled();
 
@@ -1439,7 +1442,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Sign speaker agreement"?' });
     await waitFor(() => {
       expect(dialog).toHaveTextContent('Could not load the delete preview');
     });

@@ -167,9 +167,11 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
         )}
       </ul>
       {pendingDelete && (
+        // DEC-941 (wave-23 amendment): title names the version already held
+        // in pendingDelete; body drops the now-duplicated filename (DEC-613).
         <ConfirmDialog
-          title="Delete this version?"
-          body={`"${pendingDelete.filename}" is the live file for this deliverable -- removing it changes what the speaker's portal and the public event page resolve to. This can't be undone.`}
+          title={`Delete "${pendingDelete.filename}"?`}
+          body="It's the live file for this deliverable -- removing it changes what the speaker's portal and the public event page resolve to. This can't be undone."
           confirmLabel="Delete version"
           pending={deleting}
           onConfirm={() => void confirmDelete()}

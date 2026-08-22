@@ -81,8 +81,11 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     // Delete goes through the shared ConfirmDialog (DEC-809) — the click
-    // above only arms it, the dialog's own "Delete" confirms.
-    const dialog = await screen.findByRole('dialog', { name: 'Delete this segment' });
+    // above only arms it, the dialog's own "Delete" confirms. DEC-941
+    // (wave-23 amendment): the title names the segment
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Delete "VIP speakers"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('VIP speakers');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete segment' }));
 
     await waitFor(() => {
@@ -137,13 +140,14 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Delete this segment' });
-    // Names the view being removed rather than a bare "are you sure?".
-    expect(within(dialog).getByText(/VIP speakers/)).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the view being removed
+    // rather than a bare "are you sure?" (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Delete "VIP speakers"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('VIP speakers');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Delete this segment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Delete "VIP speakers"?' })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([input]) =>
         (typeof input === 'string' ? input : input.toString()).includes('/segments/seg1'),

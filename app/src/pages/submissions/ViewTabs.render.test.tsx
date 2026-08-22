@@ -2,7 +2,7 @@
 // rather than firing on click. Each saved-view tab item carries a named
 // delete affordance (never a bare icon) alongside the apply button.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ViewTabs } from './ViewTabs';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -104,7 +104,11 @@ describe('ViewTabs (DEC-941)', () => {
     await screen.findByRole('button', { name: 'AI track, unread' });
     fireEvent.click(screen.getByRole('button', { name: 'Delete view AI track, unread' }));
 
-    expect(await screen.findByText(/Only the saved filter "AI track, unread" goes/)).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the view
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Delete "AI track, unread"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('AI track, unread');
+    expect(within(dialog).getByText('Only the saved filter goes — no submissions are affected.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete view' }));
 
@@ -138,11 +142,14 @@ describe('ViewTabs (DEC-941)', () => {
     await screen.findByRole('button', { name: 'AI track, unread' });
     fireEvent.click(screen.getByRole('button', { name: 'Delete view AI track, unread' }));
 
-    expect(await screen.findByText(/Only the saved filter "AI track, unread" goes/)).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the view
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Delete "AI track, unread"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('AI track, unread');
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByText(/Only the saved filter/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Delete "AI track, unread"?' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'AI track, unread' })).toBeInTheDocument();
 
     const deleteCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE');

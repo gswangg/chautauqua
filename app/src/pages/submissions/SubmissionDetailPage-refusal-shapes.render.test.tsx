@@ -121,7 +121,9 @@ describe('SubmissionDetailPage refusal shapes (DEC-505/DEC-958)', () => {
 
     const row = screen.getByText('Grace Hopper').closest('tr')!;
     fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    // DEC-941 (wave-23 amendment): the title names the participant
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Grace Hopper"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove participant' }));
 
     const errorRow = await screen.findByText(/Role: Cannot remove the lead/);

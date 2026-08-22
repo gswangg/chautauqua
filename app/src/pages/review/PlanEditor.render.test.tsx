@@ -469,12 +469,12 @@ describe('PlanEditor render smoke', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Remove this reviewer?')).toBeInTheDocument();
+    // DEC-941 (wave-23 amendment): the title names the reviewer
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = screen.getByRole('dialog', { name: 'Remove "reviewer@example.test"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('reviewer@example.test');
     expect(
-      within(dialog).getByText(
-        /reviewer@example\.test loses their queue on this plan\. Scores they have already submitted stay\./,
-      ),
+      within(dialog).getByText(/They lose their queue on this plan\. Scores they have already submitted stay\./),
     ).toBeInTheDocument();
 
     // No DELETE has fired yet -- only the confirm click sends it.
@@ -1611,6 +1611,10 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Delete plan' }));
 
+    // DEC-941 (wave-23 amendment): the title names the plan
+    // (app/src/decisions-data/DEC-941.md).
+    const dialog = await screen.findByRole('dialog', { name: 'Delete "Track Review"?' });
+    expect(dialog.getAttribute('aria-label')).toContain('Track Review');
     await waitFor(() => {
       expect(screen.getByText(/5 submitted evaluation/)).toBeInTheDocument();
     });
