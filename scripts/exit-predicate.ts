@@ -983,6 +983,24 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "itself a v12 frame or 390-geometry conformance fact, the same disposition already given to "
     + "DESKTOP_FLOOR_UNRESOLVED_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
     + "amendment).",
+
+  FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING:
+    "measures a newly-derived STATE population (the pack's `sc-if value=\"{{ ... }}\"` blocks -- 23 "
+    + "rows across Agenda/Public and Portal/Review/Settings/Speakers/Comms, derived via readdirSync "
+    + "at test time) that no instrument previously graded -- every prior ledger in this campaign "
+    + "grades drawn WORDS, none grades whether the pack's TWO branches of one region both have a "
+    + "real product conditional. A real copy-fidelity fact about this specific population, but a "
+    + "newly measured, previously-uncounted population must not move the campaign's goalposts "
+    + "mid-convergence; it is promoted once its measurement technique is proven complete enough to "
+    + "gate on, the same disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING "
+    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING:
+    "measures how many drawn conditional-state rows this join found real product EVIDENCE for (a "
+    + "literal copy match or a structural discriminant match) but no `*.test.ts(x)` file anywhere in "
+    + "the repo also contains that same evidence -- an instrument-completeness/test-coverage fact "
+    + "about the join's own mounting check, not itself a v12 frame or 390-geometry conformance fact, "
+    + "the same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
 };
 
 /**
