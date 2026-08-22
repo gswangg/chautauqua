@@ -898,6 +898,14 @@
   text-overflow: ellipsis;
 }
 
+/* v12m-w16-qe: the frame's third joined clause (docs/design/Chautauqua
+   Contacts.dc.html:491, `speakers.csv · 214 rows · 2 of 5`) is phone-only --
+   hidden here, shown and joined inside the max-width:700px layer below
+   (DEC-385 single direction). */
+.chq-contacts-import-match-position {
+  display: none;
+}
+
 /* G13 (frame 08-contacts--03): the match step is a full-width row list --
    column name over its sample on the left, an → glyph mid-row, one select
    right-flushed -- never a two-up grid of bordered cards. */
@@ -1540,10 +1548,26 @@
     padding-top: 16px;
   }
 
+  /* Frame "Import CSV · 390" body :491 draws ONE joined row --
+     `speakers.csv · 214 rows · 2 of 5` -- filename, row count and column
+     position joined by ` · `. Keep the row flex layout (no stacking); the
+     separators are CSS generated content, never text nodes in the
+     markup. */
   .chq-contacts-import-match-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: 0;
+  }
+
+  .chq-contacts-import-match-count,
+  .chq-contacts-import-match-position {
+    display: inline;
+  }
+
+  .chq-contacts-import-match-count::before,
+  .chq-contacts-import-match-position::before {
+    content: ' \00b7 ';
   }
 
   /* Frame footer: the step's actions are full-width 48px targets stacked

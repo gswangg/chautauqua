@@ -5,7 +5,7 @@ import { toCsv } from '../../../../src/domain/csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
-import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856, DEC_663 } from '../../../../src/decisions';
+import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856, DEC_663, DEC_385 } from '../../../../src/decisions';
 // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
 // instruction -- the wizard's session-title requirement, request keys and
 // blocker hint below all hang off the 'Also add these people to <event> as
@@ -25,6 +25,13 @@ import './contacts-panels.css';
 // chosen) rather than letting the server invent an 'Invited: <name>' title
 // per contact (DEC-810).
 void DEC_810;
+// Compile-checked dependency marker: the "Import CSV · 390" match-head's
+// third (`.chq-contacts-import-match-position`) span is a phone-only
+// addition -- the desktop head stays the same two spans, unchanged outside
+// contacts-panels.css's max-width:700px layer (DEC-385 single-direction
+// responsive; v12m-w16-qe, frame :491 -- see the head's own call site
+// below for the full citation).
+void DEC_385;
 // DEC-575 (wave 28 amendment): a file whose rows are partly unusable (no
 // email -- the dedupe key) offers a pre-mapping partial import instead of
 // proceeding silently or failing whole. See badRows/showFileWarning below.
@@ -940,6 +947,16 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           <div className="chq-contacts-import-match-head">
             <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>
             <span className="chq-contacts-import-match-count">{countOf(dataRows.length, 'row')}</span>
+            {/* v12m-w16-qe: PHONE-ONLY -- the frame's third joined clause
+                (docs/design/Chautauqua Contacts.dc.html:491: `speakers.csv
+                · 214 rows · 2 of 5`). Desktop stays the two spans above,
+                byte-identical (DEC-385 single direction); this span is
+                `display:none` outside contacts-panels.css's
+                max-width:700px layer, which also draws the ` · `
+                separators -- never a text node here. */}
+            <span className="chq-contacts-import-match-position">
+              {phoneColumnIndex + 1} of {header.length}
+            </span>
           </div>
 
           {parseError && <div className="chq-error">{parseError}</div>}

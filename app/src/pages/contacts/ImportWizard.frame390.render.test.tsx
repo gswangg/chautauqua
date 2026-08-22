@@ -20,11 +20,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ImportWizard } from './ImportWizard';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 function phoneLayerRuleBody(css: string, selector: string): string {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const withoutComments = stripCssComments(css);
   const opener = /@media\s*\(max-width:\s*\d+px\)\s*\{/g;
   let m: RegExpExecArray | null;
   const layers: string[] = [];
@@ -94,28 +95,71 @@ describe('ImportWizard: "Import CSV · 390" frame verdict (v12m-w30-d, docs/desi
   });
 
   // Frame :491 draws ONE line: `speakers.csv · 214 rows · 2 of 5` --
-  // filename, row count, and column position joined by ` · `. The product
-  // renders filename and row count as a `justify-content: space-between`
-  // pair with NO middot join, and the column-position clause lives in a
-  // separate `Column i of n` eyebrow further down -- not on this line at
-  // all. Filename/row-count are DATA; the SHAPE (separator, whether the
-  // column-position clause is present) is structural and does diverge --
-  // see DIVERGES row in docs/design/audit/contacts-import-390-v12.md. This
-  // test pins what the product actually renders so the divergence is
-  // falsifiable, not asserted from the frame's prose.
-  it('the file summary line: filename and row count render, but NOT joined by " · " and with no column-position clause (frame :491 shape gap)', async () => {
+  // filename, row count and column position joined by ` · ` (desktop-frozen
+  // pin further down; the join is a CSS-text assertion, since jsdom never
+  // evaluates `@media` or `::before` content).
+  //
+  // docs/design/Chautauqua Contacts.dc.html:491: `speakers.csv · 214 rows ·
+  // 2 of 5`, built PHONE-ONLY (v12m-w16-qe, DEC-976).
+  it('the file summary line: filename, row count and a third "i of n" position span all render as separate nodes (frame :491)', async () => {
     await renderAtColumnMapping();
-    const filename = document.querySelector('.chq-contacts-import-match-filename');
-    const count = document.querySelector('.chq-contacts-import-match-count');
-    if (!filename || !count) throw new Error('match head filename/count not found');
-    expect(filename.textContent).toBe('Pasted CSV');
-    expect(count.textContent).toBe('3 rows');
-    const head = document.querySelector('.chq-contacts-import-match-head');
-    if (!head) throw new Error('match head not found');
-    // The frame's `·` separator and `i of n` clause are absent from this
-    // node's rendered text -- confirms the gap rather than assuming it.
-    expect(head.textContent).not.toContain('·');
-    expect(head.textContent).not.toMatch(/\d+ of \d+/);
+    expect(document.querySelector('.chq-contacts-import-match-filename')?.textContent).toBe('Pasted CSV');
+    expect(document.querySelector('.chq-contacts-import-match-count')?.textContent).toBe('3 rows');
+    // "Column 1 of 5" is the starting phone column (phoneColumnIndex 0).
+    const position = document.querySelector('.chq-contacts-import-match-position');
+    expect(position?.textContent?.replace(/\s+/g, ' ').trim()).toBe('1 of 5');
+  });
+
+  // The desktop head is FROZEN (DEC-385 single direction): the two original
+  // spans keep their exact classNames/content, and the new position span's
+  // ONLY unconditional (non-media) rule is `display: none` -- no other
+  // declaration touching `.chq-contacts-import-match-head`,
+  // `-filename` or `-count` lives outside the max-width:700px layer. jsdom
+  // never evaluates `@media`, so "renders exactly two spans" is graded as
+  // "exactly two spans carry no `display: none` default rule", read from
+  // the CSS text rather than from a live desktop viewport this harness
+  // cannot simulate.
+  it('desktop stays byte-identical: the position span is display:none by default, and no other unconditional rule changed (frame :491, DEC-385)', () => {
+    const withoutComments = stripCssComments(PANELS_CSS);
+    const defaultRule = /\.chq-contacts-import-match-position\s*\{([^{}]*)\}/.exec(
+      withoutComments.slice(0, withoutComments.indexOf('@media')),
+    );
+    if (!defaultRule) throw new Error('default (non-media) .chq-contacts-import-match-position rule not found');
+    expect(defaultRule[1]).toMatch(/display:\s*none/);
+
+    const headDefault = /\.chq-contacts-import-match-head\s*\{([^{}]*)\}/.exec(
+      withoutComments.slice(0, withoutComments.indexOf('@media')),
+    );
+    if (!headDefault) throw new Error('default .chq-contacts-import-match-head rule not found');
+    expect(headDefault[1]).toContain('justify-content: space-between');
+
+    const filenameDefault = /\.chq-contacts-import-match-filename\s*\{([^{}]*)\}/.exec(
+      withoutComments.slice(0, withoutComments.indexOf('@media')),
+    );
+    if (!filenameDefault) throw new Error('default .chq-contacts-import-match-filename rule not found');
+    expect(filenameDefault[1]).not.toContain('display: none');
+
+    const countDefault = /\.chq-contacts-import-match-count\s*\{([^{}]*)\}/.exec(
+      withoutComments.slice(0, withoutComments.indexOf('@media')),
+    );
+    if (!countDefault) throw new Error('default .chq-contacts-import-match-count rule not found');
+    expect(countDefault[1]).not.toContain('display: none');
+  });
+
+  // The phone layer (max-width:700px) is where the three spans actually
+  // join into the frame's single line: the position span becomes visible,
+  // and both the count and position spans grow a ` · ` (`\00b7`) generated
+  // separator via `::before` -- never a text node in the markup.
+  it('the phone layer joins the three spans with a CSS `\\00b7` separator and shows the position span (frame :491)', () => {
+    const countPhone = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-count');
+    expect(countPhone).toMatch(/display:\s*inline/);
+    const positionPhone = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-position');
+    expect(positionPhone).toMatch(/display:\s*inline/);
+
+    const countSeparator = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-count::before');
+    expect(countSeparator).toMatch(/content:\s*['"]\s*\\00b7\s*['"]/);
+    const positionSeparator = phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-match-position::before');
+    expect(positionSeparator).toMatch(/content:\s*['"]\s*\\00b7\s*['"]/);
   });
 
   it('"Column i of n" eyebrow and the current column\'s header name (ImportWizard.tsx:1006, :1008)', async () => {
