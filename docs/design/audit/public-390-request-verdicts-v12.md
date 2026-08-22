@@ -109,12 +109,23 @@ table below — not a third copy of the request assertions themselves.
    eight actual) and overcounted the remaining gap (claimed zero
    public-site request coverage; six of six frames already covered). Both
    corrected above with re-derivation, not by editing the brief.
-2. **One real DIVERGES survives** (Submit a talk's "Format"/"Draft" label
-   wording vs. the tree's "Session format"/"Save draft") — a genuine,
-   already-documented product/frame gap, not something this task's files
-   may fix (ledger-only scope). A future lane should either shorten the
-   tree's copy to match the frame or update the frame/DEVIATIONS if the
-   longer copy is intentional.
+2. **RETIRED (wave-8, DEC-976): both label pairs are already ruled, not an
+   open gap.** `Format`/`Session format` is ruled by
+   `docs/design/audit/cfp-legend-register-v12.md:46`: `| D:942, P:1051 |
+   'Format' | STORED-FIELD-LABEL | 'Session format' (seed deliberately
+   differs — the DEC-613 wave-27 finding this whole register generalises)
+   |` — the tree's `<legend>{field.label}</legend>` renders the organiser's
+   own stored field label, and the frame's bare word is a sampled fixture
+   value, not a string to ship (DEC-613 wave-27). `Save draft`/`Draft` is
+   ruled at `docs/design/DEVIATIONS.md:765`: "CFP wizard dock's `Save
+   draft` vs the frame's `Draft` — ALREADY RULED, recorded here only so
+   the ledger stops re-filing it. `src/routes/public/cfp.css.ts` states the
+   disposition in the sheet itself: the accessible name stays 'Save draft'
+   per DEC-613's wave-96 amendment, one control with one name at every
+   width, and the frame's `Draft` is a drawing abbreviation rather than a
+   label to ship." No lane action follows from this row; both halves were
+   already dead before this wave, this entry only stops the ledger
+   re-filing them.
 3. **No action needed on the six public-site frames' request coverage
    itself** — it is real, passing, and citation-receipted. Any further
    phone-parity work on this cluster should target the 8 unclaimed-by-this-
