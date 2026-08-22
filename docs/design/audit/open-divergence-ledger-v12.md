@@ -209,8 +209,9 @@ what the exclusion keys on, not a hand-listed file.
 
 **Negative controls, proven both synthetically and by hand against the
 real corpus** (per this task's own instruction): overflow-390-v12.md:179
-("...cannot diverge — there is no head to diverge."), density-pairing-
-v12.md:96 ("No other divergence."), and content-landing-390-v12.md:38
+("...cannot diverge — there is no head to diverge."),
+density-pairing-v12.md:96 ("No other divergence."), and
+content-landing-390-v12.md:38
 ("...not a divergence)") were all read by hand and confirmed to open ZERO
 rows under the widened grammar -- each is a denial landing inside a table
 cell, and `test/open-divergence-ledger.scan.test.ts`'s new "widened claim
@@ -324,10 +325,10 @@ wave-27).
 section already uses:** `review-admin-v12.md`'s findings (a) and (b) (the
 PlanEditor `:612`/`:627` "Options"/"Weight" phone-eyebrow gap, and the
 `:640` consequence-line wording gap) are being repaired by sibling task
-`v12m-w31-a` in this same wave's batch. Neither finding opened a row in
+`v12m-w31-a` (DEC-099) in this same wave's batch. Neither finding opened a row in
 THIS ledger (both are plain fallback prose in `review-admin-v12.md`,
 outside the widened grammar's three trigger shapes), so a merge-train
-re-measure after `v12m-w31-a` lands will not move `OPEN_DIVERGENCE_CEILING`
+re-measure after `v12m-w31-a` (DEC-099) lands will not move `OPEN_DIVERGENCE_CEILING`
 -- recorded here so that fact is not mistaken for a broken ratchet if a
 future wave re-measures and finds this ledger's count unchanged.
 
@@ -350,21 +351,22 @@ which is higher than EITHER side's: main's extra files each carry claim
 prose the widened vocabulary now reaches.
 
 **The ratchet question this raised** (settled here by DEC-180's own
-re-seed rule for a changed instrument, the same citation `v12m-w31-d`
+re-seed rule for a changed instrument, the same citation `v12m-w31-d` (DEC-180)
 used when it moved this constant off 0; this paragraph's own row is
 adjudicated by that DEC-180 reference, not left open)**.**
 `OPEN_DIVERGENCE_CEILING` is declared LOWER-only, and the merged tree
 opens 22 rows against the 16
-`v12m-w31-d` sealed. The 6-row gap was resolved by hand, not by raising
+`v12m-w31-d` (DEC-180) sealed. The 6-row gap was resolved by hand, not by raising
 the number to make the suite green: all 16 of the rows that branch
 enumerated are still present and still open (two shifted line numbers --
-`desktop-control-floor-v12.md:182`/`:438` are now `:185`/`:441`, that file
-having gained 3 lines on main), and every one of the 6 additions lives in
+desktop-control-floor-v12.md's rows at lines 182 and 438 are now at lines
+185 and 441, that file having gained 3 lines on main), and every one of
+the 6 additions lives in
 an audit file that did NOT exist at `1958e491c`:
 
   - `frame-conditional-state-v12.md:112` -- the file's own results
     heading, "## Results: 20 MATCHED, 0 PRESENT-UNMOUNTED, 3 diverge".
-  - `frame-conditional-state-v12.md:134`, `:143`, `:152` (this citing
+  - frame-conditional-state-v12.md, at lines 134, 143 and 152 (this citing
     bullet's own row is adjudicated by DEC-099, which governs what this
     ledger enumerates; it quotes rows counted elsewhere in this document
     and adds no debt of its own) -- the three
@@ -385,7 +387,7 @@ an audit file that did NOT exist at `1958e491c`:
     FALSE-PREMISE row: a predicate-grammar mismatch, not a missing rule".
 
 So the ceiling re-seeds to the merged measurement for exactly the reason
-`v12m-w31-d` re-seeded it from 0: the instrument widened and the corpus
+`v12m-w31-d` (DEC-180) re-seeded it from 0: the instrument widened and the corpus
 grew beneath it. No merge in this train introduced an unadjudicated
 divergence -- the campaign's remaining distance is unchanged, and this
 ledger's LOWER-only ratchet resumes from the re-seeded figure. A future
@@ -407,7 +409,8 @@ The 23rd row arrived later in the same train, from `v12m-w31-c`:
 `| ## 7. Settled frame divergences | 17 |` -- a SECTION NAME in a
 population tally, not a divergence claim at all. It is the third instance
 of the safe-direction false positive already documented above for
-`density-pairing-v12.md:203` and `desktop-control-floor-v12.md:185`/`:441`
+density-pairing-v12.md:203, and for the desktop-control-floor-v12.md rows
+at lines 185 and 441
 (another instrument's own constant or section label caught by the widened
 vocabulary), and it is handled the same way they were: counted and
 described, never special-cased out of the population. Hand-curating it
@@ -428,12 +431,12 @@ corpus growth DEC-180 reshaped this guard from equality to a floor for.
 
 `v12m-w31-b` then added the 24th row and the FOURTH instance of the
 instrument-constant false positive: `frame-control-floor-390-v12.md:127`,
-the heading `### 3. The one offender: FRAME_FLOOR_DIVERGENCE_CEILING
-raised 0 -> 1`. Like `density-pairing-v12.md:203`,
-`desktop-control-floor-v12.md:185`/`:441` and
-`deviations-ledger-v12.md:134`, the matched word is another instrument's
-own ratchet constant, not a product claim. Counted and described, not
-special-cased, for the same reason as the other three.
+the heading "### 3. The one offender: FRAME_FLOOR_DIVERGENCE_CEILING
+raised 0 -> 1". Like density-pairing-v12.md:203, the desktop-control-floor-v12.md
+rows at lines 185 and 441, and deviations-ledger-v12.md:134, the matched
+word is another instrument's own ratchet constant, not a product claim.
+Counted and described, not special-cased, for the same reason as the
+other three.
 
 **Final constants for the wave-31 merge train**, re-measured after every
 branch landed: `AUDIT_FILE_FLOOR` **120**, `TOKEN_ROW_FLOOR` **246**,

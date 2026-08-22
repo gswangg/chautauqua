@@ -502,13 +502,17 @@ describe('pack declaration vocabulary (DEC-937)', () => {
         else lineHeightOutOfGrammar++;
       }
     }
-    // Measured on this branch: 576 bare-integer font-weight declarations
+    // Measured on this branch: 577 bare-integer font-weight declarations
     // (400/500/600/700/800, all in-vocabulary) plus 15 out-of-grammar
     // (`var(--chq-type-*-weight)` design-token references and two bare
     // `inherit`), and 173 bare line-height declarations (172 in-vocabulary
     // plus the 2 SETTLED `1.63` occurrences) plus 2 out-of-grammar (one
     // `var(--chq-type-overview-headline-line-height)`, one `inherit`).
-    expect(weightBare).toBe(576);
+    // Wave-31 amendment (v12m-w31-a, DEC-745): app/src/pages/review/review.css's
+    // `.chq-review-criterion-field-eyebrow` phone-only block added one bare
+    // `font-weight: 800;` declaration (in-vocabulary), raising the count
+    // 576 -> 577.
+    expect(weightBare).toBe(577);
     expect(weightOutOfGrammar).toBe(15);
     expect(lineHeightBare).toBe(173);
     expect(lineHeightOutOfGrammar).toBe(2);

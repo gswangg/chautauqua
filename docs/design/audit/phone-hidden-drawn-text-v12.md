@@ -109,7 +109,7 @@ Both carry a companion "never sits ABOVE the measured truth" `it`
 
 ## Megabatch merge note (Thunderdome)
 
-`v12m-w31-a` is repairing the two `.chq-review-criteria-*` rows named in the
+`v12m-w31-a` (DEC-725) is repairing the two `.chq-review-criteria-*` rows named in the
 worked example above (`app/src/pages/review/review.css`) in this SAME batch,
 measured here against a tree that does not yet contain that repair. Both
 ceilings above include exactly one row each for

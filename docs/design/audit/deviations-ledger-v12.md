@@ -11,7 +11,7 @@ The two old exclusion reasons were both stale and are dropped rather than
 carried forward:
 
 - "`## v12 frame errata`" -- cited as being actively deleted by an in-flight
-  branch (v12m-w14-b). That branch landed; the heading no longer exists in
+  branch (v12m-w14-b, DEC-099). That branch landed; the heading no longer exists in
   the file. A population derived from real headings can never resurrect a
   deleted one, so no special case is needed.
 - "`## 5. Pending adjudication`" -- cited as stale prose whose one entry was
@@ -107,8 +107,8 @@ with no ledger row" -- the derivation working exactly as `v12m-w31-c` built
 it to. Each of the seven was graded here by the same rule the original ten
 were: open the cited artifact and confirm it carries the cited literal.
 All seven verified against the live tree (the five `CFP_*` constants at
-`src/routes/public/submit-views.tsx:48-63`, `WORKLIST_TABS` at
-`app/src/pages/content/worklist.ts:5`, and the deliberate absence of any
+src/routes/public/submit-views.tsx`CFP_ABSTRACT_HELP_TEXT`, `WORKLIST_TABS` at
+app/src/pages/content/worklist.ts`WORKLIST_TABS`, and the deliberate absence of any
 `CFP_BIO_LABEL`), so all seven are `honored`; none is a gap.
 
 ### ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -- 4 rows, all honored
