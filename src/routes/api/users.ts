@@ -18,7 +18,7 @@ import { isOrgUserRole } from "../../server/repo/users";
 import { getAnchorEventForOrg } from "../../server/repo/events";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { normalizeEmail, isValidEmail } from "../../domain/email";
-import { DEC_239, DEC_454, DEC_467, DEC_778, DEC_865 } from "../../decisions";
+import { DEC_239, DEC_454, DEC_467, DEC_778, DEC_865, DEC_949 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
 void DEC_239; // GET /api/v1/users items must retain {id,email,role,...} -- the SPA's ReviewerOption keys on `id`, not `userId`
@@ -26,6 +26,7 @@ void DEC_454; // one canonical email rule, applied at every contact.email write/
 void DEC_467; // user.email obeys DEC-454 too
 void DEC_778; // PATCH /api/v1/users/:id role change -- a role you can see is a role you can change
 void DEC_865; // org user directory is organizer/reviewer only -- see repo/users.ts's ORG_USER_ROLES vocabulary
+void DEC_949; // reset-password revokes the target's bearer tokens too, and reports how many
 
 function currentAuth(c: { var: { auth?: { userId: string; role: string; orgId: string } } }) {
   const auth = c.var.auth;
@@ -145,7 +146,9 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
 // response body — never emailed (DEC-200/DEC-043 pattern: passwords never
 // travel over email, only the account-creation notice does, and that notice
 // omits the password too). The organizer is responsible for relaying it to
-// the user out of band.
+// the user out of band. A reset clears all FOUR of the target's credential
+// classes: the outstanding reset grant, the password hash, every cookie
+// session, and (DEC-949) every bearer api_token the target minted.
 usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = currentAuth(c);
   const userId = c.req.param("id");
@@ -166,8 +169,19 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, requireCo
   // Revoke every existing session for the target user so a stolen/shared
   // old password can't keep an active session alive (DEC-200 pattern).
   await repo.deleteUserSessions(c.var.db, target.id);
+  // DEC-949: sweep the target's bearer tokens too -- without this, a `chq_`
+  // token the target minted keeps full organizer authority (and its CSRF
+  // exemption, DEC-027) after a reset that only ever cleared cookie
+  // sessions, and DELETE /api/v1/tokens/:id can't clean it up because that
+  // route itself requires the cookie session the reset just destroyed.
+  // DISCLOSURE, not silence: a bearer token is often a shared org
+  // integration credential rather than a personal one, so the sweep is
+  // announced on the response body (revokedApiTokens) rather than performed
+  // quietly -- a revocation nobody is told about is DEC-851/DEC-988's "knob
+  // with no reader" in reverse: an effect with no announcement.
+  const revokedApiTokens = await repo.deleteApiTokensForUser(c.var.db, target.id);
 
-  return c.json({ id: target.id, email: target.email, role: target.role, password }, 200);
+  return c.json({ id: target.id, email: target.email, role: target.role, password, revokedApiTokens }, 200);
 });
 
 // DEC-778: role change becomes a real capability. Refuses loudly rather than

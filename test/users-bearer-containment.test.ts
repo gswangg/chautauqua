@@ -31,6 +31,7 @@ vi.mock("../src/server/repo/users", async () => {
     getOrgUserById: vi.fn(async () => targetUser),
     updateUserPasswordHash: vi.fn(async () => {}),
     deleteUserSessions: vi.fn(async () => {}),
+    deleteApiTokensForUser: vi.fn(async () => 0),
   };
 });
 

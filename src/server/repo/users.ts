@@ -188,6 +188,28 @@ export async function deleteUserSessions(db: Db, userId: string): Promise<void> 
   await db.delete(schema.authSession).where(eq(schema.authSession.userId, userId));
 }
 
+/** DEC-949: a password reset revokes the target's bearer tokens too, and
+ * reports how many. Deletes every api_token row this user minted
+ * (schema.apiToken.createdByUserId, api_token_created_by_user_id_idx) --
+ * without this, a `chq_` bearer token minted by the target keeps full
+ * organizer authority (and its CSRF exemption, DEC-027) after a "reset +
+ * signed out everywhere" that only ever cleared cookie sessions.
+ *
+ * Uses `.returning({ id })` and counts the returned rows rather than
+ * removeParticipantRow's `result.meta?.changes ?? 0` shape
+ * (src/server/repo/participants.ts): `.meta` is a real-D1-only field the
+ * sqlite-proxy test driver (test/*.test.ts's DatabaseSync harness, the
+ * only DB test double this repo has) never forwards, so a meta.changes
+ * count can never be asserted end-to-end in a test -- DEC-948's pattern,
+ * the echo comes from the write itself, not a side-channel stat. */
+export async function deleteApiTokensForUser(db: Db, userId: string): Promise<number> {
+  const rows = await db
+    .delete(schema.apiToken)
+    .where(eq(schema.apiToken.createdByUserId, userId))
+    .returning({ id: schema.apiToken.id });
+  return rows.length;
+}
+
 /** DEC-757: every author is a named person, never a raw email/id — resolves
  * the display name for a user acting in the system. A user with a linked
  * contact is named `${firstName} ${lastName}`; otherwise the user's email is
