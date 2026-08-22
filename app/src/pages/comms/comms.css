@@ -1732,10 +1732,13 @@
   /* Preview pane switcher: flex-shrink:0 horizontal strip. The Prev/Next
      buttons carry chq-btn chq-btn-tertiary (DEC-410); this element
      selector still wins on phone via the class+element specificity bump,
-     so the phone chrome is unaffected by that class addition. */
+     so the phone chrome is unaffected by that class addition.
+     v12m-w33-b (DEC-367 wave-33): overflow-x dropped -- the strip holds
+     exactly two 44px Prev/Next buttons at a 12px gap and cannot overflow
+     390; docs/design/Chautauqua Comms.dc.html declares zero overflow of
+     any kind anywhere. */
   .chq-comms-preview-nav {
     flex-shrink: 0;
-    overflow-x: auto;
   }
 
   .chq-comms-preview-nav button {

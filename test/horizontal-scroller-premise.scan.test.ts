@@ -280,11 +280,10 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   'app/src/pages/contacts/contacts.css::.chq-contacts-filter-chipstrip': 'GROUNDED',
   'app/src/pages/contacts/contacts.css::.chq-contacts-segment-pills': 'GROUNDED',
 
-  // Contacts: import-wizard step indicator. Contacts.dc.html's phone Import
-  // CSV frame (:483-509) draws a plain "speakers.csv · 214 rows · 2 of 5"
-  // text header, never a step-chip strip -- ImportWizard.tsx's own comment
-  // calls .chq-steps a "mock" of that text. No frame draws this scroller.
-  'app/src/pages/contacts/contacts-panels.css::.chq-contacts-import .chq-steps': 'UNGROUNDED-SCROLLER',
+  // Contacts: import-wizard step indicator. v12m-w33-b (DEC-367 wave-33):
+  // RESOLVED -- the strip is now `display: none` at phone (no overflow-x
+  // declaration survives there), so this row no longer appears in ROWS.
+  // See docs/design/audit/horizontal-scroller-390-v12.md.
 
   // Speakers: the onboarding grid's horizontal-scroll wrapper is exactly
   // Speakers.dc.html:75/577's `min-width:1060px` task matrix.
@@ -324,10 +323,11 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   // a citation).
   'app/src/pages/agenda/agenda.css::.chq-day-grid': 'UNGROUNDED-SCROLLER',
 
-  // Comms: preview-pane Prev/Next switcher, phone-scoped. Comms.dc.html
-  // has ZERO overflow-x/overflow:auto|scroll declarations anywhere in the
-  // frame -- no scrolling region of any kind is drawn for this surface.
-  'app/src/pages/comms/comms.css::.chq-comms-preview-nav': 'UNGROUNDED-SCROLLER',
+  // Comms: preview-pane Prev/Next switcher, phone-scoped. v12m-w33-b
+  // (DEC-367 wave-33): RESOLVED -- overflow-x dropped (the strip holds
+  // exactly two 44px buttons at a 12px gap and cannot overflow 390), so
+  // this row no longer appears in ROWS. See docs/design/audit/
+  // horizontal-scroller-390-v12.md.
 
   // Docs (SSR /docs, DEC-382: a NEW designed public surface, its own
   // frame). Docs.dc.html's "Docs · an article" frame (:27) annotates
@@ -351,13 +351,13 @@ const VERDICTS: Readonly<Record<string, Verdict>> = {
   'src/routes/portal/portal.css.ts::table': 'UNGROUNDED-SCROLLER',
   'src/routes/portal/portal.css.ts::pre': 'UNGROUNDED-SCROLLER',
 
-  // Public Agenda: day-row scroll wrapper. Its own comment (DEC-584
-  // wave-64) says the scroller is kept as "a harmless no-op wrapper" --
-  // "no horizontal scroll is needed anymore (no room columns to
-  // overflow)". "Chautauqua Public and Portal.dc.html"'s Agenda frames
-  // (:132, :249) draw no overflow-x for the day-row region. UNGROUNDED,
-  // though self-documented as currently inert.
-  'src/routes/public/css/agenda.css.ts::.chq-pub-agenda-day-scroll': 'UNGROUNDED-SCROLLER',
+  // Public Agenda: day-row scroll wrapper. v12m-w33-b (DEC-367 wave-33):
+  // RESOLVED -- the overflow-x/-webkit-overflow-scrolling pair is removed
+  // (the DEC-584 wave-64 "harmless no-op wrapper" premise was itself the
+  // ungrounded scroller; "Chautauqua Public and Portal.dc.html"'s Agenda
+  // frames (:132, :249) draw no overflow-x for the day-row region), so
+  // this row no longer appears in ROWS. See docs/design/audit/
+  // horizontal-scroller-390-v12.md.
 
   // Public Agenda: desktop day switcher (210px joined group). Grounded --
   // the frame's phone day-switcher shape (Public and Portal.dc.html:377)
@@ -469,14 +469,16 @@ describe('horizontal-scroller premise (DEC-367 wave-30 amendment)', () => {
   });
 });
 
-/** Measured 12 today: contacts-panels.css .chq-steps, submissions.css
- * .chq-submissions-table-wrap, agenda.css .chq-day-grid, comms.css
- * .chq-comms-preview-nav, docs-site.css.ts .chq-docs-code, portal.css.ts
- * table + pre, public/css/agenda.css.ts .chq-pub-agenda-day-scroll.
- * (Tools chrome rows are OUT-OF-SCOPE, DEC-382, and excluded from this
- * count -- see VERDICTS above.) See
+/** Measured 5 today (v12m-w33-b, DEC-367 wave-33 drained 3 of the prior 8):
+ * submissions.css .chq-submissions-table-wrap, agenda.css .chq-day-grid,
+ * docs-site.css.ts .chq-docs-code, portal.css.ts table + pre. Resolved this
+ * wave: contacts-panels.css .chq-steps (display:none phone-only),
+ * comms.css .chq-comms-preview-nav (overflow-x dropped), public/css/
+ * agenda.css.ts .chq-pub-agenda-day-scroll (overflow-x/-webkit-overflow-
+ * scrolling dropped). (Tools chrome rows are OUT-OF-SCOPE, DEC-382, and
+ * excluded from this count -- see VERDICTS above.) See
  * docs/design/audit/horizontal-scroller-390-v12.md for the full ledger. */
-export const UNGROUNDED_SCROLLER_CEILING = 8;
+export const UNGROUNDED_SCROLLER_CEILING = 5;
 
 /** Measured 0 today: KNOWN_CLIP_EXCEPTIONS' one member
  * (`/admin/agenda::div.chq-session-card-title`) still names a real

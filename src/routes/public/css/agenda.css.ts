@@ -15,11 +15,14 @@ import { ACCENT_BOUND_CLASSES } from "./accent-classes";
 export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-row SEQUENCE, not a
      room-lane matrix -- one row per distinct start minute, an 88px time
      cell beside a wrapping blocks container. No horizontal scroll is
-     needed anymore (no room columns to overflow), but the scroll
-     container is kept as a harmless no-op wrapper so a future wide-row
-     addition (e.g. a spanning break rule) has somewhere to sit without
-     widening the page. */
-  .chq-pub-agenda-day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
+     needed anymore (no room columns to overflow).
+     v12m-w33-b (DEC-367 wave-33): the overflow-x/-webkit-overflow-
+     scrolling pair recorded above as a "harmless no-op wrapper" is an
+     UNGROUNDED-SCROLLER row -- docs/design/Chautauqua Public Agenda.dc.html
+     declares no overflow anywhere on this frame, so the pair is removed
+     rather than kept as a hedge. margin-bottom stays; the wrapper <div>
+     in agenda-grid.tsx is untouched. */
+  .chq-pub-agenda-day-scroll { margin-bottom: 1.5rem; }
   .chq-pub-agenda-day { display: flex; flex-direction: column; gap: 18px; margin-bottom: 0; }
   /* DEC-584 (wave 64): one row = a fixed-width time cell + a wrapping
      blocks container. align-items: flex-start keeps the time label

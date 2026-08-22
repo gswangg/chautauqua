@@ -1521,15 +1521,15 @@
     word-break: break-word;
   }
 
+  /* v12m-w33-b (DEC-367 wave-33): frame "Import CSV · 390" (docs/design/
+     Chautauqua Contacts.dc.html) header band draws exactly three things --
+     `‹ Contacts`, `Match the columns`, `speakers.csv · 214 rows · 2 of 5`
+     -- there is no step-chip strip anywhere in it. Retired phone-only;
+     the desktop `.chq-steps` grid above (outside this @media block) is
+     untouched and the <ol className="chq-steps"> markup stays in
+     ImportWizard.tsx for desktop. */
   .chq-contacts-import .chq-steps {
-    display: flex;
-    grid-template-columns: none;
-    overflow-x: auto;
-    border-top: 1px solid var(--chq-rule);
-  }
-
-  .chq-contacts-import .chq-step {
-    flex-shrink: 0;
+    display: none;
   }
 
   /* v12m-w1-f (planner ruling, DEC-026 amendment): the frame does NOT
