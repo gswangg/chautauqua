@@ -17,7 +17,9 @@ draws a different sentence for the same cap row:
 
 `grep -rn "Would assign" app src` returned zero on `main` before this task —
 the phone sentence had never been built. `distributeSummaryText`/
-`capRowSummaryLine` (`PlanEditor.tsx:267`/`:306`) already compose the
+`capRowSummaryLine` (defined at app/src/pages/review/PlanEditor.tsx:306,
+sharing the app/src/pages/review/PlanEditor.tsx:267 distributeSummaryText
+helper) already compose the
 desktop grammar from `submissionsInScope` × the plan's reviews-per-talk ×
 `reviewerAccountCount`, all read off `GET /plans/:id/progress`.
 

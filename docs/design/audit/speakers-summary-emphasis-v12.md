@@ -40,3 +40,4 @@ Tier 0 fix. Task w33-e. Verified against `main` at wave 33.
 - `app/src/pages/Speakers.frame-verdicts.render.test.tsx` (near :161-163)
 - `app/src/pages/speakers/OnboardingGrid.render.test.tsx` (near :2174)
 - `app/src/pages/speakers/OnboardingGrid.filteredEmpty.w5t.render.test.tsx`
+  — its own `toMatch(/overdue/)` assertion on the head summary text.
