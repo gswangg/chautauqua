@@ -227,6 +227,20 @@ describe("PUBLIC SSR 390 frame render verdicts, request companion (task w28-g)",
       expect(html).toMatch(/My schedule ·\s*<span id="chq-my-schedule-pill-count">0<\/span>/);
     });
 
+    it("DEC-393 wave-30: the day-footer's inline-in-prose tap-floor-exempt receipt names a real floored sibling -- DaySwitcher's .chq-pub-day-pill renders at 390 on this exact route, so the receipt's premise cannot rot silently", async () => {
+      installFakeCaches();
+      const res = await buildAgendaApp().request("/e/conf/agenda", {}, TEST_ENV);
+      const html = await res.text();
+
+      expect(html).toContain('class="chq-pub-day-switcher"');
+      const pills = [...html.matchAll(/<a class="chq-pub-day-pill[^"]*"/g)];
+      expect(pills.length).toBeGreaterThanOrEqual(1);
+      // The day-footer's inline next-day <a> is exempt only because this
+      // floored sibling reaches the same day-advance destination -- if
+      // DaySwitcher ever stopped rendering here, the exemption's premise
+      // would be false and this assertion is what catches it.
+    });
+
     it("MATCHES: the dock band -- filled Download .ics + bordered Speakers, exactly the two controls the frame draws", async () => {
       installFakeCaches();
       const res = await buildAgendaApp().request("/e/conf/agenda", {}, TEST_ENV);
