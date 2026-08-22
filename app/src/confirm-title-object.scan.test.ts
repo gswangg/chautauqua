@@ -194,9 +194,7 @@ describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 w
     const occurrences = scan(FILES);
     const offenders = occurrences.filter((o) => o.titleIsLiteral === true);
     const rendered = offenders.map((o) => `${o.file}:${o.line} (${o.titleSource})`).join('\n');
-    expect(offenders.length, `bare fixed-string <ConfirmDialog title= sites:\n${rendered}`).toBeLessThanOrEqual(
-      CONFIRM_TITLE_OBJECT_CEILING,
-    );
+    expect(offenders.length, `bare fixed-string <ConfirmDialog title= sites:\n${rendered}`).toBeLessThanOrEqual(CONFIRM_TITLE_OBJECT_CEILING);
   });
 
   // Two-sided companion (DEC-808 wave-85 amendment idiom): fails, naming the

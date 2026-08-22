@@ -100,6 +100,8 @@ const KNOWN_FILE_FOR_NAME: Readonly<Record<string, string>> = {
   WIDTH_FLOOR_OFFENDERS_CEILING: "app/src/phone-tap-target-scan/width-ceiling.ts",
   // task w12-xf, DEC-808 amendment: phone-verdict cascade-read ratchet.
   PHONE_VERDICT_CASCADE_BLIND_CEILING: "app/src/phone-verdict-cascade-read.scan.test.ts",
+  // task w13-xa, DEC-069 amendment: open-divergence ledger.
+  OPEN_DIVERGENCE_CEILING: "test/open-divergence-ledger.scan.test.ts",
 };
 
 /**

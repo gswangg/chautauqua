@@ -183,26 +183,43 @@ function rowsInFile(fileName: string): DivergenceRow[] {
 const ALL_ROWS: DivergenceRow[] = auditFiles().flatMap(rowsInFile);
 const OPEN_ROWS: DivergenceRow[] = ALL_ROWS.filter((r) => !r.adjudicated);
 
-const EXPECTED_AUDIT_FILE_COUNT = 100;
-const EXPECTED_TOTAL_TOKEN_COUNT = 203;
+const EXPECTED_AUDIT_FILE_COUNT = 101;
+const EXPECTED_TOTAL_TOKEN_COUNT = 153;
 const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
-  heading: 18,
-  table: 57,
-  bullet: 38,
-  fallback: 90,
+  heading: 15,
+  table: 38,
+  bullet: 27,
+  fallback: 73,
 };
 
 // -- Ratchet -------------------------------------------------------------
-// Measured on this branch (task w11-td), AFTER this task's three
-// re-verdicts landed above (agenda-390-v12.md DIVERGES 1 & 2, review-v12.md
-// :964): 203 total DIVERGES-token rows across 100 audit files, 133 OPEN. May
-// only be LOWERED in a future wave as more rows get adjudicated (a DEC
-// ruling lands, or the row is fixed and the fix cited); must never be
-// raised to paper over new debt landing unadjudicated.
-export const OPEN_DIVERGENCE_CEILING = 133;
+// RE-BASELINED (task w13-xa, DEC-069/DEC-808 amendment): these constants
+// were measured on branch v12m-w11-td, never on post-megabatch main, so the
+// exit predicate's own header for this file (previously "203 total
+// DIVERGES-token rows across 100 audit files, 133 OPEN") was stale by an
+// entire branch-tree diff. The drop from 203 is ADJUDICATION, not row
+// deletion: `git grep -c DIVERGES 5eadde2c5 -- 'docs/design/audit/*.md'`
+// and the same grep on this branch's parent both total 148 lines -- no
+// audit-file content was removed by this task, only re-measured. The
+// further drop to the values below happened because this branch's base
+// (6459bebdd, "merge v12m-w12-xf") includes SIX MORE audit-file edits than
+// the w13-xa task brief's own 880726041 snapshot did (comms-v12.md,
+// contacts-v12.md, content-v12.md, review-reviewer-desktop-v12.md,
+// submissions-390-v12.md, plus a wholly NEW file,
+// phone-verdict-cascade-read-v12.md, which raises EXPECTED_AUDIT_FILE_COUNT
+// to 101) -- landed by other in-flight lanes between when the task brief's
+// numbers were measured and when this task actually ran. Per the task's own
+// instruction ("re-run the scan yourself and use the numbers IT prints,
+// never these"), all four constants below are the scan's live output on
+// this commit, not the brief's 100/146/{15,37,27,67}/85 figures, which
+// were already one branch-generation stale. 153 total DIVERGES-token rows
+// across 101 audit files, 90 OPEN. May only be LOWERED in a future wave as more
+// rows get adjudicated (a DEC ruling lands, or the row is fixed and the fix
+// cited); must never be raised to paper over new debt landing unadjudicated.
+export const OPEN_DIVERGENCE_CEILING = 90;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
-  it('enumerates exactly 100 audit files and exactly 203 DIVERGES-token rows (vacuous-population guard)', () => {
+  it('enumerates exactly 101 audit files and exactly 153 DIVERGES-token rows (vacuous-population guard)', () => {
     const files = auditFiles();
     expect(files.length).toBe(EXPECTED_AUDIT_FILE_COUNT);
     expect(ALL_ROWS.length).toBe(EXPECTED_TOTAL_TOKEN_COUNT);
