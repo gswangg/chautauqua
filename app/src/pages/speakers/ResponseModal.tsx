@@ -26,6 +26,15 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
       subtitle={
         <>
           {contactName}
+          {/* DEC-441 wave-5/36 amendment: `Chautauqua Speakers.dc.html`:232
+              draws `<name> · sent <date>` -- the moment the task went out,
+              not the completion date (already implied by the answers being
+              on screen). STILL SHOWS "Completed": AssignmentResponseDetail
+              (src/server/repo/tasks/response-detail.ts) selects no
+              send/assignment-creation timestamp, and this is deliberately
+              NOT patched from a proxy field (e.g. a different query's
+              assignedAt) -- fixing this needs the response-detail repo
+              query to add that column to the DTO first. */}
           {detail && <> &middot; Completed {formatDate(detail.completedAt)}</>}
         </>
       }
