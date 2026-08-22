@@ -431,3 +431,14 @@ substring join and is superseded by the re-derivation above, which
 measures the same corroboration clause through the repaired join; both
 ceilings below were re-measured against the combined instrument by
 forcing each to -1 on the merged tree.
+
+## Wave 23 (DEC-393 amendment, task w23-g): the composed-label tier resolves ZERO desktop rows
+
+This wave added the SAME composed-label resolution tier the phone sibling ledger got, implemented once in `test/helpers/composed-label-resolve.ts` (DEC-613: never two copies of one join) and consulted by this file's `gradeControl` only when NEITHER the own-text tier nor the wave-28 attribute/prop tier resolves a label. See `docs/design/audit/frame-control-floor-390-v12.md`'s own "Wave 23" section for the tier's full algorithm and honesty clauses (unambiguous helper match, unambiguous call site, never unioned).
+
+**MEASURED (this branch, forcing both `DESKTOP_FLOOR_DIVERGENCE_CEILING` and `DESKTOP_FLOOR_UNRESOLVED_CEILING` to -1 before and after adding the tier):**
+
+- PRE-WIDENING (own-text + attribute tiers, matching the current tree's own state): 2 offenders, 137 unresolved.
+- POST-WIDENING (own-text + attribute + composed tiers): **2 offenders, 137 unresolved -- byte-identical, zero rows moved.**
+
+The tier genuinely resolves nothing on the desktop half. Reason: this campaign's one known composed-label match -- `src/domain/schedule-copy.ts`'s `conflictMoveLabel` (`` `Move ${ref} to ${clockHMM(startMin)}` ``), rendering "Move DFC-047 to 11:30" -- is drawn only inside a PHONE (width:390px height:844) frame extent in its own source `.dc.html` file (docs/design/Chautauqua Agenda.dc.html and docs/design/Chautauqua Overview.dc.html both draw it inside a phone frame only), so it never enters this file's own `!isPhone`-filtered `DESKTOP_FRAMES` population at all -- there is no desktop-frame row for the tier to have a chance at. Neither `DESKTOP_FLOOR_DIVERGENCE_CEILING` nor `DESKTOP_FLOOR_UNRESOLVED_CEILING` moved; both stay at their pre-widening values. A widening that finds nothing is a real, honestly-reported result, not an invented one.

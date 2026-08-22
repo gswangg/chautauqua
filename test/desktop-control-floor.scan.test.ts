@@ -285,6 +285,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
+import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -473,6 +474,14 @@ const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
 
 const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_BLOBS: string[] = SOURCE_FILES.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
+
+// -- Composed-label resolution tier (DEC-393 wave-23 amendment; task w23-g)
+// -- consulted ONLY when neither the own-text nor the attribute tier below
+// finds a match. See test/helpers/composed-label-resolve.ts's own header
+// for the full algorithm and honesty clauses; that module is the ONE place
+// this join lives, shared byte-for-byte with the phone half. ------------
+
+const COMPOSED_HELPERS: ComposedHelper[] = discoverComposedHelpers(join(SRC_ROOT, 'domain'), join(APP_SRC_ROOT, 'lib'));
 
 function isAlnum(ch: string | undefined): boolean {
   return ch !== undefined && /[A-Za-z0-9]/.test(ch);
@@ -1030,8 +1039,9 @@ export interface GradedRow {
    * string, carried through verbatim (never re-worded). */
   excludedReason: string | null;
   /** WAVE 28: which tier resolved this row's tokens, for the ledger's own
-   * "newly-resolved" naming -- not part of the grading grammar itself. */
-  matchTier: 'own-text' | 'attribute' | null;
+   * "newly-resolved" naming -- not part of the grading grammar itself.
+   * WAVE 23 (DEC-393 amendment) adds 'composed'. */
+  matchTier: 'own-text' | 'attribute' | 'composed' | null;
 }
 
 /** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
@@ -1085,9 +1095,26 @@ function gradeControl(control: DrawnControl): GradedRow {
     tokens = [...new Set(attrTokens)];
   }
 
-  const matchTier: GradedRow['matchTier'] = ownTextMatched ? 'own-text' : attrMatched ? 'attribute' : null;
-
+  // WAVE 23 (DEC-393 amendment): composed-label tier, consulted ONLY when
+  // NEITHER the own-text nor the attribute tier above found a match.
+  let composedMatched = false;
   if (!ownTextMatched && !attrMatched) {
+    const composed = resolveComposedLabel(control.label, COMPOSED_HELPERS, NORMALIZED_BLOBS, classTokensNear);
+    if (composed !== null) {
+      composedMatched = true;
+      tokens = composed.tokens;
+    }
+  }
+
+  const matchTier: GradedRow['matchTier'] = ownTextMatched
+    ? 'own-text'
+    : attrMatched
+      ? 'attribute'
+      : composedMatched
+        ? 'composed'
+        : null;
+
+  if (!ownTextMatched && !attrMatched && !composedMatched) {
     return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
   }
   if (tokens.length === 0) {
@@ -1136,6 +1163,21 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
 export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
 // Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
+// WAVE 23 (DEC-393 amendment, task w23-g): the composed-label tier
+// (test/helpers/composed-label-resolve.ts, shared with the phone half)
+// was added to this file's gradeControl, consulted only when neither the
+// own-text nor the attribute tier resolves a label. Re-measured on this
+// branch (forcing both ceilings to -1): BOTH constants are UNCHANGED --
+// 2 offenders, 137 unresolved, byte-identical to the pre-widening
+// measurement. The tier genuinely resolves ZERO desktop rows: every
+// composed-copy label this campaign has ("Move DFC-047 to 11:30", via
+// schedule-copy.ts's conflictMoveLabel) is drawn only inside a PHONE
+// (width:390) frame extent in its own source .dc.html file, so it never
+// enters this file's own `!isPhone` population at all -- there is no
+// desktop-frame row for the tier to have a chance at. A widening that
+// finds nothing is a real result, not a bug; see
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 23" section for
+// the full before/after receipt.
 export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 137;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
