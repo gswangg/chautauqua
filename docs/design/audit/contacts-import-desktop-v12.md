@@ -167,5 +167,10 @@ five divergences (the :279 dedupe caption, the :546 Send-vs-Preview
 footer, the :582 role vocabulary, and — as of the DEC-575 wave-9
 amendment — the :672 chrome/footer findings) are now named and reasoned
 about as deliberate, ruled decisions, or built to match, not open debt.
-Only :770 (dialog-identity/heading wording) remains filed as an
-unadjudicated finding for a future wave.
+RETIRED (DEC-903 wave-20 amendment clause (a), re-affirmed by the wave-22
+amendment naming this exact sentence): this paragraph once left :770
+(dialog-identity/heading wording) filed as an unadjudicated finding for a
+future wave, but the summary table twelve lines above already records the
+construct that settles it — docs/design/audit/contacts-import-desktop-v12.md`(dialog identity CLOSED per DEC-575 wave-8; heading wording kept deliberately per DEC-575 wave-28)`. Re-grepped on `9e900b3ae` (task w22-j):
+the table row and this paragraph still coexist verbatim, so this sentence
+is retired in place rather than deleted.
