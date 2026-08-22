@@ -486,10 +486,10 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
 
       {pendingRemove && (
         <ConfirmDialog
-          title="Remove this break?"
+          title={`Remove "${pendingRemove.label}"?`}
           body={
             <p>
-              {clockHHMM(pendingRemove.startMin)} · {pendingRemove.label}
+              {clockHHMM(pendingRemove.startMin)}
               {pendingRemove.location ? ` · ${pendingRemove.location}` : ''} will be removed from this day. This cannot
               be undone.
             </p>

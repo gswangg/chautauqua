@@ -1246,7 +1246,7 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Unschedule' }));
-    const dialog = screen.getByRole('dialog', { name: 'Unschedule this session?' });
+    const dialog = screen.getByRole('dialog', { name: 'Unschedule "S-001"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
@@ -1285,7 +1285,7 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
 
     // DEC-941: keyboard activation reaches the confirm dialog; the DELETE
     // itself is covered by the confirm-flow tests above.
-    expect(screen.getByRole('dialog', { name: 'Unschedule this session?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unschedule "S-001"?' })).toBeInTheDocument();
   });
 });
 

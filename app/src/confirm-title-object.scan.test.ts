@@ -157,12 +157,19 @@ function scan(files: string[]): Occurrence[] {
 }
 
 // MEASURED, not hand-picked: the count of `<ConfirmDialog` call sites whose
-// `title=` is a bare fixed string, over the whole app/src population, after
-// ResourcesPanel.tsx's :455 delete-resource confirm was converted to the
-// object-naming template-literal form. May only be LOWERED as further call
-// sites adopt the idiom -- the companion `it` below fails if the measured
-// count drops below this constant, so the ceiling can never sit stale.
-export const CONFIRM_TITLE_OBJECT_CEILING = 24;
+// `title=` is a bare fixed string, over the whole app/src population.
+// History: 24 after ResourcesPanel.tsx's :455 delete-resource confirm was
+// converted (wave-9 baseline); lowered to 18 in wave 23 (task w23-e, DEC-941
+// wave-23 amendment) converting ApiTokensPanel.tsx (both sites),
+// TracksRoomsPanel.tsx (track/room), BreaksPanel.tsx, FormsPage.tsx (both
+// Delete field sites) and Agenda.tsx's Unschedule confirm to the
+// object-naming form. Sibling lane v12m-w23-i converts the remaining
+// clusters in a separate commit and will lower this again -- re-seeding it
+// then is a merge-train act, not a regression, per wave-22/23 field-guide
+// findings on branch collisions. May only be LOWERED as further call sites
+// adopt the idiom -- the companion `it` below fails if the measured count
+// drops below this constant, so the ceiling can never sit stale.
+export const CONFIRM_TITLE_OBJECT_CEILING = 18;
 
 describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 wave-9 amendment)', () => {
   const FILES = srcFiles();

@@ -59,7 +59,7 @@ async function removeTrack(section: HTMLElement) {
   const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
   const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
   fireEvent.click(within(trackRow).getByRole('button', { name: 'Remove' }));
-  const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+  const dialog = await screen.findByRole('dialog', { name: 'Remove "AI Engineering"?' });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Remove track' }));
   return trackRow;
 }
@@ -68,7 +68,7 @@ async function removeRoom(section: HTMLElement) {
   const roomNameInput = within(section).getByLabelText('Room name for Main Stage');
   const roomRow = roomNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
   fireEvent.click(within(roomRow).getByRole('button', { name: 'Remove' }));
-  const dialog = await screen.findByRole('dialog', { name: 'Remove this room?' });
+  const dialog = await screen.findByRole('dialog', { name: 'Remove "Main Stage"?' });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Remove room' }));
   return roomRow;
 }

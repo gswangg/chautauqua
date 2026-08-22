@@ -71,7 +71,7 @@ describe('TracksRoomsPanel remove/delete confirmation', () => {
 
     // DEC-941: Remove opens the shared ConfirmDialog naming the track
     // first -- the DELETE only fires from the dialog's own confirm control.
-    const dialog = screen.getByRole('dialog', { name: 'Remove this track?' });
+    const dialog = screen.getByRole('dialog', { name: 'Remove "AI Engineering"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove track' }));
 
     await waitFor(() => {
@@ -100,7 +100,7 @@ describe('TracksRoomsPanel remove/delete confirmation', () => {
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
     ).toBe(false);
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "AI Engineering"?' });
     expect(within(dialog).getByText(/AI Engineering/)).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove track' }));
@@ -132,10 +132,10 @@ describe('TracksRoomsPanel remove/delete confirmation', () => {
     const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
     fireEvent.click(within(trackRow).getByRole('button', { name: 'Remove' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "AI Engineering"?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Remove this track?' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Remove "AI Engineering"?' })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
     ).toBe(false);
@@ -163,7 +163,7 @@ describe('TracksRoomsPanel remove/delete confirmation', () => {
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
     ).toBe(false);
-    const dialog = await screen.findByRole('dialog', { name: 'Remove this room?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Remove "Main Stage"?' });
     expect(within(dialog).getByText(/Main Stage/)).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove room' }));
