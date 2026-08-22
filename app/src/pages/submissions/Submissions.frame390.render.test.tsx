@@ -44,10 +44,27 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
 import { SubmissionDetailPage } from './SubmissionDetailPage';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
+import { phoneMediaBlocks } from '../../../../test/helpers/css-media-blocks';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 const DESIGN_FILE = join(REPO_ROOT, 'docs', 'design', 'Chautauqua Submissions.dc.html');
+const SUBMISSIONS_CSS_FILE = join(HERE, 'submissions.css');
+
+/** DEC-994 w16m: this file cites the row-triage action triple's copy
+ * (:165-167) without ever reading submissions.css's phone cascade, so the
+ * verdict is really an un-cascaded desktop claim (jsdom applies no @media,
+ * DEC-976). Read the ONE `@media (max-width: 700px)` block via the shared
+ * brace-depth helper and pull out `.chq-submissions-row-triage .chq-btn`'s
+ * nth-child rules -- the flex:1 pair (:165 Accept/:166 Decline) and the
+ * intrinsic-width third slot (:167 Read) the frame's own triple draws. */
+function rowTriagePhoneRules(): string {
+  const css = stripCssComments(readFileSync(SUBMISSIONS_CSS_FILE, 'utf-8'));
+  const blocks = phoneMediaBlocks(css);
+  expect(blocks.length).toBeGreaterThan(0);
+  return blocks.join('\n');
+}
 
 /** DEC-976: a citation that can never silently rot to a wrong line -- read
  * the ACTUAL design-file line and assert it byte-for-byte matches the
@@ -237,6 +254,33 @@ describe('v12 frame render verdict "Submissions · 390" (task w31-e, DEC-976 wav
     expect(bulkbar).not.toBeNull();
     expect(bulkbar).toHaveClass('chq-bulkbar-idle');
     expect(screen.getByText('Tick rows to change status or email speakers.')).toBeInTheDocument();
+  });
+
+  // The row action triple's own geometry: Accept and Decline share the
+  // line at equal width, Read keeps its intrinsic width with 14px side
+  // padding. jsdom applies no @media (DEC-976), so the DOM-order assertion
+  // above never cascades this -- read submissions.css's own phone block
+  // directly.
+  it('phone cascade: submissions.css actually gives Accept/Decline the frame\'s flex:1 pair and Read its own padding under max-width:700px (:165/:167)', () => {
+    // docs/design/Chautauqua Submissions.dc.html:165
+    verbatimLine(
+      165,
+      '              <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Accept</span>',
+    );
+    // docs/design/Chautauqua Submissions.dc.html:167
+    verbatimLine(
+      167,
+      '              <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; padding:0 14px; font-size:13px; font-weight:600">Read</span>',
+    );
+    const phone = rowTriagePhoneRules();
+    const flexPairMatch = phone.match(
+      /\.chq-submissions-row-triage \.chq-btn:nth-child\(1\),\s*\n\s*\.chq-submissions-row-triage \.chq-btn:nth-child\(2\)\s*\{([^}]*)\}/,
+    );
+    expect(flexPairMatch, 'no phone flex:1 rule for row-triage nth-child(1),(2)').not.toBeNull();
+    expect(flexPairMatch![1]).toMatch(/flex:\s*1/);
+    const thirdMatch = phone.match(/\.chq-submissions-row-triage \.chq-btn:nth-child\(3\)\s*\{([^}]*)\}/);
+    expect(thirdMatch, 'no phone padding rule for row-triage nth-child(3)').not.toBeNull();
+    expect(thirdMatch![1]).toMatch(/padding:\s*0 14px/);
   });
 });
 

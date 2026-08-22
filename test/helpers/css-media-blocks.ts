@@ -56,6 +56,37 @@ export function splitMediaBlocks(css: string): MediaSplit {
   return { outside, inside: inside.join('\n') };
 }
 
+const PHONE_MEDIA_OPENER = /@media\s*\(max-width:\s*700px\)\s*\{/g;
+
+/** DEC-994 w16m: the brace-depth walk four render-verdict files each
+ * hand-rolled independently (Contacts.frame-verdicts, Content.frame-verdicts,
+ * DeliverableDetail.stack-390, ContentApp.download-all-flex.receipt),
+ * promoted to one shared helper. Returns, in source order, the brace-matched
+ * BODY of every `@media (max-width: 700px)` block in `css` -- a stylesheet
+ * may carry more than one such block (unlike the single-block callers this
+ * was copied from), so every caller gets the full list rather than just the
+ * first match. Callers strip comments first; this module deliberately does
+ * not, so it stays one job (mirrors `splitMediaBlocks` above). */
+export function phoneMediaBlocks(css: string): string[] {
+  const blocks: string[] = [];
+  PHONE_MEDIA_OPENER.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = PHONE_MEDIA_OPENER.exec(css)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const bodyStart = i;
+    while (i < css.length && depth > 0) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') depth -= 1;
+      i += 1;
+    }
+    if (depth !== 0) throw new Error('unbalanced @media (max-width: 700px) block in CSS input');
+    blocks.push(css.slice(bodyStart, i - 1));
+    PHONE_MEDIA_OPENER.lastIndex = i;
+  }
+  return blocks;
+}
+
 /** Every `selector { body }` rule in `css`, at ANY @media nesting depth --
  * the media openers themselves never survive to be read as selectors. */
 export function flattenMediaRules(css: string): Array<{ selector: string; body: string }> {
