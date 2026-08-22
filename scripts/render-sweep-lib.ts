@@ -568,8 +568,15 @@ export function deriveInteractiveOffenders(
  * submissions/seed_submission_0001` and `?edit=1` rows). The new
  * `?section=your-data&edit=1&intent=new` row contributed zero interactive
  * offenders. See docs/design/audit/route-substate-390-sweep-v12.md for the
- * full classification. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
+ * full classification.
+ *
+ * Wave 27 (task w27-a, DEC-851 amendment): lowered 103 -> 77. Repair:
+ * `.chq-auth-back` gained a width-floor fix (src/routes/auth.css.ts) and
+ * `.chq-settings-field label:has(> input.chq-check)` gained a 44px floor
+ * (app/src/pages/settings/settings.css), re-measured live and recorded in
+ * docs/design/audit/admin-390-interactive-offenders-w27.md ("After-fix
+ * total: **77**"). */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 77;
 
 /** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —
  * only the path and the offender roster, so the pure formatter never has to
