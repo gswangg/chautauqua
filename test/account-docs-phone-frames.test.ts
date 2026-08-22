@@ -53,30 +53,10 @@ function extract700Blocks(src: string): string[] {
   return blocks;
 }
 
-/** DEC-994 (wave 28 amendment): the sheet's terminal (last) `@media
- * (max-width: 700px)` block -- the one that governs a phone geometry pin. */
-function terminalBlock(src: string): string {
-  const blocks = extract700Blocks(src);
-  expect(blocks.length).toBeGreaterThan(0);
-  return blocks[blocks.length - 1]!;
-}
-
-/** DEC-994 (wave 28 amendment): resolves the DECLARATION that governs a
- * named selector inside a CSS block -- finds the rule whose selector LIST
- * (comma-separated, each entry trimmed) contains `selector` exactly, and
- * returns that rule's body. Adding or reordering a sibling selector in the
- * same rule can never redden a pin built on this; only deleting the
- * declaration (or moving the selector out of every rule) can. Returns null
- * if no rule's selector list contains it. */
-function ruleDeclaringSelector(blockText: string, selector: string): string | null {
-  const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = ruleRe.exec(blockText)) !== null) {
-    const selectors = match[1]!.split(",").map((s) => s.trim());
-    if (selectors.includes(selector)) return match[2]!;
-  }
-  return null;
-}
+// DEC-613 (wave-29 integration): the local terminal-block / rule-resolver
+// pair wave 28 added here was a second copy of the vocabulary
+// test/helpers/css-media-blocks.ts's `resolvePhoneDeclaration` already owns.
+// Deleted rather than kept as a same-name, different-semantics twin.
 
 describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.html:121 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`)', () => {
   const authBlocks = extract700Blocks(AUTH_CSS_TS);
