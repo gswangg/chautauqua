@@ -515,6 +515,18 @@ export type AddCoPresenterResult =
 // `errors.email` key.
 export const CO_PRESENTER_DUPLICATE_MESSAGE = "This person is already a participant on this submission";
 
+// DEC-029 (wave-30 amendment): the page's primary Save posts the same form
+// as the co-presenter aside (every co-presenter control joins via
+// form="chq-portal-edit-form"), so a speaker who types a co-presenter and
+// presses Save changes instead of Add co-presenter must be refused with a
+// named message, never saved-and-silently-dropped. Exported so the edit
+// route's own POST /submissions/:id/edit handler (src/routes/portal/edit.tsx)
+// can detect this specific case and so the route test can assert on the
+// exact string — ONE definition, never a second copy of this vocabulary
+// (DEC-613).
+export const CO_PRESENTER_UNSAVED_MESSAGE =
+  "This co-presenter was not added. Use Add co-presenter below, or clear these fields, before saving your changes.";
+
 /** Adds a co-presenter to one of the speaker's own submissions. Caller must
  * have already verified canEditSubmission and that submissionId/orgId scope
  * to this speaker's own contact. Resolves the email against the org's
