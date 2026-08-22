@@ -490,7 +490,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
 // describe block reaches it off a REAL GET /portal/preview request (organizer
 // auth) through the SAME harness, never a second fake-db stack.
 describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html:1473, w9-re)", () => {
-  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: the Welcome lede's missing second sentence and the 'Not shown here' chip set differ from the frame; back-link placement and meta-sentence order now MATCH (DEC-902 wave-20, task w20-g)", async () => {
+  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: the 'Not shown here' chip set differs from the frame (disposition (b) BLESSED, DEC-902 wave-14m); the Welcome lede's second sentence, back-link placement, and meta-sentence order all MATCH (DEC-902 wave-19 clause (b); wave-20, task w20-g)", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1473
     verbatimLine(
       1473,
@@ -548,12 +548,12 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
       1495,
       `          <span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`,
     );
-    // DIVERGES: the frame's Welcome lede is TWO sentences -- the stored
-    // welcome message, then a fixed "Everything we need from you is on this
-    // page, in order." The route renders only the stored message; no such
-    // fixed second sentence exists anywhere in preview.tsx. (Out of this
-    // task's scope -- an in-flight lane owns the Welcome lede.)
-    expect(html).not.toContain("Everything we need from you is on this page, in order.");
+    // MATCHES (DEC-902 wave-19 clause (b)): the frame's fixed second
+    // sentence `Everything we need from you is on this page, in order.` is
+    // APP-OWNED CHROME, appended after the organiser's stored welcome
+    // message as its own node -- src/routes/portal/preview.tsx now renders
+    // it unconditionally, even when the stored `welcomeMessage` is null.
+    expect(html).toContain("Everything we need from you is on this page, in order.");
 
     // docs/design/Chautauqua Public and Portal.dc.html:1523
     verbatimLine(

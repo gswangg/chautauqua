@@ -673,7 +673,7 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     expect(html).toMatch(/Browse the sessions\s*(?:&rsaquo;|›)/);
   });
 
-  it('frame :1211 \'Submit a talk · rejected on submit\' (POST /submit/:eventSlug, invalid submission) -- DIVERGES (dock note, DEC-902 wave-20 amendment, already adjudicated docs/design/audit/cfp-desktop-v12.md disposition (a)): the top-of-form summary and every typed answer MATCH; the rejected-state dock note is not error-state-aware', async () => {
+  it('frame :1211 \'Submit a talk · rejected on submit\' (POST /submit/:eventSlug, invalid submission) -- MATCHES (dock note DISCHARGED, DEC-902 wave-18 clause (a), docs/design/audit/cfp-desktop-v12.md disposition (a)): the top-of-form summary, every typed answer, and the rejected-state dock note all match the frame', async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1211 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk · rejected on submit</span>`
     verbatimLine(
       1211,
@@ -723,18 +723,17 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     expect(html).toContain("Submit this talk");
     expect(html).toContain('class="chq-btn chq-btn-secondary chq-cfp-save-draft"');
     expect(html).toContain("Save draft");
-    // DIVERGES (DEC-902 wave-20 amendment): the frame's own rejected-state
-    // dock note reads "Saving a draft skips these checks" (frame :1291);
-    // .chq-cfp-actions-note (submit-views.tsx) renders the fresh-form
-    // sentence unconditionally with no branch on errors/trackError. Named
-    // here, not fixed (desktop is frozen) -- already adjudicated in
-    // docs/design/audit/cfp-desktop-v12.md's :1211 section, disposition
-    // (a): a future lane should branch the note and adopt the frame's
-    // literal for the rejected state, in the same commit that moves the
-    // byte.
+    // MATCHES (DEC-902 wave-18 clause (a), DISCHARGED): the frame's own
+    // rejected-state dock note reads `Saving a draft skips these checks`
+    // (frame :1291); src/routes/public/submit-views.tsx's
+    // `.chq-cfp-actions-note` now branches on errors/trackError and renders
+    // that literal on this branch instead of the fresh-form sentence --
+    // already discharged in docs/design/audit/cfp-desktop-v12.md's :1211
+    // section, disposition (a), and pinned built by
+    // test/cfp-desktop-frame-verdicts.test.ts's own :1211 case.
     expect(html).toContain('class="chq-cfp-actions-note"');
-    expect(html).toContain("We email a confirmation with a link to your portal");
-    expect(html).not.toContain("Saving a draft skips these checks");
+    expect(html).toContain("Saving a draft skips these checks");
+    expect(html).not.toContain("We email a confirmation with a link to your portal");
   });
 
   it('frame :1532 \'CFP not open yet · /submit/:slug\' (GET /submit/:eventSlug, not-yet-open window state) -- MATCHES (DESIGN-RULINGS "CFP -- the third window state"): heading leads with the open date, "You will not need an account.", one way-forward link', async () => {
