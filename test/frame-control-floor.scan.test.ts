@@ -632,6 +632,41 @@ function notActuallyComposedReason(control: DrawnControl): string | null {
   return hit ? hit.reason : null;
 }
 
+// WAVE 34 (DEC-613 wave-34 amendment, task w34-g): a SEPARATE hand-verified
+// table -- same {fileName,line,reason} shape as HAND_VERIFIED_COMPOSED and
+// NOT_ACTUALLY_COMPOSED above, consulted BEFORE notActuallyComposedReason --
+// for the one remaining shape neither of those tables can express: a frame
+// draws an ABBREVIATED word for a control whose real, shipped, one-name-at-
+// every-width label has already been ruled correct in full elsewhere. The
+// :1063 "Draft" row's own NOT_ACTUALLY_COMPOSED entry above is still true
+// (the only quoted "Draft" in the corpus is documentation prose, not
+// rendered text) but that classification alone still routed the row to
+// `not-drawn`/OFFENDER, because nothing told gradeControl the real control
+// ITSELF was already adjudicated, not merely mis-matched. This table closes
+// that gap: a hit here short-circuits BEFORE the not-drawn fallback and
+// grades the row `composed-unseen` (UNRESOLVED, never OFFENDER) instead.
+// Each reason is PRINCIPLE-ONLY (test/exemption-reason-is-a-principle.scan.
+// test.ts grades every reason string under test/) -- it quotes DEC-613
+// wave-96's own ruling sentence, never a lane token or schedule language.
+const BLESSED_ABBREVIATION: { fileName: string; line: number; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1063,
+    reason:
+      'BLESSED ABBREVIATION, quoting DEC-613 wave-96\'s own ruling sentence verbatim (src/routes/public/cfp.css.ts\'s ' +
+      '`.chq-cfp-save-draft` comment, echoed in docs/design/DEVIATIONS.md): "the accessible name stays \'Save draft\' ' +
+      'per DEC-613 wave-96 amendment (one control, one name at every width -- the frame\'s \'Draft\' is a drawing ' +
+      'abbreviation, not a label to ship)". One control, one shipped name at every width is the correct rendering; ' +
+      'the frame\'s bare "Draft" is the mockup\'s own abbreviation of that single name, not a second label the ' +
+      'product owes.',
+  },
+];
+
+function blessedAbbreviationReason(control: DrawnControl): string | null {
+  const hit = BLESSED_ABBREVIATION.find((e) => e.fileName === control.fileName && e.line === control.line);
+  return hit ? hit.reason : null;
+}
+
 function isAlnum(ch: string | undefined): boolean {
   return ch !== undefined && /[A-Za-z0-9]/.test(ch);
 }
@@ -949,7 +984,7 @@ export type RowReason =
    * though no CSS token was ever resolved to compare against. */
   | 'not-drawn';
 
-interface Graded {
+export interface Graded {
   control: DrawnControl;
   resolvedHeight: number | undefined;
   reason: RowReason;
@@ -971,7 +1006,7 @@ interface Graded {
  * its tokens belong in the row's set. A row with a resolved token set but
  * no CONTROL-SHAPED member grades UNRESOLVED (`no-control-shape`) rather
  * than OFFENDER. */
-function gradeControl(control: DrawnControl): Graded {
+export function gradeControl(control: DrawnControl): Graded {
   let tokens: string[] = [];
   let ownTextMatched = false;
   for (const blob of NORMALIZED_BLOBS) {
@@ -1028,6 +1063,15 @@ function gradeControl(control: DrawnControl): Graded {
     // can attach it to a control" (stays UNRESOLVED, `composed-unseen`)
     // from "the corpus carries no trace of this label at all" (a real,
     // repairable phone divergence, `not-drawn` -- OFFENDER).
+    //
+    // WAVE 34 (DEC-613 wave-34 amendment, task w34-g): the blessed-
+    // abbreviation table is consulted FIRST, before notActuallyComposedReason
+    // -- a row can be both "the only corpus match is documentation prose"
+    // AND "the real control is already ruled correct as-is", and the second
+    // fact, not the first, is what settles whether it is an offender.
+    if (blessedAbbreviationReason(control) !== null) {
+      return { control, resolvedHeight: undefined, reason: 'composed-unseen', tokens: [], matchTier: null };
+    }
     if (notActuallyComposedReason(control) !== null) {
       return { control, resolvedHeight: 0, reason: 'not-drawn', tokens: [], matchTier: null };
     }
@@ -1101,7 +1145,21 @@ const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved' && g.r
 // divergence: the real control (src/routes/public/submit-views.tsx:746)
 // renders "Save draft", never bare "Draft". No product byte moved this
 // wave (this lane's own scope); left for the next wave to fix.
-export const FRAME_FLOOR_DIVERGENCE_CEILING = 1;
+//
+// WAVE 34 (DEC-613 wave-34 amendment, task w34-g): the wave-31 offender was
+// a false positive, not a genuine divergence -- DEC-613's own wave-96
+// amendment already ruled this exact row (src/routes/public/cfp.css.ts's
+// `.chq-cfp-save-draft` comment, echoed in docs/design/DEVIATIONS.md and in
+// docs/design/audit/public-390-request-verdicts-v12.md's "Submit a talk"
+// row): "the accessible name stays 'Save draft' per DEC-613 wave-96
+// amendment (one control, one name at every width -- the frame's 'Draft'
+// is a drawing abbreviation, not a label to ship)". The BLESSED_ABBREVIATION
+// table above encodes that ruling and short-circuits the row to
+// `composed-unseen` before it can reach `not-drawn`. Re-measured on this
+// branch (forcing this ceiling to -1, reading the printed offender list
+// back): LOWERED 1 -> 0, zero offenders. See
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 34" section.
+export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
 // on this branch the same way. See the audit doc for the wave-25
@@ -1145,7 +1203,17 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 1;
 // rows, +105 composed-unseen, +1 not-drawn moved to OFFENDERS -- the
 // bucket's own total this wave is 89+4+12=105). Full per-row receipt in
 // docs/design/audit/frame-control-floor-390-v12.md's "WAVE 31" section.
-export const UNRESOLVED_COUNT_TRIPWIRE = 105;
+//
+// WAVE 34 (DEC-613 wave-34 amendment, task w34-g): the "Draft" row moves
+// OUT of OFFENDERS and INTO this bucket as `composed-unseen` (the
+// BLESSED_ABBREVIATION short-circuit above). Re-measured on this branch
+// (forcing this tripwire to -1, reading the printed reason breakdown
+// back): 90 `composed-unseen` (was 89, +1), 4 `no-token`, 12
+// `no-control-shape` -- unchanged. RAISED 105 -> 106 (net: +1
+// composed-unseen, -1 OFFENDER; the bucket's own total this wave is
+// 90+4+12=106). See docs/design/audit/frame-control-floor-390-v12.md's
+// "WAVE 34" section.
+export const UNRESOLVED_COUNT_TRIPWIRE = 106;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
@@ -1392,5 +1460,72 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+// WAVE 34 (DEC-613 wave-34 amendment, task w34-g): "Draft" (Chautauqua
+// Public and Portal.dc.html:1063) is not a frame-floor offender -- it is a
+// pack abbreviation of an already-ruled, one-name-at-every-width control.
+// This block proves the BLESSED_ABBREVIATION table (a) resolves the real
+// row out of OFFENDERS, (b) discriminates -- a synthetic row with no
+// receipt still grades OFFENDER, never vacuously exempting everything --
+// and (c) carries a resolution guard so the exemption's premise cannot rot
+// silently if cfp.css.ts's own comment ever changes (the standing lesson,
+// "an in-code exemption's premise rots like an allowlist").
+describe('"Draft" abbreviation exemption (DEC-613 wave-34 amendment, task w34-g)', () => {
+  it('the real row (Public and Portal:1063) is excluded from OFFENDERS and grades composed-unseen, not not-drawn', () => {
+    const real = OFFENDERS.find((o) => o.control.fileName === 'Chautauqua Public and Portal.dc.html' && o.control.line === 1063);
+    expect(real).toBeUndefined();
+    const graded = GRADED.find((g) => g.control.fileName === 'Chautauqua Public and Portal.dc.html' && g.control.line === 1063);
+    expect(graded).not.toBeUndefined();
+    expect(graded!.reason).toBe('composed-unseen');
+    expect(graded!.matchTier).toBeNull();
+  });
+
+  it('non-vacuity: a SYNTHETIC row with no BLESSED_ABBREVIATION receipt still grades OFFENDER (not-drawn) through the full pipeline', () => {
+    // A fabricated fileName/line/label, never a live product citation --
+    // proves the exemption discriminates rather than exempting everything
+    // that reaches this fallback tier. Anchored on the synthetic fixture
+    // per the standing rule: never anchor non-vacuity on a live offender a
+    // sibling lane may fix out from under this proof.
+    const synthetic: DrawnControl = {
+      fileName: 'Zzy Fixture.dc.html',
+      line: 9999,
+      label: 'Zzy Unblessed Abbreviation',
+      drawnFloor: 44,
+      kind: 'painted',
+      frameTitle: 'Zzy Fixture Frame',
+      frameLine: 1,
+    };
+    expect(blessedAbbreviationReason(synthetic)).toBeNull();
+    const graded = gradeControl(synthetic);
+    expect(graded.reason).toBe('not-drawn');
+    expect(OFFENDERS.some((o) => o.control.fileName === synthetic.fileName && o.control.line === synthetic.line)).toBe(false); // synthetic control was never added to ALL_CONTROLS/OFFENDERS -- gradeControl alone proves the shape
+  });
+
+  it('positive control: blessedAbbreviationReason resolves the real row to a non-null, principle-only reason', () => {
+    const realControl = ALL_CONTROLS.find((c) => c.fileName === 'Chautauqua Public and Portal.dc.html' && c.line === 1063);
+    expect(realControl).not.toBeUndefined();
+    const reason = blessedAbbreviationReason(realControl!);
+    expect(reason).not.toBeNull();
+    expect(reason).toContain('DEC-613 wave-96');
+  });
+
+  it('resolution guard: the cited receipt still resolves verbatim against src/routes/public/cfp.css.ts (the exemption premise has not rotted)', () => {
+    const cssPath = join(REPO_ROOT, 'src/routes/public/cfp.css.ts');
+    const cssText = readFileSync(cssPath, 'utf-8');
+    const receipt = 'the accessible name stays "Save draft" per DEC-613 wave-96 amendment';
+    if (!cssText.includes(receipt)) {
+      throw new Error(
+        `BLESSED_ABBREVIATION's cited receipt no longer resolves verbatim against ${cssPath}. ` +
+          `The sheet's own comment changed under this exemption -- re-derive the disposition from the live ` +
+          `source before trusting this settlement. Quote was:\n  "${receipt}"`,
+      );
+    }
+    // The receipt also names the class the real control renders, cross-
+    // checked so the exemption stays pinned to the actual control, not
+    // just to a floating quote that happens to still be somewhere in the
+    // file.
+    expect(cssText).toContain('.chq-cfp-save-draft');
   });
 });
