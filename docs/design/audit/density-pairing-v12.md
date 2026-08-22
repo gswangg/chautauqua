@@ -201,6 +201,10 @@ architecturally, adopt the speakers.css two-class pattern) rather than
 inflating the existing single class past the 20px dense register.
 
 **DIVERGENCE_CEILING = 0**, measured over the full derived population
-(app + SSR) as of this wave. The ceiling is a two-sided pin
+(app + SSR) as of this wave (DEC-099 wave-34 clause (b): this ledger's own
+zeroed ratchet-constant name, not a product divergence — a population
+artifact of the open-divergence ledger's widened "divergence"/"ceiling"
+vocabulary, adjudicated in place per DEC-099 rather than excluded by hand).
+The ceiling is a two-sided pin
 (`toBe(divergences.length)` in the test) — it can only move when the
 measured count actually changes, in either direction.

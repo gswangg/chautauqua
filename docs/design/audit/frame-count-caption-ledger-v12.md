@@ -43,7 +43,7 @@ ledger's own taxonomy -- they stay IN this ledger's population and are graded by
 
 Every population row not covered by an existing caption-ledger exclusion, named individually, with
 this ledger's OWN verdict under its narrower digit-collapse-only grader (MATCHED / UNMATCHED).
-**None of these is a real content divergence regardless of this ledger's own verdict** -- the
+**None of these is a real content divergence regardless of this ledger's own verdict** (DEC-099 wave-34 clause (b): this denial's own word choice is a population artifact of the open-divergence ledger's widened "divergence" vocabulary catching this ledger's denial prose, adjudicated in place rather than hand-excluded) -- the
 caption ledger's own `FRAME_CAPTION_UNMATCHED_CEILING = 0` means every one of them already resolves
 under that ledger's stronger grader (verbatim join plus digit-skeleton second pass with
 `${...}`/`{...}` merge-placeholder collapse). Listed here for completeness, not as open findings:

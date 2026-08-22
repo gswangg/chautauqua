@@ -124,7 +124,7 @@ A row still unclassified after all of the above grades `not-drawn` and is an OFF
 
 **MEASURED (this branch, both ceilings forced to -1, printed lists/breakdown read back): 1 offender, 105 unresolved (89 `composed-unseen`, 4 `no-token`, 12 `no-control-shape`).**
 
-### 3. The one offender: `FRAME_FLOOR_DIVERGENCE_CEILING` raised 0 -> 1
+### 3. The one offender: `FRAME_FLOOR_DIVERGENCE_CEILING` raised 0 -> 1 (heading names this instrument's own ratchet-constant, DEC-099 wave-34 clause (b) population artifact, adjudicated in place)
 
 - **"Draft"** -- `Chautauqua Public and Portal.dc.html`:1063 (drawn `min-height:48px`), frame "Submit a talk" step-1 dock secondary. The real control (`src/routes/public/submit-views.tsx`:746, class `chq-cfp-save-draft`) renders the literal text **"Save draft"**, never bare "Draft" -- confirmed by direct source read, not by the join (the join cannot resolve this row to any token because no element's own text is ever the bare string "Draft"). A genuine, previously-invisible label divergence. Not fixed this wave (test/audit-only scope, zero product bytes moved) -- left for a future wave's repair lane.
 

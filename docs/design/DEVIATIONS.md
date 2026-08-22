@@ -971,6 +971,23 @@ test fails and this entry is stale -- the entry cannot outlive the
 behaviour it blesses. `docs/design/audit/cfp-legend-register-v12.md`'s
 DIVERGES rows for this same population cite this subsection.
 
+- **CFP form builder's `Add a question`, `Copy`, and `Delete this
+  question` render as real `<button>`s, not the frame's `<a href="#">`
+  (DEC-663 wave-34 amendment).** `docs/design/Chautauqua
+  Submissions.dc.html:433` (`Add a question`), `:455` (`Copy`, the
+  Public-link row) and `:722` (`Delete this question`, frame `:655`'s
+  footer) each draw the control as a static anchor. The shipped controls
+  (`chq-forms-add-question`, `chq-btn-tertiary` Copy, and the destructive
+  footer control on the edit-a-question modal) each write local state or
+  copy to the clipboard and never navigate. A `.dc.html` frame is a
+  static drawing -- every interactive thing in it must be markup that
+  renders, so an anchor there carries no claim about the shipped
+  element; the pack governs a control's text, position and geometry,
+  never its element type. Where the shipped control performs an in-page
+  act and never navigates, the product ships `<button>`. This blesses
+  what is already built (no markup moves) and closes the two open rows
+  `docs/design/audit/submissions-desktop-v12.md` recorded at frame `:399`.
+
 ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)
 
 - **A pack frame that documents a VOCABULARY is not a screen.** Two

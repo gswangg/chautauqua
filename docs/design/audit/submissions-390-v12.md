@@ -13,7 +13,8 @@ for `submissions.css`, `detail-css.test.ts`/`detail-head-390.test.ts`/
 
 **Verdict: MATCHES**, with two settled, already-adjudicated divergences
 recorded below (neither is a live gap; both are prior rulings this task
-confirms still hold).
+confirms still hold — DEC-919, DEC-099 wave-34 clause (a): the citation
+belongs in this verdict's own paragraph, not only the bullet beneath it).
 
 - Head band (`:138-152`) — graded against DEVIATIONS.md's "Submissions 390
   phone head, DEC-919 amendment (wave 7, task w7-e)" entry, not a literal
@@ -86,7 +87,10 @@ card sequence, matching this section's verdict above.)
 ## "Submission detail" · 390 (`:355-393`, 10/15 literals previously asserted)
 
 **Verdict: MATCHES**, with one settled divergence (the dock's third
-action) and one out-of-scope note (the co-presenter caption).
+action, DEC-878 wave-129 amendment) and one out-of-scope note (the
+co-presenter caption, DEC-909 wave-134 / DEC-380 wave-139) — DEC-099
+wave-34 clause (a): both citations restated here in the verdict's own
+paragraph, not only in the bullets below.
 
 - Head band: back link (`:358`, short label "Triage" via
   `.chq-detail-back-short`, DEC-919 wave-98), position counter (`:359`,

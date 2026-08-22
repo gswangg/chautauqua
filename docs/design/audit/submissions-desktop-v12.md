@@ -125,7 +125,7 @@ real control, producing the `triageCleared` branch
 
 ## Frame :399 "CFP form builder · /submissions/forms"
 
-**MATCHES**, with two real, narrow control-type divergences noted below.
+**MATCHES**, with two real, narrow control-type divergences noted below, both blessed by DEC-663 wave-34 amendment (a static mockup's `<a href="#">` is a control treatment, not an element type; recorded in DEVIATIONS.md §7).
 Entered via `FormsPage` at its real route.
 
 - Back link `‹ Submissions` (frame `:405`) precedes the H1 `CFP form`
@@ -190,7 +190,7 @@ own `Edit` control (`FieldList.tsx`), never a directly-mounted
 | :531 Save this view | MATCHES |
 | :561 Submissions · before the CFP opens | MATCHES |
 | :605 Submissions · triage queue clear | MATCHES |
-| :399 CFP form builder · /submissions/forms | MATCHES (two control-type divergences) |
+| :399 CFP form builder · /submissions/forms | MATCHES (two control-type divergences, blessed by DEC-663 wave-34 amendment) |
 | :655 CFP form · edit a question | MATCHES |
 
 5 of 5 frames MATCH as rendered. One real, narrow divergence remains, filed

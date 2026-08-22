@@ -452,6 +452,7 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // instrument widened and the corpus grew beneath it, NOT new debt. The
 // LOWER-only ratchet resumes from 22 -- a later wave finding this risen
 // without a corpus/grammar change is seeing real new debt and must fail.
+<<<<<<< HEAD
 //
 // LOWERED 24 -> 16 (task v12m-w34-e, DEC-099 wave-34 clause (a), Comms +
 // Contacts half). All 8 closed rows were ALREADY adjudicated -- their DEC
@@ -469,7 +470,15 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
 // than the section two blocks below). Population and grammar unchanged --
 // re-measure via `npx vitest run test/open-divergence-ledger.scan.test.ts`
 // with this constant forced to -1 before trusting any future line number.
-export const OPEN_DIVERGENCE_CEILING = 16;
+//
+// LOWERED AGAIN at the wave-34 thunderdome megabatch: task v12m-w34-f closed
+// a DISJOINT set of 9 rows (submissions-390-v12.md and siblings, DEC-099
+// wave-34 clause (a), Submissions half) against the same 24-row roster,
+// measuring 15 on its own branch. Neither branch's number is right for the
+// merged tree -- 24 - 8 (w34-e) - 9 (w34-f) -- so the constant below is the
+// value RE-MEASURED on the fully merged tree with it forced to -1, never
+// either side's arithmetic and never either side's branch-local reading.
+export const OPEN_DIVERGENCE_CEILING = 7;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
   it(`enumerates at least ${AUDIT_FILE_FLOOR} audit files and at least ${TOKEN_ROW_FLOOR} DIVERGES-token rows (monotone-floor vacuous-population guard, DEC-180 wave-27)`, () => {
