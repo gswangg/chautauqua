@@ -287,11 +287,17 @@ that one sheet; there is no second candidate left to split them across.
 This lane narrows the finding and names the owner; it does not fix the
 residual, which stays outside the Contacts subtree and unassigned here.
 RETIRED (DEC-903 wave-22 amendment): this paragraph once left the owner-lane
-unscheduled, but src/decisions-data/DEC-976.md`BLESSED frame-silent additions, not a residual owed to app/src/styles.css` (its wave-27 amendment, which REVERSES the wave-16 r5 amendment) closes this
-Finding outright. The receipt is app/src/pages/contacts/ContactsApp.head390.render.test.tsx`originally recorded these as an`, whose own header comment goes on to say
-the Finding "is CLOSED". Re-grepped on `9e900b3ae` (task w22-j): the
-DEC-976 amendment and the test file's comment both still stand, so this
-sentence is retired in place rather than deleted.
+unscheduled, but the wave-27 ruling that closed it — both intrusions
+app/src/pages/contacts/ContactsApp.head390.render.test.tsx`intrusions are RULED BLESSED frame-silent additions, not a residual` —
+closes this Finding outright. NOTE (re-grepped on `9e900b3ae`, task w22-j): the
+DEC-976 id was later reused for an unrelated ruling (repairing landed frame
+citations), so the wave-27 "BLESSED frame-silent additions" text no longer
+lives in the current src/decisions-data/DEC-976.md — its body was superseded
+by that id reuse. The fact itself still stands and now lives verbatim only in
+the receipt above, whose own header comment goes on to say
+the Finding "is CLOSED". Both the test file's comment and this row's own
+prior receipt still resolve, so this sentence is retired in place rather than
+deleted.
 
 ## Finding 7 — the shared `.chq-chipstrip` token carries the same clipped-ring defect this page's own strips had (task v12m-w16-ui-r5-a, src/decisions-data/DEC-383.md wave-16-r5 amendment)
 
