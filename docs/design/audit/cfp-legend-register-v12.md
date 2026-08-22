@@ -1,7 +1,8 @@
 # CFP legend/label register (task w32-d)
 
-Builds DEC-613's own unbuilt second clause (`src/decisions-data/DEC-613.md:97`,
-wave-27 amendment): "because a one-row fix would leave the next abbreviation
+Builds DEC-613's own unbuilt second clause, `src/decisions-data/DEC-613.md`
+(see its own boundary qualifier: src/decisions-data/DEC-613.md`not an interpolation and not stored field data`),
+wave-27 amendment: "because a one-row fix would leave the next abbreviation
 to be re-litigated (DEC-180), the whole register is derived: every
 `<legend>`/`<label>` literal the CFP frames draw is resolved to either a
 stored field label or page chrome, recorded as a pair, and pinned by a real
@@ -51,22 +52,24 @@ assert the route's own hardcoded/derived copy.
 | D:983 | `Email` | STORED-FIELD-LABEL | `Email` (seed matches) | `src/views/form-render.tsx` |
 | D:987 | `Company · optional` | STORED-FIELD-LABEL | `Company · optional` | `src/views/form-render.tsx` |
 | D:991 | `Job title · optional` | STORED-FIELD-LABEL | `Job title · optional` | `src/views/form-render.tsx` |
-| D:995 | `Bio · optional` | PAGE-CHROME | `Bio · optional` (seed's stored label was set to `Speaker biography` for this test specifically to prove `CFP_BIO_LABEL` overwrites it unconditionally — `Speaker biography` never reaches the response) | `src/routes/public/submit-views.tsx` (`CFP_BIO_LABEL` constant, applied in `SubmitPage`'s `displayFields.map`) |
+| D:995 | `Bio · optional` | STORED-FIELD-LABEL | `Speaker biography · optional` (seed deliberately differs — no `CFP_BIO_LABEL` or any other code-side override exists; the SEEDED label ships as-is, the frame's `Bio` abbreviation is never adopted, DEC-613 wave-25) | `src/views/form-render.tsx` (`field.label` + `OPTIONAL_SUFFIX`) |
 | P:1022 | `Step 1 of 2 · your talk` | PAGE-CHROME | `Step 1 of 2 · your talk` (verbatim; already covered separately by `test/public-390-frame-verdicts.test.ts`'s `:1017 Submit a talk` verdict, DEC-986 two-step phone chrome) | `src/routes/public/submit-views.tsx` (`.chq-cfp-steps-label`) |
 
 13 distinct literal positions (Title/Abstract/Track/Format counted once each
 even though they are drawn at both widths); every one pinned by a real
 `app.request('/submit/test-conf')` call in `test/cfp-legend-register.test.ts`
-(15 tests: 2 enumeration + 9 STORED-FIELD-LABEL + 4 PAGE-CHROME).
+(15 tests: 2 enumeration + 10 STORED-FIELD-LABEL + 3 PAGE-CHROME).
 
 ## DIVERGES rows
 
 None (DEC-099 wave-14m clause 1: this heading and paragraph record the
 absence of a divergence, adjudicated by citing that ruling here). Every
 PAGE-CHROME entry's shipped value matches the frame's own drawn literal
-exactly (`Track`, `Name`, `Bio · optional`, `Step 1 of 2 · your
-talk`). No fix was required or made — this task is measurement-only and
-touched no route module or `.css.ts` (per its own scope).
+exactly (`Track`, `Name`, `Step 1 of 2 · your
+talk`); every STORED-FIELD-LABEL entry, including Bio, ships the SEEDED
+label per DEC-613 wave-25. No fix was required or made — this task is
+measurement-only and touched no route module or `.css.ts` (per its own
+scope).
 
 ## Notes on classification boundaries
 
@@ -74,12 +77,14 @@ touched no route module or `.css.ts` (per its own scope).
   array, not a stored answer) — DEC-613's own carve-out in
   `TrackChoices`'s w54-e comment. There is no stored label to defer to, so
   it is PAGE-CHROME by construction, not by omission.
-- **Bio** is the one row where a stored field DOES exist but the route
-  overrides its label unconditionally (`CFP_BIO_LABEL`) — classified
-  PAGE-CHROME because the pack, not the organiser's `form_field` row, is
-  authority over what renders. The register's own test seeds a
-  deliberately different stored label (`Speaker biography`) specifically to
-  make this override observable rather than accidentally-correct.
+- **Bio** was previously (mis)classified PAGE-CHROME on the belief that a
+  `CFP_BIO_LABEL` constant overwrote the stored label unconditionally. No
+  such constant exists in `src/routes/public/submit-views.tsx`: the Bio
+  field's stored label ships straight through, exactly like every other
+  CFP field, and only its `helpText` is overridden. DEC-613 wave-25
+  reclassified this row STORED-FIELD-LABEL; the register's own test seeds a
+  deliberately different stored label (`Speaker biography`) to prove the
+  SEEDED label renders and the frame's `Bio` abbreviation never does.
 - **Audience level** and **Notes for reviewers**/**Accessibility needs**
   only appear in the desktop extent (:891-1009); the 390 frame's "Submit a
   talk" step 1 view is cut off after Format (:1051), before the dock —
