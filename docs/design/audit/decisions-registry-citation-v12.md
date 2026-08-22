@@ -97,3 +97,57 @@ Four shapes, with their counts (sum to 1291):
 - The "quote mismatch" shape (612) needs the chained-citation sub-pattern
   separated out first (see example above) before treating the remainder
   as ordinary content drift.
+
+## Wave 26 repair pass (task w26-c, DEC-518 amendment)
+
+Before: **1265** (drift since the wave-10 measurement of 1260 -- re-measured
+by forcing `DECISIONS_REGISTRY_CITATION_CEILING` to `-1` on this branch and
+reading the printed offender list, per the standing DEC-069 rule that this
+ratchet moves DOWN every wave it is red). Per-file offender density this
+wave: `decisions/DEC-422.md` 31, `decisions/DEC-069.md` 25,
+`decisions/DEC-358.md` 20, `decisions/DEC-072.md` 18, `decisions/DEC-592.md`
+15, `decisions/DEC-851.md` 14, `decisions/DEC-147.md` 13 (and others below
+13, unrepaired this wave).
+
+All 31 offenders in `decisions/DEC-422.md` -- this wave's top-density file
+-- were repaired at the citation, never by raising the constant and never
+by inventing a quote. Two shapes:
+
+- **(a) a `path:line` citation's neighbouring backtick text misread as its
+  own receipt quote.** One instance: the wave-1 amendment's `Max ${N}`
+  survey packed roughly twenty bare `module.ts:line[,line...]` fragments
+  and five quoted refusal-grammar examples into one dense paragraph, each
+  citation's own parenthesised quote sitting BEFORE it in the prose and the
+  NEXT item's quote sitting close enough after to be misread as the
+  receipt. Repaired by rewording the whole paragraph past-tense (the
+  five-grammar audit it describes was already closed by the paragraph's
+  own landed ruling) and dropping the seventeen now-redundant bare-path
+  fragments rather than re-punctuating twenty adjacent citations. A second
+  instance: `src/lib/pagination.ts`'s citation had its neighbouring prose
+  word `` `export` `` (describing what the cited line lacks) misread as a
+  receipt quote for the citation itself -- repaired by dropping the
+  backticks around the prose word rather than touching the citation.
+
+- **(b) a quote or line number that no longer matches because the cited
+  construct drifted or the paragraph describing it went stale.** Two
+  isolated line-drift citations (the save-draft handler, since split out
+  of `submit.tsx` into `submit-draft.tsx`; `MAX_CRITERION_GUIDANCE_LENGTH`,
+  since moved from `evaluation.ts` into `evaluation/criteria.ts`) were
+  converted to the DEC-518 drift-proof shape (repo-relative path plus a
+  backtick-quoted verbatim construct, no `:line` suffix) and re-anchored on
+  the construct's current home. One missing-prefix bare path
+  (`routes/api/views.ts` → `src/routes/api/views.ts`) was corrected and
+  converted to the same drift-proof shape. Four paragraphs described a bug
+  or gap that a LATER amendment in the same file had already closed
+  (PlanEditor's hand-typed `MAX_CRITERIA = 7`, since replaced by the pure-core
+  `MIN_CRITERION_OPTIONS`/`MAX_CRITERION_OPTIONS` pair; the participant-cap
+  overage copy, since routed through `participantCapRefusalMessage`; the
+  repeated-single-value-answer merge in the portal edit/task forms, since
+  routed through `readSingleFormValue`/`REPEATED_ANSWER_MESSAGE`) -- each
+  reworded past-tense and re-anchored on the construct that closed it (the
+  wave-10 DEC-010 precedent for a since-CLOSED paragraph).
+
+After: **1234**, re-measured by re-running the scan on the repaired tree
+with the ceiling still forced to `-1`.
+`DECISIONS_REGISTRY_CITATION_CEILING` lowered 1260 → 1234; the two-sided
+"ceiling is not stale" companion is green in the same run.
