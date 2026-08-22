@@ -207,12 +207,34 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
 resetRoutes.get("/reset/:token", async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
+  const db = c.var.db;
+
+  // DEC-949 (wave-7 amendment): the GET twin resolves the same KV grant the
+  // POST spends its budget guessing against, and additionally renders the
+  // target account's email on a resolve -- unauthenticated, CSRF-free token
+  // guessing here was previously both free AND an email-disclosure oracle.
+  // Same consume-then-refund shape as the POST below.
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const resetGetNow = Date.now();
+  const limit = await checkAndIncrementScopedLimit(db, "reset-token", ip, resetGetNow, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+
   const record = await readResetToken(kv, token);
   if (!record) {
+    if (!limit.ok) {
+      return c.html(<ExpiredResetPage />, 429);
+    }
     return c.html(<ExpiredResetPage />, 410);
   }
 
-  const db = c.var.db;
+  // Token resolved: refund the unit just spent so a real speaker with a
+  // real token is never throttled by unrelated failed guesses sharing this
+  // IP bucket. Refunded before schema.user is ever touched, matching the
+  // POST twin's ordering.
+  await refundScopedLimit(db, "reset-token", ip, resetGetNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
+
   const rows = await db.select().from(schema.user).where(eq(schema.user.id, record.userId)).limit(1);
   const user = rows[0];
   if (!user) {
