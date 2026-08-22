@@ -4,7 +4,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireCookieSession, requireOrganizer } from "../../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../../server/http";
+import { ApiError, parseBoundedIdArray, readJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { markParticipantsInvited } from "../../server/repo/participants";
 import type { KVStore } from "../../auth/claim";
@@ -34,10 +34,8 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
-  const contactIds = parseBoundedIdArray((body as { contactIds?: unknown }).contactIds, "contactIds", {
+  const body = await readJsonBody(c);
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", {
     maxCount: MAX_PORTAL_INVITE_RECIPIENTS,
   });
 

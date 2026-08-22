@@ -4,7 +4,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError, requireAtLeastOneField } from "../../server/http";
+import { ApiError, readJsonBody, requireAtLeastOneField } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { listTemplateLastUsedAt } from "../../server/repo/email";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
@@ -37,9 +37,7 @@ templatesRoutes.post("/api/v1/events/:eventId/templates", requireOrganizer, csrf
   const eventId = c.req.param("eventId");
   await requireOwnedEvent(c, eventId);
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
 
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim() === "") errors.name = "required";
@@ -51,9 +49,9 @@ templatesRoutes.post("/api/v1/events/:eventId/templates", requireOrganizer, csrf
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Validation failed", errors);
 
   const created = await repo.createTemplate(c.var.db, eventId, {
-    name: body.name,
-    subject: body.subject,
-    bodyText: body.bodyText,
+    name: body.name as string,
+    subject: body.subject as string,
+    bodyText: body.bodyText as string,
   });
   return c.json(serializeTemplate(created), 201);
 });
@@ -65,9 +63,7 @@ templatesRoutes.patch("/api/v1/templates/:templateId", requireOrganizer, csrfJso
   const existing = await repo.findTemplateForOrg(c.var.db, templateId, auth.orgId);
   if (!existing) throw new ApiError("not_found", "Template not found");
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
   // DEC-627 (amendment, wave 6): all three fields are optional; an empty
   // body must be refused rather than reaching patchTemplate as a no-op.
   requireAtLeastOneField(body, ["name", "subject", "bodyText"]);

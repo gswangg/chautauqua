@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireCookieSession, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import type { KVStore } from "../../auth/claim";
@@ -46,9 +46,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, requir
   const auth = c.var.auth;
   if (!auth) throw new ApiError("unauthorized", "Login required");
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
   const input = await resolveComposeInput(c, eventId, body);
 
   // Atomic preflight (DEC-019/DEC-051/DEC-122): full-set id match, then

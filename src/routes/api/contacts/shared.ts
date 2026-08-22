@@ -3,7 +3,7 @@
 // contention (803-line hotspot) reasons only; no behavior change.
 
 import { and, eq, inArray } from "drizzle-orm";
-import { ApiError } from "../../../server/http";
+import { ApiError, asRequestRecord } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
 import * as schema from "../../../db/schema";
 import type { Db } from "../../../server/context";
@@ -18,12 +18,10 @@ export function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   return auth.orgId;
 }
 
-export function asRecord(body: unknown): Record<string, unknown> {
-  if (typeof body !== "object" || body === null) {
-    throw new ApiError("invalid", "Request body must be a JSON object");
-  }
-  return body as Record<string, unknown>;
-}
+// DEC-613 (amendment, wave 23): re-exports the ONE shape predicate from
+// server/http.ts (refuses null AND arrays) under this module's existing
+// name -- every existing call site's import keeps resolving unchanged.
+export const asRecord = asRequestRecord;
 
 export function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);

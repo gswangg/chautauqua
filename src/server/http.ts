@@ -7,6 +7,9 @@ import type { Context, Hono } from "hono";
 import type { AppEnv } from "./env";
 import { escapeHtml } from "../lib/html-escape";
 import { overCapFieldMessage, overCapCountMessage } from "../domain/cap-copy";
+import { DEC_613 } from "../decisions";
+
+void DEC_613; // readJsonBody/asRequestRecord below: the one JSON-object body door
 
 // DEC-841: the one place the "/api/v1 vs everything else" rule lives. Both
 // the notFound handler (not-found.tsx) and the onError handler below
@@ -267,6 +270,22 @@ export async function readJsonBody(c: Context<AppEnv>): Promise<Record<string, u
     throw new ApiError("invalid", "Invalid JSON body");
   }
   return parsed as Record<string, unknown>;
+}
+
+// DEC-613 (amendment, wave 23): the ONE shape predicate for "is this a JSON
+// object body" -- refuses null AND arrays identically to readJsonBody/
+// readOptionalJsonBody above, so a caller that already has a parsed `unknown`
+// body (rather than a raw request to hand to readJsonBody) narrows it the
+// same way. src/routes/api/contacts/shared.ts and src/routes/review/shared.ts
+// each used to declare their own byte-identical `asRecord` that accepted an
+// array (`typeof [] === 'object' && [] !== null`) -- both now re-export this
+// one predicate under their existing name instead, so none of their ~26
+// existing call sites' imports need to change.
+export function asRequestRecord(body: unknown): Record<string, unknown> {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new ApiError("invalid", "Request body must be a JSON object");
+  }
+  return body as Record<string, unknown>;
 }
 
 // DEC-627 (amendment, wave 6): the ONE place an all-optional PATCH refuses

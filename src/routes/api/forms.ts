@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError, requireAtLeastOneField } from "../../server/http";
+import { ApiError, readJsonBody, requireAtLeastOneField } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy";
 import { validateFieldDefInput, validateRuleReference, isPermutation, type FieldDefInput } from "../../forms/builder";
@@ -88,9 +88,7 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
   const formId = c.req.param("formId");
   const form = await requireOwnedForm(c, formId);
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
   // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
   // empty body must be refused rather than reaching patchForm as a no-op.
   requireAtLeastOneField(body, ["title", "intro", "openDate", "closeDate", "tracks"]);
@@ -179,9 +177,7 @@ formsRoutes.post("/api/v1/forms/:formId/fields", requireOrganizer, csrfJson, asy
   const formId = c.req.param("formId");
   await requireOwnedForm(c, formId);
 
-  const body = (await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  })) as FieldDefInput;
+  const body = (await readJsonBody(c)) as unknown as FieldDefInput;
 
   const existing = await repo.listFields(c.var.db, formId);
   if (existing.length >= MAX_FORM_FIELDS) {
@@ -223,9 +219,7 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
   const fieldId = c.req.param("fieldId");
   const field = await requireOwnedField(c, fieldId);
 
-  const body = (await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  })) as FieldDefInput;
+  const body = (await readJsonBody(c)) as unknown as FieldDefInput;
   // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
   // empty body must be refused rather than reaching patchField as a no-op.
   requireAtLeastOneField(body as unknown as Record<string, unknown>, [
@@ -488,13 +482,11 @@ formsRoutes.post("/api/v1/forms/:formId/fields/reorder", requireOrganizer, csrfJ
   const formId = c.req.param("formId");
   await requireOwnedForm(c, formId);
 
-  const body = await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  });
+  const body = await readJsonBody(c);
 
   const existing = await repo.listFields(c.var.db, formId);
   const existingIds = existing.map((f) => f.id);
-  if (!isPermutation(existingIds, body?.orderedIds)) {
+  if (!isPermutation(existingIds, body.orderedIds)) {
     throw new ApiError("invalid", "orderedIds must be a permutation of the form's field ids", {
       orderedIds: "must be a permutation of the form's field ids",
     });
