@@ -228,7 +228,7 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
   describe('frame :605 "Submissions · triage queue clear" (triage-cleared empty state, SubmissionsTable)', () => {
     const EVENT_ID = 'evt-submissions-desktop-cleared';
 
-    function renderCleared() {
+    function renderCleared(awaitingContentCount = 12) {
       window.localStorage.setItem('chq.currentEventId', EVENT_ID);
       // The pendingTotal/allTotal counts and the main list all read the
       // SAME "GET .../submissions" route (mockApi keys by path only, query
@@ -259,7 +259,10 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
           { total: 47 },
         ),
         listEnvelope([], { total: 0 }), // pendingTotal: status=pending&perPage=1
-        listEnvelope([], { total: 47 }), // allTotal: perPage=1
+        // allTotal: perPage=1 -- DEC-902 wave-19 clause (c): the same
+        // envelope carries contentStatusCounts.pending, which the
+        // triage-cleared reason line's second sentence reads.
+        listEnvelope([], { total: 47, contentStatusCounts: { pending: awaitingContentCount, approved: 0, changes_requested: 0 } }),
       ];
       mockApi({
         'GET /api/v1/me': { userId: 'u-self', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
@@ -275,7 +278,7 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
       );
     }
 
-    it('MATCHES (narrowed): "Nothing left to triage" renders once the Pending status facet is applied and the event carries submissions -- the chrome (ViewTabs/FilterBar) stays visible above it, matching the frame; the reason line is narrower than the frame\'s (no "Twelve are still waiting on content" clause)', async () => {
+    it('MATCHES: "Nothing left to triage" renders once the Pending status facet is applied and the event carries submissions -- the chrome (ViewTabs/FilterBar) stays visible above it, matching the frame, and the reason line carries the frame\'s second sentence ("N are still waiting on content") once the unfiltered contentStatusCounts.pending count resolves nonzero (DEC-902 wave-19 clause (c))', async () => {
       renderCleared();
       const h1 = await screen.findByRole('heading', { name: 'Submissions' });
       // docs/design/Chautauqua Submissions.dc.html:631 -- the same H1
@@ -298,11 +301,15 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
 
       // docs/design/Chautauqua Submissions.dc.html:643 draws a TWO-sentence
       // reason, `All 47 submissions have a decision. Twelve are still
-      // waiting...`; the tree states only the first sentence.
+      // waiting on content, if you want the next thing.` -- the frame's
+      // "Twelve" is its own sample data (the tree's ONE spelled-number
+      // vocabulary, spellCount, only spells 0-10 and falls back to the
+      // digit above that, so a live count of 12 renders as "12", not
+      // "Twelve" -- DEC-925). The tree now renders both sentences once
+      // contentStatusCounts.pending resolves nonzero.
       verbatimLine(643, '          <span style="font-size:16px; line-height:1.65; color:#3F4237; max-width:52ch">All 47 submissions have a decision. Twelve are still waiting on content, if you want the next thing.</span>');
       const reason = screen.getByText(/have a decision/);
-      expect(reason.textContent).toBe('All 47 submissions have a decision.');
-      expect(screen.queryByText(/Twelve are still waiting/)).not.toBeInTheDocument();
+      expect(reason.textContent).toBe('All 47 submissions have a decision. 12 are still waiting on content, if you want the next thing.');
 
       // The chrome (ViewTabs/FilterBar) stays visible ABOVE the message --
       // matching the frame's own header pill strip, not hidden the way the
@@ -321,6 +328,18 @@ describe('v12 Submissions DESKTOP (1600) frames: per-frame render verdict receip
       // No escape control (DEC-370/EmptyState's own construction rule): the
       // triage-cleared state is a success report, not a filter failure.
       expect(screen.queryByRole('button', { name: /Clear filter/ })).not.toBeInTheDocument();
+    });
+
+    it('DEC-902 wave-19 clause (c): the second sentence is OMITTED (not printed as zero) when contentStatusCounts.pending resolves to 0', async () => {
+      renderCleared(0);
+      await screen.findByRole('heading', { name: 'Submissions' });
+      await waitFor(() => expect(screen.getByText('Accepted Talk')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Pending' }));
+      await screen.findByText('Nothing left to triage');
+
+      const reason = screen.getByText(/have a decision/);
+      expect(reason.textContent).toBe('All 47 submissions have a decision.');
+      expect(screen.queryByText(/still waiting on content/)).not.toBeInTheDocument();
     });
   });
 

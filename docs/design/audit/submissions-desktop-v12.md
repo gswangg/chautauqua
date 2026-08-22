@@ -94,15 +94,24 @@ real control, producing the `triageCleared` branch
 
 - H1 `Submissions` (frame `:631`).
 - Headline `Nothing left to triage` (frame `:642`), verbatim.
-- **Narrower reason line.** The frame draws a TWO-sentence reason (`:643`,
-  "All 47 submissions have a decision. Twelve are still waiting on
-  content, if you want the next thing."). The tree's own reason
-  (`SubmissionsTable.tsx`'s `triageCleared` branch) renders only the FIRST
-  sentence, with the real `allTotal` substituted in ("All 47 submissions
-  have a decision.") — the second, content-queue-pointing clause has no
-  counterpart in the tree. A real, narrower divergence: the escape hatch
-  the frame offers toward the content queue is missing from the actual
-  copy, though the `Go to content ›` LINK itself (below) still renders.
+- **CLOSED — two-sentence reason line, DEC-902 wave-19 clause (c).** The
+  frame draws a TWO-sentence reason (`:643`, "All 47 submissions have a
+  decision. Twelve are still waiting on content, if you want the next
+  thing."). `SubmissionsTable.tsx`'s `triageCleared` branch now renders
+  both: the first sentence with the real `allTotal` substituted in ("All
+  47 submissions have a decision."), followed by the frame's second
+  clause once the event's unfiltered `contentStatusCounts.pending` count
+  (already riding the same `perPage=1` list read that supplies
+  `allTotal`, DEC-913) resolves and is greater than zero — read into a new
+  `awaitingContent` state, never derived from the visible page's rows
+  (DEC-936). The clause is spelled through the tree's ONE count-phrase
+  vocabulary (`spellCount`/`capitalizeFirst` from `lib/plural.ts`), which
+  spells 0–10 and falls back to the digit above that (DEC-925) — so a live
+  count of 12 renders "12 are still waiting…", not the frame's own sample
+  word "Twelve". When the count resolves to exactly 0, or is still
+  unresolved (`null`, in flight or on failure), the clause is omitted
+  entirely rather than printing a zero the frame never draws — the same
+  "never a fabricated number" discipline `allTotal` already followed.
 - The chrome (ViewTabs/FilterBar) stays visible ABOVE the message,
   matching the frame's own header pill strip — `showChrome`'s own
   `describeActiveFacet` call still reports the Pending status facet as
@@ -180,13 +189,15 @@ own `Edit` control (`FieldList.tsx`), never a directly-mounted
 | --- | --- |
 | :531 Save this view | MATCHES |
 | :561 Submissions · before the CFP opens | MATCHES |
-| :605 Submissions · triage queue clear | MATCHES (narrowed reason line) |
+| :605 Submissions · triage queue clear | MATCHES |
 | :399 CFP form builder · /submissions/forms | MATCHES (two control-type divergences) |
 | :655 CFP form · edit a question | MATCHES |
 
-5 of 5 frames MATCH as rendered. Two real, narrow divergences were found
-and filed in prose above (`:399`'s "Add a question"/"Copy" controls render
-as `<button>` rather than the frame's `<a>`; `:605`'s reason line omits
-the frame's second, content-queue-pointing sentence) — neither is fixed
-here, per the mandate's desktop freeze. No desktop byte was moved to
-produce this verdict.
+5 of 5 frames MATCH as rendered. One real, narrow divergence remains, filed
+in prose above (`:399`'s "Add a question"/"Copy" controls render as
+`<button>` rather than the frame's `<a>` — a control-type residual outside
+wave-14m's wording scope, left unfixed here per the mandate's desktop
+freeze). `:605`'s reason line was CLOSED in wave-19 (DEC-902 clause (c)):
+the tree now renders the frame's second, content-queue-pointing sentence
+once the unfiltered content-pending count resolves nonzero. No other
+desktop byte was moved to produce this verdict.
