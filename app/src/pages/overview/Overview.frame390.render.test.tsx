@@ -269,49 +269,80 @@ describe('Overview 390 frame verdict (task w29-f, docs/design/Chautauqua Overvie
     expect(caption!.previousElementSibling).toBe(remindAll!.closest('.chq-overview-section-header'));
   });
 
-  // :221-:226 the §01 row template. FINDING (recorded, not fixed -- this
-  // task's OWNS list permits only overview.css inside its terminal
-  // max-width:700px block, and this divergence is a DOM/text-grouping
-  // difference no CSS reorder can repair without also splitting the
-  // anonymous wrapper `<div>`s Overview.tsx renders around
-  // name+company/task+late into their own class hooks): the frame draws
-  // `{{ row.name }}` beside `{{ row.late }}` on one line, then
-  // `{{ row.task }} · {{ row.company }}` on the next. The shipped DOM
-  // instead pairs name+company together and task+late together (a desktop
-  // two-column table shape that only collapses to stacked rows at phone,
-  // never regrouped), so all four fields are present and in this DOM
-  // order: name, company, task, late. See
-  // docs/design/audit/overview-390-v12.md for the full writeup.
-  it(':221-:226 the §01 row carries name, company, task, lateness marker and both actions in DOM order', async () => {
+  // :221-:226 the §01 row template (DEC-720 wave-22 amendment -- RESOLVED,
+  // was FINDING (not fixed)). The frame draws `{{ row.name }}` beside
+  // `{{ row.late }}` on line 1, then `{{ row.task }} · {{ row.company }}`
+  // as one joined string on line 2. Overview.tsx now renders four direct-
+  // classed spans (`.chq-overview-row-name`, `.chq-overview-row-late`,
+  // `.chq-overview-row-task`, `.chq-overview-row-company`) as direct
+  // children of `.chq-overview-row-overdue`, no anonymous wrapper `<div>`s
+  // -- desktop keeps its own (name+company / task+late) visual pairing via
+  // explicit CSS grid placement in overview.css, decoupled from DOM order.
+  // Assert the frame's reading order via compareDocumentPosition (element
+  // ORDER, not mere presence) so a future regression back to the old
+  // wrapper-div pairing fails here even though every field would still be
+  // "present" in the row.
+  it(':221-:226 the §01 row carries name, late, task, company then both actions in the frame\'s DOM order', async () => {
     await mount();
 
     const row = document.querySelector('.chq-overview-row-overdue');
     expect(row).not.toBeNull();
 
-    const walker = document.createTreeWalker(row!, NodeFilter.SHOW_TEXT);
-    const texts: string[] = [];
-    let node: Node | null;
-    // eslint-disable-next-line no-cond-assign
-    while ((node = walker.nextNode())) {
-      const text = node.textContent?.trim();
-      if (text) texts.push(text);
-    }
+    const name = row!.querySelector('.chq-overview-row-name')!;
+    const late = row!.querySelector('.chq-overview-row-late')!;
+    const task = row!.querySelector('.chq-overview-row-task')!;
+    const company = row!.querySelector('.chq-overview-row-company')!;
+    const actions = row!.querySelector('.chq-overview-row-actions')!;
+    [name, late, task, company, actions].forEach((el) => expect(el).not.toBeNull());
 
-    expect(texts).toEqual([
-      'Marcus Okafor',
-      'Cloudreach Labs',
-      'Upload headshot',
-      '4 days late',
-      'Remind',
-      'Mark complete',
-    ]);
+    expect(name.textContent).toBe('Marcus Okafor');
+    expect(late.textContent).toBe('4 days late');
+    expect(task.textContent).toBe('Upload headshot');
+    expect(company.textContent).toBe('Cloudreach Labs');
+
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(name.compareDocumentPosition(late) & FOLLOWING).toBeTruthy();
+    expect(late.compareDocumentPosition(task) & FOLLOWING).toBeTruthy();
+    expect(task.compareDocumentPosition(company) & FOLLOWING).toBeTruthy();
+    expect(company.compareDocumentPosition(actions) & FOLLOWING).toBeTruthy();
 
     // Both per-row actions are real controls, in frame order (Remind, then
     // Mark complete -- :224/:225).
-    const actions = row!.querySelectorAll('.chq-overview-row-actions button');
-    expect(actions.length).toBe(2);
-    expect(actions[0]!.textContent).toBe('Remind');
-    expect(actions[1]!.textContent).toBe('Mark complete');
+    const actionButtons = actions.querySelectorAll('button');
+    expect(actionButtons.length).toBe(2);
+    expect(actionButtons[0]!.textContent).toBe('Remind');
+    expect(actionButtons[1]!.textContent).toBe('Mark complete');
+  });
+
+  // :221-:224 the terminal phone block's CSS shape for the row: name+late
+  // share a wrapping flex line (late pushed right via margin-left:auto,
+  // matching the frame's justify-content:space-between for that pair
+  // only), task forces a new line via the flex-basis:100% break trick, and
+  // company immediately follows task on that same line with a generated
+  // ' · ' separator -- the frame's single joined "task · company" string
+  // (:224), with no extra column-gap between task and company that would
+  // read as a gap the frame doesn't draw.
+  it(':221-:224 the terminal phone block re-places the overdue row as a wrapping flex line, not a 1-column grid', async () => {
+    const phoneCss = readOverviewPhoneCss();
+
+    const rowRule = phoneCss.match(/\.chq-overview-row-overdue\s*\{([^}]*)\}/);
+    expect(rowRule).not.toBeNull();
+    expect(rowRule![1]).toMatch(/display:\s*flex/);
+    expect(rowRule![1]).toMatch(/flex-wrap:\s*wrap/);
+
+    const lateRule = phoneCss.match(/\.chq-overview-row-overdue\s*>\s*\.chq-overview-row-late\s*\{([^}]*)\}/);
+    expect(lateRule).not.toBeNull();
+    expect(lateRule![1]).toMatch(/margin-left:\s*auto/);
+
+    const taskRule = phoneCss.match(/\.chq-overview-row-overdue\s*>\s*\.chq-overview-row-task\s*\{([^}]*)\}/);
+    expect(taskRule).not.toBeNull();
+    expect(taskRule![1]).toMatch(/flex-basis:\s*100%/);
+
+    const companySeparator = phoneCss.match(
+      /\.chq-overview-row-overdue\s*>\s*\.chq-overview-row-company::before\s*\{([^}]*)\}/,
+    );
+    expect(companySeparator).not.toBeNull();
+    expect(companySeparator![1]).toMatch(/content:\s*' · '/);
   });
 
   // :236 the §02 "All N" disclosure.

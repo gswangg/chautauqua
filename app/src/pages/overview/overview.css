@@ -291,6 +291,44 @@
 .chq-overview-row-overdue {
   grid-template-columns: 1fr 1.15fr auto;
   padding: 16px 0;
+  column-gap: 20px;
+  row-gap: 0;
+}
+
+/* DEC-720 wave-22 amendment: explicit grid placement for the four direct-
+   child hooks (Overview.tsx no longer wraps name+company / task+late in
+   anonymous divs -- see that file's comment). Reproduces
+   docs/design/Chautauqua Overview.dc.html:79-87's nested-flex geometry
+   (name/company gap:3px, task/late gap:4px) via margin-top instead of a
+   single grid row-gap, since a CSS grid row-gap is one value shared by
+   every row, not settable per column pair. */
+.chq-overview-row-overdue > .chq-overview-row-name {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.chq-overview-row-overdue > .chq-overview-row-company {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 3px;
+}
+
+.chq-overview-row-overdue > .chq-overview-row-task {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 15px;
+}
+
+.chq-overview-row-overdue > .chq-overview-row-late {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 4px;
+}
+
+.chq-overview-row-overdue > .chq-overview-row-actions {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
 }
 
 .chq-overview-row-content {
@@ -593,12 +631,72 @@
     font-size: 29px;
   }
 
-  .chq-overview-row-overdue,
   .chq-overview-row-content,
   .chq-overview-row-agenda,
   .chq-overview-row-quiet,
   .chq-overview-row-single {
     grid-template-columns: 1fr;
+  }
+
+  /* DEC-720 wave-22 amendment: docs/design/Chautauqua Overview.dc.html:220-
+     224 (the 390 frame) draws each overdue row as line 1 = name + late
+     (baseline, space-between) and line 2 = "task · company" as one joined
+     13px #565A4B string. Overview.tsx now renders four direct-child spans
+     in that exact reading order (name, late, task, company, actions) --
+     switch the row from the desktop grid to a wrapping flex row so name/
+     late share line 1 and task/company share line 2, with no wrapper
+     divs. flex-basis:100% on .chq-overview-row-task is the standard
+     forced-line-break trick (an item that alone claims the full row width
+     cannot share the current line, so flex-wrap starts a new one); a
+     bare `margin-left:auto` on .chq-overview-row-late reproduces the
+     frame's `justify-content:space-between` for exactly that pair without
+     also spreading task away from company on line 2. */
+  .chq-overview-row-overdue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0;
+    padding: 15px 0;
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-name {
+    margin-top: 0;
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-late {
+    margin-top: 0;
+    margin-left: auto;
+    white-space: nowrap;
+    /* Overflow escape (DEC-989): the "N days late" marker is short and
+       never truncates in practice, but the scan grades declared
+       properties, not measured pixels -- pair the nowrap with the same
+       escape idiom used above for .chq-overview-toolbar-btn/.chq-overview-
+       link-btn. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-task {
+    flex-basis: 100%;
+    margin-top: 9px;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-company {
+    margin-top: 0;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-company::before {
+    content: ' · ';
+  }
+
+  .chq-overview-row-overdue > .chq-overview-row-actions {
+    flex-basis: 100%;
+    margin-top: 9px;
   }
 
   .chq-overview-headline-row {

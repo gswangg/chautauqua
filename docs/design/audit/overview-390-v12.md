@@ -29,44 +29,49 @@ had no citer anywhere in the tree.
 - :215/:216 the §01 bulk-remind control (`Remind all <n>`) and its caption
   ("Skips anyone reminded in the last hour"), asserted as adjacent siblings
   inside §01's header block.
-- :221-:226 the §01 row template's four fields (name, company, task,
-  lateness marker) and both per-row actions (Remind, Mark complete), in
-  their real DOM order — see the divergence finding below.
+- :221-:226 the §01 row template's four fields (name, lateness marker, task,
+  company) and both per-row actions (Remind, Mark complete), in the frame's
+  own DOM order — see RESOLVED below.
 - :236 the §02 "All N" disclosure, graded by shape (`/^All \d+$/`).
 
-## FINDING (not fixed — out of this task's scope)
+## RESOLVED (DEC-720 wave-22 amendment — was FINDING, not fixed)
 
-**The §01 row's field grouping diverges from the frame's line pairing, and
-no CSS-only fix inside `overview.css`'s terminal `@media (max-width:700px)`
-block can repair it.**
+**The §01 row's field grouping now matches the frame's line pairing.**
 
 The frame draws two lines per overdue-task row:
 
 1. `{{ row.name }}` beside `{{ row.late }}` (same line, space-between)
 2. `{{ row.task }} · {{ row.company }}` (next line, one joined string)
 
-`Overview.tsx` (lines ~347-370) instead renders two anonymous wrapper
-`<div>`s with no class hooks:
+`Overview.tsx` used to render two anonymous wrapper `<div>`s with no class
+hooks — `contactName` + `company` on one line, `taskTitle` +
+`daysLateLabel(...)` on the other — which hard-coded the desktop pairing
+into the DOM and made the frame's own grouping unreachable by any selector.
 
-1. `contactName` + `company` (a name/company pair)
-2. `taskTitle` + `daysLateLabel(...)` (a task/lateness pair)
+The fix: `Overview.tsx` now renders four directly-classed spans
+(`.chq-overview-row-name`, `.chq-overview-row-late`,
+`.chq-overview-row-task`, `.chq-overview-row-company`) as direct children of
+`.chq-overview-row-overdue`, no wrapper `<div>`s, in the frame's own reading
+order — name, late, task, company, then the Remind/Mark-complete actions.
 
-So the real DOM/reading order at 390 (where `.chq-overview-row-overdue`
-collapses to a single grid column, per `overview.css`) is: **name, company,
-task, lateness marker, Remind, Mark complete** — not the frame's **name,
-lateness marker, task · company, Remind, Mark complete**. All four fields
-are present and none is invented or missing; only the pairing/order
-diverges, and `{{ row.task }} · {{ row.company }}` never renders as one
-joined string (it's two separate text nodes in two different wrapper
-`<div>`s).
+Desktop keeps its original visual pairing (name above company, task above
+late) without depending on that DOM order: `overview.css`'s
+`.chq-overview-row-overdue` places all four hooks with explicit
+`grid-column`/`grid-row` — decoupled from source order, so the desktop frame
+never moved.
 
-This task's OWNS list permits touching `overview.css` only inside its
-terminal max-width block. A CSS `order` reflow can reorder whole grid
-*items*, but the two mis-paired fields (company vs. task) sit inside the
-*same* anonymous wrapper `<div>` as their line-mate, so no selector exists
-to move one field independently of its sibling — the fix needs a
-`Overview.tsx` JSX restructure (new class hooks separating name+late from
-task+company), which is out of this task's scope. `Overview.frame390.render.test.tsx`'s
-row-template test asserts the TRUE current DOM order (a truthful verdict,
-not the frame's aspirational one) and its own comment block carries this
-same writeup inline. Recorded here for a future task to pick up.
+Inside `overview.css`'s ONE terminal `@media (max-width: 700px)` block, the
+row switches from the desktop grid to a wrapping flex row: name and late
+share line 1 (late pushed to the line's end via `margin-left: auto`,
+reproducing the frame's `justify-content: space-between` for exactly that
+pair); task forces a new flex line via the standard `flex-basis: 100%`
+break trick; company immediately follows task on that same line with a
+generated `.chq-overview-row-company::before { content: ' · '; }`
+separator, so line 2 reads as the frame's single joined "task · company"
+string with no CSS `gap` inserted between the two.
+
+`app/src/pages/overview/Overview.frame390.render.test.tsx`'s row-template
+test now asserts the frame's element ORDER via `compareDocumentPosition`
+(not mere field presence), plus a CSS-shape case reading the terminal phone
+block's `display: flex`, `flex-basis: 100%` and `::before` declarations
+directly from `overview.css`.

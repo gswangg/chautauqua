@@ -349,14 +349,18 @@ export function OverviewPage() {
         )}
         {payload.overdueTasks.rows.map((row) => (
           <div key={row.assignmentId} className="chq-overview-row chq-overview-row-overdue">
-            <div>
-              <div className="chq-overview-row-title">{row.contactName}</div>
-              <div className="chq-overview-row-meta">{row.company}</div>
-            </div>
-            <div>
-              <div>{row.taskTitle}</div>
-              <div className="chq-overview-row-late">{daysLateLabel(row.daysLate)}</div>
-            </div>
+            {/* DEC-720 wave-22 amendment: four directly-classed spans, no
+                anonymous wrapper divs -- the wrappers hard-coded the
+                desktop (name+company / task+late) pairing into the DOM so
+                the 390 frame's (name+late / task+company) reading order
+                was unreachable by any selector. Desktop keeps its own
+                visual pairing via explicit CSS grid placement
+                (overview.css); this DOM order is the frame's own reading
+                order: name, late, task, company, actions. */}
+            <div className="chq-overview-row-name chq-overview-row-title">{row.contactName}</div>
+            <div className="chq-overview-row-late">{daysLateLabel(row.daysLate)}</div>
+            <div className="chq-overview-row-task">{row.taskTitle}</div>
+            <div className="chq-overview-row-company chq-overview-row-meta">{row.company}</div>
             <div className="chq-overview-row-actions">
               <button type="button" className="chq-overview-link-btn" onClick={() => handleRemind([row])}>
                 Remind
