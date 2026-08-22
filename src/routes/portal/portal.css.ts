@@ -305,6 +305,47 @@ export const PORTAL_CSS = `
     background: var(--chq-surface-sunk);
     border: 1px solid var(--chq-rule);
   }
+  /* DEC-576 wave-21: docs/design/Chautauqua Public and Portal.dc.html:541
+     draws the headshot control as
+     \`<span style="border:1px solid #BAB6A6; border-radius:6px;
+     background:#EFEBDF; min-height:44px; display:flex; align-items:center;
+     justify-content:center; font-size:13px; font-weight:600">Replace</span>\`.
+     #BAB6A6 -> var(--chq-border), #EFEBDF -> var(--chq-surface-sunk), the 6px
+     radius -> var(--chq-r-ctl-phone) (theme.ts's phone control radius token,
+     the only 6px radius token this stylesheet has). Legal at every width per
+     DESIGN-RULINGS.md item 6 (the portal has no separate desktop design), so
+     this rule sits at top level, never inside a DEC-385 max-width block. The
+     <input> stays inside the <label> so the label is the whole tap anchor;
+     .chq-portal-headshot-pick-input below visually hides it the way
+     app/src/pages/content/content.css's .chq-content-upload-input does. */
+  .chq-portal-headshot-pick {
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  /* tap-floor-exempt: a visually-hidden input whose operable target is its
+     label -- never display:none, stays in the tab order and reachable by
+     keyboard via the <label> above, so the label supplies the whole tap
+     floor (same idiom as app/src/pages/content/content.css's
+     .chq-content-upload-input). */
+  .chq-portal-headshot-pick-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .chq-portal-facts {
     display: flex;
     flex-direction: column;

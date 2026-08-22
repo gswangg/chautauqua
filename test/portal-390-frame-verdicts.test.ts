@@ -26,6 +26,7 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 import type { FormFieldDef } from "../src/forms/types";
 import type { ContactProfile } from "../src/server/repo/profile";
+import { getContactProfile } from "../src/server/repo/profile";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -407,6 +408,54 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     const dockBody = html.slice(dockOpen, dockClose);
     expect((dockBody.match(/<button/g) ?? []).length).toBe(1);
     expect(html).not.toContain(">Cancel<");
+  });
+
+  it("frame :541 headshot control (GET /portal/profile) -- RESOLVED (DEC-576 wave-21): no headshot on file renders the bordered pill as 'Add a headshot'", async () => {
+    // docs/design/Chautauqua Public and Portal.dc.html:541
+    // `<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>`
+    verbatimLine(
+      541,
+      '            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>',
+    );
+    const app = await buildApp();
+    const res = await app.request("/portal/profile");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // This suite's shared fixture (module-level `profile` in the
+    // vi.mock("../src/server/repo/profile") factory above) has
+    // headshotUrl: null -- clause (b)'s absent-population literal. Scoped
+    // to the <label>...</label> element itself, not the whole document --
+    // portal.css.ts's own <style> block quotes the frame's `Replace</span>`
+    // literal in a comment, so a whole-document `not.toContain(">Replace<")`
+    // would false-fail on that comment text.
+    const labelOpen = html.indexOf('<label class="chq-portal-headshot-pick">');
+    const labelClose = html.indexOf("</label>", labelOpen);
+    const labelHtml = html.slice(labelOpen, labelClose);
+    expect(labelHtml).toContain('<label class="chq-portal-headshot-pick">Add a headshot');
+    expect(labelHtml).not.toContain(">Replace<");
+    expect(html).not.toContain("No headshot uploaded yet.");
+  });
+
+  it("frame :541 headshot control (GET /portal/profile) -- RESOLVED (DEC-576 wave-21): a headshot already on file renders the bordered pill as 'Replace'", async () => {
+    const withHeadshot: ContactProfile = {
+      id: "ct-1",
+      firstName: "Priya",
+      lastName: "Raman",
+      title: null,
+      company: null,
+      bio: null,
+      headshotUrl: "https://files.example.com/headshot/ct-1/x.jpg",
+      socialLinks: { twitter: "", linkedin: "", github: "", website: "" },
+    };
+    vi.mocked(getContactProfile).mockResolvedValueOnce(withHeadshot);
+    const app = await buildApp();
+    const res = await app.request("/portal/profile");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // clause (b)'s present-population literal, the frame's own word.
+    expect(html).toContain('<label class="chq-portal-headshot-pick">Replace');
+    expect(html).not.toContain("Add a headshot");
+    expect(html).not.toContain("No headshot uploaded yet.");
   });
 
   it("frame :1561 'Portal · Resources' (GET /portal/resources) -- MATCHES: back link, H1, subtitle, resource list, and undocked footer note render in the frame's own order", async () => {
