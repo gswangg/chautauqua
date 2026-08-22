@@ -120,7 +120,7 @@ const ENTRY_B = {
   rationale: null,
 };
 
-describe('v12 frame render verdict "Pipeline · 390" (docs/design/Chautauqua Contacts.dc.html:447-477, task w31-c, DEC-976 wave-31)', () => {
+describe('v12 frame render verdict "Pipeline · 390" (task w31-c, DEC-976 wave-31)', () => {
   it('renders every drawn body element from the real /contacts pipeline tab, in order', async () => {
     // docs/design/Chautauqua Contacts.dc.html:449 `<a href="#" ...>‹ Contacts</a>`
     verbatimLine(
@@ -181,6 +181,8 @@ describe('v12 frame render verdict "Pipeline · 390" (docs/design/Chautauqua Con
       'GET /api/v1/pipeline': listEnvelope([ENTRY_A, ENTRY_B]),
     });
 
+    // docs/design/Chautauqua Contacts.dc.html:447-477 opens with
+    // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`.
     renderBoard();
     await waitFor(() => {
       const list = document.querySelector('.chq-contacts-pipeline-phone-list');

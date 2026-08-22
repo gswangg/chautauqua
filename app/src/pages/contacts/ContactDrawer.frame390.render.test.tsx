@@ -108,7 +108,7 @@ const CONTACT: ContactDetail = {
   },
 };
 
-describe('v12 frame render verdict "Contact · 390" (docs/design/Chautauqua Contacts.dc.html:407-437, task w31-b, DEC-976 wave-31)', () => {
+describe('v12 frame render verdict "Contact · 390" (task w31-b, DEC-976 wave-31)', () => {
   it('renders every drawn body element, in drawn order, from the real mounted drawer (READ state)', async () => {
     // :409 the 44px back link
     verbatimLine(
@@ -162,7 +162,9 @@ describe('v12 frame render verdict "Contact · 390" (docs/design/Chautauqua Cont
       expect(within(dialog).getByText('Dana Whitfield')).toBeInTheDocument();
     });
 
-    // :409 -- exactly one back link, reading the frame's own literal label.
+    // docs/design/Chautauqua Contacts.dc.html:409 -- exactly one back
+    // link, reading the frame's own literal label
+    // `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>`.
     const backLinks = within(dialog).getAllByRole('button', { name: '‹ Contacts' });
     expect(backLinks).toHaveLength(1);
 
