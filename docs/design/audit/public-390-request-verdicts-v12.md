@@ -130,3 +130,38 @@ table below — not a third copy of the request assertions themselves.
    phone-parity work on this cluster should target the 8 unclaimed-by-this-
    lane portal frames (the sibling lane's scope) or the one Submit-a-talk
    label DIVERGES above.
+
+## Classless-interactive-element roster (task w35-h, DEC-996 wave-35)
+
+Measured at sha `1e38e4182` (branch `v12m-w35-h`, off `main`). `app/src/phone-tap-target-ssr-classless-anchor.scan.test.ts`'s `SSR_CLASSLESS_ANCHOR_CEILING` grades a classless `<a>` by walking outward to its nearest ENCLOSING `chq-` token — a live render sweep keying on the ELEMENT's own class reads a different, larger population from the identical markup (wave-35 field-guide finding). This section widens that same walk (`classlessTagSites` in `app/src/phone-tap-target-scan/core.ts`) to every interactive tag — `<a>`, `<button>`, `<input>`, `<select>`, `<textarea>` — declaring no `class`/`className` attribute at all, over `src/routes/public/**` and `src/routes/portal/**`. **This section only makes the population visible; it fixes nothing** (same discipline as the existing per-frame table above, which grades, and this new section, which only rosters).
+
+**Population: 59 classless interactive elements, none reaching any enclosing `chq-` token** (every row below reads `(no enclosing chq- token)` — no CSS rule anywhere in the tree could reach any of them by class selector, so none of these 59 can be VERIFIED, UNVERIFIABLE, or FALSE under `tap-floor-exempt-premise`'s grammar; they are simply invisible to it). 37 of the 59 are `<input type="hidden">` — inert, unrendered, out of the tap-floor population by construction (no visible surface, nothing to tap) — leaving **22 real candidate rows**: 15 `<a>`, 6 visible `<input>` (text/checkbox-shaped, not hidden), 1 `<select>`.
+
+| File:line | Tag | Note |
+|---|---|---|
+| `src/routes/portal/edit.tsx:240` | `<input>` | visible |
+| `src/routes/portal/edit.tsx:484` | `<select>` | visible |
+| `src/routes/portal/tasks/views.tsx:292` | `<input>` | visible |
+| `src/routes/portal/tasks/views.tsx:319` | `<a>` | visible |
+| `src/routes/portal/tasks/views.tsx:327` | `<input>` | visible |
+| `src/routes/public/agenda-grid.tsx:200` | `<a>` | visible |
+| `src/routes/public/agenda-rail.tsx:131` | `<a>` | visible |
+| `src/routes/public/agenda-rail.tsx:163` | `<a>` | visible |
+| `src/routes/public/sessions.tsx:82` | `<a>` | visible |
+| `src/routes/public/shell.tsx:259` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:128` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:203` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:205` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:264` | `<input>` | visible |
+| `src/routes/public/submit-views.tsx:304` | `<input>` | visible |
+| `src/routes/public/submit-views.tsx:348` | `<input>` | visible |
+| `src/routes/public/submit-views.tsx:630` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:787` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:928` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:954` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:967` | `<a>` | visible |
+| `src/routes/public/submit-views.tsx:972` | `<a>` | visible |
+
+The remaining 37 (`<input type="hidden">`, every one under `src/routes/portal/{edit,index,profile,shared,tasks/views}.tsx` and `src/routes/public/{agenda-controls,sessions,speakers,submit-views}.tsx`) are listed for completeness but are not candidate defects: an unrendered form field carries no hit-box to floor.
+
+Not a fix lane: per this wave's `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` and `ADMIN_MOBILE_CANDIDATE_DEFECT_CEILING` field-guide findings, a raw roster like this one is not itself a defect count until each row is individually graded against a real CSS rule (most of these 22 sit inside a parent that DOES carry a class — e.g. `.chq-cfp-links a`, `.chq-portal-actions input` — the walk here only proves the ELEMENT itself carries no class, not that it is unreachable; several may already be grounded the same way this lane's `chq-pub-agenda-day-footer-next` was). A later lane's job is to grade these 22, not this one's.

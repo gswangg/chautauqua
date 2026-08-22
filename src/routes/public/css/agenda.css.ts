@@ -275,7 +275,7 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     font-size: 13px;
     color: var(--chq-muted);
   }
-  .chq-pub-agenda-day-footer a { font-weight: 700; }
+  .chq-pub-agenda-day-footer-next { font-weight: 700; }
 
   /* w1-b: ONE joined bordered group (~210px) with hairline-divided
      segments -- replaces the former gapped, individually-pill-radiused
@@ -803,7 +803,7 @@ export const AGENDA_PHONE_CSS = `
     /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-30 amendment (the
        receipt's premise is now the FLOORED SIBLING itself, not typography).
        The next-day link (agenda.tsx's day-footer,
-       ".chq-pub-agenda-day-footer a") is a phrase inside the footer's one running sentence
+       ".chq-pub-agenda-day-footer-next") is a phrase inside the footer's one running sentence
        ("Last session ends HH:MM · <next day> ›") -- a 44px box around it
        would break the line box it lives in (v12m-w17-d/DEC-393 wave-142's
        original reasoning, kept). But that alone never settled whether the
@@ -818,7 +818,7 @@ export const AGENDA_PHONE_CSS = `
        coverage: test/public-agenda-phone-frames.render.test.ts pins
        DaySwitcher rendering at /e/:slug/agenda 390 so this premise cannot
        rot silently the way an un-pinned assertion did before this wave. */
-    .chq-pub-agenda-day-footer a {
+    .chq-pub-agenda-day-footer-next {
       font-weight: 700;
     }
     /* tap-floor-exempt: composition -- .chq-pub-my-schedule-pill never

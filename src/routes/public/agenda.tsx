@@ -302,7 +302,7 @@ export function AgendaContent(props: {
               {nextDay && lastEndMin !== null ? (
                 <p class="chq-pub-agenda-day-footer">
                   Last session ends {clockHMM(lastEndMin)} ·{" "}
-                  <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`}>{formatDay(nextDay)} ›</a>
+                  <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`} class="chq-pub-agenda-day-footer-next">{formatDay(nextDay)} ›</a>
                 </p>
               ) : null}
             </>
