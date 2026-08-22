@@ -102,7 +102,7 @@ Each row gets one of four verdicts:
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
 
-**Totals (DEC-613 wave-28 re-measurement): 100 HARDCODED-MATCHES, 6
+**Totals (DEC-613 wave-33 re-measurement, task w33-c): 103 HARDCODED-MATCHES, 3
 HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED** — partitions the
 128-row population exactly; see the per-row table below for every
 DIVERGES row's own citation.
@@ -111,17 +111,20 @@ A first-pass automated corpus search miscited a few rows (a coincidental
 boundary-anchored match on an unrelated string — e.g. "Email" matching
 `BulkEmailModal.tsx`'s `` `Email ${countOf(...)}` `` template before the
 real `auth-views.tsx` site was found, or "Message" matching
-`email-binding.ts`'s `Message-ID:` mail header before the real, diverging
-`BulkEmailModal.tsx` "Body" label was found by hand). Every row below was
-individually verified against this branch's tree; the "Message"/"Body" case
-surfaced a genuine, previously unrecorded divergence and is graded
-accordingly, not silently kept as a false match.
+`email-binding.ts`'s `Message-ID:` mail header before the real
+`BulkEmailModal.tsx` site was found by hand). Every row below was
+individually verified against this branch's tree. Wave-33's task w33-c
+adopted the frame's "Message" (Contacts) and "Options · one per line"
+(Submissions) spellings into the two components that used to diverge, and
+verified `ComposeWizard.tsx` (Comms "From which plan") already rendered the
+frame's exact words — all three rows now grade HARDCODED-MATCHES.
 
 ## Ratchets
 
 Two-sided per DEC-808, seeded at the measured value on this branch (DEC-613
-wave-28 amendment: DIVERGENCE_CEILING re-measured 5 -> 6 after the
-population widened and absorbed one new real divergence):
+wave-33 amendment, task w33-c: DIVERGENCE_CEILING re-measured 6 -> 3 after
+the Contacts "Message", Submissions "Options · one per line", and Comms
+"From which plan" rows were adopted/verified matches):
 
 - `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 2` (wave-32 DEC-613 amendment,
   down from 6 — see "Adopted (wave-32)" below)

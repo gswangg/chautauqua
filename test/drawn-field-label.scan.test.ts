@@ -557,6 +557,10 @@ describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w
     const fromWhichPlan = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Comms.dc.html' && r.row.label === 'From which plan'
     );
+    // wave-33's task w33-c verified ComposeWizard.tsx already renders
+    // "From which plan" verbatim -- the "Evaluation plan" shortening
+    // survives only inside that file's own explanatory comment -- so this
+    // ledger now measures a match, not a stale divergence.
     expect(fromWhichPlan?.status).toBe('matches');
     const eventName = GRADED.find(
       (r) => r.row.fileName === 'Chautauqua Settings.dc.html' && r.row.label === 'Event name'
