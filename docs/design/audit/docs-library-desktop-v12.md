@@ -95,7 +95,7 @@ now conformant with the frame besides.
 `test/docs-library-desktop-frame-verdicts.test.ts`'s glyph-order `it()`
 now asserts label-then-mark and cites the frame's `:238` line as a receipt.
 
-## Verdict 3 — the page itself: DIVERGES, no live route serves this frame
+## Verdict 3 — the page itself: RETIRED (wave-8, DEC-976) — no live route serves this frame, and none should be built
 
 `src/index.ts` mounts exactly `docsRoutes` (`/docs/api`, unrelated
 TOOLS_CSS chrome, DEC-382) and `docsSiteRoutes`
@@ -119,15 +119,32 @@ vocabulary `DocsBlock` implements; it was never meant to be requested by an
 end user. Per the task brief's explicit instruction, no route was built to
 serve it (desktop freeze / measurement-only scope).
 
-**Recommendation** (not actioned here — `docs/design/DEVIATIONS.md` is out
-of this file's forbidden-files list and is not touched by this task): file
-"Chautauqua Docs.dc.html:226 'Docs · the element library' is an
-author-facing style-guide page with no corresponding product route; its
-nine-block vocabulary is implemented (verdict 1 above) but the page itself
-is not served" as a DEVIATIONS entry, so a future desktop-ledger citation
-inside this frame's extent is not silently misread as an unbuilt product
-screen (DEC-032's "a deviation-deferred frame is UN-CITABLE" guard depends
-on such an entry existing).
+**RULED (wave-8, DEC-976), superseding this verdict's prior
+"Recommendation" (that a DEVIATIONS entry be filed) — building a route to
+serve this frame is not scheduled and never will be.**
+This frame is the pack's own internal style-guide page for article
+authors, not a screen end users reach: its subtitle ("Nothing outside this
+set may appear in an article") and its content (typography rules per block
+kind, not real product prose) name it as documentation-about-the-product,
+analogous to a design system's own component-catalogue page. The mandate's
+desktop freeze forbids inventing surface to match a drawing — building
+`/docs/elements` (or any route) so this reference page can be requested
+would be exactly that: manufacturing a live route whose sole purpose is
+letting a documentation frame MATCH, not serving any capability an author
+or reader needs. The nine-block vocabulary it documents is independently
+verified BUILT and correct (Verdict 1 above, 7-for-7 plus the two
+always-on structural sections) — the frame's *content* is fully honoured
+by the renderer; only the frame's *own existence as a requestable page* is
+not, and should not be.
+
+Retired disposition, replacing the original recommendation to file this as
+an open DEVIATIONS entry: the row is settled here instead, with its own
+receipt (this Verdict 3, `test/docs-library-desktop-frame-verdicts.test.ts`
+'s route-absence assertions), so DEC-032's "a deviation-deferred frame is
+UN-CITABLE" guard is satisfied without waiting on the separately-owned
+DEVIATIONS.md file (out of this file's forbidden-files list, but owned by
+another in-flight lane this wave — this document's own Verdict 3 stands as
+the citable ruling in the interim).
 
 ## Summary
 
@@ -135,4 +152,4 @@ on such an entry existing).
 |---|---|
 | 1. Block-kind population (renderer vs. frame's 01–07) | MATCHES — 7-for-7, plus 08/09 as always-on structural furniture rather than authored block kinds (naming note, not a defect) |
 | 2. Header row (wordmark/suffix/search/leaving link) | MATCHES (leaving-link glyph is label-then-mark, same as the frame — CLOSED wave 8) |
-| 3. The page as a whole | DIVERGES — no live route serves this frame; recommended as a DEVIATIONS entry, not built (desktop freeze) |
+| 3. The page as a whole | RETIRED (wave-8, DEC-976) — no live route serves this frame; RULED as a captioned pack-internal reference page, a route is never built for it (desktop freeze forbids inventing surface to match a drawing) |
