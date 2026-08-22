@@ -785,7 +785,7 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // `path:line` fragments the FIVE-refusal-grammar paragraph had accumulated
 // as its own citations misread each other's neighbouring quote. Re-measured
 // 1234 by re-running this scan on the repaired tree.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1234;
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1233;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
