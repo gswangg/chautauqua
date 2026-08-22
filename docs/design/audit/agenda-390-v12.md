@@ -97,13 +97,18 @@ no control anywhere in the mounted tree matches
 `/^Move \S+ to \d{1,2}:\d{2}$/` when a two-session clash is seeded (the
 exact scenario the frame draws).
 
-Disposition: an unbuilt feature (a computed "move to the next open slot"
-resolution action), not a styling gap -- requires new component logic in
-`PhoneAgenda.tsx`/`phoneSlots.ts` (deriving the suggested target time),
-outside this lane's file ownership and outside a CSS-only fix's reach
-under DEC-385 wave-29 condition (1) (terminal `@media` block or an
-existing phone-only branch -- there is no existing branch to extend).
-Recommend a follow-up task scoped to those two files; not attempted here.
+Disposition: RETIRED (DEC-903, amended wave 21) to match this section's
+own heading, which task w11-td already re-verdicted RESOLVED above. This
+trailing paragraph's "unbuilt feature ... recommend a follow-up task ...
+not attempted here" reads identically to a stale SIZED-NOT-BUILT
+disposition and contradicted the heading it sits under. The tree carries
+the resolution: app/src/pages/agenda/PhoneAgenda.tsx`function computeClashMove(`,
+called at
+app/src/pages/agenda/PhoneAgenda.tsx`computeClashMove(slot.sessions, day, placed, dayStartMin, dayEndMin, gridMin, blockedBreaks)`,
+rendered via
+app/src/pages/agenda/PhoneAgenda.tsx`className="chq-phone-slot-clash-move"`,
+labelled by src/domain/schedule-copy.ts`export function conflictMoveLabel(`.
+Not blessed -- this citation records what the tree already ships.
 
 No other change made to `agenda.css` -- neither divergence above is a CSS
 defect, so this lane's terminal-`@media`-block fix allowance is unused.
