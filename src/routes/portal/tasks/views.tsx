@@ -22,10 +22,12 @@ import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
 import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
 import { countOf } from "../../../domain/count-copy";
-import { DEC_576, DEC_967 } from "../../../decisions";
+import { DEC_576, DEC_967, DEC_393, DEC_996 } from "../../../decisions";
 
 void DEC_576; // wave-110 amendment: TasksPage's dock carries the first incomplete task's own primary control
 void DEC_967; // wave-106 amendment: the frame's "Later" secondary has no verb behind it — geometry only, never manufactured
+void DEC_393; // wave-35 amendment: the completed file_request card's inline file-download link is grounded on .chq-portal-version-link, its floored same-surface twin
+void DEC_996; // wave-35 amendment: that link carries its own chq-portal-file-link class token so the roster classifier can reach it
 
 // DEC-242: display data for a completed file_request assignment — the
 // current file's name/version and its comment thread, loaded up front on
@@ -312,11 +314,25 @@ export function TaskRow(props: {
       {t.status === "complete" && t.kind === "file_request" && fileExtras ? (
         <section aria-label="Uploaded file" class="chq-card">
           {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
-              w17-e): this anchor is a phrase inside a sentence ("<filename>
-              (version N, uploaded …)"), so a 44px box around it would break
-              the line box it lives in. No declaration. */}
+              w17-e) typography reasoning kept (this anchor is a phrase
+              inside a sentence, "<filename> (version N, uploaded …)", so a
+              44px box around it would break the line box it lives in), but
+              per DEC-393 wave-35's grounding ladder that alone never
+              settled reachability. Rung 2 (a same-surface floored twin):
+              VersionHistory renders immediately below this paragraph
+              (fileExtras.versions includes the current version,
+              isCurrent), and its .chq-portal-version-link anchor already
+              carries the 44px floor (min-height:44px, centred flex,
+              padding-inline:8px, portal.css.ts) while resolving the
+              identical chain-latest content this link's own
+              /portal/tasks/:id/file route serves (resolveTaskFileChainLatest
+              walks both to the same file). The floored sibling is the
+              exemption's premise; the typography clause is corroborating,
+              not load-bearing. This anchor carries its own class token,
+              chq-portal-file-link, per DEC-996 wave-35, so the roster
+              classifier can reach it even though it stays unfloored. */}
           <p>
-            <a href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
+            <a class="chq-portal-file-link" href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
             {formatEventDateTime(fileExtras.uploadedAt, fileExtras.timezone)})
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
