@@ -16,7 +16,22 @@ export const TOKEN = 'DIVERGES';
 // file header comment in test/open-divergence-ledger.scan.test.ts for the
 // full derivation and negative-control rationale.
 const CLAIM_RE = /diverg|mismatch|does not match/i;
-const DENIAL_RE = /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*/i;
+const DENIAL_RE =
+  /\bno\b[^.|]{0,40}\bdiverg\w*|\bnot a\b[^.|]{0,20}\bdiverg\w*|\bnever\b[^.|]{0,20}\bdiverg\w*|\bcannot\b[^.|]{0,20}\bdiverg\w*|\b(?:closed|resolved|fixed)\b[^.|]{0,40}\bmismatch\w*/i;
+// CODE-SPAN STRIP (task w36-e, DEC-099 wave-36 amendment): an inline
+// backtick code span naming a ratchet-instrument CONSTANT -- e.g. the
+// ledger's own `OPEN_DIVERGENCE_CEILING`, or a sibling instrument's
+// `DESKTOP_FLOOR_DIVERGENCE_CEILING` / `FRAME_FLOOR_DIVERGENCE_CEILING` --
+// spells the substring "DIVERGENCE" as part of an IDENTIFIER, never as a
+// prose claim about a frame. Three real rows (desktop-control-floor-v12.md
+// :192 and :448, frame-control-floor-390-v12.md:127) opened under the
+// widened grammar for exactly this reason and read, on inspection, as
+// nothing but a heading/bold-span NAMING another instrument's own constant
+// -- not a claim at all. Stripped ONLY for the widened-vocabulary CLAIM_RE
+// test below -- the literal TOKEN ('DIVERGES') check in deriveRowsFromLines
+// is untouched, so a literal DIVERGES token written inside backticks (e.g.
+// as a code example) still opens a row exactly as before.
+const CODE_SPAN_RE = /`[^`]*`/g;
 // A markdown table's HEADER row names its VERDICT COLUMN, not a claim about
 // any specific frame; excluded by the shape below (immediately followed by
 // a markdown separator row), never by a hand-listed file.
@@ -85,7 +100,7 @@ export function isAdjudicated(line: string, paragraph: string): boolean {
  * same-line DENIAL_RE denial). Exported so the negative-control tests can
  * drive it directly. */
 export function isWidenedClaimTrigger(line: string, nextLine?: string): boolean {
-  if (!CLAIM_RE.test(line)) return false;
+  if (!CLAIM_RE.test(line.replace(CODE_SPAN_RE, ''))) return false;
   if (DENIAL_RE.test(line)) return false;
   const shape = classifyLineShape(line);
   if (shape === 'table') {
