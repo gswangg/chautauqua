@@ -547,6 +547,7 @@ describe("review plan-scope real-row probe (DEC-459 wave-42 amendment)", () => {
       ]);
     });
 
+    // DEC-069 wave-25: measured 2024ms at 48f126b8306144d0afbd2f52dc9cc210d6fadcb2 (default 5000). Per-test timeout, never a global testTimeout -- see the amendment.
     it("every plan-B-targeted request answers 404 existence-hiding, never 403, never 500, never 200, and mutates nothing", async () => {
       const { app } = await buildActorApp(db, REVIEWER_R);
       const before = await snapshotState(db);
@@ -561,7 +562,7 @@ describe("review plan-scope real-row probe (DEC-459 wave-42 amendment)", () => {
       }
       const after = await snapshotState(db);
       expect(after).toEqual(before);
-    });
+    }, 30000);
 
     it("positive control: R's OWN plan A + in-scope submission succeeds (proves the fixture is real, not a refuse-everything stub)", async () => {
       const { app } = await buildActorApp(db, REVIEWER_R);

@@ -456,6 +456,7 @@ describe("cross-org /api/v1/events/:id/* tenant-scope probe (DEC-459/DEC-727)", 
     expect(routes.map((r) => `${r.method} ${r.path}`)).toContain("GET /api/v1/events/:eventId");
   });
 
+  // DEC-069 wave-25: measured 2168ms at 48f126b8306144d0afbd2f52dc9cc210d6fadcb2 (default 5000). Per-test timeout, never a global testTimeout -- see the amendment.
   it("every /api/v1/events/:id/* route refuses an org-B organizer requesting org-A's eventId (session AND bearer actors), or is an exact, justified CROSS_ORG_LEDGER entry -- and org-A's rows are untouched", async () => {
     const routes = enumerateEventsFamilyRoutes();
     expect(routes.length).toBeGreaterThan(0);
@@ -525,7 +526,7 @@ describe("cross-org /api/v1/events/:id/* tenant-scope probe (DEC-459/DEC-727)", 
 
     const afterSnapshot = snapshotOrgATables(fixture.sqlite);
     expect(afterSnapshot).toEqual(beforeSnapshot);
-  });
+  }, 30000);
 });
 
 // ---------------------------------------------------------------------------

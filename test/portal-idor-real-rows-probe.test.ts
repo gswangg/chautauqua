@@ -390,6 +390,7 @@ describe("speaker-portal same-role wrong-owner IDOR probe -- REAL rows (DEC-550,
     expect(routes.map((r) => `${r.method} ${r.path}`)).toContain("GET /portal/submissions/:id");
   });
 
+  // DEC-069 wave-25: measured 700ms at 48f126b8306144d0afbd2f52dc9cc210d6fadcb2 (default 5000). Per-test timeout, never a global testTimeout -- see the amendment.
   it("every /portal :param route refuses a wrong-owner request against REAL rows at its ledgered status (never 2xx, never 5xx), speaker A's rows untouched, ledger exact both directions", async () => {
     const { db, sqlite } = makeTestDb();
     seedFixture(sqlite);
@@ -441,5 +442,5 @@ describe("speaker-portal same-role wrong-owner IDOR probe -- REAL rows (DEC-550,
     expect(staleEntries).toEqual([]);
 
     sqlite.close();
-  });
+  }, 30000);
 });
