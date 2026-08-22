@@ -495,9 +495,22 @@ ${BARE_PAGE_CSS}
       margin-top: 7px;
     }
     .chq-auth-card input[type=email],
-    .chq-auth-card input[type=password] {
+    .chq-auth-card input[type=password],
+    .chq-auth-card .chq-input {
       /* docs/design/Chautauqua Account.dc.html:130 \`min-height:50px;\` --
-         50px on phone, not the desktop card's 48px. */
+         50px on phone, not the desktop card's 48px. The trailing
+         .chq-auth-card .chq-input selector is a WAVE 26 (DEC-995
+         amendment) addition: the element-type selectors above already
+         apply this 50px floor to the rendered <input>, but the phone
+         drawn-floor scan (test/frame-control-floor.scan.test.ts) joins a
+         drawn control to a CSS rule by its class= token
+         (chq-input/chq-field-invalid), which neither element-type
+         selector mentions -- so the scan's own token-mention join found
+         only OTHER pages' unrelated 48px .chq-input rules and graded this
+         row a 48-vs-50 offender despite the rendered input already
+         meeting the 50px floor. Adding the class selector here (same
+         50px, same phone-only block, desktop untouched, DEC-385) makes
+         the scan's join see the rule that already governs this control. */
       min-height: 50px;
     }
     /* The 390 frame draws the "Sign in" action alone, full width

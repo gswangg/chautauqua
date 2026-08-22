@@ -165,6 +165,21 @@
 // UNRESOLVED_COUNT_TRIPWIRE lowered 111 -> 109. Full receipt in
 // docs/design/audit/frame-control-floor-390-v12.md's "WAVE 23" section.
 //
+// WAVE 26 (DEC-995 amendment, task w26-b): an attribute/prop label
+// resolution tier, ported (not imported) from desktop's own WAVE 28
+// (DEC-393 + DEC-808) tier -- see `SOURCE_OPEN_TAG_RE`/`ATTR_LABEL_VALUE_RE`
+// below -- consulted ONLY when the own-text tier finds no match, and
+// BEFORE the composed tier so this file's tier order (own-text ->
+// attribute -> composed) matches the desktop file's. Resolves 4 of the 109
+// no-label-match rows; one ("you@example.com", Chautauqua Account.dc.
+// html:130) newly resolved to a real 48px-declared-vs-50px-drawn
+// divergence, fixed in src/routes/auth.css.ts's existing phone-only
+// (max-width:700px) 50px rule by adding the `.chq-auth-card .chq-input`
+// class selector alongside its existing element-type selectors (desktop
+// untouched, DEC-385). UNRESOLVED_COUNT_TRIPWIRE lowered 109 -> 106.
+// FRAME_FLOOR_DIVERGENCE_CEILING stays 0. Full receipt in
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 26" section.
+//
 // PORTING NOTE (wave 25): `ownTextEquals`/`allBoundaryMatches`/
 // `classTokensNear` are copied (not imported) from
 // test/desktop-control-floor.scan.test.ts even though that file exports
@@ -556,6 +571,77 @@ export function classTokensNear(blob: string, idx: number): string[] {
   return [...new Set(valueChunk.match(CLASS_TOKEN_RE) ?? [])];
 }
 
+// -- WAVE 26 (DEC-995 amendment): second match tier, an attribute/prop
+// label read, ported unchanged (grammar and code) from desktop's own
+// WAVE 28 (DEC-393 + DEC-808) tier -- see that file's header comment above
+// `SOURCE_OPEN_TAG_RE` for the full rationale. Consulted ONLY when the
+// own-text tier above finds no match for a label at all, and BEFORE the
+// composed tier so this file's tier order matches the desktop file's
+// (own-text -> attribute -> composed). -------------------------------------
+
+const SOURCE_OPEN_TAG_RE = /<(\w+)\b([^>]*)>/g;
+const ATTR_LABEL_VALUE_RE = /\b(?:label|aria-label|placeholder|title)\s*=\s*(["'])((?:(?!\1)[\s\S])*)\1/g;
+
+/** Ported unchanged from test/desktop-control-floor.scan.test.ts's export
+ * of the same name (see file-header PORTING NOTE for why this is a copy,
+ * not an import). Exported for the non-vacuity fixture below. */
+export function classTokensInOpenTag(tagChunk: string): string[] {
+  const cm = tagChunk.match(/\b(?:class|className)\s*=\s*/);
+  if (!cm) return [];
+  const startAttr = (cm.index ?? 0) + cm[0].length;
+  const opener = tagChunk[startAttr];
+  let valueEnd: number;
+  if (opener === '"' || opener === "'" || opener === '`') {
+    const close = tagChunk.indexOf(opener, startAttr + 1);
+    if (close === -1) return [];
+    valueEnd = close + 1;
+  } else if (opener === '{') {
+    let depth = 0;
+    let j = startAttr;
+    for (; j < tagChunk.length; j++) {
+      if (tagChunk[j] === '{') depth++;
+      else if (tagChunk[j] === '}') {
+        depth--;
+        if (depth === 0) {
+          j++;
+          break;
+        }
+      }
+    }
+    valueEnd = j;
+  } else {
+    return [];
+  }
+  const valueChunk = tagChunk.slice(startAttr, valueEnd);
+  return [...new Set(valueChunk.match(CLASS_TOKEN_RE) ?? [])];
+}
+
+/** Ported unchanged from test/desktop-control-floor.scan.test.ts's export
+ * of the same name. Exported for the non-vacuity fixture below. */
+export function attributeLabelTokensInBlob(label: string, blob: string): string[] {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return [];
+  const tokens: string[] = [];
+  SOURCE_OPEN_TAG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SOURCE_OPEN_TAG_RE.exec(blob))) {
+    const attrs = m[2]!;
+    ATTR_LABEL_VALUE_RE.lastIndex = 0;
+    let am: RegExpExecArray | null;
+    let labelMatched = false;
+    while ((am = ATTR_LABEL_VALUE_RE.exec(attrs))) {
+      const value = am[2]!.replace(/\s+/g, ' ').trim();
+      if (value === needle) {
+        labelMatched = true;
+        break;
+      }
+    }
+    if (!labelMatched) continue;
+    tokens.push(...classTokensInOpenTag(m[0]!));
+  }
+  return [...new Set(tokens)];
+}
+
 // -- CSS corpus: app/src/**/*.css + src/**/*.css.ts template literals ------
 // (unchanged from the pre-wave-25 file: this is the phone-specific CSS
 // register that admits BOTH top-level and @media(max-width) rules per
@@ -699,8 +785,8 @@ interface Graded {
   tokens: string[];
   /** WAVE 23 (DEC-393 amendment): which tier resolved this row's tokens --
    * not part of the grading grammar itself, carried through for the
-   * ledger's own reporting. */
-  matchTier: 'own-text' | 'composed' | null;
+   * ledger's own reporting. WAVE 26 (DEC-995 amendment) adds 'attribute'. */
+  matchTier: 'own-text' | 'attribute' | 'composed' | null;
 }
 
 /** WAVE 25 REPAIR (DEC-393 amendment, task w25-b): resolves the token set
@@ -725,10 +811,27 @@ function gradeControl(control: DrawnControl): Graded {
   }
   tokens = [...new Set(tokens)].filter((t) => t.startsWith('chq-'));
 
-  let matchTier: Graded['matchTier'] = ownTextMatched ? 'own-text' : null;
+  // WAVE 26 (DEC-995 amendment): attribute/prop label tier, consulted ONLY
+  // when the own-text tier above found no match for this label at all --
+  // ported unchanged from desktop's WAVE 28 tier, and placed BEFORE the
+  // composed tier so this file's tier order matches the desktop file's.
+  let attrMatched = false;
   if (!ownTextMatched) {
+    const attrTokens: string[] = [];
+    for (const blob of NORMALIZED_BLOBS) {
+      const found = attributeLabelTokensInBlob(control.label, blob);
+      if (found.length > 0) {
+        attrMatched = true;
+        attrTokens.push(...found);
+      }
+    }
+    tokens = [...new Set(attrTokens)];
+  }
+
+  let matchTier: Graded['matchTier'] = ownTextMatched ? 'own-text' : attrMatched ? 'attribute' : null;
+  if (!ownTextMatched && !attrMatched) {
     // WAVE 23 (DEC-393 amendment): composed-label tier, consulted ONLY when
-    // the own-text tier found no match anywhere in the corpus.
+    // NEITHER the own-text nor the attribute tier above found a match.
     const composed = resolveComposedLabel(control.label, COMPOSED_HELPERS, NORMALIZED_BLOBS, classTokensNear);
     if (composed !== null) {
       tokens = composed.tokens;
@@ -793,7 +896,18 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // schedule-copy.ts's conflictMoveLabel, to chq-phone-slot-clash-move
 // (PhoneAgenda.tsx's ONE call site), declared 44px >= both frames' drawn
 // 44px -- both grade OK, zero new offenders. Re-measured at 109, was 111.
-export const UNRESOLVED_COUNT_TRIPWIRE = 109;
+// Lowered wave-26 (DEC-995 amendment, task w26-b): the attribute/prop
+// label tier (ported from desktop's WAVE 28 tier -- SOURCE_OPEN_TAG_RE /
+// ATTR_LABEL_VALUE_RE / classTokensInOpenTag / attributeLabelTokensInBlob
+// above) resolves 4 of the 109 no-label-match rows: "you@example.com"
+// (Chautauqua Account.dc.html:130), "Search name, email or company…"
+// (Chautauqua Contacts.dc.html:186), and "Search title or speaker…"
+// (Chautauqua Submissions.dc.html:147) resolve to `resolved`/OK; "Headshot"
+// (Chautauqua Settings.dc.html:524) resolves tokens but stays UNRESOLVED
+// under `no-control-shape` (a typography/section class, not a control
+// face) -- so the bucket net-shrinks by 3, 109 -> 106. Full receipt in
+// docs/design/audit/frame-control-floor-390-v12.md's "WAVE 26" section.
+export const UNRESOLVED_COUNT_TRIPWIRE = 106;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

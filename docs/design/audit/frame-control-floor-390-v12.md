@@ -20,8 +20,8 @@ Because the source corpus needed to switch from the wave-22 join's whitespace-pr
 **MEASURED (this branch, ceilings forced to -1, printed lists read back):**
 
 - **0 offenders** (unchanged from every prior wave -- 235 drawn controls, none whose resolved token declares below its own frame's drawn floor).
-- **112 unresolved** (down from 202 pre-wave-25, a **90-row net gain** in the graded population: 33 → 123 resolved-and-conforming, all OK): **97 `no-label-match`**, **4 `no-token`**, **11 `no-control-shape`**. `no-rule` measured 0.
-- `UNRESOLVED_COUNT_TRIPWIRE = 112`; `FRAME_FLOOR_DIVERGENCE_CEILING = 0` (unchanged).
+- **109 unresolved** (down from 202 pre-wave-25, a **90-row net gain** in the graded population: 33 → 123 resolved-and-conforming, all OK): **97 `no-label-match`**, **4 `no-token`**, **11 `no-control-shape`**. `no-rule` measured 0. (Corrected wave-26: this section previously said "112 unresolved" / `UNRESOLVED_COUNT_TRIPWIRE = 112` -- internally stale against the tree and against this same document's own later WAVE 23 section, both of which already said 109; this was the wave-25 union join's OWN measured count, unrelated to wave-23's later composed-tier repair.)
+- `UNRESOLVED_COUNT_TRIPWIRE = 109` as measured this wave; `FRAME_FLOOR_DIVERGENCE_CEILING = 0` (unchanged). (Lowered again to 106 by wave-26's attribute tier, see below.)
 
 The two previously-"Proven" rows (see below) both now resolve honestly through the union join without any special-casing.
 
@@ -79,6 +79,23 @@ The tier: every exported string-returning helper directly under `src/domain` (fi
 
 No product CSS byte changed this wave: both newly-resolved rows already conform.
 
-## Not offenders (UNRESOLVED, 109 of 235)
+## Not offenders (UNRESOLVED, 109 of 235, pre-wave-26)
 
-The UNRESOLVED population is now split into three dispositions instead of the prior wave's four: `no-label-match` (97), `no-token` (4), `no-control-shape` (11) -- itemised above -- plus `no-rule` (0, measured). None of these 112 rows is a claim this document makes: `frame-control-label.scan.test.ts` already grades whether the app renders the WORDS; this ledger only grades the HEIGHT of a control this scan could positively resolve to a real, control-shaped source token.
+The UNRESOLVED population is now split into three dispositions instead of the prior wave's four: `no-label-match` (97), `no-token` (4), `no-control-shape` (11) -- itemised above -- plus `no-rule` (0, measured). None of these 109 rows is a claim this document makes: `frame-control-label.scan.test.ts` already grades whether the app renders the WORDS; this ledger only grades the HEIGHT of a control this scan could positively resolve to a real, control-shaped source token.
+
+## Wave 26 (DEC-995 amendment, task w26-b): the attribute/prop label tier, ported from desktop
+
+`test/desktop-control-floor.scan.test.ts` had already solved a second class of label-resolution miss for the desktop half (its own WAVE 28, DEC-393 + DEC-808 amendment): a control whose visible label is carried by an `aria-label`/`placeholder`/`title`/`label` attribute rather than by its own text node (a search input, an icon-only field) can never satisfy the own-text tier's "enclosing tag's text node IS the label" test, because that control has no text node at all. This wave ports that same tier onto the phone file, unchanged in grammar and code (`SOURCE_OPEN_TAG_RE`, `ATTR_LABEL_VALUE_RE`, `classTokensInOpenTag`, `attributeLabelTokensInBlob`): an opening tag whose `label`/`aria-label`/`placeholder`/`title` attribute value equals the drawn label exactly, AND which also carries `chq-` tokens in its own `class=`/`className=` attribute ON THE SAME OPENING TAG, contributes those tokens to the row. Consulted ONLY when the own-text tier above finds no match at all, and placed BEFORE the composed tier so this file's tier order (own-text → attribute → composed) now matches the desktop file's exactly.
+
+**MEASURED (this branch, forcing `UNRESOLVED_COUNT_TRIPWIRE` to -1 before and after adding the tier):**
+
+- PRE-WIDENING (own-text + composed tiers, matching the current tree's own state): 109 unresolved.
+- POST-WIDENING (own-text + attribute + composed tiers): **106 unresolved** -- 4 rows newly matched by the attribute tier, 3 of them newly `resolved`:
+  - **"you@example.com"** -- docs/design/Chautauqua Account.dc.html:130 (frame "Sign in", drawn `min-height:50px`). Matches `src/routes/auth-views.tsx`'s email `<input placeholder="you@example.com" className={... ? "chq-input chq-field-invalid" : "chq-input"} .../>`. Tokens `chq-input`, `chq-field-invalid`; PRE-FIX resolved height 48px (the union join's max declared min-height across every corpus rule mentioning either token was an unrelated 48px `.chq-input` rule in `app/src/pages/comms/templates.css`/`app/src/pages/review/review.css`, not the page's own rule) -- an OFFENDER (48px < 50px drawn). **FIXED**: `src/routes/auth.css.ts`'s existing phone-only (`@media (max-width:700px)`) 50px rule for `.chq-auth-card input[type=email], input[type=password]` gained a third selector, `.chq-auth-card .chq-input`, at the same 50px (desktop untouched, DEC-385) -- POST-FIX resolved height 50px, exactly meeting the drawn floor. Conforming.
+  - **"Search name, email or company…"** -- docs/design/Chautauqua Contacts.dc.html:186 (drawn `min-height:44px`). Matches an `<input placeholder="Search name, email or company…" className="chq-input chq-contacts-search" .../>`. Resolves to a maximum declared height of 50px (via the same union-of-all-`chq-input`-rules mechanism, now including auth.css.ts's widened rule). Conforming, no fix needed (44px drawn floor already met before this wave's fix).
+  - **"Search title or speaker…"** -- docs/design/Chautauqua Submissions.dc.html:147 (drawn `min-height:44px`). Same shape, tokens `chq-input`, `chq-submissions-filterbar-search`. Resolves to 50px. Conforming, no fix needed.
+  - **"Headshot"** -- docs/design/Chautauqua Settings.dc.html:524 (drawn `min-height:44px`). Matches a `<div title="Headshot" className="chq-section chq-portal-profile-head">` (or similar) wrapper. Tokens `chq-section`, `chq-portal-profile-head`; neither token's own rule declares a border/background/padding-inline/min-height of its own -- stays **UNRESOLVED** under `no-control-shape` (a section wrapper carrying a `title` attribute for accessibility, not a control face). Net effect on the UNRESOLVED bucket: this row's `reason` moves from `no-label-match` to `no-control-shape`, still counted as unresolved.
+- `FRAME_FLOOR_DIVERGENCE_CEILING` stays **0** -- the one newly-discovered offender was fixed in the same commit, not carried forward.
+- `UNRESOLVED_COUNT_TRIPWIRE` lowered **109 -> 106** in the same commit.
+
+One product CSS byte changed this wave (the added `.chq-auth-card .chq-input` selector in `src/routes/auth.css.ts`'s existing terminal `@media (max-width:700px)` block) -- a single additional selector on an already-50px phone-only rule, desktop byte-identical per DEC-385.
