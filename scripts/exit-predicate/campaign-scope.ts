@@ -570,4 +570,47 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "about the join's own mounting check, not itself a v12 frame or 390-geometry conformance fact, "
     + "the same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
     + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  // MEGABATCH NOTE (wave-32/34 thunderdome): the four entries below were added
+  // to scripts/exit-predicate.ts by task w32-a in the same batch that
+  // v12m-custodian-w32-3 decomposed that file into this module. The custodian
+  // was cut from the pre-w32-a base, so its extraction could not carry them --
+  // they are re-applied here verbatim, at their new home, rather than dropped.
+  RULING_UNIT_GAP_CEILING:
+    "measures a newly-derived population (every top-level `- ` bullet, `\\d+. ` numbered item and "
+    + "`**`-led bold paragraph in docs/design/DESIGN-RULINGS.md, keyed `<heading-slug>::<n>` under "
+    + "its parent heading -- 137 rows) that no instrument previously graded: the pre-existing heading "
+    + "ledger honors one artifact per HEADING (DEC-100 'a coverage cap is not an identity' at file "
+    + "scope), this widens it to the RULING itself. Every one of the 137 is currently 'gap' -- design "
+    + "rationale prose (an argument, a cross-reference, a legend entry, a spec sub-rule), not a "
+    + "standalone claim with its own single code artifact; a borrowed citation from the parent "
+    + "heading's own honored row would misrepresent which fact the unit's own words assert, which "
+    + "this ledger's gap-verdict prose forbids. A newly measured, previously-uncounted population "
+    + "must not move the campaign's goalposts mid-convergence; it is promoted once later waves drain "
+    + "individual units to genuine 1:1 citations, the same disposition already given to "
+    + "FRAME_EYEBROW_DIVERGENCE_CEILING and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
+    + "(test/design-rulings-ledger.scan.test.ts, DEC-582 wave-31 amendment).",
+  // NOTE (wave-31 merge train): v12m-w31-f also registered
+  // BACKTICK_PARITY_CEILING here, believing it had "landed unregistered".
+  // It was in fact already registered above (see the BACKTICK_PARITY_CEILING
+  // entry in this same object), with the same UNGRADED disposition, the same
+  // test/citation-form-drift.scan.test.ts citation and the same DEC-967
+  // basis -- w31-f was cut from a main that predated that registration. The
+  // duplicate literal is dropped rather than merged: two keys with one name
+  // is a TS1117 error, and the surviving entry is the fuller statement of
+  // the identical ruling.
+  PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING:
+    "measures a newly-derived population (a phone `display:none` rule whose hidden `chq-` token "
+    + "carries a STATIC text child the pack draws verbatim inside some width:390 frame extent -- the "
+    + "hide's own premise is contradicted) that no instrument previously graded -- a real "
+    + "capability/copy-fidelity fact about this specific population, but a newly measured, "
+    + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
+    + "promoted once its measurement technique is proven complete enough to gate on, the same "
+    + "disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING (app/src/phone-hidden-drawn-text.scan.test.ts, "
+    + "DEC-725 wave-31 amendment).",
+  PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING:
+    "measures how many of that same population's hidden rules resolve to a COMPOSED (non-static) "
+    + "text child the static substring join can never verify -- an instrument-completeness fact about "
+    + "this ledger's own join technique, not itself a v12 frame or 390-geometry conformance fact, the "
+    + "same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(app/src/phone-hidden-drawn-text.scan.test.ts, DEC-725 wave-31 amendment).",
 };

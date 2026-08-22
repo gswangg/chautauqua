@@ -209,11 +209,16 @@ export interface CampaignReport {
 
 /**
  * Every `<NAME>_CEILING` / `<NAME>_FLOOR` (or bare `CEILING`) constant
- * declared as `[export ]const <NAME> = <integer>;` at top level of a
- * `*.test.ts` / `*.test.tsx` file among `files`. Derived from file CONTENT
- * only -- no fs, no assumption about which files exist beyond what is
- * passed in. Deduped and sorted; a name declared in more than one file
- * (e.g. CLAIMED_FLOOR) appears once.
+ * declared as `[export ]const <NAME> = <integer>;` on its own line of a
+ * `*.test.ts` / `*.test.tsx` file among `files` -- AT ANY INDENTATION, not
+ * only true top level. `CONST_DECL_RE` matches leading whitespace (`^[ \t]*`)
+ * on purpose: a declaration nested inside a `describe(...)` block is found
+ * exactly like one at the file's own top level (DEC-808 wave-32 amendment).
+ * Narrowing this to genuine top-level-only would mint a hiding place for a
+ * future ratchet -- nest it one `describe` deeper and it stops being
+ * registered. Derived from file CONTENT only -- no fs, no assumption about
+ * which files exist beyond what is passed in. Deduped and sorted; a name
+ * declared in more than one file (e.g. CLAIMED_FLOOR) appears once.
  */
 export function findCampaignCeilingCandidates(
   files: readonly CampaignFile[],
