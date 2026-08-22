@@ -80,6 +80,17 @@ export function unscoredBannerCopy(
   };
 }
 
+/** DEC-889 (wave-32 amendment): docs/design/Chautauqua Review.dc.html:964
+ * (frame "Scorecard · a criterion unscored") draws this sentence under
+ * EACH unscored criterion's own score row -- a per-criterion hint, not a
+ * second copy of the rail's unscoredBannerCopy denominator above. A
+ * constant, not a template: it names a capability and carries no counts,
+ * so the same sentence renders for every unscored criterion regardless of
+ * which one or how many. Verbatim including the trailing period. */
+export function unscoredCriterionHint(): string {
+  return 'Pick a score, or recuse yourself if you cannot judge this one.';
+}
+
 export type ScorecardKeyAction =
   | { type: 'setRating'; criterionId: string; value: number }
   | { type: 'submitAndAdvance' }

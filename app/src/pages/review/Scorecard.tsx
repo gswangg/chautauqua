@@ -13,6 +13,7 @@ import {
   ratingScaleValues,
   scorecardKeyAction,
   unscoredBannerCopy,
+  unscoredCriterionHint,
 } from './scorecardLogic';
 import { PageSkeleton } from '../../components/PageSkeleton';
 // DEC-939 (wave-85 amendment, task w3-g): the phone head band's local
@@ -889,6 +890,23 @@ export function Scorecard() {
                   onFocus={() => setFocusedId(criterion.id)}
                   onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
                 />
+              )}
+              {/* DEC-889 (wave-32 amendment), frame :934-1138 ("a criterion
+                  unscored"), Chautauqua Review.dc.html:964: the frame draws
+                  this hint under EACH unscored criterion's own score row --
+                  keyed on `incomplete` ALONE, never on `attempted`, matching
+                  scorecardLogic.ts's own ruling that this state's surfaces
+                  are LIVE and "never gated behind an attempted submit" (the
+                  frame draws the hint with no submit having happened).
+                  Phone-only via the `hidden` attribute + a reveal inside
+                  scorecard.css's one terminal max-width:700px block -- the
+                  identical idiom the Overall value span above documents.
+                  NEVER matchMedia/useIsPhone here (DEC-385
+                  single-direction). */}
+              {incomplete.some((c) => c.id === criterion.id) && (
+                <span hidden className="chq-review-criterion-hint-phone">
+                  {unscoredCriterionHint()}
+                </span>
               )}
               {/* DEC-958 (wave-66 amendment): the server's own message for
                   THIS criterion, beside the existing client-side

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { clampRating, incompleteCriteria, isEvaluationComplete, plainAverage, scorecardKeyAction } from './scorecardLogic';
+import {
+  clampRating,
+  incompleteCriteria,
+  isEvaluationComplete,
+  plainAverage,
+  scorecardKeyAction,
+  unscoredCriterionHint,
+} from './scorecardLogic';
 import type { EvaluationCriterion, EvaluationScores } from './types';
 
 const criteria: EvaluationCriterion[] = [
@@ -140,5 +147,11 @@ describe('incompleteCriteria', () => {
     const scores: EvaluationScores = { quality: 4, fit: 'Yes' };
     expect(isEvaluationComplete(criteria, scores)).toBe(incompleteCriteria(criteria, scores).length === 0);
     expect(isEvaluationComplete(criteria, {})).toBe(incompleteCriteria(criteria, {}).length === 0);
+  });
+});
+
+describe('unscoredCriterionHint', () => {
+  it('returns the frame\'s exact per-criterion recuse hint (docs/design/Chautauqua Review.dc.html:964)', () => {
+    expect(unscoredCriterionHint()).toBe('Pick a score, or recuse yourself if you cannot judge this one.');
   });
 });
