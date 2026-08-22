@@ -286,11 +286,12 @@ Duplicates/Segments/Pipeline `role="tablist"` panel switcher — now land on
 that one sheet; there is no second candidate left to split them across.
 This lane narrows the finding and names the owner; it does not fix the
 residual, which stays outside the Contacts subtree and unassigned here.
-Scheduled owner-lane: none yet — a future wave should open a dedicated
-lane against `app/src/styles.css`, and that lane's fix will need to update
-`ContactsApp.head390.render.test.tsx`'s two "recorded residual" assertions
-(they are written to fail once the intrusion moves) rather than leaving
-them as permanent truths.
+RETIRED (DEC-903 wave-22 amendment): this paragraph once left the owner-lane
+unscheduled, but src/decisions-data/DEC-976.md`BLESSED frame-silent additions, not a residual owed to app/src/styles.css` (its wave-27 amendment, which REVERSES the wave-16 r5 amendment) closes this
+Finding outright. The receipt is app/src/pages/contacts/ContactsApp.head390.render.test.tsx`originally recorded these as an`, whose own header comment goes on to say
+the Finding "is CLOSED". Re-grepped on `9e900b3ae` (task w22-j): the
+DEC-976 amendment and the test file's comment both still stand, so this
+sentence is retired in place rather than deleted.
 
 ## Finding 7 — the shared `.chq-chipstrip` token carries the same clipped-ring defect this page's own strips had (task v12m-w16-ui-r5-a, src/decisions-data/DEC-383.md wave-16-r5 amendment)
 

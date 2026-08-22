@@ -136,12 +136,14 @@ rots faster than the code it describes (field guide).
   phone width this row is about; and the "Video"/"Recording" split
   is now per-surface (`app/src/pages/content/types.ts`'s
   `LIBRARY_KIND_LABELS` declares `recording: 'Video'` in its own right,
-  DEC-613 wave-159 amendment). The byte-format clause ("412.0 MB" vs. the
-  frame's bare "412 MB") is NOT fixed by this task or by any lane yet —
-  DEC-613's wave-17 amendment RULES `formatBytes` to trim a trailing `.0`,
-  but a ruling is not a receipt of build (field guide); cited here as
-  **DEC-613** (see `src/decisions-data/DEC-613.md`'s wave-17 amendment),
-  never by a line number, since the fix has not landed. This task closes
+  DEC-613 wave-159 amendment). RETIRED (DEC-903 wave-22 amendment): the
+  byte-format clause ("412.0 MB" vs. the frame's bare "412 MB") was once
+  recorded here as unfixed, but src/domain/files.ts`Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)` ships
+  the trailing-dot-zero trim DEC-613's wave-17 amendment rules, so an integral
+  byte count like 412 MB renders bare, exactly as the frame draws it — as
+  line ~236 of this same file already records. Re-grepped on `9e900b3ae`
+  (task w22-j): the code and the later paragraph both still stand, so this
+  clause is retired in place rather than deleted. This task closes
   the fourth and final clause — the header's duplicate "Download …(.zip)"
   control: `docs/design/Chautauqua Content.dc.html:342` draws the header
   row as `<span style="font-size:13px; color:#565A4B">31 files · 412
