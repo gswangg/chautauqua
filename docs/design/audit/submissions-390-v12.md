@@ -65,8 +65,23 @@ confirms still hold).
   all (it lives in the app shell layout), so it cannot be mounted or
   graded from this page's own render test.
 
+- Select-checkbox cell — the frame draws no counterpart for the row's
+  `chq-check`/`aria-label="Select {ref}"` checkbox. **SETTLED, not a live
+  gap**: it shares the ref/status baseline line (`submissions.css`'s
+  terminal block orders it `nth-child(1)` into the same `order: 2` band as
+  the ref and status pill, not a standalone slot), and it exists to drive
+  the already-blessed bulk bar above (`.chq-submissions-bulkbar`,
+  DEC-663) — the same frame-silent-addition rationale already recorded for
+  that bar applies to the control that selects rows for it.
+
 No code changes were needed on this frame; nothing in `submissions.css`'s
-terminal block required a fix.
+terminal block required a fix. (DEC-976 wave-12: retired
+`Submissions.frame-verdicts.render.test.tsx`'s stale `closest('table')`
+assertion, which measured the desktop DOM cascade under jsdom's no-`@media`
+read and reported a false "desktop `<table>`, not a card" divergence; the
+terminal block's `thead{display:none}` + per-cell `order` bands already
+re-line the row into this frame's own ref → title → speakers → actions
+card sequence, matching this section's verdict above.)
 
 ## "Submission detail" · 390 (`:355-393`, 10/15 literals previously asserted)
 
@@ -116,7 +131,13 @@ No code changes were needed on this frame either; nothing in
 `SubmissionDetailPage.tsx` or `detail.css`'s terminal block required a
 fix — every literal and every already-ruled divergence was already
 correctly implemented prior to this task, just previously unclaimed by a
-real-route render test.
+real-route render test. (DEC-976 wave-12: `Submissions.frame-verdicts.
+render.test.tsx`'s clause (a) had drifted false — it asserted the back
+link "never" renders the frame's bare `‹ Triage` text, when `detail.css`'s
+terminal block hides `.chq-detail-back-full` and shows only
+`.chq-detail-back-short` ("Triage") at phone width, so the screen reads
+exactly that bare text. Retired to a MATCHES clause with the CSS-text
+receipt inline, agreeing with this section's verdict above.)
 
 ## Summary
 
