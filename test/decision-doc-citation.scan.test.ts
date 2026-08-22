@@ -744,7 +744,27 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // with NO :line suffix (mandatory per this task) so the citation resolves
 // by content and cannot rot from line drift again. Re-measured 1277 by
 // re-running this scan on the repaired tree.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1277;
+// DEC-069 RULE (wave-10, task w10-th): this ratchet moves DOWN every wave
+// it is red -- a ceiling sitting one row over its own measurement is a
+// ledger that stopped measuring, and a red decisions/ citation scan blocks
+// the exit predicate the same as any other tier-2 gate. Lowered 1277 ->
+// 1260 (wave-10, task w10-th, DEC-069): re-measured by running this scan
+// fresh, which confirmed the tree had drifted to 1278 (one row OVER the
+// declared ceiling, exactly as this task's own measurement reported) --
+// so the repair was 18 offenders in decisions/DEC-008.md (comma-adjacent
+// `path:line` citations reading as each other's receipt quote -- broken
+// by de-adjacent-ing them into a plain list, not by inventing quotes),
+// DEC-009.md, DEC-010.md (two paragraphs, one genuinely describing a
+// since-CLOSED split-brain bug, reworded past-tense and re-anchored on the
+// construct that closed it) and DEC-037.md (nine bare basenames with no
+// directory prefix that used to resolve before an unrelated file move,
+// plus one stale "single exception" clause whose exception has since been
+// fixed), each repaired with the DEC-518 drift-proof
+// repo-relative-path-plus-backtick-quote shape (no `:line`) wherever the
+// cited construct still exists, and re-anchored on its current home where
+// it had moved. Re-measured 1260 by re-running this scan on the repaired
+// tree.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1260;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {
