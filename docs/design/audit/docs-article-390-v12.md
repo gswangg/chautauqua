@@ -108,4 +108,5 @@ live-request coverage against a real fixture article,
 "Call for papers and submissions" / group "running-an-event", whose group
 label happens to equal the frame's own "Running an event" literal by
 coincidence of content, not by this test pinning it as a literal). No
-DIVERGES rows are filed for those elements.
+DIVERGES rows are filed for those elements. Per DEC-099 wave-14m clause 1,
+this sentence is a negative-result record, not an open finding.

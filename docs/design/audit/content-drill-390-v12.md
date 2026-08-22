@@ -49,7 +49,7 @@ does not:
 | :375 | `‹ Content` | One back control, text ends `Content`. Matches. |
 | :376/:377 | title + `speaker · ref` | One `<h1>` with the session title; `.chq-content-detail-subtitle` renders `Priya Raman · DFC-014` directly beneath it in the same `.chq-content-detail-title-col`. Matches. |
 | :380 | `Content status` | Present as the band's label span. Matches. |
-| **:381** | **`Re-uploaded · you asked for changes 8 days ago`** | **DIVERGES — see below.** |
+| **:381** | **`Re-uploaded · you asked for changes 8 days ago`** | **DIVERGES — CLOSED-with-receipt, DEC-874 (see below).** |
 | :383 | `Approve` | One control, scoped to `.chq-content-status-band-actions`, count 1 (DEC-874: the desktop action row alongside it, `.chq-content-detail-actions`, carries no Approve of its own). Matches. |
 | :386/:387 | `Slides · 3 versions` / `Recording · 1 version` | Deliverable chip strip, `role="tab"`, shape `/ · \d+ versions?$/`, one entry per kind. Matches. |
 | :389 | scoping caption | One `.chq-content-chip-caption` element. Matches. |

@@ -80,3 +80,6 @@ by a strictly-anchored `verbatimLine()` citation and a real-mount assertion.
 recorded above, not fixed (out of this lane's file scope). The
 stacked-card-vs-table-row architectural hypothesis this row previously
 carried does NOT survive re-derivation — independently confirmed MATCHES.
+Per DEC-099 wave-14m clause 1, this sentence is a narration of the same
+DEC-825 chip-count divergence already stated in full in "## Divergence
+found" above, not a second open finding.

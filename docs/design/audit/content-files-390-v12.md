@@ -23,7 +23,10 @@ version/session/uploader/Download coverage over the row template, and a
 scoped dock length assertion) rather than duplicating it. Flagging for the
 scribe: `w13-ra`'s claim that Content was closing a "44 of 53 phone frames
 never rendered" gap should be cross-checked before any ledger counts this
-frame among the still-zero set again.
+frame among the still-zero set again. Per DEC-099 wave-14m clause 1, this
+paragraph's marker occurrence is a narration of the PRIOR (w13-ra) row's
+own text quoted for context, not a new open finding — the verdict below
+this section is the current one, and it is MATCHES.
 
 ## Verdict: MATCHES, with one frame-silent addition (row 7 fused, task w11-tb)
 
