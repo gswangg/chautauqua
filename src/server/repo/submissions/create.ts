@@ -142,6 +142,10 @@ export async function createSubmission(
       createdAt: now,
       updatedAt: now,
     });
+    // No touchSubmissions call: this participant row belongs to the
+    // submission this same function just inserted a few lines above, whose
+    // own INSERT already stamped updatedAt to `now` -- there is no stale
+    // stamp to correct.
   }
 
   return id;
@@ -294,6 +298,10 @@ export async function cloneSubmission(
   for (const chunk of chunkRowsForInsert(newParticipantRows)) {
     await db.insert(schema.participant).values(chunk);
   }
+  // No touchSubmissions call: these participant rows belong to
+  // newSubmissionId, which this same function inserted moments above with
+  // updatedAt already stamped to `now` -- there is no stale stamp to
+  // correct.
 
   return { id: newSubmissionId, droppedFileAnswers };
 }

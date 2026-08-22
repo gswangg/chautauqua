@@ -307,6 +307,11 @@ export async function commitSubmissionDelete(db: Db, eventId: string, submission
     await db.delete(schema.file).where(inArray(schema.file.submissionId, chunk));
     await db.delete(schema.submissionAnswer).where(inArray(schema.submissionAnswer.submissionId, chunk));
     await db.delete(schema.submissionTrack).where(inArray(schema.submissionTrack.submissionId, chunk));
+    // No touchSubmissions call: this loop deletes the owning submission row
+    // itself a few statements below (schema.submission delete, same chunk),
+    // so there is no surviving submission row left for a stamp to matter to
+    // -- src/sync/airtable.ts's watermark and repo/overview.ts's worklist
+    // both key off a submission row that no longer exists after this commit.
     await db.delete(schema.participant).where(inArray(schema.participant.submissionId, chunk));
     // DEC-921: an orphaned schedule_slot left behind by a deleted
     // submission makes deleteRoom refuse forever (events.ts's 409 guard

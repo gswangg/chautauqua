@@ -47,6 +47,16 @@ export async function backfillNullAttribution(db: Db, contactId: string, next: A
       .set({ orgAtTime: company, updatedAt: new Date() })
       .where(and(eq(schema.participant.contactId, contactId), isNull(schema.participant.orgAtTime)));
   }
+  // No touchSubmissions call (DEC-725 population scan): title_at_time/
+  // org_at_time are the two columns this function writes, and neither feeds
+  // either reader submissions/touch.ts's contract names --
+  // src/sync/airtable.ts's pushed Speakers cell is built from
+  // contact.firstName/lastName only (see its participant/contact join), and
+  // repo/overview.ts's worklist orders on submission.updatedAt without
+  // reading either attribution column. Public reads of these columns
+  // (repo/public/speakers.ts, repo/public/sessions.ts, exports/speakers.ts)
+  // are live queries, not gated by any updatedAt watermark, so a stale
+  // stamp here has no reader to correct.
 }
 
 /** DEC-491 amendment (wave 47): the set-based twin of backfillNullAttribution
@@ -100,4 +110,9 @@ export async function backfillNullAttributionMany(
         .where(and(inArray(schema.participant.contactId, batch), isNull(schema.participant.orgAtTime)));
     }
   }
+  // No touchSubmissions call (DEC-725 population scan): same reasoning as
+  // backfillNullAttribution above -- title_at_time/org_at_time feed neither
+  // src/sync/airtable.ts's Speakers cell (firstName/lastName only) nor
+  // repo/overview.ts's updatedAt-ordered worklist, and every public reader
+  // of these columns queries live, not through the updatedAt watermark.
 }
