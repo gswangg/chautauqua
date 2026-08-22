@@ -15,6 +15,9 @@ import { slotWithinEventRange } from "./public/gates";
 import { dedupeKey } from "../../domain/comms-dedupe";
 import { submittedEvaluationCondition } from "./review/evaluations";
 import { DEC_271 } from "../../decisions";
+import { MAX_EMAIL_TEMPLATES_PER_EVENT } from "../../domain/email-templates";
+import { overCapCountMessage } from "../../domain/cap-copy";
+import { ApiError } from "../http";
 void DEC_271;
 
 // ---------------------------------------------------------------------------
@@ -94,7 +97,20 @@ export interface TemplateInput {
   bodyText: string;
 }
 
+/** DEC-660 wave-23 amendment: refuse at MAX_EMAIL_TEMPLATES_PER_EVENT
+ * BEFORE writing -- nothing is written on refusal, matching every sibling
+ * mint door (saved views, saved embeds, API tokens, ...). The message
+ * counts against the limit rather than just flagging it (DESIGN-RULINGS
+ * 'Error and validation states' rule 3), via the shared overCapCountMessage
+ * grammar so this door does not duplicate a second phrasing (DEC-613). */
 export async function createTemplate(db: Db, eventId: string, input: TemplateInput): Promise<EmailTemplateRow> {
+  const existingCount = await countTemplates(db, eventId);
+  if (existingCount >= MAX_EMAIL_TEMPLATES_PER_EVENT) {
+    throw new ApiError(
+      "invalid",
+      overCapCountMessage(existingCount + 1, MAX_EMAIL_TEMPLATES_PER_EVENT, "template"),
+    );
+  }
   const id = newId();
   const now = new Date();
   await db.insert(schema.emailTemplate).values({
