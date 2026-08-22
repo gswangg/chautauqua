@@ -384,6 +384,19 @@ survives contact with state:
   exemption mechanism this entry once implied for
   `test/display-heading-line-height.scan.test.ts` is retired unbuilt; see
   `src/decisions-data/DEC-991.md`'s own head note.
+- **Settings embed-edit head omits the frame's `line-height:1` on the
+  `<h1>` (DEC-996)** — `docs/design/Chautauqua Settings.dc.html:1047`
+  draws the saved-embed edit view's title with the literal, quoted
+  verbatim: docs/design/Chautauqua Settings.dc.html`font-size:30px;
+  font-weight:700; letter-spacing:-0.04em; line-height:1`. Commit
+  `bee981791` copied that declaration verbatim onto
+  `.chq-settings-embed-edit-head h1`, tripping the same display-face
+  `line-height<=1` ban the Agenda entry immediately above resolves — a
+  frame's drawn literal is authority for geometry, never a defense
+  against a design-system ban (DEC-996). The declaration is deleted
+  outright (never substituted with 1.05, never scan-exempted), the same
+  disposition as the Agenda wordmark/`<h1>` pair: the rule keeps `normal`
+  (the font's own line box) to contain the glyphs.
 - **Plan editor's v4 title-row shell is BLESSED, not the unrecorded
   divergence the audit flagged, and the `Reviewers` → `Who reviews what`
   section-heading rename ships as part of the same shell (DEC-745
