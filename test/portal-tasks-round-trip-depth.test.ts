@@ -204,30 +204,52 @@ async function buildApp(auth: AuthInfo, tracker: Tracker) {
 }
 
 describe("DEC-891 (wave 34 amendment): /portal/tasks round-trip depth", () => {
-  it("issues at least 2 reads concurrently in wave 2 and again in wave 3 (3 waves total, not 5)", async () => {
-    currentAssignments = [fileAssignment("assign-file", "event-1"), deliverableAssignment("assign-deliv", "event-1")];
-    const tracker: Tracker = { inFlight: 0, max: 0 };
-    const app = await buildApp({ userId: "u1", role: "speaker", orgId: ORG_A, contactId: CONTACT_A }, tracker);
-    const res = await app.request("/portal/tasks");
-    expect(res.status).toBe(200);
-    // Wave 2 alone holds 3 concurrent statements (resolveTaskFileChainLatestMany,
-    // listFileChainVersionsMany, listDeliverableCandidatesForEvents); wave 3
-    // holds 2 (listFileCommentsForFiles, listLatestDeliverables) -- a fully
-    // serial (5-wave) handler could never exceed 1.
-    expect(tracker.max).toBeGreaterThanOrEqual(2);
-  });
+  // DEC-069 wave-25: measured 2718-5593ms across 7 solo runs at 66d902ea5
+  // (default 5000; worst run alone already exceeded the default) -- this
+  // case's own concurrent-wave delays leave little headroom on an idle
+  // machine and none under contention; widen well past the observed worst
+  // so a loaded machine cannot turn a load-dependent slowdown into an
+  // indistinguishable ratchet red.
+  it(
+    "issues at least 2 reads concurrently in wave 2 and again in wave 3 (3 waves total, not 5)",
+    async () => {
+      currentAssignments = [
+        fileAssignment("assign-file", "event-1"),
+        deliverableAssignment("assign-deliv", "event-1"),
+      ];
+      const tracker: Tracker = { inFlight: 0, max: 0 };
+      const app = await buildApp({ userId: "u1", role: "speaker", orgId: ORG_A, contactId: CONTACT_A }, tracker);
+      const res = await app.request("/portal/tasks");
+      expect(res.status).toBe(200);
+      // Wave 2 alone holds 3 concurrent statements (resolveTaskFileChainLatestMany,
+      // listFileChainVersionsMany, listDeliverableCandidatesForEvents); wave 3
+      // holds 2 (listFileCommentsForFiles, listLatestDeliverables) -- a fully
+      // serial (5-wave) handler could never exceed 1.
+      expect(tracker.max).toBeGreaterThanOrEqual(2);
+    },
+    15000,
+  );
 
   it("issues the SAME number of listDeliverableCandidatesForEvents statements for a speaker holding assignments across THREE distinct events as for one event", async () => {
+    // Reset at the START of the body too (not just in afterEach): a
+    // straggler from a previous case's timed-out/slow request can still be
+    // in flight when this body starts and would otherwise fabricate a
+    // failure by pushing into this module-level array after afterEach's
+    // reset already ran for the PREVIOUS test.
+    listDeliverableCandidatesForEventsCalls.length = 0;
+
     // One event.
     currentAssignments = [deliverableAssignment("assign-deliv-1", "event-1")];
     const tracker1: Tracker = { inFlight: 0, max: 0 };
     const app1 = await buildApp({ userId: "u1", role: "speaker", orgId: ORG_A, contactId: CONTACT_A }, tracker1);
     const res1 = await app1.request("/portal/tasks");
     expect(res1.status).toBe(200);
-    const oneEventCallCount = listDeliverableCandidatesForEventsCalls.length;
+    // Capture this wave's calls locally and clear the shared array
+    // immediately, so nothing from this point on can attribute a call to
+    // the wrong wave regardless of what runs concurrently elsewhere.
+    const oneEventCalls = listDeliverableCandidatesForEventsCalls.splice(0);
+    const oneEventCallCount = oneEventCalls.length;
     expect(oneEventCallCount).toBe(1);
-
-    listDeliverableCandidatesForEventsCalls.length = 0;
 
     // Three distinct events.
     currentAssignments = [
@@ -239,9 +261,10 @@ describe("DEC-891 (wave 34 amendment): /portal/tasks round-trip depth", () => {
     const app3 = await buildApp({ userId: "u1", role: "speaker", orgId: ORG_A, contactId: CONTACT_A }, tracker3);
     const res3 = await app3.request("/portal/tasks");
     expect(res3.status).toBe(200);
-    const threeEventCallCount = listDeliverableCandidatesForEventsCalls.length;
+    const threeEventCalls = listDeliverableCandidatesForEventsCalls.splice(0);
+    const threeEventCallCount = threeEventCalls.length;
     expect(threeEventCallCount).toBe(1);
-    expect(listDeliverableCandidatesForEventsCalls[0]?.sort()).toEqual(["event-1", "event-2", "event-3"]);
+    expect(threeEventCalls[0]?.sort()).toEqual(["event-1", "event-2", "event-3"]);
 
     // The statement COUNT (number of batched-read calls) is identical for 1
     // event and for 3 events -- one call per page load, not one per event.
