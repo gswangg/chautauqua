@@ -43,15 +43,45 @@ export interface EmailShellOptions {
   eventName: string | null;
   reason: string;
   cta?: { label: string; href: string } | null;
+  // DEC-441 amendment (wave 32): the frame's highlighted-fact block
+  // (Chautauqua Comms.dc.html:719-724, `<sc-if value="{{ e.hasFact }}"`),
+  // rendered between the body and the CTA block when present.
+  fact?: { label: string; value: string } | null;
 }
 
 /** Wraps plain-text email content in a complete HTML document: a 560px
  * centred card, a masthead wordmark, the escaped body, an optional single
- * CTA button (with a paste-the-URL fallback line), and a two-line footer
- * naming the reason the recipient received the mail and the sending event. */
+ * highlighted-fact block, an optional single CTA button (with a paste-the-URL
+ * fallback line), and a two-line footer naming the reason the recipient
+ * received the mail and the sending event. */
 export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
   const wordmark = opts.eventName && opts.eventName.trim() !== "" ? opts.eventName : "Chautauqua";
   const bodyHtml = textToHtml(text);
+
+  // DEC-441 amendment (wave 32): Chautauqua Comms.dc.html:720
+  // `border-left:3px solid #4E5C31; padding:2px 0 2px 15px; display:flex;
+  // flex-direction:column; gap:5px` -- email clients need tables, not flex,
+  // so the 3px left rule is expressed as a bordered table cell in the same
+  // idiom the CTA block above uses, and the flex column's 5px gap becomes a
+  // padded second row. Colours spent are CTA_BG (border), MUTED_COLOR
+  // (label), MASTHEAD_INK (value) -- all three already declared above, so no
+  // new PERMITTED_MAIL_COLOURS member is needed.
+  const factBlock =
+    opts.fact != null
+      ? `<tr><td style="padding:18px 34px 0 34px;">` +
+        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>` +
+        `<td style="border-left:3px solid ${CTA_BG};padding:2px 0 2px 15px;">` +
+        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">` +
+        `<tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${MUTED_COLOR};">` +
+        `${escapeHtml(opts.fact.label)}` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:${MASTHEAD_INK};">` +
+        `${escapeHtml(opts.fact.value)}` +
+        `</td></tr>` +
+        `</table>` +
+        `</td></tr></table>` +
+        `</td></tr>`
+      : "";
 
   const ctaBlock =
     opts.cta != null
@@ -99,7 +129,7 @@ export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
                 ${bodyHtml}
               </td>
             </tr>
-            ${ctaBlock}
+            ${factBlock}${ctaBlock}
             <tr>
               <td style="padding:16px 34px 28px 34px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${MASTHEAD_RULE};">

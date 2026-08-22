@@ -125,6 +125,64 @@ describe("mail shell frame fidelity (DEC-037 amendment, wave 20)", () => {
     expect(anchors).toHaveLength(1);
   });
 
+  it("renders the highlighted-fact block (label over value, 3px left border) when fact is present", () => {
+    // docs/design/Chautauqua Comms.dc.html `<div style="border-left:3px
+    // solid #4E5C31; padding:2px 0 2px 15px; display:flex;
+    // flex-direction:column; gap:5px">` holding `{{ e.factLabel }}` over
+    // `{{ e.fact }}` (DEC-441 wave-32 amendment).
+    const html = renderEmailHtml("Body.", {
+      eventName: "DevFlow Conf 2027",
+      reason: "test",
+      fact: { label: "Still to do", value: "- Slides — due 1 May 2027" },
+    });
+    expect(html).toContain("border-left:3px solid #4E5C31");
+    expect(html).toContain("font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#565A4B");
+    expect(html).toContain(">Still to do<");
+    expect(html).toContain("font-size:15px;line-height:1.6;color:#1B1D17");
+    expect(html).toContain(">- Slides — due 1 May 2027<");
+  });
+
+  it("places the fact block between the body and the CTA block", () => {
+    const html = renderEmailHtml("Body copy here.", {
+      eventName: "DevFlow Conf 2027",
+      reason: "test",
+      fact: { label: "Still to do", value: "- Slides" },
+      cta: { label: "Open your tasks", href: "https://example.test/portal/abc" },
+    });
+    const bodyIdx = html.indexOf("Body copy here.");
+    const factIdx = html.indexOf("border-left:3px solid #4E5C31");
+    const ctaIdx = html.indexOf("Open your tasks");
+    expect(bodyIdx).toBeGreaterThan(-1);
+    expect(factIdx).toBeGreaterThan(bodyIdx);
+    expect(ctaIdx).toBeGreaterThan(factIdx);
+  });
+
+  it("negative control: emits no border-left at all when fact is absent or null", () => {
+    const withoutFact = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test" });
+    expect(withoutFact).not.toContain("border-left");
+
+    const withNullFact = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test", fact: null });
+    expect(withNullFact).not.toContain("border-left");
+  });
+
+  it("byte-identical to the fact-less render when fact is omitted vs. explicitly null", () => {
+    const omitted = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test" });
+    const explicitNull = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test", fact: null });
+    expect(explicitNull).toBe(omitted);
+  });
+
+  it("HTML-escapes both the fact label and value", () => {
+    const html = renderEmailHtml("Body.", {
+      eventName: "DevFlow Conf 2027",
+      reason: "test",
+      fact: { label: "R&D <label>", value: "5 > 3 & \"quoted\"" },
+    });
+    expect(html).toContain("R&amp;D &lt;label&gt;");
+    expect(html).toContain("5 &gt; 3 &amp; &quot;quoted&quot;");
+    expect(html).not.toContain("R&D <label>");
+    expect(html).not.toContain("5 > 3 & \"quoted\"");
+  });
+
   it("scan: every hex literal under src/mail/**/*.ts is in PERMITTED_MAIL_COLOURS", () => {
     const files = glob(MAIL_DIR, [".ts"]);
     expect(files.length).toBeGreaterThan(0);

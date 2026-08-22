@@ -582,7 +582,7 @@ async function sendReminderEmails(
   // toRelease below reconstruct exactly what the old sequential loop
   // produced.
   const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
-    const { subject, text: reminderText } = buildReminderMessage(
+    const { subject, text: reminderText, parts } = buildReminderMessage(
       eventName,
       group.assignments,
       portalLink,
@@ -598,6 +598,11 @@ async function sendReminderEmails(
         eventName,
         reason: `you have outstanding tasks for ${eventName}`,
         cta: { label: REMINDER_CTA_LABEL, href: portalLink },
+        // DEC-441 amendment (wave 32): the frame's `factLabel: 'Still to
+        // do'` email (Chautauqua Comms.dc.html demo row, "hasFact: true")
+        // -- the same task lines the plain-text body already composes
+        // (`parts.stillToDo`), HTML-only exactly as the paste-URL line is.
+        fact: { label: "Still to do", value: parts.stillToDo.join("\n") },
       }),
       eventId,
       contactId: group.contactId,
