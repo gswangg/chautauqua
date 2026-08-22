@@ -252,6 +252,30 @@
 //      citations only (bare path then a backticked quote, never
 //      `path:NNN`, per test/citation-form-drift.scan.test.ts).
 //
+//   WAVE 28 (DEC-393 + DEC-808, task w28-b): a SECOND match tier, consulted
+//   ONLY when the own-text tier above finds no match for a label at all --
+//   an occurrence of the label as the COMPLETE value of a quoted
+//   `label`/`aria-label`/`placeholder`/`title` attribute inside an opening
+//   tag that ALSO carries `chq-` tokens in its own class=/className=
+//   attribute (same tag only, never a sibling/ancestor's class --
+//   `classTokensInOpenTag`/`attributeLabelTokensInBlob`). Graded through
+//   the SAME `gradeControl` path (control-shapedness corroboration,
+//   own-element selector guard) so the two tiers cannot diverge in
+//   judgment. MEASURED (this branch, forcing each ceiling to -1 before AND
+//   after adding the tier): PRE-WIDENING (own-text tier alone, matching
+//   wave-159's own measured state) 2 offenders, 166 unresolved (155
+//   no-label-match, 1 no-token, 10 no-control-shape). POST-WIDENING (both
+//   tiers): 2 offenders (unchanged -- the attribute tier resolves 0 new
+//   offenders, only OK rows), 163 unresolved (152 no-label-match, 1
+//   no-token, 10 no-control-shape) -- 3 rows newly resolved, all graded OK:
+//   `Chautauqua Account.dc.html`:43 and `:195` (both "you@example.com",
+//   resolving via a placeholder attribute to `chq-input`/
+//   `chq-field-invalid`, declared 48px >= drawn 46/48px) and `Chautauqua
+//   Submissions.dc.html`:296 ("Add a co-presenter by name or email…",
+//   resolving via a placeholder attribute to `chq-input`, declared 48px >=
+//   drawn 46px). Full per-row detail in
+//   docs/design/audit/desktop-control-floor-v12.md.
+//
 // This file names the app's ungraded desktop control-floor fidelity; it
 // does not close it, and it does not touch app/src/styles.css or any
 // other desktop CSS -- desktop stays frozen.
@@ -905,6 +929,93 @@ function frameContentExclusionFor(control: DrawnControl): string | null {
   return hit ? hit.reason : null;
 }
 
+// -- WAVE 28 (DEC-393 + DEC-808): second match tier, an attribute/prop
+// label read. Consulted ONLY when the own-text tier above finds no match
+// for a label at all -- an occurrence of the label as the COMPLETE value of
+// a quoted label/aria-label/placeholder/title attribute inside an opening
+// tag that ALSO carries chq- tokens in a class=/className= attribute ON THE
+// SAME OPENING TAG. Resolving strictly from the same tag (never a sibling
+// or an ancestor) is what makes this tier safe to add without reopening the
+// wave-157 mis-attribution this file's own header describes: a match
+// requires BOTH the label attribute AND the chq- class to sit on the one
+// opening tag, so a control's own attribute-carried label can never borrow
+// an unrelated element's class. --------------------------------------------
+
+const SOURCE_OPEN_TAG_RE = /<(\w+)\b([^>]*)>/g;
+const ATTR_LABEL_VALUE_RE = /\b(?:label|aria-label|placeholder|title)\s*=\s*(["'])((?:(?!\1)[\s\S])*)\1/g;
+
+/** chq- tokens from a class=/className= attribute anywhere within
+ * `tagChunk` (a complete opening tag's text, e.g. `<button label="X"
+ * className="chq-a chq-b">`) -- quoted string, `{...}` expression, or
+ * template literal, any syntax; the reader only pulls chq- tokens out of
+ * the captured attribute-value span. Companion to `classTokensNear`, which
+ * looks BACKWARD from a text-node position; this one reads a whole already-
+ * captured opening tag directly, which is what the attribute/prop label
+ * tier below needs (that tag IS the match site, there is no text node).
+ * Exported for the non-vacuity fixture below. */
+export function classTokensInOpenTag(tagChunk: string): string[] {
+  const cm = tagChunk.match(/\b(?:class|className)\s*=\s*/);
+  if (!cm) return [];
+  const startAttr = (cm.index ?? 0) + cm[0].length;
+  const opener = tagChunk[startAttr];
+  let valueEnd: number;
+  if (opener === '"' || opener === "'" || opener === '`') {
+    const close = tagChunk.indexOf(opener, startAttr + 1);
+    if (close === -1) return [];
+    valueEnd = close + 1;
+  } else if (opener === '{') {
+    let depth = 0;
+    let j = startAttr;
+    for (; j < tagChunk.length; j++) {
+      if (tagChunk[j] === '{') depth++;
+      else if (tagChunk[j] === '}') {
+        depth--;
+        if (depth === 0) {
+          j++;
+          break;
+        }
+      }
+    }
+    valueEnd = j;
+  } else {
+    return [];
+  }
+  const valueChunk = tagChunk.slice(startAttr, valueEnd);
+  return [...new Set(valueChunk.match(CLASS_TOKEN_RE) ?? [])];
+}
+
+/** Every chq- token found via the attribute/prop label tier for `label` in
+ * `blob`: every opening tag whose label/aria-label/placeholder/title
+ * attribute value (quoted, complete-value match) equals `label`, AND which
+ * also carries chq- tokens in its own class=/className= attribute, unioned
+ * across every qualifying tag in `blob`. A tag whose label attribute
+ * matches but whose class carries no chq- token contributes nothing (the
+ * task grammar's own conjunction: the tag must carry BOTH). Exported for
+ * the non-vacuity fixture below. */
+export function attributeLabelTokensInBlob(label: string, blob: string): string[] {
+  const needle = label.replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return [];
+  const tokens: string[] = [];
+  SOURCE_OPEN_TAG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SOURCE_OPEN_TAG_RE.exec(blob))) {
+    const attrs = m[2]!;
+    ATTR_LABEL_VALUE_RE.lastIndex = 0;
+    let am: RegExpExecArray | null;
+    let labelMatched = false;
+    while ((am = ATTR_LABEL_VALUE_RE.exec(attrs))) {
+      const value = am[2]!.replace(/\s+/g, ' ').trim();
+      if (value === needle) {
+        labelMatched = true;
+        break;
+      }
+    }
+    if (!labelMatched) continue;
+    tokens.push(...classTokensInOpenTag(m[0]!));
+  }
+  return [...new Set(tokens)];
+}
+
 // -- Join + grade every drawn control ---------------------------------------
 
 export type RowStatus = 'ok' | 'offender' | 'unresolved' | 'excluded';
@@ -918,6 +1029,9 @@ export interface GradedRow {
   /** Set only when status === 'excluded': the source table's own reason
    * string, carried through verbatim (never re-worded). */
   excludedReason: string | null;
+  /** WAVE 28: which tier resolved this row's tokens, for the ledger's own
+   * "newly-resolved" naming -- not part of the grading grammar itself. */
+  matchTier: 'own-text' | 'attribute' | null;
 }
 
 /** WAVE 157 REPAIR (DEC-393 amendment): resolves the token set from the
@@ -941,6 +1055,7 @@ function gradeControl(control: DrawnControl): GradedRow {
       tokens: [],
       declaredMinHeight: null,
       excludedReason: frameContentReason,
+      matchTier: null,
     };
   }
 
@@ -955,11 +1070,28 @@ function gradeControl(control: DrawnControl): GradedRow {
   }
   tokens = [...new Set(tokens)];
 
+  // WAVE 28: attribute/prop label tier, consulted ONLY when the own-text
+  // tier found no match for this label anywhere in the corpus.
+  let attrMatched = false;
   if (!ownTextMatched) {
-    return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null };
+    const attrTokens: string[] = [];
+    for (const blob of NORMALIZED_BLOBS) {
+      const found = attributeLabelTokensInBlob(control.label, blob);
+      if (found.length > 0) {
+        attrMatched = true;
+        attrTokens.push(...found);
+      }
+    }
+    tokens = [...new Set(attrTokens)];
+  }
+
+  const matchTier: GradedRow['matchTier'] = ownTextMatched ? 'own-text' : attrMatched ? 'attribute' : null;
+
+  if (!ownTextMatched && !attrMatched) {
+    return { control, status: 'unresolved', reason: 'no-label-match', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
   }
   if (tokens.length === 0) {
-    return { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null, excludedReason: null };
+    return { control, status: 'unresolved', reason: 'no-token', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
   }
 
   let best: number | null = null;
@@ -972,10 +1104,10 @@ function gradeControl(control: DrawnControl): GradedRow {
     if (maxMinHeight !== null && (best === null || maxMinHeight > best)) best = maxMinHeight;
   }
   if (!anyRule) {
-    return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null };
+    return { control, status: 'unresolved', reason: 'no-rule', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
   }
   if (!anyControlShaped) {
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null };
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: null, excludedReason: null, matchTier };
   }
   const declared = best ?? 0;
   const status: RowStatus = declared < control.drawnFloor ? 'offender' : 'ok';
@@ -986,12 +1118,13 @@ function gradeControl(control: DrawnControl): GradedRow {
     // resolving purely by co-incidence of a shared class list. Grading this
     // OFFENDER would put min-height on a heading; drop to UNRESOLVED,
     // honest per the file's own existing chq-chipstrip precedent.
-    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null };
+    return { control, status: 'unresolved', reason: 'no-control-shape', tokens, declaredMinHeight: declared, excludedReason: null, matchTier };
   }
-  return { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null };
+  return { control, status, reason: null, tokens, declaredMinHeight: declared, excludedReason: null, matchTier };
 }
 
 const GRADED: GradedRow[] = ALL_CONTROLS.map(gradeControl);
+
 const OFFENDERS: GradedRow[] = GRADED.filter((r) => r.status === 'offender');
 const UNRESOLVED: GradedRow[] = GRADED.filter((r) => r.status === 'unresolved');
 const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
@@ -1002,7 +1135,7 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // is two-sided); registered in scripts/exit-predicate.ts's
 // OUT_OF_CAMPAIGN_SCOPE only (DEC-393 wave-151 amendment's own reasoning).
 export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 2;
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 141;
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 138;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates exactly 108 desktop frames across 13 files (same population test/desktop-frame-ledger.scan.test.ts measures pre-exclusion)', () => {
@@ -1144,6 +1277,68 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
     expect(fabricatedResolved.maxMinHeight).toBeNull(); // declares 0 -- an offender at 0 by the file's own grammar
     const anyControlShaped = fabricatedTokens.some((t) => tokenIsControlShaped(t, fabricatedBlobs));
     expect(anyControlShaped).toBe(false); // corroboration clause fires: reclassify to unresolved
+  });
+
+  it('non-vacuity: attribute/prop label tier -- fabricated positive (same-tag label+class) vs negative (class on a different tag)', () => {
+    // POSITIVE: the label is the COMPLETE value of a quoted `label` attribute
+    // on a tag that ALSO carries chq- tokens in its own class attribute --
+    // resolves.
+    const positiveTagBlob = normalizeSource(
+      '<button label="Zzy Attr Present" className="chq-zzy-attr-fixture chq-zzy-attr-other">x</button>'
+    );
+    expect(attributeLabelTokensInBlob('Zzy Attr Present', positiveTagBlob).sort()).toEqual([
+      'chq-zzy-attr-fixture',
+      'chq-zzy-attr-other',
+    ]);
+
+    // POSITIVE: same shape via aria-label/placeholder/title, each alone.
+    expect(
+      attributeLabelTokensInBlob(
+        'Zzy Aria Present',
+        normalizeSource('<div aria-label="Zzy Aria Present" className="chq-zzy-aria-fixture">x</div>')
+      )
+    ).toEqual(['chq-zzy-aria-fixture']);
+    expect(
+      attributeLabelTokensInBlob(
+        'Zzy Placeholder Present',
+        normalizeSource('<input placeholder="Zzy Placeholder Present" className="chq-zzy-placeholder-fixture" />')
+      )
+    ).toEqual(['chq-zzy-placeholder-fixture']);
+    expect(
+      attributeLabelTokensInBlob(
+        'Zzy Title Present',
+        normalizeSource('<a title="Zzy Title Present" className="chq-zzy-title-fixture">x</a>')
+      )
+    ).toEqual(['chq-zzy-title-fixture']);
+
+    // NEGATIVE: the label attribute matches, but the chq- class lives on a
+    // DIFFERENT tag (an ancestor) -- must NOT resolve, since the tier
+    // requires both on the SAME opening tag.
+    const differentTagBlob = normalizeSource(
+      '<div className="chq-zzy-ancestor-only"><button label="Zzy Attr Absent">x</button></div>'
+    );
+    expect(attributeLabelTokensInBlob('Zzy Attr Absent', differentTagBlob)).toEqual([]);
+
+    // NEGATIVE: the label attribute matches but the SAME tag carries no
+    // class/className at all -- must NOT resolve.
+    const noClassBlob = normalizeSource('<button label="Zzy Attr Bare">x</button>');
+    expect(attributeLabelTokensInBlob('Zzy Attr Bare', noClassBlob)).toEqual([]);
+
+    // NEGATIVE: a partial (not complete-value) attribute match must NOT
+    // resolve -- the label is a substring of the attribute value, not equal
+    // to it.
+    const partialBlob = normalizeSource(
+      '<button label="Zzy Attr Present plus extra" className="chq-zzy-attr-partial">x</button>'
+    );
+    expect(attributeLabelTokensInBlob('Zzy Attr Present', partialBlob)).toEqual([]);
+
+    // FULL-PIPELINE: classTokensInOpenTag reads a whole captured opening tag
+    // directly (companion to classTokensNear's backward text-node walk).
+    expect(
+      classTokensInOpenTag('<button label="Zzy Attr Present" className="chq-zzy-attr-fixture chq-zzy-attr-other">')
+        .sort()
+    ).toEqual(['chq-zzy-attr-fixture', 'chq-zzy-attr-other']);
+    expect(classTokensInOpenTag('<button label="Zzy Attr Present">')).toEqual([]);
   });
 
   it(`never exceeds DESKTOP_FLOOR_DIVERGENCE_CEILING (${DESKTOP_FLOOR_DIVERGENCE_CEILING}) resolved offenders`, () => {

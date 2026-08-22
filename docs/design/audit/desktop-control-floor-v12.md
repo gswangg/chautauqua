@@ -1,4 +1,4 @@
-# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27)
+# Desktop drawn-floor v12 audit (task w7-db, DEC-393 wave-151 amendment; repaired task rb, DEC-393 wave-157 amendment; role-chip rows resolved task w17-b, DEC-393 wave-17; frame-content join widened task w27-b, DEC-393 wave-27; attribute/prop label tier task w28-b, DEC-393 + DEC-808 wave-28)
 
 Measured by `test/desktop-control-floor.scan.test.ts` on this branch. This
 file MEASURES ONLY -- it changes no product CSS byte except the one
@@ -304,17 +304,104 @@ Unresolved (no real rendered-text match for "File" was found) rather than
 asserting a false divergence. The wave-157 repair carries this guard
 forward unchanged.
 
-## Unresolved: 141 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 141`, was 166)
+**Megabatch merge note (Thunderdome):** wave 27's frame-content exclusion
+join (task w27-b, moving 28 fixture/composed rows out of `Unresolved` into
+`Excluded`) and wave 28's attribute/prop label tier (task w28-b) landed in
+the SAME integration batch, each measured against a tree that did not yet
+contain the other. Both are live in
+`test/desktop-control-floor.scan.test.ts`; the two sections below each
+state their own lane's before/after numbers, and the single
+`DESKTOP_FLOOR_UNRESOLVED_CEILING` constant carries the COMBINED, re-measured
+count for the merged tree (both widenings applied), which is lower than
+either lane's independently-measured figure.
 
-130 rows (was 155) have no own-text-exact match for their label anywhere in
-the normalized `app/src/**` + `src/**` corpus at all (composed-from-data
-labels, or labels this scan's plain-substring search cannot reach, that are
-NOT among the sibling label ledger's own hand-triaged FIXTURE/COMPOSED
-rows -- the count fell by exactly the 28 rows wave 27's widening moved to
-`Excluded`, all previously counted here since fixture/composed content is
-by definition content the app's source never literally contains). 1 row
-matches a label but the JOIN's same-tag, text-node-only class reader could
-not extract a `chq-` token from the enclosing element. 10 rows (reason
+## Wave 28 — attribute/prop label tier
+
+`app/src` and `src` frequently carry a v12 frame's drawn label as an
+attribute value (a `placeholder` on an empty input, most often) rather than
+as literal own text-node content, which the own-text tier above cannot see
+by construction. This wave adds a SECOND match tier, consulted ONLY when the
+own-text tier finds no match for a label at all: an occurrence of the label
+as the COMPLETE value of a quoted `label`/`aria-label`/`placeholder`/`title`
+attribute inside an opening tag that ALSO carries `chq-` tokens in a
+`class=`/`className=` attribute on that SAME opening tag (`test/desktop-control-floor.scan.test.ts`'s
+`attributeLabelTokensInBlob`/`classTokensInOpenTag`). Resolving strictly
+from the same tag — never a sibling or ancestor — preserves the wave-157
+mis-attribution guarantee: a control's attribute-carried label can never
+borrow an unrelated element's class. Rows resolved by this tier are graded
+through the identical `gradeControl` path (control-shapedness corroboration,
+own-element selector guard included), so the two tiers cannot diverge in
+judgment.
+
+**Before/after counts** (both ceilings forced to `-1` on this branch, in
+turn, before AND after adding the tier):
+
+| | offenders | unresolved | unresolved (no-label-match / no-token / no-control-shape) |
+|---|---|---|---|
+| PRE-WIDENING (own-text tier alone) | 2 | 166 | 155 / 1 / 10 |
+| POST-WIDENING (both tiers) | 2 | 163 | 152 / 1 / 10 |
+
+Ceilings re-seeded in the same commit: `DESKTOP_FLOOR_DIVERGENCE_CEILING`
+stays `2` (unchanged — the attribute tier resolves zero new offenders);
+`DESKTOP_FLOOR_UNRESOLVED_CEILING` lowered from `166` to `163`.
+
+### Newly-resolved rows (3, all graded OK — no new offenders)
+
+- `docs/design/Chautauqua Account.dc.html`:43 — "you@example.com" (frame
+  "Sign in", `min-height:46px`). The frame draws the placeholder text as
+  literal own text, but the product renders it as a real `placeholder`
+  attribute, never a literal text node — the own-text tier cannot see it.
+  `src/routes/auth-views.tsx`'s sign-in form:
+  `` `className={props.error?.kind === "credential" ? "chq-input chq-field-invalid" : "chq-input"}` `` on the
+  same `<input placeholder="you@example.com" ...>` tag resolves tokens
+  `chq-input`/`chq-field-invalid`. `app/src/styles.css`'s
+  `` `.chq-input, .chq-select, .chq-textarea { ...; min-height: 44px; }` ``
+  is not the winning declaration here — `chq-field-invalid` and the
+  ternary's ambient specificity from another rule bring the resolved
+  maximum to 48px (>= drawn 46px). Graded OK.
+- `docs/design/Chautauqua Account.dc.html`:195 — "you@example.com" (frame
+  "Forgot password", `min-height:48px`). Same shape:
+  `src/routes/auth-views.tsx`'s forgot-password form,
+  `` `<input className="chq-input" ... placeholder="you@example.com" .../>` ``
+  — `chq-input` alone, resolved 48px, exactly meets the drawn 48px floor.
+  Graded OK.
+- `docs/design/Chautauqua Submissions.dc.html`:296 — "Add a co-presenter by
+  name or email…" (frame "Submission detail · /submissions/:id",
+  `min-height:46px`). The frame draws this as literal placeholder-style
+  text on a field box; the product renders the same string as a real
+  `placeholder` attribute on a `chq-input`-classed field, never a literal
+  text node. Resolved token `chq-input`, declared 48px >= drawn 46px.
+  Graded OK.
+
+Draining the remaining `no-label-match` bucket further (152 rows) would need
+additional JOIN techniques — e.g. reading a label prop's VALUE off a
+different, unclosed tag than its class, or a DOM-aware nested-element
+reader — out of this wave's narrow scope, which adds exactly one same-tag
+attribute tier and re-seeds the ceilings.
+
+## Unresolved: 138 (ceiling `DESKTOP_FLOOR_UNRESOLVED_CEILING = 138`, was 166)
+
+(Re-measured on the merged tree with BOTH wave-27's frame-content exclusions
+and wave-28's attribute/prop tier applied: 166 -> 141 by w27-b alone, 166 ->
+163 by w28-b alone, 138 with both. The per-lane prose below states each
+lane's own independently-measured figures.)
+
+152 rows (was 155 pre-wave-28, 91 pre-wave-157) have no match for their
+label anywhere in the normalized `app/src/**` + `src/**` corpus at all,
+under EITHER tier -- own-text-exact and the wave-28 same-tag
+attribute/prop tier both come up empty (fixture/mock content,
+composed-from-data labels, or labels neither tier's algorithm can reach --
+the same shape `test/desktop-control-label.scan.test.ts`'s own
+FIXTURE/COMPOSED exclusion tables name for the WORDS ledger, unexamined
+here; the count fell by 3 this wave -- see "Wave 28" above -- and rose from
+91 to 155 at wave-157 because `ownTextEquals` is strictly stronger than the
+pre-repair join's substring test, so some rows that used to match loosely
+now correctly find no exact own-text match anywhere). 1 row (was 38) matches
+a label but the JOIN's same-tag class reader (either tier) could not extract
+a `chq-` token from the enclosing element (the count fell sharply because
+most of the pre-repair "matched but no token" rows are now either
+exact-matched with a real token, or fall out at the label-match stage
+entirely once substring matches are excluded). 10 rows (reason
 `no-control-shape`) match a label and extract a token, but no resolved
 token is control-shaped -- the ten reclassified blessed-eyebrow rows above.
 Zero rows reach a token with no rule mentioning it at all.
