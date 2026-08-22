@@ -26,6 +26,8 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
         items: [
           { contactId: 'ct1', email: 'ada@example.com', subject: 'Hi Ada Lovelace', bodyText: 'See DevCon: /portal' },
         ],
+        willSend: 1,
+        skipped: 0,
       },
     });
 
@@ -66,6 +68,69 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     expect(previewCall).toBeDefined();
 
     expect(screen.getByRole('button', { name: /Send 1 email/ })).toBeInTheDocument();
+  });
+
+  // DEC-238 wave-17 amendment: the preview step surfaces the real
+  // willSend/skipped counts for the WHOLE batch (not just the capped items
+  // list) whenever the server reports a skip, so the organizer sees who's
+  // held back BEFORE they commit to Send.
+  it('surfaces real willSend/skipped counts from preview when the batch has a skip', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        items: [
+          { contactId: 'ct1', email: 'ada@example.com', subject: 'Hi all', bodyText: 'Body' },
+          { contactId: 'ct2', email: 'bob@example.com', subject: 'Hi all', bodyText: 'Body' },
+        ],
+        willSend: 2,
+        skipped: 1,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <BulkEmailModal
+          contactIds={['ct1', 'ct2', 'ct3']}
+          eventId={EVENT_ID}
+          recipientNames={['Ada Lovelace', 'Bob Jones', 'Cy Coder']}
+          onClose={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi all' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/2 emails will send now/)).toBeInTheDocument();
+    expect(screen.getByText(/1 recipient skipped/)).toBeInTheDocument();
+  });
+
+  // The complement: when preview reports no skip, no skip note renders at
+  // all -- never a "0 recipients skipped" line cluttering the happy path.
+  it('renders no skip note when preview reports skipped:0', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        items: [{ contactId: 'ct1', email: 'ada@example.com', subject: 'Hi', bodyText: 'Body' }],
+        willSend: 1,
+        skipped: 0,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} recipientNames={['Ada Lovelace']} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    await screen.findByText('ada@example.com');
+    expect(screen.queryByText(/will send now/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
   });
 
   // DEC-677: the bulk-email send result renders one sentence naming sent
