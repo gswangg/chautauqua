@@ -143,4 +143,6 @@
 // drains: 34 - 5 - 6 = 23 -- confirmed by re-running the scan's own class-1
 // detector over the full discovered population, never by arithmetic alone.
 // Ceiling lowered to match the measured value: 28 -> 23.
-export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 23;
+// v12m-w13-xb (DEC-613): re-measured 20 on this branch's tree (forced -1,
+// offender list read back). Ceiling lowered to match: 23 -> 20.
+export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 20;
