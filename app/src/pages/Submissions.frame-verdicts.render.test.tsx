@@ -114,7 +114,7 @@ afterEach(() => {
 
 describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb, DEC-976)', () => {
   // Frame :137-172 "Submissions".
-  it("frame :137 Submissions -- DIVERGES (narrowed, DEC-967 wave-20/21): head band (H1, summary, search, chip strip) matches the frame's order and the active-status chip now DRAWS the frame's own \"Needs triage\" words at phone (keeping \"Pending\" as its pinned accessible name); the surviving divergence is the worklist itself, a desktop <table> with columns interleaved between the frame's four card blocks (ref -> title -> speakers -> actions), not a standalone card list", async () => {
+  it("frame :137 Submissions -- DIVERGES (narrowed further, DEC-976 wave-12): head band (H1, summary, search, chip strip) matches the frame's order and the active-status chip now DRAWS the frame's own \"Needs triage\" words at phone (keeping \"Pending\" as its pinned accessible name); submissions.css's terminal max-width:700px block hides <thead> and re-lines the worklist's <td> cells into the frame's own card sequence -- ref+status baseline, then title, then speakers/track/sent, then the row actions -- so this is no longer a desktop <table> masquerading as a card; the surviving divergence is the ADDED select-checkbox cell (order:2, sharing the ref/status baseline line) that the frame draws no counterpart for", async () => {
     const EVENT_ID = 'evt-submissions-frame-137';
     window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 
@@ -200,13 +200,42 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     // in the frame's own order, though nested in a <table> row rather than
     // the frame's standalone stacked card.
 
-    // The row lives in a <table>, not a standalone card -- the frame draws
-    // no table semantics at all for this list.
-    expect(screen.getByRole('cell', { name: 'S-001' }).closest('table')).not.toBeNull();
+    // Source-scan pin (jsdom applies no @media, so a DOM-order assertion
+    // here cannot observe the phone re-line): submissions.css's terminal
+    // max-width:700px block hides <thead> and re-lines the row's <td>
+    // cells into the frame's own card sequence -- ref+status baseline
+    // line, title, speakers/track/sent line, then the row actions -- the
+    // CSS rule text itself is the drift-proof receipt (idiom copied from
+    // Review.frame-verdicts.render.test.tsx's review.css check).
+    const submissionsCssPath = join(REPO_ROOT, 'app', 'src', 'pages', 'submissions', 'submissions.css');
+    const submissionsCss = readFileSync(submissionsCssPath, 'utf-8');
+    expect(submissionsCss).toContain('.chq-submissions-table thead {\n    display: none;\n  }');
+    // Baseline line 1: select-checkbox + ref + status pill (order:2) --
+    // the ADDED cell the frame draws no counterpart for.
+    expect(submissionsCss).toContain(
+      '.chq-submissions-table tbody td:nth-child(1),\n  .chq-submissions-table tbody td:nth-child(2),\n  .chq-submissions-table tbody td:nth-child(6) {\n    order: 2;\n    width: auto;\n  }',
+    );
+    // Title (order:3), matching the frame's ref -> TITLE -> speakers ->
+    // actions sequence.
+    expect(submissionsCss).toContain('.chq-submissions-table tbody td:nth-child(3) {\n    order: 3;\n  }');
+    // Speakers/track/sent line (order:4), matching the frame's
+    // ref -> title -> SPEAKERS -> actions sequence.
+    expect(submissionsCss).toContain(
+      '.chq-submissions-table tbody td:nth-child(4),\n  .chq-submissions-table tbody td:nth-child(5),\n  .chq-submissions-table tbody td:nth-child(7),\n  .chq-submissions-table tbody .chq-submissions-table-custom {\n    order: 4;\n    width: auto;\n  }',
+    );
+    // The row actions cell carries no explicit order override here, so it
+    // keeps the tbody td default (order:10, set above) -- after every
+    // named band, matching the frame's trailing ACTIONS position.
+    expect(submissionsCss).toContain('.chq-submissions-table tbody td {\n    display: block;\n    width: 100%;\n    order: 10;');
+    // The select-checkbox cell is the one card slot the frame draws no
+    // counterpart for -- it shares the ref/status baseline line (order:2)
+    // rather than standing apart, so it is the surviving divergence, not
+    // "a desktop table".
+    expect(screen.getByRole('checkbox', { name: 'Select S-001' })).toBeInTheDocument();
   });
 
   // Frame :355-390 "Submission detail".
-  it('frame :355 Submission detail -- DIVERGES (clause (a) live; clause (b) CLOSED commit 023e1257, DEC-878): real content is present in the frame\'s own block order (ref/eyebrow -> title -> byline -> abstract -> answers -> reviews); the back link still keeps its full desktop text (\'All submissions\') alongside a same-anchor short span, never the frame\'s bare \'‹ Triage\' -- but the Abstract/Form answers H2s are now screen-reader-only (chq-detail-section-title-frameless) inside detail.css\'s terminal phone block, matching the frame\'s drawn anatomy at 390 with desktop byte-identical', async () => {
+  it('frame :355 Submission detail -- MATCHES (clause (a) retired, DEC-976 wave-12; clause (b) CLOSED commit 023e1257, DEC-878): real content is present in the frame\'s own block order (ref/eyebrow -> title -> byline -> abstract -> answers -> reviews); the back link is a SINGLE anchor with two same-anchor spans (chq-detail-back-full \'All submissions\', chq-detail-back-short \'Triage\'), and detail.css\'s terminal max-width:700px block hides the full span and shows only the short one at phone width -- so the SCREEN reads the frame\'s own bare \'‹ Triage\', even though jsdom\'s no-@media DOM keeps both spans mounted here; the Abstract/Form answers H2s are screen-reader-only (chq-detail-section-title-frameless) inside the same terminal phone block, matching the frame\'s drawn anatomy at 390 with desktop byte-identical', async () => {
     const SUB_ID = 'sub-frame-355';
 
     mockApi({
@@ -271,10 +300,17 @@ describe('v12 Submissions 390 frames: per-frame render verdict receipts (w14-sb,
     verbatimLine(358, L358);
     const backLink = screen.getByRole('link', { name: /All submissions/ });
     expect(backLink.textContent).toContain('Triage');
-    // The frame draws one bare-text back anchor; the real page keeps its
-    // desktop copy ('All submissions') as the full span and adds a second,
-    // same-anchor short span ('Triage') -- never the frame's own bare text.
-    expect(screen.queryByText('‹ Triage', { selector: 'a' })).not.toBeInTheDocument();
+    // RETIRED (DEC-976 wave-12): this used to assert the frame's bare
+    // '‹ Triage' anchor text never renders. False -- detail.css's terminal
+    // max-width:700px block hides chq-detail-back-full and shows only
+    // chq-detail-back-short ('Triage') at phone width, so the SCREEN
+    // (not this jsdom DOM, which applies no @media and keeps both spans)
+    // reads exactly the frame's own bare text. Source-scan receipt, same
+    // idiom as the :367 abstract-heading check below.
+    const detailCssForBack = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'submissions', 'detail.css'), 'utf-8');
+    expect(detailCssForBack).toContain('.chq-detail-back-full {\n    display: none;\n  }');
+    expect(detailCssForBack).toContain('.chq-detail-back-short {\n    display: inline;\n  }');
+    expect(backLink.querySelector('.chq-detail-back-short')?.textContent).toBe('Triage');
 
     // docs/design/Chautauqua Submissions.dc.html:362
     // `        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.2">Docs That Answer Back: Retrieval-Grounded Documentation Sites</h1>`
