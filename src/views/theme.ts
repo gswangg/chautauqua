@@ -534,8 +534,9 @@ export const THEME_CSS = `
     gap: 0.75rem;
     background: var(--chq-paper);
   }
-  /* tap-floor-exempt: DEC-382 -- .chq-wordmark renders as an <a href="/">
-     only on the two TOOLS_CSS operator surfaces this rule reaches
+  /* tap-floor-exempt: DEC-382 -- .chq-wordmark renders as an <a> pointing
+     at the site root (href points at "/") only on the two TOOLS_CSS
+     operator surfaces this rule reaches
      (src/routes/docs.tsx:41 GET /docs/api, src/routes/dev/mailbox.tsx:59,119
      GET /dev/mailbox(/:id)); every other mount (App.tsx's SPA header,
      src/routes/portal/shared.tsx:191) renders it as a plain non-interactive
