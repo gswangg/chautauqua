@@ -416,6 +416,20 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Ratchet ceiling constant module (DEC-374/DEC-613, wave v12m-w8 task w8-ef) for the same scan's second " +
     "offender class -- its only importer is test/comment-blind-css-assertion.scan.test.ts, and test-file " +
     "imports don't confer reachability (DEC-518). Same shape as its ceiling.ts sibling above.",
+  "app/src/phone-tap-target-scan/width-ceiling.ts":
+    "Ratchet constant/predicate module for the width half of the 44px floor (DEC-393/DEC-808) -- isolated " +
+    "into its own file so scripts/exit-predicate.ts finds exactly one tracked declaration of `export const " +
+    "WIDTH_FLOOR_OFFENDERS_CEILING = <int>;` and every re-measure of the ratchet touches only this constant " +
+    "and its history comment, never the population/predicate machinery in ./width-floor.ts (same shape as " +
+    "starved-track-ceiling.ts above). Its sole importer is " +
+    "app/src/phone-tap-target-width-floor.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518).",
+  "app/src/phone-tap-target-scan/width-floor.ts":
+    "Population/predicate module for the width half of the 44px floor (DEC-393/DEC-808) -- grades every " +
+    "glyph-only/empty-with-aria-label control against a declared >=44px min-width/width effective at 390, " +
+    "kept out of width-ceiling.ts so re-measuring the ratchet constant never touches this detection " +
+    "machinery. Its sole importer is app/src/phone-tap-target-width-floor.scan.test.ts, and test-file " +
+    "imports don't confer reachability (DEC-518).",
 };
 
 const orphans = NON_TEST_MODULES.filter((f) => !reachable.has(f)).map((f) => relative(REPO_ROOT, f));
