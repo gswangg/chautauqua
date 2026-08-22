@@ -397,10 +397,25 @@ the instrument on the merged tree after this section was written (this
 document is itself in the scanned corpus, so the figures are the
 post-edit ones, per the same rule `v12m-w31-d` applied to its own
 self-referential sentence): `AUDIT_FILE_FLOOR` **118**, `TOKEN_ROW_FLOOR`
-**243**, `SHAPE_FLOORS` **32 heading / 71 table / 31 bullet / 109
-fallback** (summing to 243, which is the arithmetic check that the shape
+**245**, `SHAPE_FLOORS` **33 heading / 72 table / 31 bullet / 109
+fallback** (summing to 245, which is the arithmetic check that the shape
 split partitions the row population rather than double-counting), and
-`OPEN_DIVERGENCE_CEILING` **22**.
+`OPEN_DIVERGENCE_CEILING` **23**.
+
+The 23rd row arrived later in the same train, from `v12m-w31-c`:
+`deviations-ledger-v12.md:134` is the counts-table row
+`| ## 7. Settled frame divergences | 17 |` -- a SECTION NAME in a
+population tally, not a divergence claim at all. It is the third instance
+of the safe-direction false positive already documented above for
+`density-pairing-v12.md:203` and `desktop-control-floor-v12.md:185`/`:441`
+(another instrument's own constant or section label caught by the widened
+vocabulary), and it is handled the same way they were: counted and
+described, never special-cased out of the population. Hand-curating it
+away would mean this ledger's grammar could no longer be stated without
+an exception list, which is the precise failure DEC-808 and this file's
+own "never hand-curate a row" rule exist to prevent. The cost of the rule
+is four rows of documented over-approximation; the benefit is a
+population anyone can re-derive from the grammar alone.
 
 Two rows in the list above are this document's OWN prose -- the
 `**The ratchet question this raised**` paragraph and the bullet quoting

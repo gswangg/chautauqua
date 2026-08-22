@@ -800,6 +800,105 @@ const LEDGER: LedgerEntry[] = [
       "the frame's 'Public URL' label names a field whose drawn value is a full rendered origin+slug, but EventSettingsPanel.tsx's control edits the slug segment alone -- the panel's own PATCH payload and form state key are 'slug', never a composed URL, so adopting the frame's label without also building the origin-prefix presentation it implies would name the field something the input does not accept.",
     honored: { kind: "present", file: "app/src/pages/settings/EventSettingsPanel.tsx", literal: "slug: 'Slug',", testFile: "app/src/pages/settings/EventSettingsPanel.render.test.tsx" },
   },
+  // The seven rows below were added by the WAVE-31 MERGE TRAIN, not by task
+  // w31-c. w31-c derived this population from DEVIATIONS.md's live headings
+  // (replacing the old hand-listed INCLUDED_HEADINGS) while `## 7` carried 10
+  // bullets; main had meanwhile grown the section to 17 -- the wave-30
+  // megabatch landed DEC-582's "CFP display-only overrides" subsection (six
+  // bullets) plus DEC-919's Content-390 chip-strip entry. The merge surfaced
+  // all seven as "derived bullet with no ledger row", which is w31-c's
+  // derivation working exactly as built: a hand-listed population would have
+  // stayed silently green. Each was graded by the same rule as the original
+  // ten -- open the cited artifact, confirm it carries the cited literal --
+  // and each cites the SAME guard test DEVIATIONS.md's own bullet names, so
+  // no row here invents a resolver the prose did not already claim.
+  {
+    key: "content-390-chip-strip-keeps-its-third-chip-all-accepted-sessions-dec-919-wave-28-amendment",
+    status: "honored",
+    reason:
+      "DEC-919 wave-28 amendment: the frame draws three chips at desktop and only two in both 390 extents, but the product renders all three at every width. RULED that the third stays -- a filter tab is a capability, not prose, so DEC-919's re-line-never-remove governs it, and the frame's own 390 chip row declares overflow-x:auto, meaning a member past the drawn viewport is a drawing boundary rather than an omission to match.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/content/worklist.ts",
+      literal: "export const WORKLIST_TABS = ['needs_decision', 'approved', 'all'] as const;",
+      testFile: "app/src/pages/content/ContentApp.landing390.render.test.tsx",
+    },
+  },
+  {
+    key: "abstract-helper-text-cfp-abstract-help-text",
+    status: "honored",
+    reason:
+      "DEC-582 wave-30 amendment: frame-copy override. The frame draws this helper beneath the Abstract field and the product ships the identical literal, overriding whatever helper text a producer's own stored field carries -- display-only chrome the frame itself draws, which is the half of DEC-613 wave-27's rule where frame copy wins.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: 'const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";',
+      testFile: "test/submit-cfp-frame-copy.test.ts",
+    },
+  },
+  {
+    key: "bio-helper-text-cfp-bio-help-text",
+    status: "honored",
+    reason:
+      "DEC-582 wave-30 amendment: frame-copy override. The frame draws this helper beneath the Bio field and the product ships the identical literal. Note this row touches helpText only -- the bio LABEL is the deliberate non-override recorded in its own row below.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: 'const CFP_BIO_HELP_TEXT = "Shown on the public speakers page · you can edit it later in your portal";',
+      testFile: "test/submit-cfp-frame-copy.test.ts",
+    },
+  },
+  {
+    key: "email-helper-text-cfp-email-help-text-the-one-addition-not-a-frame-match",
+    status: "honored",
+    reason:
+      "DEC-582 wave-30 amendment: the one ADDITION in this subsection, recorded as such rather than dressed up as a frame match. The frame draws no helper under Email at all; the product adds one stating a real, invisible cost (a typo strands the speaker with no other route to their portal) that a static mock has no room to draw.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: 'const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you never get it";',
+      testFile: "test/submit-cfp-frame-copy.test.ts",
+    },
+  },
+  {
+    key: "notes-for-reviewers-placeholder-cfp-notes-for-reviewers-placeholder",
+    status: "honored",
+    reason:
+      "DEC-582 wave-30 amendment (DEC-380 wave-133 for the shape): the frame draws this string as example content INSIDE the textarea, not as a below-field caption, so the product ships it as the control's placeholder attribute -- the closest DOM equivalent of 'content drawn inside the box'.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: 'const CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER = "Never shown publicly";',
+      testFile: "test/submit-cfp-frame-copy.test.ts",
+    },
+  },
+  {
+    key: "accessibility-needs-placeholder-cfp-accessibility-needs-placeholder",
+    status: "honored",
+    reason:
+      "DEC-582 wave-30 amendment: same pattern as the notes-for-reviewers row above -- the frame draws the string inside the control, so the product ships it as a placeholder. Both fields are asserted together by the one cited guard.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: 'const CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER = "Goes to the venue team only";',
+      testFile: "test/submit-cfp-frame-copy.test.ts",
+    },
+  },
+  {
+    key: "bio-label-deliberately-not-overridden",
+    status: "honored",
+    reason:
+      "DEC-613 wave-27, quoted verbatim by DEVIATIONS.md itself: 'the bio field's stored label ships at every width -- a frame's abbreviated legend never renames stored data.' The frame draws 'Bio · optional' as the legend, but displayFields applies NO label override for bio, so the producer-authored stored label ships as-is. This row's claim is a NON-build, so it carries the two-cite shape DEC-967 wave-145 requires: the built half (the helpText-only override that proves displayFields reaches this field at all) and the not-built half (no CFP_BIO_LABEL-shaped constant anywhere), so the row cannot go stale by someone later adding the override.",
+    honored: [
+      {
+        kind: "present",
+        file: "src/routes/public/submit-views.tsx",
+        literal: "return { ...f, helpText: CFP_BIO_HELP_TEXT };",
+        testFile: "test/submit-cfp-frame-copy.test.ts",
+      },
+      { kind: "absent", term: "CFP_BIO_LABEL" },
+    ],
+  },
   // ---- ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -------
   {
     key: "a-pack-frame-that-documents-a-vocabulary-is-not-a-screen",
@@ -1043,9 +1142,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     expect(bySection.get("## 4a. Docs screenshots: tall frames, prepared states, and focus (USER RULINGS 2026-08-16 / 2026-08-17)")).toBe(4);
     expect(bySection.get("## 5. Pending adjudication (not yet blessed — sweep should verdict)")).toBe(1);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(22);
-    expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(10);
+    expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(17);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
-    expect(derived.length).toBe(69);
+    expect(derived.length).toBe(76);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {

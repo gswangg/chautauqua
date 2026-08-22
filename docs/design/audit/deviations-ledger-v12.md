@@ -69,7 +69,7 @@ to its own heading -- same reasoning
 `test/design-rulings-ledger.scan.test.ts` applies to its `## A.`/`## B.`
 section dividers -- rather than force-fit to `## 6`'s citation.
 
-### ## 7. Settled frame divergences (wave 16 amendment, DEC-663) -- 10 rows, all honored
+### ## 7. Settled frame divergences (wave 16 amendment, DEC-663) -- 17 rows, all honored
 
 | key | citation(s) |
 |---|---|
@@ -83,11 +83,33 @@ section dividers -- rather than force-fit to `## 6`'s citation.
 | `a-modalframe-dialogs-title-stays-an-h2-referenced-by-aria-labelledby-not-the-frames-h1` | `app/src/components/ModalFrame.tsx` `<h2 className="chq-modal-title">{title}</h2>` |
 | `contacts-390-stands-down-three-purely-informational-readings-with-no-surviving-path-wave-16-r5-amendment-src-decisions-data-dec-919-md` | `app/src/pages/contacts/contacts.css` `.chq-contacts-rail { display: none; }` (phone media query) |
 | `settings-events-slug-field-stays-slug-not-the-frames-public-url-dec-613-wave-24-amendment` | `app/src/pages/settings/EventSettingsPanel.tsx` `slug: 'Slug',` |
+| `content-390-chip-strip-keeps-its-third-chip-all-accepted-sessions-dec-919-wave-28-amendment` | `app/src/pages/content/worklist.ts` `export const WORKLIST_TABS = ['needs_decision', 'approved', 'all'] as const;` |
+| `abstract-helper-text-cfp-abstract-help-text` | `src/routes/public/submit-views.tsx` `const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";` |
+| `bio-helper-text-cfp-bio-help-text` | `src/routes/public/submit-views.tsx` `const CFP_BIO_HELP_TEXT = "Shown on the public speakers page · you can edit it later in your portal";` |
+| `email-helper-text-cfp-email-help-text-the-one-addition-not-a-frame-match` | `src/routes/public/submit-views.tsx` `const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you never get it";` |
+| `notes-for-reviewers-placeholder-cfp-notes-for-reviewers-placeholder` | `src/routes/public/submit-views.tsx` `const CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER = "Never shown publicly";` |
+| `accessibility-needs-placeholder-cfp-accessibility-needs-placeholder` | `src/routes/public/submit-views.tsx` `const CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER = "Goes to the venue team only";` |
+| `bio-label-deliberately-not-overridden` | `src/routes/public/submit-views.tsx` -- the citation is an ABSENCE, verified as one: `displayFields`' `bio` branch returns `{ ...f, helpText: CFP_BIO_HELP_TEXT }`, touching `helpText` alone, and no `CFP_BIO_LABEL`-shaped constant exists in the file (DEC-613 wave-27: a frame's abbreviated legend never renames stored data) |
 
 Every claim in this section was already recorded as "settled" in
 DEVIATIONS.md's own prose; this wave's job was verifying each cited artifact
-actually exists and carries the cited literal (all ten do) rather than
+actually exists and carries the cited literal (all seventeen do) rather than
 inventing new dispositions.
+
+**Merge-train addendum (wave-31 megabatch).** The seven rows after
+`settings-events-slug-field-...` above were NOT added by task `v12m-w31-c`.
+That task was cut when `## 7` carried 10 bullets; main had meanwhile grown
+the section to 17 (the wave-30 megabatch landed DEC-582's "CFP display-only
+overrides" subsection of six bullets, plus DEC-919's Content-390 chip-strip
+entry). Because this ledger's population is DERIVED from DEVIATIONS.md
+rather than hand-listed, the merge surfaced the seven as "derived bullet
+with no ledger row" -- the derivation working exactly as `v12m-w31-c` built
+it to. Each of the seven was graded here by the same rule the original ten
+were: open the cited artifact and confirm it carries the cited literal.
+All seven verified against the live tree (the five `CFP_*` constants at
+`src/routes/public/submit-views.tsx:48-63`, `WORKLIST_TABS` at
+`app/src/pages/content/worklist.ts:5`, and the deliberate absence of any
+`CFP_BIO_LABEL`), so all seven are `honored`; none is a gap.
 
 ### ## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments) -- 4 rows, all honored
 
@@ -98,7 +120,7 @@ inventing new dispositions.
 | `settings-950s-edit-footer-keeps-its-single-close` | `app/src/pages/settings/PeopleRolesPanel.tsx` the edit-drill footer's `onClick={closeEdit}` primary button |
 | `contacts-720s-single-stage-pill-page-is-the-phone-register` | `app/src/pages/contacts/PipelineBoard.tsx` `function stageEmptyBody(...)` |
 
-## Re-measured population (was 49 across four sections; now 69 across all nine)
+## Re-measured population (was 49 across four sections; now 76 across all nine)
 
 | section | rows |
 |---|---|
@@ -109,9 +131,9 @@ inventing new dispositions.
 | ## 4a. Docs screenshots | 4 |
 | ## 5. Pending adjudication | 1 (divider) |
 | ## 6. Deferred post-deadline | 22 |
-| ## 7. Settled frame divergences | 10 |
+| ## 7. Settled frame divergences | 17 |
 | ## 8. Wave 9 rulings | 4 |
-| **total** | **69** |
+| **total** | **76** |
 
 ## Gaps a later wave can drain
 
