@@ -1,7 +1,9 @@
 // Split wave 12 (custodian decomposition of the former single
 // PeopleRolesPanel.render.test.tsx): this file covers the per-row
-// "Reset password" affordance -- its inline (non-dialog) reveal-once
-// password step and its distinct facts/copy vs. the invite reveal.
+// "Reset password" affordance -- its reveal-once password step and its
+// distinct facts/copy vs. the invite reveal. DEC-747 (wave-7 amendment):
+// the reveal now renders as a Modal, the same dialog contract the invite
+// reveal already uses.
 // See PeopleRolesPanel.test-helpers.tsx for shared fixtures.
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor, fireEvent, within } from '@testing-library/react';
@@ -55,10 +57,11 @@ describe('PeopleRolesPanel reset password', () => {
     ).not.toBeInTheDocument();
   });
 
-  // DEC-747 amendment (wave 67): the reset-password reveal is a distinct
-  // per-row affordance (frame 09--24) that keeps its inline site -- it must
-  // not move into a dialog.
-  it('keeps the reset-password reveal inline, not inside a dialog', async () => {
+  // DEC-747 (wave-7 amendment): the reset-password reveal is a Modal, the
+  // same dialog contract the invite reveal already uses (Chautauqua
+  // Settings.dc.html:1477-1484) -- title names the person, subtitle is
+  // 'email · Role', a Close control in the head.
+  it('renders the reset-password reveal as a Modal with the frame anatomy', async () => {
     mockPeople({
       'POST /api/v1/users/u-other/reset-password': {
         status: 200,
@@ -78,6 +81,40 @@ describe('PeopleRolesPanel reset password', () => {
     await waitFor(() => {
       expect(screen.getByText('zz99-yy88-xx77')).toBeInTheDocument();
     });
+    const dialog = screen.getByRole('dialog');
+    // OTHER carries no `name`, so the title falls back to its email --
+    // same fallback shape as the invite reveal and the row list.
+    expect(within(dialog).getByText(`${OTHER.email} can sign in again`)).toBeInTheDocument();
+    expect(within(dialog).getByText(`${OTHER.email} · Reviewer`)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    // Its own modalClassName -- never the invite dialog's.
+    expect(dialog.querySelector('.chq-modal')).toHaveClass('chq-people-reset-modal');
+    expect(dialog.querySelector('.chq-modal')).not.toHaveClass('chq-people-invite-modal');
+  });
+
+  it('closes the reset reveal dialog via its Close control', async () => {
+    mockPeople({
+      'POST /api/v1/users/u-other/reset-password': {
+        status: 200,
+        body: { email: OTHER.email, password: 'zz99-yy88-xx77' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Reset password' }));
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Confirm reset' }));
+
+    let dialog!: HTMLElement;
+    await waitFor(() => {
+      dialog = screen.getByRole('dialog');
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('zz99-yy88-xx77')).not.toBeInTheDocument();
   });
 });
