@@ -74,12 +74,13 @@
 import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
 import type { KVStore } from "../lib/draft";
-import { DEC_627 } from "../decisions";
+import { DEC_024, DEC_627 } from "../decisions";
 import { executionCtxOf } from "./execution-ctx";
 import { MAX_PUBLIC_QUERY_VALUE_LENGTH, PUBLIC_CACHE_KEY_PARAMS } from "./repo/public/bounds";
 import { SESSION_COOKIE_NAME, parseCookies } from "../auth/cookies";
 
 void DEC_627;
+void DEC_024;
 
 /** One version key for the WHOLE INSTANCE — not per-event, not per-org.
  * `bumpIfMutating` (below) rewrites this single KV entry after ANY
@@ -290,10 +291,14 @@ export function matchPattern(pattern: PathPattern, path: string): boolean {
  * (enforced by the source-scanning test) is what makes the PUBLIC-
  * AFFECTING list trustworthy as "everything not here bumps".
  *
- * /api/v1/forms/* and /api/v1/fields/* (CFP form-builder) are here too:
- * the /submit/:eventSlug page that renders them is never behind the
- * cache (only /e/* and /embed/* are), so editing the form structure has
- * nothing cached to invalidate. */
+ * DEC-024 (wave-22 amendment): a route is NEVER_PUBLIC only if NO cached
+ * public surface reads what it writes — not merely "the page that renders
+ * its own form/field editor isn't cached". The old blanket "/api/v1/forms/*"
+ * and "/api/v1/fields/*" wildcards were wrong on that test (see
+ * PUBLIC_AFFECTING below) and are gone; only the two CFP routes below that
+ * are genuinely unreachable from any cached reader stay here, listed by
+ * their exact literal path rather than a family wildcard so a future
+ * sibling route doesn't inherit the never-public verdict by accident. */
 export const NEVER_PUBLIC: PathPattern[] = [
   "/login",
   "/logout",
@@ -339,8 +344,15 @@ export const NEVER_PUBLIC: PathPattern[] = [
   // public row's visibility can change from this write.
   "/api/v1/files/:id",
   "/api/v1/events/:id/files/archive",
-  "/api/v1/forms/*",
-  "/api/v1/fields/*",
+  // DEC-024 (wave-22 amendment): these two are the only genuinely
+  // never-public routes in the CFP form/field family. Creating a field
+  // never sets a role (role is only grantable via the PATCH route below,
+  // in PUBLIC_AFFECTING), and reordering fields changes their position on
+  // /submit, never the *content* src/server/repo/public/event.ts's
+  // getPublicFormatOptions reads (it selects by role, not position) — so
+  // neither write has any cached reader to invalidate.
+  "/api/v1/forms/:formId/fields",
+  "/api/v1/forms/:formId/fields/reorder",
   "/api/v1/users*",
   // DEC-627: only the three non-upload task-assignment mutations below are
   // never-public; /portal/tasks/:id/upload reopens content review (DEC-020)
@@ -428,6 +440,23 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   // whether/what GET /embed/e/:embedId (a cached public route) serves.
   "/api/v1/events/:id/embeds",
   "/api/v1/embeds/:id",
+  // DEC-024 (wave-22 amendment): PATCH /api/v1/forms/:formId writes
+  // openDate/closeDate, and src/server/repo/public/event.ts's
+  // getPublicCfpWindow reads exactly those two columns to decide the CFP
+  // rail's open/closed state, reached from the cached /e/:slug/sessions
+  // read via src/routes/public/sessions.tsx. Was wrongly in NEVER_PUBLIC.
+  "/api/v1/forms/:formId",
+  // DEC-024 (wave-22 amendment): PATCH /api/v1/fields/:fieldId can change a
+  // field's options or grant/clear its session_format role, and
+  // src/server/repo/public/event.ts's getPublicFormatOptions reads exactly
+  // that role's options for the sessions surface's format-filter chips,
+  // reached the same way as the form route immediately above. DELETE on
+  // this same literal path shares the classification (a route is
+  // classified by its most public-reaching write, per the
+  // /api/v1/submissions/:id/files precedent above) even though DELETE
+  // alone can never remove a role-tagged field (see forms.ts's explicit
+  // refusal) — the path, not the verb, is what this list's pattern keys on.
+  "/api/v1/fields/:fieldId",
   "/portal/submissions/*",
   "/portal/profile",
   "/portal/invitations/*",

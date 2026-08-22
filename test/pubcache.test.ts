@@ -569,8 +569,8 @@ describe("affectsPublicOutput (DEC-627)", () => {
     expect(affectsPublicOutput("POST", "/api/v1/files/f1/comments")).toBe(false);
     expect(affectsPublicOutput("POST", "/api/v1/events/e1/files/archive")).toBe(false);
     expect(affectsPublicOutput("DELETE", "/api/v1/files/f1")).toBe(false);
-    expect(affectsPublicOutput("PATCH", "/api/v1/forms/f1")).toBe(false);
-    expect(affectsPublicOutput("DELETE", "/api/v1/fields/fl1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/forms/f1/fields")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/forms/f1/fields/reorder")).toBe(false);
     expect(affectsPublicOutput("POST", "/api/v1/users")).toBe(false);
     expect(affectsPublicOutput("POST", "/portal/tasks/a1/complete")).toBe(false);
     expect(affectsPublicOutput("POST", "/portal/tasks/a1/form")).toBe(false);
@@ -597,6 +597,12 @@ describe("affectsPublicOutput (DEC-627)", () => {
     expect(affectsPublicOutput("POST", "/portal/submissions/s1/edit")).toBe(true);
     expect(affectsPublicOutput("POST", "/portal/profile")).toBe(true);
     expect(affectsPublicOutput("POST", "/portal/invitations/p1")).toBe(true);
+    // DEC-024 (wave-22 amendment): CFP form/field writes reach the public
+    // sessions rail's CFP window and format chips — see pubcache.ts's
+    // PUBLIC_AFFECTING comments.
+    expect(affectsPublicOutput("PATCH", "/api/v1/forms/f1")).toBe(true);
+    expect(affectsPublicOutput("PATCH", "/api/v1/fields/fl1")).toBe(true);
+    expect(affectsPublicOutput("DELETE", "/api/v1/fields/fl1")).toBe(true);
   });
 
   it("fail-safe: an unclassified mutating path bumps by default", () => {
