@@ -32,133 +32,66 @@
 // quote that a house wrapped across a comment's line width -- e.g. a frame
 // name split "Chautauqua Public and\n * Portal.dc.html" -- is still found;
 // this is a house convention (long comments wrap), never itself asserted.
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+//
+// CONTENTION DECOMPOSITION (no behaviour change): this file was 1038 lines
+// and a recurring merge-conflict hotspot. Its path/enumeration/citation
+// matching helpers now live in ./frame-citation-core, its phone/desktop
+// frame-extent helpers in ./frame-citation-frames, and its receipt-checking
+// logic (quote+expect / helper-credit / header-block exemption) in
+// ./frame-citation-receipts -- each re-exported here where a symbol is used
+// so every describe/it block below reads exactly as before. The ratchet
+// ceiling constants (UNRECEIPTED_CLAIM_CEILING,
+// DESKTOP_UNRECEIPTED_CLAIM_CEILING, HEADER_SCOPE_WITHOUT_RECEIPT_CEILING,
+// DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING) stay declared in THIS
+// *.test.ts file deliberately: scripts/exit-predicate.ts's
+// findCampaignCeilingCandidates only scans `*.test.ts(x)` files for
+// `const <NAME>_CEILING = <integer>;` declarations, so moving a graded
+// ceiling into a non-test module would make it invisible to the campaign
+// scoreboard.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-
-const APP_SRC = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(APP_SRC, '..', '..');
-const SRC_ROOT = join(REPO_ROOT, 'src');
-const DESIGN_ROOT = join(REPO_ROOT, 'docs', 'design');
-
-function isTestFile(name: string): boolean {
-  return /\.test\.tsx?$/.test(name);
-}
-
-/** Every file under `root` matching one of `extensions`, test files
- * excluded, enumerated via readdirSync rather than named (DEC-808). */
-function enumerateFiles(root: string, extensions: string[]): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile()) continue;
-    if (!extensions.some((ext) => entry.name.endsWith(ext))) continue;
-    if (isTestFile(entry.name)) continue;
-    out.push(join(entry.parentPath, entry.name));
-  }
-  return out.sort();
-}
+import {
+  APP_SRC,
+  enumerateFiles,
+  enumerateTestFiles,
+  findCitations,
+  flatten,
+  frameLines,
+  lineNumberAt,
+  locateSourceIndex,
+  normalise,
+  quoteAfter,
+  relative,
+  REPO_ROOT,
+  SRC_ROOT,
+  TEST_DIR_ROOT,
+} from './frame-citation-core';
+import {
+  ALL_DESKTOP_FRAME_EXTENTS,
+  ALL_FRAME_EXTENTS,
+  isInsideADesktopFrame,
+  isInsideAPhoneFrame,
+} from './frame-citation-frames';
+import {
+  computeHeaderScopeWithoutReceiptOffenders,
+  computeUnreceiptedCitations,
+  EXPECT_PROXIMITY_LINES,
+  helperNamesFor,
+  isHeaderBlockCitation,
+  type TestPhoneCitation,
+} from './frame-citation-receipts';
 
 const TARGET_FILES = [
   ...enumerateFiles(APP_SRC, ['.css']),
   ...enumerateFiles(SRC_ROOT, ['.ts', '.tsx']),
 ];
 
-function normalise(s: string): string {
-  return s.replace(/\s+/g, ' ').trim();
-}
-
-/** Collapses comment-wrap line breaks (and any run of whitespace) to a
- * single space, so a citation or quote split across a wrapped comment line
- * reads as one contiguous string for matching purposes. */
-function flatten(content: string): string {
-  return content
-    .replace(/\r?\n[ \t]*\*\/?[ \t]?/g, ' ')
-    .replace(/\r?\n[ \t]*\/\/[ \t]?/g, ' ')
-    .replace(/\s+/g, ' ');
-}
-
-interface Citation {
-  /** Repo-relative path of the file carrying the citation. */
+interface Scanned {
   file: string;
-  /** The frame's filename under docs/design/, e.g. "Chautauqua Review.dc.html". */
   frameFile: string;
-  /** The first line number named by the citation (a multi-line citation
-   * like ":97/101" or ":117,121,136,140,153" cites several identical
-   * lines in this codebase's usage so far; the first is the one checked). */
   firstLine: number;
-  /** The full matched citation text, for failure messages. */
   matchText: string;
-  /** Index in the FLATTENED source immediately after the citation, where
-   * the backtick quote is expected to follow. */
   index: number;
-}
-
-// Strict form: docs/design/<Frame Name>.dc.html:<line-blob>
-const STRICT_RE = /docs\/design\/([A-Za-z][A-Za-z0-9 ]*\.dc\.html):\s*([\d/,-]+)/g;
-
-// Abbreviated form -- used only where the source is licensed to ship to the
-// browser (PUBLIC_CSS / THEME_CSS) and is forbidden from spelling the
-// product-name-bearing frame filename: docs/design's "<Sheet>" sheet
-// (.dc.html:<line-blob> ...).
-const ABBREV_RE = /docs\/design's\s+"([^"]+)"\s+sheet\s*\(\.dc\.html:\s*([\d/,-]+)/g;
-
-function firstLineNumber(blob: string): number {
-  const m = blob.match(/\d+/);
-  if (!m) throw new Error(`no digit found in line reference "${blob}"`);
-  return Number(m[0]);
-}
-
-function findCitations(file: string, flat: string): Citation[] {
-  const out: Citation[] = [];
-  for (const m of flat.matchAll(STRICT_RE)) {
-    out.push({
-      file,
-      frameFile: m[1]!,
-      firstLine: firstLineNumber(m[2]!),
-      matchText: m[0],
-      index: m.index! + m[0].length,
-    });
-  }
-  for (const m of flat.matchAll(ABBREV_RE)) {
-    out.push({
-      file,
-      frameFile: `Chautauqua ${normalise(m[1]!)}.dc.html`,
-      firstLine: firstLineNumber(m[2]!),
-      matchText: m[0],
-      index: m.index! + m[0].length,
-    });
-  }
-  return out;
-}
-
-/**
- * The first backtick-quoted literal within `window` characters after a
- * citation's end (in the flattened source), or null if none is found.
- * Tolerates an escaped backtick (`\``) immediately inside either
- * delimiter: some citations live inside a JS/TS template-literal string
- * (CARDS_CSS/THEME_CSS), where a bare `` ` `` would terminate the string
- * early, so the source escapes it -- the escape character itself is never
- * part of the quoted CSS/copy and is stripped.
- */
-function quoteAfter(flat: string, index: number, window = 400): string | null {
-  const slice = flat.slice(index, index + window);
-  const m = slice.match(/`([^`]*)`/);
-  if (!m) return null;
-  return (m[1] ?? '').replace(/\\/g, '');
-}
-
-const frameLineCache = new Map<string, string[]>();
-function frameLines(frameFile: string): string[] {
-  let lines = frameLineCache.get(frameFile);
-  if (!lines) {
-    lines = readFileSync(join(DESIGN_ROOT, frameFile), 'utf-8').split('\n');
-    frameLineCache.set(frameFile, lines);
-  }
-  return lines;
-}
-
-interface Scanned extends Citation {
   flat: string;
 }
 
@@ -218,141 +151,9 @@ describe('frame-citation contract (DEC-976 amendment wave 23, DEC-808)', () => {
 // fuse, field guide DEC-613) -- and never touching
 // test/phone-frame-ledger.scan.test.ts, which owns CLAIMED_FLOOR and is
 // in flight under other lanes this wave.
-//
-// Frame extents are computed HERE, independently, the same way
-// phone-frame-ledger.scan.test.ts computes them: from a frame's own
-// `width:390px`/`height:844` line up to (but excluding) the next
-// `font-size:19px` label line in the same file, or EOF for the last frame
-// -- never a listed range, and never the label line itself (the label sits
-// ~3 rows ABOVE the frame it labels).
 // ---------------------------------------------------------------------------
 
-const TEST_DIR_ROOT = join(REPO_ROOT, 'test');
-
-/** Every *.test.ts/*.test.tsx file under `root` (readdirSync, DEC-808 idiom,
- * never a hand-listed manifest). */
-function enumerateTestFiles(root: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !isTestFile(entry.name)) continue;
-    out.push(join(entry.parentPath, entry.name));
-  }
-  return out.sort();
-}
-
 const TEST_TARGET_FILES = [...enumerateTestFiles(TEST_DIR_ROOT), ...enumerateTestFiles(APP_SRC)];
-
-interface FrameExtent {
-  fileName: string;
-  line: number;
-  extentEnd: number;
-}
-
-function isFrameLine(line: string): boolean {
-  return line.includes('width:390px') && line.includes('height:844');
-}
-
-const LABEL_LINE_RE = />([^<]+)<\/span>/;
-function isLabelLine(line: string): boolean {
-  return line.includes('font-size:19px') && LABEL_LINE_RE.test(line);
-}
-
-function designFileNames(): string[] {
-  return readdirSync(DESIGN_ROOT, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.dc.html'))
-    .map((e) => e.name)
-    .sort();
-}
-
-function frameExtentsInFile(fileName: string): FrameExtent[] {
-  const lines = readFileSync(join(DESIGN_ROOT, fileName), 'utf-8').split('\n');
-  const labelLineNums: number[] = [];
-  const frameLineNums: number[] = [];
-  lines.forEach((content, idx) => {
-    const lineNo = idx + 1;
-    if (isLabelLine(content)) labelLineNums.push(lineNo);
-    if (isFrameLine(content)) frameLineNums.push(lineNo);
-  });
-  return frameLineNums.map((line) => {
-    const nextLabel = labelLineNums.find((l) => l > line);
-    return { fileName, line, extentEnd: nextLabel ?? Infinity };
-  });
-}
-
-const ALL_FRAME_EXTENTS: FrameExtent[] = designFileNames().flatMap(frameExtentsInFile);
-
-function isInsideAPhoneFrame(frameFile: string, firstLine: number): boolean {
-  return ALL_FRAME_EXTENTS.some(
-    (f) => f.fileName === frameFile && firstLine >= f.line && firstLine < f.extentEnd
-  );
-}
-
-/** Locates a citation's SOURCE line (its position in the citing test file --
- * distinct from `firstLine`, which is the FRAME's cited line) via a
- * sequential search with a rolling cursor, so repeated identical matchTexts
- * in one file resolve in appearance order. Tolerates whitespace collapsed by
- * `flatten` (a wrapped comment) by falling back to a regex that rejoins
- * words with the same connector flatten() would have collapsed. */
-function locateSourceIndex(raw: string, matchText: string, searchFrom: number): number {
-  // matchText came out of flatten(), which collapses a wrapped comment's
-  // line break AND its continuation marker (`* `/`// `) to one space -- so
-  // the raw text may have `// ` or `* ` sitting where matchText has a bare
-  // space. Rejoin each space with the same connector flatten() would have
-  // collapsed, so a name split across a wrapped `//` comment (e.g.
-  // "...Chautauqua\n// Comms.dc.html:177") still resolves.
-  //
-  // The connector is all-optional, so this pattern also matches the ordinary
-  // unwrapped spelling -- it is a SUPERSET of a literal indexOf, and the
-  // earliest position it reports is the true next occurrence of this
-  // citation in either form.
-  //
-  // That superset relationship is the whole point, and why the literal
-  // indexOf below is only allowed to WIN A TIE rather than short-circuit.
-  // Citations are resolved in flattened-source order against a rolling
-  // cursor, which is only sound if each lookup returns the EARLIEST
-  // remaining occurrence. Preferring a literal hit outright breaks that:
-  // when a file cites the same frame span twice -- once wrapped across a
-  // comment line break, once contiguous further down -- the wrapped first
-  // citation finds no literal match at its own position and silently
-  // resolves to the CONTIGUOUS one instead, leapfrogging it. The cursor
-  // then advances past that stolen position and the second, genuinely
-  // contiguous citation can no longer be found at all, so a file with
-  // perfectly well-formed citations throws "flatten() and the raw file
-  // disagree on its text". test/portal-edit-390-frames.test.ts is exactly
-  // this shape: its header comment wraps
-  // "docs/design/Chautauqua Public\n// and Portal.dc.html:600-674" across
-  // lines 2-3 and its describe() repeats the same span contiguously.
-  const CONNECTOR = String.raw`\s*(?:\/\/|\*\/?)?\s*`;
-  const pattern = matchText
-    .split(' ')
-    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join(CONNECTOR);
-  const m = raw.slice(searchFrom).match(new RegExp(pattern));
-  const wrapped = m?.index === undefined ? -1 : searchFrom + m.index;
-  const direct = raw.indexOf(matchText, searchFrom);
-
-  if (wrapped === -1 && direct === -1) {
-    throw new Error(
-      `could not locate citation "${matchText}" in its own source file to check line adjacency -- ` +
-        `flatten() and the raw file disagree on its text`
-    );
-  }
-  if (wrapped === -1) return direct;
-  if (direct === -1) return wrapped;
-  return Math.min(direct, wrapped);
-}
-
-function lineNumberAt(raw: string, index: number): number {
-  let n = 1;
-  for (let i = 0; i < index; i++) if (raw.charCodeAt(i) === 10) n++;
-  return n;
-}
-
-interface TestPhoneCitation extends Citation {
-  sourceLine: number;
-  flat: string;
-  raw: string;
-}
 
 const TEST_PHONE_CITATIONS: TestPhoneCitation[] = [];
 for (const file of TEST_TARGET_FILES) {
@@ -367,10 +168,6 @@ for (const file of TEST_TARGET_FILES) {
     TEST_PHONE_CITATIONS.push({ ...c, flat, raw, sourceLine: lineNumberAt(raw, idx) });
   }
 }
-
-/** How many source lines beneath a test-file citation's own line a real
- * `expect(` must appear within, to count as a receipted claim. */
-const EXPECT_PROXIMITY_LINES = 6;
 
 /** Ratchet ceiling (DEC-976 wave-87 amendment): the count of test-file
  * phone-frame citations that are NOT fully receipted (missing either the
@@ -392,207 +189,6 @@ const EXPECT_PROXIMITY_LINES = 6;
  * task). The two-sided companion at the bottom of this file is what forced
  * the tightening. */
 const UNRECEIPTED_CLAIM_CEILING = 0;
-
-// ---------------------------------------------------------------------------
-// Task w14-a (DEC-976 wave-14m amendment): two predicate changes to
-// computeUnreceiptedCitations below.
-//
-// (1) CREDIT A FRAME-VERBATIM HELPER. The corpus's newer idiom -- see
-// app/src/pages/Contacts-import.desktop-frame-verdicts.render.test.tsx:37-42
-// for the canonical body -- reads DESIGN_FILE, indexes `lines[lineNo - 1]`,
-// and calls `expect(line).toBe(literal)`. That is STRICTLY STRONGER than a
-// comment quote plus a nearby `expect(`: it fails the owning test when the
-// pack is re-cut, where a quote is inert prose. A citation is credited by a
-// helper only when, within its own comment block plus EXPECT_PROXIMITY_LINES
-// source lines beneath, there is a call to a helper that (a) is declared in
-// the SAME file, (b) whose BODY both reads the design file and calls
-// `expect(...).toBe(...)`, and (c) is invoked with the citation's cited
-// FIRST line number as its first argument. All three are structural --
-// derived from the helper's own body shape, never from its NAME (DEC-180: a
-// name allowlist is not a population). Some files call it `frameLine`,
-// others `verbatimLine`; both qualify by shape, neither by name.
-//
-// (2) EXEMPT HEADER-BLOCK SCOPE CITATIONS. A citation above the file's first
-// `describe(` names the frame the FILE is about (DEC-808's already-
-// adjudicated `.dc.html:<line>` naming shorthand) and no `expect(` can
-// legally sit in a header, so it is exempt from the receipt check outright.
-// The exemption is paid for by a companion assertion below: a file carrying
-// a header-block citation into frame file F must also carry at least one
-// FULLY receipted citation (quote+expect, or helper credit) into that same
-// F elsewhere in the file -- otherwise the file declares a scope it verifies
-// nothing about.
-// ---------------------------------------------------------------------------
-
-/** Every named `function NAME(...) { ... }` declaration in `raw`, with its
- * body extracted via a balanced-brace scan from the declaration's opening
- * `{` -- never a naive regex body capture, which breaks the instant a
- * helper's own body contains a nested `{}` (an object literal, an arrow
- * function, an `if`). */
-function extractFunctionDecls(raw: string): { name: string; body: string }[] {
-  const out: { name: string; body: string }[] = [];
-  const headRe = /function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)[^{]*\{/g;
-  let m: RegExpExecArray | null;
-  while ((m = headRe.exec(raw))) {
-    const braceStart = headRe.lastIndex - 1;
-    let depth = 1;
-    let i = braceStart + 1;
-    while (i < raw.length && depth > 0) {
-      if (raw[i] === '{') depth++;
-      else if (raw[i] === '}') depth--;
-      i++;
-    }
-    out.push({ name: m[1]!, body: raw.slice(braceStart + 1, i - 1) });
-  }
-  return out;
-}
-
-/** A helper body "reads the design file" when a `readFileSync(` call's
- * argument names `docs`/`design` inline, or resolves (via a same-file
- * `const`/`let`/`var` declaration) to a value that does. Never satisfied by
- * the helper's NAME -- a `verbatimLine`-named function whose body reads
- * something else entirely does not qualify. */
-function bodyReadsDesignFile(body: string, raw: string): boolean {
-  const callIdx = body.search(/readFileSync\s*\(/);
-  if (callIdx === -1) return false;
-  const argWindow = body.slice(callIdx, callIdx + 200);
-  if (/docs/i.test(argWindow) && /design/i.test(argWindow)) return true;
-  const identMatch = argWindow.match(/readFileSync\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*[,)]/);
-  if (!identMatch) return false;
-  const varName = identMatch[1]!;
-  const declRe = new RegExp(`(?:const|let|var)\\s+${varName}\\s*=([^;]*);`, 's');
-  const dm = raw.match(declRe);
-  return !!dm && /docs/i.test(dm[1]!) && /design/i.test(dm[1]!);
-}
-
-/** A helper body "calls expect(...).toBe(...)" -- the shape that fails the
- * owning test outright when the cited literal stops matching, rather than
- * merely sitting beside an unrelated assertion. */
-function bodyCallsExpectToBe(body: string): boolean {
-  return /expect\([\s\S]*?\)\s*\.toBe\(/.test(body);
-}
-
-/** Qualifying frame-verbatim helper names declared in `raw` (DEC-180:
- * derived from each function's BODY shape via extractFunctionDecls, never
- * from a name list). */
-function qualifyingHelperNames(raw: string): Set<string> {
-  const names = new Set<string>();
-  for (const fn of extractFunctionDecls(raw)) {
-    if (bodyReadsDesignFile(fn.body, raw) && bodyCallsExpectToBe(fn.body)) {
-      names.add(fn.name);
-    }
-  }
-  return names;
-}
-
-const HELPER_NAMES_CACHE = new Map<string, Set<string>>();
-function helperNamesFor(raw: string): Set<string> {
-  let names = HELPER_NAMES_CACHE.get(raw);
-  if (!names) {
-    names = qualifyingHelperNames(raw);
-    HELPER_NAMES_CACHE.set(raw, names);
-  }
-  return names;
-}
-
-/** True when `windowText` contains a call to one of `helperNames` whose
- * FIRST argument is exactly `firstLine` -- `\s*` matches across the
- * newlines a multi-line call like `verbatimLine(\n  709,\n  '...'\n)`
- * wraps onto, so a wrapped call is found the same as an inline one. */
-function hasHelperCredit(windowText: string, helperNames: ReadonlySet<string>, firstLine: number): boolean {
-  for (const name of helperNames) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`\\b${escaped}\\s*\\(\\s*(\\d+)\\s*[,)]`, 'g');
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(windowText))) {
-      if (Number(m[1]) === firstLine) return true;
-    }
-  }
-  return false;
-}
-
-const FIRST_DESCRIBE_LINE_CACHE = new Map<string, number>();
-/** The line number of a file's first `describe(` call, or Infinity if it has
- * none -- a citation strictly above this line sits in the file's header
- * block, naming the frame the file is about rather than proving a claim. */
-function firstDescribeLine(raw: string): number {
-  let line = FIRST_DESCRIBE_LINE_CACHE.get(raw);
-  if (line === undefined) {
-    const idx = raw.search(/\bdescribe\s*\(/);
-    line = idx === -1 ? Infinity : lineNumberAt(raw, idx);
-    FIRST_DESCRIBE_LINE_CACHE.set(raw, line);
-  }
-  return line;
-}
-
-function isHeaderBlockCitation(c: { sourceLine: number; raw: string }): boolean {
-  return c.sourceLine < firstDescribeLine(c.raw);
-}
-
-/** True when `c` is receipted by EITHER the quote+nearby-expect( rule or a
- * qualifying helper call -- the two independent receipt shapes this file
- * now credits. Never applies the header-block exemption (that is a
- * separate, prior gate in computeUnreceiptedCitations and in the companion
- * check below -- a header citation that also happens to satisfy this
- * predicate should not be double-counted as its own companion). */
-function isFullyReceipted(c: Citation & { sourceLine: number; flat: string; raw: string }): boolean {
-  const quote = quoteAfter(c.flat, c.index);
-  const rawLines = c.raw.split('\n');
-  const window = rawLines.slice(c.sourceLine - 1, c.sourceLine - 1 + EXPECT_PROXIMITY_LINES);
-  if (quote && quote.length > 0 && window.some((l) => l.includes('expect('))) return true;
-  const helperNames = helperNamesFor(c.raw);
-  if (helperNames.size === 0) return false;
-  return hasHelperCredit(window.join('\n'), helperNames, c.firstLine);
-}
-
-/** Shared receipt check (quote presence + nearby `expect(`, OR a qualifying
- * helper credit; header-block scope citations exempt), factored out so the
- * phone describe block below and the desktop block (DEC-808 wave-107 task
- * w3-v) run the identical rule rather than each re-implementing it -- a
- * second copy of a vocabulary is a trap with a delay fuse (DEC-613). */
-function computeUnreceiptedCitations(
-  citations: readonly (Citation & { sourceLine: number; flat: string; raw: string })[]
-): string[] {
-  const unreceipted: string[] = [];
-  for (const c of citations) {
-    if (isHeaderBlockCitation(c)) continue; // DEC-808 naming shorthand, exempt (paid for below)
-    if (isFullyReceipted(c)) continue;
-    const quote = quoteAfter(c.flat, c.index);
-    if (!quote || quote.length === 0) {
-      unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no backtick-quoted literal)`);
-      continue;
-    }
-    unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no expect( within ${EXPECT_PROXIMITY_LINES} lines beneath)`);
-  }
-  return unreceipted;
-}
-
-/** The companion the header-block exemption is paid for with: every file
- * that carries a header-block citation into frame file F must carry at
- * least one FULLY receipted (non-header) citation into that same F
- * elsewhere in the file -- otherwise the file declares a scope it verifies
- * nothing about. Grouped by (file, frameFile) rather than by file alone, so
- * a file citing two different frames in its header is checked per frame. */
-function computeHeaderScopeWithoutReceiptOffenders(
-  citations: readonly (Citation & { sourceLine: number; flat: string; raw: string })[]
-): string[] {
-  const byFileFrame = new Map<string, (Citation & { sourceLine: number; flat: string; raw: string })[]>();
-  for (const c of citations) {
-    const key = `${c.file}::${c.frameFile}`;
-    const group = byFileFrame.get(key);
-    if (group) group.push(c);
-    else byFileFrame.set(key, [c]);
-  }
-  const offenders: string[] = [];
-  for (const [key, group] of byFileFrame) {
-    if (!group.some(isHeaderBlockCitation)) continue;
-    const hasReceiptedNonHeader = group.some((c) => !isHeaderBlockCitation(c) && isFullyReceipted(c));
-    if (!hasReceiptedNonHeader) {
-      const [file, frameFile] = key.split('::');
-      offenders.push(`${file} declares header-block scope into ${frameFile} but carries no fully-receipted (non-header) citation into it`);
-    }
-  }
-  return offenders.sort();
-}
 
 /** Ratchet ceiling (task w14-a companion, DEC-808's header-block exemption
  * pay-for-it rule): the count of (file, frameFile) pairs where the file
@@ -659,66 +255,10 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
 // RESOLVES to a real line, never that it carries a quote or a nearby
 // `expect(`. This block closes that gap for test-file citations, reusing
 // this file's own `findCitations`, `flatten`, `quoteAfter`,
-// `locateSourceIndex`, `lineNumberAt` and the new `computeUnreceiptedCitations`
-// helper above rather than re-implementing any of them (DEC-613).
-//
-// DESKTOP CLASSIFICATION: test/desktop-frame-ledger.scan.test.ts derives "is
-// this label-opened frame desktop" itself but exports ONLY `CLAIMED_FLOOR`,
-// not a reusable classifier function -- so this block DERIVES the identical
-// grammar rather than diverge from it (a second copy of a vocabulary is a
-// trap with a delay fuse, DEC-613; if the ledger ever exports a classifier,
-// import it here instead of re-deriving):
-//   - a label line is `font-size:19px` plus a closing tag with a title
-//     inside it, matched by />([^<]+)<\//  (wider than this file's own
-//     phone-oriented `isLabelLine`, which requires `</span>` specifically --
-//     the ledger widens to any closing tag because some desktop labels sit
-//     on an `<a>`, e.g. Chautauqua Home.dc.html:205);
-//   - a label opens a frame whose extent runs to the next label line (or
-//     EOF);
-//   - the frame is DESKTOP when that extent contains no `width:390px` +
-//     `height:844` line anywhere in it (this file's own `isFrameLine`,
-//     reused verbatim -- that part of the grammar is common to both files
-//     already and is not duplicated here).
-// This block does NOT reproduce the ledger's further exclusions (template
-// interpolations, explainer panels) -- those narrow which frames count
-// toward the desktop POPULATION total; this block only asks the narrower
-// geometric question "does this cited line fall inside a desktop frame's
-// extent", which the exclusions do not change.
-const DESKTOP_LABEL_RE = />([^<]+)<\//;
-
-function isDesktopLabelLine(line: string): boolean {
-  return line.includes('font-size:19px') && DESKTOP_LABEL_RE.test(line);
-}
-
-interface DesktopFrameExtent {
-  fileName: string;
-  line: number;
-  extentEnd: number;
-}
-
-function desktopFrameExtentsInFile(fileName: string): DesktopFrameExtent[] {
-  const lines = readFileSync(join(DESIGN_ROOT, fileName), 'utf-8').split('\n');
-  const labelLineNums: number[] = [];
-  lines.forEach((content, idx) => {
-    if (isDesktopLabelLine(content)) labelLineNums.push(idx + 1);
-  });
-  const out: DesktopFrameExtent[] = [];
-  labelLineNums.forEach((line, i) => {
-    const extentEnd = labelLineNums[i + 1] ?? Infinity;
-    const extentLines = lines.slice(line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
-    if (extentLines.some(isFrameLine)) return; // has a width:390px+height:844 line -- phone, not desktop
-    out.push({ fileName, line, extentEnd });
-  });
-  return out;
-}
-
-const ALL_DESKTOP_FRAME_EXTENTS: DesktopFrameExtent[] = designFileNames().flatMap(desktopFrameExtentsInFile);
-
-function isInsideADesktopFrame(frameFile: string, firstLine: number): boolean {
-  return ALL_DESKTOP_FRAME_EXTENTS.some(
-    (f) => f.fileName === frameFile && firstLine >= f.line && firstLine < f.extentEnd
-  );
-}
+// `locateSourceIndex`, `lineNumberAt` and the `computeUnreceiptedCitations`
+// helper (now in ./frame-citation-receipts) rather than re-implementing any
+// of them (DEC-613).
+// ---------------------------------------------------------------------------
 
 const TEST_DESKTOP_CITATIONS: TestPhoneCitation[] = [];
 for (const file of TEST_TARGET_FILES) {
@@ -1034,5 +574,19 @@ describe('receipt-checking synthetic controls (positive/negative, DEC-808 wave-1
     });
     expect(withSource.some(isHeaderBlockCitation)).toBe(true);
     expect(computeHeaderScopeWithoutReceiptOffenders(withSource)).toEqual([]);
+  });
+});
+
+// Guard: the phone/desktop frame-extent populations imported from
+// ./frame-citation-frames are non-empty, so a future refactor that breaks
+// the DESIGN_ROOT path math in that sibling module fails loudly here rather
+// than silently emptying both TEST_PHONE_CITATIONS and TEST_DESKTOP_CITATIONS
+// (which would make every ceiling above vacuously pass at 0).
+describe('frame-extent populations imported from ./frame-citation-frames are non-empty', () => {
+  it('phone frame extents are non-empty', () => {
+    expect(ALL_FRAME_EXTENTS.length).toBeGreaterThan(0);
+  });
+  it('desktop frame extents are non-empty', () => {
+    expect(ALL_DESKTOP_FRAME_EXTENTS.length).toBeGreaterThan(0);
   });
 });
