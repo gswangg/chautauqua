@@ -14,9 +14,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripCssComments } from '../../test/helpers/strip-css-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, 'styles.css'), 'utf-8');
+const CSS = stripCssComments(readFileSync(join(HERE, 'styles.css'), 'utf-8'));
 
 /** Extracts a top-level (not inside an @media block) rule's declaration body by selector. */
 function topLevelRuleBody(css: string, selector: string): string {
