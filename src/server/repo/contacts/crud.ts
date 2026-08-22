@@ -16,10 +16,11 @@ import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { deleteDismissalsForContact } from "./merge";
 import { touchSubmissionsForContacts } from "../submissions/touch";
-import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_770, DEC_864, DEC_979 } from "../../../decisions";
+import { DEC_333, DEC_336, DEC_509, DEC_554, DEC_758, DEC_770, DEC_864, DEC_979 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
+void DEC_509;
 void DEC_554;
 void DEC_758;
 void DEC_770;
@@ -482,7 +483,14 @@ async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContac
   let filtered = scanRecords;
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
-    if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
+    // DEC-509 (wave-23 amendment): segmentId is a caller-supplied request
+    // parameter, not stored state — an unresolvable one (never existed, or
+    // belongs to a different org) is a refusal, not a crash. Never echo the
+    // caller's orgId back in the message (an error string is user-visible
+    // surface); the segment id alone is enough to name what could not be
+    // resolved, and existence never leaks across orgs (same 404 shape either
+    // way).
+    if (!segment) throw new ApiError("not_found", `Segment ${params.segmentId} not found`);
     const segmentRules = parseSegmentRulesJson(segment.rulesJson, segment.id);
     filtered = filtered.filter((r) => matchesSegment(segmentRules, r as ContactRecord));
   }
