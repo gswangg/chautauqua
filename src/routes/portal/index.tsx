@@ -65,9 +65,9 @@ void DEC_895;
 // construction -- the SAME array the "Waiting on you" section maps over,
 // never a second count -- and PortalLayout (shared.tsx) demotes sign-out to
 // a quiet chq-btn-tertiary control rather than page chrome, matching this
-// decision's two clauses. The headline spells its count in words (matching
-// `docs/design/Chautauqua Public and Portal.dc.html:420`'s literal, `Two
-// things to do`) via the SAME spellCount/capitalizeFirst pair already
+// decision's two clauses. The headline spells its count in words, matching
+// `docs/design/Chautauqua Public and Portal.dc.html:420` `Two things to do`
+// (the frame's literal), via the SAME spellCount/capitalizeFirst pair already
 // shipping in Overview.tsx, AgendaWorkSection, scorecardLogic.ts, and
 // server/repo/tasks/reminders.ts -- countOf (the numeral register, DEC-925)
 // stays reserved for data-dense surfaces and is used elsewhere in this file
