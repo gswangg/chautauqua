@@ -129,16 +129,39 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       };
     }
 
-    it('DIVERGES: the results-table track set has drifted from DESIGN-RULINGS.md:191\'s own restatement of the frame\'s grid, in three of its seven tracks', async () => {
+    // NARROWEST-INTERPRETATION NOTE (DEC-902 wave-12, flagged per this
+    // task's own instruction): the delegating brief says the frame/tree
+    // residual is "five tracks, not three". Re-measured directly against
+    // the pinned frame values (verbatimLine 124 below) versus review.css's
+    // own declared widths, the residual is SIX of the table's seven
+    // tracks (every sized column but Title, which is the remainder on
+    // both sides): Speaker/Track/Score also diverge from the FRAME even
+    // though they matched DESIGN-RULINGS.md:191's paraphrase exactly (the
+    // very fact this lane exists to correct -- a paraphrase's numbers are
+    // not the frame's numbers). Rank/Reviews/Decision each carry their own
+    // review.css comment explaining the divergence (quoted below);
+    // Speaker/Track/Score carry no such comment -- they simply inherited
+    // the ruling's numbers verbatim, which is no longer a justification
+    // once the frame is the authority. Six is asserted below, not five.
+    it('SETTLED: the results-table track set is anchored on the FRAME\'s own grid (Chautauqua Review.dc.html:124), not DESIGN-RULINGS.md:191\'s paraphrase -- six of seven tracks carry a residual (three with a recorded gate-9 fit, three inherited from the paraphrase with no fit of their own), and the ruling\'s operative inheritance clause holds structurally', async () => {
       // docs/design/Chautauqua Review.dc.html:28 identifies this frame.
       verbatimLine(28, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Organiser view · 1600</span>');
       // docs/design/Chautauqua Review.dc.html:124-125 -- the results table's
-      // own head row grid and its seven column labels.
+      // own head row grid and its seven column labels. THIS is the geometry
+      // authority (DEC-902 wave-12): the frame draws
+      // 44px 1fr 132px 118px 190px 84px auto, not DESIGN-RULINGS.md:191's
+      // 44px 1fr 150px 130px 92px 92px auto -- the ruling's numbers are a
+      // paraphrase written to explain a DIFFERENT rule (the expanded
+      // reviews band's inheritance from this same grid), not a second
+      // pixel spec competing with the frame.
       verbatimLine(124, '          <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">');
       verbatimLine(125, '            <span>Rank</span><span>Submission</span><span>Speaker</span><span>Track</span><span>Score</span><span>Reviews</span><span></span>');
-      // DESIGN-RULINGS.md:191 -- the ruling that pins the intended track
-      // set as 44px 1fr 150px 130px 92px 92px auto (Rank/Title/Speaker/
-      // Track/Score/Reviews/Decision).
+      // DESIGN-RULINGS.md:191 -- kept as a receipt, but read for its VERB,
+      // not its numbers: "the expanded reviews band repeats the results
+      // table's ... grid" is the operative half, asserted structurally
+      // below (a `.chq-review-reviews-row` is a real `<tr>` inside the
+      // SAME `table-layout:fixed` results table, so it inherits that
+      // table's column tracks by construction -- whatever they measure).
       verbatimRulingLine(
         191,
         "Applied to item 27: the expanded reviews band repeats the results table's `44px 1fr 150px 130px 92px 92px auto` grid, so each reviewer's score sits under the Score column and their name under Submission — with the rubric chips on a second line inside the same track.",
@@ -147,6 +170,19 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       mockApi({
         [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
         [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+        [`GET /api/v1/submissions/${resultsRow().submissionId}/evaluations`]: listEnvelope([
+          {
+            planId: PLAN_ID,
+            planName: 'Track Review',
+            round: 1,
+            reviewerName: 'Reviewer A',
+            scores: { c1: 4.5 },
+            score: 4.5,
+            criteria: [],
+            comment: null,
+            submittedAt: 1700000000000,
+          },
+        ]),
       });
       render(
         <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
@@ -156,6 +192,25 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
         </MemoryRouter>,
       );
       expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+
+      // The ruling's operative half, asserted structurally: the expanded
+      // reviews band's row is a `<tr>` living inside the SAME
+      // `table-layout:fixed` results table -- it inherits that table's
+      // column tracks by construction, independent of what any track
+      // measures. This is the inheritance clause DESIGN-RULINGS.md:191
+      // was written to explain; it holds regardless of the frame/ruling
+      // track-width residual settled below.
+      const resultsTableForBand = document.querySelector('table.chq-review-results-table')!;
+      expect(resultsTableForBand.tagName).toBe('TABLE');
+      const toggleButton = screen.getByRole('button', { name: /3 reviews/ });
+      toggleButton.click();
+      const reviewsRow = await screen.findByText('Reviewer A');
+      const rowEl = reviewsRow.closest('tr.chq-review-reviews-row')!;
+      expect(rowEl).toBeInTheDocument();
+      expect(rowEl.tagName).toBe('TR');
+      expect(rowEl.closest('table.chq-review-results-table')).toBe(resultsTableForBand);
+      const reviewCssForBand = readFileSync(REVIEW_CSS_FILE, 'utf-8');
+      expect(reviewCssForBand).toMatch(/\.chq-review-results-table\s*\{[^}]*table-layout:\s*fixed;/);
 
       // The head labels are the same SEVEN columns, in the same order, but
       // one text label diverges: the frame's second column reads
@@ -176,22 +231,47 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
       const reviewsWidth = css.match(/\.chq-review-results-col-reviews\s*\{[\s\S]*?width:\s*(\d+)px;/)?.[1];
       const decisionWidth = css.match(/\.chq-review-results-col-decision\s*\{[\s\S]*?width:\s*(\d+)px;/)?.[1];
 
-      // MATCHES the ruling exactly: Speaker (150), Track (130), Score (92).
-      expect(speakerWidth).toBe('150');
-      expect(trackWidth).toBe('130');
-      expect(scoreWidth).toBe('92');
-
-      // DIVERGES from the ruling's 44/92/auto: Rank is 56 (review.css's own
-      // DEC-902 comment: "44 fit RANK only before the shared 16px first-cell
-      // inset landed"), Reviews is 210 not 92 (the gate-9 fit for the full
-      // "▸ N reviews · M recusals" label), and Decision is a fixed 190px
-      // (nowrap) rather than the ruling's `auto` (the gate-9 fit for the
-      // Accept/Decline button pair under table-layout:fixed).
+      // Against the FRAME's own grid (verbatimLine 124: 44 / 1fr / 132 /
+      // 118 / 190 / 84 / auto for Rank/Title/Speaker/Track/Score/Reviews/
+      // Decision), all six sized tracks diverge -- three of them carry
+      // their own recorded gate-9 fit in review.css (quoted by content,
+      // never by line number, per DEC-967):
+      //   - Rank is 56, not the frame's 44 -- "44 fit RANK only before the
+      //     shared 16px first-cell inset landed."
+      //   - Reviews is 210, not the frame's 84 -- "this track must fit the
+      //     WIDEST label variant ... '▸ N reviews' AND '▸ N reviews · M
+      //     recusals' ... Sized for the full inventory + cell padding."
+      //   - Decision is a fixed 190px (nowrap), not the frame's `auto` --
+      //     "under this table's table-layout:fixed [auto] is taken
+      //     literally ... A fixed table needs the real width of the widest
+      //     variant (Accept + gap + Decline)."
       expect(rankWidth).toBe('56');
       expect(rankWidth).not.toBe('44');
       expect(reviewsWidth).toBe('210');
-      expect(reviewsWidth).not.toBe('92');
+      expect(reviewsWidth).not.toBe('84');
       expect(decisionWidth).toBe('190');
+
+      const reviewCssComments = readFileSync(REVIEW_CSS_FILE, 'utf-8');
+      expect(reviewCssComments).toContain('44 fit "RANK" only before the shared 16px first-cell inset landed.');
+      expect(reviewCssComments).toContain(
+        'must fit the WIDEST label variant, and the label inventory is',
+      );
+      expect(reviewCssComments).toContain('A fixed table needs the real width of the widest variant');
+
+      // Speaker/Track/Score also diverge from the FRAME (132/118/190)
+      // even though each happens to equal DESIGN-RULINGS.md:191's
+      // paraphrase (150/130/92) exactly -- that paraphrase match is no
+      // longer a conformance receipt once the frame is the authority, and
+      // review.css records no gate-9 fit of its own for any of the three
+      // (unlike Rank/Reviews/Decision above). Un-adjudicated: flagged here
+      // per this lane's measurement-only scope, not fixed (DEC-902
+      // wave-12 moves no product byte).
+      expect(speakerWidth).toBe('150');
+      expect(speakerWidth).not.toBe('132');
+      expect(trackWidth).toBe('130');
+      expect(trackWidth).not.toBe('118');
+      expect(scoreWidth).toBe('92');
+      expect(scoreWidth).not.toBe('190');
 
       cleanup();
 
@@ -356,8 +436,17 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
   // ---------------------------------------------------------------------
   describe('frame :830 "Your plans · /review"', () => {
     it('MATCHES: plan cards each carry exactly ONE action -- Start scoring / Score the next one / Read your scores, never more than one', async () => {
-      // docs/design/Chautauqua Review.dc.html:830 identifies this frame.
+      // docs/design/Chautauqua Review.dc.html:830 identifies this frame
+      // ("Your plans · /review" is the frame's own TITLE caption, not the
+      // rendered heading text -- ReviewerQueue.tsx only ever paints that
+      // literal string in its brief unresolved-envelopes skeleton, per the
+      // stale-await fix below).
       verbatimLine(830, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Your plans · /review</span>');
+      // Once every plan's progress envelope has resolved, this same
+      // frame's OWN 1600 desktop head (verbatimLine below) reads "<N> left
+      // to score" -- not the loading skeleton's "Your plans" placeholder
+      // text.
+      verbatimLine(843, '          <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">17 left to score</h1>');
       // docs/design/Chautauqua Review.dc.html:847-852 -- one plan row is
       // name+meta / state pill / progress bar / a SINGLE action link.
       verbatimLine(852, '            <div style="display:grid; grid-template-columns:1fr 150px 190px auto; gap:20px; align-items:center; padding:16px 0; border-bottom:1px solid #E1DDCE">');
@@ -398,7 +487,17 @@ describe('v12 Review DESKTOP (1600) reviewer-facing frames: per-frame render ver
         </MemoryRouter>,
       );
 
-      expect(await screen.findByRole('heading', { name: 'Your plans' })).toBeInTheDocument();
+      // Stale-await fix (DEC-902 wave-12): "Your plans" is ONLY the
+      // loading-skeleton placeholder (ReviewerQueue.tsx, unresolved
+      // envelopes branch) -- once both plans' progress envelopes resolve,
+      // the H1 flips to "<N> left to score" (frame :843) and the skeleton
+      // is gone. Awaiting the literal "Your plans" heading resolves
+      // against the SKELETON, not the plan rows this case actually
+      // verdicts; await the resolved head instead so the row query below
+      // can never silently run against a still-loading DOM. leftTotal here
+      // is 2 (plan-a unscoredTotal) + 3 (plan-b unscoredTotal) = 5, both
+      // plans open.
+      expect(await screen.findByRole('heading', { name: '5 left to score' })).toBeInTheDocument();
 
       const rows = document.querySelectorAll('.chq-reviewer-plan-row');
       expect(rows.length).toBe(2);
