@@ -389,6 +389,7 @@ describe('CSS token + button-face contract (DEC-937)', () => {
     expect(CSS_FILES.length).toBeGreaterThan(5);
   });
 
+  // DEC-069 wave-25: measured 3276ms at 66d902ea5a80fa4654c23762af965febec39b600 (default 5000)
   it('every var(--chq-…) reference resolves to a declaration in :root or its own file', () => {
     const offenders: string[] = [];
     for (const path of CSS_FILES) {
@@ -403,7 +404,7 @@ describe('CSS token + button-face contract (DEC-937)', () => {
       }
     }
     expect(offenders, `undeclared CSS custom properties:\n${offenders.join('\n')}`).toEqual([]);
-  });
+  }, 20000);
 
   it('every button-face rule (selector ends -btn/-button, declares padding) also declares its own font', () => {
     const offenders: string[] = [];
