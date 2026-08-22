@@ -267,13 +267,16 @@ render.
 | :1167 Public sessions · nothing published | MATCHES (reason-sentence divergence, DEC-745, previously filed) |
 | :1211 Submit a talk · rejected on submit | MATCHES |
 | :1373 Portal · Edit your session · desktop | MATCHES (DEC-029) |
-| :1473 Portal preview · /portal/preview | DIVERGES (back-link placement, meta-sentence order — one-sentence lede CLOSED wave-19 clause (b), "Not shown here" chip wording/count BLESSED — DEC-902 wave-14m/wave-19 disposition, see section above) |
+| :1473 Portal preview · /portal/preview | DIVERGES ("Not shown here" chip wording/count, disposition (b) BLESSED, DEC-902 wave-14m; back-link placement, meta-sentence order, and the Welcome lede's second sentence are all CLOSED — wave-19 clause (b) / task w20-g — see section above) |
 
 5 of 7 frames MATCH as rendered off a real request; one previously-filed,
 already-adjudicated reason-sentence divergence (:1167, DEC-745/DEC-522)
 carries forward unchanged; :1473 is now REACHED via the portal-390
 harness's extended `vi.mock` set (DEC-613 wave-9 amendment) and DIVERGES in
-four named ways. No desktop byte was moved to produce this verdict.
+one remaining named way (the "Not shown here" chip wording/count, disposition
+(b) BLESSED); the other three named divergences (back-link placement,
+meta-sentence order, Welcome lede second sentence) are CLOSED. No desktop
+byte was moved to produce this verdict.
 
 ---
 
