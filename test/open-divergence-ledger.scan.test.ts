@@ -228,7 +228,7 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // exact red -- 45664f1aa's commit body says so outright -- but no lane owned
 // the re-baseline, so it fell through the batch. Re-measured live on the
 // integrated tree by the scan itself, never by arithmetic on a lane's
-// snapshot. The 4 rows still OPEN are cfp-desktop-v12.md:21,
+// snapshot. The 4 rows once OPEN were cfp-desktop-v12.md:21,
 // contacts-import-390-v12.md:106, public-390-request-verdicts-v12.md:100 and
 // settings-dialogs-desktop-v12.md:154. Known safe-direction over-count, NOT
 // a defect: cfp-desktop-v12.md:22 adjudicates its row as `DEC_976` (the
@@ -240,6 +240,18 @@ const EXPECTED_SHAPE_COUNTS: Record<RowShape, number> = {
 // closing public-390-request-verdicts-v12.md:100 (this task, DEC-902
 // wave-12m amendment). merge train: re-measure after v12m-w15-q,
 // v12m-w15-r and v12m-w16-qe land; this must reach 0.
+//
+// RE-BASELINED (task w18-c, DEC-903 wave-18): that lane measured 4 -> 1 in
+// its own worktree, adding the two hyphenated citations (`DEC-976` for the
+// Session-format legend, `DEC-613` for "Save draft" vs the frame's "Draft")
+// into public-390-request-verdicts-v12.md:100's own table-row cell. By the
+// time it ran, cfp-desktop-v12.md:22 and settings-dialogs-desktop-v12.md:154
+// had already been repaired by sibling in-flight lanes, and the last row it
+// still reported OPEN (contacts-import-390-v12.md:106) belonged to sibling
+// task v12m-w18-a. THUNDERDOME MERGE RECONCILIATION (DEC-998 clause b): the
+// residual gap the lane left open is closed by the batch, so the constant
+// stays at the integrated floor of 0 rather than regrowing to the lane's
+// in-worktree 1 -- a ratchet may only be LOWERED, never raised.
 export const OPEN_DIVERGENCE_CEILING = 0;
 
 describe('open-divergence ledger (DEC-099, task w11-td)', () => {
