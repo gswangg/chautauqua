@@ -565,13 +565,15 @@ export function TaskView() {
         >
           <div className="chq-taskview-head-row" role="row">
             <span role="columnheader">
-              <input
-                type="checkbox"
-                className="chq-check chq-taskview-check"
-                checked={selected.length === tabRows.length}
-                onChange={toggleAll}
-                aria-label={tab === 'answered' ? 'Select every answer' : 'Select everyone still waiting'}
-              />
+              <label className="chq-check-hit">
+                <input
+                  type="checkbox"
+                  className="chq-check chq-taskview-check"
+                  checked={selected.length === tabRows.length}
+                  onChange={toggleAll}
+                  aria-label={tab === 'answered' ? 'Select every answer' : 'Select everyone still waiting'}
+                />
+              </label>
             </span>
             <span role="columnheader">Speaker</span>
             <span role="columnheader">{tab === 'answered' ? 'Their answers' : 'Where it stands'}</span>
@@ -586,13 +588,15 @@ export function TaskView() {
             return (
               <div className="chq-taskview-row" role="row" key={row.contactId}>
                 <span role="cell">
-                  <input
-                    type="checkbox"
-                    className="chq-check chq-taskview-check"
-                    checked={selectedSet.has(row.contactId)}
-                    onChange={() => toggleRow(row.contactId)}
-                    aria-label={`Select ${row.name}`}
-                  />
+                  <label className="chq-check-hit">
+                    <input
+                      type="checkbox"
+                      className="chq-check chq-taskview-check"
+                      checked={selectedSet.has(row.contactId)}
+                      onChange={() => toggleRow(row.contactId)}
+                      aria-label={`Select ${row.name}`}
+                    />
+                  </label>
                 </span>
                 <span className="chq-taskview-speaker" role="cell">
                   {/* docs/design/Chautauqua Speakers.dc.html:648 (answered)

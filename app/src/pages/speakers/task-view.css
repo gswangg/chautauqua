@@ -281,9 +281,13 @@
   color: var(--chq-muted);
 }
 
-/* tap-floor-exempt: a checkbox is a native control whose hit area is the
-   whole row cell, and styles.css's own .chq-check carries the same
-   exemption -- the frame's 17px box is the drawn size, not the target. */
+/* tap-floor-exempt: TaskView.tsx wraps this bare checkbox <input> in a
+   <label className="chq-check-hit"> (both occurrences: the header
+   select-all and each row's select) -- the label is the click/tap anchor
+   a native checkbox's implicit label association targets, not the small
+   glyph itself (DEC-393 wave-124: a markup-fact reason, checked by
+   app/src/check-hit-receipt.scan.test.ts, not a schedule note). The
+   frame's 17px box is the drawn size, not the target. */
 .chq-taskview-check {
   width: 17px;
   height: 17px;

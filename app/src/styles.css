@@ -1951,12 +1951,14 @@ select,
    option lists, settings toggles, review criteria). The phone tap floor is
    met by the LABEL wrapping the box, not by inflating the box: every
    option-list/toggle site already renders its .chq-check inside its own
-   `<label>`, and the population that had no such label -- a bare table-
-   cell checkbox sitting directly in a `<td>`/`<th>` (ContactsTable.tsx,
-   SubmissionsTable.tsx, ComposeWizard.tsx, SessionList.tsx) -- is now
+   `<label>` (checked, not hand-listed, by check-hit-receipt.scan.test.ts's
+   `td`/`th`/`label`/ARIA-`role="cell"|"gridcell"|"columnheader"`
+   population walk of every .tsx file under app/src), and the population that had no
+   such label -- a bare table-cell checkbox sitting directly in a
+   `<td>`/`<th>` or ARIA-role cell, with no other reachable label -- is
    wrapped in a `.chq-check-hit` label that carries the floor instead. This
    is true, and checked: check-hit-receipt.scan.test.ts (DEC-393 wave-124
-   amendment). */
+   amendment; DEC-991 wave-w11-te widened the walk to ARIA tables). */
 input[type='checkbox'],
 input[type='radio'],
 .chq-check {
@@ -2805,10 +2807,12 @@ select:focus-visible,
   }
 
   /* .chq-check-hit is the label wrapper added around every table-cell
-     .chq-check (ContactsTable.tsx, SubmissionsTable.tsx, ComposeWizard.tsx,
-     SessionList.tsx select-all/row-select controls -- DEC-393 wave-124
-     amendment, receipt check-hit-receipt.scan.test.ts; supersedes w13-l's
-     narrower wrapper, which covered only two of the four files).
+     .chq-check, its membership derived (not hand-listed) by
+     check-hit-receipt.scan.test.ts's population walk over every .tsx file
+     under app/src -- DEC-393 wave-124 amendment, widened to ARIA-role
+     cell/columnheader tables (TaskView.tsx select-all/row-select) by
+     DEC-991 wave-w11-te; supersedes w13-l's narrower wrapper, which
+     covered only two of the (now HTML+ARIA) sites.
      Physical padding/margin shorthand, not padding-inline/margin-inline
      (styles.css:2706-2719 records why): this control has no sibling gap to
      widen, so an inline-axis pair here would mint a bare cancelled-padding-
