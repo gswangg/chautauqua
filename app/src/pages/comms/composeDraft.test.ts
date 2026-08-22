@@ -1,7 +1,7 @@
 // v12 mobile campaign w5 (DEC-621 wave-87 amendment): composeDraft.ts is
 // the Comms phone landing draft card's sole producer/consumer contract --
 // see the module's own doc comment.
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearAllComposeDrafts, clearComposeDraft, readComposeDraft, writeComposeDraft, type ComposeDraft } from './composeDraft';
 
 const EVENT_ID = 'evt-compose-draft';
@@ -40,33 +40,42 @@ describe('readComposeDraft', () => {
     expect(readComposeDraft(EVENT_ID)).toEqual(draft({ templateName: null }));
   });
 
-  it('throws (fail loudly) on a stored record that is not valid JSON', () => {
-    window.localStorage.setItem(`chq.composeDraft.${EVENT_ID}`, 'not json');
-    expect(() => readComposeDraft(EVENT_ID)).toThrow();
+  it('returns null and evicts the key (does not throw) on a stored record that is not valid JSON -- DEC-621 wave-33', () => {
+    const key = `chq.composeDraft.${EVENT_ID}`;
+    window.localStorage.setItem(key, 'not json');
+    expect(readComposeDraft(EVENT_ID)).toBeNull();
+    expect(window.localStorage.getItem(key)).toBeNull();
   });
 
-  it('throws (fail loudly) on a stored record missing a required field', () => {
-    window.localStorage.setItem(
-      `chq.composeDraft.${EVENT_ID}`,
-      JSON.stringify({ subject: 'x', recipientCount: 1 }),
-    );
-    expect(() => readComposeDraft(EVENT_ID)).toThrow();
+  it('returns null and evicts the key on a stored record missing a required field -- DEC-621 wave-33', () => {
+    const key = `chq.composeDraft.${EVENT_ID}`;
+    window.localStorage.setItem(key, JSON.stringify({ subject: 'x', recipientCount: 1 }));
+    expect(readComposeDraft(EVENT_ID)).toBeNull();
+    expect(window.localStorage.getItem(key)).toBeNull();
   });
 
-  it('throws (fail loudly) on a stored record with a wrong-typed field', () => {
+  it('returns null and evicts the key on a stored record with a wrong-typed field -- DEC-621 wave-33', () => {
+    const key = `chq.composeDraft.${EVENT_ID}`;
     window.localStorage.setItem(
-      `chq.composeDraft.${EVENT_ID}`,
+      key,
       JSON.stringify({ templateName: null, subject: 'x', recipientCount: '23', updatedAt: 1 }),
     );
-    expect(() => readComposeDraft(EVENT_ID)).toThrow();
+    expect(readComposeDraft(EVENT_ID)).toBeNull();
+    expect(window.localStorage.getItem(key)).toBeNull();
   });
 
-  it('throws (fail loudly) on a negative or non-integer recipientCount', () => {
+  it('returns null and evicts the key on a negative or non-integer recipientCount -- DEC-621 wave-33', () => {
+    const key = `chq.composeDraft.${EVENT_ID}`;
     window.localStorage.setItem(
-      `chq.composeDraft.${EVENT_ID}`,
+      key,
       JSON.stringify({ templateName: null, subject: 'x', recipientCount: -1, updatedAt: 1 }),
     );
-    expect(() => readComposeDraft(EVENT_ID)).toThrow();
+    expect(readComposeDraft(EVENT_ID)).toBeNull();
+    expect(window.localStorage.getItem(key)).toBeNull();
+  });
+
+  it('throws on an empty eventId -- a caller error, not a storage boundary case', () => {
+    expect(() => readComposeDraft('')).toThrow();
   });
 });
 
@@ -75,6 +84,25 @@ describe('writeComposeDraft', () => {
     writeComposeDraft(EVENT_ID, draft({ recipientCount: 5 }));
     writeComposeDraft(EVENT_ID, draft({ recipientCount: 9 }));
     expect(readComposeDraft(EVENT_ID)?.recipientCount).toBe(9);
+  });
+
+  it('still throws (fail loudly) on a caller-supplied malformed draft -- the shape stays loud', () => {
+    expect(() =>
+      writeComposeDraft(EVENT_ID, { recipientCount: -1 } as unknown as ComposeDraft),
+    ).toThrow();
+  });
+
+  it('does not re-throw when localStorage.setItem fails, and leaves no key behind -- DEC-621 wave-33', () => {
+    const key = `chq.composeDraft.${EVENT_ID}`;
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    try {
+      expect(() => writeComposeDraft(EVENT_ID, draft())).not.toThrow();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+    expect(window.localStorage.getItem(key)).toBeNull();
   });
 });
 
