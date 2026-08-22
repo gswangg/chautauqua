@@ -125,7 +125,11 @@ describe('v12 Content "Files · 390" frame (:338-368): first markup-level render
 
     // :341/:342 -- exactly one H1 reading "Files", with the stat line on
     // the SAME row (shared parent), per FilesLibrary.tsx's own :181 comment
-    // ("H1 'Files', and the total/size stat ON this same row").
+    // ("H1 'Files', and the total/size stat ON this same row"). w17-f
+    // (DEC-998 wave-17, header-scope receipt drain): in-body citation paying
+    // for this file's header-block scope declaration at :2 above --
+    // docs/design/Chautauqua Content.dc.html:342 draws
+    // `        <span style="font-size:13px; color:#565A4B">31 files · 412 MB</span>`
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent('Files');

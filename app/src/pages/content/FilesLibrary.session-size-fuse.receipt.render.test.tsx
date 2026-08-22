@@ -77,6 +77,10 @@ function phoneLayer(css: string): { layer: string; blockCount: number } {
 
 describe('content.css 390: Files library card fuses session · size onto one line (w11-tb, DEC-825)', () => {
   it('frame :354 draws the fused template this rule satisfies', () => {
+    // w17-f (DEC-998 wave-17, header-scope receipt drain): in-body citation
+    // paying for this file's header-block scope declaration at :2 above --
+    // docs/design/Chautauqua Content.dc.html:354 draws
+    // `            <span style="font-size:13px; color:#565A4B">{{ f.session }} · {{ f.size }}</span>`
     verbatimLine(354, '            <span style="font-size:13px; color:#565A4B">{{ f.session }} · {{ f.size }}</span>');
   });
 
