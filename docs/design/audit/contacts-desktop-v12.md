@@ -117,23 +117,26 @@ per the mandate.
 
 ## Frame :617 "Add to the pipeline"
 
-**MOSTLY MATCHES, two content divergences.** Opened through the real
+**MOSTLY MATCHES, one content divergence.** Opened through the real
 `PipelineBoard` header control ("Add to the pipeline") that opens it — the
-`EnrollDialog`.
+`EnrollDialog` function (`app/src/pages/contacts/PipelineBoard.tsx`
+`function EnrollDialog`; there is no separate `EnrollDialog.tsx` file —
+`EnrollDialog` is one function declared inside `PipelineBoard.tsx`).
 
 - The dialog title, "Add to the pipeline" (frame :624), MATCHES exactly.
-- **DIVERGES (content).** The frame draws a per-contact subtitle under the
-  title — "Aisha Karim · Vector Foundry" (frame :625) — implying this
-  dialog is sometimes opened FROM a specific contact's context with a
-  pre-filled target. The board-header trigger this lane exercises opens
-  with no subtitle at all (`EnrollDialog`'s `ModalFrame` call passes no
-  `subtitle` prop, so `.chq-modal-sub` never renders): there is no contact
-  context to name from this entry point, and the dialog's own Contact field
-  is a live search, never a pre-filled single target. Adjudicated under
-  DEC-902 (wave-14m amendment) disposition (b): the frame's subtitle implies
-  a pre-filled per-contact entry point this control's real invocation does
-  not have, so naming a contact here would fabricate context the dialog
-  cannot honestly show — the omission is blessed, not adopted.
+- **RETIRED under DEC-903 (wave-19 amendment): re-measured against the
+  tree this wave, the frame's per-contact subtitle — "Aisha Karim · Vector
+  Foundry" (frame :625) — now MATCHES, not diverges.** The prior wave-14m
+  bless read `EnrollDialog`'s `ModalFrame` call as passing no `subtitle`
+  prop; that is stale. `PipelineBoard.tsx`
+  `subtitle={selectedContact ? ... : undefined}` builds exactly the frame's
+  reading — `<firstName> <lastName>` joined with " · " and the company when
+  the picked contact carries one — under its own comment citing
+  `Chautauqua Contacts.dc.html:624-625` and DEC-651 wave-7. Before a
+  contact is picked the dialog is still on the Contact-field picker, so the
+  prop is `undefined` and `.chq-modal-sub` renders nothing — matching the
+  frame's own implication that the subtitle appears once a contact is
+  named, not before. `src/decisions-data/DEC-651.md` states this ruling.
 - The Stage chip row (all five `PIPELINE_STAGE_LABELS`, frame :627-635) and
   the Fit row (1-5 boxes with the "Ranks people within a stage · optional"
   helper, frame :637-643) both MATCH.
@@ -141,13 +144,13 @@ per the mandate.
   pipeline" — three words (frame :661) — while the modal's title (:624)
   and the board-header trigger both read "Add to **the** pipeline" — four
   words. The tree's actual button text is "Add to the pipeline"
-  (`EnrollDialog.tsx`'s submit `<button>`), matching the title/trigger
-  register consistently rather than the frame's shorter footer label. A
-  minor, easily-missed word-count slip in the frame itself. Adjudicated
-  under DEC-902 (wave-14m amendment) disposition (b): the tree's four-word
-  reading carries more information than the frame's three-word slip — it
-  stays internally consistent with this same dialog's own title and
-  trigger — so it is blessed, not adopted.
+  (`PipelineBoard.tsx`'s `EnrollDialog` submit `<button>`), matching the
+  title/trigger register consistently rather than the frame's shorter
+  footer label. A minor, easily-missed word-count slip in the frame
+  itself. Adjudicated under DEC-902 (wave-14m amendment) disposition (b):
+  the tree's four-word reading carries more information than the frame's
+  three-word slip — it stays internally consistent with this same dialog's
+  own title and trigger — so it is blessed, not adopted.
 - The footer's "Cancel" secondary and the "Adding writes a move to the
   activity feed · no email is sent" consequence line (frame :663) both
   MATCH.
@@ -230,7 +233,7 @@ since `MergePage` is never reached FROM `ContactsPage`).
 | --- | --- |
 | :312 Pipeline · invitations for next year | MOSTLY MATCHES (1 additive DIVERGES: unframed header "Add to the pipeline" button, blessed per DEC-902 wave-8 amendment) |
 | :352 Duplicates · merge | MOSTLY MATCHES (2 content DIVERGES: back-link prefix blessed per DEC-902 wave-14m amendment disposition (b); impact-line naming RETIRED per DEC-903 wave-14m; 1 already-adjudicated frame-silent addition per DEC-663 wave-17) |
-| :617 Add to the pipeline | MOSTLY MATCHES (2 content DIVERGES: missing per-contact subtitle and footer button word count, both blessed per DEC-902 wave-14m amendment disposition (b)) |
+| :617 Add to the pipeline | MOSTLY MATCHES (1 content DIVERGES: footer button word count, blessed per DEC-902 wave-14m amendment disposition (b); per-contact subtitle RETIRED per DEC-903 wave-19 amendment — `PipelineBoard.tsx` builds it, MATCHES) |
 | :720 Pipeline · an empty stage | RESOLVED-BY-RULING (DEC-976, wave 9) — see DEVIATIONS.md §8; single-stage pill page is the phone register, desktop keeps the 5-column Kanban (MATCHES at :312); empty-body copy naming rule confirmed correct; empty-column heading/action text MATCHES |
 
 4 of 4 frames in this lane's scope were RENDERED, not merely cited. Every
