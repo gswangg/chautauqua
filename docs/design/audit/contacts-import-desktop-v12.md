@@ -48,18 +48,23 @@ composed static mock.
 
 ## Frame :672 "Import CSV · step 3 of 3"
 
-**DIVERGES** at the chrome level, **MATCHES** on content.
+**RESOLVED-BY-RULING** at the chrome level, **RESOLVED** on the footer,
+**MATCHES** on content.
 
-- **Chrome.** The frame draws this step under a `1600` section badge
-  (`:719`, green — a full-page-width state, unlike `:279`'s `Subscreen` or
-  `:546`/`:582`'s `Modal` badges) as a chromeless 1600px surface with no
-  head-band escape at all — just a centered 820px column. The tree keeps
-  this step inside the exact SAME 640px `ModalFrame` dialog (`.chq-modal
-  .is-wide`, scrim, head `Close` button, footer actions bar) as every
-  other step of the wizard — never a distinct full-width surface. This is
-  the most consequential divergence in this document: the frame draws step
-  3 as if it were a different kind of page, and the tree draws it as one
-  more state of the same 640px dialog.
+- **Chrome — RESOLVED-BY-RULING (DEC-575 wave-9 amendment).** The frame
+  draws this step under a `1600` section badge (`:719`, green — a
+  full-page-width state, unlike `:279`'s `Subscreen` or `:546`/`:582`'s
+  `Modal` badges) as a chromeless 1600px surface with no head-band escape
+  at all — just a centered 820px column. The tree keeps this step inside
+  the exact SAME 640px `ModalFrame` dialog (`.chq-modal .is-wide`, scrim,
+  head `Close` button, footer actions bar) as every other step of the
+  wizard — never a distinct full-width surface. DEC-575's wave-9
+  amendment rules this deliberate: the `1600` badge is the pack's drawing
+  convention for a desktop-width mock, not an instruction to rebuild step
+  3 as a full-width page — doing so would break the DEC-651 focus trap
+  and the 390 drill flow. The head `Close` stays as DEC-651's shared
+  dialog chrome (never a step-local escape). Not scheduled for any future
+  wave; see the call-site comment in `ImportWizard.tsx`.
 - **Overwrite disclosure MATCHES**: an update row's `overwrites` render as
   `<field-label> <s>from</s> → to` (`:697`) — a capitalised human field
   label, a genuinely struck-through old value (`<s>` carrying
@@ -67,14 +72,14 @@ composed static mock.
   frame's grammar, sourced from `describeImportOverwrites`
   (`src/domain/contacts-parts/duplicates.ts`) via the plan row's own
   `overwrites` array (never re-derived client-side).
-- **Footer control set MATCHES** in membership (`Back`, the primary
-  `Import N rows`, per `:709-710`) but the tree adds a third control
-  (`Cancel`, from the shared `ModalFrame`/step-2-carryover actions
-  fallback) the frame does not draw at this step, and the tree's DOM order
-  is primary-first (`Import N rows`, `Back`, `Cancel`) where the frame
-  draws `Back` before the primary. Filed as part of the same chrome
-  divergence above, not a second finding — a dedicated full-width surface
-  has no shared-chrome `Cancel` to inherit in the first place.
+- **Footer control set — RESOLVED (DEC-575 wave-9 amendment).** The
+  footer now takes the frame's exact membership and order: `Back` then
+  the primary `Import N rows` (`:709-710`), and the third control
+  (`Cancel`, previously inherited from the shared `ModalFrame`/step-2
+  actions fallback) no longer renders at this step. Steps 1, 2 and the
+  completion screen keep their own footers unchanged. Pinned by
+  `ImportWizard.render.test.tsx`'s "DEC-575 wave-9 amendment" describe
+  block.
 
 ## Frame :770 "Import CSV · the file will not do" (Modal)
 
@@ -144,18 +149,16 @@ composed static mock.
 | Frame | Verdict |
 | --- | --- |
 | :279 Import CSV · step 2 of 3 | DIVERGES (escape count/location; dedupe caption wording, blessed) |
-| :672 Import CSV · step 3 of 3 | DIVERGES (chrome: 1600px chromeless surface vs. 640px modal step) |
+| :672 Import CSV · step 3 of 3 | RESOLVED-BY-RULING (chrome, DEC-575 wave-9) / RESOLVED (footer membership+order, DEC-575 wave-9) |
 | :770 Import CSV · the file will not do | DIVERGES (dialog identity; heading wording) |
 | :546 Bulk email | DIVERGES (footer: Send-direct vs. Preview-then-confirm, blessed) |
 | :582 Add to an event | DIVERGES (role vocabulary: 3 hardcoded chips vs. 4 real roles, blessed) |
 
-0 of 5 frames MATCH in full; every one carries at least one real,
-render-verified divergence. Three of the five divergences (the :279 dedupe
-caption, the :546 Send-vs-Preview footer, the :582 role vocabulary) are
-already named and reasoned about in the components' own code comments as
-deliberate, ruled decisions — not new debt. Two (the :672 chrome mismatch
-and the :770 dialog-identity/heading wording) are not previously
-documented anywhere this task's author could find and are filed here as
-new findings for a future wave to adjudicate; per this task's mandate
-(STRICTLY MEASUREMENT ONLY, DEC-651 wave-26) neither is fixed by this
-document or its test file.
+0 of 5 frames MATCH in full at the time of the original measurement; every
+one carried at least one real, render-verified divergence. Four of the
+five divergences (the :279 dedupe caption, the :546 Send-vs-Preview
+footer, the :582 role vocabulary, and — as of the DEC-575 wave-9
+amendment — the :672 chrome/footer findings) are now named and reasoned
+about as deliberate, ruled decisions, or built to match, not open debt.
+Only :770 (dialog-identity/heading wording) remains filed as an
+unadjudicated finding for a future wave.
