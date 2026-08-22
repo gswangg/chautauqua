@@ -71,7 +71,7 @@ exist in `DocsBlockView` — they are simply unused by today's content. This
 does not affect the block-KIND population verdict above (the question this
 frame poses), only content coverage, which is out of this frame's scope.
 
-## Verdict 2 — the header row: MATCHES, except one glyph-order DIVERGES
+## Verdict 2 — the header row: MATCHES (glyph-order divergence CLOSED, wave 8)
 
 The frame's header (:230–239, drawn identically to the other two Docs
 frames) is wordmark "chautauqua" + "Docs" suffix in one baseline run, a
@@ -81,18 +81,19 @@ left-to-right order (wordmark → suffix → compact search form → leaving
 link) — confirmed against a real `/docs/running-the-software` request in
 the `it()` titled "the header row otherwise matches".
 
-One divergence: the frame's anchor text order is label-then-mark ("API
-reference ↗", `:238`). The shipped `DocsHeader` renders the `aria-hidden`
-mark span **before** `DOCS_API_LEAVING_LINK.label`
-(`<span aria-hidden="true" class="chq-docs-leaving-mark">&#8599;</span>{label}`),
-i.e. mark-then-label ("↗ API reference"). This is DEC-382's existing
-"labelled leaving link" contract (the label still names the destination,
-the mark is `aria-hidden`) — only the *glyph position* is reversed from the
-frame. `test/docs-library-desktop-frame-verdicts.test.ts`'s glyph-order
-`it()` receipts both the frame's `:238` line and the rendered anchor's
-actual child order. No route/`.css.ts` change was made to fix this
-(measurement-only scope) — recommend a DEVIATIONS entry or a design-lens
-ruling on whether the mark leads or trails; not decided here.
+CLOSED (wave 8, DEC-382): the frame's anchor text order is label-then-mark
+("API reference ↗", `:238`), unanimous across every site the frame draws
+the leaving link (`:40`, `:129`, `:238`, `:436`). The shipped `DocsHeader`
+now renders `DOCS_API_LEAVING_LINK.label` **before** the `aria-hidden`
+mark span (`{label}<span aria-hidden="true"
+class="chq-docs-leaving-mark">&#8599;</span>`), matching the frame, and
+`DocsApiLeavingRow` (the running-the-software group's leaving row) was
+corrected the same way. DEC-382's "labelled leaving link" contract only
+required the label to name the destination and the mark to be
+`aria-hidden`; the glyph position was unconstrained by the contract and is
+now conformant with the frame besides.
+`test/docs-library-desktop-frame-verdicts.test.ts`'s glyph-order `it()`
+now asserts label-then-mark and cites the frame's `:238` line as a receipt.
 
 ## Verdict 3 — the page itself: DIVERGES, no live route serves this frame
 
@@ -133,5 +134,5 @@ on such an entry existing).
 | Verdict | Result |
 |---|---|
 | 1. Block-kind population (renderer vs. frame's 01–07) | MATCHES — 7-for-7, plus 08/09 as always-on structural furniture rather than authored block kinds (naming note, not a defect) |
-| 2. Header row (wordmark/suffix/search/leaving link) | MATCHES, except the leaving-link glyph is mark-then-label in product vs. label-then-mark in the frame (DIVERGES) |
+| 2. Header row (wordmark/suffix/search/leaving link) | MATCHES (leaving-link glyph is label-then-mark, same as the frame — CLOSED wave 8) |
 | 3. The page as a whole | DIVERGES — no live route serves this frame; recommended as a DEVIATIONS entry, not built (desktop freeze) |

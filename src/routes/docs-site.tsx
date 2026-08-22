@@ -139,10 +139,10 @@ function DocsHeader(props: { search?: { q: string | undefined } }) {
       </span>
       {props.search ? <DocsSearchForm q={props.search.q} size="compact" /> : null}
       <a class="chq-docs-leaving" href={DOCS_API_LEAVING_LINK.href}>
+        {DOCS_API_LEAVING_LINK.label}
         <span aria-hidden="true" class="chq-docs-leaving-mark">
           &#8599;
         </span>
-        {DOCS_API_LEAVING_LINK.label}
       </a>
     </header>
   );
@@ -367,10 +367,10 @@ function DocsApiLeavingRow() {
   return (
     <div class="chq-docs-article-row chq-docs-article-row-leaving">
       <a class="chq-docs-article-title chq-docs-leaving-row-link" href={DOCS_API_LEAVING_LINK.href}>
+        {DOCS_API_LEAVING_LINK.label}
         <span aria-hidden="true" class="chq-docs-leaving-mark">
           &#8599;
         </span>
-        {DOCS_API_LEAVING_LINK.label}
       </a>
       {/* The seam DESIGN-RULINGS.md:306 asks to be NAMED rather than
           hidden now lives here, in plain words, instead of inside the link
