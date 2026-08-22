@@ -38,6 +38,14 @@ copy/links; the organizer's own account fields; people/role assignments, respect
 no cross-section writes. The seventh panel, `public-pages`, declares no `SECTION_KEY` and
 reads no `edit` param at all, so it has no `&edit=1` sub-state to document here.
 
+`/admin/settings?section=your-data&edit=1&intent=new` is a third-level drill nested under
+the your-data edit row above (DEC-919 wave-155 amendment): `ApiTokensPanel.tsx`'s read
+view only offers a "New token" action, which enters the your-data edit drill with
+`intent=new` already set rather than leaving the organizer to find the create form
+themselves once inside. The edit-view mount reads that param once, focuses the token name
+field, and drops the param — so returning to the URL later (e.g. via Back) doesn't re-steal
+focus.
+
 ## J2 — Submit without friction (`/submit/:eventSlug`)
 
 Public CFP form, built from the organizer's form schema (`src/forms/`), with per-field
@@ -68,6 +76,12 @@ bookmarked/shared. Reachable by the same `organizer` role as the bare detail rou
 (no separate authz check: the page-level role gate covers both states). Saving PATCHes the
 submission's `title`/`description` through the same submission-update route the rest of
 this page's fields already use; it writes nothing else.
+
+`/admin/submissions/:id?history=0` is the same detail page's History disclosure, held
+collapsed. History renders EXPANDED by default (DEC-908 wave-42 amendment), so this
+query param is the one way to reach — and round-trip, via a bookmarked or shared link —
+the collapsed state; there is no `?history=1` because expanded is already the default
+with no param present.
 
 ## J4 — Committee review (`/admin/review`, `/admin/review/plans/new`, `/admin/review/plans/:planId`, `/admin/review/plans/:planId/progress`, `/admin/review/plans/:planId/results`, `/admin/review/plans/:planId/submissions/:submissionId`)
 
@@ -275,6 +289,13 @@ reached from the Duplicates tab, with the target set carried in the query string
 (DEC-629's `{keepId, mergeIds}`). A destructive review step that can be linked,
 reloaded, and returned to after an interruption is a correctness property, not a
 nicety — which a modal over the list cannot provide.
+
+**Import is a URL-state drill (DEC-827):** `/admin/contacts?import=1`
+(`app/src/pages/contacts/ContactsApp.tsx`'s `showImport = searchParams.get('import') ===
+'1'`) opens the CSV importer over the directory. Two openers share this same param rather
+than each carrying their own local modal state: the toolbar's "Import CSV" button, and a
+link in from Speakers — so either entry point produces a bookmarkable, shareable URL for
+the same importer, not two separate import surfaces.
 
 **Capped:** `MAX_CONTACT_DIRECTORY_SCAN`=20000 (`src/server/repo/contacts/rows.ts`) —
 segment/rules filters and duplicate-detection scans that would need to walk more than
