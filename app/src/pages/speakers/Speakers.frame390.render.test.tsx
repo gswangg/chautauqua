@@ -193,7 +193,7 @@ describe('v12 frame render verdict "Speakers" (docs/design/Chautauqua Speakers.d
       '              <span style="{{ row.inviteStyleM }}">{{ row.invite }}<span style="color:#565A4B; padding-left:6px">▾</span></span>',
     );
     const inviteTrigger = within(card).getByRole('button', { name: /Participation status for Ada Lovelace/ });
-    expect(inviteTrigger.textContent).toContain('▾');
+    expect(inviteTrigger.querySelector('.chq-participation-menu-caret')).not.toBeNull();
     expect(meta.compareDocumentPosition(inviteTrigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     // :158/:160 -- per-task label rows (task title + status label), after
@@ -335,7 +335,7 @@ describe('v12 frame render verdict "Roster · 390" (docs/design/Chautauqua Speak
     const nameLink = screen.getByRole('link', { name: 'Ada Lovelace' });
     const row = nameLink.closest('.chq-speakers-roster-row') as HTMLElement;
     const inviteTrigger = within(row).getByRole('button', { name: /Participation status for Ada Lovelace/ });
-    expect(inviteTrigger.textContent).toContain('▾');
+    expect(inviteTrigger.querySelector('.chq-participation-menu-caret')).not.toBeNull();
     const openLink = within(row).getByRole('link', { name: 'Open' });
     expect(nameLink.compareDocumentPosition(inviteTrigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(inviteTrigger.compareDocumentPosition(openLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

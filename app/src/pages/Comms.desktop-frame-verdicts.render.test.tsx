@@ -146,7 +146,7 @@ describe('v12 Comms DESKTOP (1600) frames: per-frame render verdict receipts (w2
       expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
     });
 
-    it('MATCHES (DEC-993): the Insert-a-field control renders as a CLOSED "Insert a field ▾" trigger, not the frame\'s permanently-open panel', async () => {
+    it('MATCHES (DEC-993): the Insert-a-field control renders as a CLOSED "Insert a field" trigger with its own caret element, not the frame\'s permanently-open panel', async () => {
       renderTemplates();
       await screen.findByRole('heading', { name: 'Templates' });
       await waitFor(() => expect(screen.getByRole('textbox', { name: 'Subject' })).toHaveValue(TEMPLATE.subject));
