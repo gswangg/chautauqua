@@ -41,7 +41,7 @@ import { formatDayMedium } from "../src/lib/event-time";
 import { clockHHMM } from "../src/domain/clock";
 import { publicRoomLabel } from "../src/domain/schedule";
 import { formatBytes } from "../src/domain/files";
-import { countOf } from "../src/domain/count-copy";
+import { countOf, capitalizeFirst, plural, spellCount } from "../src/domain/count-copy";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -192,10 +192,12 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(html).toContain('<span class="chq-portal-header-name">Priya Raman</span>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:420 `        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Two things to do</span>`
-    // -- DEC-590: the headline count is n = worklist.length, exactly the one
-    // pending row rendered below (one file_request task, zero invitations).
+    // -- DEC-590 (wave-22 amendment): the headline count is n =
+    // worklist.length, exactly the one pending row rendered below (one
+    // file_request task, zero invitations), spelled via
+    // capitalizeFirst(spellCount(n)) to match the frame's literal.
     expect(html).toContain('<h1 class="chq-portal-hero">');
-    expect(html).toContain(`${countOf(1, "thing")} to do`);
+    expect(html).toContain(`${capitalizeFirst(spellCount(1))} ${plural(1, "thing")} to do`);
 
     // docs/design/Chautauqua Public and Portal.dc.html:421 `        <span style="font-size:13px; color:#565A4B; line-height:1.5">DevFlow Conf 2027 · you speak Tue 12 May, 10:00, Room 2A</span>`
     // -- scheduledSubline's ONE-session form: "<event> · you speak <placement>".

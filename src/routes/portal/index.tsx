@@ -11,7 +11,7 @@ import { speakerGate, PortalLayout, PortalBackLink, portalNotFound } from "./sha
 import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../domain/task-due";
-import { countOf } from "../../domain/count-copy";
+import { countOf, capitalizeFirst, plural, spellCount } from "../../domain/count-copy";
 import { publicRoomLabel } from "../../domain/schedule";
 import { clockHHMM } from "../../domain/clock";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
@@ -43,7 +43,7 @@ import {
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
-import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895, DEC_590 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895, DEC_590, DEC_380 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
@@ -60,12 +60,23 @@ void DEC_576; // wave-110 amendment: SubmissionDetailPage's primary+secondary mo
 // fabricated default when the answer/version is absent.
 void DEC_908;
 void DEC_895;
-// DEC-590 (task w30-c): PortalPage's headline (`{countOf(n, "thing")} to
-// do`, below) is n = worklist.length by construction -- the SAME array the
-// "Waiting on you" section maps over, never a second count -- and
-// PortalLayout (shared.tsx) demotes sign-out to a quiet chq-btn-tertiary
-// control rather than page chrome, matching this decision's two clauses.
+// DEC-590 (task w30-c; wave-22 amendment): PortalPage's headline (`${capitalizeFirst(spellCount(n))}
+// ${plural(n, "thing")} to do`, below) is n = worklist.length by
+// construction -- the SAME array the "Waiting on you" section maps over,
+// never a second count -- and PortalLayout (shared.tsx) demotes sign-out to
+// a quiet chq-btn-tertiary control rather than page chrome, matching this
+// decision's two clauses. The headline spells its count in words (matching
+// `docs/design/Chautauqua Public and Portal.dc.html:420`'s literal, `Two
+// things to do`) via the SAME spellCount/capitalizeFirst pair already
+// shipping in Overview.tsx, AgendaWorkSection, scorecardLogic.ts, and
+// server/repo/tasks/reminders.ts -- countOf (the numeral register, DEC-925)
+// stays reserved for data-dense surfaces and is used elsewhere in this file
+// (scheduledSubline's session-count clause) but never in this hero.
 void DEC_590;
+// DEC-380 wave-22 amendment: the hero spells its count via
+// capitalizeFirst(spellCount(n)) + plural(n, "thing"), not countOf's
+// numeral -- see the DEC-590 comment above for the full composition.
+void DEC_380;
 import {
   parseCookies,
   newCsrfToken,
@@ -392,7 +403,7 @@ function PortalPage(props: {
         </p>
       ) : null}
       <h1 class="chq-portal-hero">
-        {countOf(n, "thing")} to do
+        {capitalizeFirst(spellCount(n))} {plural(n, "thing")} to do
       </h1>
       <p class="chq-portal-sub">{scheduledSubline(branding.eventName, sessions)}</p>
 

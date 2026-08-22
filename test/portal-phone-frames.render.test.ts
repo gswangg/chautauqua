@@ -221,7 +221,7 @@ function h1Text(html: string): string {
 }
 
 describe('v12 phone frame "Speaker portal" (:414-472, GET /portal)', () => {
-  it("exactly one <h1>-equivalent hero, DIVERGES on the literal (frame spells the count, the route renders the DEC-925 countOf numeral)", async () => {
+  it("exactly one <h1>-equivalent hero, CONFORMS on the literal (frame spells the count, the route now spells it too, DEC-380 wave-22 amendment)", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:420
     // `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Two things to do</span>`
     expect(designLine(420)).toBe(
@@ -232,16 +232,15 @@ describe('v12 phone frame "Speaker portal" (:414-472, GET /portal)', () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(countTags(html, "h1")).toBe(1);
-    // Structural match: "<count> thing(s) to do" -- the frame's own literal
-    // spells the count in words ("Two"); the route composes it through
-    // src/domain/count-copy.ts's countOf (DEC-925, the one count-phrase
-    // helper for the whole codebase) which always renders a numeral. Two
-    // things to do (n=2) -> the route's actual H1 text is "2 things to do",
-    // not byte-equal to the frame's "Two things to do". Filed as a finding
-    // in docs/design/audit/portal-v12.md, not fixed here (this lane never
-    // touches product markup).
-    expect(h1Text(html)).toBe("2 things to do");
-    expect(h1Text(html)).not.toBe("Two things to do");
+    // Byte-equal match: the frame's own literal spells the count in words
+    // ("Two"); the route now composes the SAME spelling through
+    // src/domain/count-copy.ts's capitalizeFirst(spellCount(n)) +
+    // plural(n, "thing") pair (DEC-380 wave-22 amendment) -- countOf (the
+    // numeral register, DEC-925) stays reserved for data-dense surfaces.
+    // Two things to do (n=2, this fixture's two pending task assignments)
+    // -> the route's actual H1 text is "Two things to do", byte-equal to
+    // the frame's literal.
+    expect(h1Text(html)).toBe("Two things to do");
   });
 
   it("draws no dock band -- the frame's footer (:463-465) is a plain name/link band, not a pinned action dock", async () => {
