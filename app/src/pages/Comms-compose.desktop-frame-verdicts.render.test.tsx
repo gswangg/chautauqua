@@ -189,25 +189,18 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       // recipients, the overflow footer reads byte-identical to the app's
       // own `{overflow} more · {length} is {at|under} the {cap}-recipient
       // cap` line (ComposeWizard.tsx:1393-1397).
-      verbatimLine(
-        93,
-        '            <div style="padding:13px 0 0; font-size:13px; color:#565A4B">18 more · 23 is under the 100-recipient cap</div>',
-      );
+      verbatimLine(93, '            <div style="padding:13px 0 0; font-size:13px; color:#565A4B">18 more · 23 is under the 100-recipient cap</div>');
       expect(screen.getByText('18 more · 23 is under the 100-recipient cap')).toBeInTheDocument();
     });
 
     it('DIVERGES (additively): the app inserts a "N submissions resolved to M recipients" reconciliation line the frame never draws', async () => {
       await advanceToPreviewStep();
-      // docs/design/Chautauqua Comms.dc.html:81 draws ONLY "Recipients ·
-      // 23" -- no submissions->recipients reconciliation sentence anywhere
-      // in this section. ComposeWizard.tsx:1364-1376 (DEC-829 wave-128 Cut-
-      // 2 item 5) adds one: the SELECTED submission count resolved to the
-      // rendered recipient count, the exact "counting vocabulary" seam this
-      // task calls out between the two steps.
-      verbatimLine(
-        81,
-        '              <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Recipients · 23</span>',
-      );
+      // docs/design/Chautauqua Comms.dc.html:81 draws ONLY `Recipients ·
+      // 23</span>` -- no reconciliation sentence anywhere in this section.
+      // ComposeWizard.tsx:1364-1376 (DEC-829 wave-128 Cut-2 item 5) adds
+      // one: the SELECTED submission count resolved to the rendered
+      // recipient count, the "counting vocabulary" seam this task names.
+      verbatimLine(81, '              <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Recipients · 23</span>');
       expect(
         screen.getByText(`${RECIPIENT_COUNT} submissions resolved to ${RECIPIENT_COUNT} recipients`),
       ).toBeInTheDocument();
@@ -273,10 +266,7 @@ describe('v12 Comms DESKTOP (1600) compose-wizard frames: per-frame render verdi
       // :98's `background:#4E5C31` for the CHECKED "Include reviewer
       // feedback" box immediately above it), yet :110's advisory still
       // renders beneath it.
-      verbatimLine(
-        107,
-        '                <span style="width:17px; height:17px; border:1px solid #8E8A7A; border-radius:3px; flex-shrink:0"></span>',
-      );
+      verbatimLine(107, '                <span style="width:17px; height:17px; border:1px solid #8E8A7A; border-radius:3px; flex-shrink:0"></span>');
       verbatimLine(
         110,
         '              <span style="font-size:12px; color:#565A4B; line-height:1.5">3 of 23 have no slot yet — those get no invite</span>',
