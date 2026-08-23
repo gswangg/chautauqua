@@ -213,9 +213,13 @@ below.
 - Total `path:line` comment citations found across that population:
   > 50 (asserted; measured count is in the hundreds once `.dc.html` is
   excluded and before resolution is attempted).
-- The `CODE_COMMENT_CITATION_CEILING = 37` ratchet in
+- The `CODE_COMMENT_CITATION_CEILING` ratchet in
   `test/code-comment-citation.scan.test.ts` measures the CODE comments
   directly (owned by v12m-w11-bb/v12m-w11-cc, not this document); this
   document's own repair pass (wave-141, task w16-aa) only fixed how THIS
-  FILE cites those same locations, so the underlying 37 code-comment
-  offenders are unaffected by this change and remain that lane's to fix.
+  FILE cites those same locations. At the time of that repair pass the
+  live ceiling read 37; **RESOLVED (task w44-c)** — re-measured live at
+  `export const CODE_COMMENT_CITATION_CEILING = 0;` in
+  `test/code-comment-citation.scan.test.ts`, so the underlying
+  code-comment offenders this section originally catalogued have since
+  been fixed by that other lane; nothing left for this document to defer.

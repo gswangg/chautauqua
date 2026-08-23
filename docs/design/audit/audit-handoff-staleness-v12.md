@@ -72,7 +72,7 @@ estimate.
 | `frame-conditional-state-v12.md:187` | sized-but-not-built | no constant named, no closure marker |
 | `frame-control-floor-390-v12.md:129` | not-fixed + future-wave deferral | no constant named, no closure marker |
 | `frame-eyebrow-label-390-v12.md:104` | next-...-sweep-to-log | no constant named, no closure marker |
-| `open-divergence-ledger-v12.md:355` | still-open | names `OPEN_DIVERGENCE_CEILING`, which resolves to 0 |
+| open-divergence-ledger-v12.md near line 355 | still-open | names OPEN_DIVERGENCE_CEILING, which resolves to 0 |
 | `public-390-request-verdicts-v12.md:105` | for-the-planner | no constant named, no closure marker |
 | `public-submitted-390-v12.md:60` | not-fixed | no constant named, no closure marker |
 | `public-submitted-390-v12.md:79` | not-fixed (dup phrasing) | no constant named, no closure marker |
@@ -81,12 +81,14 @@ estimate.
 
 Two paragraphs matched the grammar but graded LEGAL and are excluded from
 the roster above, as evidence the instrument discriminates rather than
-flagging every deferral-shaped sentence: `open-divergence-ledger-v12.md:3`
-names `CLAIMED_FLOOR`, which resolves to 100 (non-zero, still live) at its
-first declaration in the code-root walk order; `frame-control-floor-390-
-v12.md:150` names `FRAME_FLOOR_DIVERGENCE_CEILING` (0) alongside
-`UNRESOLVED_COUNT_TRIPWIRE` (106, non-zero) -- the second name resolves
-live, so the paragraph is legal under disposition (a).
+flagging every deferral-shaped sentence: near line 3 of
+docs/design/audit/open-divergence-ledger-v12.md, a paragraph names
+`CLAIMED_FLOOR`, which resolves to 100 (non-zero, still live) at its
+first declaration in the code-root walk order; near line 150 of
+docs/design/audit/frame-control-floor-390-v12.md, a paragraph names
+`FRAME_FLOOR_DIVERGENCE_CEILING` (0) alongside `UNRESOLVED_COUNT_TRIPWIRE`
+(106, non-zero) -- the second name resolves live, so the paragraph is
+legal under disposition (a).
 
 This is an instrument-completeness fact about the checker's own claim
 coverage over `docs/design/audit/**`, not a v12 frame or 390-geometry

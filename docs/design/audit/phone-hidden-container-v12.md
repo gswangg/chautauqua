@@ -28,8 +28,8 @@ verified navigation dead-end or re-lined replacement) or repair it.
 
 ## Worked example (the task's own motivating case — OWNED, not repaired here)
 
-`src/routes/portal/portal.css.ts:1031`'s `.chq-portal-actions-footer {
-display: none; }` is a bare container class, not itself interactive. Its
+src/routes/portal/portal.css.ts`.chq-portal-actions-footer { display: none; }`
+(the phone-scoped copy) is a bare container class, not itself interactive. Its
 markup mount, `src/routes/portal/edit.tsx`, renders the profile form's
 inline Save submit button as a descendant. This is the confirmed root of
 wave-38's desktop double-Save defect. Both `src/routes/portal/portal.css.ts`
