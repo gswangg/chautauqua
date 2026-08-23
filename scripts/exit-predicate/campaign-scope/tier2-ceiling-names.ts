@@ -187,4 +187,9 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above. Reads live 0 by RULED_LEFT
   // classification: a graded green conformance row.
   "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
+  // wave-54 (task v12m-w54-a, DEC-069 wave-54 amendment): wired into TIER2 in
+  // the same commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "PACK_PROSE_MEASURE_DIVERGENCE_CEILING",
 ];
