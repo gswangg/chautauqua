@@ -1332,6 +1332,12 @@
      this width at all, so there is no "single visible stage" width to size
      to; the single-stage view is the separate phone-list markup below,
      already sized to the 358px budget. */
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- the desktop five-column
+     board's capability (see every stage, open a card) is drawn instead by
+     the phone-only pair immediately below in this same block,
+     `.chq-contacts-pipeline-phone-stages` (the `.chq-pill` stage strip,
+     one stage picked at a time) and `.chq-contacts-pipeline-phone-list`
+     (that stage's cards), PipelineBoard.tsx. */
   .chq-contacts-pipeline-columns {
     display: none;
     min-width: 0;
@@ -1551,6 +1557,10 @@
      `.chq-contacts-import-phone-*` markup below. The desktop grid this
      hides keeps its own 262px/48% select untouched (see the desktop rules
      above, outside this @media block). */
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- replaced, not withdrawn, by
+     ImportWizard.tsx's own chq-contacts-import-phone family of classes (the
+     per-column eyebrow/name/samples/radio-target-list pager this same
+     block builds below), the ruling directly above already names. */
   .chq-contacts-import-columns {
     display: none;
   }
@@ -1891,6 +1901,10 @@
          is now stale; left in place with this amendment rather than
          rewritten, per the wave-99 "an amendment that reverses says so"
          convention (DEC-099). */
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- see the DEC-919 capability
+     receipt in the comment directly above: "Import N rows" survives via
+     the page-owned phone dock's own primary control, "Cancel" survives via
+     ModalFrame's head-band back link (ImportWizard.tsx). */
   .chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
     display: none;
   }

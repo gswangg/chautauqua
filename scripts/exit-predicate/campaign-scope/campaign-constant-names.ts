@@ -311,4 +311,14 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // so the entry enters the gating table AT 0 and moves no goalpost
   // (test/phone-floor-root-parity.scan.test.ts).
   "PHONE_FLOOR_ROOT_PARITY_CEILING",
+  // wave-56 (task w56-d, DEC-069 wave-56 amendment): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE -- the last twelve rows of
+  // app/src/phone-hidden-container.scan.test.ts's population were
+  // adjudicated this wave (all disposition (a), a `/* phone-hidden: */`
+  // receipt), draining PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING to 0
+  // (clause (a) satisfied), and this ceiling has no completeness sibling
+  // (its own PARKED_FIDELITY_PROMISES row already recorded siblingName:
+  // null), so clause (a) alone decides it and promotion moves no goalpost:
+  // it enters this registry AT 0.
+  "PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING",
 ];

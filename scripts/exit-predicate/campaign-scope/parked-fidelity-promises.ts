@@ -60,13 +60,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
     siblingName: "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING",
     siblingFullyAdjudicated: true,
   },
-  // DEC-069 wave-44 amendment, offender (2): registered by task w41-e with a
-  // promotion promise and no rule behind it. No completeness sibling exists --
-  // app/src/phone-hidden-container.scan.test.ts declares exactly one ceiling,
-  // so the container-capability count is its own whole conformance fact and
-  // clause (b) is vacuously satisfied. Clause (a) alone decides it, and its
-  // own count is non-zero, so it stays parked.
-  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
   // DEC-069 wave-44 amendment, offender (2): registered by task w41-f with a
   // promotion promise and no rule behind it. Clause (b) HOLDS --
   // docs/design/audit/desktop-eyebrow-label-v12.md itemises

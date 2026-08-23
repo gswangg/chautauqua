@@ -1434,7 +1434,7 @@
     order: -1;
   }
 
-  /* src/decisions-data/DEC-919.md (wave-16 r5 amendment): the DirectoryRail stands down at 390 --
+  /* phone-hidden: src/decisions-data/DEC-919.md (wave-16 r5 amendment): the DirectoryRail stands down at 390 --
      the frame's phone body (docs/design/Chautauqua Contacts.dc.html:201
      `flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px`, :203
      `padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex;
@@ -1510,6 +1510,11 @@
     font-weight: 500;
   }
 
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- replaced by
+     `.chq-contacts-segment-pills` immediately above in this same block
+     (ContactsApp.tsx), the src/decisions-data/DEC-919.md task r1-c receipt already covers: select
+     -> a pill, clear -> the "All" pill, which segment is active -> the
+     pressed pill, per-segment count -> the pill label. */
   .chq-contacts-segment-summary {
     display: none;
   }
@@ -1548,6 +1553,11 @@
      unconditionally visible whether the builder is open or closed. Saving
      the rule set -> "Save as a segment", still inside this row and
      reachable whenever the builder is open. */
+  /* phone-hidden: disclosure, not removal (DEC-808 wave-56) -- see the
+     src/decisions-data/DEC-919.md capability receipt directly above: the `.is-builder-open` rule
+     immediately below reveals this same row, and every act (author, edit,
+     remove, read, save) has a named surviving path through the chip strip
+     (FilterRulesPanel.tsx). */
   .chq-contacts-filter-rules-row {
     display: none;
   }

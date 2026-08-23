@@ -343,17 +343,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "number, or a reference into a design file's non-drawn scaffolding), not a v12 frame or "
     + "390-geometry conformance fact about any screen the product draws "
     + "(app/src/frame-citation.scan.test.ts, DEC-967 wave-41 amendment).",
-  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING:
-    "measures a newly-derived population -- a phone `display:none` rule whose SELECTOR is not "
-    + "itself interactive but whose target element's JSX subtree contains an interactive descendant, "
-    + "so hiding the container removes a capability the selector-keyed filter cannot see -- that no "
-    + "instrument previously graded. A real capability-removal fact about this specific population, "
-    + "but a newly measured, previously-uncounted population must not move the campaign's goalposts "
-    + "mid-convergence; it is promoted once later waves adjudicate each row against its own v12 frame "
-    + "and either receipt or repair it, the same disposition already given to "
-    + "PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING (app/src/phone-hidden-container.scan.test.ts, "
-    + "DEC-808 wave-41 amendment).",
-
   DESKTOP_EYEBROW_DIVERGENCE_CEILING:
     "measures a newly-derived word population (a desktop, non-390 card frame's drawn "
     + "text-transform:uppercase eyebrow, disjoint by construction from the caption ledger and the "

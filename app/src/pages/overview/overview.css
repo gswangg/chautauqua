@@ -1023,6 +1023,10 @@
      .chq-overview-clash-eyebrow-group so the shared .chq-overview-row-meta
      class used elsewhere in this file, e.g. the unplaced row, is untouched)
      hides here, the phone-only joined span reveals. */
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- replaced by
+     `.chq-overview-clash-eyebrow-phone` immediately below in this same
+     block (Overview.tsx), the same title+meta text joined into one span,
+     no capability lost. */
   .chq-overview-clash-eyebrow-group > .chq-overview-row-title-sm,
   .chq-overview-clash-eyebrow-group > .chq-overview-row-meta {
     display: none;
