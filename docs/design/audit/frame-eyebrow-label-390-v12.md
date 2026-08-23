@@ -81,7 +81,28 @@ disjointness rules below (88 raw candidates → 62 population).
 | Chautauqua Submissions.dc.html | 2 |
 | **Total** | **62** |
 
-## Grades (re-measured wave 33, task w33-f — the digit-collapsed skeleton join; DIVERGES settled wave 36, task w36-h)
+## Grades (re-measured wave 40, task w40-c — the composed-template resolver; DIVERGES settled wave 36, task w36-h)
+
+Wave 40 widens the join a third time, over the wave-33 skeleton pass's own
+leftover UNRESOLVED bucket. The digit-collapsed skeleton pass turns a
+LIVE-DIGIT miss (a date, a count, a ref — the SAME words, a different
+digit run) back into an exact match, but it is blind to a composition whose
+hole is not a bare digit run: a JS expression (`{phoneColumnIndex + 1}`),
+a nested function call (`{clockHHMM(...)}`), or a template-literal
+interpolation (`` ${list.length} ``) never collapses to the skeleton
+sentinel, because the SOURCE never carries the literal digit to begin with
+— only the RENDERED output does. `eyebrowIsMatchedByComposedTemplate`
+(`test/frame-eyebrow-label.scan.test.ts`) closes that gap: it reads every
+JSX text node and template-literal body in the `.ts`/`.tsx` corpus that
+contains a `{...}`/`${...}` hole, and builds a whole-string regex where
+each hole becomes a mandatory (`.+?`, never zero-width) wildcard and every
+other character is matched literally. A hole with no static text anchoring
+it (a lone `{expr}` text node, e.g. `eventDatesLine(event)` below) is
+refused a regex outright, and a phrase whose literal segments carry fewer
+than 6 letters/digits combined is refused too (DEC-099's own negative
+control: a bare punctuation separator like `{a} · {b}` produced a regex as
+loose as `/^.+? · .+?$/`, matching 15 of this file's 62-row population
+before that guard was added — measured directly this wave, never shipped).
 
 Wave 27's original UNRESOLVED bucket was never joined at all — every
 digit-bearing miss was classified UNRESOLVED by the presence of a digit
@@ -101,79 +122,112 @@ excluded via the ledger's own `SETTLED_EXCLUSIONS` table, neither logged as
 a `docs/design/DEVIATIONS.md` bullet (DEC-099: that ledger's population is
 owned by a different lane).
 
-- **MATCHED**: 44 (up from 43) — the eyebrow's text occurs verbatim
+- **MATCHED**: 53 (up from 44) — the eyebrow's text occurs verbatim
   (case-folded, comment-stripped, entity-decoded, whitespace-collapsed) in
   the non-test `app/src/**`/`src/**` corpus, OR its digit-collapsed
-  skeleton occurs verbatim in the digit-collapsed corpus. The one newly
-  resolved row: `Chautauqua Settings.dc.html:458` "In 6 days" — the app
-  draws the identical clause with a live day-count digit, which the
-  skeleton pass turns back into an exact match.
-- **UNRESOLVED**: 16 (down from 18) — the join's static substring test
-  (skeleton pass included) cannot verify a value composed at render time
-  from live data, but each row now names the composing source expression
-  individually, rather than being waved through by digit-presence alone:
-  - **14 digit-bearing rows** (`DIGIT_COMPOSED` in the test file, down from
-    16 pre-skeleton because :458 above resolved and one further row —
-    `Chautauqua Public and Portal.dc.html:1019` — turned out to be a real
-    DIVERGES, not a composed miss, see below):
-    - `Chautauqua Contacts.dc.html:494` "Column 2 of 5". Composed by
-      app/src/pages/contacts/ImportWizard.tsx`Column {phoneColumnIndex + 1} of {header.length}`
-      (around line 1096; drift-proof bare-path shape, DEC-967 wave-115 —
-      resolved against the whole file, not one pinned line).
+  skeleton occurs verbatim in the digit-collapsed corpus, OR the widened
+  composed-template resolver matches a JSX text node's or template
+  literal's static words either side of a hole. **9 rows newly resolved
+  this wave** (`COMPOSED_TEMPLATE_RESOLVED` in the test file), each cited
+  by the product site (design surface) it resolved to:
+  - `Chautauqua Contacts.dc.html:494` "Column 2 of 5" — **Contacts, CSV
+    import wizard, phone-column mapping step.**
+    `app/src/pages/contacts/ImportWizard.tsx:1096`
+    (`` Column {phoneColumnIndex + 1} of {header.length} ``): the resolver
+    matches the static "Column " / " of " words with both holes filled.
+  - `Chautauqua Public and Portal.dc.html:1076`, `:1126`, `:1149`
+    "Submitted · DFC-048/049/050" — **Public, call-for-papers submission
+    confirmation page** (all three fixture states: new contact, not-yet-
+    linked existing contact, has account). `src/routes/public/submit-views.tsx:856`
+    (`` SUBMITTED &middot; {props.ref} ``): the resolver matches the
+    entity-decoded static "submitted · " prefix with the ref hole filled.
+  - `Chautauqua Review.dc.html:419` "Review · Wave 2" — **Review, reviewer
+    queue, scoped-plan phone header.**
+    `app/src/pages/review/ReviewerQueue.tsx:657`
+    (`` `REVIEW · ${routeEnvelope.planName}` ``): the resolver matches the
+    static "review · " prefix with the plan-name hole filled.
+  - `Chautauqua Settings.dc.html:461` "Questions · 8" — **Settings, call-
+    for-papers panel, custom-questions section head.**
+    `app/src/pages/settings/CallForPapersPanel.tsx:128`
+    (`` `Questions · ${list.length}` ``): the resolver matches the static
+    "questions · " prefix with the count hole filled.
+  - `Chautauqua Submissions.dc.html:375` "Reviews · 3 of 3 in" —
+    **Submissions, submission detail page, reviews section head.**
+    `app/src/pages/submissions/SubmissionDetailPage.tsx:1383`
+    (`` Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !==
+    null).length} of {assignedReviewers} in ``): the resolver matches the
+    static "reviews · " / " of " / " in" words with both holes filled.
+  - `Chautauqua Agenda.dc.html:161` "Two sessions in this slot" —
+    **Agenda, phone day-grid, session-clash card flag.**
+    `app/src/pages/agenda/PhoneAgenda.tsx`
+    (`` {capitalizeFirst(spellCount(slot.sessions.length))} {plural(slot.sessions.length, 'session')} in this slot ``):
+    the resolver matches the static " in this slot" suffix with both holes
+    filled.
+  - `Chautauqua Content.dc.html:406` "Notes on the slides" — **Content,
+    deliverable detail page, notes section label.**
+    `app/src/pages/content/DeliverableDetail.tsx:595`
+    (`` Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()} ``):
+    the resolver matches the static "notes on the " prefix with the
+    deliverable-kind hole filled.
+  - Also unchanged from wave 33: `Chautauqua Settings.dc.html:458`
+    "In 6 days" — resolved by the digit-collapsed skeleton pass, not this
+    wave's resolver.
+- **UNRESOLVED**: 7 (down from 16) — the join's static substring test
+  (skeleton and composed-template passes both included) cannot verify a
+  value composed at render time from live data, and each remaining row
+  names the composing source expression individually, rather than being
+  waved through by digit-presence alone (`DIGIT_COMPOSED` in the test
+  file, all 7 remaining rows digit-bearing — the 2 formerly digit-free
+  `NO_DIGIT_COMPOSED` rows above both resolved this wave, and one further
+  row, `Chautauqua Public and Portal.dc.html:1019`, was found at wave 33 to
+  be a real DIVERGES rather than a composed miss, then SETTLED at wave 36
+  — see the SETTLED bullet below):
     - `Chautauqua Content.dc.html:381` "Re-uploaded · you asked for changes
       8 days ago". Composed by
       app/src/pages/content/DeliverableDetail.tsx`you asked for changes ${formatRelativeDays(headerDetail.updatedAt, Date.now())}`
-      (around lines 446-452; drift-proof bare-path shape).
+      (around lines 446-452; drift-proof bare-path shape) — NOT resolved
+      this wave: the composing text sits inside a nested ternary whose own
+      template-literal interpolation carries a nested `{`/`}` pair the
+      resolver's non-nested hole grammar does not attempt to balance, and
+      the `{statusLabel}` prefix is a separate JSX expression sibling this
+      resolver's single-text-node walk cannot join to it.
     - `Chautauqua Overview.dc.html:274` "Tue 12, 10:00 · Room 2A" —
       `` {formatDayLabel(conflict.day)}, {clockHHMM(conflict.startMin)} ·
       {publicRoomLabel(conflict.roomName)} ``
       (`app/src/pages/overview/AgendaWorkSection.tsx:130-133`, whose own
-      comment cites this exact frame line).
+      comment cites this exact frame line) — NOT resolved this wave: every
+      literal segment between the three holes is pure punctuation (`, `,
+      ` · `), below the resolver's 6-alnum-character anchor floor (DEC-099
+      negative control).
     - `Chautauqua Public and Portal.dc.html:374` "12–14 May 2027 · Moscone
       West" — `eventDatesLine(event)`
       (`src/routes/public/shell.tsx:228-230`,
-      `` `${formatEventDayRange(...)} · ${event.location}` ``).
+      `` `${formatEventDayRange(...)} · ${event.location}` ``) — NOT
+      resolved this wave: the entire JSX text node is one lone hole with no
+      surrounding static word to anchor a regex against (refused outright,
+      see the module note above `buildComposedTemplateRegex`).
     - `Chautauqua Public and Portal.dc.html:624` and `:1318` "On this
       session · 1" — two-sibling-node composition, not a single string:
       `<span>On this session</span><span
       class="chq-portal-session-count">{participants.length}</span>`
-      (`src/routes/portal/edit.tsx:362-363`); a text-content-only join can
-      never assemble two sibling DOM nodes into one string.
-    - `Chautauqua Public and Portal.dc.html:1076`, `:1126`, `:1149`
-      "Submitted · DFC-048/049/050" — `` SUBMITTED &middot; {props.ref} ``
-      (`src/routes/public/submit-views.tsx:856`), the same composing
-      expression rendered against three different fixture refs across the
-      confirmation page's three states.
+      (`src/routes/portal/edit.tsx:362-363`) — NOT resolved this wave (by
+      design): a text-content-only join can never assemble two sibling DOM
+      nodes into one string, regardless of how the hole grammar widens.
     - `Chautauqua Review.dc.html:286` "Wave 2 · AI Engineering · round 1".
       The `scorecardEyebrow` array is composed by
       app/src/pages/review/Scorecard.tsx`planNamesRound(plan.rounds) ? roundLabel(plan.name, plan.currentRound, roundMeta) : null`
-      (around lines 503-507; drift-proof bare-path shape).
-    - `Chautauqua Review.dc.html:419` "Review · Wave 2". Composed by
-      app/src/pages/review/ReviewerQueue.tsx`REVIEW · ${routeEnvelope.planName}`
-      (around line 657; drift-proof bare-path shape).
-    - `Chautauqua Settings.dc.html:461` "Questions · 8". Composed by
-      app/src/pages/settings/CallForPapersPanel.tsx`Questions · ${list.length}`
-      (around line 128; drift-proof bare-path shape).
+      (around lines 503-507; drift-proof bare-path shape) — NOT resolved
+      this wave: the array is built and `.join(' · ')`-ed in plain
+      TypeScript, never as a JSX text node or template literal, so it never
+      produces a phrase this resolver's two source shapes can read.
     - `Chautauqua Submissions.dc.html:361` "DFC-033 · lightning talk, 10
       min" — two-sibling-node composition: `<p
       className="chq-detail-eyebrow" data-ref={detail.ref}>{eyebrowText}</p>`
       (`app/src/pages/submissions/SubmissionDetailPage.tsx:1207-1209`) with
       the ref prefix drawn by a phone-only CSS `::before` keyed off
-      `data-ref` (`app/src/pages/submissions/detail.css:1292`) — a
-      text-content-only join can never assemble a CSS-generated prefix into
-      one string.
-    - `Chautauqua Submissions.dc.html:375` "Reviews · 3 of 3 in" —
-      `` Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !==
-      null).length} of {assignedReviewers} in ``
-      (`app/src/pages/submissions/SubmissionDetailPage.tsx:1383`).
-  - **2 digit-free rows**, unchanged from wave 27 (`NO_DIGIT_COMPOSED` in
-    the test file):
-    - `Chautauqua Agenda.dc.html:161` "Two sessions in this slot" —
-      `{capitalizeFirst(spellCount(slot.sessions.length))} {plural(...)} in
-      this slot` (`app/src/pages/agenda/PhoneAgenda.tsx`).
-    - `Chautauqua Content.dc.html:406` "Notes on the slides" —
-      `` Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()} ``
-      (`app/src/pages/content/DeliverableDetail.tsx:595`).
+      `data-ref` (`app/src/pages/submissions/detail.css:1292`) — NOT
+      resolved this wave (by design): a text-content-only join can never
+      assemble a CSS-generated prefix into one string.
 - **DIVERGES**: 0 (down from 1 at wave 33) — the one row wave 33 surfaced
   (`Chautauqua Public and Portal.dc.html:1019`, "DevFlow Conf 2027 · closes
   16 Aug") is SETTLED as of wave 36 per `src/decisions-data/DEC-986.md`'s
@@ -216,19 +270,24 @@ owned by a different lane).
     DEVIATIONS sweep to log" handoff.
 
 Row-count accounting (DEC-808, DEC-976): MATCHED + UNRESOLVED + DIVERGES +
-SETTLED = 44 + 16 + 0 + 2 = 62 = population, asserted directly in the test
+SETTLED = 53 + 7 + 0 + 2 = 62 = population, asserted directly in the test
 suite.
 
 ## Ratchets
 
-- `FRAME_EYEBROW_DIVERGENCE_CEILING = 0` (down from 1, wave 36)
-- `FRAME_EYEBROW_UNRESOLVED_CEILING = 16` (unchanged since wave 33)
+- `FRAME_EYEBROW_DIVERGENCE_CEILING = 0` (down from 1, wave 36; unchanged
+  wave 40 — this task's own scope explicitly excludes this constant)
+- `FRAME_EYEBROW_UNRESOLVED_CEILING = 7` (down from 16, wave 40)
 
 `FRAME_EYEBROW_DIVERGENCE_CEILING` re-measured on branch `v12m-w36-h`
 (DEC-986 wave-36 amendment) by forcing it to `-1` and reading the printed
 offender roster back: empty, the one row that populated it at wave 33 is
-now SETTLED. `FRAME_EYEBROW_UNRESOLVED_CEILING` unchanged, last measured on
-branch `v12m-w33-f`. Both two-sided
+now SETTLED; NOT re-measured this wave (task w40-c's own scope forbids
+touching it — see the module-header ratchet comment in the test file).
+`FRAME_EYEBROW_UNRESOLVED_CEILING` re-measured on branch `v12m-w40-c`
+(DEC-808/DEC-986 amendment: the composed-template resolver) by forcing it
+to `-1` and reading the printed offender roster back: 7, all 7 cited above.
+Both two-sided
 (`test/campaign-ratchet-two-sided.scan.test.ts` verified green); both
 registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE` with a
 principle reason (DEC-099) — a newly measured, previously-uncounted
