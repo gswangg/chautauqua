@@ -711,9 +711,20 @@ function deriveRulingUnits(): DerivedUnit[] {
   return out;
 }
 
+// DEC-582 wave-45 clause (a): a fourth status, "prose", for a unit whose
+// OWN WORDS state the ruling vocabulary (BLESS/RESTYLE/DROP and similar
+// legend entries), a rationale, or a governing principle -- rather than a
+// capability, control, label, route or selector the product ships. Unlike
+// "gap" (the tree does not yet honor a shippable claim), "prose" asserts
+// the unit has NO shippable claim to honor: RULING_UNIT_GAP_CEILING must
+// not count vocabulary definitions as unbuilt product debt, or it rises
+// every time DESIGN-RULINGS.md's own legend is edited. See the anti-abuse
+// control in findRulingUnitProblems below: a unit whose text names a
+// `.chq-` class, a route path, or a component identifier is refused this
+// status.
 interface UnitLedgerEntry {
   key: string;
-  status: "honored" | "gap";
+  status: "honored" | "gap" | "prose";
   reason: string;
   honored?: HonoredCite;
 }
@@ -724,39 +735,39 @@ interface UnitLedgerEntry {
 const UNIT_LEDGER: UnitLedgerEntry[] = [
   {
     key: "preamble::1",
-    status: "gap",
+    status: "prose",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **BLESS** — keep as built, recorded as deliberate. No frame needed; the ruling *is* the artifact.\"",
+      "a legend entry defining the BLESS verdict vocabulary itself, not a shippable claim; its own words: \"- **BLESS** — keep as built, recorded as deliberate. No frame needed; the ruling *is* the artifact.\"",
   },
   {
     key: "preamble::2",
-    status: "gap",
+    status: "prose",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **RESTYLE** — keep the capability, redraw it. Either a frame exists now, or the one-line spec below is the spec.\"",
+      "a legend entry defining the RESTYLE verdict vocabulary itself, not a shippable claim; its own words: \"- **RESTYLE** — keep the capability, redraw it. Either a frame exists now, or the one-line spec below is the spec.\"",
   },
   {
     key: "preamble::3",
-    status: "gap",
+    status: "prose",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **DROP** — delete the capability.\"",
+      "a legend entry defining the DROP verdict vocabulary itself, not a shippable claim; its own words: \"- **DROP** — delete the capability.\"",
   },
   {
     key: "governing-principle-applied::1",
-    status: "gap",
+    status: "prose",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Mobile reflows the desktop design; it never competes with it.** Phone frames may use phone grammar freely — action bars, sheets, stacked fields, 44px targets — because those are *translations* of de…\"",
+      "the governing principle statement itself, applied per-surface elsewhere in this ledger and the frame-specific instruments, not a shippable claim of its own; its own words: \"**Mobile reflows the desktop design; it never competes with it.** Phone frames may use phone grammar freely — action bars, sheets, stacked fields, 44px targets — because those are *translations* of desktop affordances. What is one-way is authority:\"",
   },
   {
     key: "governing-principle-applied::2",
-    status: "gap",
+    status: "prose",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"1. A 390 frame keeps the desktop design's hierarchy, capabilities and tokens. It is never an independent drawing.\"",
+      "a restatement of the governing principle (desktop is authority), not a shippable claim; its own words: \"1. A 390 frame keeps the desktop design's hierarchy, capabilities and tokens. It is never an independent drawing.\"",
   },
   {
     key: "governing-principle-applied::3",
-    status: "gap",
+    status: "prose",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"2. Where a surface has **only** a 390 frame, the desktop state is a *missing artifact*, not an implied one. Do not scale phone anatomy up. Two surfaces were in that position — Settings edit views and…\"",
+      "a restatement of the governing principle (a missing desktop state is not implied), not a shippable claim; its own words: \"2. Where a surface has **only** a 390 frame, the desktop state is a *missing artifact*, not an implied one. Do not scale phone anatomy up. Two surfaces were in that position — Settings edit views and the speaker portal — and both are ruled below.\"",
   },
   {
     key: "b8-interaction-states-standard::1",
@@ -1042,9 +1053,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "error-and-validation-states::3",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"1. **Summarise at the top, fix in place.** A submit rejection opens with \"Three things need fixing before this can be sent\" and one anchor link per problem, each jumping to its field. Every field also…\"",
+      "the shared ErrorSummary component renders one anchor per problem, each pointing at the offending field's own id, matching the unit's own \"one anchor link per problem, each jumping to its field\" clause.",
+    honored: {
+      file: "app/src/components/ErrorSummary.tsx",
+      literal: "href={'#' + p.anchorId}",
+      testFile: "app/src/components/ErrorSummary.render.test.tsx",
+    },
   },
   {
     key: "error-and-validation-states::4",
@@ -1126,15 +1142,25 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "speaker-portal-adding-a-co-presenter::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"1. **Nobody is emailed.** `addCoPresenter` writes a participant row and returns — the route comment is explicit that nothing here sends mail. So: \"No email goes to them — tell them yourself.\" A speake…\"",
+      "the add-co-presenter form states the exact sentence the ruling names, beside a handler that writes a participant row and sends no mail.",
+    honored: {
+      file: "src/routes/portal/edit.tsx",
+      literal: "No email goes to them — tell them yourself",
+      testFile: "test/portal-copresenter.test.ts",
+    },
   },
   {
     key: "speaker-portal-adding-a-co-presenter::3",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"2. **They are not published.** A co-presenter is recorded on the session but stays off the public site until the organiser publishes them, and each existing row repeats it in muted text.\"",
+      "each existing participant row repeats the not-yet-published fact in muted sub-copy, matching the unit's own \"each existing row repeats it in muted text\" clause.",
+    honored: {
+      file: "src/routes/portal/edit.tsx",
+      literal: "Not yet on the public site. Your organiser publishes co-presenters.",
+      testFile: "test/portal-copresenter.test.ts",
+    },
   },
   {
     key: "speaker-portal-adding-a-co-presenter::4",
@@ -1180,9 +1206,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "docs-a-new-site-and-where-it-stops::3",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Where the docs stop:** `/docs/api` and `/dev/mailbox` remain `TOOLS_CSS` chrome per DEC-382 — this design does **not** revise that the way `GET /` did. So the API reference is styled as a **leaving…\"",
+      "the /docs/api route imports and renders the shared TOOLS_CSS chrome and cites DEC-382 by name, matching the unit's own \"remain TOOLS_CSS chrome per DEC-382\" clause.",
+    honored: {
+      file: "src/routes/docs.tsx",
+      literal: 'import { ToolsStyles } from "./tools.css";',
+      testFile: "test/docs-page.test.ts",
+    },
   },
   {
     key: "docs-a-new-site-and-where-it-stops::4",
@@ -1240,9 +1271,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "cfp-form-editing-a-question::3",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **A hidden question is never required.** If the submitter cannot see it, it cannot block their submission; the modal says so where the two settings meet.\"",
+      "the field modal states the rule verbatim beside the required toggle, and DEC-650(c)'s requiredForSave enforces it server-side so a hidden field can never save as required.",
+    honored: {
+      file: "app/src/pages/forms/FieldModal.tsx",
+      literal: "A hidden question is never required — if the submitter cannot see it, it cannot block their submission.",
+      testFile: "app/src/pages/forms/FieldModal.render.test.tsx",
+    },
   },
   {
     key: "cfp-form-editing-a-question::4",
@@ -1252,9 +1288,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "cfp-form-editing-a-question::5",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- Delete sits far left in the footer, and goes through the irreversible confirm.\"",
+      "the footer renders Delete as a far-left destructive-tertiary button, separated from the right-flushed Cancel/Save group, per the DEC-650 comment citing this exact ruling line.",
+    honored: {
+      file: "app/src/pages/forms/FieldModal.tsx",
+      literal: "chq-forms-field-delete",
+      testFile: "app/src/pages/forms/FieldModal.render.test.tsx",
+    },
   },
   {
     key: "review-progress-two-reminder-scopes::1",
@@ -1286,9 +1327,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "loading-the-first-paint::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Under 250ms, show nothing.** A skeleton that flashes is worse than a beat of stillness, and it makes a fast load look broken.\"",
+      "the shared delayed-loading hook withholds its indicator for exactly 250ms before showing, matching the unit's own \"Under 250ms, show nothing\" clause.",
+    honored: {
+      file: "app/src/components/DelayedLoading.tsx",
+      literal: "delayMs = 250",
+      testFile: "app/src/components/DelayedLoading.render.test.tsx",
+    },
   },
   {
     key: "loading-the-first-paint::3",
@@ -1298,9 +1344,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "loading-the-first-paint::4",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Always six rows**, never a guess at the real count: a skeleton that guesses lies twice, once while loading and again when the number differs.\"",
+      "the shared skeleton primitive exports a fixed row count rather than deriving one from real data, matching the unit's own \"Always six rows, never a guess\" clause.",
+    honored: {
+      file: "app/src/components/PageSkeleton.tsx",
+      literal: "export const SKELETON_ROWS = 6;",
+      testFile: "app/src/components/PageSkeleton.render.test.tsx",
+    },
   },
   {
     key: "loading-the-first-paint::5",
@@ -1641,12 +1692,6 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
 // item/bold paragraph, which the test-time re-derivation already forces
 // this list to track exactly, in both directions.
 const KNOWN_UNIT_GAPS: string[] = [
-  "preamble::1",
-  "preamble::2",
-  "preamble::3",
-  "governing-principle-applied::1",
-  "governing-principle-applied::2",
-  "governing-principle-applied::3",
   "b8-interaction-states-standard::1",
   "b8-interaction-states-standard::2",
   "b8-interaction-states-standard::3",
@@ -1694,7 +1739,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "b10-settings-edit-views-on-desktop::6",
   "error-and-validation-states::1",
   "error-and-validation-states::2",
-  "error-and-validation-states::3",
   "error-and-validation-states::4",
   "error-and-validation-states::5",
   "error-and-validation-states::6",
@@ -1708,8 +1752,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "error-and-validation-states::14",
   "error-and-validation-states::15",
   "speaker-portal-adding-a-co-presenter::1",
-  "speaker-portal-adding-a-co-presenter::2",
-  "speaker-portal-adding-a-co-presenter::3",
   "speaker-portal-adding-a-co-presenter::4",
   "speaker-portal-adding-a-co-presenter::5",
   "speaker-portal-adding-a-co-presenter::6",
@@ -1717,7 +1759,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "speaker-portal-adding-a-co-presenter::8",
   "docs-a-new-site-and-where-it-stops::1",
   "docs-a-new-site-and-where-it-stops::2",
-  "docs-a-new-site-and-where-it-stops::3",
   "docs-a-new-site-and-where-it-stops::4",
   "docs-a-new-site-and-where-it-stops::5",
   "docs-a-new-site-and-where-it-stops::6",
@@ -1727,13 +1768,9 @@ const KNOWN_UNIT_GAPS: string[] = [
   "docs-a-new-site-and-where-it-stops::10",
   "cfp-form-editing-a-question::1",
   "cfp-form-editing-a-question::2",
-  "cfp-form-editing-a-question::3",
   "cfp-form-editing-a-question::4",
-  "cfp-form-editing-a-question::5",
   "loading-the-first-paint::1",
-  "loading-the-first-paint::2",
   "loading-the-first-paint::3",
-  "loading-the-first-paint::4",
   "loading-the-first-paint::5",
   "two-more-surfaces-that-shipped-without-frames::1",
   "two-more-surfaces-that-shipped-without-frames::2",
@@ -1759,6 +1796,17 @@ const KNOWN_UNIT_GAPS: string[] = [
   "superseded-frames-formerly-owed::4",
   "superseded-frames-formerly-owed::5",
   "superseded-frames-formerly-owed::6"
+];
+
+// DEC-582 wave-45 clause (c): "prose" is otherwise a one-word way to zero
+// the gap ceiling. A unit whose own text names a shippable artifact --
+// a `.chq-` class, a route path, or a backticked component identifier --
+// is refused "prose" no matter what the ledger claims, because that unit
+// is a claim about the product, not a vocabulary definition.
+const PROSE_ABUSE_PATTERNS: Array<{ name: string; re: RegExp }> = [
+  { name: "a .chq- class name", re: /\.chq-[a-zA-Z0-9-]+/ },
+  { name: "a route path", re: /(?<![\w.])\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)+/ },
+  { name: "a backticked component identifier", re: /`[A-Z][A-Za-z0-9]*`/ },
 ];
 
 function findRulingUnitProblems(
@@ -1819,6 +1867,21 @@ function findRulingUnitProblems(
     if (!gapRowKeys.includes(g)) problems.push(`KNOWN_UNIT_GAPS names ${g} but no unit ledger row with that key is marked "gap"`);
   }
 
+  // Anti-abuse control (DEC-582 wave-45 clause (c)): a "prose" row whose own
+  // derived text names a shippable artifact is refused the status.
+  for (const entry of ledger) {
+    if (entry.status !== "prose") continue;
+    const d = derivedKeySet.get(entry.key);
+    if (!d) continue; // already reported above as a stale row
+    for (const pattern of PROSE_ABUSE_PATTERNS) {
+      if (pattern.re.test(d.text)) {
+        problems.push(
+          `prose unit ${entry.key} names a shippable artifact (${pattern.name}) and is refused "prose" status: "${d.text}"`,
+        );
+      }
+    }
+  }
+
   return problems;
 }
 
@@ -1843,7 +1906,16 @@ const unitRealResolvers = {
 // and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: a newly-derived population no
 // instrument previously graded must not move the campaign's goalposts
 // mid-convergence.
-export const RULING_UNIT_GAP_CEILING = 118;
+//
+// DEC-582 wave-45: 118 -> 104. The ceiling was counting paragraphs, not
+// product debt -- six units (the preamble's BLESS/RESTYLE/DROP legend and
+// the governing-principle-applied group) are vocabulary/principle
+// statements with no shippable claim, reclassified "prose" (see
+// UnitLedgerEntry above); eight more genuinely-shippable units were given
+// real, verified citations and reclassified "honored". Re-measured by
+// running this file and reading back the failing assertion's printed
+// value, never computed by arithmetic on 118 - 6 - 8.
+export const RULING_UNIT_GAP_CEILING = 104;
 
 describe("design-rulings-ledger ruling-unit population (DEC-582 wave-31 amendment)", () => {
   const derivedUnits = deriveRulingUnits();
@@ -1944,5 +2016,35 @@ describe("findRulingUnitProblems negative controls (DEC-099: every scan ships on
     const honoredLedger: UnitLedgerEntry[] = [{ key: "zzz::1", status: "honored", reason: "x", honored: { file: "src/decisions.ts", literal: "export", testFile: "src/decisions.ts" } }];
     const problemsStaleRatchet = findRulingUnitProblems(baseDerived, honoredLedger, ["zzz::1"], fakeResolvers);
     expect(problemsStaleRatchet.some((p) => p.includes("no unit ledger row"))).toBe(true);
+  });
+
+  // DEC-582 wave-45 clause (c): the anti-abuse control. "prose" must not
+  // become a one-word way to zero the gap ceiling.
+  it("a fabricated unit whose text names a .chq- class IS refused \"prose\" status", () => {
+    const derivedClass: DerivedUnit[] = [{ key: "zzz::1", headingTitle: "ZZZ", kind: "bullet", text: "- The dialog root carries `.chq-fake-dialog` for styling hooks." }];
+    const proseLedger: UnitLedgerEntry[] = [{ key: "zzz::1", status: "prose", reason: "claims to be a vocabulary definition" }];
+    const problems = findRulingUnitProblems(derivedClass, proseLedger, [], fakeResolvers);
+    expect(problems.some((p) => p.includes("refused \"prose\" status") && p.includes("chq- class"))).toBe(true);
+  });
+
+  it("a fabricated unit whose text names a route path IS refused \"prose\" status", () => {
+    const derivedRoute: DerivedUnit[] = [{ key: "zzz::1", headingTitle: "ZZZ", kind: "bullet", text: "- Posting to /portal/preview renders the chrome with no speaker attached." }];
+    const proseLedger: UnitLedgerEntry[] = [{ key: "zzz::1", status: "prose", reason: "claims to be a vocabulary definition" }];
+    const problems = findRulingUnitProblems(derivedRoute, proseLedger, [], fakeResolvers);
+    expect(problems.some((p) => p.includes("refused \"prose\" status") && p.includes("route path"))).toBe(true);
+  });
+
+  it("a fabricated unit whose text names a backticked component identifier IS refused \"prose\" status", () => {
+    const derivedComponent: DerivedUnit[] = [{ key: "zzz::1", headingTitle: "ZZZ", kind: "bullet", text: "- `ConfirmDialog` renders the shared irreversible-action shape." }];
+    const proseLedger: UnitLedgerEntry[] = [{ key: "zzz::1", status: "prose", reason: "claims to be a vocabulary definition" }];
+    const problems = findRulingUnitProblems(derivedComponent, proseLedger, [], fakeResolvers);
+    expect(problems.some((p) => p.includes("refused \"prose\" status") && p.includes("component identifier"))).toBe(true);
+  });
+
+  it("a genuine vocabulary-definition unit naming no artifact IS accepted as \"prose\"", () => {
+    const derivedVocab: DerivedUnit[] = [{ key: "zzz::1", headingTitle: "ZZZ", kind: "bullet", text: "- **BLESS** — keep as built, recorded as deliberate. No frame needed; the ruling *is* the artifact." }];
+    const proseLedger: UnitLedgerEntry[] = [{ key: "zzz::1", status: "prose", reason: "legend entry defining the BLESS verdict vocabulary" }];
+    const problems = findRulingUnitProblems(derivedVocab, proseLedger, [], fakeResolvers);
+    expect(problems).toEqual([]);
   });
 });
