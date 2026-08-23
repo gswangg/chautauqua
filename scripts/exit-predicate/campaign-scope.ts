@@ -916,6 +916,18 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "ratchet's own token-resolution technique, the same disposition already given to "
     + "PACK_TYPOGRAPHY_LETTER_SPACING_UNRESOLVED_CEILING "
     + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment).",
+
+  TRUNCATION_TRIAD_OFFENDERS_CEILING:
+    "measures a newly-derived population -- every rule declaring `text-overflow: ellipsis` "
+    + "whose SAME chq- class token carries no effective non-normal white-space and no effective "
+    + "overflow/overflow-x hidden|clip companion at the 390 frame -- that no instrument "
+    + "previously graded. Every one of its 5 measured rows is individually adjudicated in "
+    + "docs/design/audit/phone-truncation-triad-v12.md: two are deliberate phone-authored "
+    + "white-space:normal overrides (wrapping is the drawn intent, not a defect), three are "
+    + "desktop-only <th> elements a hidden phone <thead> never draws (DESKTOP IS FROZEN, "
+    + "DEC-385 -- the only repair site is the top-level rule this lane may not touch). A fully "
+    + "adjudicated roster with no candidate defect is a conformance fact already closed, not a "
+    + "live gate (app/src/phone-truncation-triad.scan.test.ts, DEC-808 wave-43 amendment).",
 };
 
 /**
