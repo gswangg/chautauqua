@@ -1682,6 +1682,13 @@
      state and draws its own .chq-phone-footer-armed (frame :190-197). So
      at 390 this is 44px of permanently empty, aria-hidden chrome sitting
      between the head and the phone band. */
+  /* phone-hidden: verified navigation dead-end (DEC-808 wave-52) --
+     Agenda.tsx's onArm callback (the only setter for `armed`) is passed
+     only to DayGrid/UnscheduledTray inside the `!isPhone` branch, so
+     `armed` can never become truthy at 390 and this bar's own
+     Unschedule/Cancel buttons (only rendered `{armed && ...}`) can never
+     paint; PhoneAgenda keeps its own `armed` state and draws the
+     equivalent .chq-phone-footer-armed footer band instead. */
   .chq-agenda-armed-bar {
     display: none;
   }

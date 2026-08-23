@@ -1346,6 +1346,11 @@
      dock. Supersedes the narrower `> .chq-btn`-only hide this rule used to
      carry (DEC-576 wave-125), which still left the cap/scope explanatory
      text competing for space in the header row. */
+  /* phone-hidden: re-lined (DEC-808 wave-52) as the sticky
+     .chq-phone-dock's own "Download all" chq-btn-primary button
+     (FilesLibrary.tsx), same handleDownloadAll handler and disabled
+     state, at the frame's 48px dock height
+     (docs/design/Chautauqua Content.dc.html:359). */
   .chq-content-files-download-all-wrap {
     align-items: stretch;
     display: none;
@@ -1778,6 +1783,13 @@
      stop (no idle hint band either; entering Select is the only way to
      arm bulk approval on phone, since the row verbs already own
      "approve this one"). */
+  /* phone-hidden: re-lined (DEC-808 wave-52) -- the per-row Approve/Open
+     verbs (.chq-content-table td:nth-child(6), rest state) plus the
+     header's own Select toggle, which arms
+     .chq-content-worklist-selecting .chq-bulkbar below, are the phone
+     route to the same bulk-approve capability; entering Select is the
+     only route on phone, matching the frame's tab-bar-only footer at
+     rest (docs/design/Chautauqua Content.dc.html:198). */
   .chq-content-worklist .chq-bulkbar {
     display: none;
   }
@@ -1976,6 +1988,12 @@
      here rather than in place, so the pre-existing 48px floor rule this
      block still carries for `.chq-content-comment-actions .chq-btn`
      keeps citing real CSS text (DEC-385 append-only). */
+  /* phone-hidden: re-lined (DEC-808 wave-52) as CommentThread.tsx's own
+     .chq-phone-dock footer (Ask for changes / Send note), same
+     submit(true)/submit(false) handlers as this inline row -- the frame
+     draws one action pair, docked, never two
+     (docs/design/Chautauqua Content.dc.html's "Session · deliverable"
+     frame). */
   .chq-content-comment-actions {
     display: none;
   }

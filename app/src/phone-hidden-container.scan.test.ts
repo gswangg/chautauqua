@@ -243,14 +243,32 @@ const CONTAINER_OFFENDERS: ContainerOffender[] = UNRECEIPTED_NON_INTERACTIVE_SEL
 // .chq-portal-actions-footer usage states "exactly one Save control visible
 // at any width", and portal.css.ts's .chq-portal-profile-dock/.chq-portal-
 // actions-footer pair (phone: dock revealed, in-flow copy hidden) confirms
-// it. The remaining 21 rows live under app/src/pages/** and are NOT this
+// it. The remaining 21 rows live under app/src/pages/** and were NOT this
 // task's population -- see docs/design/audit/phone-hidden-container-v12.md.
 //
-// SEED, measured on this branch's tree at authoring time (2026-08-22):
+// wave-52 (task w52-d): adjudicated 9 of those 21 rows (rows 1, 2, 9, 10,
+// 11, 12, 19, 20, 21 in the audit doc's numbering) against their v12
+// frames. Eight take disposition (a), a `/* phone-hidden: */` receipt
+// naming the phone-side affordance that reaches the same capability by
+// class and handler (agenda.css .chq-agenda-armed-bar is disposition (b),
+// a verified navigation dead-end -- its onArm callback is never wired to
+// a phone-rendered component, so the subtree's own buttons can never
+// paint). One row -- speakers/task-view.css's
+// `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting
+// .chq-taskview-head-row` -- is disposition (c), a REAL DEFECT: no v12
+// frame at 390 exists for this screen at all, and hiding the head row
+// removes the only "select all" control (toggleAll) with no phone-side
+// replacement (per-row checkboxes remain, but there is no bulk-select-all
+// affordance on phone). Left unreceipted; see the audit doc's Disposition
+// section. Ceiling lowered from 21 to 13 (21 - 8 receipted), measured
+// (not assumed) by re-running the scan with the receipts in place. Rows
+// 3-8 and 13-18 remain unadjudicated.
+//
+// SEED, measured on this branch's tree at authoring time (2026-08-23):
 // this ceiling may only be LOWERED (receipt lands, rule is deleted, or the
 // container's capability is otherwise restored) -- never raised to
 // accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 21;
+export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 13;
 
 describe('DEC-808 wave-41 phone container capability-removal probe (subtree, not selector)', () => {
   it('finds more than zero non-interactive-selector phone display:none rules (vacuous-population tripwire)', () => {
