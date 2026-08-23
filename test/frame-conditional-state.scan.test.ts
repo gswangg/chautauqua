@@ -315,10 +315,66 @@ interface GradedRow extends ConditionalRow {
   readonly evidenceTier: 'copy' | 'structural' | null;
 }
 
+// Per-cluster file lists, normalized blobs and comment-stripped blobs are
+// each read/derived at most once per distinct cluster (keyed by the sorted
+// dirs list), memoized here rather than re-read/re-derived on every graded
+// row (DEC-976 wave-45: `gradeRow` previously re-ran `readFileSync` +
+// `normalizeSource`/`stripComments` over the whole cluster on EVERY call,
+// and re-read + re-stripped every `*.test.tsx?` file in the repo on every
+// row that found evidence -- O(rows x corpus), timing the non-vacuity
+// control out at 5444ms with no offender printed).
+const clusterFilesCache = new Map<string, string[]>();
+const clusterBlobsCache = new Map<string, string[]>();
+const clusterStrippedCache = new Map<string, string[]>();
+
+function clusterKey(dirs: string[]): string {
+  return dirs.join(' ');
+}
+
+function clusterFilesFor(dirs: string[]): string[] {
+  const key = clusterKey(dirs);
+  let files = clusterFilesCache.get(key);
+  if (files === undefined) {
+    files = nonTestFilesUnder(dirs);
+    clusterFilesCache.set(key, files);
+  }
+  return files;
+}
+
+function clusterBlobsFor(dirs: string[]): string[] {
+  const key = clusterKey(dirs);
+  let blobs = clusterBlobsCache.get(key);
+  if (blobs === undefined) {
+    blobs = clusterFilesFor(dirs).map((f) => normalizeSource(readFileSync(f, 'utf-8')));
+    clusterBlobsCache.set(key, blobs);
+  }
+  return blobs;
+}
+
+function clusterStrippedFor(dirs: string[]): string[] {
+  const key = clusterKey(dirs);
+  let stripped = clusterStrippedCache.get(key);
+  if (stripped === undefined) {
+    stripped = clusterFilesFor(dirs).map((f) => stripComments(readFileSync(f, 'utf-8')));
+    clusterStrippedCache.set(key, stripped);
+  }
+  return stripped;
+}
+
+// Comment-stripped blobs of every `*.test.tsx?` file in the repo, read once
+// on first use rather than once per graded row (see cache comment above).
+let testBlobsCache: string[] | null = null;
+
+function testBlobs(): string[] {
+  if (testBlobsCache === null) {
+    testBlobsCache = ALL_TEST_FILES.map((f) => stripComments(readFileSync(f, 'utf-8')));
+  }
+  return testBlobsCache;
+}
+
 function gradeRow(row: ConditionalRow): GradedRow {
   const dirs = clusterDirsFor(row.file);
-  const clusterFiles = nonTestFilesUnder(dirs);
-  const clusterBlobs = clusterFiles.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
+  const clusterBlobs = clusterBlobsFor(dirs);
 
   // TIER 1: copy match.
   const literals = row.ownText.length === 0 ? [] : row.ownText.split(' | ');
@@ -335,7 +391,7 @@ function gradeRow(row: ConditionalRow): GradedRow {
   // TIER 2: structural match, only if tier 1 found nothing.
   if (evidence === null) {
     const ident = lastSegment(row.expr);
-    const stripped = clusterFiles.map((f) => stripComments(readFileSync(f, 'utf-8')));
+    const stripped = clusterStrippedFor(dirs);
 
     if (isCompoundIdentifier(ident) && ident.length >= MIN_WORD_LENGTH) {
       const bareRe = new RegExp(`\\b${ident}\\b`);
@@ -368,10 +424,9 @@ function gradeRow(row: ConditionalRow): GradedRow {
     return { ...row, grade: 'DIVERGES', evidence: null, evidenceTier: null };
   }
 
-  const testBlobs = ALL_TEST_FILES.map((f) => stripComments(readFileSync(f, 'utf-8')));
   const evidenceEscaped = evidence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const mountedRe = new RegExp(evidenceTier === 'copy' ? evidenceEscaped : `\\b${evidenceEscaped}\\b`);
-  const mounted = testBlobs.some((s) => mountedRe.test(s));
+  const mounted = testBlobs().some((s) => mountedRe.test(s));
 
   return { ...row, grade: mounted ? 'MATCHED' : 'PRESENT-UNMOUNTED', evidence, evidenceTier };
 }

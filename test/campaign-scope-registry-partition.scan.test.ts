@@ -74,14 +74,6 @@ function strippedTrackedFiles(repoRoot: string): ReadonlyArray<{ path: string; c
 }
 
 /**
- * Reads a named constant's LIVE value off the git-tracked tree under
- * test/, app/src/ and scripts/ -- the same population `loadCampaignFiles`
- * (scripts/exit-predicate/campaign.ts) scans -- resolving to exactly one
- * declaration. Throws loudly on zero or more-than-one matches; never a
- * hard-coded value map (the task's own instruction, and DEC-808's "a
- * default is an invitation to guess").
- */
-/**
  * Every `const NAME = <int>;` declaration on the tracked tree, indexed by
  * name, built ONCE per process. `resolveLiveValue` used to re-shell `git
  * ls-files` and re-read the whole corpus for every constant it was asked
@@ -92,6 +84,9 @@ function strippedTrackedFiles(repoRoot: string): ReadonlyArray<{ path: string; c
  * task w44-i) applies to every declaration read here too; the resolution
  * rules (zero matches and multiple matches both throw loudly) are unchanged,
  * which is why the locations are retained per name rather than collapsed.
+ * (DEC-976 wave-45: the old shape was O(names x tree) and grew every wave a
+ * ratchet was registered, timing the gating `it` out at 5000ms with no
+ * offender list printed. Built lazily so importing this file never pays it.)
  */
 let declarationIndex: Map<string, { values: number[]; locations: string[] }> | null = null;
 
@@ -130,10 +125,10 @@ function resolveLiveValue(repoRoot: string, name: string): number {
   if (found.length > 1) {
     throw new Error(
       `campaign-scope-registry-partition: ${name} declared ${found.length} times ` +
-        `(${locations.join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
+        `(${found.map((f) => f.path).join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
     );
   }
-  return found[0] as number;
+  return (found[0] as { value: number; path: string }).value;
 }
 
 const PROMOTION_PROMISE_RE = /promoted (once|by a later)/;
