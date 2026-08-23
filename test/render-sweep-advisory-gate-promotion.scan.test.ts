@@ -53,6 +53,7 @@ import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { DEC_069 } from "../src/decisions";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 const ROOT = resolve(__dirname, "..");
 const RENDER_SWEEP_LIB_PATH = join(ROOT, "scripts", "render-sweep-lib.ts");
@@ -239,7 +240,11 @@ const RENDER_SWEEP_PROMOTION_RULES: PromotionRegistry = {
 };
 
 describe(`render-sweep advisory *_BLOCKING flags carry a promotion rule (${DEC_069})`, () => {
-  const source = readFileSync(RENDER_SWEEP_LIB_PATH, "utf8");
+  // Comment-blind guard (DEC-374 wave-44, task w44-i, shared
+  // test/helpers/strip-ts-comments.ts -- DEC-613, never a private copy): a
+  // comment merely QUOTING a `*_BLOCKING` flag declaration must never be
+  // read by deriveBlockingFlags as a real flag.
+  const source = stripTsComments(readFileSync(RENDER_SWEEP_LIB_PATH, "utf8"));
   const flags = deriveBlockingFlags(source);
 
   it("derives at least the five known *_BLOCKING flags from source, never a hand list", () => {

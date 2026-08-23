@@ -136,6 +136,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_180, DEC_393, DEC_613, DEC_725, DEC_808, DEC_919, DEC_967 } from '../../src/decisions';
 import { normalizeSource } from '../../test/frame-source-corpus';
+import { stripTsComments } from '../../test/helpers/strip-ts-comments';
 import { PHONE_DISPLAY_NONE_RULES } from './phone-capability-removal.scan.test';
 import { clusterKeyForPath, findingsScopedForSheet, scopeBlobsForSheet } from './phone-hidden-drawn-text/cluster-scope';
 import { designFiles, FRAME_BLOBS, templateCloseLine } from './phone-hidden-drawn-text/frame-blobs';
@@ -275,9 +276,15 @@ const EXTENT_DERIVATION_RE = /extentEnd/;
 const FRAME_LABEL_MARKER_RE = /font-size:19px/;
 
 /** True if `absFile` derives a frame `extentEnd` from a `.dc.html` label
- * scan without clipping it at that file's own template close. */
+ * scan without clipping it at that file's own template close. Comments
+ * stripped first (DEC-374 wave-44, task w44-i, shared test/helpers/
+ * strip-ts-comments.ts -- never a private copy, DEC-613): un-stripped, a
+ * file's own PROSE mentioning `templateCloseLine` (this very file's header
+ * comments do, several times) would satisfy the `.includes` check without
+ * the file actually calling it -- a comment-blind false negative that would
+ * hide a genuinely unclipped derivation from this ratchet. */
 function isUnclippedExtentDerivation(absFile: string): boolean {
-  const src = readFileSync(absFile, 'utf-8');
+  const src = stripTsComments(readFileSync(absFile, 'utf-8'));
   if (!EXTENT_DERIVATION_RE.test(src)) return false;
   if (!FRAME_LABEL_MARKER_RE.test(src)) return false;
   return !src.includes('templateCloseLine');

@@ -209,11 +209,26 @@ describe("unstripped-source-regex family (DEC-374 wave-39, task w39-f)", () => {
     expect(files.length).toBeGreaterThan(500);
   });
 
-  it("test/test-tiers.test.ts is honestly counted as an offender (v12m-w38-c owns its repair; this instrument must not hide it)", () => {
-    const testTiers = files.find((f) => f.rel === "test/test-tiers.test.ts");
-    expect(testTiers, "test/test-tiers.test.ts not found by the walk").toBeTruthy();
-    expect(isUnstrippedSourceRegexOffender(testTiers!.content)).toBe(true);
-    expect(offenders.some((o) => o.rel === "test/test-tiers.test.ts")).toBe(true);
+  // v12m-w44-i (DEC-374 wave-44, task w44-i): this control used to name
+  // test/test-tiers.test.ts specifically ("v12m-w38-c owns its repair").
+  // That branch merged and repaired the file (it now imports and calls
+  // test/helpers/strip-ts-comments.ts's stripTsComments before matching),
+  // so it correctly dropped OUT of the live roster -- and the control,
+  // written as a claim about a BRANCH rather than a property of the
+  // instrument, started failing the moment the branch it named landed. A
+  // control naming a branch expires the moment that branch merges (field
+  // guide, waves 38-41). Re-pointed at a file this scan's own population
+  // walk still finds live (an ordinary component-style scan whose
+  // `.includes`/`.test` calls run against raw, un-stripped source with no
+  // repair lane currently in flight), and reworded as a PROPERTY: any file
+  // that reads source off disk and content-matches it without a
+  // comment-stripping step IS counted, regardless of which specific file
+  // that happens to be on any given tree.
+  it("a file that content-matches un-stripped source it read off disk IS counted, regardless of which file that currently is", () => {
+    const liveOffender = files.find((f) => f.rel === "test/audit-claims.test.ts");
+    expect(liveOffender, "test/audit-claims.test.ts not found by the walk").toBeTruthy();
+    expect(isUnstrippedSourceRegexOffender(liveOffender!.content)).toBe(true);
+    expect(offenders.some((o) => o.rel === "test/audit-claims.test.ts")).toBe(true);
   });
 
   it("no more than UNSTRIPPED_SOURCE_REGEX_CEILING files apply a content match to un-stripped source they read off disk (may only fall)", () => {

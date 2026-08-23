@@ -4,6 +4,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { stripTsComments } from "../helpers/strip-ts-comments";
 
 export function fileExists(root: string, p: string): boolean {
   try {
@@ -38,7 +39,13 @@ export function termAppearsInTree(root: string, term: string): boolean {
   const needle = term.toLowerCase();
   for (const absenceRoot of ABSENCE_ROOTS) {
     for (const file of walkTsFiles(join(root, absenceRoot))) {
-      if (readFileSync(file, "utf8").toLowerCase().includes(needle)) return true;
+      // Comment-blind guard (DEC-374 wave-44, task w44-i, shared
+      // test/helpers/strip-ts-comments.ts -- DEC-613, never a private
+      // copy): a bullet asserting "no X is built" is checked against the
+      // real src tree here -- a term appearing only inside a comment (a
+      // TODO, a rejected-approach note) must never count as the term
+      // "appearing in the tree" for this absence claim.
+      if (stripTsComments(readFileSync(file, "utf8")).toLowerCase().includes(needle)) return true;
     }
   }
   return false;

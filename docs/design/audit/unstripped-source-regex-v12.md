@@ -2,10 +2,11 @@
 
 Task w39-f (INSTRUMENT, plus one concrete repair -- see below). Instrument:
 `test/unstripped-source-regex.scan.test.ts`. Ratchet:
-`UNSTRIPPED_SOURCE_REGEX_CEILING = 221`, in
-`app/src/unstripped-source-regex-scan/ceiling.ts`, measured on this branch
-by forcing the constant to `-1` and reading the printed offender list back
-(never by arithmetic). Registered `OUT_OF_CAMPAIGN_SCOPE` in
+`UNSTRIPPED_SOURCE_REGEX_CEILING`, in
+`app/src/unstripped-source-regex-scan/ceiling.ts` -- seeded at 221 on this
+task's own branch, LOWERED to 219 by `v12m-w44-i` (see that section below)
+-- measured by forcing the constant to `-1` and reading the printed
+offender list back (never by arithmetic). Registered `OUT_OF_CAMPAIGN_SCOPE` in
 `scripts/exit-predicate/campaign-scope.ts` (instrument-coverage fact, not
 itself a v12 frame or 390-geometry conformance fact -- see that file's own
 entry for the reason).
@@ -72,7 +73,42 @@ exists to catch). The string-aware replacement fixes this: re-running the
 scan is fully green, with no new orphans and no `ENTRY_OR_ALLOWED` changes
 needed for `app/src/pages/overview/**` at all.
 
-## The remaining 220 offenders (roster, read back live -- never hand-edit this list; re-run the scan forced to `-1` to refresh it)
+## v12m-w44-i update (DEC-374 wave-44, task w44-i)
+
+Re-measured at 227 on this branch before repair: a merge train added 7
+genuine new offenders since the 221-file baseline above (a scan-shaped file
+reading source off disk and content-matching it with no stripping step,
+same population definition), plus one same-count rename
+(`test/frame-control-label.scan.test.ts`'s population walk moved to
+`test/frame-control-label/population.ts`, contention decomposition), and
+`test/test-tiers.test.ts` dropped OUT of the roster (a prior lane, not this
+one, gave it a real `stripTsComments` call before matching).
+
+All 7 new offenders were repaired in this task by adding a genuine
+comment-stripping step before their risky content match, reusing shared
+strippers (DEC-613, never a private copy): `app/src/phone-hidden-drawn-text.
+scan.test.ts`, `test/campaign-scope-registry-partition.scan.test.ts`,
+`test/render-sweep-advisory-gate-promotion.scan.test.ts` and
+`test/deviations-ledger/resolvers.ts` via the existing
+`test/helpers/strip-ts-comments.ts`; `app/src/phone-hidden-drawn-text/
+frame-blobs.ts` and `test/desktop-eyebrow-label.scan.test.ts` via a new
+shared `test/helpers/strip-html-comments.ts` (a genuinely different
+`<!-- -->` comment grammar -- `.dc.html` frame markup and the HTML-comment
+syntax GitHub-flavoured Markdown also accepts -- gets its own shared
+instrument rather than a bent reuse of the TS or CSS one, DEC-613);
+`test/audit-ratchet-statement-drift.scan.test.ts` used both (TS source for
+its live-constant read, `.md` audit docs for its statement-drift read).
+`test/frame-control-label/population.ts` (the rename target) was also
+repaired with the new HTML stripper, even though its rename was already
+net-zero against the ceiling. No offender was named genuinely
+un-repairable this wave -- all 7 (plus the rename target) had a real,
+applicable shared stripper.
+
+Forced to `-1` and the printed roster read back (never arithmetic): **219
+files.** `UNSTRIPPED_SOURCE_REGEX_CEILING` in
+`app/src/unstripped-source-regex-scan/ceiling.ts` LOWERED from 221 to 219.
+
+## The remaining 219 offenders (roster, read back live -- never hand-edit this list; re-run the scan forced to `-1` to refresh it)
 
 The population is dominated by ordinary component render/CSS tests whose
 risk is genuinely lower than the three named instances above: most
@@ -87,10 +123,11 @@ candidates for a focused future repair lane:
 `test/decision-doc-citation.scan.test.ts`,
 `test/decision-path-references.scan.test.ts`,
 `test/desktop-frame-ledger.scan.test.ts`, `test/phone-frame-ledger.scan.test.ts`,
-`test/frame-control-label.scan.test.ts`, `test/frame-eyebrow-label.scan.test.ts`,
+`test/frame-eyebrow-label.scan.test.ts`,
 `test/deviations-ledger.scan.test.ts`, `test/design-rulings-ledger.scan.test.ts`.
 
-Full roster (221 files, including `test/test-tiers.test.ts`):
+Full roster (219 files):
+
 
 - app/src/admin-first-paint.render.test.tsx
 - app/src/aria-structure-role.scan.test.ts
@@ -228,7 +265,6 @@ Full roster (221 files, including `test/test-tiers.test.ts`):
 - test/filter-token-loudness.scan.test.ts
 - test/fixed-table-column-hack.scan.test.ts
 - test/form-title-unique.test.ts
-- test/frame-control-label.scan.test.ts
 - test/frame-eyebrow-label.scan.test.ts
 - test/headshot-upload-contract.test.ts
 - test/helpers/composed-label-resolve.ts
@@ -302,7 +338,6 @@ Full roster (221 files, including `test/test-tiers.test.ts`):
 - test/suite-timeout-policy.scan.test.ts
 - test/support/list-envelope-enumeration/pagination-const-scan.ts
 - test/task-title-unique.test.ts
-- test/test-tiers.test.ts (owned by v12m-w38-c, DEC-727 tier predicate -- counted here, not repaired here)
 - test/text-cap-declaration.scan.test.ts
 - test/text-vocabulary.scan.test.ts
 - test/theme-tap-floor-scope.test.ts

@@ -63,6 +63,8 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEC_069, DEC_808, DEC_903 } from "../src/decisions";
+import { stripTsComments } from "./helpers/strip-ts-comments";
+import { stripHtmlComments } from "./helpers/strip-html-comments";
 
 void DEC_903; // this file's whole reason to exist: catch a doc's newest ratchet statement disagreeing with the live constant
 void DEC_808; // population enumerated via readdirSync, never a hand-listed file list
@@ -172,7 +174,11 @@ function liveConstantValues(): Map<string, number[]> {
       if (!entry.isFile()) continue;
       if (!SOURCE_EXTS.some((ext) => entry.name.endsWith(ext))) continue;
       const filePath = join(entry.parentPath, entry.name);
-      const text = readFileSync(filePath, "utf-8");
+      // Comment-blind guard (DEC-374 wave-44, task w44-i, shared
+      // test/helpers/strip-ts-comments.ts -- DEC-613, never a private
+      // copy): a comment merely QUOTING an `export const NAME = N;`
+      // declaration must never be read as this constant's live value.
+      const text = stripTsComments(readFileSync(filePath, "utf-8"));
       exportRe.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = exportRe.exec(text)) !== null) {
@@ -203,7 +209,10 @@ function findOffenders(): Offender[] {
   const offenders: Offender[] = [];
   for (const abs of auditMarkdownFiles()) {
     const rel = relative(REPO_ROOT, abs);
-    const text = readFileSync(abs, "utf-8");
+    // Comment-blind guard (shared test/helpers/strip-html-comments.ts --
+    // DEC-613, never a private copy): an `<!-- -->`-hidden old statement
+    // must never be read as the doc's newest.
+    const text = stripHtmlComments(readFileSync(abs, "utf-8"));
     const newest = newestPerName(extractStatements(text));
     for (const [name, statement] of newest) {
       const liveValues = live.get(name);
@@ -233,7 +242,7 @@ describe("audit-ratchet-statement-drift", () => {
     const files = auditMarkdownFiles();
     expect(files.some((f) => f.endsWith("cancelled-padding-gap-v12.md"))).toBe(true);
     expect(files.some((f) => f.endsWith("frame-control-floor-390-v12.md"))).toBe(true);
-    const cancelledText = readFileSync(join(AUDIT_ROOT, "cancelled-padding-gap-v12.md"), "utf-8");
+    const cancelledText = stripHtmlComments(readFileSync(join(AUDIT_ROOT, "cancelled-padding-gap-v12.md"), "utf-8"));
     const statements = extractStatements(cancelledText);
     expect(statements.some((s) => s.name === "CANCELLED_PADDING_GAP_CEILING")).toBe(true);
   });
@@ -289,7 +298,7 @@ describe("audit-ratchet-statement-drift", () => {
     const live = liveConstantValues();
     for (const fname of ["cancelled-padding-gap-v12.md", "frame-control-floor-390-v12.md"]) {
       const abs = join(AUDIT_ROOT, fname);
-      const text = readFileSync(abs, "utf-8");
+      const text = stripHtmlComments(readFileSync(abs, "utf-8"));
       const newest = newestPerName(extractStatements(text));
       const ceilingStatements = [...newest.values()].filter((s) =>
         s.name.endsWith("_CEILING") && live.has(s.name),

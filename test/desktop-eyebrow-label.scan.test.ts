@@ -147,6 +147,7 @@ import { DEC_099, DEC_180, DEC_613, DEC_808, DEC_967, DEC_976, DEC_986 } from '.
 import { ALL_CAPTIONS } from './frame-caption-ledger/population';
 import { ALL_LABELS } from './desktop-control-label.scan.test';
 import { collapseDigitsToSkeleton, enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+import { stripHtmlComments } from './helpers/strip-html-comments';
 
 // Compile-checked dependency markers (CLAUDE.md: code depending on a
 // decision must reference its constant so the dependency is compile-
@@ -368,7 +369,12 @@ const CARD_SIGNATURE =
 
 function eyebrowsInFile(fileName: string): Eyebrow[] {
   const full = join(DESIGN_ROOT, fileName);
-  const content = readFileSync(full, 'utf-8');
+  // Comment-blind guard (DEC-374 wave-44, task w44-i, shared
+  // test/helpers/strip-html-comments.ts -- DEC-613, never a private copy):
+  // an `<!-- -->` frame comment must never contribute a false
+  // CARD_SIGNATURE hit or eyebrow text below. Newline-count-preserving, so
+  // lineStartIndex/offsetToLine stay valid.
+  const content = stripHtmlComments(readFileSync(full, 'utf-8'));
   const lineStartIndex = lineStartIndexOf(content);
   const frames = desktopFramesInFile(fileName);
   const out: Eyebrow[] = [];
