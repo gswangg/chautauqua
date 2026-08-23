@@ -108,267 +108,30 @@
 //
 // This file names the app's uninstrumented control-label gap; it does not
 // close it -- that is scheduled work for the lanes above, not this ledger.
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+//
+// DEC-976/DEC-967 wave-40 (task w40-g): the frame-enumeration and
+// control-label EXTRACTION grammar below (designFiles/framesInFile/
+// labelsInFrameText/ALL_LABELS) moved to ./frame-control-label/population.ts
+// -- the same contention-custodian decomposition
+// test/frame-caption-ledger/population.ts already used -- so that
+// test/frame-conditional-state.scan.test.ts's false-hinted sc-if overlap
+// join can import the REAL extraction grammar directly (a plain, non-test
+// `.ts` module is never itself collected by vitest's `test/**/*.test.ts`
+// include, so importing it does not pull this file's own `describe`/`it`
+// suite along, unlike importing this file directly). No behaviour change:
+// same regexes, same population, same grades.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+import { ALL_LABELS, DESIGN_ROOT, designFiles, type ControlLabel, labelsInFrameText } from './frame-control-label/population';
 
-export { labelIsMatched, normalizeSource };
+export { labelIsMatched, normalizeSource, designFiles, labelsInFrameText, ALL_LABELS };
+export type { ControlLabel };
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // test/
-const REPO_ROOT = join(HERE, '..');
-const DESIGN_ROOT = join(REPO_ROOT, 'docs', 'design');
+const REPO_ROOT = join(DESIGN_ROOT, '..', '..');
 const APP_SRC_ROOT = join(REPO_ROOT, 'app', 'src');
 const SRC_ROOT = join(REPO_ROOT, 'src');
-
-// -- Population: every width:390/height:844 phone frame in docs/design -----
-// (identical grammar to test/phone-frame-ledger.scan.test.ts's own Frame
-// population, ported rather than imported so this file stands alone.)
-
-interface Frame {
-  /** Bare filename under docs/design/, e.g. "Chautauqua Speakers.dc.html". */
-  fileName: string;
-  /** 1-based line number of the width:390px/height:844 declaration. */
-  line: number;
-  /** Title resolved from the nearest preceding font-size:19px label span. */
-  title: string;
-  /** Extent end (exclusive): the next frame-label line in the same file,
-   * or Infinity if this is the last labelled block in the file. */
-  extentEnd: number;
-}
-
-const LABEL_SPAN_RE = />([^<]+)<\/span>/;
-
-function isFrameLine(line: string): boolean {
-  return line.includes('width:390px') && line.includes('height:844');
-}
-
-function isLabelLine(line: string): boolean {
-  return line.includes('font-size:19px') && LABEL_SPAN_RE.test(line);
-}
-
-/** Every *.dc.html file directly under docs/design, enumerated rather than
- * named (DEC-808). */
-export function designFiles(): string[] {
-  return readdirSync(DESIGN_ROOT, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.dc.html'))
-    .map((e) => e.name)
-    .sort();
-}
-
-function framesInFile(fileName: string): Frame[] {
-  const full = join(DESIGN_ROOT, fileName);
-  const lines = readFileSync(full, 'utf-8').split('\n');
-
-  const labelLines: { line: number; title: string }[] = [];
-  const frameLineNums: number[] = [];
-  lines.forEach((content, idx) => {
-    const lineNo = idx + 1;
-    if (isLabelLine(content)) {
-      const m = content.match(LABEL_SPAN_RE);
-      if (m) labelLines.push({ line: lineNo, title: m[1]!.trim() });
-    }
-    if (isFrameLine(content)) frameLineNums.push(lineNo);
-  });
-
-  return frameLineNums.map((frameLine) => {
-    let title: string | undefined;
-    for (let i = labelLines.length - 1; i >= 0; i--) {
-      if (labelLines[i]!.line <= frameLine) {
-        title = labelLines[i]!.title;
-        break;
-      }
-    }
-    if (title === undefined) {
-      throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
-    }
-    const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return {
-      fileName,
-      line: frameLine,
-      title,
-      extentEnd: nextLabel ? nextLabel.line : Infinity,
-    };
-  });
-}
-
-// -- Control-label extraction ------------------------------------------------
-
-export interface ControlLabel {
-  fileName: string;
-  /** 1-based line the label's own text node sits on (not the frame's line). */
-  line: number;
-  label: string;
-  kind: 'footer' | 'anchor' | 'span';
-  frameTitle: string;
-  frameLine: number;
-}
-
-const FOOTER_SIGNATURE = 'flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF';
-const FOOTER_TEXT_NODE_RE = />([^<>]+)</g;
-const ANCHOR_RE = /<a\b[^>]*min-height:44px[^>]*>([^<]+)<\/a>/g;
-
-// Painted-span controls (DEC-976 wave-129 amendment (b)): the frames also
-// draw real controls as a <span> carrying a control FACE outside any
-// footer. A bare `<span min-height:44px>` chip with no painted face stays
-// OUT -- that is the 283-hit data-chip noise the wave-128 field guide
-// already measured and rejected (`Slides · 22`, `Tue 12`, `Identified · 7`).
-const SPAN_RE = /<span\b([^>]*)>([^<]+)<\/span>/g;
-const SPAN_MIN_HEIGHT_RE = /min-height:4[468]px/;
-const SPAN_BORDER_RADIUS_RE = /border-radius/;
-const SPAN_BORDER_RE = /border:1px/;
-const SPAN_BACKGROUND_RE = /background:#4E5C31/;
-
-function isPaintedSpanFace(attrs: string): boolean {
-  return (
-    SPAN_MIN_HEIGHT_RE.test(attrs) &&
-    SPAN_BORDER_RADIUS_RE.test(attrs) &&
-    (SPAN_BORDER_RE.test(attrs) || SPAN_BACKGROUND_RE.test(attrs))
-  );
-}
-
-function offsetToLine(lineStartIndex: number[], offset: number): number {
-  let lo = 0;
-  let hi = lineStartIndex.length - 1;
-  let ans = 0;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (lineStartIndex[mid]! <= offset) {
-      ans = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return ans + 1;
-}
-
-function isRealLabel(label: string): boolean {
-  return label.trim().length >= 2 && !label.includes('{{');
-}
-
-/** Walks `<div`/`</div>` tokens forward from `openStart` (which must be the
- * index of a `<div` opening-tag start) with a depth counter, returning the
- * index just past the matching balanced `</div>`'s own `>`. A column-
- * direction footer nests rows inside itself, so stopping at the first
- * `</div>` would truncate the region -- this walk does not stop early. */
-function balancedDivEnd(text: string, openStart: number): number {
-  const re = /<(\/?)div\b/g;
-  re.lastIndex = openStart;
-  let depth = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) {
-    if (m[1] === '/') {
-      depth--;
-      if (depth === 0) {
-        const closeGt = text.indexOf('>', m.index);
-        if (closeGt === -1) throw new Error('unterminated </div> tag during balanced walk');
-        return closeGt + 1;
-      }
-    } else {
-      depth++;
-    }
-  }
-  throw new Error(`balancedDivEnd: <div> at offset ${openStart} never closed`);
-}
-
-/** Extracts every footer/anchor control label from one frame's raw text
- * extent. Exported so the non-vacuity synthetic controls below can drive
- * this exact function over a fabricated fixture, never a real product
- * token. `lineStartIndex`/`baseOffset` let callers map back to real file
- * line numbers; a synthetic caller can pass a trivial identity mapping. */
-export function labelsInFrameText(
-  text: string,
-  lineStartIndex: number[],
-  baseOffset: number
-): { label: string; kind: 'footer' | 'anchor' | 'span'; offset: number }[] {
-  const out: { label: string; kind: 'footer' | 'anchor' | 'span'; offset: number }[] = [];
-  // Offsets (of the text node's own leading `>`) already collected by the
-  // footer walk -- the span walk dedupes against this set so a footer row
-  // wearing a painted span face is never counted twice (the planner's
-  // prototype double-counted every footer row; that is the bug to avoid).
-  const footerOffsets = new Set<number>();
-
-  let sigIdx = text.indexOf(FOOTER_SIGNATURE);
-  while (sigIdx !== -1) {
-    const divStart = text.lastIndexOf('<div', sigIdx);
-    if (divStart === -1) {
-      throw new Error(`footer signature at offset ${sigIdx} has no enclosing <div`);
-    }
-    const endIdx = balancedDivEnd(text, divStart);
-    const footerText = text.slice(divStart, endIdx);
-    FOOTER_TEXT_NODE_RE.lastIndex = 0;
-    let tm: RegExpExecArray | null;
-    while ((tm = FOOTER_TEXT_NODE_RE.exec(footerText))) {
-      const label = tm[1]!.trim();
-      const offset = divStart + tm.index;
-      if (isRealLabel(label)) {
-        out.push({ label, kind: 'footer', offset });
-        footerOffsets.add(offset);
-      }
-    }
-    sigIdx = text.indexOf(FOOTER_SIGNATURE, endIdx);
-  }
-
-  ANCHOR_RE.lastIndex = 0;
-  let am: RegExpExecArray | null;
-  while ((am = ANCHOR_RE.exec(text))) {
-    const label = am[1]!.trim();
-    if (isRealLabel(label)) {
-      out.push({ label, kind: 'anchor', offset: am.index });
-    }
-  }
-
-  SPAN_RE.lastIndex = 0;
-  let sm: RegExpExecArray | null;
-  while ((sm = SPAN_RE.exec(text))) {
-    const attrs = sm[1]!;
-    if (!isPaintedSpanFace(attrs)) continue;
-    const label = sm[2]!.trim();
-    if (!isRealLabel(label)) continue;
-    const openTagEnd = text.indexOf('>', sm.index);
-    if (openTagEnd === -1) {
-      throw new Error(`span at offset ${sm.index} has no closing '>' on its opening tag`);
-    }
-    if (footerOffsets.has(openTagEnd)) continue;
-    out.push({ label, kind: 'span', offset: openTagEnd });
-  }
-
-  return out;
-}
-
-function controlLabelsInFile(fileName: string): ControlLabel[] {
-  const full = join(DESIGN_ROOT, fileName);
-  const content = readFileSync(full, 'utf-8');
-  const lines = content.split('\n');
-  const lineStartIndex: number[] = [0];
-  for (let i = 0; i < lines.length; i++) {
-    lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
-  }
-
-  const frames = framesInFile(fileName);
-  const out: ControlLabel[] = [];
-  for (const frame of frames) {
-    const startOff = lineStartIndex[frame.line - 1]!;
-    const endOff = frame.extentEnd === Infinity ? content.length : lineStartIndex[frame.extentEnd - 1]!;
-    const text = content.slice(startOff, endOff);
-    const raw = labelsInFrameText(text, lineStartIndex, startOff);
-    for (const r of raw) {
-      out.push({
-        fileName,
-        line: offsetToLine(lineStartIndex, startOff + r.offset),
-        label: r.label,
-        kind: r.kind,
-        frameTitle: frame.title,
-        frameLine: frame.line,
-      });
-    }
-  }
-  return out;
-}
-
-export const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
 

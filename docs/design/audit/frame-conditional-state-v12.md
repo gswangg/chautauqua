@@ -231,33 +231,150 @@ Resolution guard: this ledger's TIER 2 structural check independently found
 findings (RETIRED inner control, MATCHED outer state) are consistent and
 reinforce each other rather than conflicting.
 
-## Overlap with the drawn-word ledgers (measured, not acted on)
+## Overlap with the drawn-word ledgers — BUILT wave-40 (task w40-g)
 
-Task clause 3: a `hint-placeholder-val="{{ false }}"` block is copy the
-pack COMMITS but the drawing never renders — the drawn-word ledgers
-(caption/eyebrow/control-label/field-label) may be scraping it as if it
-were drawn. Measured by re-using each ledger's own candidate-extraction
-logic (the caption ledger's real, imported `captionsInText`; local,
-deliberately simplified approximations of the eyebrow and field-label
-candidate grammars, documented in the test file, since importing those two
-`.scan.test.ts` files directly was found — empirically, during this
-build — to pull their own `describe`/`it` suites into this file's test
-collection) over the **15 false-hinted `sc-if` extents** in the pack:
+Task clause 3 (wave-29 original): a `hint-placeholder-val="{{ false }}"`
+block is copy the pack COMMITS but the drawing never renders — the
+drawn-word ledgers (caption/eyebrow/control-label/field-label) may be
+scraping it as if it were drawn. This section was a measure-only handoff
+("This table names the overlap for a future lane to investigate") for two
+waves; DEC-383 wave-40 (task w40-g) closes it, per wave-39's field-guide
+doctrine that a measure-only clause left unrouted becomes an orphan unless
+the next plan names the repair lane.
 
-| Ledger | Rows inside a false-hinted extent |
-|---|---|
-| Caption (`test/frame-caption-ledger.scan.test.ts`, real import) | 3 |
-| Eyebrow (`test/frame-eyebrow-label.scan.test.ts`, local approximation) | 6 |
-| Field-label (both field-label ledgers, local approximation) | 3 |
-| Control-label (`test/frame-control-label.scan.test.ts`) | not measured — its `labelsInFrameText` needs a frame-relative `lineStartIndex`/`baseOffset` setup this lane does not duplicate |
+### (1) Control-label measurement supplied
 
-**None of those four ledgers' populations, grades or ceilings were changed
-by this lane.** This table names the overlap for a future lane to
-investigate — a caption/eyebrow/field-label row that resolves against real
-product text because the SAME words also appear in the drawn, true-hinted
-sibling branch (or in genuinely static chrome) is not necessarily wrong;
-one that resolves ONLY because it sits inside a never-rendered branch is
-exactly the quiet gap DEC-383's wave-29 ruling names.
+`test/frame-control-label.scan.test.ts`'s frame-enumeration and
+`labelsInFrameText` extraction grammar moved, unchanged, to
+`test/frame-control-label/population.ts` — the same contention-custodian
+decomposition `test/frame-caption-ledger/population.ts` already used for
+the caption ledger. A plain, non-test `.ts` module under `test/` is never
+itself collected by vitest's `test/**/*.test.ts` include, so
+`test/frame-conditional-state.scan.test.ts` can import its real
+`ALL_LABELS`/`labelsInFrameText` directly without pulling
+`frame-control-label.scan.test.ts`'s own `describe`/`it` suite into its
+collection — the exact hazard that kept the eyebrow/field-label candidates
+as local approximations (unchanged this wave; still documented as
+approximate below). `labelsInFrameText` now also computes each label's
+ABSOLUTE file offset/line from its `lineStartIndex`/`baseOffset` parameters
+(accepted since wave-128 but never read — every caller, including
+`test/frame-eyebrow-label.scan.test.ts`'s `controlLabelSitesInFile`, which
+imports this function directly per its own DEC-613 comment, redid that
+exact addition itself). The function's pre-existing `offset` field (frame-
+relative) is UNCHANGED for backward compatibility with that caller; the new
+`absoluteOffset`/`line` fields are additive. No behaviour change to either
+ledger — re-verified: `test/frame-control-label.scan.test.ts` (7/7),
+`test/frame-eyebrow-label.scan.test.ts` (24/24, including its own
+control-label disjointness cross-check), `test/drawn-field-label.scan.test.ts`
+(44/44) all pass unchanged.
+
+### (2)/(3) Overlap, resolved-elsewhere vs. false match
+
+Measured by re-using each ledger's own candidate-extraction logic (caption:
+real, imported `captionsInText`; control-label: real, imported `ALL_LABELS`;
+eyebrow/field-label: the same local, deliberately-simplified approximations
+this file has carried since wave-29, still not imported directly for the
+reason above) over the **15 false-hinted `sc-if` extents** in the pack, then
+splitting each in-extent candidate by whether its literal text ALSO occurs
+somewhere in the SAME `.dc.html` file OUTSIDE every false-hinted extent (a
+true-hinted sibling branch, or static chrome the pack always draws) —
+**RESOLVES ELSEWHERE**, the row's existing grade in its owning ledger
+stands unchanged — or occurs ONLY inside a false-hinted extent — a **FALSE
+MATCH**, this candidate's membership in a "drawn word" population is an
+artifact of scanning inside a branch the demo pack's own hint commits to
+never showing, not evidence of a rendering gap:
+
+| Ledger | Rows inside a false-hinted extent | Resolves elsewhere | False match |
+|---|---|---|---|
+| Caption (real import) | 3 | 0 | 3 |
+| Eyebrow (local approximation) | 6 | 0 | 6 |
+| Field-label (both field-label ledgers, local approximation) | 3 | 3 | 0 |
+| Control-label (real import) | 1 | 0 | 1 |
+| **Total** | **13** | **3** | **10** |
+
+(The 15 false-hinted extents host 13 overlapping candidates across the four
+ledgers combined — some extents host no drawn-word-ledger candidate at
+all, e.g. `slot.blocked`'s extent is pure template composition with no
+caption/eyebrow/field-label/control-label shape.)
+
+All 3 RESOLVES-ELSEWHERE rows are field-label: `Chautauqua Review.dc.html`
+lines 513/613/760, each reading `3 of 6` — the review scorecard's
+scale-vs-choice frames repeat this "N of 6" progress readout in BOTH the
+`c.isScale`(true)/`c.isChoice`(false) sibling branches, so the exact digits
+land inside the false-hinted `c.isChoice` extent too even though the pack's
+own hint commits to demoing the scale branch. Fine, no action needed — the
+words genuinely are drawn, in the sibling the demo happens to show.
+
+The **10 FALSE MATCHES**, each ADJUDICATED here under DEC-383 (so this
+table does not silently open a new row on
+`test/open-divergence-ledger.scan.test.ts`, owned by task `v12m-w38-d`) —
+none is a new, unfound product conformance gap; every sc-if row each traces
+back to (`cell.clash`/`slot.clash` at Agenda, `c.isChoice` at all three
+repeated Review scorecard frames, `m.current` at Speakers) already grades
+**MATCHED** above via this file's own independent TIER1/TIER2 join against
+real product source, per the "Results" table earlier in this doc — the
+false-hinted-extent join is a POPULATION-CONSTRUCTION observation about the
+caption/eyebrow/control-label ledgers, not a new product finding:
+
+- **`Chautauqua Agenda.dc.html:91`** (eyebrow) `"Room double-booked"` and
+  **`:161`** (eyebrow) `"Two sessions in this slot"` — both sit inside
+  `cell.clash`/`slot.clash`'s false-hinted extents, both real clash-warning
+  copy the phone agenda renders when `PhoneSlot.kind === 'clash'`
+  (`app/src/pages/agenda/phoneSlots.ts`, tested). ADJUDICATED NOT A
+  DIVERGENCE (DEC-383 wave-40): the eyebrow ledger's own MATCH grading
+  already independently found this text live in product source; the
+  false-hinted-extent join is orthogonal (it says only "this text's one
+  occurrence in the FRAME sits in the untaken branch", not "the app never
+  draws it").
+- **`Chautauqua Review.dc.html:512/612/759`** (eyebrow)
+  `"Options"`/`"Options · in the order reviewers see them"` and **:524/632/771**
+  (caption) `"Two to six · results show how the picks fell, never an
+  average"`/`"Recorded as a spread · no weight"` and **:622** (control-label)
+  `"Add an option"` — all eight sit inside one of the three repeated
+  `c.isChoice`(false) extents (the multiple-choice criterion rendering,
+  demoed as NOT shown since the frame's hint picks the rating-scale sibling
+  each time). ADJUDICATED NOT A DIVERGENCE (DEC-383 wave-40):
+  `app/src/pages/review/Scorecard.tsx` and `src/routes/review` render the
+  multiple-choice criterion form (this ledger's own `c.isChoice` row already
+  grades MATCHED via TIER1/TIER2 evidence, and
+  `docs/design/audit/frame-eyebrow-label-390-v12.md`/
+  `frame-caption-ledger`'s own independent MATCH passes for these same
+  strings agree) — the words are real, drawn UI, just never simultaneously
+  with the scale sibling the frame happens to demo.
+- **`Chautauqua Speakers.dc.html:305`** (eyebrow) `"Now"` — sits inside
+  `m.current`'s false-hinted extent (the "currently speaking" marker on the
+  green-room monitor). ADJUDICATED NOT A DIVERGENCE (DEC-383 wave-40):
+  `row.needsInvite`/`row.outstanding`/`m.current`'s own TIER1/TIER2 join
+  above already grades this sc-if MATCHED; `"Now"` is real product copy for
+  the current-speaker state, just below this ledger's own eyebrow
+  MIN_WORD_LENGTH-equivalent scrutiny threshold for a standalone finding.
+
+### (4) Standing guard, built
+
+`test/frame-conditional-state.scan.test.ts` now carries a permanent guard,
+two-sided per every other ratchet in this campaign
+(`FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING = 10`, measured on this
+branch by forcing to -1 and reading the printed roster): a NEW false match
+(a drawn-word-ledger candidate whose only occurrence in its own `.dc.html`
+file sits inside a false-hinted `sc-if` extent, with no occurrence in any
+true-hinted sibling branch or static chrome) rising above 10 fails the
+suite loudly, printing the offending `[ledger] file:line "text"` rows, and
+must be adjudicated in this section before the ceiling may rise. A
+companion test fails if the count drops below 10 without the ceiling being
+lowered to match (the same stale-ceiling guard every ratchet in this
+campaign carries). Two synthetic non-vacuity controls
+(`splitFalseHintedCandidates`, DEC-967) prove the join itself, never a live
+row identity: a POSITIVE control (`Zzqxw Only In Dead Branch`, present only
+inside a fabricated false-hinted extent) is reported as a false match; a
+NEGATIVE control (`Zzqxw Shared Words`, present in both a true-hinted and a
+false-hinted fabricated extent) resolves elsewhere and is not.
+
+None of the four sibling ledgers' own populations, grades, or ceilings
+(`FRAME_CAPTION_*`, `FRAME_EYEBROW_*`, the field-label ledgers' own
+constants, `FOOTER_LABEL_CEILING`) were changed by this lane — re-verified
+green above, per DEC-099 wave-36's "one owner re-measures every sibling
+floor together" doctrine: this lane owns none of those four ceilings, so
+none was force-measured or edited.
 
 ## Next population, named and deliberately not built
 
