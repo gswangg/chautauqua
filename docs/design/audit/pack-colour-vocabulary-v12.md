@@ -54,8 +54,8 @@ Both are LEFT, not repaired. Neither is an unowned count.
 
 ### `--chq-disabled: #7d7869`
 
-Declared in both token files (`app/src/styles.css:30`,
-`src/views/theme.ts:41`).
+Declared in both token files: app/src/styles.css`--chq-disabled: #7d7869;`
+and, separately, src/views/theme.ts`--chq-disabled: #7D7869;`.
 
 DEC-436's wave-25 amendment (`decisions/DEC-436.md`) darkened this token
 FROM the pack's nearest drawn neighbour, `#8e8a7a`, because `#8e8a7a`
@@ -77,8 +77,8 @@ mocks carry no contrast obligation the way the shipped product does.
 
 ### `--chq-on-ink-muted: #b5afa2`
 
-Declared in both token files (`app/src/styles.css:53`,
-`src/views/theme.ts:65`).
+Declared in both token files: app/src/styles.css`--chq-on-ink-muted: #b5afa2;`
+and, separately, src/views/theme.ts`--chq-on-ink-muted: #B5AFA2;`.
 
 DEC-367's original handoff (`decisions/DEC-367.md`) pins this exact value
 as the on-ink muted floor, verified at 7:1

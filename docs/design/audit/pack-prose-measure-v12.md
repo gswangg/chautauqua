@@ -72,17 +72,17 @@ The union is the render file's DECLARED set.
 
 This is a FILE-grained join, not a true DOM-block join -- a render file that
 declares more than one `max-width:<N>ch` across unrelated elements can, in
-principle, show a false MATCH or a false DIVERGES for a specific clamp. No
-sampled row below hit that failure mode, but it is the instrument's known
-limitation, stated here rather than overclaimed.
+principle, show a false MATCH or a false DIVERGES for a specific clamp (DEC-896
+wave-49 amendment). No sampled row below hit that failure mode, but it is the
+instrument's known limitation, stated here rather than overclaimed.
 
 ## Per-row classification (all 26 drawn rows)
 
 | frame | value | verdict | render file(s) | declared | note |
 | --- | --- | --- | --- | --- | --- |
 | `Chautauqua Home.dc.html` `max-width:54ch` "One call for papers is open. Two programmes are published." | 54ch | UNRESOLVED | -- | -- | composed by `heroSummary()` in `src/routes/root.tsx`, never a literal string this scan's verbatim matcher can find |
-| `Chautauqua Home.dc.html` `max-width:52ch` "Nothing is taking submissions. Past programmes are still up." | 52ch | **DIVERGES** | `src/routes/root.tsx` | 54 | `.chq-home-hero p` (`home.css.ts`) clamps every hero sentence to 54ch regardless of which state string renders |
-| `Chautauqua Home.dc.html` `max-width:46ch` "No call for papers is open and no programme has been published." | 46ch | **DIVERGES** | `src/routes/root.tsx` | 54 | same shared `.chq-home-hero p` rule |
+| `Chautauqua Home.dc.html` `max-width:52ch` "Nothing is taking submissions. Past programmes are still up." | 52ch | **DIVERGES** | `src/routes/root.tsx` | 54 | `.chq-home-hero p` (`home.css.ts`) clamps every hero sentence to 54ch regardless of which state string renders (DEC-896 wave-49, parked, no CSS byte moved) |
+| `Chautauqua Home.dc.html` `max-width:46ch` "No call for papers is open and no programme has been published." | 46ch | **DIVERGES** | `src/routes/root.tsx` | 54 | same shared `.chq-home-hero p` rule (DEC-896 wave-49, parked, no CSS byte moved) |
 | `Chautauqua Overview.dc.html` `max-width:52ch` "This event has no submissions, no speakers and no schedule..." | 52ch | **UNCLAMPED** | `app/src/pages/Overview.tsx` | none | the sentence renders; no `max-width` reaches it anywhere |
 | `Chautauqua Overview.dc.html` `max-width:70ch` "Every state in the B8 standard, drawn..." | 70ch | UNRESOLVED | -- | -- | pack explainer-panel prose about the design system itself, not product copy |
 | `Chautauqua Overview.dc.html` `max-width:70ch` "The chrome a page can draw without data..." | 70ch | UNRESOLVED | -- | -- | pack explainer-panel prose |
@@ -92,8 +92,8 @@ limitation, stated here rather than overclaimed.
 | `Chautauqua Public and Portal.dc.html` `max-width:52ch` "This is the portal your speakers see. It has no speaker attached..." | 52ch | **UNCLAMPED** | `src/routes/portal/preview.tsx` | none | sentence renders, no `max-width` anywhere for it |
 | `Chautauqua Review.dc.html` `max-width:52ch` "Changing these would rescore work already done" | 52ch | MATCHED | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | `review.css` declares 52ch among the file's shared clamps |
 | `Chautauqua Review.dc.html` `max-width:60ch` "Three to start with — two scored 1–5 and one recorded as a spread..." | 60ch | MATCHED | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | -- |
-| `Chautauqua Review.dc.html` `max-width:64ch` "Two things need fixing before this plan can open" | 64ch | **DIVERGES** | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | file's declared set has no 64 |
-| `Chautauqua Review.dc.html` `max-width:56ch` "Reviewers need at least one thing to score..." | 56ch | **DIVERGES** | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | file's declared set has no 56 |
+| `Chautauqua Review.dc.html` `max-width:64ch` "Two things need fixing before this plan can open" | 64ch | **DIVERGES** | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | file's declared set has no 64 (DEC-896 wave-49, parked, no CSS byte moved) |
+| `Chautauqua Review.dc.html` `max-width:56ch` "Reviewers need at least one thing to score..." | 56ch | **DIVERGES** | `app/src/pages/review/PlanEditor.tsx` | 32, 52, 60 | file's declared set has no 56 (DEC-896 wave-49, parked, no CSS byte moved) |
 | `Chautauqua Settings.dc.html` `max-width:60ch` "Adding, reordering and removing questions happens in the builder..." | 60ch | **UNCLAMPED** | `app/src/pages/settings/CallForPapersPanel.tsx` | none | sentence renders, no `max-width` anywhere for it |
 | `Chautauqua Settings.dc.html` `max-width:64ch` "The public URL you chose is already taken by another event..." | 64ch | MATCHED | `app/src/pages/settings/EventSettingsPanel.tsx` | 64 | `settings.css` |
 | `Chautauqua Speakers.dc.html` `max-width:76ch` "Priya Raman leads the build-tooling platform team..." | 76ch | UNRESOLVED | -- | -- | fixture speaker bio prose |
@@ -107,8 +107,8 @@ limitation, stated here rather than overclaimed.
 | `Chautauqua Contacts.dc.html` `max-width:64ch` "9 rows have no email address" | 64ch | **UNCLAMPED** | `app/src/pages/contacts/ImportWizard.tsx` | none | sentence renders, no `max-width` anywhere for it |
 | `Chautauqua Content.dc.html` `max-width:64ch` "We take PDF, Keynote, PowerPoint and MP4..." | 64ch | UNRESOLVED | -- | -- | -- |
 
-Totals: 3 MATCHED, 5 DIVERGES, 3 UNCLAMPED, 15 UNRESOLVED. DIVERGES + UNCLAMPED
-= 8 = `PACK_PROSE_MEASURE_DIVERGENCE_CEILING`.
+Totals (DEC-896 wave-49 amendment): 3 MATCHED, 5 DIVERGES, 3 UNCLAMPED, 15
+UNRESOLVED. DIVERGES + UNCLAMPED = 8 = `PACK_PROSE_MEASURE_DIVERGENCE_CEILING`.
 
 ## Not yet promoted
 
@@ -126,8 +126,8 @@ constant -- it is folded into this doc's table above and
 
 ## Repair is out of scope for this lane
 
-This lane MEASURES only and moves no CSS byte. Desktop is frozen and several
-of the DIVERGES/UNCLAMPED rows above are desktop blocks (e.g. Review's plan
-editor, Settings' CFP question builder) -- repair, where the v12 frame's
-measure is the correct target, is a later lane's, sized directly from the
-roster above.
+This lane (DEC-896 wave-49 amendment) MEASURES only and moves no CSS byte.
+Desktop is frozen and several of the DIVERGES/UNCLAMPED rows above are
+desktop blocks (e.g. Review's plan editor, Settings' CFP question builder)
+-- repair, where the v12 frame's measure is the correct target, is a later
+lane's, sized directly from the roster above.

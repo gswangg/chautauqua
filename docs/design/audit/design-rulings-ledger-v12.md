@@ -301,3 +301,8 @@ instructions -- never computed by arithmetic on the twelve drained keys).
 constant. 118 remain, all genuine design-rationale prose with no single
 code artifact -- real, narrow work for a later wave, same disposition as
 before.
+
+**Wave-51 measurement**: `RULING_UNIT_GAP_CEILING = 104` live
+(`test/design-rulings-ledger.scan.test.ts`) at this sha — further keys
+drained by intervening lanes since the paragraph above was written. This is
+a measurement at the current sha, not a new arithmetic claim.

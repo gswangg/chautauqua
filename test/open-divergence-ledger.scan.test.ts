@@ -220,8 +220,8 @@ export {
 // Restoring the code span (with the ":line" left outside it, so both
 // citation scans stay green) closes that row again. The single disappearing
 // row is therefore identified, not guessed.
-const AUDIT_FILE_FLOOR = 129;
-const TOKEN_ROW_FLOOR = 256;
+const AUDIT_FILE_FLOOR = 138;
+const TOKEN_ROW_FLOOR = 265;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
