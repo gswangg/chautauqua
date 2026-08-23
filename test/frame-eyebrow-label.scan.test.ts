@@ -124,7 +124,8 @@
 //
 // This file MEASURES AND RATCHETS ONLY -- it moves no product byte and no
 // CSS. The desktop half of this population is the NEXT lane, not this one.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -172,6 +173,27 @@ function isLabelLine(line: string): boolean {
   return line.includes('font-size:19px') && LABEL_SPAN_RE.test(line);
 }
 
+/** DEC-967 wave-42 (second derivation): the 1-based line of the single
+ * `</x-dc>` template close in `fullPath`, throwing loudly on zero or
+ * multiple matches. A frame's extent is never allowed to reach past this
+ * line -- without the clip, the last labelled block of a file swallows the
+ * template's own closing tag and everything after it (fixture
+ * `data-dc-script` bodies, trailing markup). Ported (not imported), the
+ * same shape v12m-w41-c landed in test/phone-frame-ledger.scan.test.ts, per
+ * this file's own module-header "port, don't cross-import a population
+ * walk" convention. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
+
 /** Every *.dc.html file directly under docs/design, enumerated rather than
  * named (DEC-808), identical to every sibling ledger's own designFiles(). */
 export function designFiles(): string[] {
@@ -207,8 +229,17 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Extent end: next label line strictly after this frame's own line, or
+    // EOF -- clipped at the template's own close (DEC-967 wave-42 second
+    // derivation) so the last labelled block can never swallow `</x-dc>`
+    // and everything past it.
     const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return { fileName, line: frameLine, title, extentEnd: nextLabel ? nextLabel.line : Infinity };
+    return {
+      fileName,
+      line: frameLine,
+      title,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
+    };
   });
 }
 
@@ -858,8 +889,22 @@ const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 // FRAME_EYEBROW_DIVERGENCE_CEILING to -1 and reading the printed offender
 // roster back: empty. The one row that ever populated DIVERGES
 // (Chautauqua Public and Portal.dc.html:1019) is now SETTLED, not a live
-// product gap -- see SETTLED_EXCLUSIONS above. NOT touched this wave --
-// see task w40-c's own scope clause.
+// product gap -- see SETTLED_EXCLUSIONS above. NOT touched by task w40-c --
+// see that task's own scope clause.
+//
+// Re-measured this wave (v12m-w42-f, DEC-967 wave-42 second derivation:
+// framesInFile's extentEnd is now clipped at each file's own template
+// close, `Math.min(nextLabel ? nextLabel.line : Infinity,
+// templateCloseLine(full))`, mirroring v12m-w41-c's port into the sibling
+// phone ledgers) by forcing BOTH ceilings to -1 in turn and reading the
+// printed offender rosters back: DIVERGES is still empty (0) and UNRESOLVED
+// is still the same 16 rows (the 14 DIGIT_COMPOSED + 2 NO_DIGIT_COMPOSED
+// rows above, unchanged file:line:text). Neither ceiling moves: no eyebrow
+// candidate in this population lived in the swallowed
+// `</x-dc>`..`data-dc-script` fixture range the clip removes -- the clip is
+// a correctness guard against a latent swallow, not a population mover for
+// this ledger this wave (same conclusion v12m-w41-c reached for its own
+// four ledgers).
 export const FRAME_EYEBROW_DIVERGENCE_CEILING = 0;
 // Re-measured this wave (v12m-w40-c, DEC-808/DEC-986 amendment: the
 // composed-template resolver) by forcing FRAME_EYEBROW_UNRESOLVED_CEILING
@@ -1090,6 +1135,51 @@ describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', ()
     // own classification above) to prove the exported entrypoint's digit
     // gate is live, not a fixture-only property of the primitives.
     expect(eyebrowIsMatchedBySkeleton('Zzy No Digit At All')).toBe(false);
+  });
+
+  it('control (DEC-967 wave-42 second derivation): a fabricated uppercase-eyebrow-shaped span after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'eyebrow-template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <span style="text-transform:uppercase">Zzy Before Close Eyebrow</span>', // line 3: before close
+        '</div>', // line 4
+        '</x-dc>', // line 5: template close
+        '<script data-dc-script>const x = 1;</script>', // line 6: fixture body after close
+        '<span style="text-transform:uppercase">Zzy After Close Eyebrow</span>', // line 7: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(5);
+
+      // Mirrors framesInFile's own extentEnd computation above: no next
+      // label after the frame line (2), so the raw extent would run to
+      // Infinity -- clipped here to the template close.
+      const content = readFileSync(fixturePath, 'utf-8');
+      const lineStartIndex = lineStartIndexOf(content);
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, templateCloseLine(fixturePath));
+      expect(extentEnd).toBe(5);
+
+      const startOff = lineStartIndex[frameLine - 1]!;
+      const endOff = lineStartIndex[extentEnd - 1]!;
+      const text = content.slice(startOff, endOff);
+      const extracted = eyebrowsInFrameText(text).map((e) => e.text);
+
+      // POSITIVE: the before-close eyebrow sits inside the clipped extent.
+      expect(extracted).toContain('Zzy Before Close Eyebrow');
+      // NEGATIVE: the after-close eyebrow, despite being eyebrow-shaped and
+      // in the same file, sits outside the clipped extent -- exactly the
+      // swallow this ruling closes (a frame's extent can never reach past
+      // its own template's `</x-dc>`, including the `data-dc-script`
+      // fixture body between the close and any trailing markup).
+      expect(extracted).not.toContain('Zzy After Close Eyebrow');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('classification totals partition the population exactly (MATCHED + DIVERGES + UNRESOLVED + SETTLED = population)', () => {
