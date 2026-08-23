@@ -172,9 +172,9 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     await waitFor(() => expect(within(landing).getByText(RECENT_BATCH.subject)).toBeInTheDocument());
     const recentHead = document.querySelector('.chq-comms-phone-recent-head');
     expect(recentHead).not.toBeNull();
-    expect(within(recentHead as HTMLElement).getByText('Recent sends')).toBeInTheDocument();
-    expect(within(recentHead as HTMLElement).getByRole('button', { name: 'Templates' })).toBeInTheDocument();
-    expect(within(recentHead as HTMLElement).getByRole('button', { name: 'History' })).toBeInTheDocument();
+    expect(await within(recentHead as HTMLElement).findByText('Recent sends')).toBeInTheDocument();
+    expect(await within(recentHead as HTMLElement).findByRole('button', { name: 'Templates' })).toBeInTheDocument();
+    expect(await within(recentHead as HTMLElement).findByRole('button', { name: 'History' })).toBeInTheDocument();
   });
 
   // w15-ti (DEC-919 wave-159) receipt: at desktop (jsdom default, no
@@ -208,13 +208,22 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     expect(head).not.toBeNull();
     expect(within(head as HTMLElement).getByRole('button', { name: '‹ Comms' })).toBeInTheDocument();
     expect(within(head as HTMLElement).getByRole('heading', { name: 'Templates' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New template' })).toBeInTheDocument());
+    expect(await screen.findByRole('button', { name: 'New template' })).toBeInTheDocument();
     // Frame :292-298 template list row + frame :299-320 the editor section
     // auto-selects the first template (TemplatesTab.tsx's own DEC-890
     // amendment-4 effect), matching the frame's own assumption that the
     // editor is already open on the row list's first entry.
-    expect(screen.getByRole('button', { name: 'Acceptance' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Subject' })).toHaveValue('Your talk has been accepted to {event_name}');
+    //
+    // w43-b (DEC-976 wave-43): the 'New template' button above is
+    // UNCONDITIONALLY mounted (present on the very first render, before
+    // apiList has resolved), so the earlier `waitFor` on it could settle
+    // before the DEC-890 auto-select effect has committed -- leaving a
+    // bare, load-order-dependent `getByRole('textbox', ...)` below racing
+    // the fetch. Gate on the editor section itself actually being present
+    // (`findByRole`, which retries) rather than on an always-mounted
+    // sibling control.
+    expect(await screen.findByRole('button', { name: 'Acceptance' })).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: 'Subject' })).toHaveValue('Your talk has been accepted to {event_name}');
     // Frame :311-315 draws "Insert a field · open" -- a permanently-open
     // merge-field panel with every field row visible. SETTLED (DEC-993,
     // src/decisions-data/part4.ts's DEC_993): "the closed 'Insert a field
@@ -223,9 +232,9 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     // re-derived each wave" -- the trigger renders, its menu panel does
     // not, until clicked. docs/design/audit/comms-v12.md's `:286` row
     // carries the matching ADJUDICATED disposition (task v12m-w21-l).
-    const trigger = screen.getByRole('button', { name: /Insert a field/ });
+    const trigger = await screen.findByRole('button', { name: /Insert a field/ });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
     // Frame :323-324 footer: filled "Save" + bordered "Cancel". SETTLED
     // (DEC-621 wave-98 amendment, TemplatesTab.tsx's own comment at its
     // footer): the frame's Save/Cancel dock is the shell's
@@ -234,9 +243,9 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     // template's footer pairs Save with "Use in a send" (DEC-890 amendment
     // wave 4); Cancel is reserved for a brand-new, unsaved draft, which
     // has nothing yet to send. Not an open divergence.
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument());
   });
 
   // Frame :335-352 "Send history · 390" -- entered via ?tab=history.
@@ -266,9 +275,9 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     // is a DESKTOP-cascade claim, not a 390 one. The button's accessible
     // name stays pinned to "Open" via an explicit aria-label (DEC-833's
     // own comment), so the phone SCREEN READER name never shortens.
-    const toggle = within(tab).getByRole('button', { name: 'Open' });
-    expect(within(toggle).getByText('See the recipients')).toBeInTheDocument();
-    expect(within(toggle).getByText('Open')).toBeInTheDocument();
+    const toggle = await within(tab).findByRole('button', { name: 'Open' });
+    expect(await within(toggle).findByText('See the recipients')).toBeInTheDocument();
+    expect(await within(toggle).findByText('Open')).toBeInTheDocument();
     // Cascade read (w12-xe, DEC-976): confirm the terminal 700px block
     // actually PAINTS the phone label and hides the desktop one at 390 --
     // comms.css:2535-2541 (DEC-833 wave-129 amendment), read-only, same

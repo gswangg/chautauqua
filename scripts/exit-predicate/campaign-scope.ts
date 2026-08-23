@@ -786,6 +786,15 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "technique, not itself a v12 frame or 390-geometry conformance fact, the same disposition "
     + "already given to FRAME_EYEBROW_UNRESOLVED_CEILING and DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/desktop-eyebrow-label.scan.test.ts, DEC-986 wave-41 amendment).",
+  FRAME_VERDICT_ASYNC_QUERY_CEILING:
+    "measures TEST-INSTRUMENT DETERMINISM -- whether a frame-verdict render `it` body issues a "
+    + "bare screen/within getBy*/queryBy* DOM query after its own first `await`, the load-order "
+    + "shape that made Comms.frame-verdicts.render.test.tsx's :286 pin green standalone and red "
+    + "under the full 43-file concurrent run (repaired this same commit). It is a fact about the "
+    + "test corpus's own reliability -- whether a receipt can be trusted to fail only on a real "
+    + "product defect, never on scheduler luck -- not a v12 frame or 390-geometry conformance "
+    + "fact, the same disposition already given to COMMENT_BLIND_CSS_ASSERTION_CEILING "
+    + "(test/frame-verdict-async-query.scan.test.ts, DEC-976 wave-43 amendment).",
 };
 
 /**
