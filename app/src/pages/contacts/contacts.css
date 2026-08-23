@@ -593,10 +593,15 @@
   flex-wrap: wrap;
 }
 
-/* tap-floor-exempt: scoped to .chq-contacts-drawer-actions, which (see the
-   tap-floor-exempt comment above it) only ever renders <button> children
-   -- this container never reaches a bare anchor (DEC-393 wave-90
-   amendment). */
+/* tap-floor-exempt: scoped -- this row (see the tap-floor-exempt comment
+   above the drawer-actions wrapper it lives in) only ever renders
+   <button> children, never a bare anchor. DEC-393 wave-39 amendment: the
+   companion that actually carries the floor is .chq-btn, not the flex
+   wrapper itself -- .chq-btn's own base rule (display:inline-flex;
+   align-items:center; padding:10px 16px, app/src/styles.css) plus this
+   file's phone-media .chq-contacts-drawer-actions-right .chq-btn rule
+   (min-height:48px; padding:0 16px, below) together put every child at
+   or above the 44px floor. */
 .chq-contacts-drawer-actions-right {
   display: flex;
   align-items: center;

@@ -87,7 +87,10 @@ Re-measured by forcing both ceilings to `-1` and reading the roster back:
   their own floor via `.chq-btn`), but the *specific class it names* as
   "the floor" does not itself carry one. Per the task's own instruction,
   this is recorded here with the offending selector named; product CSS is
-  NOT touched in this lane. `app/src/pages/submissions/detail.css:278`
+  NOT touched in this lane. **SUPERSEDED wave-39 (task w39-a):** this
+  row was the campaign's last unowned non-zero exit-predicate ceiling, so
+  it was repaired in place rather than left as a permanent roster row —
+  see the "Wave 39" section below. `app/src/pages/submissions/detail.css:278`
   stays **UNVERIFIABLE-PREMISE** — its named container
   (`.chq-detail-participant-row-actions`) is already part of the
   receipted selector itself (a compound `.chq-detail-participant-row-actions
@@ -104,7 +107,7 @@ VERIFIED + 1 FALSE-PREMISE); `FALSE-PREMISE` 0 -> **1**.
 |---|---|---|
 | VERIFIED | 22 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters). |
 | UNVERIFIABLE-PREMISE | 75 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself, or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 1 | the receipt names a companion class that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect, recorded here per the task's own instruction, product CSS not touched in this lane. |
+| FALSE-PREMISE | 1 (wave-36 point-in-time; **0** as of wave-39, see below) | the receipt names a companion class that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect, recorded here per the task's own instruction, product CSS not touched in this lane. |
 
 ## The worked example (built this wave)
 
@@ -147,11 +150,46 @@ text-bearing companion with no `img` pairing and no flex/padding still
 grades FALSE-PREMISE even when sized >=44px), so it cannot silently pass a
 real text-control defect through the replaced-content door.
 
+## Wave 39 (task w39-a, DEC-393 wave-39 amendment): the `scoped` row's premise repaired
+
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` was the campaign's last non-zero
+exit-predicate row with no in-flight owner. Its single offender —
+`app/src/pages/contacts/contacts.css:596`'s `scoped` receipt above
+`.chq-contacts-drawer-actions-right` — was FALSE-PREMISE not because the
+receipt's underlying claim was wrong (the row genuinely renders only
+`.chq-btn`-classed `<button>` children, never a bare anchor) but because
+the receipt named the WRONG class as the floored companion:
+`.chq-contacts-drawer-actions`, a pure flex wrapper with no min-height or
+padding declaration of its own. The real floor is one level down, on
+`.chq-btn`: its shared base rule (`display:inline-flex;
+align-items:center; padding:10px 16px`, `app/src/styles.css`) plus this
+file's own phone-media override
+(`.chq-contacts-drawer-actions-right .chq-btn { min-height:48px; padding:0
+16px; ... }`) together clear the 44px floor on both axes.
+
+Repair chosen: **option (a)** — re-point the receipt's `scoped to` clause
+at `.chq-btn`, the selector that actually carries the floor, rather than
+teaching the companion predicate to walk descendants transitively (option
+(b)). The receipt at `contacts.css` (immediately above
+`.chq-contacts-drawer-actions-right`) now names `.chq-btn` as the
+companion; re-measured by forcing the ceiling to `-1` and reading the
+roster back, the row resolves **VERIFIED** and the FALSE-PREMISE count
+drops to **0**. `TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` (77) is
+unaffected — this repair only changed which verdict one already-checkable
+row reaches, not which rows this instrument can check.
+
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` moves **1 -> 0**. The sibling
+receipt above `.chq-contacts-drawer-actions` itself (line ~581, pinned by
+`app/src/styles-tier2-anchor-floor.test.ts` and
+`app/src/pages/contacts/contacts-phone-floor.test.ts`) was NOT touched —
+its own premise (`.chq-btn` carries the shared phone floor) was already
+true.
+
 ## Full roster (98 rows)
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
-| FALSE-PREMISE | scoped | `app/src/pages/contacts/contacts.css:596` | companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar (min-height:44px + centred flex + non-zero horizontal padding, or, for a replaced-content companion, own width/height >=44px on both axes) |
+| ~~FALSE-PREMISE~~ **VERIFIED (wave-39)** | scoped | `app/src/pages/contacts/contacts.css:596` | wave-36 point-in-time: companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar. SUPERSEDED wave-39: receipt re-pointed at .chq-btn (the class that actually carries min-height:48px + centred flex + non-zero horizontal padding, merged across app/src/styles.css's base rule and this file's phone-media override); now resolves VERIFIED. |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css:1003` | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css:76` | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css:429` | no companion class named in the reason (distinct from the receipted selector itself) |
