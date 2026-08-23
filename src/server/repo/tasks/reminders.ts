@@ -583,7 +583,7 @@ async function sendReminderEmails(
   // toRelease below reconstruct exactly what the old sequential loop
   // produced.
   const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
-    const { subject, text: reminderText } = buildReminderMessage(
+    const { subject, text: reminderText, parts } = buildReminderMessage(
       eventName,
       group.assignments,
       portalLink,
@@ -595,10 +595,11 @@ async function sendReminderEmails(
       to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
       subject,
       text: reminderText,
-      html: renderEmailHtml(reminderText, {
+      html: renderEmailHtml([parts.greeting, "", parts.nudge].join("\n"), {
         eventName,
         reason: `you have outstanding tasks for ${eventName}`,
         cta: { label: REMINDER_CTA_LABEL, href: portalLink },
+        signOff: parts.signature,
         // DEC-441 amendment (wave 38): the frame's fact VALUE
         // (Chautauqua Comms.dc.html `<div style="border-left:3px solid
         // #4E5C31; padding:2px 0 2px 15px; display:flex;

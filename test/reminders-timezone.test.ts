@@ -382,9 +382,10 @@ describe("reminder email HTML fact value is a joined sentence run for multi-item
     const html = sent[0]?.html ?? "";
     // The frame's sentence run: each task period-terminated, space-joined.
     expect(html).toContain("Bio form — due Tue 2 Mar 2027. Headshot upload — due Thu 15 Apr 2027.");
-    // Scope the "no bullet prefix" check to the fact block itself -- the
-    // HTML body above it legitimately renders the plain-text bulleted
-    // "Still to do" block verbatim (the two registers differ deliberately).
+    // Scope the "no bullet prefix" check to the fact block itself -- since
+    // DEC-441 wave-47, the HTML body only carries the greeting and nudge
+    // (the plain-text bulleted "Still to do" block is no longer duplicated
+    // into the HTML body; see reminder-email-frame-composition.test.ts).
     const factBlockStart = html.indexOf("border-left:3px solid #4E5C31");
     expect(factBlockStart).toBeGreaterThan(-1);
     const factBlockEnd = html.indexOf("</table></td></tr>", factBlockStart);
