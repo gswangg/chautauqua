@@ -330,7 +330,7 @@ export const THEME_CSS = `
   /* .chq-check-hit wraps a class-less input[type=checkbox]/[type=radio]
      with no floor-reaching label around it (src/views/form-render.tsx's
      FieldControl "checkbox" case -- FormField already supplies the
-     <label> ancestor, so this is a <span>, not another label). Layout-
+     enclosing label element, so this is a span, not another label). Layout-
      neutral at top level -- no padding, no size -- so desktop is byte-
      identical to the bare input it replaces; the floor itself lives only
      in the terminal @media (max-width: 700px) block below (DEC-385).
@@ -708,9 +708,10 @@ export const THEME_CSS = `
      the wave-35 ladder's rung 2 by portal.css.ts's own receipt for the
      identical anchor -- VersionHistory renders immediately below this
      paragraph and its .chq-portal-version-link anchor already carries the
-     44px floor (min-height:44px, centred flex, padding-inline:8px) while
-     resolving the identical chain-latest content this link's own route
-     serves. This older, pre-DEC-996 receipt (scoped to the chq-card
+     44px floor (a phone-scoped min-height rule at that value, centred
+     flex, padding-inline:8px) while resolving the identical chain-latest
+     content this link's own route serves. This older, pre-DEC-996 receipt
+     (scoped to the chq-card
      token) describes the same anchor and stays grounded by the same
      companion rather than left an orphan claim. */
   .chq-card {
