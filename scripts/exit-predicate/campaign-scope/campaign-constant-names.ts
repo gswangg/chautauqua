@@ -304,4 +304,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // count is 0, and its sibling is now fully adjudicated. Wired into TIER2
   // in this same commit; reads live 0.
   "FRAME_FLOOR_DIVERGENCE_CEILING",
+  // wave-56 (task w56-b, DEC-180 wave-56 amendment): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE -- the checkbox family offender it was seeded on
+  // (src/views/theme.ts's phone-scoped .chq-check-hit floor) landed on main
+  // and the ceiling was dropped to 0 in the same commit as this promotion,
+  // so the entry enters the gating table AT 0 and moves no goalpost
+  // (test/phone-floor-root-parity.scan.test.ts).
+  "PHONE_FLOOR_ROOT_PARITY_CEILING",
 ];
