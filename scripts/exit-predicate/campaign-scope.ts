@@ -1020,4 +1020,9 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
     siblingName: "DESKTOP_EYEBROW_UNRESOLVED_CEILING",
     siblingFullyAdjudicated: true,
   },
+  // No completeness sibling -- test/frame-repeated-row/ceiling.ts's own
+  // population is a single unresolved-to-a-rendering-site count with no
+  // separate "could not resolve" join behind it. Clause (a) alone decides
+  // it (currently non-zero).
+  FRAME_REPEATED_ROW_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
 };
