@@ -758,3 +758,98 @@ by printing every States-frame row's pre-exclusion status (see
 accounting assertion, unchanged in shape, total lowered `266 -> 247` because
 the population itself shrank by 19 real rows, never by loosening the
 assertion). Zero product CSS bytes moved -- this wave is instrument-only.
+
+## Wave 52: comment-credited floors
+
+Task w52-f. DEC-374 (wave-52 amendment): every `src/**/*.css.ts` sheet is
+one giant template literal, and `test/frame-source-corpus.ts`'s
+`stripComments` deliberately enters a template/single/double STRING state on
+a quote and copies everything through to the closing quote (needed for its
+own label-match join) -- so every `/* ... */` CSS comment inside a `.css.ts`
+sheet survives through `normalizeSource`. This file's own `RULE_RE =
+/([^{}]+)\{([^{}]*)\}/g` then parses "everything between two braces" as one
+rule's selector text, which folds a surviving comment into the NEXT rule's
+raw selector text, and `selectorMentionsToken` matches a dot-prefixed class
+token written in prose there -- crediting that token a min-height it never
+declares. MEASUREMENT AND RATCHET ONLY, per the task's own scope: this
+section changes no existing grading (`TOKEN_INDEX`,
+`resolveTokenMinHeightIndexed`, `gradeControl`, `OFFENDERS`, `UNRESOLVED` are
+all untouched) and no product CSS byte. The error is proven
+ONE-DIRECTIONAL -- a comment can only ADD tokens to a selector, never remove
+a real one -- so it can only SUPPRESS true offenders already counted (or not)
+by `DESKTOP_FLOOR_DIVERGENCE_CEILING`/`DESKTOP_FLOOR_UNRESOLVED_CEILING`
+above; correcting the parse is a later, separately-scoped lane, sized
+directly from the roster below.
+
+### Method
+
+For every `chq-` class token `TOKEN_INDEX` (this file's existing
+token/min-height index) credits with a min-height, `findCommentCreditedOffenders`
+(`test/desktop-control-floor.scan.test.ts`) recomputes that same credit over
+the same rule text with CSS comments additionally stripped -- via the
+shared, string-aware `stripCssComments` (DEC-613), imported from
+`test/helpers/strip-css-comments.ts`, never re-implemented. A token flags as
+comment-credited when the comment-stripped recomputation finds NO min-height
+for it at all: its entire credit existed only via comment text. Non-chq-
+`.word` tokens `TOKEN_INDEX`'s own `SELECTOR_CLASS_TOKEN_RE` also matches
+(file-extension mentions in prose such as `.ts`/`.css`/`.md`/`.html`/`.tsx`/
+`.dc`, all folded from the SAME comment-credit bug) are out of this ceiling's
+scope by the task's own grammar ("every chq- class token") and excluded.
+
+### Roster: `COMMENT_CREDITED_FLOOR_CEILING` = 5
+
+Each row below carries `DEC-374` on its own line, per this wave's task.
+
+1. `src/routes/auth.css.ts`
+   `.chq-auth-card button[type=submit], .chq-auth-actions button[type=submit]`
+   Token `chq-auth-fields` credited `min-height:46px` -- comment-only.
+   DEC-374
+
+2. `src/routes/auth.css.ts`
+   `.chq-auth-card button[type=submit], .chq-auth-actions button[type=submit]`
+   Token `chq-auth-submitrow` credited `min-height:46px` -- comment-only.
+   DEC-374
+
+3. `src/routes/portal/portal.css.ts`
+   `.chq-portal-headshot-pick`
+   Token `chq-content-upload-input` credited `min-height:44px` -- comment-only.
+   DEC-374
+
+4. `src/routes/portal/portal.css.ts`
+   `.chq-portal-headshot-pick`
+   Token `chq-portal-headshot-pick-input` credited `min-height:44px` -- comment-only.
+   DEC-374
+
+5. `src/routes/public/css/agenda.css.ts`
+   `.chq-pub-agenda-block-save`
+   Token `chq-pub-save` credited `min-height:24px` -- comment-only.
+   DEC-374
+
+### Non-chq- artifacts of the SAME comment-fold, excluded from the ceiling by grammar (not repaired, not counted)
+
+`TOKEN_INDEX`'s `SELECTOR_CLASS_TOKEN_RE = /\.([A-Za-z][A-Za-z0-9-]*)/g`
+matches any `.word`, so a prose mention of a filename like
+`portal.css.ts` or `agenda.css.ts` inside a comment also folds into the next
+rule's selector and credits tokens `css`, `dc`, `html`, `md`, `ts`, `tsx` --
+none is a `chq-` class, none is a real product token, and none is graded
+`offender`/`unresolved` by `TOKEN_INDEX`'s own real consumers
+(`resolveTokenMinHeightIndexed` is only ever called with a token extracted
+from a DRAWN CONTROL's `class=`/`className=` attribute in a `.dc.html`
+frame, and no frame draws a control literally classed `.css`/`.ts`/etc). All
+six resolve to `src/routes/portal/portal.css.ts` (five, via the same
+`.chq-portal-headshot-pick` comment) and `src/routes/public/css/agenda.css.ts`
+(one).
+
+### Re-measured
+
+Forcing `COMMENT_CREDITED_FLOOR_CEILING` to `-1` and reading the printed
+offender list (this file's own required protocol): 11 raw offenders (5
+`chq-` tokens + 6 non-`chq-` artifacts of the identical fold, listed above),
+5 in-scope per the task's "every chq- class token" grammar.
+`COMMENT_CREDITED_FLOOR_CEILING` set to `5`. Registered in
+`scripts/exit-predicate/campaign-scope/out-of-campaign-scope.ts` and
+`scripts/exit-predicate/campaign-scope/parked-fidelity-promises.ts` only
+(`siblingName: null`), never `CAMPAIGN_CONSTANT_NAMES`/`TIER2_CEILING_NAMES`
+-- a fresh measurement never moves the exit gate's goalposts
+mid-convergence. Zero existing grading changed, zero product CSS bytes
+moved.

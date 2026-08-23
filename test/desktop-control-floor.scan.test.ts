@@ -285,14 +285,16 @@
 // other desktop CSS -- desktop stays frozen.
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collapseDigitsToSkeleton, enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
-import { DEC_746, DEC_964 } from '../src/decisions';
+import { stripCssComments } from './helpers/strip-css-comments';
+import { DEC_374, DEC_746, DEC_964 } from '../src/decisions';
 void DEC_964; // wave-26 amendment: a cross-surface own-text match (the join's ONLY match resolves into a source file that renders no frame in the same .dc.html cluster) grades UNRESOLVED, never OFFENDER -- gated on a positive receipt test, never a blanket escape.
+void DEC_374; // wave-52 amendment: the shared source stripper is string-literal-blind by design, so a `*.css.ts` rule parse must additionally strip CSS comments -- see the "WAVE 52" section below.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -1855,6 +1857,192 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // population exclusion's own `composed-unseen` rows leaving the population.
 export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 131;
 
+// -- WAVE 52 (DEC-374 wave-52 amendment, task w52-f): comment-credited
+// floors -- MEASUREMENT AND RATCHET ONLY -----------------------------------
+// PROVEN root cause (task description, not re-derived here): frame-source-
+// corpus's `stripComments` deliberately enters a template/single/double
+// STRING state on a quote and copies everything through verbatim to the
+// closing quote, so every `src/**/*.css.ts` sheet -- one giant template
+// literal -- keeps ALL of its CSS `/* ... */` comments through
+// `normalizeSource`. `RULE_RE` above then parses rules as "everything
+// between two braces", which folds each surviving comment into the NEXT
+// rule's raw selector text, and `selectorMentionsToken` matches a
+// dot-prefixed class token written in prose there -- crediting that token a
+// min-height it never declares. The error is proven ONE-DIRECTIONAL: a
+// comment can only ADD tokens to a selector (never remove a real one), so it
+// can only SUPPRESS true offenders already in `OFFENDERS`/`UNRESOLVED`
+// above. This section changes neither of those (TOKEN_INDEX,
+// resolveTokenMinHeightIndexed, gradeControl, OFFENDERS, UNRESOLVED are all
+// untouched) and no product CSS byte -- it measures the defect's own
+// population and ratchets it. Correcting the parse itself is a later lane's,
+// sized from the roster this section writes to
+// docs/design/audit/desktop-control-floor-v12.md's "Wave 52" section.
+
+/** The same NORMALIZED_BLOBS pipeline, with every CSS comment additionally
+ * removed via the shared, string-aware `stripCssComments` (DEC-613) BEFORE
+ * the `@media` strip -- so a comment can never fold into a following rule's
+ * selector text. Parallel array to NORMALIZED_BLOBS/TOPLEVEL_BLOBS/
+ * SOURCE_FILES: index i is always the same source file's clean counterpart.
+ * `stripCssComments` is imported, never re-implemented (DEC-613's
+ * one-stripper rule); it is already string-aware enough to cover the
+ * `.css.ts` template-literal case (it tracks `"`/`'` quote state
+ * character-by-character regardless of the surrounding JS syntax), so no
+ * extension to the shared helper is needed. */
+const COMMENT_FREE_NORMALIZED_BLOBS: string[] = NORMALIZED_BLOBS.map((b) => stripCssComments(b));
+const COMMENT_FREE_TOPLEVEL_BLOBS: string[] = COMMENT_FREE_NORMALIZED_BLOBS.map(stripMediaBlocks);
+
+/** True when `token` currently resolves a min-height over `rawBlobs` but
+ * resolves NONE at all over `cleanBlobs` (the same blobs with CSS comments
+ * additionally stripped) -- i.e. the token's ENTIRE min-height credit
+ * exists only via comment text folded into a selector, never via a genuine
+ * declaration. A token with no credit at all over `rawBlobs` is not a
+ * comment-credited offender (nothing to suppress a genuine gap for) and
+ * grades false, same as a token whose credit survives comment-stripping
+ * unchanged (a real declaration). Exported for the non-vacuity control
+ * below, which drives it over a fabricated blob pair, never a real product
+ * token. */
+export function isCommentOnlyCredited(token: string, rawBlobs: readonly string[], cleanBlobs: readonly string[]): boolean {
+  const raw = resolveTokenMinHeight(token, rawBlobs);
+  if (raw.maxMinHeight === null) return false;
+  const clean = resolveTokenMinHeight(token, cleanBlobs);
+  return clean.maxMinHeight === null;
+}
+
+export interface CommentCreditedOffender {
+  token: string;
+  creditedMinHeight: number;
+  fileName: string;
+  cleanSelector: string;
+}
+
+/** One-pass companion to TOKEN_INDEX's own build loop above (same shape,
+ * same RULE_RE walk), run over the comment-stripped blobs instead of the
+ * raw ones -- O(rules) total, never re-scanned per token. Used only to
+ * check whether a token's credit survives comment-stripping; never merged
+ * into the real TOKEN_INDEX (this file's existing grading is untouched). */
+function buildMinHeightIndex(blobs: readonly string[]): Map<string, { maxMinHeight: number | null }> {
+  const index = new Map<string, { maxMinHeight: number | null }>();
+  for (const blob of blobs) {
+    RULE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = RULE_RE.exec(blob))) {
+      const selectorText = m[1]!;
+      const body = m[2]!;
+      const mh = body.match(/min-height\s*:\s*(\d+)px/);
+      const v = mh ? Number(mh[1]) : null;
+      SELECTOR_CLASS_TOKEN_RE.lastIndex = 0;
+      let tm: RegExpExecArray | null;
+      const seenInRule = new Set<string>();
+      while ((tm = SELECTOR_CLASS_TOKEN_RE.exec(selectorText))) {
+        const tok = tm[1]!;
+        if (seenInRule.has(tok)) continue;
+        seenInRule.add(tok);
+        const existing = index.get(tok);
+        if (!existing) {
+          index.set(tok, { maxMinHeight: v });
+        } else if (v !== null && (existing.maxMinHeight === null || v > existing.maxMinHeight)) {
+          existing.maxMinHeight = v;
+        }
+      }
+    }
+  }
+  return index;
+}
+
+/** One-pass companion evidence walk (same RULE_RE walk as `buildMinHeightIndex`
+ * above, O(rules) total): for every token whose RAW selector text credits it
+ * a min-height, but whose comment-stripped selector text does NOT name it,
+ * records the FIRST such (fileName, cleanSelector) -- the exact real rule
+ * the comment folded into. Never re-scans the corpus per flagged token. */
+function buildCommentCreditEvidence(
+  rawSourceRelativeNames: readonly string[],
+  rawTopLevelBlobs: readonly string[]
+): Map<string, { fileName: string; cleanSelector: string }> {
+  const evidence = new Map<string, { fileName: string; cleanSelector: string }>();
+  for (let i = 0; i < rawTopLevelBlobs.length; i++) {
+    const blob = rawTopLevelBlobs[i]!;
+    RULE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = RULE_RE.exec(blob))) {
+      const selectorText = m[1]!;
+      const body = m[2]!;
+      if (!/min-height\s*:\s*\d+px/.test(body)) continue;
+      const cleanSelector = stripCssComments(selectorText).replace(/\s+/g, ' ').trim();
+      SELECTOR_CLASS_TOKEN_RE.lastIndex = 0;
+      let tm: RegExpExecArray | null;
+      while ((tm = SELECTOR_CLASS_TOKEN_RE.exec(selectorText))) {
+        const tok = tm[1]!;
+        if (evidence.has(tok)) continue;
+        if (selectorMentionsToken(cleanSelector, tok)) continue; // a genuine mention, not comment-sourced
+        evidence.set(tok, { fileName: rawSourceRelativeNames[i]!, cleanSelector });
+      }
+    }
+  }
+  return evidence;
+}
+
+/** Every `chq-` token the file's existing `TOKEN_INDEX` credits with a
+ * min-height whose entire credit is comment-only -- i.e. `resolveTokenMinHeight`
+ * over the comment-stripped blobs finds no min-height for it at all -- paired
+ * with a located crediting rule for citation: the first rule anywhere in the
+ * raw (comment-including) corpus whose raw selector text names the token and
+ * declares a min-height, but whose comment-stripped selector text does NOT
+ * name the token -- the exact rule the comment folded into. Both passes are
+ * one-time O(rules) walks (`buildMinHeightIndex`/`buildCommentCreditEvidence`
+ * above), never a per-token corpus re-scan. Throws loudly (never silently
+ * drops a row) if a flagged token has no locatable crediting rule -- that
+ * would mean this function's own logic is inconsistent with TOKEN_INDEX's
+ * build, an instrument bug, not a defect to report quietly. Exported so the
+ * non-vacuity control below and the audit doc's population are driven by the
+ * SAME function, never a second copy. */
+export function findCommentCreditedOffenders(
+  tokenIndex: ReadonlyMap<string, { hasRule: boolean; maxMinHeight: number | null; controlShaped: boolean }>,
+  rawSourceRelativeNames: readonly string[],
+  rawTopLevelBlobs: readonly string[],
+  cleanTopLevelBlobs: readonly string[]
+): CommentCreditedOffender[] {
+  const cleanIndex = buildMinHeightIndex(cleanTopLevelBlobs);
+  const evidenceIndex = buildCommentCreditEvidence(rawSourceRelativeNames, rawTopLevelBlobs);
+  const out: CommentCreditedOffender[] = [];
+  for (const [token, entry] of tokenIndex) {
+    if (!token.startsWith('chq-')) continue; // task grammar: "every chq- class token" -- TOKEN_INDEX's own SELECTOR_CLASS_TOKEN_RE also matches non-chq- `.word` tokens (file-extension mentions like ".ts"/".css" in prose), out of this ceiling's scope
+    if (entry.maxMinHeight === null) continue;
+    const cleanEntry = cleanIndex.get(token);
+    if (cleanEntry && cleanEntry.maxMinHeight !== null) continue; // survives comment-stripping: a genuine declaration
+    const evidence = evidenceIndex.get(token);
+    if (!evidence) {
+      throw new Error(
+        `comment-credited token "${token}" has no locatable crediting rule -- ` +
+          `findCommentCreditedOffenders is inconsistent with its own clean-index pass (instrument bug)`
+      );
+    }
+    out.push({ token, creditedMinHeight: entry.maxMinHeight, fileName: evidence.fileName, cleanSelector: evidence.cleanSelector });
+  }
+  return out.sort((a, b) => a.token.localeCompare(b.token));
+}
+
+const SOURCE_FILE_RELATIVE_NAMES: string[] = SOURCE_FILES.map((f) => relative(REPO_ROOT, f));
+
+const COMMENT_CREDITED_OFFENDERS: CommentCreditedOffender[] = findCommentCreditedOffenders(
+  TOKEN_INDEX,
+  SOURCE_FILE_RELATIVE_NAMES,
+  TOPLEVEL_BLOBS,
+  COMMENT_FREE_TOPLEVEL_BLOBS
+);
+
+// RATCHET, two-sided, mirroring DESKTOP_FLOOR_DIVERGENCE_CEILING above.
+// MEASURED on this branch by forcing to -1 and reading the printed offender
+// list -- never an expression naming the measured set. Registered in
+// scripts/exit-predicate/campaign-scope/out-of-campaign-scope.ts ONLY
+// (never CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES): a fresh measurement
+// never moves the exit gate's goalposts mid-convergence (DEC-393 wave-147's
+// reasoning for DESKTOP_FLOOR_DIVERGENCE_CEILING/DESKTOP_FLOOR_UNRESOLVED_CEILING
+// above, restated wave-52 for this new instrument-soundness ceiling). This
+// ceiling counts an INSTRUMENT defect (a suppressed OFFENDER/UNRESOLVED
+// count elsewhere in this file), not a product CSS gap -- repairing the
+// parse itself is a later, separately-scoped lane.
+export const COMMENT_CREDITED_FLOOR_CEILING = 5;
+
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: digit-collapsed skeleton join -- fabricated positive (drawn digits differ from rendered digits) vs negative (no digit in label, skeleton never invoked)', () => {
     expect(collapseDigitsToSkeleton('At least 12 characters, 3 tries left')).toBe('At least # characters, # tries left');
@@ -2368,6 +2556,81 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
       'Chautauqua Contacts.dc.html:602',
       'Chautauqua Submissions.dc.html:314',
     ]);
+  });
+
+  // -- WAVE 52 (DEC-374 wave-52 amendment, task w52-f): comment-credited
+  // floors -- see the derivation's own header above for the full defect
+  // description. Ratchet is two-sided, mirroring every prior ledger in this
+  // file. ------------------------------------------------------------------
+
+  it("non-vacuity: comment-credited floor detection -- fabricated positive (a token named only in a comment folded into the NEXT rule's selector) vs two negatives (a genuine declaration; no credit at all)", () => {
+    // POSITIVE: 'chq-zzy-comment-fixture' is named only inside a CSS
+    // comment; RULE_RE folds that comment into the following rule's
+    // selector text, and selectorMentionsToken matches the dot-prefixed
+    // token in the prose -- crediting it the following rule's min-height.
+    // Comment-stripped, no rule mentions it at all.
+    const rawFixtureBlob =
+      '/* see .chq-zzy-comment-fixture for context */\n.chq-zzy-comment-real { min-height: 44px; }';
+    const cleanFixtureBlob = stripCssComments(rawFixtureBlob);
+    expect(isCommentOnlyCredited('chq-zzy-comment-fixture', [rawFixtureBlob], [cleanFixtureBlob])).toBe(true);
+
+    // NEGATIVE: the SAME rule's real selector token, 'chq-zzy-comment-real',
+    // survives comment-stripping unchanged -- a genuine declaration, never
+    // flagged.
+    expect(isCommentOnlyCredited('chq-zzy-comment-real', [rawFixtureBlob], [cleanFixtureBlob])).toBe(false);
+
+    // NEGATIVE: a token with no credit at all in either blob -- nothing to
+    // suppress a gap for, so it is not a comment-credited offender either.
+    expect(isCommentOnlyCredited('chq-zzy-comment-absent', [rawFixtureBlob], [cleanFixtureBlob])).toBe(false);
+
+    // FULL-PIPELINE: findCommentCreditedOffenders over a fabricated
+    // TOKEN_INDEX-shaped map reproduces the same positive/negative split,
+    // locating the exact crediting rule for citation.
+    const fabricatedIndex = new Map<string, { hasRule: boolean; maxMinHeight: number | null; controlShaped: boolean }>([
+      ['chq-zzy-comment-fixture', { hasRule: true, maxMinHeight: 44, controlShaped: false }],
+      ['chq-zzy-comment-real', { hasRule: true, maxMinHeight: 44, controlShaped: true }],
+    ]);
+    const found = findCommentCreditedOffenders(
+      fabricatedIndex,
+      ['zzy/fabricated-sheet.css.ts'],
+      [rawFixtureBlob],
+      [cleanFixtureBlob]
+    );
+    expect(found).toEqual([
+      {
+        token: 'chq-zzy-comment-fixture',
+        creditedMinHeight: 44,
+        fileName: 'zzy/fabricated-sheet.css.ts',
+        cleanSelector: '.chq-zzy-comment-real',
+      },
+    ]);
+  });
+
+  it(`never exceeds COMMENT_CREDITED_FLOOR_CEILING (${COMMENT_CREDITED_FLOOR_CEILING}) comment-credited tokens`, () => {
+    if (COMMENT_CREDITED_OFFENDERS.length > COMMENT_CREDITED_FLOOR_CEILING) {
+      const rows = COMMENT_CREDITED_OFFENDERS.map(
+        (o) =>
+          `${o.fileName}: token "${o.token}" credited min-height:${o.creditedMinHeight}px only via a comment folded into ` +
+          `the selector \`${o.cleanSelector}\``
+      );
+      throw new Error(
+        `${COMMENT_CREDITED_OFFENDERS.length} comment-credited desktop floor tokens, above the ceiling of ` +
+          `${COMMENT_CREDITED_FLOOR_CEILING}. COMMENT_CREDITED_FLOOR_CEILING may only be RAISED ` +
+          `(a merge-train act, never a worker's edit mid-lane). Offenders:\n${rows.join('\n')}`
+      );
+    }
+    expect(COMMENT_CREDITED_OFFENDERS.length).toBeLessThanOrEqual(COMMENT_CREDITED_FLOOR_CEILING);
+  });
+
+  it(`never sits BELOW COMMENT_CREDITED_FLOOR_CEILING (${COMMENT_CREDITED_FLOOR_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    if (COMMENT_CREDITED_OFFENDERS.length < COMMENT_CREDITED_FLOOR_CEILING) {
+      throw new Error(
+        `${COMMENT_CREDITED_OFFENDERS.length} comment-credited desktop floor tokens, below the ceiling of ` +
+          `${COMMENT_CREDITED_FLOOR_CEILING}. Lower the ceiling in the same commit by replacing the line:\n` +
+          `  export const COMMENT_CREDITED_FLOOR_CEILING = ${COMMENT_CREDITED_OFFENDERS.length};`
+      );
+    }
+    expect(COMMENT_CREDITED_OFFENDERS.length).toBeGreaterThanOrEqual(COMMENT_CREDITED_FLOOR_CEILING);
   });
 });
 
