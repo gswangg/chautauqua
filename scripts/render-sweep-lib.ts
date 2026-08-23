@@ -641,8 +641,13 @@ export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
 /** DEC-808 wave-30 amendment: PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING mirrors
  * ADMIN_MOBILE_PASS_BLOCKING's flip rule — false on landing (first live
  * measurement of a population that has never been graded before), flipped
- * true in a later wave once a re-confirmed reading settles clean. */
-export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = false;
+ * true in a later wave once a re-confirmed reading settles clean. w56-i
+ * (DEC-069 wave-41 amendment): the flip was OWED —
+ * PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING (below) drained to 0 in wave-50
+ * and this flag was never flipped to match; flipped here, same commit as
+ * no ceiling change, per the promotion rule in
+ * test/render-sweep-advisory-gate-promotion.scan.test.ts. */
+export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = true;
 
 /** DEC-808 wave-30 amendment, two-sided ratchet for the public/portal mobile
  * pass's WIDE (INTERACTIVE_CONTROL_SELECTOR) offender population — the same
