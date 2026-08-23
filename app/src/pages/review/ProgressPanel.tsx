@@ -293,6 +293,10 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
 
       {advanceConfirmOpen && plan && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): subject is the round-progression
+          // workflow state, not a named record -- "round" has no identity
+          // distinct from the state transition itself, so there is no
+          // object to interpolate.
           title="Advance round"
           body={`Advance this plan from round ${plan.currentRound} to round ${plan.currentRound + 1}? Reviewers will start rating the new round.`}
           confirmLabel="Advance round"

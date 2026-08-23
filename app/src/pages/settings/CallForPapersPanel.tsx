@@ -604,6 +604,10 @@ export function CallForPapersPanel() {
       </SummarySection>
       {pendingCloseNow ? (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): an event has exactly one call for
+          // papers, so this confirm's subject is a singleton panel-wide
+          // state, not a named row among many -- there is no object to
+          // interpolate.
           title="Close the call for papers?"
           body="Speakers will no longer be able to submit. You can reopen the call later from Settings."
           confirmLabel="Close the call now"

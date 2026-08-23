@@ -710,6 +710,10 @@ export function TaskView() {
 
       {pendingNotNeeded && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): subject is the whole selection of
+          // speakers (pendingNotNeeded is a list of contactIds), not a
+          // single named record -- no one object to interpolate, so the
+          // title names the action on the selection instead.
           title="Not needed for these speakers"
           body={
             <>

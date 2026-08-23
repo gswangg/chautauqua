@@ -430,6 +430,10 @@ export function TracksRoomsPanel() {
 
       {confirmingDiscard && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): subject is the panel's own
+          // unsaved-edit state across every dirty track/room row (see
+          // dirtyRowNames/unsavedAddDraftNames below), not one single named
+          // record -- no object to interpolate.
           title="Discard unsaved edits?"
           body={
             <p>
