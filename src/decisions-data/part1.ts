@@ -22,7 +22,7 @@ export const DEC_016 = "Submissions list API contract; locked built-in fields pe
 export const DEC_017 = "Wave-3 schema additions in one migration; legacy track columns frozen";
 export const DEC_018 = "Amendment (wave 102): the per-criterion TYPE control is a real select, and the editable criterion row grows to the frame's SIXTH track — the desktop frames demand it, so this is not a frozen-desktop violation";
 export const DEC_019 = "Deliberate-notify compose pipeline: recipients, atomic preview, 100-cap, feedback attach";
-export const DEC_020 = "File pipeline: upload validation, version chains, authenticated serving, comments, approval";
+export const DEC_020 = "Wave-55 amendment: membership over a plain object is Object.prototype.hasOwnProperty.call, and the class is closed by a derived scan asserting zero, not by a hand list of the sites already fixed";
 export const DEC_021 = "DEC-021 wave-38: the phone agenda folds breaks through the SAME clampBreakToWindow the desktop grid uses, and a run list never emits backwards time — 'kept but flagged' is a fact about the break RECORD, not a licence to paint outside the drawn day";
 export const DEC_022 = "Public surfaces: single query gate, SSR + embeds, itinerary .ics, stage-1 cache headers";
 export const DEC_023 = "Onboarding grid API, task CRUD, and due-date reminder cron";
@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Wave-54 amendment: an OUT_OF_CAMPAIGN_SCOPE prose condition that the PARKED_FIDELITY_PROMISES row never encoded is not a promotion gate — the code rule governs promotion timing, and the prose's ask becomes its own lane in the same wave";
+export const DEC_069 = "Wave-55 amendment: more than one lane may pay a promotion promise in the same wave, provided each edits only its own constant's key in each registry file and lands ceiling change plus promotion in ONE commit";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Wave-54 amendment: the exit predicate's own baseFixture()/allGreenFixture() must derive their declared rows from CAMPAIGN_CONSTANT_NAMES, never from a wider constant walk that also sees parked ceilings";
+export const DEC_180 = "Wave-55 amendment: the count-caption ledger carries a third verdict, CAPTION-LEDGER-RESOLVED, and the constant that duplicated it is deleted rather than left beside it";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
