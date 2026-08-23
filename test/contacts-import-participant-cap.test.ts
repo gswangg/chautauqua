@@ -371,4 +371,206 @@ describe("POST /api/v1/contacts/import + eventId: MAX_PARTICIPANTS_PER_SUBMISSIO
     expect(state.contact).toHaveLength(0);
     expect(state.submission).toHaveLength(0);
   });
+
+  // DEC-604 amendment (wave 46): the pre-check must count the dispositions
+  // the apply path will perform, not every parsed row -- an organiser who
+  // has already trimmed the file with skipLines/mergeLines should not be
+  // refused for rows the apply path will never write.
+
+  function overCapCsv(): string {
+    // MAX_PARTICIPANTS_PER_SUBMISSION + 1 fresh, distinct-email rows --
+    // lines 2..8 for MAX=6.
+    return csvFor(MAX_PARTICIPANTS_PER_SUBMISSION + 1);
+  }
+
+  const SURPLUS_LINE = MAX_PARTICIPANTS_PER_SUBMISSION + 2; // last data row's `line`
+
+  // Matches the auto-generated last data row of overCapCsv() (index
+  // MAX_PARTICIPANTS_PER_SUBMISSION, i.e. firstName/lastName
+  // `First<MAX>`/`Last<MAX>`) by NAME (not email) so
+  // findImportDuplicateCandidates treats it as a possible-duplicate merge
+  // target -- the same candidate idiom resolveMergeTargets uses.
+  function existingOnRosterContact(id: string) {
+    return {
+      id,
+      orgId: ORG_A,
+      firstName: `First${MAX_PARTICIPANTS_PER_SUBMISSION}`,
+      lastName: `Last${MAX_PARTICIPANTS_PER_SUBMISSION}`,
+      email: "existing-different-email@example.com",
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshotUrl: null,
+      socialLinksJson: null,
+      notes: null,
+      customFieldsJson: null,
+      createdAt: new Date(1),
+      updatedAt: new Date(1),
+    };
+  }
+
+  function existingOnRosterFixture(contactId: string) {
+    const submission = {
+      id: "sub-existing",
+      eventId: "event-1",
+      contactId,
+      title: "Prior session",
+      status: "accepted",
+      contentStatus: "pending",
+      acceptedAt: new Date(1),
+      createdAt: new Date(1),
+      updatedAt: new Date(1),
+    };
+    const participant = {
+      id: "part-existing",
+      submissionId: "sub-existing",
+      contactId,
+      role: "speaker",
+      order: 0,
+      visible: true,
+      inviteStatus: "none",
+      titleAtTime: null,
+      orgAtTime: null,
+      createdAt: new Date(1),
+      updatedAt: new Date(1),
+    };
+    return { submission, participant };
+  }
+
+  it("(a) a file over the cap whose surplus lines are all in skipLines succeeds, and apply writes exactly the un-skipped rows", async () => {
+    const { db, state } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+        skipLines: [SURPLUS_LINE],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { created: number; addedToEvent: number };
+    expect(body.created).toBe(MAX_PARTICIPANTS_PER_SUBMISSION);
+    expect(body.addedToEvent).toBe(MAX_PARTICIPANTS_PER_SUBMISSION);
+    expect(state.contact).toHaveLength(MAX_PARTICIPANTS_PER_SUBMISSION);
+    expect(state.participant).toHaveLength(MAX_PARTICIPANTS_PER_SUBMISSION);
+    // The skipped row's email was never written.
+    const skippedEmail = `p${MAX_PARTICIPANTS_PER_SUBMISSION}@example.com`;
+    expect(state.contact.some((c: any) => c.email === skippedEmail)).toBe(false);
+  });
+
+  it("(b) a mergeLines entry whose target contact is already on the roster does not count toward the cap", async () => {
+    const existingContact = existingOnRosterContact("existing-0");
+    const { submission, participant } = existingOnRosterFixture(existingContact.id);
+    const { db, state } = fakeDb([existingContact], [EVENT_ORG_A], [submission], [participant]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+        mergeLines: [{ line: SURPLUS_LINE, contactId: existingContact.id }],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { created: number; updated: number; addedToEvent: number };
+    expect(body.created).toBe(MAX_PARTICIPANTS_PER_SUBMISSION);
+    expect(body.updated).toBe(1);
+    expect(body.addedToEvent).toBe(MAX_PARTICIPANTS_PER_SUBMISSION);
+    expect(state.participant).toHaveLength(MAX_PARTICIPANTS_PER_SUBMISSION + 1);
+  });
+
+  it("(c) the same over-cap file with NO dispositions still gets the refusal, unchanged message", async () => {
+    const { db, state } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields?.eventId).toBeTruthy();
+    expect(body.error.fields?.eventId).toContain("import without choosing an event, then add speakers to sessions individually");
+    expect(state.contact).toHaveLength(0);
+    expect(state.submission).toHaveLength(0);
+  });
+
+  it("(d) the dry run reports the same verdict as the commit for (a), (b), and (c)", async () => {
+    // (a) skipLines
+    {
+      const { db: dbCommit } = fakeDb([], [EVENT_ORG_A]);
+      const { db: dbPlan } = fakeDb([], [EVENT_ORG_A]);
+      const commitApp = appWithDbAndAuth(dbCommit, ORGANIZER_A);
+      const planApp = appWithDbAndAuth(dbPlan, ORGANIZER_A);
+      const payload = {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+        skipLines: [SURPLUS_LINE],
+      };
+      const commitRes = await commitApp.request(jsonRequest("/api/v1/contacts/import", payload));
+      const planRes = await planApp.request(jsonRequest("/api/v1/contacts/import", { ...payload, dryRun: true }));
+      expect(planRes.status).toBe(commitRes.status);
+      expect(planRes.status).toBe(200);
+    }
+
+    // (b) mergeLines onto an already-on-roster contact
+    {
+      const existingContact = existingOnRosterContact("existing-0");
+      const { submission, participant } = existingOnRosterFixture(existingContact.id);
+      const { db: dbCommit } = fakeDb([existingContact], [EVENT_ORG_A], [submission], [participant]);
+      const { db: dbPlan } = fakeDb(
+        [existingOnRosterContact("existing-0")],
+        [EVENT_ORG_A],
+        [{ ...submission }],
+        [{ ...participant }],
+      );
+      const commitApp = appWithDbAndAuth(dbCommit, ORGANIZER_A);
+      const planApp = appWithDbAndAuth(dbPlan, ORGANIZER_A);
+      const payload = {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+        mergeLines: [{ line: SURPLUS_LINE, contactId: existingContact.id }],
+      };
+      const commitRes = await commitApp.request(jsonRequest("/api/v1/contacts/import", payload));
+      const planRes = await planApp.request(jsonRequest("/api/v1/contacts/import", { ...payload, dryRun: true }));
+      expect(planRes.status).toBe(commitRes.status);
+      expect(planRes.status).toBe(200);
+    }
+
+    // (c) no dispositions -- still refused
+    {
+      const { db: dbCommit } = fakeDb([], [EVENT_ORG_A]);
+      const { db: dbPlan } = fakeDb([], [EVENT_ORG_A]);
+      const commitApp = appWithDbAndAuth(dbCommit, ORGANIZER_A);
+      const planApp = appWithDbAndAuth(dbPlan, ORGANIZER_A);
+      const payload = {
+        csvText: overCapCsv(),
+        mapping,
+        eventId: "event-1",
+        sessionTitle: "Lightning talks",
+      };
+      const commitRes = await commitApp.request(jsonRequest("/api/v1/contacts/import", payload));
+      const planRes = await planApp.request(jsonRequest("/api/v1/contacts/import", { ...payload, dryRun: true }));
+      expect(planRes.status).toBe(commitRes.status);
+      expect(planRes.status).toBe(400);
+    }
+  });
 });
