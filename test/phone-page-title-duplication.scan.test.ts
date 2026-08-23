@@ -47,6 +47,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const REPO_ROOT = join(__dirname, "..");
 const APP_SRC = join(REPO_ROOT, "app/src");
@@ -54,10 +55,6 @@ const APP_SRC = join(REPO_ROOT, "app/src");
 /** Tripwire: the derivation must keep finding phone-head-band pairs. Raise
  * as more pages grow one; never lower it to silence an empty scan. */
 const MIN_PAIRS = 1;
-
-function stripCssComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
 
 function tsxFiles(dir: string): string[] {
   const out: string[] = [];

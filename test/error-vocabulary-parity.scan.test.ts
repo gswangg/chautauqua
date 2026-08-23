@@ -65,7 +65,19 @@ const PHONE_ONLY_PROPERTIES: Record<string, string[]> = {
 };
 
 /** Strips CSS block comments so a comment mentioning a selector by name
- * is never mistaken for a declaration site. */
+ * is never mistaken for a declaration site. Deliberately NOT the shared,
+ * quote-tracking test/helpers/strip-css-comments.ts: this function's inputs
+ * (SSR_SOURCE/SPA_SOURCE) are the WHOLE raw `.css`/`.css.ts` file text,
+ * including each file's own `//`-comment prose header -- the shared
+ * stripper has no notion of `//` line comments, so an apostrophe/quote
+ * inside that prose (this file's own header has several) desyncs its
+ * quote-tracking state machine and stops recognising real `/* *\/` CSS
+ * comments for the rest of the file, exactly the w26-f-documented raw-.ts
+ * corruption class. Verified live: swapping in the shared stripper made
+ * `.chq-field-error` and `.chq-field-invalid.chq-field-invalid` -- both
+ * genuinely declared on both sides (src/views/error-states.css.ts:28,51) --
+ * report as SPA-only, a corrupted parse of the SSR side, not a real
+ * divergence. */
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
