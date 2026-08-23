@@ -17,6 +17,7 @@ import {
   DEDUPE_WINDOW_MS,
   DUE_WINDOW_MS,
   formatTaskLines,
+  formatTaskSentenceRun,
   MANUAL_DEDUPE_WINDOW_MS,
   MAX_REMINDER_BATCH,
   planManualReminders,
@@ -582,7 +583,7 @@ async function sendReminderEmails(
   // toRelease below reconstruct exactly what the old sequential loop
   // produced.
   const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
-    const { subject, text: reminderText, parts } = buildReminderMessage(
+    const { subject, text: reminderText } = buildReminderMessage(
       eventName,
       group.assignments,
       portalLink,
@@ -598,11 +599,22 @@ async function sendReminderEmails(
         eventName,
         reason: `you have outstanding tasks for ${eventName}`,
         cta: { label: REMINDER_CTA_LABEL, href: portalLink },
-        // DEC-441 amendment (wave 32): the frame's `factLabel: 'Still to
-        // do'` email (Chautauqua Comms.dc.html demo row, "hasFact: true")
-        // -- the same task lines the plain-text body already composes
-        // (`parts.stillToDo`), HTML-only exactly as the paste-URL line is.
-        fact: { label: "Still to do", value: parts.stillToDo.join("\n") },
+        // DEC-441 amendment (wave 38): the frame's fact VALUE
+        // (Chautauqua Comms.dc.html `<div style="border-left:3px solid
+        // #4E5C31; padding:2px 0 2px 15px; display:flex;
+        // flex-direction:column; gap:5px">` over two spans, demo row
+        // `fact: 'Upload headshot — was due 10 April. Complete your bio —
+        // due 10 April.'`) is ONE period-terminated sentence run, never a
+        // newline join -- src/mail/shell.ts renders it as a single escaped
+        // span, so `\n` (what parts.stillToDo/formatTaskLines carries for
+        // the plain-text body's bulleted list) collapses with no visible
+        // separator. formatTaskSentenceRun composes the SAME per-task data
+        // (describeTask, shared with formatTaskLines) in the frame's
+        // sentence register instead -- the plain-text `text` body above
+        // keeps its bulleted `Still to do` block verbatim; the two
+        // registers differ deliberately, exactly as the paste-URL line
+        // already does.
+        fact: { label: "Still to do", value: formatTaskSentenceRun(group.assignments) },
       }),
       eventId,
       contactId: group.contactId,

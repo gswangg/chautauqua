@@ -328,3 +328,75 @@ describe("reminder email HTML carries the CTA button and its paste-URL fallback 
     expect(html).toMatch(/Or paste this into your browser: https:\/\/events\.example\.com\/claim\/[^"<]+/);
   });
 });
+
+// DEC-441 (wave-38 amendment, docs/design/Chautauqua Comms.dc.html:719-723
+// `display:flex; flex-direction:column; gap:5px` holding exactly TWO
+// spans -- label over ONE period-terminated sentence-run value, no bullet
+// prefixes): a multi-item reminder's HTML fact value must be the same task
+// data the plain-text body carries, joined in the frame's sentence
+// register -- never parts.stillToDo's newline join, which HTML collapses
+// into a run-on line with no visible separator between tasks.
+describe("reminder email HTML fact value is a joined sentence run for multi-item reminders (DEC-441 wave-38)", () => {
+  it("joins two outstanding tasks into one period-terminated, space-joined run with no '- ' bullet prefix", async () => {
+    const rows: OutstandingRowShape[] = [
+      {
+        assignmentId: "assign_multi_a",
+        taskId: "task_multi_a",
+        taskTitle: "Bio form",
+        dueDate: new Date(Date.parse("2027-03-02T00:00:00Z")),
+        status: "pending",
+        lastRemindedAt: null,
+        contactId: "contact_multi",
+        firstName: "Priya",
+        lastName: "Raman",
+        email: "priya@example.com",
+        eventId: "event_1",
+        eventName: "DevFlow Conf 2027",
+        timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
+      },
+      {
+        assignmentId: "assign_multi_b",
+        taskId: "task_multi_b",
+        taskTitle: "Headshot upload",
+        dueDate: new Date(Date.parse("2027-04-15T00:00:00Z")),
+        status: "pending",
+        lastRemindedAt: null,
+        contactId: "contact_multi",
+        firstName: "Priya",
+        lastName: "Raman",
+        email: "priya@example.com",
+        eventId: "event_1",
+        eventName: "DevFlow Conf 2027",
+        timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
+      },
+    ];
+    const { db } = fakeDb(rows);
+    const { mailer, sent } = fakeMailer();
+
+    const result = await remindNow(db, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
+
+    expect(result.sent).toBe(1);
+    expect(sent).toHaveLength(1);
+    const html = sent[0]?.html ?? "";
+    // The frame's sentence run: each task period-terminated, space-joined.
+    expect(html).toContain("Bio form — due Tue 2 Mar 2027. Headshot upload — due Thu 15 Apr 2027.");
+    // Scope the "no bullet prefix" check to the fact block itself -- the
+    // HTML body above it legitimately renders the plain-text bulleted
+    // "Still to do" block verbatim (the two registers differ deliberately).
+    const factBlockStart = html.indexOf("border-left:3px solid #4E5C31");
+    expect(factBlockStart).toBeGreaterThan(-1);
+    const factBlockEnd = html.indexOf("</table></td></tr>", factBlockStart);
+    const factBlockHtml = html.slice(factBlockStart, factBlockEnd);
+    expect(factBlockHtml).not.toContain("- Bio form");
+    expect(factBlockHtml).not.toContain("- Headshot upload");
+    expect(factBlockHtml).not.toMatch(/2027-\s*Headshot/); // no collapsed-newline run-on with vanished separator
+
+    // The plain-text body is UNCHANGED: still the bulleted "Still to do"
+    // block, one line per task (DEC-441's two registers differ deliberately).
+    const text = sent[0]?.text ?? "";
+    expect(text).toContain("- Bio form — due Tue 2 Mar 2027");
+    expect(text).toContain("- Headshot upload — due Thu 15 Apr 2027");
+  });
+});
