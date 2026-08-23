@@ -59,6 +59,7 @@ const EXISTING_PARTICIPANT: PortalParticipant = {
   email: "priya@example.com",
   role: "speaker",
   roleLabel: "Speaker",
+  inviteStatus: "accepted",
   visible: true,
 };
 
@@ -115,6 +116,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: vi.fn(async (): Promise<EditableSubmissionData | null> => DATA),
     getPortalParticipants: vi.fn(async () => [EXISTING_PARTICIPANT]),
+    getAllSubmissionParticipants: vi.fn(async () => [EXISTING_PARTICIPANT]),
     addCoPresenter: (...args: unknown[]) => addCoPresenterMock(...args),
   };
 });

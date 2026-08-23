@@ -386,6 +386,9 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     getPortalParticipants: vi.fn(async () => [
       { id: "p1", name: "Priya Raman", role: "speaker", note: "", noteStyle: "" },
     ]),
+    getAllSubmissionParticipants: vi.fn(async () => [
+      { id: "p1", name: "Priya Raman", role: "speaker", note: "", noteStyle: "" },
+    ]),
   };
 });
 

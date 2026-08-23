@@ -111,7 +111,7 @@ describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
   };
   const branding = { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null };
   const participants: PortalParticipant[] = [
-    { id: "p-1", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "speaker", roleLabel: "Speaker", visible: false },
+    { id: "p-1", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "speaker", roleLabel: "Speaker", visible: false, inviteStatus: "accepted" },
   ];
 
   function render(overrides: Partial<Parameters<typeof EditPage>[0]> = {}) {
@@ -249,9 +249,9 @@ describe("Co-presenter field-fill stylesheet rule (DEC-604 wave-60 amendment)", 
 describe("GET /portal/submissions/:id — co-presenter 'With' line (DEC-777 wave 4 amendment)", () => {
   it("renders a With line naming other participants, excluding the viewer's own row", async () => {
     getPortalParticipantsMock.mockResolvedValueOnce([
-      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
-      { id: "p-2", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
-      { id: "p-3", contactId: "ct-3", name: "Sam Whitfield", email: "sam@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
+      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
+      { id: "p-2", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
+      { id: "p-3", contactId: "ct-3", name: "Sam Whitfield", email: "sam@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
     ]);
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");
@@ -263,8 +263,8 @@ describe("GET /portal/submissions/:id — co-presenter 'With' line (DEC-777 wave
 
   it("suffixes a parenthesised role when it isn't the plain speaker role", async () => {
     getPortalParticipantsMock.mockResolvedValueOnce([
-      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
-      { id: "p-2", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "moderator", roleLabel: "Moderator", visible: true },
+      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
+      { id: "p-2", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "moderator", roleLabel: "Moderator", visible: true, inviteStatus: "accepted" },
     ]);
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");
@@ -274,7 +274,7 @@ describe("GET /portal/submissions/:id — co-presenter 'With' line (DEC-777 wave
 
   it("renders no line at all when the viewer is the only participant", async () => {
     getPortalParticipantsMock.mockResolvedValueOnce([
-      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
+      { id: "p-1", contactId: "ct-1", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
     ]);
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");

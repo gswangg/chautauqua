@@ -41,6 +41,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: (...args: unknown[]) => loadEditableSubmissionMock(...(args as [])),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
     addCoPresenter: (...args: unknown[]) => addCoPresenterMock(...args),
     saveSubmissionEdits: (...args: unknown[]) => saveSubmissionEditsMock(...args),
   };

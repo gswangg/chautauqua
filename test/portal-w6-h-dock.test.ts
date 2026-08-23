@@ -338,6 +338,7 @@ describe("GET /portal/submissions/:id — the dock carries the frame's primary +
           selectedTrackIds: [],
         })),
         getPortalParticipants: vi.fn(async () => []),
+        getAllSubmissionParticipants: vi.fn(async () => []),
       };
     });
     vi.doMock("../src/server/repo/files", async () => {

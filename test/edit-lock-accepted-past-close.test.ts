@@ -59,6 +59,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: vi.fn(async () => currentData),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
   };
 });
 
@@ -96,6 +97,7 @@ vi.mock("../src/server/repo/portal", async () => {
     getMyTaskAssignments: vi.fn(async () => []),
     listDeliverableCandidatesForEvents: vi.fn(async () => new Map()),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
   };
 });
 

@@ -57,6 +57,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: vi.fn(async () => null),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
   };
 });
 

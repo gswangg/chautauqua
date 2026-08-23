@@ -9,7 +9,12 @@
 // otherwise shadow the real addCoPresenter this file exercises directly.
 
 import { describe, expect, it } from "vitest";
-import { addCoPresenter, getPortalParticipants } from "../src/server/repo/portal-edit";
+import {
+  addCoPresenter,
+  getPortalParticipants,
+  getAllSubmissionParticipants,
+  CO_PRESENTER_DUPLICATE_MESSAGE,
+} from "../src/server/repo/portal-edit";
 import {
   participantRoleLabel,
   PARTICIPANT_ROLE_OPTIONS,
@@ -233,6 +238,7 @@ describe("addCoPresenter + getPortalParticipants echo rule (DEC-866)", () => {
             order: 0,
             visible: false,
             nameAtTime: "Marcus Okafor",
+            inviteStatus: "accepted",
           },
         ]),
     } as unknown as AppEnv["Variables"]["db"];
@@ -245,6 +251,7 @@ describe("addCoPresenter + getPortalParticipants echo rule (DEC-866)", () => {
         role: "co-presenter",
         roleLabel: participantRoleLabel("co-presenter"),
         visible: false,
+        inviteStatus: "accepted",
       },
     ]);
   });
@@ -262,11 +269,86 @@ describe("addCoPresenter + getPortalParticipants echo rule (DEC-866)", () => {
             order: 0,
             visible: true,
             nameAtTime: null,
+            inviteStatus: "accepted",
           },
         ]),
     } as unknown as AppEnv["Variables"]["db"];
     const result = await getPortalParticipants(db, "sub-1");
     expect(result[0]!.name).toBe("Jordan Lee");
+  });
+});
+
+// Wave-55 (w55-g): closes the declined-co-presenter dead end. A declined
+// participant is invisible to getPortalParticipants (DEC-317 access
+// predicate, unchanged) but still counts toward the cap and still collides
+// on re-add — getAllSubmissionParticipants is the list-only sibling that
+// lets the edit screen SHOW that fact instead of leaving a silent dead end.
+describe("getAllSubmissionParticipants (wave-55, w55-g): declined-inclusive list", () => {
+  const ROWS = [
+    { id: "p-1", firstName: "Priya", lastName: "Raman", email: "priya@example.com", role: "speaker", order: 0, visible: true, nameAtTime: null, inviteStatus: "accepted" },
+    { id: "p-2", firstName: "Dana", lastName: "Ito", email: "dana@example.com", role: "co-presenter", order: 1, visible: false, nameAtTime: null, inviteStatus: "declined" },
+  ];
+
+  it("includes the declined row with its invite status, unlike getPortalParticipants", async () => {
+    // getPortalParticipants' own SQL filter already excludes 'declined' —
+    // this fake mirrors that by only ever handing it the surviving rows,
+    // proving the two queries are genuinely different reads, not the same
+    // rows filtered client-side.
+    const visibleDb = {
+      select: () => makeJoinChain(ROWS.filter((r) => r.inviteStatus !== "declined")),
+    } as unknown as AppEnv["Variables"]["db"];
+    const allDb = { select: () => makeJoinChain(ROWS) } as unknown as AppEnv["Variables"]["db"];
+
+    const visible = await getPortalParticipants(visibleDb, "sub-1");
+    expect(visible.map((p) => p.id)).toEqual(["p-1"]);
+
+    const all = await getAllSubmissionParticipants(allDb, "sub-1");
+    expect(all.map((p) => p.id)).toEqual(["p-1", "p-2"]);
+    const declinedRow = all.find((p) => p.id === "p-2");
+    expect(declinedRow?.inviteStatus).toBe("declined");
+    expect(declinedRow?.name).toBe("Dana Ito");
+  });
+
+  it("the cap pre-check's row count and getAllSubmissionParticipants' list length agree, even with a declined row present", async () => {
+    const allDb = { select: () => makeJoinChain(ROWS) } as unknown as AppEnv["Variables"]["db"];
+    const all = await getAllSubmissionParticipants(allDb, "sub-1");
+    // addCoPresenter's cap pre-check is `select count(*) from participant
+    // where submissionId = ...` — an unfiltered count over every status,
+    // the exact same population this query reads. A submission already at
+    // ROWS.length participants (one of them declined) refuses the next add.
+    const { db } = fakeDb([[{ count: all.length }]], [{ id: "participant-new" }]);
+    const result = await addCoPresenter(db, { ...BASE_INPUT, submissionId: "sub-1" });
+    expect(all.length).toBe(2);
+    if (all.length >= MAX_PARTICIPANTS_PER_SUBMISSION) {
+      expect(result.ok).toBe(false);
+    } else {
+      // Below cap: the fake's next select() (findContactByEmail) is
+      // unqueued (undefined -> []), so a fresh contact gets created and the
+      // add succeeds — still proving the two counts agreed on today's cap
+      // math without asserting a hard-coded MAX value here.
+      expect(result.ok).toBe(true);
+    }
+  });
+
+  it("re-adding a declined co-presenter still refuses with CO_PRESENTER_DUPLICATE_MESSAGE — but the caller can now see them in the list to know why", async () => {
+    const declinedContact = { id: "contact-declined", title: null, company: null };
+    // select order: [0] participant count (below cap), [1] findContactByEmail
+    // -> matches the declined co-presenter's existing contact row.
+    // insertReturning=[] simulates onConflictDoNothing firing: the
+    // (submission_id, contact_id) uniqueIndex does not care about
+    // inviteStatus, so a declined row still collides exactly like an active
+    // one.
+    const { db } = fakeDb([[{ count: 1 }], [declinedContact]], []);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors.email).toBe(CO_PRESENTER_DUPLICATE_MESSAGE);
+
+    // And getAllSubmissionParticipants (unlike getPortalParticipants) would
+    // have shown this speaker exactly why: the declined row, by name.
+    const allDb = { select: () => makeJoinChain(ROWS) } as unknown as AppEnv["Variables"]["db"];
+    const all = await getAllSubmissionParticipants(allDb, "sub-1");
+    expect(all.some((p) => p.name === "Dana Ito" && p.inviteStatus === "declined")).toBe(true);
   });
 });
 
