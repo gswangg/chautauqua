@@ -225,12 +225,25 @@ export interface EventForm {
 // (greeting/nudge/stillToDo/portalLine/signature) -- carried through so the
 // preview dialog's rendered email card can be built from real fields
 // instead of re-parsing `text`.
+//
+// DEC-613 wave-47: `stillToDoRun` is the period-terminated sentence-run
+// register (formatTaskSentenceRun) the frame's "What {name} will read" card
+// actually draws (frame :527) -- distinct from `stillToDo`'s plain-text
+// bulleted lines. REQUIRED, not optional: a server that fails to send it is
+// a type error at the fixtures, never a silent fallback to `stillToDo`.
 export interface ReminderDraft {
   contactId: string;
   email: string;
   name: string;
   subject: string;
   text: string;
-  parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
+  parts: {
+    greeting: string;
+    nudge: string;
+    stillToDo: string[];
+    stillToDoRun: string;
+    portalLine: string;
+    signature: string;
+  };
   tasks: { title: string; dueLabel: string; overdue: boolean }[];
 }
