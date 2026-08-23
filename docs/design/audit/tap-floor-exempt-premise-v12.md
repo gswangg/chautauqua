@@ -1,4 +1,4 @@
-# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36; two more floor-grammar tiers wave-40)
+# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36; two more floor-grammar tiers wave-40; ANCHORLESS-CONTAINER tier wave-44)
 
 Instrument: `test/tap-floor-exempt-premise.scan.test.ts`. Population: every
 real `/* tap-floor-exempt: ... */` (or JSX `{/* ... */}`) comment under
@@ -184,29 +184,30 @@ read, not a second machine-checked predicate, and is recorded as such:
   `review.css`, `scorecard.css`, `submissions/detail.css`,
   `submissions.css`, `styles.css` — a render-fact claim the same shape
   `judgeRenderGate` already checks for a different premise, just never
-  built for "no bare anchor" instead of "never mounts"), "a visually-hidden
-  input's operable target is its `<label>`" (`comms.css:158`,
-  `content.css:432`, `portal.css.ts:361`, `speakers/task-view.css:284` —
+  built for "no bare anchor" instead of "never mounts" as of wave 40; wave
+  44 below builds exactly this tier), "a visually-hidden
+  input's operable target is its `<label>`" (`comms.css`,
+  `content.css`, `portal.css.ts`, `speakers/task-view.css` —
   several already NAME the label's own `.chq-*` class, e.g. `.chq-check-hit`,
   which the EXISTING companion floor-grammar could check today if this
   shape got its own recognised family), "an empty `<th>` spacer, no
-  children at all" (`content.css:879`, `settings.css:2583`,
-  `styles.css:1444`), and a handful naming a companion this instrument's
-  first-word regex simply does not recognise yet (`comms.css:1235`,
-  `comms.css:2268`, `contacts-panels.css:997`, `overview.css:148`,
-  `overview.css:608`, `review.css:331`, `review.css:1574`,
-  `review.css:1793`, `submissions.css:27`, `submissions.css:206`,
-  `styles.css:1365`, `styles.css:1388`, `styles.css:1704`,
-  `content.css:908`, `theme.ts:538`, `chrome.css.ts:36`).
+  children at all" (`content.css`, `settings.css`,
+  `styles.css`), and a handful naming a companion this instrument's
+  first-word regex simply does not recognise yet (`comms.css`,
+  `comms.css`, `contacts-panels.css`, `overview.css`,
+  `overview.css`, `review.css`, `review.css`,
+  `review.css`, `submissions.css`, `submissions.css`,
+  `styles.css`, `styles.css`, `styles.css`,
+  `content.css`, `theme.ts`, `chrome.css.ts`).
 - **6 of 55 are grounded only in a design/scope authority**, not a
   tree-checkable fact — no scan, however widened, could settle them, because
-  the claim is a value or priority judgement: `styles.css:1772` (enlarging
+  the claim is a value or priority judgement: `styles.css` (enlarging
   the colour-swatch grid to 44px "is a distinct visual-redesign task, out of
-  scope … tracked as a follow-up"), `styles.css:1948` (the 18px checkbox
+  scope … tracked as a follow-up"), `styles.css` (the 18px checkbox
   glyph's own size is deliberately unchanged; "enlarging it is a
-  system-wide redesign"), `overview.css:564`, `styles.css:2879`,
-  `src/routes/public/css/rail.css.ts:671` and `src/routes/public/home.css.ts:
-  152` (four aesthetic/typography calls: flooring an inline phrase would
+  system-wide redesign"), `overview.css`, `styles.css`,
+  `src/routes/public/css/rail.css.ts` and `src/routes/public/home.css.ts`
+  (four aesthetic/typography calls: flooring an inline phrase would
   "break the line box," each without naming a companion an instrument could
   check instead). These six are the honest, un-shrinkable gap — grounded in
   human design judgement (DESIGN-RULINGS.md/DEVIATIONS.md territory), not
@@ -217,17 +218,92 @@ ceiling) — it is recorded here, by hand, as the honest classification the
 task asked for, left open for a future wave to decide which of the 49 are
 worth a fourth tier.
 
+## Wave 44 (task w44-e, DEC-393 wave-44 clause (a)): the ANCHORLESS-CONTAINER tier
+
+The wave-40 section above named the largest of the two buckets it read by
+hand in the `other` family: "≈30 receipts" stating "renders only `<button>`
+children, never a bare anchor" — a render-FACT claim about the markup, which
+none of the CSS-selector-searching tiers built through wave 40 have anything
+to say about (they all search `allChunks`, a flat list of CSS rule
+selector/body pairs; this claim is about JSX children, not a companion
+selector). This wave adds a fifth tier, `judgeContainerAnchorAbsence`,
+gated by a textual predicate (`isContainerAnchorAbsenceCandidate`) over the
+`other` family's own reason text — never the family label alone, which
+every prior wave's tiers already outgrew — that recognises the shape
+("no anchor", "never a bare `<a>`/`<Link>`", "renders only `<button>`
+...") while excluding several OTHER shapes the same vocabulary also
+produces in this population: the receipted token itself rendering AS an
+anchor elsewhere (`theme.ts`'s `.chq-wordmark`, `overview.css`'s deadline-
+cell `<Link>`, `portal.css.ts`'s `.chq-wordmark` `<span>` twin), a native-
+control label/`htmlFor` association ("the label is the click/tap anchor"),
+an ancestor-visibility claim (a `<thead>` set to `display:none`), or a
+purely decorative-sizing claim (a checkbox/radio glyph, a colour swatch, a
+`.chq-pill`) that says nothing about anchors at all.
+
+Unlike every tier above, this one does not search CSS at all: it walks the
+real JSX/TSX **markup corpus** (`test/frame-source-corpus.ts`'s
+`enumerateSourceFiles` + `stripComments` — DEC-613, the same enumerator and
+comment stripper every frame-label ledger already shares, never a second
+copy). It locates the receipted class as a literal `className`/`class`
+word, walks it to its own BALANCED matching close tag via a hand-rolled
+brace/quote-aware tag scanner (a `[^>]*>` regex would misread the `>` in a
+JSX handler like `onClick={() => onSelect(item.id)}` as the tag's own
+close; the scanner instead tracks brace depth and quote state
+character-by-character, invisible to an embedded `>`), and inspects every
+`<a`/`<Link`/`<NavLink` strictly inside. The scanner also recurses into
+every visited tag's OWN `attrsText` — this codebase's `<ModalFrame
+actions={<>...</>} ...>` render-prop idiom puts real, rendered JSX inside a
+`{...}` ATTRIBUTE VALUE, invisible to a walk that only ever jumps forward
+by a tag's own end.
+
+VERIFIED when no anchor is found inside, or every one found carries
+`.chq-btn`/`.chq-link-button` (this codebase's two floored button-styled-
+anchor classes — see `review.css`'s PlanList worked example: "Export
+results CSV" `<a className="chq-btn chq-btn-secondary">` and "New plan"
+`<Link className="chq-btn chq-btn-primary">`, both `chq-btn`-styled).
+FALSE-PREMISE the moment a bare anchor carrying neither class is found
+inside — a real 44px-floor gap, and it raises
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` rather than being softened into
+UNVERIFIABLE, exactly the point of building a real predicate instead of
+leaving these 37 receipts in the `other` bucket forever. UNVERIFIABLE-
+PREMISE only when the receipted class token appears nowhere in the markup
+corpus at all (`app/src/pages/forms/forms.css`'s
+`.chq-forms-field-modal-actions-right` receipt resolves this way on the
+FIRST pass, before the render-prop recursion above was added — it is only
+reachable inside `FieldModal.tsx`'s `<ModalFrame actions={...}>` call).
+
+Forced to `-1` and re-measured standalone (never by arithmetic on the
+wave-40 base, the exact trap DEC-808 warns against): bucketing the 55
+`other`-family reasons by their own text found **37** stating this
+checkable premise — the 32 the task named (across `content.css`,
+`review.css`, `submissions.css`, `styles.css`, `detail.css`, `comms.css`,
+`contacts.css`, `forms.css`, `scorecard.css`) plus 5 more the same textual
+gate legitimately admits (`contacts-panels.css` `:295`/`:997`,
+`overview.css`'s deadline-cell receipt, `settings.css`'s `<th>`-only
+column-width receipt). All 37 resolve **VERIFIED** against the real
+markup corpus, including the `forms.css` render-prop-nested one above.
+`UNVERIFIABLE-PREMISE` moves **77 -> 40**. `FALSE-PREMISE` stays **0**: no
+bare, unfloored anchor was found inside any of the 37 real containers this
+tier can now check — the whole population it resolves was already a true
+premise, not a defect this wave discovered.
+
+Both falsifiability controls this tier's siblings all carry ship in the
+scan file itself, run through the REAL matcher via dependency injection
+(a synthetic `MarkupFile[]` corpus, never a re-implementation): a
+container holding only `.chq-btn`-classed buttons resolves VERIFIED; the
+same container with one bare `<a>` added resolves FALSE-PREMISE.
+
 ## Verdict counts
 
-Wave 40 (task w40-f): re-measured directly (never by arithmetic), the
-population has grown to **101** receipts (three intervening waves' worth of
-new/edited receipts since wave 36's 98-receipt snapshot).
+Wave 44 (task w44-e): re-measured directly (never by arithmetic), the
+population has grown to **104** receipts (intervening waves' worth of
+new/edited receipts since wave 40's 101-receipt snapshot).
 
 | Verdict | Count | Meaning |
 |---|---|---|
-| VERIFIED | 25 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar). |
-| UNVERIFIABLE-PREMISE | 76 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
+| VERIFIED | 64 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar), or (5) wave-44's ANCHORLESS-CONTAINER tier (the receipted class's real markup holds no anchor, or only `.chq-btn`/`.chq-link-button`-classed ones). |
+| UNVERIFIABLE-PREMISE | 40 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet (and does not match the wave-44 anchorless-container shape either, or matches it but the receipted class is absent from the whole markup corpus), a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
+| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css`, see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
 
 ## The worked example (built this wave)
 
@@ -274,7 +350,7 @@ real text-control defect through the replaced-content door.
 
 `TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` was the campaign's last non-zero
 exit-predicate row with no in-flight owner. Its single offender —
-`app/src/pages/contacts/contacts.css:596`'s `scoped` receipt above
+`app/src/pages/contacts/contacts.css`'s `scoped` receipt above
 `.chq-contacts-drawer-actions-right` — was FALSE-PREMISE not because the
 receipt's underlying claim was wrong (the row genuinely renders only
 `.chq-btn`-classed `<button>` children, never a bare anchor) but because
@@ -306,7 +382,7 @@ its own premise (`.chq-btn` carries the shared phone floor) was already
 true.
 
 ## Full roster (98 rows)
-## Full roster (98-row wave-30 snapshot; NOT regenerated wave-to-wave except for rows a given wave's own task changed — the population is 101 as of wave 40, see "Verdict counts" above; the two rows wave 40 changed are updated in place below, the rest is historical)
+## Full roster (98-row wave-30 snapshot; NOT regenerated wave-to-wave except for rows a given wave's own task changed — the population is 104 as of wave 44, see "Verdict counts" above; the two rows wave 40 changed and the 37 rows wave 44 changed are updated in place below, the rest is historical)
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
@@ -331,55 +407,55 @@ true.
 | UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts:670` | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | modifier | `src/views/error-states.css.ts:46` | element-type tier: named element type(s) fieldset are not reached by any rule declaring min-height:44px anywhere in the tree |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:158` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:228` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:250` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:670` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:1235` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/comms/comms.css:228` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-bulkbar-actions container in the markup corpus (4 of 4 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/comms/comms.css:250` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-comms-template-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/comms/comms.css:670` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-comms-preview-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/comms/comms.css:1235` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-comms-phone-recent-head-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:2268` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css:295` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css:997` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts.css:581` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:23` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:143` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/contacts/contacts-panels.css:295` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-modal-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/contacts/contacts-panels.css:997` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-contacts-import-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/contacts/contacts.css:581` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-contacts-drawer-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:23` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-summary-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:143` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:432` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:504` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:671` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:761` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:879` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:504` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-comment-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:671` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-status-band-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:761` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-files-header-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/content/content.css:879` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-content-worklist-col-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:908` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css:348` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css:361` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/forms/forms.css:348` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-modal-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/forms/forms.css:361` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-forms-field-modal-actions-right container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s) -- found ONLY by recursing into ModalFrame's own actions={...} render-prop attribute. |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:148` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:564` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:608` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:316` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/overview/overview.css:608` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-overview-deadline-cell container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:316` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-decision-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:331` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1268` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1303` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1533` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1574` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1691` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:1268` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-editor-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:1303` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-scope-confirm-actions container in the markup corpus (3 of 3 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:1533` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-criteria-empty-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:1574` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-title-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/review.css:1691` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-editor-title-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1793` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/scorecard.css:98` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/settings/settings.css:2583` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/review/scorecard.css:98` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-review-editor-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/settings/settings.css:2583` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-settings-tokens-col-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/speakers/task-view.css:284` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:269` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:378` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:731` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:27` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:206` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:403` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:620` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:1157` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:997` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1365` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1388` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1444` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1704` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/detail.css:269` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-detail-participant-row-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/detail.css:378` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-detail-edit-form-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/detail.css:731` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-detail-participant-actions-cell container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/submissions.css:27` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-submissions-head-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/submissions.css:206` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-submissions-bulkbar-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/submissions.css:403` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-submissions-pagination-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/submissions.css:620` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-submissions-delete-footer-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/pages/submissions/submissions.css:1157` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-submissions-delete-footer-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/styles.css:997` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-contacts-drawer-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/styles.css:1365` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-modal-actions container in the markup corpus (2 of 2 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/styles.css:1388` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-bulkbar-actions container in the markup corpus (4 of 4 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/styles.css:1444` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-contacts-col-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-44)** | other | `app/src/styles.css:1704` | wave-30..40 point-in-time: reason family has no automated predicate. SUPERSEDED wave-44: container-anchor tier: every .chq-embeds-output-actions container in the markup corpus (1 of 1 occurrence(s) resolved) holds no anchor, or only chq-btn/chq-link-button-classed anchor(s). |
 | UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1772` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1948` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `app/src/styles.css:2879` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts:102` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts:104` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) — wave-44 stale-citation repair: this row cited `:102`, which no longer has a `tap-floor-exempt:` receipt at or above it; the file's edits since wave 30 shifted the same `.chq-wordmark`-as-`<span>` receipt this row has always described down to `:104`, corrected here without changing the row's verdict |
 | UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts:359` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `src/routes/public/css/chrome.css.ts:36` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `src/routes/public/css/rail.css.ts:671` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
