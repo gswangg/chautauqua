@@ -83,10 +83,16 @@ describe("v12m-w17-d: public event surfaces' classless anchor floor (DEC-393 wav
     assertExempt(src, "chq-pub-detail-speaker-link");
   });
 
+  // DEC-996 wave-35 (task w35-h) gave this anchor its own class token, so
+  // the classless-element roster can reach it; agenda.css.ts moved the same
+  // two rules (and the same tap-floor-exempt receipt, with the same
+  // grounding argument) from the ancestor-scoped `.chq-pub-agenda-day-footer
+  // a` selector onto `.chq-pub-agenda-day-footer-next`. The disposition is
+  // unchanged -- only the selector the receipt is scoped by.
   it("agenda.css.ts: agenda day-footer's next-day link is EXEMPT (inline-in-prose)", () => {
     const src = read("src/routes/public/css/agenda.css.ts");
     expect(src).toMatch(EXEMPT_GRAMMAR);
-    assertExempt(src, "chq-pub-agenda-day-footer a");
+    assertExempt(src, "chq-pub-agenda-day-footer-next");
   });
 
   it("markup: the three rail-day-row sites and the agenda block title carry no new class (ancestor-scoped selector reaches them)", () => {

@@ -83,6 +83,12 @@ vi.mock("../src/server/repo/review", async () => {
     // DEC-676: GET /api/v1/plans/:id surfaces this alongside the plan --
     // no evaluations recorded in these fixtures.
     countEvaluationsByRound: vi.fn(async () => ({})),
+    // DEC-929 wave-34 (task w34-d): the same GET now also reads the
+    // SUBMITTED-only delete-freeze predicate. Stubbed here for the same
+    // reason as countEvaluationsByRound -- the real implementation issues a
+    // drizzle db.select() this suite's `{}` db cannot serve, and these
+    // fixtures record no evaluations at all.
+    countSubmittedEvaluationsForPlan: vi.fn(async () => 0),
     advancePlanRound: vi.fn(async (_db: unknown, planId: string) => {
       if (planId !== plan.id) throw new Error("unknown plan");
       plan = { ...plan, currentRound: plan.currentRound + 1 };

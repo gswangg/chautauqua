@@ -21,7 +21,7 @@ honored citation for one of its child units would be exactly the borrowed
 citation DEC-582's own ledger prose forbids ("recorded, never omitted,
 never faked with a borrowed citation").
 
-**Wave 34 (v12m-w34-j) drained 7 of the 137** -- a genuine 1:1 artifact
+**Wave 34 (v12m-w34-j, ruled by DEC-582) drained 7 of the 137** -- a 1:1 artifact
 existed for each and each is now graded "honored" in
 `test/design-rulings-ledger.scan.test.ts`'s `UNIT_LEDGER`. See "Drained
 units (wave 34)" below. `RULING_UNIT_GAP_CEILING` moved `137` -> `130`
@@ -51,7 +51,7 @@ so that wave can **drain** the list below rather than re-derive it.
 
 `review-criteria-scale-or-choice::8`'s reason string cites the
 `planHasEvaluations` predicate only, never the refusal-message string --
-sibling lane `v12m-w34-d` was rewriting that copy concurrently, so pinning
+sibling lane `v12m-w34-d` (DEC-929) was rewriting that copy concurrently, so pinning
 the message text would have created a cross-lane merge collision over
 prose the guard predicate itself doesn't own. `password-reset::1` stays a
 gap: it is the document's own meta-narration about its drafting history

@@ -1,8 +1,13 @@
 // DEC-180/DEC-996 wave-35 amendment: pure unit tests over
 // scripts/render-sweep.ts's exported pure helpers only -- no playwright, no
-// live gate, no wrangler (this file must never import "playwright" or spawn
-// a process). Three things this wave's fix does, three things this file
-// checks:
+// live gate, no wrangler (this file must never take a dependency on the
+// playwright package, and must never spawn a process). NOTE: that sentence
+// deliberately does NOT spell the package name as a quoted module specifier
+// -- test/test-tiers.test.ts derives FAST/SLOW tier membership by regexing
+// import specifiers out of this file's RAW source, comments included, so
+// the phrase `import "<slow package>"` written in prose here would tier this
+// node-only file as SLOW and redden that check. Three things this wave's fix
+// does, three things this file checks:
 //   (1) the BLOCKING public mobile pass's control selector swap --
 //       MOBILE_CONTROL_SELECTOR (the hand-listed six-selector population)
 //       is retired from scripts/render-sweep.ts entirely, and the public

@@ -2019,6 +2019,11 @@ describe('PlanEditor render smoke', () => {
         ...plan(),
         criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
         evaluationCountsByRound: { '1': 3 },
+        // DEC-929 wave-34 (task w34-d): the Delete-plan freeze keys on the
+        // server's SUBMITTED-only predicate, never on evaluationCountsByRound
+        // (which counts drafts too) -- a draft-only plan stays deletable, so
+        // this fixture must say a submitted evaluation landed.
+        hasSubmittedEvaluation: true,
       },
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),

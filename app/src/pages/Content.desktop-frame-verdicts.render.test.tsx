@@ -153,6 +153,11 @@ describe('v12 Content DESKTOP (1600) frames: per-frame render verdict receipts (
     it('MATCHES: the chipstrip carries the three worklist tabs, in the frame\'s order, "Needs a decision" active by default', async () => {
       renderWorklist();
       await screen.findByRole('heading', { name: 'Content' });
+      // DEC-913: the chip counts ride the worklist response, which resolves
+      // AFTER the heading mounts -- wait for the first chip to carry its
+      // count before reading the strip, so a slow response can never be read
+      // as "the frame draws no counts".
+      await screen.findByRole('tab', { name: 'Needs a decision · 5' });
       const tabs = screen.getAllByRole('tab');
       // docs/design/Chautauqua Content.dc.html:65 (the active, filled pill) --
       // `<span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Needs a decision · 5</span>`

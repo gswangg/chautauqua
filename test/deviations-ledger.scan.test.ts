@@ -1000,6 +1000,51 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/agenda/BreaksPanel.render.test.tsx",
     },
   },
+  // ---- ## 10. Wave 35 rulings (DEC-393 wave-35 amendment) ---------------
+  // Three rung-3 outcomes of the inline-prose grounding ladder: the pack
+  // draws no standalone control and the surface carries no floored twin for
+  // any of the three destinations, so each link stays running-prose
+  // typography and the deviation is recorded. DEC-996 wave-35 gave each
+  // anchor its own `chq-` class token, which is what these rows cite -- the
+  // token IS the built artifact the ruling promises (an instrument-reachable
+  // receipt), and test/public-390-inline-link-grounding.test.ts pins all
+  // three end to end against the rendered HTML.
+  {
+    key: "cfp-new-speaker-create-an-account-src-routes-public-submit-views-tsx-chq-cfp-intro-cta-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 (task w35-b): neither the desktop nor the 390 'Submit a talk' frame extent draws this affordance at all, and no same-surface floored control reaches #chq-cfp-submit-form -- rungs 1 and 2 both fail, so the link keeps its line-box height. What IS built, per DEC-996 wave-35, is the anchor's own class token, so the exemption is scoped by token and reachable by the tap-floor instruments instead of living only in prose.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: '<a class="chq-cfp-intro-cta-link" href="#chq-cfp-submit-form">',
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
+  {
+    key: "cfp-already-have-an-account-sign-in-to-the-speaker-portal-src-routes-public-submit-views-tsx-chq-cfp-identity-note-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 (task w35-b): the same two frame extents draw no sign-in control, and the page carries no other floored control reaching /login -- rungs 1 and 2 fail for the identical reason as the entry above. The built artifact is the anchor's own DEC-996 class token, which scopes the tap-floor exemption by token.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/submit-views.tsx",
+      literal: '<a class="chq-cfp-identity-note-link" href="/login">',
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
+  {
+    key: "docs-login-reference-src-routes-docs-tsx-chq-docs-auth-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 (task w35-b): /docs/api has no v12 frame of any kind -- it is one of DEC-382's three operator 'chrome' surfaces, not a designed screen -- so rungs 1 and 2 fail by construction and the reference-page prose link stays unfloored. The built artifact is the anchor's own DEC-996 class token, which scopes the tap-floor exemption by token.",
+    honored: {
+      kind: "present",
+      file: "src/routes/docs.tsx",
+      literal: '<a class="chq-docs-auth-link" href="/login">',
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1197,8 +1242,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     }
   });
 
-  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all ten real headings", () => {
-    expect(LEDGER_SECTIONS.length).toBe(10);
+  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all eleven real headings", () => {
+    // Eleven since DEC-393 wave-35 (task w35-b) added "## 10. Wave 35 rulings".
+    expect(LEDGER_SECTIONS.length).toBe(11);
     for (const heading of LEDGER_SECTIONS) {
       expect(DEVIATIONS_TEXT.includes(heading), `expected DEVIATIONS.md to contain "${heading}"`).toBe(true);
     }
@@ -1217,7 +1263,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(18);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
     expect(bySection.get("## 9. Wave 34 rulings (DEC-021 wave-34 amendment)")).toBe(1);
-    expect(derived.length).toBe(82);
+    expect(bySection.get("## 10. Wave 35 rulings (DEC-393 wave-35 amendment): ungrounded inline-prose tap-floor links")).toBe(3);
+    expect(derived.length).toBe(85);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {

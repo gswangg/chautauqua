@@ -1307,5 +1307,24 @@ ${EMPTY_PHONE_CSS}
   .chq-portal-preview-banner-link {
     white-space: normal;
   }
+
+  /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-38 amendment (the
+     wave-35 grounding ladder's rung 2, discharged in the SHEET rather
+     than in JSX prose, which no instrument can read). tasks/views.tsx's
+     completed file_request card links the filename as a phrase inside one
+     running sentence, so a 44px box would break the line box it lives in.
+     The load-bearing premise is the floored same-surface twin
+     .chq-portal-version-link declared just above: VersionHistory renders
+     immediately below that paragraph and its current-version row resolves
+     the identical chain-latest file content (resolveTaskFileChainLatest
+     walks both anchors to the same file), while carrying the full floor
+     grammar (min-height:44px, centred flex, padding-inline:8px). No new
+     declaration -- this empty rule exists only so the exemption is scoped
+     by TOKEN, matching the JSX class token on the anchor
+     (chq-portal-file-link, written with no leading dot here so it is
+     never misread as the companion). DEC-385 single-direction: appended
+     as the last rule of this sheet's one terminal max-width block,
+     desktop byte-identical. */
+  .chq-portal-file-link {}
 }
 ${ERROR_STATES_PHONE_CSS}`;
