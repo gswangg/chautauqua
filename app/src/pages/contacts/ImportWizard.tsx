@@ -860,7 +860,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           vocabulary (DEC-124) by class name only; the file itself is never
           cleared by this state. */}
       {showFileWarning && (
-        <div className="chq-error-summary" role="alert">
+        <div className="chq-error-summary chq-contacts-import-file-warning" role="alert">
           <p className="chq-error-summary-heading">
             {badRows.length} of {allDataRows.length} rows have no email address
           </p>

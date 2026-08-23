@@ -1483,6 +1483,15 @@
    - the Speaker-portal chip set is 44px pills, filled for on/bordered for
      off (the existing .chq-pill/.chq-pill-static vocabulary, sized here). */
 
+/* Chautauqua Settings.dc.html:680 draws the Questions section note at
+   max-width:60ch (DEC-896 wave-52 pack-prose-measure repair). Own class
+   appended after the shared .chq-settings-note (app/src/styles.css), which
+   Saved embeds' own note also renders through at a different measure --
+   never widened there. */
+.chq-settings-questions-note {
+  max-width: 60ch;
+}
+
 @media (max-width: 700px) {
   .chq-settings-layout {
     display: block;

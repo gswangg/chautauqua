@@ -1529,6 +1529,7 @@ export function PlanEditor() {
             `submitted` gate, so a fresh draft never validates). */}
         {saveAttempted && Object.keys(errors).length > 0 && (
           <ErrorSummary
+            className="chq-review-plan-open-errors"
             heading={countHeading(Object.keys(errors).length, 'before this plan can open')}
             /* G13 lane-D fix (03-review--11): the two-clause sentence is
                drawn only in the two-problem state — as a constant it

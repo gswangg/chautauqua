@@ -1306,6 +1306,16 @@
   display: none;
 }
 
+/* Chautauqua Contacts.dc.html:784 draws the Import wizard's file-level
+   "N rows have no email address" warning block at max-width:64ch (DEC-896
+   wave-52 pack-prose-measure repair). Own class -- ImportWizard.tsx renders
+   this block as `.chq-error-summary chq-contacts-import-file-warning`,
+   never widening the shared .chq-error-summary rule every other
+   ErrorSummary/file-level-warning caller in the app also renders through. */
+.chq-contacts-import-file-warning {
+  max-width: 64ch;
+}
+
 @media (max-width: 700px) {
   /* -- from the former "Pipeline · 390" block ------------------------- */
   /* DEC-989 wave-w12-q: the Pipeline 390 frame draws ONE stage at a time,
