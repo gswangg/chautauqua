@@ -691,7 +691,35 @@ export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
  * excluded from the CANDIDATE count; the remaining 20 rows are bare
  * `a`/`input` tags with no class token the tree can be asked about.
  * Ceiling LOWERED 22 -> 20 with this re-derivation as its receipt
- * (DEC-967: measured, never invented). */
+ * (DEC-967: measured, never invented).
+ *
+ * DEC-808 wave-44 amendment (task w44-j): the remaining 20 rows -- bare
+ * `a`/`input` tags with no class token -- are re-resolved by ROUTE and TAG
+ * instead of class, via test/public-390-roster-tag-resolution.scan.test.ts.
+ * Two mechanisms: (1) an `a` tag can only be reached by a rule whose
+ * selector is the bare `a` (or an `a[…]` attribute form); src/views/theme.ts's
+ * `@media (max-width: 700px)` phone floor block contains no such rule
+ * (only the class-scoped `.chq-nav a`), and CSS selector reach does not
+ * vary by route, so this is checked once, not per route -- all 6 `a` rows
+ * (`/docs/api`, both agenda embeds, `/portal/tasks`, both `/submit/…`
+ * anchors) stay CANDIDATE. (2) an `input` row's `type` attribute is
+ * unrecoverable from the roster text -- the roster's own w=18px h=18px
+ * CANDIDATE geometry was the tell -- so each input-tag route was requested
+ * LIVE through the real app (`buildApp`/`app.request`, DEC-613, never a
+ * browser, never `gate:render-sweep`, DEC-644): `/submit/devflow-conf-2027`
+ * (11 rows) serves the DEC-986 Track/Session-format radio-card groups, all
+ * `type=radio`; `/portal/submissions/.../edit` (3 rows) serves the
+ * offered-tracks group, `type=checkbox`. theme.ts's bare-type floor rule
+ * names `input[type=search|text|email|tel|url|password|date|file]`, bare
+ * `select`/`textarea` -- radio and checkbox are absent from every list.
+ * HONEST RE-MEASUREMENT: 0 of the 20 rows reclassify FLOORED-SINCE-
+ * SNAPSHOT -- the hypothesis that the bare-type floor rule already covers
+ * this population is FALSE for all 20 (they are anchors, radios, and
+ * checkboxes, none of which the rule names). Re-measured count is EQUAL to
+ * 20, not higher -- per DEC-808 wave-38 clause (d) the ceiling stays at 20;
+ * this amendment's contribution is the receipt that a re-check happened,
+ * not a numeric change. See docs/design/audit/public-390-interactive-offenders-v12.md's
+ * own wave-44 section for the full route/tag re-derivation. */
 export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 20;
 
 /** DEC-808 wave-30 amendment clause (d), the vacuity clause: a route whose
