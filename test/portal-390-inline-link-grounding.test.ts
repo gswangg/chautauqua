@@ -146,6 +146,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: vi.fn(async (): Promise<EditableSubmissionData | null> => EDIT_DATA),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
   };
 });
 

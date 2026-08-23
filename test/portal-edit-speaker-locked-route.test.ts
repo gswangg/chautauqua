@@ -40,6 +40,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     // DEC-604: the GET handler now also renders the co-presenter list; this
     // suite has no fake db, so stub the participant query like the rest.
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
     saveSubmissionEdits: (...args: unknown[]) => saveSubmissionEditsMock(...args),
   };
 });

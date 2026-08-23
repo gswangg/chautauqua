@@ -208,6 +208,7 @@ describe("GET /portal/submissions/:id — Slides card zero-state (DEC-919 wave 5
         ...actual,
         loadEditableSubmission: vi.fn(async () => null),
         getPortalParticipants: vi.fn(async () => []),
+        getAllSubmissionParticipants: vi.fn(async () => []),
       };
     });
 
@@ -442,6 +443,7 @@ describe("GET /portal/submissions/:id/edit — ParticipantsSection zero-state (D
           selectedTrackIds: [],
         })),
         getPortalParticipants: vi.fn(async () => []),
+        getAllSubmissionParticipants: vi.fn(async () => []),
       };
     });
 

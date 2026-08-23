@@ -60,6 +60,7 @@ vi.mock("../src/server/repo/portal", async () => {
 vi.mock("../src/server/repo/portal-edit", () => ({
   loadEditableSubmission: vi.fn(async () => null),
   getPortalParticipants: vi.fn(async () => []),
+  getAllSubmissionParticipants: vi.fn(async () => []),
 }));
 
 // DEC-945 (wave-65 amendment): the 404 exercised below now renders via

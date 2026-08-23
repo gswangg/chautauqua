@@ -145,6 +145,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     ...actual,
     loadEditableSubmission: (...args: unknown[]) => loadEditableSubmissionMock(...(args as [])),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
     // addCoPresenter is intentionally the REAL implementation here (not
     // overridden) so this test exercises DEC-997's cap end-to-end.
   };

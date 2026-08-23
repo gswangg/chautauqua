@@ -169,6 +169,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
       formatLabel: null,
     })),
     getPortalParticipants: vi.fn(async () => []),
+    getAllSubmissionParticipants: vi.fn(async () => []),
   };
 });
 

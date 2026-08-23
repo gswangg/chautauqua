@@ -143,6 +143,19 @@ vi.mock("../src/server/repo/portal-edit", async () => {
         role: "presenter",
         roleLabel: "Presenter",
         visible: true,
+        inviteStatus: "accepted",
+      },
+    ]),
+    getAllSubmissionParticipants: vi.fn(async () => [
+      {
+        id: "p1",
+        contactId: "ct-1",
+        name: "Priya Raman",
+        email: "priya@example.com",
+        role: "presenter",
+        roleLabel: "Presenter",
+        visible: true,
+        inviteStatus: "accepted",
       },
     ]),
   };

@@ -284,6 +284,7 @@ async function requestPortalEditGet(): Promise<string> {
         formatLabel: null,
       })),
       getPortalParticipants: vi.fn(async () => []),
+      getAllSubmissionParticipants: vi.fn(async () => []),
     };
   });
   vi.doMock("../src/server/repo/forms", async () => {

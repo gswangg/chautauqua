@@ -436,32 +436,69 @@ export interface PortalParticipant {
   role: string;
   roleLabel: string;
   visible: boolean;
+  /** Wave-55 (w55-g): the raw invite_status column value ('none' | 'invited'
+   * | 'accepted' | 'declined', src/domain/invite-status.ts). Present on
+   * every row from both query below — getAllSubmissionParticipants needs it
+   * to draw a declined row's status; getPortalParticipants's own rows are
+   * already status-filtered to PORTAL_VISIBLE_INVITE_STATUSES, so on those
+   * rows it is informational only (never 'declined' — see that function's
+   * own filter). */
+  inviteStatus: string;
 }
+
+function toPortalParticipant(r: {
+  id: string;
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  visible: boolean;
+  nameAtTime: string | null;
+  inviteStatus: string;
+}): PortalParticipant {
+  return {
+    id: r.id,
+    contactId: r.contactId,
+    // DEC-866: `name` prefers the row's nameAtTime snapshot (set only by
+    // addCoPresenter) over the joined contact's live name — a matched
+    // existing contact's real CRM identity is never echoed back to the
+    // speaker who merely typed an email address. Rows this path did not
+    // create (nameAtTime NULL: the original CFP submitter, organizer
+    // invites) fall back to the live contact name exactly as before.
+    name: r.nameAtTime?.trim() || `${r.firstName} ${r.lastName}`.trim(),
+    email: r.email,
+    role: r.role,
+    roleLabel: participantRoleLabel(r.role),
+    visible: r.visible,
+    inviteStatus: r.inviteStatus,
+  };
+}
+
+const PARTICIPANT_SELECT_COLUMNS = {
+  id: schema.participant.id,
+  contactId: schema.participant.contactId,
+  firstName: schema.contact.firstName,
+  lastName: schema.contact.lastName,
+  email: schema.contact.email,
+  role: schema.participant.role,
+  order: schema.participant.order,
+  visible: schema.participant.visible,
+  nameAtTime: schema.participant.nameAtTime,
+  inviteStatus: schema.participant.inviteStatus,
+} as const;
 
 /** Current participants on one of the speaker's own submissions, in display
  * order. Caller is expected to have already scoped submissionId via
  * loadEditableSubmission — this performs no ownership check of its own.
  * Filters through PORTAL_VISIBLE_INVITE_STATUSES (mirrors
  * getPortalSubmissionDetail) so a declined invitation never shows here.
- * DEC-866: `name` prefers the row's nameAtTime snapshot (set only by
- * addCoPresenter, below) over the joined contact's live name — a matched
- * existing contact's real CRM identity is never echoed back to the speaker
- * who merely typed an email address. Rows this path did not create
- * (nameAtTime NULL: the original CFP submitter, organizer invites) fall
- * back to the live contact name exactly as before. */
+ * Kept narrow on purpose (DEC-317): this is the ACCESS-facing roster, not
+ * the cap-parity one — see getAllSubmissionParticipants below for the
+ * declined-inclusive list. */
 export async function getPortalParticipants(db: Db, submissionId: string): Promise<PortalParticipant[]> {
   const rows = await db
-    .select({
-      id: schema.participant.id,
-      contactId: schema.participant.contactId,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-      role: schema.participant.role,
-      order: schema.participant.order,
-      visible: schema.participant.visible,
-      nameAtTime: schema.participant.nameAtTime,
-    })
+    .select(PARTICIPANT_SELECT_COLUMNS)
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(
@@ -471,15 +508,29 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
       ),
     )
     .orderBy(schema.participant.order);
-  return rows.map((r) => ({
-    id: r.id,
-    contactId: r.contactId,
-    name: r.nameAtTime?.trim() || `${r.firstName} ${r.lastName}`.trim(),
-    email: r.email,
-    role: r.role,
-    roleLabel: participantRoleLabel(r.role),
-    visible: r.visible,
-  }));
+  return rows.map(toPortalParticipant);
+}
+
+/** Wave-55 (w55-g): every participant row on the submission, REGARDLESS of
+ * invite status — the same population the co-presenter cap pre-check in
+ * addCoPresenter (below) and the join table's uniqueIndex duplicate refusal
+ * both already count/collide against. getPortalParticipants (above) is
+ * deliberately narrower: PORTAL_VISIBLE_INVITE_STATUSES is an ACCESS
+ * predicate (files-authz.ts, portal/resources.ts) and widening it to
+ * include 'declined' would grant a declined contact read/write access
+ * (DEC-317). This is a list-only sibling query, not a widened filter — a
+ * declined co-presenter is a fact the edit screen must SHOW (DESIGN-
+ * RULINGS.md's "list is what a speaker checks before typing"), not a grant
+ * of anything. Caller is expected to have already scoped submissionId via
+ * loadEditableSubmission, same as getPortalParticipants. */
+export async function getAllSubmissionParticipants(db: Db, submissionId: string): Promise<PortalParticipant[]> {
+  const rows = await db
+    .select(PARTICIPANT_SELECT_COLUMNS)
+    .from(schema.participant)
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .where(eq(schema.participant.submissionId, submissionId))
+    .orderBy(schema.participant.order);
+  return rows.map(toPortalParticipant);
 }
 
 // DEC-604 (MAX_PARTICIPANTS_PER_SUBMISSION now lives in

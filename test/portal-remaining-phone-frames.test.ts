@@ -141,7 +141,7 @@ describe('"Portal · co-presenter rejected" 390 frame (docs/design/Chautauqua Pu
   });
 
   const participants: PortalParticipant[] = [
-    { id: "p-1", contactId: "ct-2", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
+    { id: "p-1", contactId: "ct-2", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true, inviteStatus: "accepted" },
   ];
   const DATA: EditableSubmissionData = {
     submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },

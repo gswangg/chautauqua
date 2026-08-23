@@ -81,6 +81,7 @@ const REJECTED_PARTICIPANT: PortalParticipant = {
   email: "priya@example.com",
   role: "speaker",
   roleLabel: "Speaker",
+  inviteStatus: "accepted",
   visible: true,
 };
 
@@ -214,6 +215,7 @@ vi.mock("../src/server/repo/portal-edit", async () => {
     // duplicate-email co-presenter POST can name her in the "Nobody was
     // added" callout exactly as :1314 draws it.
     getPortalParticipants: vi.fn(async () => [REJECTED_PARTICIPANT]),
+    getAllSubmissionParticipants: vi.fn(async () => [REJECTED_PARTICIPANT]),
     addCoPresenter: (...args: unknown[]) => addCoPresenterMock(...args),
   };
 });

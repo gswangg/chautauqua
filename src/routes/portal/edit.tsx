@@ -16,13 +16,14 @@ import {
 import {
   loadEditableSubmission,
   saveSubmissionEdits,
-  getPortalParticipants,
+  getAllSubmissionParticipants,
   addCoPresenter,
   CO_PRESENTER_DUPLICATE_MESSAGE,
   CO_PRESENTER_UNSAVED_MESSAGE,
   type EditableSubmissionData,
   type PortalParticipant,
 } from "../../server/repo/portal-edit";
+import { INVITE_STATUS_LABELS } from "../../domain/invite-status";
 import { formatEventDate } from "../../lib/event-time";
 import { dayLabelEndInstant } from "../../lib/timezone";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
@@ -404,15 +405,29 @@ function ParticipantsSection(props: {
         // list -- name flush left, role as a right-side micro-label, a 1px
         // hairline per row (portal.css.ts).
         <ul class="chq-portal-participants">
-          {participants.map((p) => (
-            <li class="chq-portal-participant-row">
-              <span class="chq-portal-participant-name">{p.name}</span>
-              <span class="chq-flag">{p.roleLabel}</span>
-              {!p.visible ? (
-                <span class="chq-portal-sub chq-portal-participant-sub">Not yet on the public site. Your organiser publishes co-presenters.</span>
-              ) : null}
-            </li>
-          ))}
+          {participants.map((p) =>
+            // Wave-55 (w55-g, DESIGN-RULINGS.md:301 "list is what a speaker
+            // checks before typing"): a declined co-presenter is a FACT the
+            // speaker must see here -- it is invisible to
+            // getPortalParticipants (DEC-317 access filter) but still
+            // counts toward the cap and still collides on re-add
+            // (CO_PRESENTER_DUPLICATE_MESSAGE) -- so it is drawn with its
+            // status and no action, never omitted and never actionable.
+            p.inviteStatus === "declined" ? (
+              <li class="chq-portal-participant-row">
+                <span class="chq-portal-participant-name">{p.name}</span>
+                <span class="chq-flag">{INVITE_STATUS_LABELS.declined}</span>
+              </li>
+            ) : (
+              <li class="chq-portal-participant-row">
+                <span class="chq-portal-participant-name">{p.name}</span>
+                <span class="chq-flag">{p.roleLabel}</span>
+                {!p.visible ? (
+                  <span class="chq-portal-sub chq-portal-participant-sub">Not yet on the public site. Your organiser publishes co-presenters.</span>
+                ) : null}
+              </li>
+            ),
+          )}
         </ul>
       )}
       {/* G13 (frames 10--09/23): the co-presenter block is a real section --
@@ -551,7 +566,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
-  const participants = await getPortalParticipants(c.var.db, submissionId);
+  const participants = await getAllSubmissionParticipants(c.var.db, submissionId);
 
   return c.html(
     <EditPage
@@ -628,7 +643,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
-    const participants = await getPortalParticipants(c.var.db, submissionId);
+    const participants = await getAllSubmissionParticipants(c.var.db, submissionId);
     // DEC-422/DEC-598 (wave-10 amendment): a repeated field is refused with
     // the shared house-voice message, merged alongside any other
     // per-field validation errors.
@@ -732,7 +747,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
-    const participants = await getPortalParticipants(c.var.db, submissionId);
+    const participants = await getAllSubmissionParticipants(c.var.db, submissionId);
     return c.html(
       <EditPage
         branding={portalData.branding}
@@ -760,7 +775,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
-  const participants = await getPortalParticipants(c.var.db, submissionId);
+  const participants = await getAllSubmissionParticipants(c.var.db, submissionId);
   return c.html(
     <EditPage
       branding={portalData.branding}
