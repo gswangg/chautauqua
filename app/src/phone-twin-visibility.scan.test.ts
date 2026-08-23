@@ -454,8 +454,14 @@ const CLASSLESS = ROSTER.filter((s) => s.verdict === "CLASSLESS-TWIN");
 // `profileDock` -- the live desktop double-Save root cause -- and
 // tasks/views.tsx's `tasksPageDockPrimary` dock). Never arithmetic, never a
 // snapshot: both ceilings below are read from this same ROSTER at seed time.
+//
+// LOWERED (task w44-f): profile.tsx's `profileDock` gained a
+// `.chq-portal-profile-dock` class (paired with `.chq-portal-actions-footer`
+// display:none-at-phone), closing the double-Save root cause the seed
+// comment named and re-grading that site VERIFIED. Two CLASSLESS-TWIN sites
+// remain: index.tsx's session-detail `dock` and tasks/views.tsx's `dock`.
 export const TWIN_VISIBILITY_OFFENDER_CEILING = 0;
-export const TWIN_VISIBILITY_CLASSLESS_CEILING = 3;
+export const TWIN_VISIBILITY_CLASSLESS_CEILING = 2;
 
 describe("phone twin-visibility ledger (w39-b, DEC-576)", () => {
   it("found exactly the five known dock={...} call sites under src/routes/portal/**", () => {

@@ -82,7 +82,7 @@ export interface SsrClasslessControlSite extends ClasslessTagSite {}
  * (already comment-stripped), excluding `<input type="hidden">`. */
 export function ssrClasslessControlSites(src: string): SsrClasslessControlSite[] {
   return classlessTagSites(src, SSR_CLASSLESS_CONTROL_TAGS, /\bclass(?:Name)?\s*=/, SSR_CLASS_ATTR_RE).filter(
-    (s) => !isHiddenInput(s),
+    (sel) => !isHiddenInput(sel),
   );
 }
 

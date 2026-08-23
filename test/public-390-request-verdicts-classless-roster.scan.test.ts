@@ -232,8 +232,4 @@ describe("public-390 classless-roster verdicts — per-row pins", () => {
     expect(hasExemptionForToken(css, "chq-cfp-intro-cta-link")).toBe(true);
     expect(hasExemptionForToken(css, "chq-cfp-identity-note-link")).toBe(true);
   });
-
-  it("zero OFFENDERS this wave: every one of the 17 graded public rows resolved VERIFIED or EXEMPT, so no floor CSS was added (a floor rule with no offender to floor would itself be dead code)", () => {
-    expect(true).toBe(true);
-  });
 });
