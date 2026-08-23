@@ -170,6 +170,67 @@ const NON_TEST_MODULES = ALL_MODULE_FILES.filter((f) => !isTestFile(f));
 // Import-specifier extraction
 // ---------------------------------------------------------------------------
 
+/** Strips `//` and `/* ... *\/` comments, string- and template-literal-aware
+ * (a naive `/\/\*[\s\S]*?\*\//` blind regex is itself unsafe here -- an
+ * unbalanced `/*`-looking sequence inside a template literal or regex
+ * literal makes it swallow real code up to the next unrelated `*\/`
+ * anywhere in the file; this walks char-by-char instead, copied verbatim
+ * from test/control-class-conformance.test.ts's own stripComments). Applied
+ * FIRST, before the type-only-import erasure below, so a comment merely
+ * quoting an `import ... from '...'`/`export ... from '...'`/`import(
+ * '...')` line (documentation prose, a decision note, a disabled-code
+ * example) is never mistaken for a real edge -- the exact
+ * un-stripped-source-regex family shape this codebase has now hit three
+ * times elsewhere (see test/unstripped-source-regex.scan.test.ts). */
+function stripComments(src: string): string {
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    const two = src.slice(i, i + 2);
+    if (two === "//") {
+      while (i < src.length && src[i] !== "\n") {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+    if (two === "/*") {
+      out += "  ";
+      i += 2;
+      while (i < src.length && src.slice(i, i + 2) !== "*/") {
+        out += src[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += "  ";
+      i += 2;
+      continue;
+    }
+    const ch = src[i]!;
+    if (ch === '"' || ch === "'" || ch === "`") {
+      out += ch;
+      i++;
+      while (i < src.length && src[i] !== ch) {
+        if (src[i] === "\\" && i + 1 < src.length) {
+          out += src[i];
+          i++;
+          out += src[i];
+        } else {
+          out += src[i];
+        }
+        i++;
+      }
+      if (i < src.length) {
+        out += src[i];
+        i++;
+      }
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+}
+
 /** Strips every `import type {...} from '...'`, `import type Foo from '...'`
  * and `export type {...} from '...'` statement out of the source, so the
  * generic extraction below never turns a type-only reference into a graph
@@ -187,7 +248,7 @@ const EXPORT_FROM_RE = /export\s+[^;]*?from\s*["']([^"']+)["']/g;
 const DYNAMIC_IMPORT_RE = /import\(\s*["']([^"']+)["']\s*\)/g;
 
 function extractSpecifiers(source: string): string[] {
-  const valueOnly = stripTypeOnlyImportExport(source);
+  const valueOnly = stripTypeOnlyImportExport(stripComments(source));
   const specs: string[] = [];
   for (const re of [IMPORT_FROM_RE, EXPORT_FROM_RE, DYNAMIC_IMPORT_RE]) {
     re.lastIndex = 0;
@@ -437,6 +498,12 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Spawned by scripts/walkthrough.ts via a runtime-computed `scripts/walkthrough/${area}.ts` path over " +
     "WALKTHROUGH_AREAS -- same shape as producer.ts, never a static import (scripts/walkthrough/stress.ts is a " +
     "sibling module but is instead a direct package.json entry, `gate:scale`, so it needs no ledger entry).",
+  "app/src/unstripped-source-regex-scan/ceiling.ts":
+    "Ratchet ceiling constant module (DEC-374 wave-39, task w39-f) -- its only importer is " +
+    "test/unstripped-source-regex.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Same shape as comment-blind-css-assertion-scan/ceiling.ts below: isolated into its " +
+    "own file so a worker re-measuring the ratchet touches only this constant, never the scan's " +
+    "detection machinery.",
   "app/src/comment-blind-css-assertion-scan/ceiling.ts":
     "Ratchet ceiling constant module (DEC-374 amendment, wave v12m-w8 task w8-ef) -- its only importer is " +
     "test/comment-blind-css-assertion.scan.test.ts, and test-file imports don't confer reachability (DEC-518). " +
