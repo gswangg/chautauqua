@@ -22,7 +22,7 @@ import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 // DEC-730: status tokens pair by density (dense matrix cell / roomy real
 // target, identical colour+weight) -- the waiting tab's status chips below
 // select the 'roomy' density on that ruling's authority.
-import { DEC_730 } from '../../../../src/decisions';
+import { DEC_730, DEC_825, DEC_989 } from '../../../../src/decisions';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -50,6 +50,13 @@ import './speakers.css';
 import './task-view.css';
 
 void DEC_730;
+// DEC-989 wave-54 (task w54-c): the bulk bar's `All {n}` phone select-all
+// control, present in both the idle and armed branches below, calls the
+// SAME toggleAll the desktop head-row checkbox uses -- the house's one
+// existing idiom for this capability (DEC-825, ContentApp.tsx :414's
+// `All {items.length}`), not a second vocabulary (DEC-613).
+void DEC_825;
+void DEC_989;
 
 type Tab = 'answered' | 'waiting';
 
@@ -479,11 +486,27 @@ export function TaskView() {
           content). */}
       <div className={selected.length > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}>
         {selected.length === 0 ? (
-          <span className="chq-bulkbar-hint">
-            {tab === 'answered'
-              ? 'Tick rows to mark complete, reopen, or export.'
-              : 'Tick rows to remind or mark not needed.'}
-          </span>
+          <>
+            <span className="chq-bulkbar-hint">
+              {tab === 'answered'
+                ? 'Tick rows to mark complete, reopen, or export.'
+                : 'Tick rows to remind or mark not needed.'}
+            </span>
+            {/* Phone-only (task-view.css's top-level display:none, flipped
+                visible inside the one terminal @media(max-width:700px)
+                block): the head-row select-all checkbox is hidden on phone
+                alongside the rest of that row, so this is the ONLY
+                select-all affordance reachable there. Present here too
+                (idle, nothing selected yet) so it is reachable before any
+                row is ticked, not only once the bar is armed. */}
+            <button
+              type="button"
+              className="chq-link-button chq-taskview-bulk-selectall"
+              onClick={toggleAll}
+            >
+              All {tabRows.length}
+            </button>
+          </>
         ) : (
           <>
             <span className="chq-bulkbar-count chq-taskview-bulk-count">{selected.length} selected</span>
@@ -535,6 +558,16 @@ export function TaskView() {
                   </button>
                 </>
               )}
+              {/* Phone-only, same control and handler as the idle branch
+                  above -- reachable whether or not anything is already
+                  selected. */}
+              <button
+                type="button"
+                className="chq-link-button chq-taskview-bulk-selectall"
+                onClick={toggleAll}
+              >
+                All {tabRows.length}
+              </button>
               <button type="button" className="chq-link-button chq-taskview-clear" onClick={() => setSelected([])}>
                 Clear
               </button>

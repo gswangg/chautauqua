@@ -139,6 +139,16 @@
   font-family: inherit;
 }
 
+/* DEC-989 wave-54 (task w54-c): phone-only select-all, reached the same
+   way the house's one existing idiom does (DEC-825, Content's Select-mode
+   `All {n}`). Sizeless at top level; the 44px floor grammar is applied
+   only inside the file's terminal @media(max-width:700px) block below
+   (DEC-385 single-direction) so desktop stays byte-identical -- the
+   desktop head-row checkbox is the only select-all control there. */
+.chq-taskview-bulk-selectall {
+  display: none;
+}
+
 /* Both tables: a header row closed by the 2px ink rule, rows separated by
    a hairline. The two tabs differ only in track widths and vertical
    alignment -- answers are baselined (the answer text wraps and must sit
@@ -323,9 +333,26 @@
     padding-inline: 10px;
   }
 
+  /* phone-hidden: .chq-taskview-bulk-selectall (this file, always-mounted
+     bulk bar) reaches the same select-all capability by class and
+     handler -- both this rule's checkbox and that button call the same
+     toggleAll (TaskView.tsx). Re-lined, not removed (DEC-989 wave-54,
+     task w54-c; wave-52's disposition-(c) real defect on this row is now
+     built). */
   .chq-taskview-answers .chq-taskview-head-row,
   .chq-taskview-waiting .chq-taskview-head-row {
     display: none;
+  }
+
+  /* DEC-989 wave-54: the phone-only select-all control, floored to the
+     44px grammar -- min-height + centred flex + non-zero horizontal
+     padding, only here in the terminal phone block (DEC-385
+     single-direction). */
+  .chq-taskview-bulk-selectall {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    padding-inline: 10px;
   }
 
   /* Meta-fidelity round 3 (docs/probes/metafid-round3-2026-08-20.md,

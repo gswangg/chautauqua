@@ -92,21 +92,24 @@ reaches the same capability by class and handler; one
 disposition (b), a verified navigation dead-end. One row — 21,
 `app/src/pages/speakers/task-view.css`'s `.chq-taskview-answers
 .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` —
-is disposition (c), a **REAL DEFECT**, DEC-808: no v12 phone (390) frame
+was disposition (c), a **REAL DEFECT**, DEC-808: no v12 phone (390) frame
 exists anywhere in the pack for this screen (`docs/design/Chautauqua
 Speakers.dc.html`'s only "Task response" frame is drawn at the 1600
 desktop width, line 597 onward, with no 390 companion), and hiding the
-head row removes the row's `toggleAll` "select every answer" /
+head row removed the row's `toggleAll` "select every answer" /
 "select everyone still waiting" checkbox with no phone-side replacement —
 `TaskView.tsx`'s per-row checkboxes still let a speaker select rows one
-at a time, but there is no single control anywhere in the phone surface
-that reaches the same select-all/select-none capability the desktop head
-checkbox provides. Left unreceipted; see Disposition below.
+at a time, but there was no single control anywhere in the phone surface
+that reached the same select-all/select-none capability the desktop head
+checkbox provides. Left unreceipted at wave-52's close; **built and
+receipted wave-54 (task w54-c)** — see Disposition below.
 `PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING` lowered from 21 to 13 (21 − 8
-receipted), measured (not assumed) by re-running the scan with the
-receipts in place. Desktop CSS is unchanged; only comments were added.
-Rows 3–8 and 13–18, all still under `app/src/pages/**`, are unchanged and
-remain unadjudicated below.
+receipted) at wave-52, then to 12 (13 − 1, row 21's receipt landing) at
+wave-54, each measured (not assumed) by re-running the scan with the
+receipts in place. Desktop CSS is unchanged; only comments (plus, for row
+21, a new phone-only control gated inside the file's one terminal phone
+block) were added. Rows 3–8 and 13–18, all still under
+`app/src/pages/**`, are unchanged and remain unadjudicated below.
 
 1. **RECEIPTED** `app/src/pages/agenda/agenda.css` — `.chq-agenda-armed-bar` — `app/src/pages/Agenda.tsx`. Disposition (b), verified navigation dead-end: the `onArm` setter for the bar's `armed` state is only ever passed to DayGrid/UnscheduledTray inside Agenda.tsx's `!isPhone` branch, so `armed` can never become truthy at 390 and the bar's own Unschedule/Cancel buttons (rendered only `{armed && ...}`) can never paint; PhoneAgenda keeps its own `armed` state and draws the equivalent `.chq-phone-footer-armed` footer band instead.
 2. **RECEIPTED** `app/src/pages/comms/comms.css` — `.chq-comms-main-landing` — `app/src/pages/Comms.tsx`. Disposition (a): re-lined as the sibling `.chq-comms-phone-landing` band (frame docs/design/Chautauqua Comms.dc.html:177, gated `isPhone`), whose own draft-card/Recent-Sends entry controls set `phoneEntered` true — the same flag that drops this class and reveals Compose/Templates/History here.
@@ -128,7 +131,7 @@ remain unadjudicated below.
 18. `app/src/pages/settings/settings.css` — `.chq-settings-public-pages-own-hidden` — `app/src/pages/settings/PublicPagesPanel.tsx`
 19. **RECEIPTED** `app/src/pages/speakers/speakers.css` — `.chq-speakers-grid-wrap` — `app/src/pages/speakers/OnboardingGrid.tsx`. Disposition (a): re-lined as `.chq-speakers-cards` immediately below — the frame's own "Matrix becomes one card per speaker" collapse (docs/design/Chautauqua Speakers.dc.html:130), same data, same row handlers.
 20. **RECEIPTED** `app/src/pages/speakers/speakers.css` — `.chq-speakers-head-actions` — `app/src/pages/speakers/OnboardingGrid.tsx`. Disposition (a): re-lined as `.chq-speakers-phone-head-actions` immediately below — the frame's own Remind outstanding / Filter phone action row (docs/design/Chautauqua Speakers.dc.html:141).
-21. **REAL DEFECT** `app/src/pages/speakers/task-view.css` — `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` (target token `chq-taskview-head-row`) — `app/src/pages/speakers/TaskView.tsx`. DEC-808: no v12 phone (390) frame exists for this screen at all — `docs/design/Chautauqua Speakers.dc.html`'s only "Task response" frame is drawn at the 1600 desktop width (line 597 onward), no 390 companion. Hiding the head row removes its `toggleAll` "select every answer"/"select everyone still waiting" checkbox with no phone-side replacement: per-row checkboxes remain reachable one at a time, but there is no single control anywhere on the phone surface that reaches the same select-all/select-none capability. Left unreceipted, ceiling unmoved by this row.
+21. **RECEIPTED** `app/src/pages/speakers/task-view.css` — `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` (target token `chq-taskview-head-row`) — `app/src/pages/speakers/TaskView.tsx`. Was disposition (c), a REAL DEFECT (DEC-808): no v12 phone (390) frame exists for this screen at all — `docs/design/Chautauqua Speakers.dc.html`'s only "Task response" frame is drawn at the 1600 desktop width (line 597 onward), no 390 companion — and hiding the head row removed its `toggleAll` "select every answer"/"select everyone still waiting" checkbox with no phone-side replacement. **BUILT wave-54 (task w54-c), now disposition (a)**: the always-mounted bulk bar renders an `All {n}` control (`.chq-taskview-bulk-selectall`, same file, floored to 44px only inside the terminal phone block), present in both its idle and armed branches, calling the same `toggleAll` this row's checkbox calls — the house's one existing select-all idiom (DEC-825, Content's `All {n}`), per DEC-989.
 22. **RECEIPTED** `app/src/styles.css` — `.chq-shell:has([data-chq-phone-head]) .chq-header` (target token `chq-header`) — reaches App.tsx's real shell header (the scan's own subtree resolution happened to report `src/routes/docs.tsx`, an unrelated standalone `/docs/api` page whose own unrelated `chq-header` class token also carries an `<a>`; App.tsx's shell header — the actual target of this selector — independently carries `.chq-nav` links and the Sign out button). Receipt: the opting-in page's own `data-chq-phone-head` band (back affordance) plus, for Sign out, that same drill-in's `data-chq-phone-signout` band (App.tsx); a reviewer — the only role that ever sets `data-chq-phone-head` — has a single primary section, so App.tsx's `PhoneTabBar` never mounts and there was no nav to lose.
 23. **RECEIPTED** `app/src/styles.css` — `.chq-nav` — `app/src/App.tsx` (Header). Receipt: duplicate of a twin that stays on screen — App.tsx's `PhoneTabBar` renders the same `NavLinks` data as the persistent bottom tab bar, plus the More sheet for sections that don't fit the primary slots.
 24. **RECEIPTED** `app/src/styles.css` — `.chq-header-identity .chq-user-identity` (target token `chq-user-identity`) — `app/src/App.tsx`. Receipt: duplicate of a twin that stays on screen — `PhoneTabBar`'s More sheet carries its own Sign out whenever a tab bar mounts; `app/src/styles.css`'s own very next rule (`.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity { display: inline-flex; }`) restores this identity block's Sign out whenever no tab bar mounts, so the capability is never actually lost at 390.
@@ -149,24 +152,33 @@ DEC-967 drift-proof citation and the css-comment-copy-leak scan's
 constraint on the two `src/routes/**/*.css.ts` rows).
 
 Rows 1, 2, 9, 10, 11, 12, 19, 20, 21 were adjudicated wave-52 (task
-w52-d). Eight take disposition (a) or (b) as recorded above, each named
+w52-d). Eight took disposition (a) or (b) as recorded above, each named
 by class and handler, never by quoting product copy. One — row 21,
 `app/src/pages/speakers/task-view.css`'s
 `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting
-.chq-taskview-head-row` — takes disposition (c), **REAL DEFECT** (DEC-808):
+.chq-taskview-head-row` — took disposition (c), **REAL DEFECT** (DEC-808):
 no v12 phone (390) frame exists in the pack for the Task response screen
 at all (`docs/design/Chautauqua Speakers.dc.html`'s only frame for it is
-drawn at the 1600 desktop width), and hiding the head row removes the
+drawn at the 1600 desktop width), and hiding the head row removed the
 row's `toggleAll` select-all/select-none checkbox with no phone-side
-replacement — per-row checkboxes remain but there is no single control
-that reaches the same bulk-selection capability at 390. This row is left
-unreceipted and unrepaired; it is not this task's population to repair,
-only to adjudicate and record.
+replacement — per-row checkboxes remained but there was no single control
+that reached the same bulk-selection capability at 390. It was left
+unreceipted and unrepaired at wave-52's close, not that task's population
+to repair, only to adjudicate and record.
 
-None of the seventeen adjudicated rows (wave-49's ten plus wave-52's
-eight receipted rows) required a CSS declaration/selector/media-query
-change — desktop is frozen and stays byte-identical; only
-`/* phone-hidden: */` comments were added, immediately above each rule.
+**Wave-54 (task w54-c) built and receipted row 21**, closing the
+campaign's last disposition-(c) row in this doc: it is now disposition
+(a), and the ten rows below (all still `app/src/pages/**`) are the only
+ones left unadjudicated.
+
+None of the eighteen adjudicated rows (wave-49's ten, wave-52's nine —
+eight receipted at the time plus row 21, now also receipted as of
+wave-54) required a CSS declaration/selector/media-query change to any
+EXISTING rule — desktop is frozen and stays byte-identical; only
+`/* phone-hidden: */` comments were added immediately above each hide
+rule, plus (row 21 only) a new phone-only `.chq-taskview-bulk-selectall`
+control and its own floor rule inside the file's one terminal phone
+block.
 
 Rows 3–8 and 13–18 (`app/src/pages/**`, 12 rows) were NOT receipted or
 repaired — out of scope for task w52-d, which owned exactly the nine rows
