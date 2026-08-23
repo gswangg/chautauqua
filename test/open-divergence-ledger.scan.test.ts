@@ -240,7 +240,12 @@ const AUDIT_FILE_FLOOR = 140;
 // measured against only their own branch's share of the corpus. Re-measured
 // live over the fully integrated tree and raised to the enumerator's own
 // printed count, per this test's own instruction.
-const TOKEN_ROW_FLOOR = 282;
+// RAISED 282 -> 291 (task w54-f, DEC-896 wave-54): this lane's 9 new
+// pack-grid-track-vocabulary-v12.md DESKTOP DIVERGENCE table rows each
+// carry the word "DIVERGENCE" in their own verdict cell, growing the
+// corpus by 9 -- per this test's own instruction, raised to the
+// enumerator's printed count in the same commit.
+const TOKEN_ROW_FLOOR = 291;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,

@@ -139,15 +139,15 @@ guess a correspondence a human has not confirmed.
 | `docs/design/Chautauqua Settings.dc.html:928` | Settings · editing the speaker portal | `1fr 170px auto` | not adjudicated this wave | UNMATCHED |
 | `docs/design/Chautauqua Settings.dc.html:986` | Settings · editing people and roles | `1fr 170px 190px auto` | `app/src/pages/settings/settings.css`'s `--chq-people-grid` resolves to `1fr 170px 190px 200px` — last track 200px where the frame draws `auto` (HAND-VERIFIED, DEC-896 wave-48) | UNMATCHED |
 | `docs/design/Chautauqua Settings.dc.html:990` | Settings · editing people and roles | `1fr 170px 190px auto` | `app/src/pages/settings/settings.css`'s `--chq-people-grid` resolves to `1fr 170px 190px 200px` — last track 200px where the frame draws `auto` (HAND-VERIFIED, DEC-896 wave-48) | UNMATCHED |
-| `docs/design/Chautauqua Speakers.dc.html:76` | Onboarding grid · 1600 | `230px repeat(6, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Speakers.dc.html:90` | Onboarding grid · 1600 | `230px repeat(6, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Speakers.dc.html:364` | Speaker detail · /admin/speakers/:contactId | `1fr 150px 130px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Speakers.dc.html:578` | Speakers · a write failed | `230px repeat(3, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Speakers.dc.html:581` | Speakers · a write failed | `230px repeat(3, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Submissions.dc.html:103` | Triage at volume · 1600 | `28px 74px 1fr 150px 130px 108px 92px 118px 64px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Submissions.dc.html:107` | Triage at volume · 1600 | `28px 74px 1fr 150px 130px 108px 92px 118px 64px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Submissions.dc.html:337` | Submission detail · /submissions/:id | `96px 1fr` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Submissions.dc.html:436` | CFP form builder · /submissions/forms | `18px 1fr 120px 92px auto` | not adjudicated this wave | UNMATCHED |
+| `docs/design/Chautauqua Speakers.dc.html:76` | Onboarding grid · 1600 | `230px repeat(6, 1fr)` | `app/src/pages/speakers/OnboardingGrid.tsx` renders `table.chq-speakers-grid`, a real `<table>`, not a CSS grid; `app/src/pages/speakers/speakers.css`'s `.chq-speakers-grid` uses `table-layout:fixed` with `th:first-child`/`td:first-child` fixed at `width:230px` (own comment: "DEC-730 wave-19 amendment: ... This is a real <table>, not a CSS grid, so the equivalent is table-layout:fixed plus a first-column width -- the browser then distributes the rest equally, same as the frame's repeat(6, 1fr)"), a documented mechanism substitution (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Speakers.dc.html:90` | Onboarding grid · 1600 | `230px repeat(6, 1fr)` | same row as `:76` — `.chq-speakers-grid` (`app/src/pages/speakers/speakers.css`) is a `table-layout:fixed` `<table>` with a 230px first column, never a CSS grid (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Speakers.dc.html:364` | Speaker detail · /admin/speakers/:contactId | `1fr 150px 130px` | `app/src/pages/speakers/speakers.css`'s `.chq-speaker-detail-sessions-row` ships `grid-template-columns: 1fr 150px 130px 110px;` — a fourth, 110px action track the frame's 3-track Sessions row does not draw (own comment: "USER RULING (release night): the detail page must not support LESS than the roster grid -- each session row carries its own participation menu in a fourth track"), a documented deliberate extra track (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Speakers.dc.html:578` | Speakers · a write failed | `230px repeat(3, 1fr)` | same `.chq-speakers-grid` table mechanism as `:76`/`:90` — this row is the onboarding grid's write-failed error state drawn with 3 task columns instead of 6 (`table-layout:fixed`, 230px first column, remainder distributed by the browser, not a CSS grid) (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Speakers.dc.html:581` | Speakers · a write failed | `230px repeat(3, 1fr)` | same row as `:578` — `.chq-speakers-grid` (`app/src/pages/speakers/speakers.css`) is the shared table, not a CSS grid (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Submissions.dc.html:103` | Triage at volume · 1600 | `28px 74px 1fr 150px 130px 108px 92px 118px 64px` | `app/src/pages/submissions/submissions.css`'s `.chq-submissions-table` is a `table-layout:fixed` `<table>`, not a CSS grid (own comment cites this exact frame line and track list by name, then documents six of eight fixed columns as wider than drawn: select `44px` vs `28px`, ref `88px` vs `74px`, speakers `164px` vs `150px`, track `144px` vs `130px`, status `122px` vs `108px`, sent `106px` vs `92px` — "G13 lane-D fix (02-submissions--00): ... six of eight columns were narrower than drawn, wrapping the seeded 'Developer Experience' track onto two lines. Fixed columns take the frame's widths; Title flexes with the surplus") (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Submissions.dc.html:107` | Triage at volume · 1600 | `28px 74px 1fr 150px 130px 108px 92px 118px 64px` | same row as `:103` — `.chq-submissions-table` (`app/src/pages/submissions/submissions.css`) is the same fixed-layout table, same six widened columns (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Submissions.dc.html:337` | Submission detail · /submissions/:id | `96px 1fr` | `app/src/pages/submissions/detail.css`'s `.chq-submission-history-row` ships `grid-template-columns: 118px 1fr;` — the "when" track widened from the frame's 96px (own comment: "w5-i: widened from 96px -- the 'when' cell now carries a time as well"), a documented deliberate divergence (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Submissions.dc.html:436` | CFP form builder · /submissions/forms | `18px 1fr 120px 92px auto` | `app/src/pages/forms/forms.css`'s `.chq-forms-field-row` ships `grid-template-columns: 20px 1fr 150px 108px auto;` against the frame's `18px 1fr 120px 92px auto` — three of five tracks differ (20px vs 18px, 150px vs 120px, 108px vs 92px); the file's own comment ("Grid columns mirror the mock's 20px/1fr/150px/108px/auto rhythm") cites an older mock's numbers, not this v12 frame line, so the divergence is real and currently unaddressed in-place (DEC-896 wave-54, HAND-VERIFIED) | DESKTOP DIVERGENCE |
 
 Total: 72 rows, matching `PACK_GRID_TRACK_UNMATCHED_CEILING`.
 
@@ -234,3 +234,65 @@ No row was left NOT ADJUDICATED: every one of the 17 has a confirmed
 shipped correspondence (a component, a class, and — where the file carries
 one — the comment explaining the gap). No CSS changed; no verdict here
 claims a repair.
+
+## Wave 54 (task w54-f): the Speakers + Submissions rows adjudicated
+
+DOCS ONLY (DEC-896) — no CSS byte moved, `PACK_GRID_TRACK_UNMATCHED_CEILING`
+stays at `72`. Two sibling lanes are draining this same table in parallel
+over disjoint rows this wave: `v12m-w54-d` and `v12m-w54-e` (per the
+planner's task text for this lane).
+
+Took the 5 `Chautauqua Speakers.dc.html` rows (`:76`, `:90`, `:364`, `:578`,
+`:581`) and the 4 `Chautauqua Submissions.dc.html` rows (`:103`, `:107`,
+`:337`, `:436`) — all 9 rows the doc's table names for those two frame
+files. All 9 resolve to **DESKTOP DIVERGENCE**; none is UNSERVED, none is
+NORMALISATION-GAP, and none is INSTRUMENT ARTEFACT — every extent is a real
+shipped screen with a live, hand-verified shipped counterpart, so the
+"different mechanism" and "different pixel count" findings below are
+genuine divergences the scan's three normalisation transforms
+(whitespace collapse, `minmax(0,X)`→`X`, top-level `var()` resolution)
+cannot and should not erase.
+
+Tally: **9 DESKTOP DIVERGENCE, 0 UNSERVED, 0 NORMALISATION-GAP,
+0 INSTRUMENT ARTEFACT.**
+
+Two shapes, both real and both pre-existing (neither introduced nor
+repaired by this lane):
+
+1. **A `<table>` with `table-layout:fixed` stands in for the frame's CSS
+   grid.** `:76`/`:90`/`:578`/`:581` (Speakers onboarding grid,
+   `.chq-speakers-grid` in `app/src/pages/speakers/speakers.css`) and
+   `:103`/`:107` (Submissions triage grid, `.chq-submissions-table` in
+   `app/src/pages/submissions/submissions.css`) both ship as real
+   `<table>` elements with `table-layout:fixed` and a fixed first-column
+   width, relying on the browser to distribute the remaining columns —
+   the same "different layout technique" shape wave 51 recorded for
+   Contacts' `:130`/`:292` flex rows. The Speakers table's own comment
+   states the substitution is deliberate and pixel-equivalent
+   ("This is a real `<table>`, not a CSS grid, so the equivalent is
+   table-layout:fixed plus a first-column width -- the browser then
+   distributes the rest equally, same as the frame's repeat(6, 1fr)").
+   The Submissions table's own comment names the exact frame line
+   (`:103`/`:107`) and track list, then documents that six of its eight
+   fixed columns are wider than drawn (28→44, 74→88, 150→164, 130→144,
+   108→122, 92→106), a second, additive divergence layered on top of the
+   mechanism substitution.
+
+2. **A real `grid-template-columns` declaration, with one or more tracks
+   pixel-diverged from the frame, each with an in-place comment.**
+   `:364` (Speaker detail Sessions row) ships a fourth 110px action track
+   the frame's 3-track row never draws — a "USER RULING (release night)"
+   comment names the reason (a per-session participation menu). `:337`
+   (Submission detail History row) ships its "when" track at 118px against
+   the frame's 96px — a "w5-i" comment names the reason (the cell now
+   carries a time as well as a date). `:436` (CFP form builder Field row)
+   ships `20px 1fr 150px 108px auto` against the frame's
+   `18px 1fr 120px 92px auto` — three of five tracks differ, and unlike the
+   other rows in this shape the file's own comment ("mirrors the mock's
+   20px/1fr/150px/108px/auto rhythm") is citing an *older* mock's numbers
+   rather than this v12 frame line, so this one divergence is real,
+   currently undocumented against the CURRENT frame, and left as found
+   — not repaired, per this instrument's docs-only scope.
+
+No row was left NOT ADJUDICATED. No CSS changed; no verdict here claims a
+repair; desktop stays frozen.
