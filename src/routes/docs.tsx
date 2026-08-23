@@ -61,7 +61,7 @@ function DocsPage() {
                     /docs/api has no v12 frame at all (DEC-382: this page is
                     operator chrome, not a designed screen), so the wave-35
                     ladder's rung 1/2 both fail for want of anything to draw
-                    from. Recorded as DEVIATIONS.md §9's third entry (rung
+                    from. Recorded as DEVIATIONS.md §10's third entry (rung
                     3). No `tap-floor-exempt:` receipt: that grammar is the
                     tap-floor-exempt-premise instrument's own population
                     (test/tap-floor-exempt-premise.scan.test.ts), scoped to

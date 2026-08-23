@@ -74,7 +74,7 @@ export const TOOLS_CSS = `
        w35-b): src/routes/docs.tsx's Authentication section links "/login"
        inside one running sentence ("log in via the browser at /login;
        ..."). Grounded per the wave-35 ladder and recorded as
-       DEVIATIONS.md §9's third entry (rung 3, not rung 1/2): /docs/api has
+       DEVIATIONS.md §10's third entry (rung 3, not rung 1/2): /docs/api has
        no v12 frame at all (DEC-382: this page is operator chrome, not a
        designed screen), so there is nothing to draw a standalone control
        or a same-surface floored twin from. No new declaration: this empty

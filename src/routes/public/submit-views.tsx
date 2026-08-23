@@ -630,7 +630,7 @@ export function SubmitPage(props: {
               :891-1010 / :1017-1065) draws "Create an account" as a
               standalone control or a same-surface floored twin reaching
               #chq-cfp-submit-form (rung 1/2 both fail), so this is recorded
-              as DEVIATIONS.md §9's first entry (rung 3) rather than left
+              as DEVIATIONS.md §10's first entry (rung 3) rather than left
               silent. The anchor now carries its own class token (DEC-996
               wave-35: chq-cfp-intro-cta-link, no leading dot here -- a
               dotted literal reads as a grounding claim to this file's own
@@ -796,7 +796,7 @@ export function SubmitPage(props: {
             Public and Portal.dc.html :891-1010 / :1017-1065) draws "Sign in
             to the speaker portal" as a standalone control, and this page
             carries no other floored control reaching /login (rung 1/2 both
-            fail) -- recorded as DEVIATIONS.md §9's second entry (rung 3).
+            fail) -- recorded as DEVIATIONS.md §10's second entry (rung 3).
             The anchor now carries its own class token (DEC-996 wave-35:
             chq-cfp-identity-note-link, no leading dot here -- a dotted
             literal reads as a grounding claim to this file's own scan,
