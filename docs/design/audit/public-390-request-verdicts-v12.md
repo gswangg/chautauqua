@@ -133,7 +133,15 @@ table below — not a third copy of the request assertions themselves.
 
 ## Classless-interactive-element roster (task w35-h, DEC-996 wave-35)
 
-Measured at sha `1e38e4182` (branch `v12m-w35-h`, off `main`). `app/src/phone-tap-target-ssr-classless-anchor.scan.test.ts`'s `SSR_CLASSLESS_ANCHOR_CEILING` grades a classless `<a>` by walking outward to its nearest ENCLOSING `chq-` token — a live render sweep keying on the ELEMENT's own class reads a different, larger population from the identical markup (wave-35 field-guide finding). This section widens that same walk (`classlessTagSites` in `app/src/phone-tap-target-scan/core.ts`) to every interactive tag — `<a>`, `<button>`, `<input>`, `<select>`, `<textarea>` — declaring no `class`/`className` attribute at all, over `src/routes/public/**` and `src/routes/portal/**`. **This section only makes the population visible; it fixes nothing** (same discipline as the existing per-frame table above, which grades, and this new section, which only rosters).
+**Moved** (custodian task custodian-docs_design_audit_public_390_request_verdicts_v12_md,
+contention decomposition — this file had drawn 4 merge conflicts): the
+full "Classless-interactive-element roster" section, and its "Public-row
+verdicts" follow-on (task w39-e, DEC-996 wave-39 amendment), now live in
+`docs/design/audit/public-390-classless-roster-v12.md`, verbatim, no
+wording or verdict changed. This file keeps only the pointer above the
+old section heading so nothing above line 133 shifts and every existing
+`public-390-request-verdicts-v12.md:<line<=133>` citation into the
+sections above keeps resolving.
 
 **Population: 59 classless interactive elements, none reaching any enclosing `chq-` token** (every row below reads `(no enclosing chq- token)` — no CSS rule anywhere in the tree could reach any of them by class selector, so none of these 59 can be VERIFIED, UNVERIFIABLE, or FALSE under `tap-floor-exempt-premise`'s grammar; they are simply invisible to it). 37 of the 59 are `<input type="hidden">` — inert, unrendered, out of the tap-floor population by construction (no visible surface, nothing to tap) — leaving **22 real candidate rows**: 15 `<a>`, 6 visible `<input>` (text/checkbox-shaped, not hidden), 1 `<select>`.
 
