@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Wave-44 amendment: every declared ratchet gets a bucket in the same commit, and a parked promotion promise is discharged by a rule or by a clause-(b) refusal — never by silence";
+export const DEC_069 = "Wave-45 amendment: discharge wave 44's bucket ruling IN THE TREE — two live-0 conformance rows were awarded and never taken";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
