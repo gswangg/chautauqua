@@ -185,19 +185,20 @@ const AUDIT_FILE_FLOOR = 140;
 // RAISED 266 -> 283 (wave-50..54 megabatch integration): the two branch
 // values arbitrated at merge time (w51-d's 265, w52-e's 266) were each
 // measured against only their own branch's share of the corpus; the
-// wave-50..53 lanes re-measured the integrated tree at 282, task
-// v12m-w54-d's pack-grid-track-vocabulary-v12.md edit (9 rows adjudicated +
-// one new "Wave 54" section, all DEC-896-tagged) added one further
-// DIVERGES-token row, and task v12m-w54-e's Settings+Content adjudication of
-// the same table added six DESKTOP DIVERGENCE verdicts (Settings :134/:150/
-// :220/:825/:844, Content :146) -- "DIVERGENCE" shares this scan's `diverg`
-// stem. Every new occurrence carries its DEC-896 citation in the same table
-// row/paragraph, so OPEN_DIVERGENCE_CEILING is untouched; only this
-// staleness floor moves, per this test's own instruction, in the same commit
-// that grows the corpus. Re-measured live over the fully integrated tree and
-// raised to the enumerator's own printed count, never computed by arithmetic
-// in this comment.
-const TOKEN_ROW_FLOOR = 288;
+// wave-50..53 lanes re-measured the integrated tree at 282, and the three
+// wave-54 pack-grid-track adjudication lanes each grew the same table's
+// DIVERGENCE-carrying verdict cells: task v12m-w54-d (9 rows + one new
+// "Wave 54" section), task v12m-w54-e (6 DESKTOP DIVERGENCE verdicts,
+// Settings :134/:150/:220/:825/:844 and Content :146) and task v12m-w54-f
+// (9 DESKTOP DIVERGENCE verdicts, Speakers :76/:90/:364/:578/:581 and
+// Submissions :103/:107/:337/:436) -- "DIVERGENCE" shares this scan's
+// `diverg` stem. Every new occurrence carries its DEC-896 citation in the
+// same table row/paragraph, so OPEN_DIVERGENCE_CEILING is untouched; only
+// this staleness floor moves, in the same commit that grows the corpus.
+// Re-measured live over the fully integrated tree and raised to the
+// enumerator's own printed count, never computed by arithmetic in this
+// comment.
+const TOKEN_ROW_FLOOR = 291;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
