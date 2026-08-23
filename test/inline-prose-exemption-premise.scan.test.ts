@@ -274,12 +274,44 @@ function judgeByDeviation(receipt: InlineReceipt, sections: DeviationSection[]):
   };
 }
 
+/** Rung 0 (DEC-393 wave-52 amendment): a receipt can ground itself, with no
+ * companion at all, when its OWN receipted class(es) -- merged across EVERY
+ * rule in the swept corpus whose selector mentions any of those tokens
+ * (this codebase's cascade-merge idiom: a base/desktop rule declares
+ * flex/centring, a later grouped phone-media rule adds min-height/padding
+ * for the SAME selector, and the floor lives in the cascade, not any one
+ * rule) -- already satisfy the full 44px-floor grammar (min-height>=44px +
+ * centred flex + non-zero horizontal padding). This runs BEFORE the
+ * companion-class search (rung 2) and before the UNVERIFIABLE/rung-3
+ * fallthrough, because a receipt that floors itself needs no other class's
+ * testimony at all. */
+function selfFloored(receipt: InlineReceipt, allChunks: Array<{ selector: string; body: string }>): boolean {
+  if (receipt.receiptedClasses.length === 0) return false;
+  const bodies: string[] = [];
+  for (const token of receipt.receiptedClasses) {
+    const tokenRe = new RegExp(`\\.${escapeRe(token)}(?![\\w-])`);
+    for (const c of allChunks) {
+      if (tokenRe.test(c.selector)) bodies.push(c.body);
+    }
+  }
+  if (bodies.length === 0) return false;
+  const merged = bodies.join("\n");
+  return hasMinHeightFloor(merged) && hasFlexCenter(merged) && horizontalPaddingNonZero(merged);
+}
+
 export function judgeInlineReceipt(
   receipt: InlineReceipt,
   allChunks: Array<{ selector: string; body: string }>,
   allText: string,
   deviationSections: DeviationSection[] = [],
 ): InlineRosterRow {
+  if (selfFloored(receipt, allChunks)) {
+    return {
+      ...receipt,
+      verdict: "GROUNDED",
+      detail: `own receipted class(es) [${receipt.receiptedClasses.join(", ")}] satisfy min-height:44px + centred flex + non-zero horizontal padding, merged across every matching rule in the swept corpus (self-floored, no companion needed, DEC-393 wave-52 amendment)`,
+    };
+  }
   const mentioned = [...receipt.reason.matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string);
   const companion = mentioned.find((c) => !receipt.receiptedClasses.includes(c));
   if (!companion) {
@@ -369,10 +401,22 @@ export const INLINE_PROSE_UNGROUNDED_CEILING = 0;
 // selector's `:not(.chq-btn)` clause makes chq-btn a self-token rather
 // than a usable companion for THIS receipt, chq-btn-primary alone
 // declares no centred-flex anywhere in the tree, and DEVIATIONS.md
-// carries no entry for this specific link. Seeded by forcing this
-// constant to -1, running this file, and reading the printed count back
-// -- never by arithmetic.
-export const INLINE_PROSE_UNVERIFIABLE_CEILING = 1;
+// carries no entry for this specific link.
+// WAVE 52 (task w52-b, DEC-393 wave-52 amendment): 1 -> 0. The instrument
+// was missing a rung: the survivor's own receipted selector
+// (.chq-cfp-confirm-actions a:not(.chq-btn)) is ALSO the selector
+// cfp.css.ts's phone media block floors directly (min-height:44px +
+// display:inline-flex + align-items:center + padding:0 2px, at
+// cfp.css.ts:344) -- the receipt needed no companion's testimony at all,
+// it floors ITSELF, merged across its own base (colour) rule and its own
+// phone-media rule the same cascade-merge idiom already used for
+// companions. Added rung 0 (self-floored): before the companion search
+// and before the UNVERIFIABLE/rung-3 fallthrough, check whether the
+// receipt's own receiptedClasses tokens, merged across every rule in the
+// swept corpus that mentions them, already satisfy the full floor
+// grammar. Seeded by forcing this constant to -1, running this file, and
+// reading the printed count back -- never by arithmetic.
+export const INLINE_PROSE_UNVERIFIABLE_CEILING = 0;
 
 describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-393 wave-35 amendment)", () => {
   it("population sanity: walked a non-trivial number of real inline receipts (vacuous-population tripwire, DEC-999)", () => {
@@ -446,6 +490,31 @@ describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-39
     for (const row of ROSTER) {
       expect(["GROUNDED", "UNGROUNDED", "UNVERIFIABLE", "GROUNDED-BY-DEVIATION"]).toContain(row.verdict);
     }
+  });
+
+  it("rung 0 positive control: a receipt whose OWN receipted class is floored (merged across its rules, no companion) resolves GROUNDED / self-floored", () => {
+    const receipt: InlineReceipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "inline-in-prose -- a phrase inside a running sentence, no companion class named here",
+      receiptedClasses: ["chq-fake-self-floor"],
+    };
+    const chunks = [{ selector: ".chq-fake-self-floor", body: "display:flex; align-items:center;" }, { selector: ".chq-fake-self-floor", body: "min-height:44px; padding:0 8px;" }];
+    const verdict = judgeInlineReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("GROUNDED");
+    expect(verdict.detail).toMatch(/self-floored/);
+  });
+
+  it("rung 0 negative control: a receipt whose OWN receipted class declares min-height but no flex/padding stays UNVERIFIABLE", () => {
+    const receipt: InlineReceipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "inline-in-prose -- a phrase inside a running sentence, no companion class named here",
+      receiptedClasses: ["chq-fake-self-floor-partial"],
+    };
+    const chunks = [{ selector: ".chq-fake-self-floor-partial", body: "min-height:44px;" }];
+    const verdict = judgeInlineReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE");
   });
 });
 
