@@ -21,10 +21,13 @@ honored citation for one of its child units would be exactly the borrowed
 citation DEC-582's own ledger prose forbids ("recorded, never omitted,
 never faked with a borrowed citation").
 
-**Wave 34 (ruled by DEC-582) drained 7 of the 137** -- a 1:1 artifact
-existed for each and each is now graded "honored" in
-`test/design-rulings-ledger.scan.test.ts`'s `UNIT_LEDGER`. See "Drained
-units (wave 34)" below. `RULING_UNIT_GAP_CEILING` moved `137` -> `130`
+**7 of the 137 are now honored, each by an artifact its own words name**
+(DEC-582 wave-34 amendment: a unit is honored only by an artifact its OWN
+words name, never by borrowing its parent heading's citation) -- each is
+graded "honored" in `test/design-rulings-ledger.scan.test.ts`'s
+`UNIT_LEDGER`. See "Drained units (wave 34)" below for the full artifact
+list; branch provenance for this drain is recorded on DEC-582 itself
+(wave-40 amendment), not here. `RULING_UNIT_GAP_CEILING` moved `137` -> `130`
 (two-sided ratchet, `test/design-rulings-ledger.scan.test.ts`), measured
 by forcing the constant to `-1` and reading the failing assertion's count
 back, per the ratchet's own instructions -- never computed by arithmetic
@@ -50,13 +53,14 @@ so that wave can **drain** the list below rather than re-derive it.
 | `password-reset::5` | `src/routes/auth-views.tsx` ("Send a fresh link") | `test/password-reset-flow.test.ts` |
 
 `review-criteria-scale-or-choice::8`'s reason string cites the
-`planHasEvaluations` predicate only, never the refusal-message string --
-a concurrent sibling lane (DEC-929) was rewriting that copy at the same time, so pinning
-the message text would have created a cross-lane merge collision over
-prose the guard predicate itself doesn't own. `password-reset::1` stays a
-gap: it is the document's own meta-narration about its drafting history
-("An earlier draft of this document called it proposed new work"), not a
-claim with a code artifact of its own.
+`planHasEvaluations` predicate only, never the refusal-message string:
+a unit's honoring artifact is the artifact its OWN words name (DEC-582
+wave-34 amendment), and pinning prose a concurrently-owned lane was still
+rewriting is never that artifact (DEC-582 wave-40 amendment records which
+branch owned the copy). `password-reset::1` stays a gap: it is the
+document's own meta-narration about its drafting history ("An earlier
+draft of this document called it proposed new work"), not a claim with a
+code artifact of its own.
 
 Every gap row, named by key, parent heading, and its own words (truncated
 to ~160 chars where long):

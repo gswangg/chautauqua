@@ -402,6 +402,134 @@ export function eyebrowIsMatchedBySkeleton(text: string): boolean {
   return labelIsMatched(skeleton, SKELETON_SOURCE_BLOBS);
 }
 
+// -- WAVE 40 (DEC-808/DEC-986 amendment; task w40-c): composed-template
+// resolver, over the primary + skeleton tiers' miss bucket only -----------
+// The 14 DIGIT_COMPOSED + 2 NO_DIGIT_COMPOSED rows below were, before this
+// wave, hand-verified UNRESOLVED misses -- a human read the cited source
+// expression and confirmed it composes the frame's exact string at
+// render time, but the join techniques above (verbatim, skeleton) cannot
+// SEE that: they compare whole strings, and a composed string is never one
+// contiguous literal in the source. This pass widens the join itself so the
+// machine can reproduce that hand verification, the same "template with an
+// interpolated value" shape the skeleton pass already resolves for a purely
+// numeric interpolation (e.g. 'In 6 days').
+//
+// Two source shapes carry a literal-text-plus-hole composition in this
+// pack: a JSX text node (`>...{expr}...<`) and a template literal
+// (`` `...${expr}...` ``), both already present verbatim in
+// NORMALIZED_SOURCE_BLOBS (comments stripped, entities decoded, case-
+// folded, whitespace collapsed -- DEC-613, no second stripper). For each
+// such phrase this pass finds, it builds a regex: every non-hole segment is
+// matched LITERALLY, and every hole (`{...}` / `${...}`, braces not
+// nested -- this pass does not attempt a full JS parse, DEC-180: a
+// discriminator narrows the miss classification, it never claims more than
+// it can prove) is a `.+?` requiring AT LEAST ONE character, never a
+// zero-width gap. That last clause is the whole difference between a real
+// resolver and a rule that would just wave through anything containing the
+// template's static words: a frame string equal to only the static half
+// (the hole position rendered empty) must NOT match, or this pass would
+// stop being a join and become a substring existence check (DEC-099's
+// negative control below proves exactly this).
+//
+// A phrase whose hole(s) leave no non-whitespace literal segment (e.g. a
+// JSX text node that is nothing but `{expr}`, no surrounding words -- the
+// 390 header's `eventDatesLine(event)` row, :374 below) is dropped
+// entirely: a lone hole with no static anchor cannot discriminate a real
+// composition from any other string, and building a regex for one would
+// make this pass a tautology. That row, and the two genuinely
+// two-sibling-node rows (a count in an ADJACENT DOM node, or a CSS
+// `::before` prefix), stay UNRESOLVED -- correctly: no single-text-node
+// join can ever see across a sibling boundary, so the hand-verification
+// this pass targets was never claiming those three would resolve.
+const HOLE_RE = /\$?\{[^{}]*\}/;
+const HOLE_RE_G = /\$?\{[^{}]*\}/g;
+const JSX_TEXT_NODE_RE = />([^<]*)</g;
+const TEMPLATE_LITERAL_RE = /`([^`]*)`/g;
+
+function escapeRegExpLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Builds a whole-string regex from a composed phrase (a JSX text node or
+ * template-literal body already containing at least one hole): every
+ * literal segment between holes is escaped and matched verbatim, every
+ * hole becomes `.+?` (one-or-more, never zero-width). Returns null for a
+ * phrase with no hole, or whose only non-empty content IS a hole (no
+ * static anchor -- see module note above). Exported so the DEC-099
+ * positive/negative controls below can drive it directly against a
+ * fabricated phrase, never a live product string. */
+// A floating punctuation-only separator (`{a} · {b}`, zero alnum chars in
+// every literal segment) produced a regex as loose as `/^.+? · .+?$/` --
+// measured directly this wave: that ONE pattern matched 15 of this file's
+// 62-row population, including rows with no relationship whatsoever to the
+// phrase that derived it. Requiring a minimum amount of real WORD content
+// (letters/digits, not just spaces and separators) across the literal
+// segments is what turns "the static half of the template" into an actual
+// anchor rather than a punctuation coincidence -- this is the DEC-099
+// negative control's own clause, enforced structurally rather than merely
+// tested for.
+const ALNUM_RE = /[A-Za-z0-9]/g;
+const MIN_LITERAL_ALNUM_CHARS = 6;
+
+function totalAlnumChars(parts: string[]): number {
+  return parts.reduce((sum, p) => sum + (p.match(ALNUM_RE)?.length ?? 0), 0);
+}
+
+export function buildComposedTemplateRegex(phraseRaw: string): RegExp | null {
+  // Trimmed first: the extracted phrase carries whatever leading/trailing
+  // whitespace the source's own indentation collapsed to (a single space
+  // either side of a JSX text node's newline), but the eyebrow candidate
+  // this regex is tested against is always already `.trim()`-ed (see
+  // `eyebrowsInFrameText` above and the needle trim below) -- an untrimmed
+  // edge would anchor `^`/`$` against a space the trimmed needle can never
+  // supply, turning a real composition into a false miss.
+  const phrase = phraseRaw.trim();
+  if (!HOLE_RE.test(phrase)) return null;
+  const parts = phrase.split(HOLE_RE_G);
+  if (totalAlnumChars(parts) < MIN_LITERAL_ALNUM_CHARS) return null;
+  const pattern = parts.map((p) => escapeRegExpLiteral(p)).join('.+?');
+  return new RegExp(`^${pattern}$`);
+}
+
+/** Every composed-template regex derivable from the real corpus, built
+ * once at module load, over .ts/.tsx blobs only (a JSX text node or a
+ * template literal is a source-language construct; `.css` has neither,
+ * and including it only manufactures noise from CSS's own unrelated `{`
+ * rule-block / `>` combinator characters). A JSX text node or
+ * template-literal body qualifies only if it contains a hole;
+ * `buildComposedTemplateRegex` drops the lone-hole (no static anchor) and
+ * weak-anchor (fewer than MIN_LITERAL_ALNUM_CHARS) cases. */
+const TS_SOURCE_BLOBS: string[] = SOURCE_FILES.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx')).map((f) =>
+  normalizeSource(readFileSync(f, 'utf-8')).toLowerCase()
+);
+
+const COMPOSED_TEMPLATE_REGEXES: RegExp[] = TS_SOURCE_BLOBS.flatMap((blob) => {
+  const phrases: string[] = [];
+  let m: RegExpExecArray | null;
+  JSX_TEXT_NODE_RE.lastIndex = 0;
+  while ((m = JSX_TEXT_NODE_RE.exec(blob)) !== null) {
+    if (m[1]!.includes('{')) phrases.push(m[1]!);
+  }
+  TEMPLATE_LITERAL_RE.lastIndex = 0;
+  while ((m = TEMPLATE_LITERAL_RE.exec(blob)) !== null) {
+    if (m[1]!.includes('{')) phrases.push(m[1]!);
+  }
+  return phrases
+    .map(buildComposedTemplateRegex)
+    .filter((r): r is RegExp => r !== null);
+});
+
+/** True when `text` (case-folded, whitespace-collapsed) matches some
+ * composed-template regex derived from the real corpus. Exported so the
+ * DEC-099 controls below can drive the real module-level regex set
+ * directly, and so a future sibling ledger can reuse the entrypoint
+ * rather than re-deriving its own copy (DEC-613). */
+export function eyebrowIsMatchedByComposedTemplate(text: string): boolean {
+  const needle = text.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (needle.length === 0) return false;
+  return COMPOSED_TEMPLATE_REGEXES.some((r) => r.test(needle));
+}
+
 // -- Digit-bearing COMPOSED misses that the skeleton pass still cannot
 // resolve, individually inspected (wave-33, task w33-f) --------------------
 // Wave-27's original discriminator treated EVERY digit-bearing miss as
@@ -427,13 +555,6 @@ interface DigitComposed {
 }
 
 const DIGIT_COMPOSED: DigitComposed[] = [
-  {
-    fileName: 'Chautauqua Contacts.dc.html',
-    line: 494,
-    text: 'Column 2 of 5',
-    reason:
-      'COMPOSED-from-data: `Column {phoneColumnIndex + 1} of {header.length}` (app/src/pages/contacts/ImportWizard.tsx:1096) draws the CSV import column position/count from the uploaded file, never the frame\'s fixed "2 of 5".',
-  },
   {
     fileName: 'Chautauqua Content.dc.html',
     line: 381,
@@ -464,27 +585,6 @@ const DIGIT_COMPOSED: DigitComposed[] = [
   },
   {
     fileName: 'Chautauqua Public and Portal.dc.html',
-    line: 1076,
-    text: 'Submitted · DFC-048',
-    reason:
-      'COMPOSED-from-data: `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) draws the confirmation flag from the live-minted submission reference, never the frame\'s fixed illustrative "DFC-048".',
-  },
-  {
-    fileName: 'Chautauqua Public and Portal.dc.html',
-    line: 1126,
-    text: 'Submitted · DFC-049',
-    reason:
-      'COMPOSED-from-data: same `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) as :1076 above -- the pending-existing-contact confirmation state renders the identical composing expression against a different fixture ref.',
-  },
-  {
-    fileName: 'Chautauqua Public and Portal.dc.html',
-    line: 1149,
-    text: 'Submitted · DFC-050',
-    reason:
-      'COMPOSED-from-data: same `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) as :1076 above -- the has-account confirmation state renders the identical composing expression against a different fixture ref.',
-  },
-  {
-    fileName: 'Chautauqua Public and Portal.dc.html',
     line: 1318,
     text: 'On this session · 1',
     reason:
@@ -498,38 +598,102 @@ const DIGIT_COMPOSED: DigitComposed[] = [
       'COMPOSED-from-data: `scorecardEyebrow` (app/src/pages/review/Scorecard.tsx:503-507, `[plan.name, planTrackScope(...), planNamesRound(plan.rounds) ? roundLabel(...) : null]`) joins the plan name, track scope and round label from the live review plan, never the frame\'s fixed "Wave 2 · AI Engineering · round 1".',
   },
   {
-    fileName: 'Chautauqua Review.dc.html',
-    line: 419,
-    text: 'Review · Wave 2',
-    reason:
-      "COMPOSED-from-data: `` `REVIEW · ${routeEnvelope.planName}` `` (app/src/pages/review/ReviewerQueue.tsx:657) draws the scoped queue head from the live plan name, never the frame's fixed 'Wave 2'.",
-  },
-  {
-    fileName: 'Chautauqua Settings.dc.html',
-    line: 461,
-    text: 'Questions · 8',
-    reason:
-      "COMPOSED-from-data: `` `Questions · ${list.length}` `` (app/src/pages/settings/CallForPapersPanel.tsx:128) draws the custom-question section head from the live question count, never the frame's fixed '8'.",
-  },
-  {
     fileName: 'Chautauqua Submissions.dc.html',
     line: 361,
     text: 'DFC-033 · lightning talk, 10 min',
     reason:
       'COMPOSED-from-data, two-sibling-node: `<p className="chq-detail-eyebrow" data-ref={detail.ref}>{eyebrowText}</p>` (app/src/pages/submissions/SubmissionDetailPage.tsx:1207-1209) with the ref prefix drawn by a phone-only CSS `::before` keyed off `data-ref` (app/src/pages/submissions/detail.css:1292) -- a text-content-only join can never assemble a CSS-generated prefix into the frame\'s one-string literal; `eyebrowText` itself is a live `[track, format].join(\' · \')`.',
   },
-  {
-    fileName: 'Chautauqua Submissions.dc.html',
-    line: 375,
-    text: 'Reviews · 3 of 3 in',
-    reason:
-      "COMPOSED-from-data: `` Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {assignedReviewers} in `` (app/src/pages/submissions/SubmissionDetailPage.tsx:1383) draws the review-completion count from the live evaluation list, never the frame's fixed '3 of 3'.",
-  },
 ];
 
 function isDigitComposed(e: Eyebrow): boolean {
   return DIGIT_COMPOSED.some((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
 }
+
+// -- WAVE 40 (task w40-c): rows the composed-template resolver above now
+// resolves to MATCHED, moved out of DIGIT_COMPOSED/NO_DIGIT_COMPOSED --------
+// Each of these 9 rows was, before this wave, a hand-verified UNRESOLVED
+// miss in one of the two tables above; the widened join now reproduces that
+// hand verification (see the module note above `buildComposedTemplateRegex`
+// for the mechanism). Kept here, not deleted, so the resolution is a
+// citation, not a silent count change: each entry re-asserts the same
+// composing source expression the original hand verification named, PLUS a
+// live check (test 'COMPOSED_TEMPLATE_RESOLVED rows...' below) that the
+// resolver actually classifies the row MATCHED today, so a future change
+// that narrows the resolver's reach fails loudly here instead of silently
+// pushing the row back into an un-cited UNRESOLVED/DIVERGES bucket.
+interface ComposedTemplateResolved {
+  fileName: string;
+  line: number;
+  text: string;
+  reason: string;
+}
+
+const COMPOSED_TEMPLATE_RESOLVED: ComposedTemplateResolved[] = [
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 494,
+    text: 'Column 2 of 5',
+    reason:
+      'COMPOSED-from-data, RESOLVED: `Column {phoneColumnIndex + 1} of {header.length}` (app/src/pages/contacts/ImportWizard.tsx:1096) -- the composed-template resolver matches the JSX text node\'s static words ("Column " ... " of ") against the frame\'s "Column 2 of 5" with both holes filled.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1076,
+    text: 'Submitted · DFC-048',
+    reason:
+      'COMPOSED-from-data, RESOLVED: `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) -- the resolver matches the entity-decoded static prefix "submitted · " against the frame\'s "Submitted · DFC-048" with the ref hole filled.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1126,
+    text: 'Submitted · DFC-049',
+    reason:
+      'COMPOSED-from-data, RESOLVED: same `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) as :1076 above -- the pending-existing-contact confirmation state renders the identical composing expression against a different fixture ref.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1149,
+    text: 'Submitted · DFC-050',
+    reason:
+      'COMPOSED-from-data, RESOLVED: same `SUBMITTED &middot; {props.ref}` (src/routes/public/submit-views.tsx:856) as :1076 above -- the has-account confirmation state renders the identical composing expression against a different fixture ref.',
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 419,
+    text: 'Review · Wave 2',
+    reason:
+      "COMPOSED-from-data, RESOLVED: `` `REVIEW · ${routeEnvelope.planName}` `` (app/src/pages/review/ReviewerQueue.tsx:657) -- the resolver matches the template literal's static prefix \"review · \" against the frame's \"Review · Wave 2\" with the plan-name hole filled.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 461,
+    text: 'Questions · 8',
+    reason:
+      "COMPOSED-from-data, RESOLVED: `` `Questions · ${list.length}` `` (app/src/pages/settings/CallForPapersPanel.tsx:128) -- the resolver matches the template literal's static prefix \"questions · \" against the frame's \"Questions · 8\" with the count hole filled.",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 375,
+    text: 'Reviews · 3 of 3 in',
+    reason:
+      "COMPOSED-from-data, RESOLVED: `` Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {assignedReviewers} in `` (app/src/pages/submissions/SubmissionDetailPage.tsx:1383) -- the resolver matches the entity-decoded JSX text node's static words (\"reviews · \" ... \" of \" ... \" in\") against the frame's \"Reviews · 3 of 3 in\" with both holes filled.",
+  },
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 161,
+    text: 'Two sessions in this slot',
+    reason:
+      "COMPOSED-from-data, RESOLVED: `{capitalizeFirst(spellCount(slot.sessions.length))} {plural(slot.sessions.length, 'session')} in this slot` (app/src/pages/agenda/PhoneAgenda.tsx) -- the resolver matches the JSX text node's static suffix \" in this slot\" against the frame's \"Two sessions in this slot\" with both holes filled.",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 406,
+    text: 'Notes on the slides',
+    reason:
+      'COMPOSED-from-data, RESOLVED: `Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()}` (app/src/pages/content/DeliverableDetail.tsx:595) -- the resolver matches the JSX text node\'s static prefix "notes on the " against the frame\'s "Notes on the slides" with the deliverable-kind hole filled.',
+  },
+];
 
 // -- Formerly "known DIVERGES", SETTLED at wave 36 (DEC-986 wave-36
 // amendment) -- see the SETTLED_EXCLUSIONS table below. This array is kept
@@ -563,22 +727,12 @@ interface NoDigitComposed {
   reason: string;
 }
 
-const NO_DIGIT_COMPOSED: NoDigitComposed[] = [
-  {
-    fileName: 'Chautauqua Agenda.dc.html',
-    line: 161,
-    text: 'Two sessions in this slot',
-    reason:
-      "COMPOSED-from-data: `{capitalizeFirst(spellCount(slot.sessions.length))} {plural(slot.sessions.length, 'session')} in this slot` composes the clash-card flag from the live session count using the pack's own spelled-count grammar (app/src/pages/agenda/PhoneAgenda.tsx), never the frame's fixed 'Two'.",
-  },
-  {
-    fileName: 'Chautauqua Content.dc.html',
-    line: 406,
-    text: 'Notes on the slides',
-    reason:
-      'COMPOSED-from-data: `Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()}` composes the deliverable-notes label from the active deliverable kind (app/src/pages/content/DeliverableDetail.tsx:595), never a literal frame-fixed string.',
-  },
-];
+// Both former rows here (Agenda.dc.html:161, Content.dc.html:406) are now
+// resolved by the composed-template resolver -- moved to
+// COMPOSED_TEMPLATE_RESOLVED above, wave 40. Kept empty, not deleted, so
+// isNoDigitComposed retains its shape for a future digit-free composed row
+// the resolver still cannot reach.
+const NO_DIGIT_COMPOSED: NoDigitComposed[] = [];
 
 function isNoDigitComposed(e: Eyebrow): boolean {
   return NO_DIGIT_COMPOSED.some((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
@@ -658,6 +812,14 @@ const CLASSIFIED: Classified[] = ALL_EYEBROWS.map((eyebrow) => {
   // resolves here is a real match the primary tier could never see because
   // the drawn and rendered digit runs differ, never a guess.
   if (eyebrowIsMatchedBySkeleton(eyebrow.text)) return { eyebrow, verdict: 'MATCHED' as const };
+  // WAVE 40 (task w40-c, DEC-808/DEC-986 amendment): the composed-template
+  // join runs BEFORE isKnownDiverges/the digit discriminator too -- a row
+  // that resolves here is a real match the primary and skeleton tiers could
+  // never see because the composition spans a hole the earlier tiers treat
+  // as opaque text, never a guess (same DEC-180 clause the skeleton pass
+  // above already cites: a discriminator narrows classification, it never
+  // hides a real offender).
+  if (eyebrowIsMatchedByComposedTemplate(eyebrow.text)) return { eyebrow, verdict: 'MATCHED' as const };
   if (isKnownDiverges(eyebrow)) return { eyebrow, verdict: 'DIVERGES' as const };
   if (DIGIT_RE.test(eyebrow.text)) {
     // Every digit-bearing miss the skeleton pass could not resolve is now
@@ -696,9 +858,27 @@ const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 // FRAME_EYEBROW_DIVERGENCE_CEILING to -1 and reading the printed offender
 // roster back: empty. The one row that ever populated DIVERGES
 // (Chautauqua Public and Portal.dc.html:1019) is now SETTLED, not a live
-// product gap -- see SETTLED_EXCLUSIONS above.
+// product gap -- see SETTLED_EXCLUSIONS above. NOT touched this wave --
+// see task w40-c's own scope clause.
 export const FRAME_EYEBROW_DIVERGENCE_CEILING = 0;
-export const FRAME_EYEBROW_UNRESOLVED_CEILING = 16;
+// Re-measured this wave (v12m-w40-c, DEC-808/DEC-986 amendment: the
+// composed-template resolver) by forcing FRAME_EYEBROW_UNRESOLVED_CEILING
+// to -1 and reading the printed offender roster back: 9 of the prior 16
+// unresolved rows (7 from DIGIT_COMPOSED, 2 from NO_DIGIT_COMPOSED --
+// COMPOSED_TEMPLATE_RESOLVED above) now resolve to MATCHED, because the
+// widened join can now see a template's static words either side of a hole
+// the earlier verbatim/skeleton joins treated as opaque. The remaining 7
+// (5 in DIGIT_COMPOSED, above) stay UNRESOLVED for the reason each entry
+// cites: two are genuine two-sibling-node compositions (a count in an
+// adjacent DOM node, or a CSS ::before prefix) no text-content-only join can
+// ever assemble; one is a lone-hole JSX text node with no static anchor
+// (`eventDatesLine(event)`, deliberately excluded, see the module note
+// above `buildComposedTemplateRegex`); the rest compose via plain
+// TypeScript (an array `.join(...)`, a nested nested-brace ternary) outside
+// the two source shapes (JSX text node, template literal) this resolver
+// reads. See docs/design/audit/frame-eyebrow-label-390-v12.md for the
+// per-row breakdown.
+export const FRAME_EYEBROW_UNRESOLVED_CEILING = 7;
 
 describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', () => {
   it('non-vacuity: population is non-trivial and spans multiple frames and files', () => {
@@ -812,7 +992,57 @@ describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', ()
         eyebrowIsMatchedBySkeleton(c.text),
         `${c.fileName}:${c.line} now resolves under the skeleton pass; this row is stale, it belongs in MATCHED, not DIGIT_COMPOSED`
       ).toBe(false);
+      expect(
+        eyebrowIsMatchedByComposedTemplate(c.text),
+        `${c.fileName}:${c.line} now resolves under the composed-template resolver; this row is stale, move it to COMPOSED_TEMPLATE_RESOLVED, not DIGIT_COMPOSED`
+      ).toBe(false);
     }
+  });
+
+  it('COMPOSED_TEMPLATE_RESOLVED rows (task w40-c) each resolve to their cited file:line:text and are actually classified MATCHED by the widened resolver today', () => {
+    for (const c of COMPOSED_TEMPLATE_RESOLVED) {
+      const hit = ALL_EYEBROWS.find((e) => e.fileName === c.fileName && e.line === c.line && e.text === c.text);
+      expect(hit, `${c.fileName}:${c.line} no longer resolves to the cited text in the pack`).toBeDefined();
+      expect(
+        eyebrowIsMatchedByComposedTemplate(c.text),
+        `${c.fileName}:${c.line} no longer resolves under the composed-template resolver; this row is stale, move it back to DIGIT_COMPOSED/NO_DIGIT_COMPOSED`
+      ).toBe(true);
+    }
+  });
+
+  it('DEC-099 positive control: the composed-template resolver fires on a fabricated template + literal pair that genuinely composes, never a live product string', () => {
+    // Mirrors the real 'Column {n} of {m}' / 'Questions · {n}' shape: one
+    // static prefix, one hole, filled with plausible fabricated content.
+    // Both sides lower-cased, mirroring eyebrowIsMatchedByComposedTemplate's
+    // own case-folding contract (this direct-primitive control drives
+    // buildComposedTemplateRegex itself, which does not lower-case its
+    // input -- that is the exported entrypoint's job).
+    const regex = buildComposedTemplateRegex('zzy synthetic retention {window} window');
+    expect(regex).not.toBeNull();
+    expect(regex!.test('zzy synthetic retention 90-day window')).toBe(true);
+    // A DIFFERENT word in the static half must still fail -- the resolver
+    // is not simply "contains some of these words somewhere".
+    expect(regex!.test('zzy synthetic eviction 90-day window')).toBe(false);
+  });
+
+  it('DEC-099 negative control: the composed-template resolver does NOT resolve a row by matching only the static half of the template -- the hole must consume real content, never zero-width', () => {
+    const regex = buildComposedTemplateRegex('zzy synthetic retention {window} window');
+    expect(regex).not.toBeNull();
+    // The static words alone, with the hole position left EMPTY (no
+    // interpolated content at all) -- a resolver that only checked "the
+    // static words are present" would wrongly accept this; `.+?` requires
+    // at least one character, so it must reject a zero-width gap.
+    expect(regex!.test('zzy synthetic retention  window')).toBe(false);
+    // A lone-hole phrase (no static anchor at all) must be refused a regex
+    // outright -- see the module note above `buildComposedTemplateRegex`:
+    // a hole with nothing to anchor it against cannot discriminate a real
+    // composition from any other string.
+    expect(buildComposedTemplateRegex('{onlyanexpression}')).toBeNull();
+    // A phrase whose only literal content is punctuation (no letters/
+    // digits) must also be refused -- this is the exact shape that, before
+    // this control existed, produced `/^.+? · .+?$/` and matched 15 of this
+    // file's 62-row population (measured directly this wave).
+    expect(buildComposedTemplateRegex('{a} · {b}')).toBeNull();
   });
 
   it('KNOWN_DIVERGES rows each resolve to their cited file:line:text and are still unresolved by both the primary and skeleton joins', () => {
@@ -919,3 +1149,6 @@ describe('frame drawn-eyebrow ledger (DEC-976 wave-27, v12 mobile campaign)', ()
     expect(UNRESOLVED.length).toBeGreaterThanOrEqual(FRAME_EYEBROW_UNRESOLVED_CEILING);
   });
 });
+
+
+
