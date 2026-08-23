@@ -244,6 +244,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // fact in its own right. Reads live 0; removed from OUT_OF_CAMPAIGN_SCOPE
   // in this same commit.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-49 (DEC-613/DEC-069 amendment, task w49-c): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE in the same commit that reclassified both
+  // remaining rows BLESSED (docs/design/DEVIATIONS.md §7) and dropped
+  // test/drawn-field-label.scan.test.ts's DRAWN_FIELD_LABEL_DIVERGENCE_
+  // CEILING to 0 -- a DEVIATIONS-blessed field label is not a divergence.
+  // Wired into TIER2 in this same commit; reads live 0.
+  "DRAWN_FIELD_LABEL_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -402,6 +409,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
   // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-49 (DEC-613/DEC-069 amendment, task w49-c): wired into TIER2 in the
+  // same commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "DRAWN_FIELD_LABEL_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -545,18 +557,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "about any screen the product draws. Grading it would put a documentation-formatting count in "
     + "the campaign's exit total, where a prose repair would read as product convergence "
     + "(test/citation-form-drift.scan.test.ts, DEC-967).",
-  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING:
-    "measures whether a drawn v12 FIELD label (an 11px/800-weight/0.1em-tracking eyebrow span "
-    + "over an input-shaped box) matches the WORDS the app's hardcoded label actually renders -- "
-    + "a fidelity fact distinct from whether a frame is CITED or a control's declared WIDTH "
-    + "matches (test/desktop-field-width.scan.test.ts), the same disposition already given to "
-    + "FIELD_WIDTH_DIVERGENCE_CEILING and DESKTOP_FLOOR_DIVERGENCE_CEILING. A newly measured "
-    + "population's non-zero row would move the campaign's goalposts mid-convergence; it "
-    + "measures fidelity now (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task w25-i) "
-    + "and is promoted once its measurement technique is proven complete enough to gate on. "
-    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero (a real, standing "
-    + "divergence), so the promotion rule does not apply yet regardless of its "
-    + "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING sibling's own adjudication state.",
   DRAWN_FIELD_LABEL_UNRESOLVED_CEILING:
     "measures how many drawn v12 FIELD-label rows this ledger's join could not resolve to any "
     + "grade (STORED-FIELD-LABEL, HARDCODED-MATCHES or HARDCODED-DIVERGES) -- an "
@@ -900,13 +900,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // No completeness sibling -- the citation-resolvability count is its own
   // whole conformance fact. Clause (a) alone decides it (currently non-zero).
   DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // Clause (b) holds (docs/design/audit/drawn-field-label-v12.md's one
-  // DRAWN_FIELD_LABEL_UNRESOLVED_CEILING row is individually adjudicated in
-  // place), but clause (a) fails: its own count is non-zero.
-  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING: {
-    siblingName: "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING",
-    siblingFullyAdjudicated: true,
-  },
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero).
   FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },

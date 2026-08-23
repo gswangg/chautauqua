@@ -198,7 +198,7 @@ const ALL_ROWS: DrawnFieldLabel[] = designFiles().flatMap(drawnFieldLabelsInFile
 // 2. GRADE.
 // ---------------------------------------------------------------------------
 
-export type FieldLabelStatus = 'stored' | 'matches' | 'diverges' | 'unresolved';
+export type FieldLabelStatus = 'stored' | 'matches' | 'diverges' | 'unresolved' | 'blessed';
 
 export interface GradedFieldLabel {
   row: DrawnFieldLabel;
@@ -321,20 +321,40 @@ const STORED: Record<string, { reason: string; citation: string }> = {
   },
 };
 
-const DIVERGES: Record<string, { reason: string; citation: string }> = {
+const DIVERGES: Record<string, { reason: string; citation: string }> = {};
+
+/** DEC-613/DEC-069 wave-49 (task w49-c): a DEVIATIONS-blessed field label is
+ * not a divergence -- it is a USER OVERRIDE the campaign was never meant to
+ * grade as a standing defect. Each row here carries the frame file+line, the
+ * drawn label, the `docs/design/DEVIATIONS.md` section that blesses the
+ * mismatch, and the source coordinate of the label the app actually renders
+ * instead. BLESSED rows are classified OUT of DIVERGES -- the resolve-check
+ * below re-verifies every one of these four facts live on every run so a
+ * withdrawn blessing fails loudly rather than silently keeping the row
+ * BLESSED (DEC-725 anti-allowlist). */
+const BLESSED: Record<
+  string,
+  { reason: string; deviationsSection: string; deviationsNeedle: string; sourceCitation: string; sourceLabel: string }
+> = {
   'Chautauqua Settings.dc.html:739': {
     reason:
       'Blessed, recorded divergence (docs/design/DEVIATIONS.md §7): the frame\'s "Public URL" names a ' +
       'composed origin+slug value the control does not accept -- EventSettingsPanel.tsx keeps the ' +
       'field labeled "Slug", the segment it actually edits.',
-    citation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
+    deviationsSection: '## 7. Settled frame divergences (wave 16 amendment, DEC-663)',
+    deviationsNeedle: "Settings · Event's Slug field stays",
+    sourceCitation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
+    sourceLabel: 'Slug',
   },
   'Chautauqua Settings.dc.html:1253': {
     reason:
       'The same Event-panel "Public URL"/"Slug" divergence as :739, redrawn on the panel\'s ' +
       '"Nothing was saved" duplicate-slug error-state frame -- same field, same blessed divergence ' +
       '(docs/design/DEVIATIONS.md §7).',
-    citation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
+    deviationsSection: '## 7. Settled frame divergences (wave 16 amendment, DEC-663)',
+    deviationsNeedle: "Settings · Event's Slug field stays",
+    sourceCitation: 'app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}`',
+    sourceLabel: 'Slug',
   },
 };
 
@@ -402,6 +422,8 @@ function gradeRow(row: DrawnFieldLabel): GradedFieldLabel {
   const key = `${row.fileName}:${row.line}`;
   const stored = STORED[key];
   if (stored) return { row, status: 'stored', reason: stored.reason, citation: stored.citation };
+  const blessed = BLESSED[key];
+  if (blessed) return { row, status: 'blessed', reason: blessed.reason, citation: blessed.sourceCitation };
   const diverges = DIVERGES[key];
   if (diverges) return { row, status: 'diverges', reason: diverges.reason, citation: diverges.citation };
   const unresolved = UNRESOLVED[key];
@@ -433,6 +455,7 @@ const STORED_ROWS = GRADED.filter((r) => r.status === 'stored');
 const MATCHES_ROWS = GRADED.filter((r) => r.status === 'matches');
 const DIVERGES_ROWS = GRADED.filter((r) => r.status === 'diverges');
 const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
+const BLESSED_ROWS = GRADED.filter((r) => r.status === 'blessed');
 
 // ---------------------------------------------------------------------------
 // 3. RATCHETS. Both measured on this branch by counting the graded rows
@@ -459,7 +482,16 @@ const UNRESOLVED_ROWS = GRADED.filter((r) => r.status === 'unresolved');
 // otherwise have found it). 6 -> 2, the two remaining rows both the
 // blessed Settings "Public URL"/"Slug" divergence (DEVIATIONS.md §7).
 // Never guessed, forced to -1 and re-measured on this branch.
-export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 2;
+// Wave-49 (DEC-613/DEC-069 amendment, task w49-c): the two remaining rows
+// (Chautauqua Settings.dc.html:739/:1253, "Public URL" vs. "Slug") are BOTH
+// the SAME field's DEVIATIONS.md §7-blessed divergence -- a USER OVERRIDE,
+// not a standing v12 defect. Reclassified BLESSED and dropped out of
+// DIVERGES; the ceiling falls to 0 BY CLASSIFICATION, not by any product
+// byte moving. Promoted: removed from scripts/exit-predicate/campaign-
+// scope.ts's OUT_OF_CAMPAIGN_SCOPE + PARKED_FIDELITY_PROMISES, appended to
+// CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES in the same commit. 2 -> 0.
+// Never guessed, forced to -1 and re-measured on this branch.
+export const DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 0;
 export const DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1;
 
 describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w25-i)', () => {
@@ -535,12 +567,47 @@ describe('drawn FIELD-label ledger (DEC-613 wave-25, v12 mobile campaign, task w
     }
   );
 
-  it('every row is accounted for exactly once across stored/matches/diverges/unresolved', () => {
+  it('every row is accounted for exactly once across stored/matches/diverges/unresolved/blessed', () => {
     expect(GRADED.length).toBe(ALL_ROWS.length);
-    expect(STORED_ROWS.length + MATCHES_ROWS.length + DIVERGES_ROWS.length + UNRESOLVED_ROWS.length).toBe(
-      ALL_ROWS.length
-    );
+    expect(
+      STORED_ROWS.length +
+        MATCHES_ROWS.length +
+        DIVERGES_ROWS.length +
+        UNRESOLVED_ROWS.length +
+        BLESSED_ROWS.length
+    ).toBe(ALL_ROWS.length);
   });
+
+  it(
+    'wave-49 (DEC-613/DEC-069 amendment, task w49-c): every BLESSED row resolves live -- the ' +
+      'cited frame line still draws that exact label, the cited source still renders the app\'s own ' +
+      'different label, and the cited DEVIATIONS.md section still exists and still names the field ' +
+      '(anti-allowlist, DEC-725: a withdrawn blessing must fail loudly, never silently stay BLESSED)',
+    () => {
+      expect(Object.keys(BLESSED).length).toBeGreaterThan(0);
+      const deviationsText = readFileSync(join(DESIGN_ROOT, 'DEVIATIONS.md'), 'utf-8');
+      const eventSettingsSource = readFileSync(
+        join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'EventSettingsPanel.tsx'),
+        'utf-8'
+      );
+      for (const [key, entry] of Object.entries(BLESSED)) {
+        const [fileName, lineStr] = key.split(':');
+        const line = Number(lineStr);
+        // The frame still draws this exact label at this exact line.
+        const frameRow = ALL_ROWS.find((r) => r.fileName === fileName && r.line === line);
+        expect(frameRow, `BLESSED row ${key} no longer appears in the drawn population`).toBeDefined();
+        expect(frameRow!.label).toBe('Public URL');
+        // The cited DEVIATIONS.md section still exists and still names the field.
+        expect(deviationsText.includes(entry.deviationsSection)).toBe(true);
+        expect(deviationsText.includes(entry.deviationsNeedle)).toBe(true);
+        // The cited source still renders the app's own different label, not the frame's.
+        expect(entry.sourceCitation.startsWith('app/src/pages/settings/EventSettingsPanel.tsx')).toBe(true);
+        expect(eventSettingsSource.includes('value={form.slug}')).toBe(true);
+        expect(eventSettingsSource.includes(entry.sourceLabel)).toBe(true);
+        expect(entry.sourceLabel).not.toBe(frameRow!.label);
+      }
+    }
+  );
 
   it('every graded row carries a non-empty reason and citation (no silent grade)', () => {
     for (const r of GRADED) {

@@ -13,7 +13,10 @@ the full symmetric-difference evidence).
 Wave-32 (task w32-f) adopted the four rows below still shortening or
 re-punctuating a drawn label -- see "Adopted (wave-32)" -- lowering
 `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING` from 6 to 2 (the two remaining rows
-are the blessed Settings "Public URL"/"Slug" divergence, DEVIATIONS.md §7).
+were the blessed Settings "Public URL"/"Slug" divergence, DEVIATIONS.md §7).
+Wave-49 (task w49-c, DEC-613/DEC-069 amendment) reclassified those two rows
+BLESSED -- a DEVIATIONS-blessed field label is not a divergence -- and
+promoted the ceiling to 0; see "Blessed" below.
 
 ## Why this ledger exists
 
@@ -76,7 +79,7 @@ non-empty, per this ledger's own non-vacuity guard
 
 ## Grading
 
-Each row gets one of four verdicts:
+Each row gets one of five verdicts:
 
 - **STORED-FIELD-LABEL** — the label is organizer-editable FormFieldDef
   data (a `field.label`/`f.label` read, never a JSX string literal). Found
@@ -101,11 +104,15 @@ Each row gets one of four verdicts:
   never a blanket reference here.
 - **UNRESOLVED** — the join genuinely fails: no code renders the field at
   all (a DEVIATIONS.md §6 deferred, unbuilt feature).
+- **BLESSED** (wave-49, DEC-613/DEC-069 amendment) — a hardcoded label
+  exists for the field, spelled differently than the frame draws, but the
+  mismatch is itself a recorded `docs/design/DEVIATIONS.md` USER OVERRIDE
+  rather than a standing v12 defect -- classified OUT of HARDCODED-DIVERGES.
 
-**Totals (DEC-613 wave-33 re-measurement, task w33-c): 103 HARDCODED-MATCHES, 3
-HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED** — partitions the
-128-row population exactly; see the per-row table below for every
-DIVERGES row's own citation.
+**Totals (DEC-613 wave-49 re-measurement, task w49-c): 103 HARDCODED-MATCHES,
+0 HARDCODED-DIVERGES, 21 STORED-FIELD-LABEL, 1 UNRESOLVED, 2 BLESSED** —
+partitions the 128-row population exactly; see the per-row table below for
+every row's own citation.
 
 A first-pass automated corpus search miscited a few rows (a coincidental
 boundary-anchored match on an unrelated string — e.g. "Email" matching
@@ -121,19 +128,19 @@ frame's exact words — all three rows now grade HARDCODED-MATCHES.
 
 ## Ratchets
 
-Two-sided per DEC-808, seeded at the measured value on this branch (DEC-613
-wave-33 amendment, task w33-c: DIVERGENCE_CEILING re-measured 6 -> 3 after
-the Contacts "Message", Submissions "Options · one per line", and Comms
-"From which plan" rows were adopted/verified matches):
+Two-sided per DEC-808, seeded at the measured value on this branch:
 
-- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 2` (wave-32 DEC-613 amendment,
-  down from 6 — see "Adopted (wave-32)" below)
-- `DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1`
-
-Registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`, the
-same disposition `FIELD_WIDTH_DIVERGENCE_CEILING`/
-`FIELD_WIDTH_UNRESOLVED_CEILING` already carry: a newly measured population
-must not move the campaign's exit-gate goalposts mid-convergence.
+- `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING = 0` (wave-49 DEC-613/DEC-069
+  amendment, task w49-c, down from 2 — the two remaining rows were
+  reclassified BLESSED, see "Blessed" above; no product byte moved. PROMOTED:
+  removed from `scripts/exit-predicate/campaign-scope.ts`'s
+  `OUT_OF_CAMPAIGN_SCOPE` and `PARKED_FIDELITY_PROMISES`, added to
+  `CAMPAIGN_CONSTANT_NAMES`/`TIER2_CEILING_NAMES` — it now prints as a real,
+  graded, green TIER2 row instead of an excused one)
+- `DRAWN_FIELD_LABEL_UNRESOLVED_CEILING = 1` — unchanged, remains registered
+  in `scripts/exit-predicate/campaign-scope.ts`'s `OUT_OF_CAMPAIGN_SCOPE`,
+  the same disposition `FIELD_WIDTH_UNRESOLVED_CEILING` already carries: an
+  instrument-completeness fact, not a v12 fidelity fact.
 
 ## Adopted (wave-32, task w32-f)
 
@@ -185,10 +192,26 @@ Every row below is individually adjudicated (a DEC-613 citation resolving
 it as a real, recorded outlier, or a `docs/design/DEVIATIONS.md` section)
 so no row is silently OPEN against `test/open-divergence-ledger.scan.test.ts`.
 
+(none — the two rows formerly listed here were reclassified BLESSED,
+wave-49; see below)
+
+## Blessed (DEVIATIONS-overridden, not a divergence — wave-49, DEC-613/
+## DEC-069 amendment, task w49-c)
+
+A DEVIATIONS-blessed field label is not a divergence: it is a recorded USER
+OVERRIDE, not a standing v12 defect. `DRAWN_FIELD_LABEL_DIVERGENCE_CEILING`
+dropped 2 -> 0 by this reclassification (no product byte moved) and was
+PROMOTED — removed from `scripts/exit-predicate/campaign-scope.ts`'s
+`OUT_OF_CAMPAIGN_SCOPE` and `PARKED_FIDELITY_PROMISES`, appended to
+`CAMPAIGN_CONSTANT_NAMES`/`TIER2_CEILING_NAMES` in the same commit. It now
+prints as a real, graded, green (0) TIER2 row.
+
 1. `Chautauqua Settings.dc.html:739` and `:1253` (two drawn instances of
    the same field) "Public URL" vs. `EventSettingsPanel.tsx`'s "Slug" —
    blessed, recorded divergence, `docs/design/DEVIATIONS.md` §7 (DEC-613's
-   own carve-out for this exact row). LEFT ALONE (task w32-f).
+   own carve-out for this exact row: the frame's label names a composed
+   origin+slug value the control does not accept). LEFT ALONE (task
+   w32-f); RECLASSIFIED BLESSED, ceiling promoted (task w49-c).
 
 ## Unresolved
 
@@ -348,7 +371,7 @@ per-row Citation column always names the specific site.
 | 664 | Form name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/CallForPapersPanel.tsx`<SettingsField label="Form name" htmlFor="cfp-title" width="slug">` |
 | 668 | Intro shown above the form | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/CallForPapersPanel.tsx`label="Intro shown above the form"` |
 | 735 | Event name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`name: 'Event name',` |
-| 739 | Public URL | HARDCODED-DIVERGES | Blessed, recorded divergence (docs/design/DEVIATIONS.md §7): the frame's "Public URL" names a composed origin+slug value the control does not accept -- EventSettingsPanel.tsx keeps the field labeled "Slug", the segment it actually edits. | app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}` |
+| 739 | Public URL | BLESSED | Blessed, recorded divergence (docs/design/DEVIATIONS.md §7): the frame's "Public URL" names a composed origin+slug value the control does not accept -- EventSettingsPanel.tsx keeps the field labeled "Slug", the segment it actually edits. | app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}` |
 | 752 | Starts | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`startDate: 'Starts',` |
 | 756 | Ends | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`endDate: 'Ends',` |
 | 762 | Time zone | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`timezone: 'Time zone',` |
@@ -359,7 +382,7 @@ per-row Citation column always names the specific site.
 | 1071 | Track | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EmbedsPanel.tsx`track: 'Track',` |
 | 1173 | Keep declined submissions for | UNRESOLVED | Falls inside the "Settings · editing your data" extent's "Keeping and deleting" retention block, which DEVIATIONS.md §6 / DEC-032 record as a deliberate, deferred non-build (the same extent test/desktop-field-width.scan.test.ts already excludes at its own population step) -- there is no code to grade this label against. | app/src/pages/settings/YourDataPanel.tsx`Recorded as a deliberate non-build on DEC-032.` |
 | 1249 | Event name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`name: 'Event name',` |
-| 1253 | Public URL | HARDCODED-DIVERGES | The same Event-panel "Public URL"/"Slug" divergence as :739, redrawn on the panel's "Nothing was saved" duplicate-slug error-state frame -- same field, same blessed divergence (docs/design/DEVIATIONS.md §7). | app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}` |
+| 1253 | Public URL | BLESSED | The same Event-panel "Public URL"/"Slug" divergence as :739, redrawn on the panel's "Nothing was saved" duplicate-slug error-state frame -- same field, same blessed divergence (docs/design/DEVIATIONS.md §7). | app/src/pages/settings/EventSettingsPanel.tsx`value={form.slug}` |
 | 1286 | First name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>` |
 | 1290 | Last name | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/PeopleRolesPanel.tsx`<FormRow label="Last name" htmlFor="people-invite-last-name" error={fieldErrors.lastName}>` |
 | 1295 | Email | HARDCODED-MATCHES | occurs verbatim, boundary-anchored, in the non-test app/src/**+src/** corpus. | app/src/pages/settings/EventSettingsPanel.tsx`...(mailStatus ? [{ label: 'Email', value: mailStatusSummary(mailStatus) }] : []),` |
