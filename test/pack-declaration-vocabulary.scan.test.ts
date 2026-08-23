@@ -505,9 +505,10 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // Measured on this branch: 578 bare-integer font-weight declarations
     // (400/500/600/700/800, all in-vocabulary) plus 15 out-of-grammar
     // (`var(--chq-type-*-weight)` design-token references and two bare
-    // `inherit`), and 173 bare line-height declarations (172 in-vocabulary
-    // plus the 2 SETTLED `1.63` occurrences) plus 2 out-of-grammar (one
-    // `var(--chq-type-overview-headline-line-height)`, one `inherit`).
+    // `inherit`), and 174 bare line-height declarations (172 in-vocabulary
+    // plus the 2 SETTLED `1.63` occurrences -- see wave-56 note below for
+    // the site that grew this population from 173) plus 2 out-of-grammar
+    // (one `var(--chq-type-overview-headline-line-height)`, one `inherit`).
     //
     // 576 -> 577 at the wave-31 merge train: task v12m-w31-a built the two
     // unbuilt v12 phone frame elements on Review "Plan editor · 390"
@@ -524,9 +525,20 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // is a two-sided exact count by design (neither population may shrink
     // silently), so it is re-measured, not relaxed, when a lane legitimately
     // adds a declaration.
+    //
+    // 173 -> 174 (wave-56, task w56-h): the landed v12 speakers reminder
+    // card sign-off (`app/src/pages/speakers/speakers.css`'s
+    // `.chq-speakers-remind-card-signature`, v12 frame :531) declares
+    // `font-size: 15px; line-height: 1.6;` -- `1.6` is already in the
+    // pack's derived line-height vocabulary (drawn elsewhere in this same
+    // sheet), so the new declaration is IN-grammar and IN-vocabulary, never
+    // an offender; it simply widens the counted population by one. Found by
+    // diffing `git diff cd254baa7..HEAD` (the wave-29 commit that minted
+    // this pin) for added `line-height:` declarations in product CSS, never
+    // guessed.
     expect(weightBare).toBe(578);
     expect(weightOutOfGrammar).toBe(15);
-    expect(lineHeightBare).toBe(173);
+    expect(lineHeightBare).toBe(174);
     expect(lineHeightOutOfGrammar).toBe(2);
   });
 });

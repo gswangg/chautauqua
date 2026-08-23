@@ -207,16 +207,33 @@ in the live tree — a stale row fails the suite loudly, never a silent
 
 | sheet | selector | value | line | owning ruling |
 | --- | --- | --- | --- | --- |
-| `app/src/pages/comms/comms.css` | `.chq-comms-editor-actions` | `29px` | 2501 | DEC-937 wave-35 + wave-123 amendments (companion-gap: desktop 9px + 2×10px cancelled-padding); pinned by `app/src/pages/comms/comms-tier2-floor.test.ts`. |
-| `app/src/pages/speakers/speakers.css` | `.chq-speakers-write-failure-actions` | `29px` | 2249 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
-| `app/src/pages/speakers/speakers.css` | `.chq-speakers-head-actions` | `29px` | 2253 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
-| `app/src/pages/speakers/speakers.css` | `.chq-speakers-pager-actions` | `29px` | 2257 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts` and `app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts`. |
-| `app/src/pages/speakers/task-view.css` | `.chq-taskview-actions` | `29px` | 414 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/comms/comms.css` | `.chq-comms-editor-actions` | `29px` | 2508 | DEC-937 wave-35 + wave-123 amendments (companion-gap: desktop 9px + 2×10px cancelled-padding); pinned by `app/src/pages/comms/comms-tier2-floor.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-write-failure-actions` | `29px` | 2268 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-head-actions` | `29px` | 2272 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-pager-actions` | `29px` | 2276 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts` and `app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts`. |
+| `app/src/pages/speakers/task-view.css` | `.chq-taskview-actions` | `29px` | 441 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
 | `app/src/pages/submissions/detail.css` | `.chq-detail-layout` | `92px` | 102 | DEC-989 wave-42 amendment, gate-3 desktop-frame-pin: frame 02 at 1600px, body 700px + rail 320px + 92px gutter = 1112px, centred. |
 
 Each row is classified OUT of the offender count by the ratchet's
 `classifyOffenders`, never repaired — repairing any of them would redden
 the pinning test or move a green desktop frame verdict.
+
+### Wave 56: re-keyed on sheet + enclosing selector, line demoted to a hint
+
+The merge train between waves 49 and 56 moved every RULED_LEFT site's line
+number (new comments and code landed above each cited declaration) while
+leaving each site's enclosing selector and declared `gap: 29px`/`92px`
+value untouched. The `line` column above is now a human hint only, kept
+current for readability — `isRuledLeft` in
+`test/pack-unit-grammar.scan.test.ts` joins on sheet path + enclosing
+selector (via the instrument's own `findEnclosingSelector`) + declared
+value, never on line number. The anti-allowlist resolve-check `it` (a stale
+row fails loudly, never a bare "adjudicated" string) still reads `line` to
+locate and re-verify each row's declaration and selector in the live tree,
+so the line column is re-measured, not decorative. All six sites still
+declare their cited value under their cited selector; the re-key restored
+`PACK_UNIT_GRAMMAR_OFFENDERS_CEILING` to `0` and left `_UNRESOLVED_CEILING`
+at `6` (unmoved, since no `em` declaration count changed).
 
 ## Promotion (wave 49)
 

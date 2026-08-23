@@ -162,6 +162,11 @@ interface Declaration {
   readonly value: string;
   readonly path: string;
   readonly line: number;
+  /** Nearest enclosing `selector {` above this declaration in the cleaned
+   * text, or null if none found -- a fact that survives an edit above the
+   * declaration, unlike the line number (wave-56: the merge train moved
+   * every RULED_LEFT site's line, none of its selectors). */
+  readonly selector: string | null;
 }
 
 /** Every `property: value;` declaration in `text`, after shared-stripper
@@ -176,12 +181,14 @@ interface Declaration {
  * a general property of this function). */
 function findDeclarations(text: string, path: string, property: GradedProperty): Declaration[] {
   const cleaned = stripFontFace(stripCssComments(text));
+  const cleanedLines = cleaned.split('\n');
   const re = new RegExp(`${property}:\\s*([^;"']+)`, 'g');
   const out: Declaration[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(cleaned)) !== null) {
     const line = cleaned.slice(0, m.index).split('\n').length;
-    out.push({ property, value: (m[1] as string).trim(), path, line });
+    const selector = findEnclosingSelector(cleanedLines, line - 1);
+    out.push({ property, value: (m[1] as string).trim(), path, line, selector });
   }
   return out;
 }
@@ -212,6 +219,7 @@ interface Offender {
   readonly computedPx: string;
   readonly path: string;
   readonly line: number;
+  readonly selector: string | null;
 }
 
 interface Unresolved {
@@ -249,13 +257,29 @@ function grade(sources: readonly Source[], vocab: Record<GradedProperty, Readonl
         if (PX_RE.test(d.value)) {
           pxTotal++;
           if (!vocab[property].has(d.value)) {
-            offenders.push({ property, unit: 'px', value: d.value, computedPx: d.value, path: d.path, line: d.line });
+            offenders.push({
+              property,
+              unit: 'px',
+              value: d.value,
+              computedPx: d.value,
+              path: d.path,
+              line: d.line,
+              selector: d.selector,
+            });
           }
         } else if (REM_RE.test(d.value)) {
           remTotal++;
           const computedPx = computeRemPx(d.value);
           if (!vocab[property].has(computedPx)) {
-            offenders.push({ property, unit: 'rem', value: d.value, computedPx, path: d.path, line: d.line });
+            offenders.push({
+              property,
+              unit: 'rem',
+              value: d.value,
+              computedPx,
+              path: d.path,
+              line: d.line,
+              selector: d.selector,
+            });
           }
         } else if (EM_RE.test(d.value)) {
           unresolved.push({ property, value: d.value, path: d.path, reason: 'em-inherits-unresolvable' });
@@ -299,7 +323,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/comms/comms.css',
     selector: '.chq-comms-editor-actions',
     value: '29px',
-    line: 2501,
+    line: 2508,
     ruling:
       "DEC-937 wave-35 amendment (companion-gap: desktop's own 9px + 2*10px cancelled-padding " +
       'compensation, DEC-937 wave-123 "the declared phone gap becomes the frame\'s own rendered gap ' +
@@ -309,7 +333,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-write-failure-actions',
     value: '29px',
-    line: 2258,
+    line: 2268,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
@@ -318,7 +342,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-head-actions',
     value: '29px',
-    line: 2262,
+    line: 2272,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
@@ -327,7 +351,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-pager-actions',
     value: '29px',
-    line: 2266,
+    line: 2276,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts and ' +
@@ -337,7 +361,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/task-view.css',
     selector: '.chq-taskview-actions',
     value: '29px',
-    line: 414,
+    line: 441,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
@@ -369,11 +393,20 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** True when `o` matches a RULED_LEFT row (same sheet file, same line, same
- * literal gap value) -- classified OUT of the offender count. */
+/** True when `o` matches a RULED_LEFT row (same sheet file, same ENCLOSING
+ * SELECTOR, same literal gap value) -- classified OUT of the offender
+ * count. Re-keyed wave-56: the merge train moved every RULED_LEFT site's
+ * line number while leaving its selector and value untouched, so a
+ * line-keyed join went stale under an edit that happened ABOVE the cited
+ * declaration. Selector + value survive that edit; line is carried on the
+ * row only as a human hint, never matched on. */
 function isRuledLeft(o: Offender, ruledLeft: readonly RuledLeftRow[]): boolean {
   return ruledLeft.some(
-    (r) => o.property === 'gap' && o.path === join(REPO_ROOT, r.sheetPath) && o.line === r.line && o.value === r.value,
+    (r) =>
+      o.property === 'gap' &&
+      o.path === join(REPO_ROOT, r.sheetPath) &&
+      o.selector === r.selector &&
+      o.value === r.value,
   );
 }
 
@@ -471,13 +504,30 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
       computedPx: '29px',
       path: join(REPO_ROOT, 'app/src/pages/comms/comms.css'),
       line: 1, // not the RULED_LEFT-cited line for this file
+      selector: '.chq-comms-not-the-ruled-left-selector', // not the RULED_LEFT-cited selector
     };
     const { trueOffenders, ruledLeftMatches } = classifyOffenders([synthetic], RULED_LEFT);
     expect(trueOffenders).toEqual([synthetic]);
     expect(ruledLeftMatches).toEqual([]);
   });
 
-  it('a synthetic offender matching a RULED_LEFT row (path+line+value) is classified OUT of the offender count', () => {
+  it('a synthetic offender matching a RULED_LEFT row (path+selector+value) is classified OUT of the offender count, even at a DIFFERENT line (wave-56: the join is line-blind by design)', () => {
+    const row = RULED_LEFT[0] as RuledLeftRow;
+    const synthetic: Offender = {
+      property: 'gap',
+      unit: 'px',
+      value: row.value,
+      computedPx: row.value,
+      path: join(REPO_ROOT, row.sheetPath),
+      line: row.line + 500, // deliberately wrong line -- selector+value still match
+      selector: row.selector,
+    };
+    const { trueOffenders, ruledLeftMatches } = classifyOffenders([synthetic], RULED_LEFT);
+    expect(trueOffenders).toEqual([]);
+    expect(ruledLeftMatches).toEqual([synthetic]);
+  });
+
+  it('a synthetic offender at the RIGHT line but WRONG selector is NOT classified RULED_LEFT (line is a hint, never a match key)', () => {
     const row = RULED_LEFT[0] as RuledLeftRow;
     const synthetic: Offender = {
       property: 'gap',
@@ -486,10 +536,11 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
       computedPx: row.value,
       path: join(REPO_ROOT, row.sheetPath),
       line: row.line,
+      selector: '.chq-some-other-selector',
     };
     const { trueOffenders, ruledLeftMatches } = classifyOffenders([synthetic], RULED_LEFT);
-    expect(trueOffenders).toEqual([]);
-    expect(ruledLeftMatches).toEqual([synthetic]);
+    expect(trueOffenders).toEqual([synthetic]);
+    expect(ruledLeftMatches).toEqual([]);
   });
 
   it('never exceeds PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING (6) em declarations', () => {
@@ -591,6 +642,7 @@ describe('pack size-unit grammar -- detector non-vacuity (DEC-967, synthetic fix
           computedPx: '13px',
           path: join(cssDir, 'widget.css'),
           line: 3,
+          selector: null,
         },
         {
           property: 'font-size',
@@ -599,6 +651,7 @@ describe('pack size-unit grammar -- detector non-vacuity (DEC-967, synthetic fix
           computedPx: '13.6px',
           path: join(cssDir, 'widget.css'),
           line: 5,
+          selector: null,
         },
       ]);
       expect(fixtureResult.unresolved).toEqual([
