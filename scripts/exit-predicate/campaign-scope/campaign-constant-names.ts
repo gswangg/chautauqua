@@ -277,4 +277,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // reads live 0 by classification; promoted out of OUT_OF_CAMPAIGN_SCOPE in
   // this same commit.
   "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
+  // wave-55 (task v12m-w55-a, DEC-374 wave-52 amendment, executed): the
+  // desktop-control-floor comment-fold parse repair (TOKEN_INDEX/
+  // CONTROL_SHAPE_INDEX now built from comment-stripped blobs) landed in
+  // this same commit and re-measures COMMENT_CREDITED_OFFENDERS live at 0
+  // -- an instrument-soundness fact with no completeness sibling to
+  // straddle, promoted out of OUT_OF_CAMPAIGN_SCOPE per its own
+  // PARKED_FIDELITY_PROMISES row (clause a alone decided it).
+  "COMMENT_CREDITED_FLOOR_CEILING",
 ];

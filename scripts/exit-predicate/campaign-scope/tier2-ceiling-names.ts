@@ -187,4 +187,9 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above. Reads live 0 by RULED_LEFT
   // classification: a graded green conformance row.
   "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
+  // wave-55 (task v12m-w55-a, DEC-374 wave-52 amendment, executed): wired
+  // into TIER2 in the same commit that moved it out of OUT_OF_CAMPAIGN_SCOPE
+  // into CAMPAIGN_CONSTANT_NAMES above. Reads live 0: the desktop-control-
+  // floor comment-fold parse is repaired, a graded green conformance row.
+  "COMMENT_CREDITED_FLOOR_CEILING",
 ];
