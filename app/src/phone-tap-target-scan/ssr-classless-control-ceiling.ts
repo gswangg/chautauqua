@@ -161,7 +161,7 @@ export function findSsrClasslessControlOffenders(
 // `.chq-card`).
 //
 // Drained same-commit: portal/edit.tsx's checkbox was ALREADY exempt --
-// portal.css.ts:572 carries a `tap-floor-exempt: composition` comment on
+// portal.css.ts:576 carries a `tap-floor-exempt: composition` comment on
 // `.chq-cfp-option` (the wrapping `<label class="chq-cfp-option">` is the
 // floored click/tap surface, not the 18x18 checkbox glyph, the same shape
 // DEC-393 wave-124's TaskView/Scorecard exemptions already name). cfp.css.ts
