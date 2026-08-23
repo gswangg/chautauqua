@@ -928,6 +928,21 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "DEC-385 -- the only repair site is the top-level rule this lane may not touch). A fully "
     + "adjudicated roster with no candidate defect is a conformance fact already closed, not a "
     + "live gate (app/src/phone-truncation-triad.scan.test.ts, DEC-808 wave-43 amendment).",
+
+  PACK_PROSE_MEASURE_DIVERGENCE_CEILING:
+    "measures a newly-derived population -- every `max-width:<N>ch` prose clamp docs/design/*.dc.html "
+    + "draws, joined to the product's declared max-width for the render file its own text resolves to "
+    + "-- that no instrument previously graded. Wave-48's pack-unit-grammar histogram grades a VALUE "
+    + "vocabulary, so a property the product barely declares at all (max-width:<N>ch: 26 drawn across "
+    + "10 values, 10 served across 7, two of which -- 34ch, 32ch -- the pack never draws) reads as "
+    + "nearly clean; this ratchet is the axis that closes that blind spot. A real conformance fact "
+    + "about this population, but a freshly measured, previously-uncounted population must not move "
+    + "the campaign's goalposts mid-convergence; it is promoted once a later wave individually "
+    + "adjudicates every UNRESOLVED row against its own render site, the same disposition already "
+    + "given to PACK_UNIT_GRAMMAR_OFFENDERS_CEILING and PACK_COLOUR_VOCABULARY_HEX_OFFENDERS_CEILING "
+    + "(test/pack-prose-measure.scan.test.ts, DEC-896 wave-49 amendment, task w49-e). This lane moves "
+    + "no CSS byte; repair is a later lane's, sized from docs/design/audit/pack-prose-measure-v12.md's "
+    + "roster.",
 };
 
 /**
@@ -1025,4 +1040,11 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // separate "could not resolve" join behind it. Clause (a) alone decides
   // it (currently non-zero).
   FRAME_REPEATED_ROW_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // No completeness sibling -- the UNRESOLVED half (15 of 26 rows: this
+  // scan's render-file join cannot pin them) is folded into
+  // test/pack-prose-measure.scan.test.ts's own GRADED/UNRESOLVED exports
+  // and docs/design/audit/pack-prose-measure-v12.md's table rather than
+  // graded by a second ceiling constant. Clause (a) alone decides it
+  // (currently non-zero).
+  PACK_PROSE_MEASURE_DIVERGENCE_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
 };
