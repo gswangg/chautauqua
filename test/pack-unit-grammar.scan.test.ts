@@ -309,7 +309,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-write-failure-actions',
     value: '29px',
-    line: 2249,
+    line: 2258,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
@@ -318,7 +318,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-head-actions',
     value: '29px',
-    line: 2253,
+    line: 2262,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
@@ -327,7 +327,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/speakers/speakers.css',
     selector: '.chq-speakers-pager-actions',
     value: '29px',
-    line: 2257,
+    line: 2266,
     ruling:
       'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
       'app/src/pages/speakers/speakers-tier2-gap.test.ts and ' +
