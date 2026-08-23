@@ -67,7 +67,7 @@ export const DEC_061 = "Stage-1 §10 scope is closed: items 2 and 3 deferred";
 export const DEC_062 = "scripts/walkthrough.ts is a thin sequential runner over the five DEC-060 modules, in fixed order producer -> review -> speaker -> public -> data";
 export const DEC_063 = "SPEC §9 persona walkthroughs are CI-enforced: a third 'walkthrough' job boots seeded wrangler dev and runs `npm run walkthrough`";
 export const DEC_064 = "Claim POST validates before consuming: consumeClaimToken runs only after all validation passes, immediately before user creation";
-export const DEC_065 = "A task file's authoritative assignment link is consulted or the request is refused — the reverse fileId link is a fallback for UNLINKED files only";
+export const DEC_065 = "Amendment: the destructive file path inherits the read path's dangling-authoritative-link refusal verbatim — one grader, not two";
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Phone-floor root parity promotes at zero, and the instrument's own recorded blind spot is discharged by hand in the same commit";
+export const DEC_180 = "The credential-mint population is derived from the route corpus, not from two hardcoded module paths";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
