@@ -289,10 +289,10 @@ letting it quietly go stale.
 - `app/src/pages/settings/settings.css` :: `.chq-settings-public-pages-own-hidden` -- "Public pages" (app/src/pages/settings/PublicPagesPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:481 "Settings · Public pages"
 - `app/src/pages/submissions/detail.css` :: `.chq-detail-page .chq-participants-table thead` -- "Triage" (app/src/pages/submissions/SubmissionDetailPage.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:355 "Submission detail"
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-table thead` -- "Accept" (app/src/pages/submissions/SubmissionsTable.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions"
-- `app/src/styles.css` :: `.chq-shell:has([data-chq-phone-head]) .chq-header` -- "chautauqua" (app/src/App.tsx) is drawn verbatim at Chautauqua Account.dc.html:121 "Sign in · 390"
-- `app/src/styles.css` :: `.chq-header-identity .chq-user-identity` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id"
-- `app/src/styles.css` :: `.chq-shell:has(.chq-phone-dock) .chq-tabbar` -- "Save" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390"
-- `app/src/styles.css` :: `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id"
+- `app/src/styles.css` :: `.chq-shell:has([data-chq-phone-head]) .chq-header` -- "chautauqua" (app/src/App.tsx) is drawn verbatim at Chautauqua Account.dc.html:121 "Sign in · 390" -- OPENED wave-51 (see "Wave-51 amendment" section below): INSTRUMENT ARTEFACT, literal owned by the sign-in page's own heading, not by this shell rule's screen
+- `app/src/styles.css` :: `.chq-header-identity .chq-user-identity` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id" -- OPENED wave-51 (see "Wave-51 amendment" section below): CORRECTLY DRAWN OPT-OUT, the frame draws the reviewer drill-in's own docked Sign out in its place
+- `app/src/styles.css` :: `.chq-shell:has(.chq-phone-dock) .chq-tabbar` -- "Save" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390" -- OPENED wave-51 (see "Wave-51 amendment" section below): CORRECTLY DRAWN OPT-OUT, the frame draws the Templates editor's own docked Save/Cancel in its place
+- `app/src/styles.css` :: `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id" -- OPENED wave-51 (see "Wave-51 amendment" section below): INSTRUMENT ARTEFACT, literal owned by the same drill-in dock Row above already resolves, not by this modal-portal rule's own mechanism
 - `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-step-you` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
 - `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)` -- "Save draft" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:505 "Portal · Hotel stay form"
 - `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="2"] .chq-cfp-step-next` -- "Next: about you" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:1017 "Submit a talk"
@@ -376,3 +376,99 @@ repair lane naming its own sheet/selector/frame line above.
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-filterbar .chq-submissions-filterbar-select` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/submissions/submissions.css` :: `.chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted'])` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `src/routes/portal/portal.css.ts` :: `.chq-portal-actions-footer` -- "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session", but an identical, still-visible text child exists on the same phone surface: "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx :: chq-portal-actions-note) -- the frame's requirement is met by that twin, not by the hidden element
+
+## Wave-51 amendment (DEC-725, task w51-e): the four `app/src/styles.css` rows individually opened
+
+This ledger's own closing sentence under the PREMISE-FALSE roster called each
+of its 20 rows "a candidate for a future repair lane naming its own
+sheet/selector/frame line above" -- none had been individually opened since
+wave-39. This amendment is the SHELL LANE's own four rows (the other 16
+belong to page sheets a page lane, not the shell lane, may touch). Each
+verdict below was reached by opening the cited `.dc.html` file from its
+`font-size:19px` label line through to the next label (never stopping at the
+roster's cited line alone), reading the live component tree that mounts the
+selector's opposite side, and reading the standing comment already sitting
+above each rule in `app/src/styles.css` (all four already carry a
+`v12m-w14-c`/`DEC-576`/`DEC-989` provenance comment naming the mechanism this
+amendment confirms).
+
+### Row 1 -- `.chq-shell:has([data-chq-phone-head]) .chq-header` ("chautauqua")
+
+Verdict: **INSTRUMENT ARTEFACT**. Chautauqua Account.dc.html's "Sign in ·
+390" frame extent (label line 118, extent 118-144) draws "chautauqua" once,
+inside the sign-in card body itself (line 124, a 26px page heading), not
+inside any app-shell header band -- the frame draws no wordmark/identity
+chrome above the card at all. The unauthenticated sign-in screen never
+mounts app/src/App.tsx's `.chq-shell` (that component tree renders only
+under the authenticated `/admin` `BrowserRouter`), so the rule under review
+cannot even reach the screen this frame draws. The literal's real, always-
+visible owner is the server-rendered sign-in page's own heading: search
+src/routes/auth-views.tsx for its `chq-auth-wordmark` h1 (two occurrences,
+sign-in and its sibling reset view). `app/src/styles.css` is one of the two
+sheets this ledger's own wave-35 amendment explicitly keeps on the FULL-PACK
+join (a shared root with no single owning cluster) rather than narrowing to
+one frame file, so a coincidental cross-surface word match like this one is
+exactly the shape that join was already documented to admit.
+
+### Row 2 -- `.chq-header-identity .chq-user-identity` ("Sign out")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Review.dc.html's "Reviewer
+queue · /review/plans/:id" frame extent (label line 410, extent 410-445)
+draws its own docked footer band at lines 441-444 ("Scores stay hidden from
+other reviewers" plus a "Sign out" affordance, `border-top:1px solid
+#1B1D17; background:#EFEBDF; padding:12px 16px 16px`) as the LAST child
+inside the 390 frame -- there is no separate header-identity Sign out drawn
+anywhere else in this extent (the header band at lines 414-425 carries only
+the wordmark and the reviewer's name). This is precisely the drill-in's own
+`.chq-phone-dock` band the standing comment above the rule (the DEC-576/
+DEC-874 wave-86 amendment note, and the v12m-w14-c note just above it)
+already documents: a reviewer drill-in mints its own Sign out inside its
+dock and sets a `data-chq-phone-signout` marker on its page root for exactly
+this purpose, so the header-identity's own Sign out correctly stands down
+here rather than drawing a second one -- the un-hide rule directly below in
+the same file already excludes any shell carrying that marker.
+
+### Row 3 -- `.chq-shell:has(.chq-phone-dock) .chq-tabbar` ("Save")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Comms.dc.html's "Templates
+· 390" frame extent (label line 282, extent 282-326) draws a docked footer
+band at lines 322-325 (`border-top:1px solid #1B1D17; background:#EFEBDF;
+padding:12px 16px 16px; display:flex; gap:8px`) holding exactly "Save" and
+"Cancel" in place of a tab bar -- the frame draws no five-tab band anywhere
+in this extent. This is the DEC-989 (wave-85 amendment) shape the standing
+comment above the rule already names. The live component confirms the same
+opt-in mechanism the comment describes: search app/src/pages/comms/
+TemplatesTab.tsx for its `data-chq-phone-dock` page-root attribute (set only
+while editing) and its `chq-comms-editor-actions chq-phone-dock` footer,
+whose own "Save" action is the literal this roster row named.
+
+### Row 4 -- `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` ("Sign out")
+
+Verdict: **INSTRUMENT ARTEFACT**. This roster row cites the same Chautauqua
+Review.dc.html "Reviewer queue · /review/plans/:id" extent as Row 2 above,
+and its "Sign out" literal is the SAME docked-footer text Row 2 already
+attributes to the reviewer drill-in's in-shell `.chq-phone-dock` band --
+reached and re-lined by the DIFFERENT, narrower `.chq-shell:has(.chq-phone-
+dock) .chq-tabbar` rule (this ledger's Row 3 selector shape, standing a few
+lines above this one in app/src/styles.css) rather than by the rule this row
+actually names. The rule this row names is scoped, by design, to a dock
+portalled ACROSS the `.chq-scrim` modal boundary -- the standing DEC-576
+wave-106 comment directly above it names the one live mechanism that
+reaches it: search app/src/pages/contacts/ImportWizard.tsx for its own
+`data-chq-phone-dock` marker, mounted inside a ModalFrame `.chq-scrim`
+portal. That dock's own primary actions are the import wizard's own, never
+"Sign out" -- the roster's join matched this row's selector to an unrelated
+occurrence of the same short phrase on `app/src/styles.css`'s full-pack join
+(the same shared-root shape Row 1 above resolves the same way), not to any
+text the modal-portal mechanism this rule implements ever draws.
+
+### Outcome for `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING`
+
+All four rows resolve without a CSS change: two INSTRUMENT ARTEFACTs (the
+join credited an unrelated surface's coincidental text) and two CORRECTLY
+DRAWN OPT-OUTs (the frame draws the replacement band this ledger already
+predicted). Re-measured with `app/src/phone-hidden-drawn-text.scan.test.ts`'s
+own roster forced to `-1` (read back, never trusted from a prior wave): the
+PREMISE-FALSE population is still 20 rows, byte-identical to the roster
+below -- none of these four verdicts removes a row, so the ceiling is left
+at `20`, unmoved, correctly.
