@@ -119,17 +119,19 @@ export const MOBILE_POPULATION_OUT_OF_SCOPE: Record<string, string> = {
     + "profileDock) is the live /portal/profile desktop double-Save's root cause, a product "
     + "fix this measurement-only instrument does not itself make "
     + "(app/src/phone-twin-visibility.scan.test.ts, docs/design/audit/phone-twin-visibility-v12.md).",
-  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING:
-    "measures a newly-derived population -- a phone `display:none` rule whose SELECTOR is not "
-    + "itself interactive but whose target element's JSX subtree contains an interactive descendant, "
-    + "so hiding the container removes a capability the selector-keyed filter cannot see -- that no "
-    + "instrument previously graded. A real capability-removal fact about this specific population, "
-    + "but a newly measured, previously-uncounted population must not move the campaign's goalposts "
-    + "mid-convergence; it is promoted once later waves adjudicate each row against its own v12 frame "
-    + "and either receipt or repair it, the same disposition already given to "
-    + "PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING (app/src/phone-hidden-container.scan.test.ts, "
-    + "DEC-808 wave-41 amendment).",
-
+  // PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING WAS here (DEC-808 wave-41
+  // amendment) but was promoted OUT of OUT_OF_CAMPAIGN_SCOPE in wave-56
+  // (task w56-d, DEC-069 wave-56 amendment) once the population drained to
+  // 0 -- see campaign-constant-names.ts's own comment on that entry. That
+  // promotion removed it from CAMPAIGN_CONSTANT_NAMES's absence but left
+  // this stale duplicate row behind, so the constant sat in BOTH registries
+  // at once: campaign-scope-registry-partition.scan.test.ts's own
+  // no-shared-name invariant, and assertParkedPromisesAreHonestlyParked's
+  // "promise with no PARKED_FIDELITY_PROMISES rule" check (this entry's own
+  // prose still read "is promoted once ..." with no row ever added), both
+  // caught the leftover. Deleted rather than re-added to
+  // PARKED_FIDELITY_PROMISES: the promotion already happened, so a rule for
+  // a promise that is no longer parked here would itself be dead weight.
   FRAME_REPEATED_ROW_GAP_CEILING:
     "measures a newly-derived population -- every repeated-row group a v12 frame draws whose "
     + "product-side row template this ledger cannot yet pin to a single rendering site -- an "
