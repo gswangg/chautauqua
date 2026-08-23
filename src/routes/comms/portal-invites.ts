@@ -10,6 +10,7 @@ import { markParticipantsInvited } from "../../server/repo/participants";
 import type { KVStore } from "../../auth/claim";
 import { mintPortalLinks } from "../../server/repo/portal-link";
 import { renderEmailHtml } from "../../mail/shell";
+import { portalInviteReason } from "../../mail/reasons";
 import {
   MAX_PORTAL_INVITE_RECIPIENTS,
   renderPortalInvites,
@@ -100,7 +101,7 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
       text: r.text,
       html: renderEmailHtml(r.text, {
         eventName: event.name,
-        reason: `you're being invited to the speaker portal for ${event.name}`,
+        reason: portalInviteReason(event.name),
       }),
       eventId,
       contactId: r.contactId,

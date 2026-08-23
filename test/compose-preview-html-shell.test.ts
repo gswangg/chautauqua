@@ -149,7 +149,7 @@ describe("compose/preview html carries the send shell (DEC-037 amendment)", () =
     expect(previewBody.items).toHaveLength(1);
     const html = previewBody.items[0]!.html;
     expect(html).toContain("width:560px");
-    expect(html).toContain("you&#39;re a participant in a submission at DevCon");
+    expect(html).toContain("you&#39;re a participant in a submission at DevCon.");
 
     const sendApp = await buildApp();
     const sendRes = await postJson(

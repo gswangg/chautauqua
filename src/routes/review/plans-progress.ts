@@ -12,6 +12,7 @@ import { d1EmailLogWriter, makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { countOf } from "../../domain/count-copy";
 import { renderEmailHtml } from "../../mail/shell";
+import { reviewerOutstandingReason } from "../../mail/reasons";
 import { getEventForOrg } from "../../server/repo/events";
 import { resolveBaseUrl } from "../../server/origin";
 import { formatCalendarDate } from "../../lib/event-time";
@@ -417,7 +418,7 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
       text,
       html: renderEmailHtml(text, {
         eventName: remindEvent?.name ?? null,
-        reason: `you're a reviewer with outstanding evaluations in "${plan.name}"`,
+        reason: reviewerOutstandingReason(remindEvent?.name ?? null, plan.name),
       }),
       eventId: plan.eventId,
       contactId: null,
