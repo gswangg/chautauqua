@@ -567,4 +567,20 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "browser can sniff an uploaded file's bytes into a different content type than the server "
     + "declared, not a v12 frame or 390-geometry conformance fact about any drawn screen "
     + "(test/user-content-nosniff.test.ts, DEC-551 wave-51 amendment).",
+
+  COMMENT_CREDITED_FLOOR_CEILING:
+    "measures an INSTRUMENT-SOUNDNESS defect in this same file's desktop-control-floor ledger, "
+    + "not a v12 frame or 390-geometry conformance fact: every src/**/*.css.ts sheet is one giant "
+    + "template literal, so frame-source-corpus's stripComments (deliberately, for the label-match "
+    + "join) copies its CSS comments through verbatim, and desktop-control-floor's RULE_RE then "
+    + "folds a surviving comment into the NEXT rule's raw selector text, crediting a dot-prefixed "
+    + "class token named only in prose a min-height it never declares. Proven one-directional -- a "
+    + "comment can only ADD tokens to a selector, never remove a real one -- so this can only "
+    + "SUPPRESS true offenders already sitting in DESKTOP_FLOOR_DIVERGENCE_CEILING/"
+    + "DESKTOP_FLOOR_UNRESOLVED_CEILING above; a freshly measured, previously-uncounted population "
+    + "must not move the campaign's goalposts mid-convergence. Promoted once a later lane repairs "
+    + "the underlying parse (comment-strips selector text before matching) and re-measures whether "
+    + "any suppressed offender is genuine, sized from every row this ceiling's own roster lists in "
+    + "docs/design/audit/desktop-control-floor-v12.md's \"Wave 52\" section "
+    + "(test/desktop-control-floor.scan.test.ts, DEC-374 wave-52 amendment, task w52-f).",
 };
