@@ -254,3 +254,46 @@ units (wave 34)" above.)
 - `superseded-frames-formerly-owed::4` (numbered): 4. **Settings edit view** (B10) — CFP edit as the exemplar for all five.
 - `superseded-frames-formerly-owed::5` (numbered): 5. **Admin per-speaker detail** (B3) and **review wave lifecycle** (B4).
 - `superseded-frames-formerly-owed::6` (numbered): 6. **Import step 3** (B5), **HTML email shell** (B9).
+
+## Wave 39 (v12m-w39-c): 12 more drained
+
+Task w39-c paid the fourteen units named in its brief; two (`speaker-detail-…::3`
+and `::6`, both bold transition sentences that only introduce the bullets
+below them) resolved to no artifact of their own and stay "gap" per the
+brief's own escape clause ("a force-fit citation is worse than a gap") --
+honoring them would have meant re-citing a child unit's own citation, the
+exact borrowed-citation shape this ledger's preamble forbids. The other
+twelve are now "honored" in `UNIT_LEDGER`:
+
+| key | artifact | test |
+| --- | --- | --- |
+| `review-progress-two-reminder-scopes::1` | `app/src/pages/review/ProgressPanel.tsx` (`disabled={reminding \|\| laggards.length === 0}`) | `app/src/pages/review/ProgressPanel.render.test.tsx` |
+| `review-progress-two-reminder-scopes::2` | `app/src/pages/review/ProgressPanel.tsx` (`notStarted.length > 0 && (`) | `app/src/pages/review/ProgressPanel.render.test.tsx` |
+| `confirm-dialogs-one-component-two-weights::1` | `app/src/components/ConfirmDialog.tsx` (`weight === 'irreversible' && (`, gating the typing UI to the irreversible branch only) | `app/src/components/ConfirmDialog.render.test.tsx` |
+| `confirm-dialogs-one-component-two-weights::2` | `app/src/components/ConfirmDialog.tsx` (throws when `weight='irreversible'` lacks `confirmPhrase`) | `app/src/components/ConfirmDialog.render.test.tsx` |
+| `password-reset::1` | `src/auth/password-reset.ts` (`export async function createResetToken(`) | `test/password-reset-flow.test.ts` |
+| `speaker-detail-…::1` | `app/src/pages/speakers/speakers.css` `.chq-speaker-detail-tasks-row > :nth-child(2)` (full right-align/nowrap/min-width/overflow/ellipsis block) | `app/src/pages/speakers/speakers-css.test.ts` |
+| `speaker-detail-…::2` | `app/src/pages/speakers/speakers.css` (DEC-989 comment on the sessions-row rule, documenting the two-more-declarations mechanism) | `app/src/pages/speakers/speakers-css.test.ts` |
+| `speaker-detail-…::4` | `app/src/pages/speakers/speakers.css` `.chq-speaker-detail-sessions-row > :nth-child(2)` | `app/src/pages/speakers/speakers-css.test.ts` |
+| `speaker-detail-…::5` | `app/src/pages/speakers/task-view.css` `.chq-taskview-waiting .chq-taskview-row > :nth-child(4)` | `app/src/pages/speakers/speakers-css.test.ts` |
+| `speaker-detail-…::7` | `app/src/pages/speakers/task-view.css` (comment naming the Answered tab's date column as preceding an action link, not status ink) | `app/src/pages/speakers/speakers-css.test.ts` |
+| `speaker-detail-…::8` | `src/routes/portal/tasks/views.tsx` (`class="chq-portal-due"`, own-line render) | `test/portal-tasks-resources-390-frames.test.ts` |
+| `speaker-detail-…::9` | `app/src/pages/speakers/OnboardingGrid.tsx` (`${complete} of ${assigned} done`, the column-header aggregate) | `app/src/pages/speakers/OnboardingGrid.render.test.tsx` |
+
+Note on `password-reset::1`: the wave-34 note above called this unit "the
+document's own meta-narration about its drafting history" and left it a
+gap. Re-reading its full text against the brief's instruction shows it
+also names its own artifact directly -- `src/routes/auth-reset.tsx` with
+`src/auth/password-reset.ts`, covered by `test/password-reset-flow.test.ts`
+-- so this wave cites the latter file's `createResetToken` export rather
+than treating the whole unit as pure narration. This supersedes the wave-34
+disposition for this one key.
+
+`RULING_UNIT_GAP_CEILING` moved `130` -> `118` (measured by forcing the
+constant to `-1` in `test/design-rulings-ledger.scan.test.ts` and reading
+the failing assertion's printed count back, per the ratchet's own
+instructions -- never computed by arithmetic on the twelve drained keys).
+`npx vitest run test/design-rulings-ledger` is green (27/27) at this
+constant. 118 remain, all genuine design-rationale prose with no single
+code artifact -- real, narrow work for a later wave, same disposition as
+before.

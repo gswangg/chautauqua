@@ -1258,15 +1258,25 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "review-progress-two-reminder-scopes::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Remind laggards (N)** — everyone with anything outstanding. Disabled when the list is empty.\"",
+      "\"Remind laggards (N)\" is disabled exactly when the laggard population is empty, matching the unit's own \"Disabled when the list is empty\" clause.",
+    honored: {
+      file: "app/src/pages/review/ProgressPanel.tsx",
+      literal: "disabled={reminding || laggards.length === 0}",
+      testFile: "app/src/pages/review/ProgressPanel.render.test.tsx",
+    },
   },
   {
     key: "review-progress-two-reminder-scopes::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Remind the N not started** — the subset who have scored nothing, a harder nudge. Per **DEC-760**, when nobody is unstarted this link is **hidden, not disabled** — a permanently dead control on a p…\"",
+      "the \"Remind the N not started\" link is wrapped in a length > 0 conditional, not a disabled attribute, matching the unit's own \"hidden, not disabled\" clause (DEC-760).",
+    honored: {
+      file: "app/src/pages/review/ProgressPanel.tsx",
+      literal: "notStarted.length > 0 && (",
+      testFile: "app/src/pages/review/ProgressPanel.render.test.tsx",
+    },
   },
   {
     key: "loading-the-first-paint::1",
@@ -1312,15 +1322,25 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "confirm-dialogs-one-component-two-weights::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Reversible** — one sentence naming the consequence and what survives (\"Nothing is deleted\"), a primary carrying the verb, Cancel. No typing.\"",
+      "the typing input is gated to the irreversible branch only, so the default 'reversible' weight renders no typing control -- one sentence, Cancel, primary carrying the verb.",
+    honored: {
+      file: "app/src/components/ConfirmDialog.tsx",
+      literal: "weight === 'irreversible' && (",
+      testFile: "app/src/components/ConfirmDialog.render.test.tsx",
+    },
   },
   {
     key: "confirm-dialogs-one-component-two-weights::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Irreversible** — the same, plus **type the name to confirm**. Reserved for deletes that cannot be undone: a portal resource, an event, a contact merge.\"",
+      "the component throws when weight='irreversible' is under-specified, enforcing that the type-the-name-to-confirm contract is never silently skipped for a destructive caller.",
+    honored: {
+      file: "app/src/components/ConfirmDialog.tsx",
+      literal: "ConfirmDialog: weight='irreversible' requires a non-empty confirmPhrase",
+      testFile: "app/src/components/ConfirmDialog.render.test.tsx",
+    },
   },
   {
     key: "settings-the-four-surfaces-that-shipped-without-frames::1",
@@ -1438,9 +1458,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "password-reset::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**This is implemented** — `src/routes/auth-reset.tsx` with `src/auth/password-reset.ts`, covered by `test/password-reset-flow.test.ts`. An earlier draft of this document called it proposed new work; t…\"",
+      "the unit names its own artifact directly: src/auth/password-reset.ts's token-lifecycle exports, covered by test/password-reset-flow.test.ts.",
+    honored: {
+      file: "src/auth/password-reset.ts",
+      literal: "export async function createResetToken(",
+      testFile: "test/password-reset-flow.test.ts",
+    },
   },
   {
     key: "password-reset::2",
@@ -1484,57 +1509,92 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**USER RULING, supersedes the frame here:** the due-date column right-aligns. Every date's glyph **right** edge ends at a constant gap — the row's own `18px` grid gap — before the status ink, for ever…\"",
+      "the tasks row's due-date cell carries the full right-align declaration set the ruling states: text-align right, nowrap, a constant 18px pre-status gap enforced by the clip.",
+    honored: {
+      file: "app/src/pages/speakers/speakers.css",
+      literal: ".chq-speaker-detail-tasks-row > :nth-child(2) {\n  white-space: nowrap;\n  text-align: right;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**`text-align: right` alone measured wrong live, and needed two more declarations.** First-cut shipped with only `text-align: right`, then `min-width: 0` once the gap still measured 4.6px instead of 1…\"",
+      "the DEC-989 comment on the sessions-row declaration documents the exact two-more-declarations mechanism this unit narrates (min-width:0 then the overflow/text-overflow escape).",
+    honored: {
+      file: "app/src/pages/speakers/speakers.css",
+      literal: "DEC-989: `white-space: nowrap` needs an overflow escape in the SAME rule,",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::3",
     status: "gap",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Same defect, two more places it was found** (same component/CSS family, scanned per this ruling rather than assumed):\"",
+      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Same defect, two more places it was found** (same component/CSS family, scanned per this ruling rather than assumed):\" -- a transition sentence introducing the two bullets that themselves carry rows (::4, ::5); honoring it would mean re-citing a child's own citation, which this ledger's preamble forbids as a borrowed citation.",
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::4",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Sessions section**, same page (`Chautauqua Speakers.dc.html:366`, `app/src/pages/speakers/speakers.css` `.chq-speaker-detail-sessions-row`): the schedule column (\"Tue 10:00, Room 2A\") is the due-d…\"",
+      "the sessions-row schedule column carries the same right-align/nowrap/min-width declaration set the unit names.",
+    honored: {
+      file: "app/src/pages/speakers/speakers.css",
+      literal: ".chq-speaker-detail-sessions-row > :nth-child(2) {\n  text-align: right;\n  white-space: nowrap;\n  min-width: 0;",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::5",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Task drill, \"Still waiting\" tab** (`Chautauqua Speakers.dc.html:717`, `app/src/pages/speakers/task-view.css` `.chq-taskview-waiting .chq-taskview-row`): the \"Last reminded\" column (`Never` through…\"",
+      "the waiting-tab \"Last reminded\" column carries the same right-align/nowrap/min-width declaration set, scoped to the waiting tab as the unit states.",
+    honored: {
+      file: "app/src/pages/speakers/task-view.css",
+      literal: ".chq-taskview-waiting .chq-taskview-row > :nth-child(4) {\n  text-align: right;\n  white-space: nowrap;\n  min-width: 0;",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::6",
     status: "gap",
     reason:
-      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Where the pattern does *not* apply, and why it was left alone:**\"",
+      "a bold ruling unit (prose/rationale, no single code artifact); its own words: \"**Where the pattern does *not* apply, and why it was left alone:**\" -- a transition sentence introducing the three carve-out bullets that themselves carry rows (::7, ::8, ::9); honoring it would mean re-citing a child's own citation, which this ledger's preamble forbids as a borrowed citation.",
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::7",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Task drill, \"Answered\" tab** — its date column precedes an action link, not status ink. No vertical \"status column\" register is at risk there.\"",
+      "the task-view.css comment scoping the fix to the waiting tab states the Answered tab's date column precedes an action link, not a status token, matching this carve-out verbatim.",
+    honored: {
+      file: "app/src/pages/speakers/task-view.css",
+      literal: "which sits before an action LINK, not a status",
+      testFile: "app/src/pages/speakers/speakers-css.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::8",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Speaker portal task list** (`src/routes/portal/tasks/views.tsx`) — the due date (`.chq-portal-due`) renders on its **own line** below the task's title/flag row, never in a same-row column beside a…\"",
+      "the speaker portal task list renders the due date on its own line, not in an adjacent-column cell beside a status token, matching this carve-out.",
+    honored: {
+      file: "src/routes/portal/tasks/views.tsx",
+      literal: 'class="chq-portal-due"',
+      testFile: "test/portal-tasks-resources-390-frames.test.ts",
+    },
   },
   {
     key: "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::9",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Onboarding grid (dense matrix)** — the due date lives in the **column header** (B8: \"name · due · '7 of 12 done'\"), not in a per-row cell beside the status token. No adjacent-column pair to misali…\"",
+      "the onboarding grid's due date lives in the column header aggregate (\"N of M done\"), not in a per-row cell beside a status token, matching this carve-out.",
+    honored: {
+      file: "app/src/pages/speakers/OnboardingGrid.tsx",
+      literal: "${complete} of ${assigned} done",
+      testFile: "app/src/pages/speakers/OnboardingGrid.render.test.tsx",
+    },
   },
   {
     key: "superseded-frames-formerly-owed::1",
@@ -1670,8 +1730,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "cfp-form-editing-a-question::3",
   "cfp-form-editing-a-question::4",
   "cfp-form-editing-a-question::5",
-  "review-progress-two-reminder-scopes::1",
-  "review-progress-two-reminder-scopes::2",
   "loading-the-first-paint::1",
   "loading-the-first-paint::2",
   "loading-the-first-paint::3",
@@ -1679,8 +1737,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "loading-the-first-paint::5",
   "two-more-surfaces-that-shipped-without-frames::1",
   "two-more-surfaces-that-shipped-without-frames::2",
-  "confirm-dialogs-one-component-two-weights::1",
-  "confirm-dialogs-one-component-two-weights::2",
   "settings-the-four-surfaces-that-shipped-without-frames::1",
   "settings-the-four-surfaces-that-shipped-without-frames::2",
   "settings-the-four-surfaces-that-shipped-without-frames::3",
@@ -1695,16 +1751,8 @@ const KNOWN_UNIT_GAPS: string[] = [
   "review-criteria-scale-or-choice::4",
   "review-criteria-scale-or-choice::7",
   "review-criteria-scale-or-choice::9",
-  "password-reset::1",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::1",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::2",
   "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::3",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::4",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::5",
   "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::6",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::7",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::8",
-  "speaker-detail-due-date-and-schedule-columns-right-align-before-status-ink::9",
   "superseded-frames-formerly-owed::1",
   "superseded-frames-formerly-owed::2",
   "superseded-frames-formerly-owed::3",
@@ -1795,7 +1843,7 @@ const unitRealResolvers = {
 // and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: a newly-derived population no
 // instrument previously graded must not move the campaign's goalposts
 // mid-convergence.
-export const RULING_UNIT_GAP_CEILING = 130;
+export const RULING_UNIT_GAP_CEILING = 118;
 
 describe("design-rulings-ledger ruling-unit population (DEC-582 wave-31 amendment)", () => {
   const derivedUnits = deriveRulingUnits();
