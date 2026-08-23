@@ -340,6 +340,30 @@ const reachable = walkReachable(ENTRY_POINTS);
 // ---------------------------------------------------------------------------
 
 const ENTRY_OR_ALLOWED: Record<string, string> = {
+  "app/src/phone-hidden-drawn-text/text-findings.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "916-line app/src/phone-hidden-drawn-text.scan.test.ts) -- its only importer is " +
+    "app/src/phone-hidden-drawn-text.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Holds the TSX-side chq- token/text-child walk; it is scan vocabulary, never SPA bundle " +
+    "code.",
+  "app/src/phone-hidden-drawn-text/frame-blobs.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "916-line app/src/phone-hidden-drawn-text.scan.test.ts) -- its only importer is " +
+    "app/src/phone-hidden-drawn-text.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Holds the phone frame-extent walk and frame-text matcher; it is scan vocabulary, never " +
+    "SPA bundle code.",
+  "app/src/phone-hidden-drawn-text/cluster-scope.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "916-line app/src/phone-hidden-drawn-text.scan.test.ts) -- its only importer is " +
+    "app/src/phone-hidden-drawn-text.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Holds the cluster-key/sheet-scope derivation; it is scan vocabulary, never SPA bundle " +
+    "code.",
+  "app/src/phone-hidden-drawn-text/grade.ts":
+    "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
+    "916-line app/src/phone-hidden-drawn-text.scan.test.ts) -- its only importer is " +
+    "app/src/phone-hidden-drawn-text.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Holds the twin-detection and per-rule grading join; it is scan vocabulary, never SPA " +
+    "bundle code.",
   "app/src/frame-citation-core.ts":
     "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
     "1038-line app/src/frame-citation.scan.test.ts) -- its only importers are " +
