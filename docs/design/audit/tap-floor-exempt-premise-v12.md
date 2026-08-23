@@ -387,13 +387,13 @@ true.
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
 | ~~FALSE-PREMISE~~ **VERIFIED (wave-39)** | scoped | `app/src/pages/contacts/contacts.css` (line 596) | wave-36 point-in-time: companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar. SUPERSEDED wave-39: receipt re-pointed at .chq-btn (the class that actually carries min-height:48px + centred flex + non-zero horizontal padding, merged across app/src/styles.css's base rule and this file's phone-media override); now resolves VERIFIED. |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css` (line 1003) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `app/src/pages/agenda/agenda.css` (line 1003) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-btn`, named in prose without a leading dot (obeying the desktop-control-floor scan's own comment grammar); companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup; now resolves VERIFIED. |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css` (line 76) | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css` (line 429) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `app/src/pages/overview/overview.css` (line 429) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-overview-link-btn`, named in prose without a leading dot; companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup; now resolves VERIFIED. |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/review/review.css` (line 90) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1313) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1876) | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `src/routes/public/css/agenda.css.ts` (line 768) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `src/routes/public/css/agenda.css.ts` (line 768) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-pub-day-pill`, named in prose without a leading dot; companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup; now resolves VERIFIED. |
 | UNVERIFIABLE-PREMISE | composition | `src/views/error-states.css.ts` (line 72) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/routes/portal/tasks/views.tsx` (line 314) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 51) | no companion class named in the reason (distinct from the receipted selector itself) |
@@ -485,3 +485,67 @@ true.
 | VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 693) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card does not appear in either live 390 roster |
 | VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 777) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card-conflict does not appear in either live 390 roster |
 
+
+## Wave 51 (task w51-b, DEC-393/DEC-808): bare-token companion tier drains TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING
+
+Root cause (DEC-393 wave-51): `test/tap-floor-exempt-premise/judge.ts`'s
+`mentioned` extraction only ever matched a DOT-prefixed companion
+(`/\.(chq-[\w-]+)/g`). The sibling desktop-control-floor scan
+(`src/routes/public/cfp.css.ts`, verbatim) forbids a dot-prefixed class name
+inside CSS-comment prose: "the desktop-control-floor scan reads comment text
+as part of the following rule's raw selector, so a dot-prefixed class name in
+prose here would get credited a min-height it never declared". A
+`composition`-family receipt obeying that rule therefore names its companion
+as a BARE token -- invisible to the dot-only extractor, which routed it to
+the generic "no companion class named" UNVERIFIABLE-PREMISE fallthrough even
+though the reason genuinely names a real, checkable companion.
+
+Mechanism: `judgeReceipt`'s existing tail (tokenRe / matchingChunks / merged
+bodies / flexFloored || widthHeightFloored / present-in-markup) was factored
+out into `judgeCompanionFloor`, unchanged in behavior (DEC-613: no second
+copy). A new `judgeBareTokenCompanion` tier runs ONLY at the existing
+no-companion fallthrough, AFTER `judgeElementTypeReason` and after the
+`scoped` -> `judgeSelfScoped` branch, scoped to `family === "composition"`
+only, matches bare `chq-[\w-]+` tokens not already dot-prefixed, drops any
+token already in `receipt.receiptedClasses`, and resolves the first survivor
+through the unchanged `judgeCompanionFloor` path.
+
+The tier is scoped to `composition` only, not every family reaching the
+fallthrough: the sibling `inline` family's reasons routinely CITE a class
+name in prose (e.g. tying a receipt to its own DEVIATIONS.md §10 entry by the
+exempted anchor's class name) without asserting that class is a floored
+companion. An unscoped first pass of this tier misread five `inline-in-prose`
+citations as companion candidates and produced false FALSE-PREMISE rows: two
+in `src/routes/public/cfp.css.ts` (the intro-cta and identity-note
+`inline-in-prose` receipts) plus a third `chq-btn-primary` citation later in
+the same file, one in `src/routes/public/submit-views.tsx` (the identity-note
+JSX comment), and one in `src/views/theme.ts` (the docs Authentication
+section's `inline-in-prose` receipt) -- confirmed false, reverted, and the
+tier restricted to `family === "composition"` before landing.
+
+Before/after (forced to `-1` and re-measured; the true live baseline at this
+wave's HEAD is 37, not the stale 40 the prior ceiling constant carried --
+population drift since wave-44's snapshot, re-derived rather than inherited
+per DEC-808):
+
+| Verdict | Before (37 UNVERIFIABLE) | After (34 UNVERIFIABLE) |
+|---|---|---|
+| UNVERIFIABLE-PREMISE | 37 | 34 |
+| VERIFIED | 66 | 69 |
+| FALSE-PREMISE | 0 | 0 |
+
+Three rows moved from UNVERIFIABLE-PREMISE to VERIFIED (updated in place in
+the roster table above, `app/src/pages/agenda/agenda.css` line 1003/1006,
+`app/src/pages/overview/overview.css` line 429, and
+`src/routes/public/css/agenda.css.ts` line 768/775 -- the doc's wave-30
+snapshot line and this wave's re-measured line, one wave of drift apart):
+
+- `app/src/pages/agenda/agenda.css` -- bare-token companion `chq-btn`
+- `app/src/pages/overview/overview.css` -- bare-token companion
+  `chq-overview-link-btn`
+- `src/routes/public/css/agenda.css.ts` -- bare-token companion
+  `chq-pub-day-pill`
+
+`TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moves 40 -> 34.
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` stays 0 -- the widened reader
+surfaced no real 44px-floor defect this wave.
