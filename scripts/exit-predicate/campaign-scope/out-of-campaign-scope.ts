@@ -480,11 +480,11 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "this population live and explicitly unrouted since wave-29 ('a later lane should treat this "
     + "as a NEW ratchet with its own vocabulary-derivation shape, not an extension of this one'). A "
     + "real conformance fact about this population, but a freshly measured, previously-uncounted "
-    + "population must not move the campaign's goalposts mid-convergence; it is promoted once a "
-    + "later wave proves the measurement technique complete enough to gate on, the same disposition "
+    + "population must not move the campaign's goalposts mid-convergence -- the same disposition "
     + "already given to PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
-    + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment). "
-    + "DEC-069 promotion clause (a) refusal: not yet proven complete enough to gate on.",
+    + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment, DEC-069 wave-51 "
+    + "amendment: promotion-promise language removed, DEC-069 promotion clause (a) refusal stands -- "
+    + "not yet proven complete enough to gate on).",
   PACK_TYPOGRAPHY_LETTER_SPACING_UNRESOLVED_CEILING:
     "measures how many of that same letter-spacing population are var(--chq-...) references this "
     + "scan could not resolve to a declared token -- an instrument-completeness fact about the "
@@ -543,4 +543,28 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "wave-43 measured set. A floor whose sibling ceiling is excused cannot itself be a graded "
     + "campaign row (test/frame-verdict-async-query.scan.test.ts, DEC-976 wave-43 amendment, "
     + "DEC-069 wave-50 amendment).",
+
+  INTERACTION_STATE_UNPAIRED_EASING_CEILING:
+    "measures whether every --chq-motion-* transition names its paired --chq-ease-state token "
+    + "(DEC-367 wave-47 finding) -- an INTERACTION-STATE / motion fact about whether a transition "
+    + "silently falls back to CSS's default `ease` easing, not a v12 frame or 390-geometry "
+    + "conformance fact about any drawn screen. Ships at its seed value of zero with a two-sided "
+    + "companion already in the same describe block "
+    + "(app/src/interaction-states.scan.test.ts, DEC-367 wave-47 amendment).",
+
+  GENERATED_ARTIFACT_ATOMIC_WRITE_CEILING:
+    "measures whether every writeFileSync/writeFileAtomic call site publishing a generated repo-root "
+    + "SQL/asset artifact (.seed.sql, .seed-assets/*, .perf-seed.sql) routes through "
+    + "scripts/lib/write-file-atomic.ts's atomic write-to-temp-then-rename -- a TEST-INSTRUMENT "
+    + "RELIABILITY fact about whether concurrent vitest workers can observe a truncated file, not a "
+    + "v12 frame or 390-geometry conformance fact about any screen "
+    + "(test/generated-artifact-atomic-write.scan.test.ts, DEC-739 wave-46 amendment).",
+
+  DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING:
+    "measures whether every stored-user-content response (GET /files/:fileId, the bulk ZIP archive "
+    + "route, GET /headshots/:fileId, and any future handler streaming a makeFileStore(...).get(...) "
+    + "body) also sets the X-Content-Type-Options: nosniff header -- a SECURITY fact about whether a "
+    + "browser can sniff an uploaded file's bytes into a different content type than the server "
+    + "declared, not a v12 frame or 390-geometry conformance fact about any drawn screen "
+    + "(test/user-content-nosniff.test.ts, DEC-551 wave-51 amendment).",
 };
