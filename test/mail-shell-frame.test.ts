@@ -183,6 +183,33 @@ describe("mail shell frame fidelity (DEC-037 amendment, wave 20)", () => {
     expect(html).not.toContain("5 > 3 & \"quoted\"");
   });
 
+  // DEC-441 (wave-38 amendment): the shell's fact value stays a single
+  // escaped run -- the frame draws ONE span, and a caller-composed
+  // multi-item value (a sentence run, never a newline join) must still
+  // round-trip escaping correctly. This documents that joining is the
+  // CALLER's job, not the shell's: a value containing a literal "\n" is
+  // still emitted verbatim (escaped), proving the shell does not itself
+  // split, bullet, or otherwise reformat what it is given.
+  it("renders a multi-line fact value as one escaped span, verbatim -- the shell never splits or reformats it", () => {
+    const html = renderEmailHtml("Body.", {
+      eventName: "DevFlow Conf 2027",
+      reason: "test",
+      fact: { label: "Still to do", value: "Slides — due 1 May 2027.\nBio — due 10 April 2027." },
+    });
+    // The literal value (including its embedded \n) appears once, as a
+    // single escaped run inside the value span -- no <br> invented, no
+    // second row, no second border-left block.
+    expect(html).toContain(">Slides — due 1 May 2027.\nBio — due 10 April 2027.<");
+    expect((html.match(/border-left:3px solid #4E5C31/g) ?? []).length).toBe(1);
+    // Scope the "no <br> invented" check to the fact block itself -- the
+    // shell's footer legitimately carries its own unrelated <br /> between
+    // its two static lines.
+    const factBlockStart = html.indexOf("border-left:3px solid #4E5C31");
+    const factBlockEnd = html.indexOf("</table></td></tr>", factBlockStart);
+    const factBlockHtml = html.slice(factBlockStart, factBlockEnd);
+    expect(factBlockHtml).not.toContain("<br");
+  });
+
   it("scan: every hex literal under src/mail/**/*.ts is in PERMITTED_MAIL_COLOURS", () => {
     const files = glob(MAIL_DIR, [".ts"]);
     expect(files.length).toBeGreaterThan(0);

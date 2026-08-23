@@ -88,11 +88,33 @@ export function sortReminderAssignments(assignments: ReminderAssignment[]): Remi
   });
 }
 
+/** The one per-task description shared by every renderer below — bullet
+ * prefix and sentence-run join are each renderer's own concern, not this
+ * function's, so the two registers (formatTaskLines' plain-text bullets vs
+ * formatTaskSentenceRun's HTML sentence run) can never drift on the task
+ * text itself (DEC-613 class). */
+function describeTask(a: ReminderAssignment): string {
+  if (a.dueDate === null) return `${a.taskTitle} — No due date`;
+  return `${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
+}
+
 export function formatTaskLines(assignments: ReminderAssignment[]): string[] {
-  return sortReminderAssignments(assignments).map((a) => {
-    if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
-    return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
-  });
+  return sortReminderAssignments(assignments).map((a) => `- ${describeTask(a)}`);
+}
+
+/** DEC-441 wave-38 amendment: the frame's fact VALUE (docs/design/
+ * Chautauqua Comms.dc.html `<div style="border-left:3px solid #4E5C31;
+ * padding:2px 0 2px 15px; display:flex; flex-direction:column; gap:5px">`)
+ * is ONE period-terminated sentence run, not the plain-text body's bulleted,
+ * newline-joined list — src/mail/shell.ts renders it as a single escaped
+ * span, so a newline join collapses in HTML with no separator left behind.
+ * Shares describeTask/sortReminderAssignments with formatTaskLines so the
+ * two registers can never report different task text, only a different
+ * prefix/join. */
+export function formatTaskSentenceRun(assignments: ReminderAssignment[]): string {
+  return sortReminderAssignments(assignments)
+    .map((a) => `${describeTask(a)}.`)
+    .join(" ");
 }
 
 export interface PlanRemindersResult {
