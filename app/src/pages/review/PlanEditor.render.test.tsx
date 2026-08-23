@@ -1622,6 +1622,14 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText(/2 reviewer/)).toBeInTheDocument();
     expect(screen.getByText(/3 recusal/)).toBeInTheDocument();
     expect(screen.getByText(/results table and CSV export go with it/)).toBeInTheDocument();
+
+    // DEC-941 (wave-38 amendment): the body says "permanently delete" --
+    // that decides the WEIGHT (DESIGN-RULINGS.md:342-349). Irreversible
+    // weight gates the primary behind the plan's own name typed back, same
+    // idiom as ResourcesPanel's file-name gate.
+    expect(within(dialog).getByRole('button', { name: 'Delete plan' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Track Review' } });
+    expect(within(dialog).getByRole('button', { name: 'Delete plan' })).toBeEnabled();
   });
 
   // wave 49/DEC-745 amendment: dirty-state navigation guard -- FIELDS

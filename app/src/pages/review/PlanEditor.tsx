@@ -2928,11 +2928,21 @@ export function PlanEditor() {
 
       {deletePlanConfirmOpen && deletePreview && (
         // DEC-941 (wave-23 amendment): title names the plan already held in
-        // the form's own draft state.
+        // the form's own draft state. DEC-941 (wave-38 amendment): the body
+        // says "permanently delete" -- that decides the WEIGHT, not how
+        // alarming the sentence reads (DESIGN-RULINGS.md:342-349). This is
+        // a delete that cannot be undone, same population as the portal
+        // resource, form field, and contact-merge deletes elsewhere in this
+        // component's own module, so it takes weight="irreversible" and
+        // requires the plan's own name typed back before Delete plan
+        // unlocks, same idiom as ResourcesPanel.tsx's file-name gate.
         <ConfirmDialog
           title={`Delete "${draft.name}"?`}
           body={`This will permanently delete ${countOf(deletePreview.evaluationsSubmitted, 'submitted evaluation')} and ${countOf(deletePreview.evaluationsDraft, 'draft evaluation')}, ${countOf(deletePreview.reviewers, 'reviewer assignment')}, and ${countOf(deletePreview.recusals, 'recusal')}. This plan's results table and CSV export go with it.`}
           confirmLabel="Delete plan"
+          weight="irreversible"
+          confirmPhrase={draft.name}
+          confirmNoun="plan name"
           pending={saving}
           onConfirm={confirmRemovePlan}
           onCancel={() => setDeletePlanConfirmOpen(false)}
