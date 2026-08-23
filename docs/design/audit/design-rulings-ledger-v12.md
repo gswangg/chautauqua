@@ -62,6 +62,31 @@ document's own meta-narration about its drafting history ("An earlier
 draft of this document called it proposed new work"), not a claim with a
 code artifact of its own.
 
+### Drained units (wave 55)
+
+| key | artifact | test |
+| --- | --- | --- |
+| `b7-empty-states::1` | `app/src/styles.css` (`.chq-empty-block-fresh { padding-top: 44px; }`) | `app/src/components/EmptyState.render.test.tsx` |
+| `b7-empty-states::2` | `app/src/styles.css` (`.chq-empty-block-filtered { padding-top: 30px; }`) | `app/src/components/EmptyState.render.test.tsx` |
+| `b7-empty-states::4` | `app/src/components/EmptyState.tsx` (`{reason && (` — optional, rendered only when supplied) | `app/src/components/EmptyState.render.test.tsx` |
+| `b7-empty-states::5` | `app/src/components/EmptyState.tsx` ("Neither variant ever renders a disabled control") | `app/src/components/EmptyState.render.test.tsx` |
+| `b7-empty-states::8` | `app/src/b7-empty-table.scan.test.ts` ("a loaded, empty row set never renders as…") | `app/src/b7-empty-table.scan.test.ts` |
+| `b7-empty-states::9` | `app/src/components/EmptyState.tsx` ("disabled control, an illustration, or a" [centred hero]) | `app/src/components/EmptyState.render.test.tsx` |
+| `loading-the-first-paint::1` | `app/src/components/PageSkeleton.tsx` ("render nav + a bare `<h1>` over an empty `<main>`, which two…") | `app/src/components/PageSkeleton.render.test.tsx` |
+| `loading-the-first-paint::3` | `app/src/components/page-skeleton.css` (`.chq-skeleton-row-table .chq-skeleton-bar-wide` varied-width rules, "a column of identical bars reads as a loading graphic, not as rows") | `app/src/components/PageSkeleton.render.test.tsx` |
+| `loading-the-first-paint::5` | `app/src/components/page-skeleton.css` ("flat placeholder bars in the token palette, never a spinner/shimmer", `background: var(--chq-surface-sunk)` i.e. `#EFEBDF`) | `app/src/components/loading-first-paint.scan.test.ts` |
+
+Two of the nine b7-empty-states units were reclassified **prose**, not
+honored: `b7-empty-states::3` ("Name what is empty, not what is missing")
+is a copy-writing convention spanning every call site's `what` string, no
+single artifact; `b7-empty-states::6` ("Distinguish fresh from filtered
+(above)") is a bare cross-reference to the two bold units, not a separate
+claim. `b7-empty-states::7` ("Filtered states name the filter that did it")
+stays a genuine **gap**: no artifact enforces that an escape link's label
+names the exact excluding facet or that its `onClick` clears only that one
+facet — that is a per-caller editorial judgment EmptyState's types cannot
+see (DEC-582 wave-55, w55-f).
+
 Every gap row, named by key, parent heading, and its own words (truncated
 to ~160 chars where long):
 
@@ -306,3 +331,9 @@ before.
 (`test/design-rulings-ledger.scan.test.ts`) at this sha — further keys
 drained by intervening lanes since the paragraph above was written. This is
 a measurement at the current sha, not a new arithmetic claim.
+
+**Wave-55 measurement (w55-f)**: `RULING_UNIT_GAP_CEILING = 93` live
+(`test/design-rulings-ledger.scan.test.ts`), measured by forcing the
+constant to `-1` and reading the failing assertion's printed count back.
+`104 -> 93`: the b7-empty-states and loading-the-first-paint headings'
+gaps were drained this wave -- see "### Drained units (wave 55)" above.
