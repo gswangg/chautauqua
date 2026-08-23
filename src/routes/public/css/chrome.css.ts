@@ -362,11 +362,20 @@ export const CHROME_PHONE_CSS = `
        link (filters.tsx) -- sole class on the element.
        DEC-393 wave-33: measured at 40px wide, short of the 44px width
        floor (public-390-interactive-offenders-v12.md). Widened to 6px
-       each side (32px label + 12px padding = 44px). */
+       each side (32px label + 12px padding = 44px).
+       Instrument-honesty fix: that 32px+12px=44px arithmetic assumed the
+       "Clear" label's own rendered text width is exactly 32px, with no
+       margin -- live-measured at 43.6875px on /embed/e/seed_embed_0001 (a
+       0.3125px shortfall from sub-pixel font-metrics rounding, not a
+       layout bug). Every other DEC-393 width-floor fix in this tree pins
+       an explicit min-width rather than trusting content+padding
+       arithmetic to land on exactly 44px; this one now does too. */
     .chq-pub-activefilters-clear {
       min-height: 44px;
+      min-width: 44px;
       display: flex;
       align-items: center;
+      justify-content: center;
       padding: 0 6px;
     }
     /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the track-highlight
