@@ -303,6 +303,7 @@ export const DOCS_SITE_CSS = `
        the toolbar, in place, the moment the 'Contents' checkbox is
        checked, rather than replaced outright by the '‹ Docs' link above
        the H1 (:168, the phone panel's own header band). */
+    /* phone-hidden: re-lined in place by the checked-state rule immediately below, driven by the sr-only .chq-docs-contents-checkbox toggle (docs-site.tsx) */
     .chq-docs-nav { display: none; }
     .chq-docs-article-frame:has(.chq-docs-contents-checkbox:checked) .chq-docs-nav {
       display: flex;

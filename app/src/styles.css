@@ -2312,14 +2312,17 @@ select:focus-visible,
      never a URL selector: the reviewer's queue drill-in keeps the shell
      header (its frame, :414-421, draws wordmark + reviewer name) and sets
      no such attribute. */
+  /* phone-hidden: re-lined as the opting-in page's own data-chq-phone-head band (back affordance, e.g. ReviewerQueue.tsx's drill-in), plus that same drill-in's own data-chq-phone-signout band for Sign out (App.tsx); nav is not lost, a reviewer's single primary section renders no PhoneTabBar (App.tsx, DEC-576 wave-86) so the shell nav carried nothing to re-line in the first place */
   .chq-shell:has([data-chq-phone-head]) .chq-header {
     display: none;
   }
 
+  /* phone-hidden: duplicate of a twin that stays on screen -- App.tsx's PhoneTabBar renders the same NavLinks data (chq-tabbar chq-nav-link) as the persistent bottom tab bar, plus the More sheet for sections that don't fit the primary slots */
   .chq-nav {
     display: none;
   }
 
+  /* phone-hidden: duplicate of a twin that stays on screen -- App.tsx's PhoneTabBar More sheet carries its own Sign out control (handleSignOutClick) whenever a tab bar mounts; the un-hide rule directly below restores this same identity block's Sign out whenever no tab bar mounts, so the capability is never actually lost at 390 */
   .chq-header-identity .chq-user-identity {
     display: none;
   }
@@ -2371,6 +2374,7 @@ select:focus-visible,
      sibling -- no shell-side wiring beyond this one rule, no route param,
      no context. Filed as the shell-lane fix for
      docs/design/audit/content-v12.md's open finding. */
+  /* phone-hidden: re-lined as the page's own data-chq-phone-dock band's primary action(s), mounted in place of the tab bar it displaces (e.g. Content's Select-mode dock) */
   .chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar {
     display: none;
   }
@@ -2622,6 +2626,7 @@ select:focus-visible,
      background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`) --
      Settings, Submissions and Review's docked drills agree. `:has()`
      already ships in this product (settings.css:406). */
+  /* phone-hidden: re-lined as the shell's own .chq-phone-dock band's primary action(s), the docked drill-in twin this rule's comment above documents */
   .chq-shell:has(.chq-phone-dock) .chq-tabbar {
     display: none;
   }
@@ -2636,6 +2641,7 @@ select:focus-visible,
      .chq-scrim, not to body generally, so only a MODAL dock reaches
      across the portal -- an in-shell dock keeps using the two narrower
      rules above it. */
+  /* phone-hidden: re-lined as the portalled modal dock's own primary action(s) reached across the .chq-scrim boundary, the same capability the two narrower .chq-tabbar rules above re-line for an in-shell dock */
   body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar {
     display: none;
   }

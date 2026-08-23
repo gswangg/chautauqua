@@ -1038,6 +1038,7 @@ ${EMPTY_PHONE_CSS}
        .chq-measure's scroll region -- the in-flow copy is stood down at
        390 (a phone treatment of a hidden element would be a lie), leaving
        the .chq-portal-edit-dock copy below as the only one revealed. */
+    /* phone-hidden: re-lined as the calling page's own dock button (.chq-portal-edit-dock for edit.tsx, .chq-portal-profile-dock for profile.tsx), revealed by the matching phone media rule below through the same PortalLayout dock slot -- not a double-Save, each page's in-flow copy is stood down exactly here */
     .chq-portal-actions-footer { display: none; }
 
     /* DEC-576 (wave-38, w38-f): reveals profile.tsx's dock copy hidden at
@@ -1164,6 +1165,7 @@ ${EMPTY_PHONE_CSS}
      itself DOES draw at desktop -- shared.tsx:233 mounts it on width-
      independent terms -- so its row layout lives in the base layer above;
      only these full-measure overrides are phone-only.) */
+  /* phone-hidden: duplicate of a twin that stays on screen -- shared.tsx's header identity cluster (.chq-portal-header-signout form/button) already carries the same POST /logout control at 390 */
   .chq-portal-shell > .chq-portal-footer .chq-portal-signout {
     display: none;
   }
@@ -1230,6 +1232,7 @@ ${EMPTY_PHONE_CSS}
     display: flex;
     flex: 1;
   }
+  /* phone-hidden: re-lined as .chq-portal-taskform-dock immediately above, the same PortalLayout dock slot, single Submit control */
   .chq-portal-taskform-submit { display: none; }
 
   /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): remaining bare-anchor

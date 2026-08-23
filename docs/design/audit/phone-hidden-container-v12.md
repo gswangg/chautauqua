@@ -26,23 +26,59 @@ existing gate's goalposts mid-convergence. It is promoted once later waves
 adjudicate each row against its own v12 frame and either receipt it (a
 verified navigation dead-end or re-lined replacement) or repair it.
 
-## Worked example (the task's own motivating case — OWNED, not repaired here)
+## wave-49 (task w49-d): SHELL + SSR half adjudicated, ceiling 31 → 21
 
-src/routes/portal/portal.css.ts`.chq-portal-actions-footer { display: none; }`
-(the phone-scoped copy) is a bare container class, not itself interactive. Its
-markup mount, `src/routes/portal/edit.tsx`, renders the profile form's
-inline Save submit button as a descendant. This is the confirmed root of
-wave-38's desktop double-Save defect. Both `src/routes/portal/portal.css.ts`
-and `src/routes/portal/profile.tsx` are held by in-flight `v12m-w38-a` /
-`v12m-w38-f`, which are landing the double-Save repair — this task's brief
-explicitly forbids touching either file. Recorded here as OWNED.
+Re-derived the roster with the ceiling forced to `-1` (the DEC-808 idiom —
+never trust a prior wave's description). Confirmed 31 rows unchanged since
+wave-41. Adjudicated the ten SHELL + SSR rows (6 in `app/src/styles.css`, 1 in
+`src/routes/docs-site.css.ts`, 3 in `src/routes/portal/portal.css.ts`)
+against their v12 frames; all ten take disposition (a) — a
+`/* phone-hidden: */` receipt naming the phone-side affordance that reaches
+the same capability. Desktop CSS is unchanged; only comments were added.
+`PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING` lowered from 31 to 21, measured
+(not assumed) by re-running the scan with the receipts in place. The
+remaining 21 rows, all under `app/src/pages/**`, are NOT this task's
+population and are unchanged below.
 
-## Population (measured at authoring time, 2026-08-22)
+### The wave-38 "double-Save defect" was already repaired (worked example)
+
+`src/routes/portal/portal.css.ts`'s `.chq-portal-actions-footer { display:
+none; }` (the phone-scoped copy) was wave-41's motivating example, recorded
+as OWNED by `v12m-w38-a`/`v12m-w38-f` — neither branch exists any more.
+Checking the live tree rather than trusting that history: the double-Save
+repair is in fact already built.
+
+- `src/routes/portal/portal.css.ts:727` (`.chq-portal-edit-dock { display:
+  none; }`, top level) / `:1041` (`.chq-portal-actions-footer { display:
+  none; }`, phone media block) / `:1051` (`.chq-portal-edit-dock { display:
+  flex; flex: 1; }`, phone media block) — edit.tsx's in-flow Save is hidden
+  on phone and its PortalLayout dock-slot twin is revealed; desktop is the
+  mirror image. Exactly one copy draws at any width.
+- `src/routes/portal/portal.css.ts:737` (`.chq-portal-profile-dock {
+  display: none; }`, top level) / same `:1041` phone-block hide of
+  `.chq-portal-actions-footer` / `:1051` `.chq-portal-profile-dock { display:
+  flex; flex: 1; }` (phone media block) — profile.tsx's own comment at its
+  usage (`src/routes/portal/profile.tsx`, the div wrapping the inline Save
+  button) states directly: "exactly one Save control visible at any width".
+- `src/routes/portal/portal.css.ts:747`/`:1233` — the same pattern a third
+  time for `.chq-portal-taskform-dock`/`.chq-portal-taskform-submit`
+  (`src/routes/portal/tasks/views.tsx`).
+
+So `.chq-portal-actions-footer` is disposition (a), not (b): its phone-hidden
+receipt names "the calling page's own dock button
+(.chq-portal-edit-dock/.chq-portal-profile-dock), revealed by the matching
+phone media rule ... through the same PortalLayout dock slot". No repair was
+needed in this lane — the repair already landed on a prior wave's tree; this
+wave's job was recognizing that and writing the receipt.
+
+## Population (measured at authoring time, 2026-08-22; SHELL+SSR rows now receipted)
 
 Each row: stylesheet — selector — markup file where the interactive
-descendant was found. None of these carry a `/* phone-hidden: */` receipt.
-No CSS was edited to produce this roster; adjudication (receipt vs. repair)
-is left to a future wave per row, except the OWNED row above.
+descendant was found. Rows 22–31 (below) carry a `/* phone-hidden: */`
+receipt as of wave-49 and no longer appear in `CONTAINER_OFFENDERS`; they
+are kept here as a record of what was adjudicated. Rows 1–21
+(`app/src/pages/**`) remain unreceipted and are this ceiling's live
+population (21, matching the lowered ceiling).
 
 1. `app/src/pages/agenda/agenda.css` — `.chq-agenda-armed-bar` — `app/src/pages/Agenda.tsx`
 2. `app/src/pages/comms/comms.css` — `.chq-comms-main-landing` — `app/src/pages/Comms.tsx`
@@ -65,30 +101,33 @@ is left to a future wave per row, except the OWNED row above.
 19. `app/src/pages/speakers/speakers.css` — `.chq-speakers-grid-wrap` — `app/src/pages/speakers/OnboardingGrid.tsx`
 20. `app/src/pages/speakers/speakers.css` — `.chq-speakers-head-actions` — `app/src/pages/speakers/OnboardingGrid.tsx`
 21. `app/src/pages/speakers/task-view.css` — `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` (target token `chq-taskview-head-row`) — `app/src/pages/speakers/TaskView.tsx`
-22. `app/src/styles.css` — `.chq-shell:has([data-chq-phone-head]) .chq-header` (target token `chq-header`) — `src/routes/docs.tsx`
-23. `app/src/styles.css` — `.chq-nav` — `src/routes/public/shell.tsx`
-24. `app/src/styles.css` — `.chq-header-identity .chq-user-identity` (target token `chq-user-identity`) — `app/src/App.tsx`
-25. `app/src/styles.css` — `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`
-26. `app/src/styles.css` — `.chq-shell:has(.chq-phone-dock) .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`
-27. `app/src/styles.css` — `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`
-28. `src/routes/docs-site.css.ts` — `.chq-docs-nav` — `src/routes/docs-site.tsx`
-29. **`src/routes/portal/portal.css.ts` — `.chq-portal-actions-footer` — `src/routes/portal/edit.tsx` — OWNED by in-flight `v12m-w38-a`/`v12m-w38-f`, not repaired here (see worked example above).**
-30. `src/routes/portal/portal.css.ts` — `.chq-portal-shell > .chq-portal-footer .chq-portal-signout` (target token `chq-portal-signout`) — `src/routes/portal/shared.tsx`
-31. `src/routes/portal/portal.css.ts` — `.chq-portal-taskform-submit` — `src/routes/portal/tasks/views.tsx`
-
-Rows 30 and 31 sit in `src/routes/portal/portal.css.ts` alongside the OWNED
-row 29 but name different selectors/elements than the ones `v12m-w38-a`/
-`v12m-w38-f` are landing a repair for (`.chq-portal-actions-footer`
-specifically); this task's brief forbids touching that file at all, so
-these two are recorded unadjudicated rather than distinguished further.
+22. **RECEIPTED** `app/src/styles.css` — `.chq-shell:has([data-chq-phone-head]) .chq-header` (target token `chq-header`) — reaches App.tsx's real shell header (the scan's own subtree resolution happened to report `src/routes/docs.tsx`, an unrelated standalone `/docs/api` page whose own unrelated `chq-header` class token also carries an `<a>`; App.tsx's shell header — the actual target of this selector — independently carries `.chq-nav` links and the Sign out button). Receipt: the opting-in page's own `data-chq-phone-head` band (back affordance) plus, for Sign out, that same drill-in's `data-chq-phone-signout` band (App.tsx); a reviewer — the only role that ever sets `data-chq-phone-head` — has a single primary section, so App.tsx's `PhoneTabBar` never mounts and there was no nav to lose.
+23. **RECEIPTED** `app/src/styles.css` — `.chq-nav` — `app/src/App.tsx` (Header). Receipt: duplicate of a twin that stays on screen — App.tsx's `PhoneTabBar` renders the same `NavLinks` data as the persistent bottom tab bar, plus the More sheet for sections that don't fit the primary slots.
+24. **RECEIPTED** `app/src/styles.css` — `.chq-header-identity .chq-user-identity` (target token `chq-user-identity`) — `app/src/App.tsx`. Receipt: duplicate of a twin that stays on screen — `PhoneTabBar`'s More sheet carries its own Sign out whenever a tab bar mounts; `app/src/styles.css`'s own very next rule (`.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity { display: inline-flex; }`) restores this identity block's Sign out whenever no tab bar mounts, so the capability is never actually lost at 390.
+25. **RECEIPTED** `app/src/styles.css` — `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`. Receipt: re-lined as the page's own `data-chq-phone-dock` band's primary action(s) (e.g. Content's phone Select-mode dock, docs/design/Chautauqua Content.dc.html:278).
+26. **RECEIPTED** `app/src/styles.css` — `.chq-shell:has(.chq-phone-dock) .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`. Receipt: re-lined as the shell's own `.chq-phone-dock` band's primary action(s) — the docked drill-in twin this rule's own preceding comment documents (Settings/Submissions/Review).
+27. **RECEIPTED** `app/src/styles.css` — `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` (target token `chq-tabbar`) — `app/src/App.tsx`. Receipt: re-lined as the portalled modal dock's own primary action(s), reached across the `.chq-scrim` boundary (e.g. ImportWizard.tsx via ModalFrame) — the same capability the two narrower rules above (25, 26) re-line for an in-shell dock.
+28. **RECEIPTED** `src/routes/docs-site.css.ts` — `.chq-docs-nav` — `src/routes/docs-site.tsx`. Receipt: re-lined in place by the very next rule in the same file (`.chq-docs-article-frame:has(.chq-docs-contents-checkbox:checked) .chq-docs-nav { display: flex; }`), driven by the sr-only `.chq-docs-contents-checkbox` toggle.
+29. **RECEIPTED** `src/routes/portal/portal.css.ts` — `.chq-portal-actions-footer` — `src/routes/portal/edit.tsx` (also composed by `profile.tsx`). NOT the double-Save defect wave-38's history named — see the worked example above: that repair already landed. Receipt: re-lined as the calling page's own dock button (`.chq-portal-edit-dock` for edit.tsx, `.chq-portal-profile-dock` for profile.tsx), revealed by the matching phone media rule through the same `PortalLayout` dock slot.
+30. **RECEIPTED** `src/routes/portal/portal.css.ts` — `.chq-portal-shell > .chq-portal-footer .chq-portal-signout` (target token `chq-portal-signout`) — `src/routes/portal/shared.tsx`. Receipt: duplicate of a twin that stays on screen — `shared.tsx`'s header identity cluster (`.chq-portal-header-signout` form/button) already carries the same `POST /logout` control at 390.
+31. **RECEIPTED** `src/routes/portal/portal.css.ts` — `.chq-portal-taskform-submit` — `src/routes/portal/tasks/views.tsx`. Receipt: re-lined as `.chq-portal-taskform-dock` (the rule immediately above it in the same file), the same `PortalLayout` dock slot, single Submit control.
 
 ## Disposition
 
-None of the 31 rows above were receipted or repaired by this task — the
-task's own scope is "widen the population, declare the ceiling, write the
-roster"; adjudicating each row against its v12 frame (does the hidden
+Rows 1–21 (`app/src/pages/**`) were NOT receipted or repaired — out of
+scope for task w49-d, which owned only the shell + SSR half (rows 22–31).
+Adjudicating each of those 21 against its v12 frame (does the hidden
 container's capability have a re-lined phone-width replacement, a verified
 navigation dead-end, or is it a genuine unaddressed capability-removal
 defect) is a future wave's work, one row (or a small owned batch) at a
 time, per the same discipline `PHONE_HIDDEN_UNRECEIPTED_CEILING`'s own
 closing-paragraph history already models.
+
+Rows 22–31 were adjudicated this wave. All ten take disposition (a): each
+hidden container's capability has a verified, re-lined phone-side
+replacement, named above by class and handler (not by copy, per DEC-613/
+DEC-967 drift-proof citation and the css-comment-copy-leak scan's
+constraint on the two `src/routes/**/*.css.ts` rows). None required a CSS
+declaration/selector/media-query change — desktop is frozen and stays
+byte-identical; only `/* phone-hidden: */` comments were added, immediately
+above each rule.
