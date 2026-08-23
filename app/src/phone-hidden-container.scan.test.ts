@@ -272,11 +272,25 @@ const CONTAINER_OFFENDERS: ContainerOffender[] = UNRECEIPTED_NON_INTERACTIVE_SEL
 // measured (not assumed) by re-running the scan with the receipt in
 // place.
 //
+// wave-56 (task w56-d): adjudicated the last twelve rows (audit doc rows
+// 3-8, 13-18, all app/src/pages/contacts/** and app/src/pages/overview.css
+// /settings.css). All twelve take disposition (a) -- each is a re-lined
+// phone-side replacement or a drill-in navigation swap already reachable
+// on screen, named by class and handler in a `/* phone-hidden: */` receipt
+// directly above its rule; none required a CSS declaration change to an
+// existing rule. Ceiling lowered from 12 to 0, measured (not assumed) by
+// re-running the scan with the ceiling forced to -1 and confirming the
+// printed offender roster is empty. This drains the population this file
+// was seeded to grade: promoted the same commit into the campaign-gating
+// registries per DEC-069 (parked-fidelity-promises.ts row deleted,
+// campaign-scope.ts OUT_OF_CAMPAIGN_SCOPE entry deleted, campaign-constant
+// -names.ts + tier2-ceiling-names.ts both gained this name).
+//
 // SEED, measured on this branch's tree at authoring time (2026-08-23):
 // this ceiling may only be LOWERED (receipt lands, rule is deleted, or the
 // container's capability is otherwise restored) -- never raised to
 // accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 12;
+export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 0;
 
 describe('DEC-808 wave-41 phone container capability-removal probe (subtree, not selector)', () => {
   it('finds more than zero non-interactive-selector phone display:none rules (vacuous-population tripwire)', () => {

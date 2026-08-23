@@ -1457,6 +1457,14 @@
      "Duplicates · N" tab opens DuplicatesView, the same detection pass in
      full with the same Merge affordance. See DirectoryRail.tsx's header
      comment for the same receipt. */
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- the receipt directly above
+     names every surviving path: the headerless card list stays (the earlier
+     phone rule for `.chq-contacts-directory-grid`), "Where they work"'s
+     drill-through survives via FilterRulesPanel's "+ Rule" chip, "Saved
+     segments" via the chipstrip's Segments tab, "Possible duplicates" via
+     the chipstrip's Duplicates tab; the ranked top-companies aggregate has
+     no surviving path and is DEVIATIONS.md #7, a recorded deviation, not an
+     unaddressed defect. */
   .chq-contacts-rail {
     display: none;
   }
@@ -1510,6 +1518,11 @@
     font-weight: 500;
   }
 
+  /* phone-hidden: re-lined (DEC-808 wave-56) -- replaced by
+     `.chq-contacts-segment-pills` immediately above in this same block
+     (ContactsApp.tsx), the DEC-919 task r1-c receipt already covers: select
+     -> a pill, clear -> the "All" pill, which segment is active -> the
+     pressed pill, per-segment count -> the pill label. */
   .chq-contacts-segment-summary {
     display: none;
   }
@@ -1548,6 +1561,11 @@
      unconditionally visible whether the builder is open or closed. Saving
      the rule set -> "Save as a segment", still inside this row and
      reachable whenever the builder is open. */
+  /* phone-hidden: disclosure, not removal (DEC-808 wave-56) -- see the
+     DEC-919 capability receipt directly above: the `.is-builder-open` rule
+     immediately below reveals this same row, and every act (author, edit,
+     remove, read, save) has a named surviving path through the chip strip
+     (FilterRulesPanel.tsx). */
   .chq-contacts-filter-rules-row {
     display: none;
   }

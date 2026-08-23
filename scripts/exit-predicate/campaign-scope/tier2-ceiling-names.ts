@@ -192,4 +192,9 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
   // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
   "PACK_PROSE_MEASURE_DIVERGENCE_CEILING",
+  // wave-56 (task w56-d, DEC-069 wave-56 amendment): wired into TIER2 in
+  // the same commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING",
 ];
