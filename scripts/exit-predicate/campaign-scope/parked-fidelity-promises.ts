@@ -97,4 +97,12 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // is the whole conformance fact (an instrument-soundness one, not a v12
   // frame fact). Clause (a) alone decides it (currently non-zero: 5).
   COMMENT_CREDITED_FLOOR_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // DEC-069 wave-56, task w56-a: registers the promotion promise carried by
+  // PACK_PADDING_UNMATCHED_CEILING's own OUT_OF_CAMPAIGN_SCOPE prose. No
+  // completeness sibling -- test/pack-padding-vocabulary.scan.test.ts
+  // declares exactly one ceiling, so the padding-unmatched count is its own
+  // whole conformance fact and clause (b) is vacuously satisfied. Clause (a)
+  // alone decides it, and its own count is 252 (non-zero), so it stays
+  // parked.
+  PACK_PADDING_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
 };
