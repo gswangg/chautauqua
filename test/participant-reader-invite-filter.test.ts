@@ -148,6 +148,7 @@ const ALLOWED: Record<string, string[]> = {
     "loadMaxOrderBySubmissionId's grouped MAX(order) per submission must count EVERY existing participant row — a declined/withdrawn co-presenter still occupies its order slot, so filtering by eligibility here would hand a new participant a colliding order.",
   ],
   "server/repo/portal-edit.ts": [
+    "getAllSubmissionParticipants (wave-55, w55-g) reads every participant row on the submission REGARDLESS of invite status -- the declined-inclusive cap-parity sibling to getPortalParticipants (which stays narrowed to PORTAL_VISIBLE_INVITE_STATUSES for access purposes, DEC-317). A declined co-presenter is a fact the edit screen must SHOW, not an eligibility enumeration.",
     "The MAX_PARTICIPANTS_PER_SUBMISSION count is a per-submission cap over every participant row, not an eligibility read.",
   ],
   "server/repo/submissions/touch.ts": [
