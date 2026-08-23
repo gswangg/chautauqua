@@ -215,7 +215,17 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
   // classifyLineShape files under `fallback`, so fallback's floor is
   // unchanged. Confirmed by re-running the shape tally with both grammars
   // side by side -- no other shape moved.
-  heading: 32,
+  // RE-MEASURED (task w38-d, DEC-099 wave-38 single-owner re-measure, sha
+  // 5f0e95f4b): 32 -> 33. Every floor in this file was re-measured live
+  // (auditFiles().length/ALL_ROWS.length/per-shape tally/OPEN_ROWS.length
+  // read directly via tsx, never inherited from a prior wave's arithmetic).
+  // AUDIT_FILE_FLOOR (121), TOKEN_ROW_FLOOR (241), table (69), bullet (31),
+  // fallback (108) and OPEN_DIVERGENCE_CEILING (0) all matched their live
+  // measurement exactly and are left untouched; heading alone had drifted
+  // one row above its floor (33 measured vs 32 floored) from healthy
+  // in-flight corpus growth since w36-e's baseline, so only this floor is
+  // raised, to the measured count.
+  heading: 33,
   // MEGABATCH (wave-34 thunderdome): 72 -> 69. Confirmed which rows of this
   // shape disappeared before lowering, per this guard's own instruction --
   // the wave-32/33/34 adoption lanes (w32-f, w33-c, w34-e, w34-f) re-graded
