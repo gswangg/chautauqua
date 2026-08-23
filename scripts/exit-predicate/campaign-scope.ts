@@ -907,4 +907,23 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
     siblingName: "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING",
     siblingFullyAdjudicated: true,
   },
+  // No completeness sibling -- app/src/phone-hidden-container.scan.test.ts
+  // resolves each rule's target class straight to a receipt check, with no
+  // second "could not resolve" join whose own completeness this population
+  // depends on. Clause (a) alone decides it (currently non-zero).
+  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) fails: docs/design/audit/desktop-eyebrow-label-v12.md says in
+  // its own words that individually verifying the 103 DIVERGES misses is
+  // "out of THIS task's own scope" and grades them at face value instead of
+  // itemising each row -- DESKTOP_EYEBROW_UNRESOLVED_CEILING's own count is
+  // 1 (not 0) and its remainder is not row-adjudicated either.
+  DESKTOP_EYEBROW_DIVERGENCE_CEILING: {
+    siblingName: "DESKTOP_EYEBROW_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: false,
+  },
+  // No completeness sibling -- test/frame-repeated-row/ceiling.ts's own
+  // population is a single unresolved-to-a-rendering-site count with no
+  // separate "could not resolve" join behind it. Clause (a) alone decides
+  // it (currently non-zero).
+  FRAME_REPEATED_ROW_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
 };
