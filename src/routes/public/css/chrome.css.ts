@@ -164,7 +164,7 @@ export const CHROME_CSS = `
     border-radius: 0 var(--chq-r-ctl) var(--chq-r-ctl) 0;
     background-color: var(--chq-surface);
     color: var(--chq-ink);
-    transition: background-color var(--chq-motion-color);
+    transition: background-color var(--chq-motion-color) var(--chq-ease-state);
   }
   button.chq-pub-search-submit[type=submit]:hover {
     background-color: var(--chq-surface-sunk);

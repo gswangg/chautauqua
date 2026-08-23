@@ -123,6 +123,44 @@ function scan(css: string): Violations {
   };
 }
 
+/** Every `transition:`/`transition-property:` declaration's full value
+ *  body (everything up to the terminating `;`), used to check that a
+ *  duration token names its paired easing token (DEC-367 wave-47). */
+function transitionDeclarations(css: string): string[] {
+  const out: string[] = [];
+  const re = /transition(?:-property)?\s*:\s*([^;]+);/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(css)) !== null) out.push(m[1] ?? '');
+  return out;
+}
+
+/** DEC-367 wave-47: a transition naming --chq-motion-color or
+ *  --chq-motion-appear must also name --chq-ease-state; one naming
+ *  --chq-motion-geometry must also name --chq-ease-geometry. A
+ *  declaration naming neither motion token is out of scope (e.g. a plain
+ *  numeric duration with no token at all). Returns the unpaired
+ *  declaration bodies. */
+function unpairedEasingOffenders(css: string): string[] {
+  const offenders: string[] = [];
+  for (const decl of transitionDeclarations(css)) {
+    const wantsState = /var\(\s*--chq-motion-color\s*[,)]/.test(decl) || /var\(\s*--chq-motion-appear\s*[,)]/.test(decl);
+    const wantsGeometry = /var\(\s*--chq-motion-geometry\s*[,)]/.test(decl);
+    const hasState = /var\(\s*--chq-ease-state\s*[,)]/.test(decl);
+    const hasGeometry = /var\(\s*--chq-ease-geometry\s*[,)]/.test(decl);
+    if (wantsState && !hasState) offenders.push(decl.trim());
+    if (wantsGeometry && !hasGeometry) offenders.push(decl.trim());
+  }
+  return offenders;
+}
+
+// DEC-367 wave-47: this ratchet may only fall. Re-measured on this
+// branch's own tree: twelve `transition:` declarations exist across the
+// whole product (app/src/**/*.css plus every SSR *_CSS module), all
+// twelve pair their motion-duration token with the matching easing
+// token after this wave's two fixes (app/src/pages/speakers/task-view.css
+// and src/routes/public/css/chrome.css.ts).
+export const INTERACTION_STATE_UNPAIRED_EASING_CEILING = 0;
+
 describe('SPA + SSR interaction-state / motion standard (DEC-383 wave-58, DEC-808 wave-99 amendments)', () => {
   const spaFiles = allCssFiles(APP_SRC);
   const ssrModules = allSsrCssModules(SRC_ROOT);
@@ -195,6 +233,44 @@ describe('SPA + SSR interaction-state / motion standard (DEC-383 wave-58, DEC-80
       expect(v.easeInOut).toBe(false);
     });
   }
+
+  describe('every --chq-motion-* transition names its paired easing token (DEC-367 wave-47)', () => {
+    const allOffenders: string[] = [];
+    for (const file of spaFiles) {
+      allOffenders.push(...unpairedEasingOffenders(stripComments(readFileSync(file, 'utf-8'))));
+    }
+    for (const mod of ssrModules) {
+      allOffenders.push(...unpairedEasingOffenders(stripComments(ssrCssLiteral(readFileSync(mod, 'utf-8')))));
+    }
+
+    it('offenders sit at or under the ceiling', () => {
+      expect(allOffenders.length).toBeLessThanOrEqual(INTERACTION_STATE_UNPAIRED_EASING_CEILING);
+    });
+
+    it('the ceiling is not stale: it is not more than the measured offender count', () => {
+      if (allOffenders.length < INTERACTION_STATE_UNPAIRED_EASING_CEILING) {
+        throw new Error(
+          `interaction-states.scan: INTERACTION_STATE_UNPAIRED_EASING_CEILING (${INTERACTION_STATE_UNPAIRED_EASING_CEILING}) ` +
+            `exceeds the measured offender count (${allOffenders.length}). Lower it now (DEC-989 protocol): replace the line:\n` +
+            `  export const INTERACTION_STATE_UNPAIRED_EASING_CEILING = ${allOffenders.length};\n` +
+            `Offenders:\n${allOffenders.map((o) => `  ${o}`).join('\n')}`,
+        );
+      }
+      expect(allOffenders.length).toBeGreaterThanOrEqual(INTERACTION_STATE_UNPAIRED_EASING_CEILING);
+    });
+
+    it('negative control: a motion-color transition with no paired ease-state token is flagged', () => {
+      const offenders = unpairedEasingOffenders('.offender { transition: background-color var(--chq-motion-color); }');
+      expect(offenders.length).toBe(1);
+    });
+
+    it('negative control: a paired declaration is not flagged', () => {
+      const offenders = unpairedEasingOffenders(
+        '.fine { transition: background-color var(--chq-motion-color) var(--chq-ease-state); }',
+      );
+      expect(offenders.length).toBe(0);
+    });
+  });
 
   it('app/src/styles.css declares a prefers-reduced-motion block', () => {
     const stylesPath = join(APP_SRC, 'styles.css');

@@ -82,7 +82,7 @@
   border-radius: 99px;
   padding: 6px 14px;
   cursor: pointer;
-  transition: background-color var(--chq-motion-color);
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state);
 }
 
 /* Both hovers re-assert their own colour: a bare background change would
