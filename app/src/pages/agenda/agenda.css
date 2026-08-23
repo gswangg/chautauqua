@@ -352,7 +352,10 @@
   inset: 2px 4px auto 4px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  /* DEC-937 wave-43: 0.03em was off the pack's letter-spacing grammar
+     (the 13 frames draw 0.02em/0.04em/-0.03em, never +0.03em); repaired
+     to the nearest in-vocabulary value. */
+  letter-spacing: 0.04em;
   color: var(--chq-ink);
   background: var(--chq-surface);
   padding: 1px 3px;
