@@ -300,6 +300,112 @@ export function judgeRenderGate(receipt: Receipt, deps: RenderGateDeps = REAL_RE
   };
 }
 
+// DEC-393 wave-40 (task w40-f, DEC-808): two more floor-grammar tiers for
+// the exact two shapes the wave-36 comment named as un-resolvable --
+// error-states.css.ts's `modifier` reason (bare ELEMENT TYPES, no `.chq-*`
+// companion at all) and submissions/detail.css's `scoped` reason (names the
+// receipted selector's OWN token, not a distinct companion).
+const ELEMENT_TYPE_WORDS = new Set(["input", "select", "textarea", "fieldset", "button", "a", "label"]);
+
+/** A reason naming bare element types states them as a `/`-joined
+ * parenthetical list, e.g. `(input/select/textarea/fieldset)` -- distinct by
+ * construction from any OTHER parenthetical group the same reason may carry
+ * (a citation like `(phone-tap-target.scan.test.ts SSR_UNFLOORED_TOKENS_
+ * CEILING, task w7-e)` is comma/space-joined, never bare `/`-joined lowercase
+ * words), so the regex below can never misread a citation as the type list.
+ * Returns null when the reason carries no such list at all (the shape this
+ * tier does not apply to). */
+function extractElementTypeList(reason: string): string[] | null {
+  const m = reason.match(/\(([a-z]+(?:\/[a-z]+)+)\)/);
+  if (!m || !m[1]) return null;
+  const words = m[1].split("/");
+  if (!words.every((w) => ELEMENT_TYPE_WORDS.has(w))) return null;
+  return words;
+}
+
+/** Whether a bare HTML element TYPE (never a class, and never as part of a
+ * DESCENDANT chain -- `.chq-settings-panel fieldset label` names `fieldset`
+ * as an ANCESTOR of the thing actually reaching 44px, not the fieldset's own
+ * box, so a substring match would misread it as "fieldset is floored") is
+ * reached, anywhere in the tree, by a rule declaring min-height:44px on a
+ * selector-list ARM that is the bare type itself, optionally with exactly
+ * one attribute selector (`input[type=text]`) -- the same grammar
+ * theme.ts's own base/phone-media rules use for these types. */
+function hasElementTypeFloor(type: string, allChunks: Array<{ selector: string; body: string }>): boolean {
+  const armIsType = (arm: string) => new RegExp(`^${escapeRe(type)}(\\[[^\\]]*\\])?$`).test(arm.trim());
+  const matching = allChunks.filter((c) => c.selector.split(",").some(armIsType));
+  if (matching.length === 0) return false;
+  return hasMinHeightFloor(matching.map((c) => c.body).join("\n"));
+}
+
+/** ELEMENT-TYPE tier (DEC-393 wave-40): a reason naming bare element types
+ * resolves VERIFIED when EVERY named type is reached by a rule satisfying
+ * the 44px grammar; if even one named type is unreached, this tier does
+ * NOT resolve the receipt -- it falls back to UNVERIFIABLE-PREMISE, never a
+ * silent VERIFIED-by-omission. Returns null (not this shape) only when the
+ * reason carries no `/`-joined element-type list at all. */
+function judgeElementTypeReason(receipt: Receipt, allChunks: Array<{ selector: string; body: string }>): RosterRow | null {
+  const types = extractElementTypeList(receipt.reason);
+  if (!types) return null;
+  const unreached = types.filter((t) => !hasElementTypeFloor(t, allChunks));
+  if (unreached.length > 0) {
+    return {
+      ...receipt,
+      verdict: "UNVERIFIABLE-PREMISE",
+      detail: `element-type tier: named element type(s) ${unreached.join(", ")} are not reached by any rule declaring min-height:44px anywhere in the tree`,
+    };
+  }
+  return {
+    ...receipt,
+    verdict: "VERIFIED",
+    detail: `element-type tier: every named element type (${types.join("/")}) is reached by a rule declaring min-height:44px somewhere in the tree`,
+  };
+}
+
+/** Whether the companion floor-grammar (flex+minheight+padding, or the
+ * replaced-content width/height tier) is satisfied by every CSS rule in the
+ * tree whose selector mentions `token` as a `.chq-*` class -- the SAME
+ * merge-and-test shape `judgeReceipt`'s companion path already uses below,
+ * factored out so `judgeSelfScoped` can apply it per-candidate-token. */
+function tokenReachesFloor(token: string, allChunks: Array<{ selector: string; body: string }>): { floored: boolean; ruleCount: number } {
+  const tokenRe = new RegExp(`\\.${escapeRe(token)}(?![\\w-])`);
+  const matchingChunks = allChunks.filter((c) => tokenRe.test(c.selector));
+  if (matchingChunks.length === 0) return { floored: false, ruleCount: 0 };
+  const merged = matchingChunks.map((c) => c.body).join("\n");
+  const flexFloored = hasMinHeightFloor(merged) && hasFlexCenter(merged) && horizontalPaddingNonZero(merged);
+  const replacedContent = matchingChunks.some((c) => isReplacedContentSelector(c.selector));
+  const widthHeightFloored = replacedContent && hasWidthHeightFloor(merged);
+  return { floored: flexFloored || widthHeightFloored, ruleCount: matchingChunks.length };
+}
+
+/** SELF-SCOPED tier (DEC-393 wave-40): a `scoped` reason that names only a
+ * token already present in `receiptedClasses` (no DISTINCT companion) is
+ * checked against the receipted selector's OWN classes -- not just the
+ * self-named one, since a compound selector's OTHER class (e.g. `.chq-link-
+ * button` alongside `.chq-detail-participant-row-actions`) may carry the
+ * real floor elsewhere in the tree. VERIFIED the moment any receipted class
+ * reaches the floor grammar and appears in real markup; otherwise REFUTED
+ * to FALSE-PREMISE -- not silently accepted -- when none of them declare a
+ * floor anywhere. */
+function judgeSelfScoped(receipt: Receipt, allChunks: Array<{ selector: string; body: string }>, allText: string): RosterRow {
+  for (const token of receipt.receiptedClasses) {
+    const { floored, ruleCount } = tokenReachesFloor(token, allChunks);
+    const present = new RegExp(`\\b${token}\\b`).test(allText);
+    if (floored && present) {
+      return {
+        ...receipt,
+        verdict: "VERIFIED",
+        detail: `self-scoped tier: the receipted selector's own class .${token} declares the 44px floor (merged across ${ruleCount} rule(s)) and appears in real markup`,
+      };
+    }
+  }
+  return {
+    ...receipt,
+    verdict: "FALSE-PREMISE",
+    detail: `self-scoped tier: none of the receipted selector's own classes (${receipt.receiptedClasses.map((c) => `.${c}`).join(", ")}) declare a 44px floor anywhere in the tree -- REFUTED, not silently accepted`,
+  };
+}
+
 export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: string; body: string }>, allText: string): RosterRow {
   if (receipt.family === "other") {
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c))" };
@@ -310,6 +416,14 @@ export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: stri
   const mentioned = [...receipt.reason.matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string);
   const companion = mentioned.find((c) => !receipt.receiptedClasses.includes(c));
   if (!companion) {
+    // DEC-393 wave-40: two more shapes get a real predicate before falling
+    // to the generic "no companion class named" verdict.
+    if (mentioned.length === 0) {
+      const elementTypeRow = judgeElementTypeReason(receipt, allChunks);
+      if (elementTypeRow) return elementTypeRow;
+    } else if (receipt.family === "scoped") {
+      return judgeSelfScoped(receipt, allChunks, allText);
+    }
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "no companion class named in the reason (distinct from the receipted selector itself)" };
   }
   const tokenRe = new RegExp(`\\.${escapeRe(companion)}(?![\\w-])`);
@@ -420,7 +534,47 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // the two disjoint deltas gives 88 - 11 = 77. FALSE-PREMISE takes w36-f's
 // 1 unchanged (w35-b introduced none; wave 34's replaced-content grammar
 // tier had already resolved the population's only prior instance).
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 77;
+//
+// Wave 40 (task w40-f, DEC-808): the two remaining named shapes get their
+// own tiers. ELEMENT-TYPE (`judgeElementTypeReason`): a reason naming a
+// `/`-joined list of bare HTML element types resolves VERIFIED only when
+// EVERY named type is reached by a selector-list arm that IS that bare type
+// (never a descendant chain merely containing it) declaring
+// min-height:44px somewhere in the tree; falls back to UNVERIFIABLE-PREMISE,
+// never a silent VERIFIED, the moment one named type is unreached.
+// SELF-SCOPED (`judgeSelfScoped`): a `scoped` reason naming only a token
+// already in its own `receiptedClasses` (no distinct companion) is checked
+// against ALL of the receipted compound selector's own classes, not just
+// the self-named one -- REFUTED to FALSE-PREMISE, not silently accepted,
+// the moment none of them declare a floor anywhere.
+//
+// Forced to -1 and re-measured standalone (never by arithmetic on the
+// wave-36 composition -- the exact trap this constant already fell into
+// once): 76, down from 77 by exactly one row.
+// - `error-states.css.ts:46` STAYS UNVERIFIABLE-PREMISE: `input`/`select`/
+//   `textarea` are each reached by theme.ts's own bare-type phone-media
+//   rule (`min-height: 44px`), but `fieldset` is reached by NO rule
+//   anywhere in the tree at all (a fieldset is a grouping container, never
+//   itself a tap target -- `.chq-settings-panel fieldset label` reaches
+//   44px, but that 44px belongs to the LABEL, not the fieldset, and the arm
+//   grammar correctly refuses to credit it). The reason's own premise is
+//   broader than the tree supports; this is an honest gap, not an
+//   instrument miss -- recorded in the audit doc below.
+// - `submissions/detail.css:278` now resolves VERIFIED: its receipted
+//   compound selector is `.chq-detail-participant-row-actions
+//   .chq-link-button`, and while the reason names only the container
+//   (already in `receiptedClasses`, so the OLD companion search found
+//   nothing), the OTHER receipted class -- `.chq-link-button` -- carries a
+//   real floor in `app/src/styles.css`'s phone-media block (`min-height:
+//   44px; min-width: 44px; display: flex; align-items: center; padding: 0
+//   6px;`), a sheet the receipt's own file never touches. The self-scoped
+//   tier's "check ALL receipted classes, not just the named one" rule is
+//   exactly what finds it.
+// UNVERIFIABLE-PREMISE: 77 -> 76. FALSE-PREMISE: unchanged at 1 (neither
+// new tier touched that ceiling -- the hard boundary this task's own DEC-808
+// citation names, TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING and
+// app/src/pages/contacts/contacts.css belong to v12m-w39-a).
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 76;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
@@ -646,6 +800,102 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     for (const row of rows) {
       expect(row.verdict, `${row.file}:${row.line} -- ${row.detail}`).toBe("VERIFIED");
     }
+  });
+
+  // DEC-393 wave-40 (task w40-f): two more floor-grammar tiers, for the
+  // exact two shapes the wave-36 comment named as un-resolvable.
+
+  it("positive control (element-type): a modifier reason naming element types ALL reached by a min-height:44px rule resolves VERIFIED", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "modifier that composes onto a real form control (input/select), which already carries its own height/floor -- a per-token text scan can't follow that composition (fake-citation.test.ts SOME_CEILING, task fake)",
+      receiptedClasses: ["chq-fake-invalid"],
+      family: "modifier",
+    };
+    const chunks = [
+      { selector: "input[type=text], select", body: "padding: 0.4rem 0.6rem;" },
+      { selector: "input[type=text], select", body: "min-height: 44px;" },
+    ];
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (element-type): a modifier reason naming a type NO rule reaches does not resolve -- stays UNVERIFIABLE, never VERIFIED by omission", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "modifier that composes onto a real form control (input/select), which already carries its own height/floor -- a per-token text scan can't follow that composition (fake-citation.test.ts SOME_CEILING, task fake)",
+      receiptedClasses: ["chq-fake-invalid-2"],
+      family: "modifier",
+    };
+    const chunks = [{ selector: "input[type=text]", body: "min-height: 44px;" }]; // "select" is never reached
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+    expect(verdict.detail).toMatch(/select/);
+  });
+
+  it("the worked example (element-type): error-states.css.ts's modifier reason names element types, not a companion class", () => {
+    const row = ROSTER.find((r) => r.file === "src/views/error-states.css.ts" && r.family === "modifier");
+    expect(row, "the element-type receipt must still be in the swept population").toBeDefined();
+    // `fieldset` never gets a min-height:44px rule anywhere in the tree (a
+    // fieldset is a grouping container, not itself a tap target) -- so this
+    // tier honestly cannot resolve it, and it stays UNVERIFIABLE-PREMISE
+    // rather than being forced to a verdict the tree does not support.
+    expect(row?.verdict).toBe("UNVERIFIABLE-PREMISE");
+    expect(row?.detail).toMatch(/element-type tier/);
+  });
+
+  it("positive control (self-scoped): a scoped reason naming its OWN receipted token resolves VERIFIED when that token's own merged rule declares the floor", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-self-scoped-target, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-self-scoped-target"],
+      family: "scoped",
+    };
+    const chunks = [{ selector: ".chq-fake-self-scoped-target", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<div class="chq-fake-self-scoped-target">x</div>');
+    expect(verdict.verdict).toBe("VERIFIED");
+    expect(verdict.detail).toMatch(/self-scoped tier/);
+  });
+
+  it("positive control (self-scoped, compound): the OTHER class in the receipted compound selector carries the floor, even though the reason names only the self token", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-scoped-wrap, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-scoped-wrap", "chq-fake-scoped-child"],
+      family: "scoped",
+    };
+    const chunks = [
+      { selector: ".chq-fake-scoped-wrap", body: "display:flex; gap:12px;" },
+      { selector: ".chq-fake-scoped-wrap .chq-fake-scoped-child", body: "display:flex; align-items:center; min-height:44px; padding:0 6px;" },
+    ];
+    const verdict = judgeReceipt(receipt, chunks, '<button class="chq-fake-scoped-child">x</button>');
+    expect(verdict.verdict).toBe("VERIFIED");
+    expect(verdict.detail).toMatch(/chq-fake-scoped-child/);
+  });
+
+  it("negative control (self-scoped): none of the receipted selector's own classes declare a floor anywhere -- REFUTED to FALSE-PREMISE, never silently accepted", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-unfloored-scoped-target, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-unfloored-scoped-target"],
+      family: "scoped",
+    };
+    const chunks = [{ selector: ".chq-fake-unfloored-scoped-target", body: "display:flex; gap:12px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<div class="chq-fake-unfloored-scoped-target">x</div>');
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+    expect(verdict.detail).toMatch(/self-scoped tier/);
+  });
+
+  it("the worked example (self-scoped): submissions/detail.css's scoped reason resolves VERIFIED via its compound selector's OTHER class (.chq-link-button, floored in app/src/styles.css)", () => {
+    const row = ROSTER.find((r) => r.file === "app/src/pages/submissions/detail.css" && r.family === "scoped");
+    expect(row, "the self-scoped receipt must still be in the swept population").toBeDefined();
+    expect(row?.verdict).toBe("VERIFIED");
+    expect(row?.detail).toMatch(/self-scoped tier/);
   });
 
   it(`FALSE-PREMISE ceiling: at most ${TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING} receipt(s) claim a companion floor that isn't real`, () => {

@@ -1,4 +1,4 @@
-# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36)
+# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36; two more floor-grammar tiers wave-40)
 
 Instrument: `test/tap-floor-exempt-premise.scan.test.ts`. Population: every
 real `/* tap-floor-exempt: ... */` (or JSX `{/* ... */}`) comment under
@@ -93,13 +93,138 @@ Re-measured by forcing both ceilings to `-1` and reading the roster back:
 Net: `UNVERIFIABLE-PREMISE` 86 -> **75** (11 receipts left the roster: 10
 VERIFIED + 1 FALSE-PREMISE); `FALSE-PREMISE` 0 -> **1**.
 
+## Wave 40 (task w40-f, DEC-808): the two named un-resolvable shapes get real tiers
+
+Wave 36's own comment named the exact two receipts its three new families
+still could not resolve, and DEC-808 (this task's own citation) restates why:
+`src/views/error-states.css.ts`'s `modifier` reason names ELEMENT TYPES
+(`input`/`select`/`textarea`/`fieldset`) rather than a `.chq-*` companion
+class, and `app/src/pages/submissions/detail.css`'s `scoped` reason names its
+OWN compound selector's already-receipted class rather than a distinct
+companion. Two more floor-grammar tiers, in `judgeReceipt`:
+
+- **ELEMENT-TYPE tier** (`judgeElementTypeReason`): a reason naming a
+  `/`-joined list of bare HTML element types (`(input/select/textarea/
+  fieldset)`) resolves **VERIFIED** only when EVERY named type is reached,
+  somewhere in the tree, by a selector-list ARM that IS that bare type
+  (`input`, `input[type=text]`, `fieldset` — never a descendant chain that
+  merely CONTAINS the word, e.g. `.chq-settings-panel fieldset label`, whose
+  44px floor belongs to the LABEL, not the fieldset) declaring
+  `min-height:44px`. The moment one named type is unreached, the tier does
+  NOT resolve the receipt — it falls back to `UNVERIFIABLE-PREMISE`, never a
+  silent VERIFIED.
+- **SELF-SCOPED tier** (`judgeSelfScoped`): a `scoped` reason that names only
+  a token already present in its own receipted selector's `receiptedClasses`
+  (so the existing "distinct companion" search finds nothing) is checked
+  against ALL of the receipted compound selector's own classes, not just the
+  self-named one — a compound selector's OTHER class may carry the real
+  floor in a sheet the receipt's own file never touches. VERIFIED the moment
+  any receipted class reaches the floor grammar and appears in real markup;
+  otherwise **REFUTED to FALSE-PREMISE**, not silently accepted, when none of
+  them declare a floor anywhere.
+
+Both tiers ship a positive control (fires correctly on a fabricated case
+built for it) and a negative control (does not resolve/silently pass a case
+built to defeat it) in the scan file itself.
+
+Forced to `-1` and re-measured standalone — never by arithmetic on a prior
+wave's composition, the exact trap this constant already fell into once at
+wave-36 (88 - 11 = 77, wrong for the merged tree):
+
+- `src/views/error-states.css.ts:46` **stays UNVERIFIABLE-PREMISE**.
+  `input`/`select`/`textarea` are each reached by `theme.ts`'s own bare-type
+  phone-media rule (`min-height: 44px`); `fieldset` is reached by NO rule
+  anywhere in the tree — a `<fieldset>` is a grouping container, never
+  itself a tap target, and the only "fieldset ... 44px" match in the tree
+  (`app/src/pages/settings/settings.css`'s `.chq-settings-panel fieldset
+  label { min-height: 44px }`) floors the LABEL, one level down, which the
+  arm-exact grammar correctly refuses to credit to `fieldset` itself. This
+  is an honest gap: the receipt's own premise is broader than the tree
+  supports, not an instrument miss.
+- `app/src/pages/submissions/detail.css:278` **now resolves VERIFIED**. Its
+  receipted selector is the compound `.chq-detail-participant-row-actions
+  .chq-link-button`; the reason names only the container (already in
+  `receiptedClasses`, so the pre-wave-40 companion search found nothing
+  distinct), but the OTHER receipted class — `.chq-link-button` — carries a
+  real floor in `app/src/styles.css`'s phone-media block (`min-height:44px;
+  min-width:44px; display:flex; align-items:center; padding:0 6px;`), a
+  sheet this receipt's own file never touches. (The same file's own
+  `v12m-w6-h` comment at `detail.css:1224` had already noted, for a
+  DIFFERENT selector, that `.chq-link-button` "carries no floor anywhere" —
+  that note predates the `styles.css` phone-media rule above and is now
+  stale; not corrected here, out of this lane's scope.)
+
+Net this wave: `UNVERIFIABLE-PREMISE` 77 -> **76** (one row, the self-scoped
+one, left the roster). `FALSE-PREMISE` unchanged at **1** — neither new tier
+touched it; `TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` and
+`app/src/pages/contacts/contacts.css` are `v12m-w39-a`'s, per DEC-099's
+single-owner-per-ceiling rule. The population itself has also grown since
+wave 36's 98-receipt snapshot (three intervening waves' worth of new/edited
+receipts) to **101** total — re-measured directly via the roster, never
+inferred from an old total plus a delta.
+
+### The remaining `other`-family receipts: structurally resolvable vs. grounded only in a design authority
+
+Neither new tier touches the `other` family (still gated out before either
+tier ever runs, unchanged from wave 30) — its 55 rows are exactly wave-36's
+55. This wave read all 55 reasons by hand and sorted them into two buckets,
+by whether the reason states a FACT about the tree a future scan could check
+(render output, a companion class, an existing sibling rule) versus a VALUE
+or SCOPE judgement no scan can settle (a redesign deferred as a follow-up, a
+typographic/line-box aesthetic call) — this is a first-pass **heuristic**
+read, not a second machine-checked predicate, and is recorded as such:
+
+- **49 of 55 look structurally resolvable** by a future, more specific
+  tier — most name a concrete, checkable fact: "renders only `<button>`
+  children, never a bare anchor" (≈30 receipts across `comms.css`,
+  `contacts-panels.css`, `contacts.css`, `content.css`, `forms.css`,
+  `review.css`, `scorecard.css`, `submissions/detail.css`,
+  `submissions.css`, `styles.css` — a render-fact claim the same shape
+  `judgeRenderGate` already checks for a different premise, just never
+  built for "no bare anchor" instead of "never mounts"), "a visually-hidden
+  input's operable target is its `<label>`" (`comms.css:158`,
+  `content.css:432`, `portal.css.ts:361`, `speakers/task-view.css:284` —
+  several already NAME the label's own `.chq-*` class, e.g. `.chq-check-hit`,
+  which the EXISTING companion floor-grammar could check today if this
+  shape got its own recognised family), "an empty `<th>` spacer, no
+  children at all" (`content.css:879`, `settings.css:2583`,
+  `styles.css:1444`), and a handful naming a companion this instrument's
+  first-word regex simply does not recognise yet (`comms.css:1235`,
+  `comms.css:2268`, `contacts-panels.css:997`, `overview.css:148`,
+  `overview.css:608`, `review.css:331`, `review.css:1574`,
+  `review.css:1793`, `submissions.css:27`, `submissions.css:206`,
+  `styles.css:1365`, `styles.css:1388`, `styles.css:1704`,
+  `content.css:908`, `theme.ts:538`, `chrome.css.ts:36`).
+- **6 of 55 are grounded only in a design/scope authority**, not a
+  tree-checkable fact — no scan, however widened, could settle them, because
+  the claim is a value or priority judgement: `styles.css:1772` (enlarging
+  the colour-swatch grid to 44px "is a distinct visual-redesign task, out of
+  scope … tracked as a follow-up"), `styles.css:1948` (the 18px checkbox
+  glyph's own size is deliberately unchanged; "enlarging it is a
+  system-wide redesign"), `overview.css:564`, `styles.css:2879`,
+  `src/routes/public/css/rail.css.ts:671` and `src/routes/public/home.css.ts:
+  152` (four aesthetic/typography calls: flooring an inline phrase would
+  "break the line box," each without naming a companion an instrument could
+  check instead). These six are the honest, un-shrinkable gap — grounded in
+  human design judgement (DESIGN-RULINGS.md/DEVIATIONS.md territory), not
+  in anything this or any future tree scan could verify true or false.
+
+This sort is NOT built into the instrument (it changes no verdict, no
+ceiling) — it is recorded here, by hand, as the honest classification the
+task asked for, left open for a future wave to decide which of the 49 are
+worth a fourth tier.
+
 ## Verdict counts
+
+Wave 40 (task w40-f): re-measured directly (never by arithmetic), the
+population has grown to **101** receipts (three intervening waves' worth of
+new/edited receipts since wave 36's 98-receipt snapshot).
 
 | Verdict | Count | Meaning |
 |---|---|---|
-| VERIFIED | 22 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters). |
-| UNVERIFIABLE-PREMISE | 75 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself, or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 1 | the receipt names a companion class that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect, recorded here per the task's own instruction, product CSS not touched in this lane. |
+| VERIFIED | 24 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar). |
+| UNVERIFIABLE-PREMISE | 76 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
+| FALSE-PREMISE | 1 | the receipt names a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect, recorded here per the task's own instruction, product CSS not touched in this lane. Owned by `v12m-w39-a`. |
 
 ## The worked example (built this wave)
 
@@ -142,7 +267,7 @@ text-bearing companion with no `img` pairing and no flex/padding still
 grades FALSE-PREMISE even when sized >=44px), so it cannot silently pass a
 real text-control defect through the replaced-content door.
 
-## Full roster (98 rows)
+## Full roster (98-row wave-30 snapshot; NOT regenerated wave-to-wave except for rows a given wave's own task changed — the population is 101 as of wave 40, see "Verdict counts" above; the two rows wave 40 changed are updated in place below, the rest is historical)
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
@@ -165,7 +290,7 @@ real text-control defect through the replaced-content door.
 | UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx:950` | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts:620` | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts:670` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | modifier | `src/views/error-states.css.ts:46` | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | modifier | `src/views/error-states.css.ts:46` | element-type tier: named element type(s) fieldset are not reached by any rule declaring min-height:44px anywhere in the tree |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:158` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:228` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:250` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
@@ -221,7 +346,7 @@ real text-control defect through the replaced-content door.
 | UNVERIFIABLE-PREMISE | other | `src/routes/public/css/rail.css.ts:671` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `src/routes/public/home.css.ts:152` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
 | UNVERIFIABLE-PREMISE | other | `src/views/theme.ts:538` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | scoped | `app/src/pages/submissions/detail.css:278` | no companion class named in the reason (distinct from the receipted selector itself) |
+| VERIFIED | scoped | `app/src/pages/submissions/detail.css:278` | self-scoped tier: the receipted selector's own class .chq-link-button declares the 44px floor (merged across 1 rule(s)) and appears in real markup |
 | VERIFIED | composition | `app/src/pages/agenda/agenda.css:1121` | companion .chq-phone-footer-actions declares min-height:44px + centred flex + non-zero horizontal padding (merged across 4 rule(s)) and appears in real markup |
 | VERIFIED | composition | `app/src/pages/content/content.css:60` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
 | VERIFIED | composition | `app/src/pages/overview/overview.css:404` | companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup |
