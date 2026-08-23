@@ -286,8 +286,9 @@
   line-height: 1.6;
 }
 
+/* v12 frame :524 -- `color:#3F4237`, which is --chq-ink-2, not --chq-muted. */
 .chq-speakers-remind-card-nudge {
-  color: var(--chq-muted);
+  color: var(--chq-ink-2);
 }
 
 /* v12 frame :525-528 -- left-ruled "Still to do" block. */
@@ -332,6 +333,14 @@
   color: var(--chq-muted);
   line-height: 1.6;
   word-break: break-all;
+}
+
+/* v12 frame :531 -- sign-off line ("— Jordan Alvarez, DevFlow Conf"),
+   font-size:15px; line-height:1.6; color:#3F4237 (--chq-ink-2). */
+.chq-speakers-remind-card-signature {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
 }
 
 /* Grid: horizontal scroll within its own container -- never breaks the page

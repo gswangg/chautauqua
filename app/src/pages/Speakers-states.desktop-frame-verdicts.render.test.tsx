@@ -399,11 +399,17 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
               email: 'marcus@example.com',
               name: 'Marcus Okafor',
               subject: 'Action needed',
-              text: 'Hi Marcus,\n\nA quick nudge — 1 of your speaker tasks is still open.\n\nStill to do\nUpload headshot — was due 10 Apr.\n\nchautauqua.cc/portal/tasks\n\n— The team',
+              text: 'Hi Marcus,\n\nA quick nudge — 1 of your speaker tasks is still open.\n\nStill to do\n- Upload headshot — due 10 Apr\n\nchautauqua.cc/portal/tasks\n\n— The team',
+              // DEC-613 wave-47: `stillToDo` is formatTaskLines' real shape
+              // (`- {title} — due {date}` -- describeTask never writes "was
+              // due", the frame's :527 wording is its own demo prose) and
+              // `stillToDoRun` is formatTaskSentenceRun's real, period-
+              // terminated register -- the one the card actually renders.
               parts: {
                 greeting: 'Hi Marcus,',
                 nudge: 'A quick nudge — 1 of your speaker tasks is still open.',
-                stillToDo: ['- Upload headshot — was due 10 Apr.'],
+                stillToDo: ['- Upload headshot — due 10 Apr'],
+                stillToDoRun: 'Upload headshot — due 10 Apr.',
                 portalLine: 'chautauqua.cc/portal/tasks',
                 signature: '— The team',
               },
@@ -464,8 +470,21 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       expect(within(dialog).getByText('Still to do')).toBeInTheDocument();
       const card = dialog.querySelector('.chq-speakers-remind-card');
       expect(card).not.toBeNull();
-      expect(within(card as HTMLElement).getByText(/Upload headshot/)).toBeInTheDocument();
+      // docs/design/Chautauqua Speakers.dc.html:527 -- the "Still to do"
+      // value is ONE period-terminated sentence run, no bullet prefix:
+      // `Upload headshot — was due 10 April. Complete your bio — due 10
+      // April.` -- DEC-613 wave-47, the card renders `parts.stillToDoRun`,
+      // never formatTaskLines' bulleted register re-joined.
+      verbatimLine(527, '                <span style="font-size:14px; line-height:1.6">Upload headshot — was due 10 April. Complete your bio — due 10 April.</span>');
+      const todoValue = within(card as HTMLElement).getByText(/Upload headshot/);
+      expect(todoValue).toBeInTheDocument();
+      expect(todoValue.textContent).not.toMatch(/^-\s/);
+      expect(todoValue.textContent).not.toContain('- Upload headshot');
       expect(within(dialog).getByText(/Or paste this into your browser/)).toBeInTheDocument();
+      // docs/design/Chautauqua Speakers.dc.html:531 -- the sign-off,
+      // "— Jordan Alvarez, DevFlow Conf" -- drawn as the card's last child.
+      verbatimLine(531, '              <span style="font-size:15px; line-height:1.6; color:#3F4237">— Jordan Alvarez, DevFlow Conf</span>');
+      expect(within(card as HTMLElement).getByText('— The team')).toBeInTheDocument();
     });
   });
 

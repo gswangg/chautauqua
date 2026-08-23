@@ -161,7 +161,7 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
                   {/* v12 frame :525-528: left-ruled "Still to do" block. */}
                   <div className="chq-speakers-remind-card-todo">
                     <span className="chq-speakers-remind-card-todo-eyebrow">Still to do</span>
-                    <span className="chq-speakers-remind-card-todo-lines">{first.parts.stillToDo.join(' ')}</span>
+                    <span className="chq-speakers-remind-card-todo-lines">{first.parts.stillToDoRun}</span>
                   </div>
                   <a
                     className="chq-speakers-remind-card-cta"
@@ -172,6 +172,9 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
                   <span className="chq-speakers-remind-card-paste">
                     Or paste this into your browser: {first.parts.portalLine}
                   </span>
+                  {/* v12 frame :531 ("— Jordan Alvarez, DevFlow Conf",
+                      font-size:15px; line-height:1.6; color:#3F4237). */}
+                  <span className="chq-speakers-remind-card-signature">{first.parts.signature}</span>
                 </div>
               </div>
               {/* v12 frame :533 caption, verbatim. */}

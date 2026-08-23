@@ -399,7 +399,14 @@ export function buildReminderMessage(
 ): {
   subject: string;
   text: string;
-  parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
+  parts: {
+    greeting: string;
+    nudge: string;
+    stillToDo: string[];
+    stillToDoRun: string;
+    portalLine: string;
+    signature: string;
+  };
 } {
   const openCount = assignments.length;
   const overdueCount = assignments.filter(
@@ -418,6 +425,12 @@ export function buildReminderMessage(
   // (wave-9 amendment: the dead eventTimezone parameter this comment used
   // to justify keeping was removed instead — DEC-851/DEC-988 class).
   const taskLines = formatTaskLines(assignments);
+  // DEC-613 wave-47: the sentence-run register (period-terminated, no
+  // bullet prefix) is what the preview card renders (frame :527) -- the
+  // SAME formatTaskSentenceRun call the send call site already uses below
+  // (sendReminderEmails' `fact:` line), composed here so it travels in
+  // `parts` instead of being re-derived a second time.
+  const stillToDoRun = formatTaskSentenceRun(assignments);
   // DEC-559: append the portal link through the same renderTemplate
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
   const portalLine = renderTemplate("{portal_link}", { portal_link: portalLink });
@@ -439,7 +452,7 @@ export function buildReminderMessage(
   return {
     subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`,
     text,
-    parts: { greeting, nudge, stillToDo: taskLines, portalLine, signature },
+    parts: { greeting, nudge, stillToDo: taskLines, stillToDoRun, portalLine, signature },
   };
 }
 
@@ -887,7 +900,14 @@ export async function previewRemindNow(
     name: string;
     subject: string;
     text: string;
-    parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
+    parts: {
+      greeting: string;
+      nudge: string;
+      stillToDo: string[];
+      stillToDoRun: string;
+      portalLine: string;
+      signature: string;
+    };
     tasks: { title: string; dueLabel: string; overdue: boolean }[];
   }[];
   skipped: number;
@@ -948,7 +968,14 @@ export async function previewRemindNow(
     name: string;
     subject: string;
     text: string;
-    parts: { greeting: string; nudge: string; stillToDo: string[]; portalLine: string; signature: string };
+    parts: {
+      greeting: string;
+      nudge: string;
+      stillToDo: string[];
+      stillToDoRun: string;
+      portalLine: string;
+      signature: string;
+    };
     tasks: { title: string; dueLabel: string; overdue: boolean }[];
   }[] = [];
   for (const group of plan.groups) {
