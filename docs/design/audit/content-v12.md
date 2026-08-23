@@ -26,7 +26,18 @@ stacked bands.
 **Why not fixed here**: `.chq-tabbar` is shell chrome, not `app/src/pages/
 content/**` — this task's file scope is Content only, and the task text
 names this exact deferral: "file 'select mode should suppress .chq-tabbar'
-as a finding for the shell lane."
+as a finding for the shell lane." **CLOSED (task w50-d, wave 50)**:
+re-verified live against the current tree — `ContentApp.tsx` (line 353)
+sets the attribute `data-chq-phone-dock` while `phoneSelectMode` is on,
+`FilesLibrary.tsx:172` sets the same attribute whenever its own dock is
+mounted, and `app/src/styles.css` (line 2374) declares the selector
+`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` (plus the
+`.chq-shell:has(.chq-phone-dock) .chq-tabbar` / `body:has(.chq-scrim
+[data-chq-phone-dock]) .chq-tabbar` companions at lines 2625/2639)
+suppressing the tab bar exactly as this finding's "Suggested fix (shell
+lane)" asked for. The w13-ra "Update" below could only marginal-note this
+because `app/src/styles.css`/`app/src/App.tsx` were out of that task's file
+scope; this task carries no such restriction and confirms it directly.
 
 **Suggested fix (shell lane)**: shell geometry needs some signal (a route
 param, a data attribute on `.chq-main`/`.chq-page`, or a shared context)

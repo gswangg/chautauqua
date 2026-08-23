@@ -301,3 +301,9 @@ instructions -- never computed by arithmetic on the twelve drained keys).
 constant. 118 remain, all genuine design-rationale prose with no single
 code artifact -- real, narrow work for a later wave, same disposition as
 before.
+
+**Update (task w50-d, wave 50)**: `RULING_UNIT_GAP_CEILING` moved `118` ->
+`104` since the paragraph above was written (live value re-measured at this
+task's branch point, `test/design-rulings-ledger.scan.test.ts:1918`) --
+further drained keys, same "real, narrow work for a later wave" disposition
+as before, not repaired by this docs-only task.
