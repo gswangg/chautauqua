@@ -1,6 +1,6 @@
-# Comms v12 DESKTOP (1600) per-frame render verdicts (w23-e, DEC-976 wave-23 amendment)
+# Comms v12 DESKTOP (1600) per-frame render verdicts (w23-e, DEC-976 wave-23 amendment; extended w37-g, DEC-976 wave-37 amendment)
 
-Per-frame render VERDICTS for four of Comms' nine desktop (1600) frames in
+Per-frame render VERDICTS for seven of Comms' nine desktop (1600) frames in
 `docs/design/Chautauqua Comms.dc.html`, entered through the app's real route
 (`CommsPage` via `MemoryRouter` + `?tab=<tab>`, DEC-710) and asserted against
 jsdom DOM structure/order/text — never a computed style, since jsdom applies
@@ -12,7 +12,12 @@ frames); this document and its sibling test file
 real render receipt for any of Comms' desktop frames — the cluster's
 existing citation-only ledger (`docs/design/audit/comms-v12.md`, owned by an
 in-flight branch and untouched here) scores desktop by citation, not
-conformance (DEC-967).
+conformance (DEC-967). w37-g (DEC-976 wave-37 amendment) closes three more of
+the five frames this document's own w23-e wave left un-adjudicated: `:28`,
+`:453`, `:750` — the three APP frames of the compose wizard component,
+reached by DRIVING the wizard (advancing steps, triggering the real
+send-blocked refusal) rather than rendering any state in isolation
+(DEC-651).
 
 STRICTLY MEASUREMENT ONLY (the mandate's desktop freeze): this document and
 its test file render, verdict, and file divergences in prose — they move no
@@ -21,26 +26,34 @@ divergence is found below.
 
 ## Frames covered this wave
 
-- `:222` "Templates" (1600)
-- `:360` "Compose · step 1 of 4" (1600)
-- `:544` "Comms · nothing sent yet" (1600)
-- `:589` "Comms · history" (1600)
+- `:222` "Templates" (1600) — w23-e
+- `:360` "Compose · step 1 of 4" (1600) — w23-e
+- `:544` "Comms · nothing sent yet" (1600) — w23-e
+- `:589` "Comms · history" (1600) — w23-e
+- `:28` "Compose · step 3 of 4 · 1600" (1600) — w37-g
+- `:453` "Compose · step 4 of 4" (1600) — w37-g
+- `:750` "Compose · send blocked" (1600) — w37-g
 
-## Frames NOT covered this wave (honest remainder)
+## Frames NOT covered (honest remainder)
 
 `docs/design/Chautauqua Comms.dc.html` draws nine 1600px desktop frames in
-total; five are un-adjudicated by any render receipt after this wave:
+total; seven now carry a real render receipt (above). The remaining two are
+a DISTINCT, DEFERRED population, not an oversight:
 
-- `:28` "Compose · step 3 of 4 · 1600"
-- `:453` "Compose · step 4 of 4"
-- `:750` "Compose · send blocked"
 - `:686` "What each template renders"
 - `:712` "DevFlow Conf 2027"
 
-`:695` (`{{ e.name }}`, the per-template email-preview loop inside the
-`:686` frame) is a template-interpolation placeholder, excluded from the
-population entirely by the ledger's own template-interpolation pattern —
-not a frame this document owes a verdict on.
+Both are the **Emails shell** — a template-preview surface rendered at a
+**560px measure** (`:695`'s own `{{ e.name }}` loop scaffolding sits inside
+this same 560px shell), not the 1600px app chrome every frame above renders
+inside. It is a DIFFERENT RENDERER (the standalone email-preview component,
+never `CommsPage`/`ComposeWizard`) and a DIFFERENT POPULATION (one email
+body per template, not one app screen per wizard/tab state) than the seven
+1600px APP frames this document verdicts. Closing it is a distinct task —
+"not covered" here names a population this document does not own, not a gap
+nobody has looked at. `:695` (`{{ e.name }}`) itself remains excluded from
+the population entirely by the ledger's own template-interpolation
+pattern.
 
 ## Frame `:222` "Templates" (1600)
 
@@ -186,6 +199,95 @@ mount).
   at rest, flips to a "Close" state (`aria-expanded="true"`) on click,
   arming the recipients disclosure region (`.chq-comms-batch-recipients`).
 
+## Frame `:28` "Compose · step 3 of 4 · 1600" (1600, the review step)
+
+**MATCHES** on the review step's own section head; **DIVERGES** on how a
+send is actually committed, governed by DEC-976 wave-37 (Ruling B1: send
+moves to a dedicated step 4). Entered via `?tab=compose`: select a
+submission, advance to the template step, fill Subject/Body, "Next:
+preview" — the component's own review step (`step === 'preview'` in
+`ComposeWizard.tsx`), which the frame's own STEP header numbers "3 of 4".
+
+- The "Recipients · N" section head (frame :81) MATCHES — the tree's own
+  `.chq-section-head` reads `Recipients · 1` for a one-recipient fixture,
+  same label, same count-after-the-count-noun order the frame draws with its
+  demo "23".
+- **DIVERGES**: the frame draws this step's own primary as "Send N emails"
+  (frame :144) — a control that, per the frame's own script, commits the
+  send from THIS step. The tree's step-3 primary instead reads "Next: send
+  ›" (`ComposeWizard.tsx`'s `chq-btn-primary`, `onClick={() =>
+  setStep('sent')}`) and never posts to `/compose/send` from here — Ruling
+  B1 (already documented inline in `ComposeWizard.tsx`: "Send moves to step
+  4 -- this primary only advances; the dedicated ConfirmDialog is gone
+  because step 4 pre-send IS the confirmation"). No control matching
+  `/^Send \d+ emails?$/` exists on this step at all.
+
+## Frame `:453` "Compose · step 4 of 4" (1600, the send report)
+
+**MATCHES** on the report's own head, skipped section, and footer;
+**DIVERGES** on one grid value, governed by DEC-238 (findings wave 5,
+already landed) and DEC-976 wave-37. Entered by completing the wizard drive
+above through to `POST /compose/send`, mocking a response with two
+`already_sent_recently` skips (`step === 'sent' && sendResult` in
+`ComposeWizard.tsx`).
+
+- The report head (frame :497-498, "Send complete" eyebrow + "N of M
+  speakers were emailed" headline) MATCHES: eyebrow text and headline shape
+  both render, with N/M sourced from the real `sendResult`/`sentTotal`
+  (1 of 3 in this fixture), never the frame's fixed demo "21 of 23".
+- The skipped section (frame :514-527, "Two were skipped" / "Nothing was
+  sent to these two" / per-row name+email+reason / the dedupe-window note)
+  MATCHES verbatim for a two-skip fixture, including the frame's own
+  spelled-out count ("Two", not "2").
+- The footer (frame :533-534, "Compose another" secondary + "Back to Comms"
+  primary) MATCHES.
+- **DIVERGES**: the frame's "Sent" grid value names a from-address (frame
+  :509, "Just now, by you · from hello@devflowconf.com"). The tree's
+  `.chq-comms-send-report-grid` renders "Just now, by you" alone — the
+  composer holds no from-address field to report (already documented
+  inline in `ComposeWizard.tsx`: "The client never invents/hard-codes a
+  from-address... A future wave that gives the composer a from-address
+  appends ' · from <address>'"). Not new debt — a known, named gap, not a
+  fabrication.
+
+## Frame `:750` "Compose · send blocked" (1600)
+
+**DIVERGES** on composition (dedicated screen vs. inline banner);
+**MATCHES** on the banner's own action labels, governed by DEC-976 wave-37
+and DEC-051 (the ics-unscheduled preflight refusal, already landed). Entered
+by reaching the review step with three unscheduled submissions selected,
+then toggling "Attach calendar invite" there — the real preflight
+(`POST /compose/preview` with `attachIcs: true`) rejects as not-scheduled,
+and `ComposeWizard.tsx`'s own inline comment names this exact frame as its
+source: `/* Frame 07-comms--13 ("Check before sending")... */`. This IS the
+app's send-blocked state — no banner component is rendered in isolation
+(DEC-651); the refusal is reached by driving the real toggle.
+
+- **DIVERGES**: the frame draws send-blocked as its own dedicated screen —
+  a fresh `<h1>Check before sending</h1>` (frame :763) replacing the
+  ordinary review-step layout entirely. The tree renders no such screen and
+  no such heading anywhere in the DOM: the refusal is an inline
+  `role="alert"` banner (`.chq-comms-refusal-banner`) injected into the
+  ORDINARY review step, with the "Recipients · 3" section and "Attachments
+  and merge fields" panel still visible beside it, unchanged. A real,
+  structural divergence — the frame's full-screen interstitial vs. the
+  tree's in-place banner — filed here per the mandate, not a defect (the
+  banner names the same blocked submissions, in place, without a navigation
+  round-trip).
+  - The frame's own blocking COPY (frame :768, "One merge field will not
+    resolve for 3 of the 23") is a *different* refusal than the one this
+    drive reaches — that sentence belongs to DEC-660's pre-emptive
+    merge-field advisory band (template step, `.chq-comms-merge-warning`,
+    already covered by `ComposeWizard.mergeWarning.render.test.tsx`), not
+    the ics-unscheduled preflight this frame's own header breadcrumb
+    ("Comms · Compose · step 3") and secondary actions ("Send to the N who
+    have a slot", "Edit the template", "Place all N first") actually match.
+- **MATCHES**: the banner's "Edit the template" secondary (frame :792) and
+  "Place all three first" primary (frame :793, for three unscheduled
+  submissions) render verbatim inside the alert banner
+  (`within(banner).getByRole('button', {name: 'Edit the template'})` /
+  `getByRole('link', {name: 'Place all three first'})`).
+
 ## Summary
 
 | Frame | Verdict |
@@ -194,13 +296,17 @@ mount).
 | :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3), DEC-902 wave-9 + DEC-967; structurally MATCHES |
 | :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop), DEC-902 wave-8 |
 | :589 Comms · history (1600) | CLOSED-with-receipt (DEC-964 wave-8, task w8-a): MATCHES on page chrome (no page-level Comms H1/tablist at any width) and inside the frame's own shell |
+| :28 Compose · step 3 of 4 (1600) | MATCHES on the review section head; DIVERGES on send commitment (step-3 "Send N emails" vs. the tree's "Next: send ›" deferring to step 4, Ruling B1) |
+| :453 Compose · step 4 of 4 (1600) | MATCHES on report head/skipped section/footer; DIVERGES on the Sent grid's from-address (frame names one, tree has none to report) |
+| :750 Compose · send blocked (1600) | DIVERGES on composition (dedicated screen vs. inline alert banner); MATCHES on the banner's own action labels |
 
-All four frames render successfully through the real route with no
+All seven frames render successfully through the real route with no
 fabricated fixture shortcuts; none of the divergences found are new debt —
-each is either a landed, ruled improvement (DEC-993), an already-documented
-cross-file gap (`HistoryTab.tsx`'s own comment), or the frame's own demo
-data choosing a populated/selected state the app's real cold start does not
-start in. Five of Comms' nine desktop frames remain un-adjudicated by any
-render receipt after this wave (see "Frames NOT covered" above) — that
-remainder is left for a later lane, not silently folded into this ledger's
+each is either a landed, ruled improvement (DEC-993, Ruling B1), an
+already-documented cross-file gap (`HistoryTab.tsx`'s / `ComposeWizard.tsx`'s
+own comments), or the frame's own demo data/composition choosing a state the
+app's real interaction model does not reproduce byte-for-byte. Two of
+Comms' nine desktop frames remain a distinct, deferred population — the
+Emails shell at its own 560px measure, a different renderer entirely (see
+"Frames NOT covered" above) — not silently folded into this ledger's
 100/100 citation claim.
