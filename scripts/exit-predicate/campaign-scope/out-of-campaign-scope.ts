@@ -543,4 +543,21 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "wave-43 measured set. A floor whose sibling ceiling is excused cannot itself be a graded "
     + "campaign row (test/frame-verdict-async-query.scan.test.ts, DEC-976 wave-43 amendment, "
     + "DEC-069 wave-50 amendment).",
+
+  PACK_PADDING_UNMATCHED_CEILING:
+    "measures a newly-derived population -- every `padding:` declaration docs/design/*.dc.html draws "
+    + "inside a REACHABLE desktop frame, with the frame's own `5px 10px` number-badge chrome excluded "
+    + "structurally (by the badge element's own four distinguishing style declarations, never a "
+    + "hand-listed line set), joined against every `padding:` declaration the non-test product corpus "
+    + "ships -- that no instrument previously graded. `padding` was the pack's largest ungraded "
+    + "geometry axis (docs/design/audit/pack-grid-track-vocabulary-v12.md's own 'Rejected in the same "
+    + "measurement pass' section), skipped for exactly the badge-chrome reason this ratchet now "
+    + "resolves by derivation. A real conformance fact about this population, but a freshly measured, "
+    + "previously-uncounted ~252-row population must not move the campaign's goalposts mid-"
+    + "convergence; it is promoted once a later wave individually adjudicates the offender roster "
+    + "against its own render site, the same disposition already given to "
+    + "PACK_GRID_TRACK_UNMATCHED_CEILING and PACK_PROSE_MEASURE_DIVERGENCE_CEILING "
+    + "(test/pack-padding-vocabulary.scan.test.ts, DEC-069 wave-53 amendment, task w53-e). This lane "
+    + "moves no CSS byte; repair is a later lane's, sized from "
+    + "docs/design/audit/pack-padding-vocabulary-v12.md's roster.",
 };
