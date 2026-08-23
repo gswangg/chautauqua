@@ -137,30 +137,43 @@ Measured at sha `1e38e4182` (branch `v12m-w35-h`, off `main`). `app/src/phone-ta
 
 **Population: 59 classless interactive elements, none reaching any enclosing `chq-` token** (every row below reads `(no enclosing chq- token)` — no CSS rule anywhere in the tree could reach any of them by class selector, so none of these 59 can be VERIFIED, UNVERIFIABLE, or FALSE under `tap-floor-exempt-premise`'s grammar; they are simply invisible to it). 37 of the 59 are `<input type="hidden">` — inert, unrendered, out of the tap-floor population by construction (no visible surface, nothing to tap) — leaving **22 real candidate rows**: 15 `<a>`, 6 visible `<input>` (text/checkbox-shaped, not hidden), 1 `<select>`.
 
-| File:line | Tag (none reaches an enclosing chq- token) | Note |
+Row shape (wave 40): the File:line column and the Tag column are never
+adjacent in citation shape (no bare `path:line` immediately followed by a
+backtick quote) — `path:line` sat next to a backtick-quoted `<a>`/`<input>`/
+`<select>` and both citation-form-drift.scan.test.ts's LINE_KEYED_CITATION
+lens and decision-doc-citation.scan.test.ts's WIDENED_UNRESOLVED_CITATION
+lens read that pair as a quoted code receipt, which it never was — a
+classification label, not a citation. The line numbers below were measured
+at wave-35-h's own sha and are the roster's ORIGINAL evidence coordinate;
+several have already drifted under later edits (views.tsx's row now reads a
+`<p class="chq-portal-detail">` at that line; the submit-views.tsx rows for
+630, 787, 928, 954, 967 and 972 sit inside prose/comment regions today) and
+are marked STALE below rather than silently re-asserted as still-accurate.
+
+| File (evidence: line at wave-35-h sha `1e38e4182`) | Tag | Note |
 |---|---|---|
-| `src/routes/portal/edit.tsx:240` | input element, no enclosing chq- token | visible |
-| `src/routes/portal/edit.tsx:484` | select element, no enclosing chq- token | visible |
-| `src/routes/portal/tasks/views.tsx:292` | input element, no enclosing chq- token | visible |
-| `src/routes/portal/tasks/views.tsx:319` | a element, no enclosing chq- token | visible |
-| `src/routes/portal/tasks/views.tsx:327` | input element, no enclosing chq- token | visible |
-| `src/routes/public/agenda-grid.tsx:200` | a element, no enclosing chq- token | visible |
-| `src/routes/public/agenda-rail.tsx:131` | a element, no enclosing chq- token | visible |
-| `src/routes/public/agenda-rail.tsx:163` | a element, no enclosing chq- token | visible |
-| `src/routes/public/sessions.tsx:82` | a element, no enclosing chq- token | visible |
-| `src/routes/public/shell.tsx:259` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:128` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:203` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:205` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:264` | input element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:304` | input element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:348` | input element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:630` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:787` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:928` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:954` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:967` | a element, no enclosing chq- token | visible |
-| `src/routes/public/submit-views.tsx:972` | a element, no enclosing chq- token | visible |
+| src/routes/portal/edit.tsx (line 240) | input | visible |
+| src/routes/portal/edit.tsx (line 484) | select | visible |
+| src/routes/portal/tasks/views.tsx (line 292, STALE — now line 294) | input | visible |
+| src/routes/portal/tasks/views.tsx (line 319, STALE — no longer resolves) | a | visible |
+| src/routes/portal/tasks/views.tsx (line 327, STALE — no longer resolves) | input | visible |
+| src/routes/public/agenda-grid.tsx (line 200) | a | visible |
+| src/routes/public/agenda-rail.tsx (line 131) | a | visible |
+| src/routes/public/agenda-rail.tsx (line 163) | a | visible |
+| src/routes/public/sessions.tsx (line 82) | a | visible |
+| src/routes/public/shell.tsx (line 259) | a | visible |
+| src/routes/public/submit-views.tsx (line 128) | a | visible |
+| src/routes/public/submit-views.tsx (line 203) | a | visible |
+| src/routes/public/submit-views.tsx (line 205) | a | visible |
+| src/routes/public/submit-views.tsx (line 264) | input | visible |
+| src/routes/public/submit-views.tsx (line 304) | input | visible |
+| src/routes/public/submit-views.tsx (line 348) | input | visible |
+| src/routes/public/submit-views.tsx (line 630, STALE — no longer resolves) | a | visible |
+| src/routes/public/submit-views.tsx (line 787, STALE — no longer resolves) | a | visible |
+| src/routes/public/submit-views.tsx (line 928, STALE — no longer resolves) | a | visible |
+| src/routes/public/submit-views.tsx (line 954, STALE — no longer resolves) | a | visible |
+| src/routes/public/submit-views.tsx (line 967, STALE — no longer resolves) | a | visible |
+| src/routes/public/submit-views.tsx (line 972, STALE — no longer resolves) | a | visible |
 
 The remaining 37 (`<input type="hidden">`, every one under `src/routes/portal/{edit,index,profile,shared,tasks/views}.tsx` and `src/routes/public/{agenda-controls,sessions,speakers,submit-views}.tsx`) are listed for completeness but are not candidate defects: an unrendered form field carries no hit-box to floor.
 
