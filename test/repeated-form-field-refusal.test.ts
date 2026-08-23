@@ -43,6 +43,12 @@ describe("readSingleFormValue (DEC-422/DEC-598)", () => {
     const result = readSingleFormValue(undefined);
     expect(result).toEqual({ ok: true, value: undefined });
   });
+
+  it("refuses a File posted under a text field's name instead of stringifying it to '[object File]' (DEC-422 wave-51)", () => {
+    const f = new File([new Uint8Array([1, 2, 3])], "receipt.pdf", { type: "application/pdf" });
+    const result = readSingleFormValue(f);
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe("readSingleFilePart (DEC-422/DEC-598)", () => {
