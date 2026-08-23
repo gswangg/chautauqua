@@ -141,7 +141,8 @@
 //      on the literal sticky/bottom/border-top geometry rather than a
 //      vocabulary class will now be reachable). RATCHET:
 //      PHONE_DOCK_UNCLAIMED_CEILING=0 (unchanged; a repair, not a raise).
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -174,6 +175,22 @@ function isFrameLine(line: string): boolean {
 
 function isLabelLine(line: string): boolean {
   return line.includes('font-size:19px') && LABEL_SPAN_RE.test(line);
+}
+
+/** DEC-967 wave-41 amendment: the 1-based line of the single `</x-dc>`
+ * template close in `fileName`, throwing loudly on zero or multiple
+ * matches. Ported (not imported) per this file's own header precedent --
+ * every ledger this ruling touches carries its own copy. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
 }
 
 function designFiles(): string[] {
@@ -209,12 +226,15 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Clipped at the template's own close (DEC-967 wave-41 amendment) so
+    // the last labelled block can never swallow `</x-dc>` and everything
+    // past it.
     const nextLabel = labelLines.find((l) => l.line > frameLine);
     return {
       fileName,
       line: frameLine,
       title,
-      extentEnd: nextLabel ? nextLabel.line : Infinity,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
     };
   });
 }
@@ -777,5 +797,46 @@ describe('phone dock membership ledger (DEC-976, v12 mobile campaign)', () => {
       );
     }
     expect(UNCLAIMED.length).toBeGreaterThanOrEqual(PHONE_DOCK_UNCLAIMED_CEILING);
+  });
+
+  it('control (DEC-967 wave-41 amendment): a fabricated dock-band label after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <div style="flex-shrink:0; border-top:1px solid #1B1D17">', // line 3: dock signature
+        '    <span>Zzy Before Close Label</span>', // line 4: inside the frame, before close
+        '  </div>', // line 5
+        '</div>', // line 6
+        '</x-dc>', // line 7: template close
+        '<span>Zzy After Close Label</span>', // line 8: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(7);
+
+      // Mirrors bandsInFile's own extentEnd computation above: no next
+      // label after the frame line (2), so the raw extent would run to
+      // Infinity -- clipped here to the template close, exactly as the
+      // production `extentEnd: Math.min(nextLabel ? nextLabel.line :
+      // Infinity, templateCloseLine(full))` does.
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, closeLine);
+      expect(extentEnd).toBe(7);
+
+      const beforeLine = 4;
+      const afterLine = 8;
+      // POSITIVE: the before-close dock label sits inside the clipped extent.
+      expect(beforeLine >= frameLine && beforeLine < extentEnd).toBe(true);
+      // NEGATIVE: the after-close dock-shaped label, despite being in the
+      // same file, sits outside the clipped extent -- exactly the swallow
+      // this ruling closes.
+      expect(afterLine >= frameLine && afterLine < extentEnd).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

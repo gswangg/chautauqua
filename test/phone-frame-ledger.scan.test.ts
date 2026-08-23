@@ -57,7 +57,8 @@
 //
 // goalComplete for the v12 mobile campaign is CLAIMED_FLOOR reaching 53 --
 // every enumerated phone frame cited by some test.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -92,6 +93,26 @@ function isFrameLine(line: string): boolean {
 
 function isLabelLine(line: string): boolean {
   return line.includes('font-size:19px') && LABEL_RE.test(line);
+}
+
+/** DEC-967 wave-41 amendment: the 1-based line of the single `</x-dc>`
+ * template close in `fileName`, throwing loudly on zero or multiple
+ * matches. A frame's extent is never allowed to reach past this line --
+ * without the clip, the last labelled block of a file swallows the
+ * template's own closing tag and everything after it (fixture
+ * `data-dc-script` bodies, trailing markup). Ported (not imported) into
+ * each ledger this ruling touches, per this file's own "stands alone"
+ * precedent above. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
 }
 
 /** Every *.dc.html file directly under docs/design, enumerated rather than
@@ -131,14 +152,17 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${relFile}:${frameLine} -- no preceding font-size:19px label found`);
     }
-    // Extent end: next label line strictly after this frame's own line, or EOF.
+    // Extent end: next label line strictly after this frame's own line, or
+    // EOF -- clipped at the template's own close (DEC-967 wave-41
+    // amendment) so the last labelled block can never swallow `</x-dc>`
+    // and everything past it.
     const nextLabel = labelLines.find((l) => l.line > frameLine);
     return {
       file: relFile,
       fileName,
       line: frameLine,
       title,
-      extentEnd: nextLabel ? nextLabel.line : Infinity,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
     };
   });
 }
@@ -314,5 +338,45 @@ describe('phone-frame claim ledger (DEC-808 amendment wave 83, v12 mobile campai
         `${claim.citation.citingFile}: "${claim.citation.matchText}" cites ${claim.frame.fileName}:${claim.citation.firstLine}, which does not exist in that frame file`
     );
     expect(bad).toEqual([]);
+  });
+
+  it('control (DEC-967 wave-41 amendment): a fabricated label-shaped string after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <span>Zzy Before Close Label</span>', // line 3: inside the frame, before close
+        '</div>', // line 4
+        '</x-dc>', // line 5: template close
+        '<span>Zzy After Close Label</span>', // line 6: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(5);
+
+      // Mirrors framesInFile's own extentEnd computation above: no next
+      // label after the frame line (2), so the raw extent would run to
+      // Infinity -- clipped here to the template close, exactly as the
+      // production `extentEnd: Math.min(nextLabel ? nextLabel.line :
+      // Infinity, templateCloseLine(full))` does.
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, templateCloseLine(fixturePath));
+      expect(extentEnd).toBe(5);
+
+      const beforeLine = 3;
+      const afterLine = 6;
+      // POSITIVE: the before-close label sits inside the clipped extent.
+      expect(beforeLine >= frameLine && beforeLine < extentEnd).toBe(true);
+      // NEGATIVE: the after-close label, despite being label-shaped and in
+      // the same file, sits outside the clipped extent -- exactly the
+      // swallow this ruling closes (a frame's extent can never reach past
+      // its own template's `</x-dc>`).
+      expect(afterLine >= frameLine && afterLine < extentEnd).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
