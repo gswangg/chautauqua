@@ -2021,6 +2021,13 @@
      (main visible, landing display:none) take back over. The landing's own
      content rules (title/subtitle/draft card/recent-sends list) live in
      the trailing @media block at the foot of this file. */
+  /* phone-hidden: re-lined (DEC-808 wave-52) -- while
+     .chq-comms-main-landing is on this wrapper, the sibling
+     .chq-comms-phone-landing band (frame docs/design/Chautauqua
+     Comms.dc.html:177, gated `isPhone`) draws the phone landing
+     dashboard instead, whose own draft-card/Recent-Sends entry controls
+     (onReadDraft/choosePhoneTab) set phoneEntered true -- the same flag
+     that drops this class and reveals Compose/Templates/History here. */
   .chq-comms-main-landing {
     display: none;
   }

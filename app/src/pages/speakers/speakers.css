@@ -1960,6 +1960,11 @@ button.chq-speakers-status-overdue:hover {
 
   /* -- from the former "matrix becomes cards" block -- */
 
+  /* phone-hidden: re-lined (DEC-808 wave-52) as .chq-speakers-cards
+     immediately below -- the frame's own "Matrix becomes one card per
+     speaker" collapse (docs/design/Chautauqua Speakers.dc.html:130),
+     same data, same row handlers, one-card-per-speaker instead of the
+     desktop grid. */
   .chq-speakers-grid-wrap {
     display: none;
   }
@@ -2034,6 +2039,11 @@ button.chq-speakers-status-overdue:hover {
      it hides and the phone action row (declared hidden above) takes over.
      The H1/summary above it (.chq-speakers-head-titles) is untouched --
      one heading, shared by both densities. */
+  /* phone-hidden: re-lined (DEC-808 wave-52) as
+     .chq-speakers-phone-head-actions immediately below -- the frame's
+     own Remind outstanding / Filter phone action row
+     (docs/design/Chautauqua Speakers.dc.html:141), same handlers as the
+     desktop three-button row this replaces. */
   .chq-speakers-head-actions {
     display: none;
   }

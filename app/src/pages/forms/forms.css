@@ -673,6 +673,10 @@
   /* Header actions move into the fixed footer at phone width -- the
      desktop Preview action in the header band is redundant chrome once
      the footer carries it instead. */
+  /* phone-hidden: re-lined (DEC-808 wave-52) as .chq-forms-phone-footer's
+     own "Save the form" / "Preview" dock, wired to the same save/preview
+     handlers, at the frame's own dock geometry
+     (docs/design/Chautauqua Submissions.dc.html:485-487). */
   .chq-forms-header-actions {
     display: none;
   }
