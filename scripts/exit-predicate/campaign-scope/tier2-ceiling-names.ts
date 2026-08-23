@@ -173,4 +173,8 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
   // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-48 (task w48-b, DEC-896 wave-48 amendment): wired into TIER2 in the
+  // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988).
+  "PACK_GRID_TRACK_UNMATCHED_CEILING",
 ];

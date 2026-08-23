@@ -257,4 +257,10 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // fact in its own right. Reads live 0; removed from OUT_OF_CAMPAIGN_SCOPE
   // in this same commit.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-48 (task w48-b, DEC-896 wave-48 amendment): pack drawn column-track
+  // vocabulary ratchet -- grades every drawn grid-template-columns track
+  // list against the served CSS's declared value set, resolved through
+  // var()/minmax(0,X) before comparison
+  // (test/pack-grid-track-vocabulary.scan.test.ts).
+  "PACK_GRID_TRACK_UNMATCHED_CEILING",
 ];
