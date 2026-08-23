@@ -1211,7 +1211,16 @@ async function visitRoute(
   // settled -- read after the goto/waitForSelector block above so a
   // redirect (e.g. GET /logout -> /login) is reflected rather than silently
   // assumed to equal entry.path.
-  const landedPath = new URL(page.url()).pathname;
+  // DEC-144 fix: pathname alone drops the query string, so it silently
+  // matched entry.path's *base* path even when the request was for a
+  // query-string sub-state row (e.g. /admin/content?tab=approved) --
+  // manual repro confirmed the app itself preserves the query string on
+  // landing (page.url() keeps ?tab=approved); the harness's own extraction
+  // was throwing it away before the comparison ever saw it. Carry search
+  // through so the comparison is against what the browser actually shows in
+  // its address bar, matching entry.path/expectedLandedPath's own shape.
+  const landedUrl = new URL(page.url());
+  const landedPath = `${landedUrl.pathname}${landedUrl.search}`;
 
   // DEC-620: vertical-clip probe, same page/session — filtered against
   // KNOWN_CLIP_EXCEPTIONS before being handed to evaluateRoute, so a named

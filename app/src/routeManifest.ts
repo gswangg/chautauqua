@@ -212,7 +212,14 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // above -- ApiTokensPanel only mounts non-readOnly inside YourDataPanel
   // .tsx's edit view, and its own "New token" render site opens the edit
   // drill with `intent=new` already set (DEC-919 wave-155 amendment).
-  { path: "/admin/settings?section=your-data&edit=1&intent=new", role: "organizer" },
+  // render-sweep fix (DEC-144): ApiTokensPanel.tsx's own mount-time effect
+  // (:116-129) reads `intent=new` once to focus the name field, then
+  // deliberately drops the param via `setSearchParams(..., {replace:true})`
+  // so a later Back navigation doesn't re-steal focus -- a designed
+  // one-shot URL-consumption idiom (the comment there names the reason),
+  // not a bug. The gate must grade the URL the app actually settles on,
+  // same idiom as the /logout row below.
+  { path: "/admin/settings?section=your-data&edit=1&intent=new", role: "organizer", expectedLandedPath: "/admin/settings?section=your-data&edit=1" },
 
   // --- Organizer review tree (app/src/pages/Review.tsx, me.role !== 'reviewer') ---
   { path: "/admin/review", role: "organizer" },
