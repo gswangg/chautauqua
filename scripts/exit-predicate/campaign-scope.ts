@@ -723,6 +723,18 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "profileDock) is the live /portal/profile desktop double-Save's root cause, a product "
     + "fix this measurement-only instrument does not itself make "
     + "(app/src/phone-twin-visibility.scan.test.ts, docs/design/audit/phone-twin-visibility-v12.md).",
+  UNSTRIPPED_SOURCE_REGEX_CEILING:
+    "measures INSTRUMENT COVERAGE for a whole defect family -- how many scan-shaped files under "
+    + "test/** and app/src/** read source off disk and apply a content match to it with no "
+    + "comment-stripping step anywhere in the file -- not itself a v12 frame or 390-geometry "
+    + "conformance fact about any screen the product draws. The population is dominated by ordinary "
+    + "component render/CSS tests whose risk is lower than the three named instances that motivated "
+    + "this instrument (a CSS comment quoting a frame literal, frame prose quoting product copy, and "
+    + "test/test-tiers.test.ts's own DEC-727 tier-predicate offense); it is promoted, or split into a "
+    + "TIER2 gate for its genuinely risky subset, once its measurement technique is proven complete "
+    + "enough to distinguish that subset from the ordinary render-test population, the same "
+    + "disposition already given to COMMENT_BLIND_CSS_ASSERTION_CEILING "
+    + "(test/unstripped-source-regex.scan.test.ts, DEC-374 amendment).",
 };
 
 /**
