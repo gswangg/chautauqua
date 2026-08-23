@@ -224,7 +224,24 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // companion tier, which actively drained it 40 -> 34. 34 is the value
 // carried forward here; it is re-derived from the tree, never inherited
 // (DEC-808).
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 34;
+// Wave 54 (task w54-g, DEC-393 wave-54 amendment): ported the sibling
+// `inline-prose-exemption-premise` instrument's rung 0 (`selfFloored`,
+// wave-52) into this instrument as `judgeSelfFloored` -- a receipt with no
+// distinct companion whose OWN `receiptedClasses` tokens (merged across
+// every rule in the swept corpus that mentions them) already satisfy the
+// full 44px-floor grammar needs no companion's testimony. Scoped to every
+// family except `scoped` (which already has a strictly-superset tier via
+// `judgeSelfScoped`, present-in-markup requirement included). Forced to -1
+// and re-measured standalone (never by arithmetic on the wave-53 base --
+// the exact trap this constant's own comment history already records):
+// 34 -> 26, all eight moving on the SAME (composition/inline) shape --
+// their own receipted class was already the floored element, so the
+// receipt's premise ("nothing else needs to float this") is TRUE even
+// though the reason names no companion. FALSE-PREMISE stays 0: none of the
+// eight, nor any other receipt, newly resolves as a false self-floor claim.
+// docs/design/audit/tap-floor-exempt-premise-v12.md records the flipped
+// rows.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 26;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
@@ -302,7 +319,7 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     expect(verdict.verdict).toBe("FALSE-PREMISE");
   });
 
-  it("guard (bare-token companion): a bare token that IS the receipt's own receipted class is never treated as its own companion", () => {
+  it("guard (bare-token companion): a bare token that IS the receipt's own receipted class is never treated as its own companion (own class NOT self-floored here, so rung 0 does not intercept it either -- that positive case is exercised separately below)", () => {
     const receipt: Receipt = {
       file: "synthetic.css",
       line: 1,
@@ -310,7 +327,10 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
       receiptedClasses: ["chq-fake-self-bare-target"],
       family: "composition",
     };
-    const chunks = [{ selector: ".chq-fake-self-bare-target", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    // Deliberately NOT floored (no horizontal padding): the receipt's own
+    // reason claims a self-floor it doesn't have, so this exercises the
+    // bare-token-companion guard, not rung 0's self-floored tier.
+    const chunks = [{ selector: ".chq-fake-self-bare-target", body: "display:flex; align-items:center; min-height:44px;" }];
     const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-self-bare-target">x</a>');
     expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
   });
@@ -656,6 +676,59 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     expect(row, "the render-prop-nested receipt must still be in the swept population").toBeDefined();
     expect(row?.verdict).toBe("VERIFIED");
     expect(row?.detail).toMatch(/container-anchor tier/);
+  });
+
+  // SELF-FLOORED tier (DEC-393 wave-54 amendment, task w54-g): ported from
+  // the `inline-prose-exemption-premise` sibling instrument's rung 0
+  // (`selfFloored`, wave-52). Runs before the companion search / generic
+  // "no companion class named" fallthrough, for every family except
+  // `scoped` (which already owns this exact check via `judgeSelfScoped`).
+
+  it("rung 0 positive control (self-floored): a composition receipt naming no companion, whose OWN receipted class is floored (merged across its rules), resolves VERIFIED / self-floored", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- a phrase inside a running sentence, no companion class named here",
+      receiptedClasses: ["chq-fake-self-floor"],
+      family: "composition",
+    };
+    const chunks = [
+      { selector: ".chq-fake-self-floor", body: "display:flex; align-items:center;" },
+      { selector: ".chq-fake-self-floor", body: "min-height:44px; padding:0 8px;" },
+    ];
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("VERIFIED");
+    expect(verdict.detail).toMatch(/self-floored tier/);
+  });
+
+  it("rung 0 negative control (self-floored): a composition receipt naming no companion, whose OWN receipted class declares min-height but no flex/padding, stays UNVERIFIABLE-PREMISE", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- a phrase inside a running sentence, no companion class named here",
+      receiptedClasses: ["chq-fake-self-floor-partial"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-self-floor-partial", body: "min-height:44px;" }];
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+  });
+
+  it("rung 0 does not run for the `scoped` family (that family keeps judgeSelfScoped's stricter, present-in-markup-checked tier)", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "scoped to .chq-fake-scoped-not-in-markup, which only ever renders <button> children",
+      receiptedClasses: ["chq-fake-scoped-not-in-markup"],
+      family: "scoped",
+    };
+    const chunks = [{ selector: ".chq-fake-scoped-not-in-markup", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    // No markup source names the class at all -- judgeSelfScoped's
+    // present-in-markup requirement must still apply (a bare rung-0 check
+    // would VERIFY this; the scoped family's own stricter tier does not).
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+    expect(verdict.detail).toMatch(/self-scoped tier/);
   });
 
   it(`FALSE-PREMISE ceiling: at most ${TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING} receipt(s) claim a companion floor that isn't real`, () => {

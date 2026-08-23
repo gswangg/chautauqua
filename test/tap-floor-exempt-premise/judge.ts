@@ -5,6 +5,7 @@ import type { Receipt, RosterRow } from "./receipts";
 import { escapeRe, hasFlexCenter, hasMinHeightFloor, hasWidthHeightFloor, horizontalPaddingNonZero, isReplacedContentSelector } from "./css-grammar";
 import { judgeElementTypeReason } from "./element-type";
 import { judgeSelfScoped } from "./self-scoped";
+import { judgeSelfFloored } from "./self-floored";
 import { judgeRenderGate } from "./render-gate";
 import { isContainerAnchorAbsenceCandidate, judgeContainerAnchorAbsence } from "./anchorless-container";
 
@@ -97,6 +98,22 @@ export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: stri
   }
   if (receipt.family === "render-gate") {
     return judgeRenderGate(receipt);
+  }
+  // Rung 0 (DEC-393 wave-54 amendment, task w54-g): before the companion
+  // search and before the "no companion class named" fallthrough, check
+  // whether the receipt's own receipted class(es) already satisfy the full
+  // floor grammar by themselves -- ported from the `inline-prose-exemption-
+  // premise` sibling instrument's `selfFloored` (wave-52). Scoped to every
+  // family EXCEPT `scoped`, which already has its own, strictly-superset
+  // self-token tier (`judgeSelfScoped`: the same merged-floor check plus a
+  // present-in-markup requirement this port does not impose) -- running
+  // this rung ahead of that one would silently swap its detail text/
+  // stricter grammar out from under its own tests (DEC-613: two tiers
+  // judging the identical premise for one family is the duplicate this
+  // ruling forbids, not a scoping accident).
+  if (receipt.family !== "scoped") {
+    const selfFlooredRow = judgeSelfFloored(receipt, allChunks);
+    if (selfFlooredRow) return selfFlooredRow;
   }
   const mentioned = [...receipt.reason.matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string);
   const companion = mentioned.find((c) => !receipt.receiptedClasses.includes(c));
