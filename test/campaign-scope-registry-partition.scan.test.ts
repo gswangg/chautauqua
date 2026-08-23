@@ -51,7 +51,21 @@ const CONST_DECL_RE =
  * hard-coded value map (the task's own instruction, and DEC-808's "a
  * default is an invitation to guess").
  */
-function resolveLiveValue(repoRoot: string, name: string): number {
+/**
+ * Every `const NAME = <int>;` declaration on the tracked tree, indexed by
+ * name, built ONCE per process. `resolveLiveValue` used to re-shell `git
+ * ls-files` and re-read the whole corpus for every constant it was asked
+ * about, so a check over N promise-bearing names cost N full-tree walks --
+ * ~6s for the real registry, past vitest's 5s default and deterministically
+ * red. The index below reads each tracked file exactly once; the resolution
+ * rules (zero matches and multiple matches both throw loudly) are unchanged,
+ * which is why the locations are retained per name rather than collapsed.
+ */
+let declarationIndex: Map<string, { values: number[]; locations: string[] }> | null = null;
+
+function buildDeclarationIndex(
+  repoRoot: string,
+): Map<string, { values: number[]; locations: string[] }> {
   const trackedPaths = execFileSync(
     "git",
     ["ls-files", "--", "test", "app/src", "scripts"],
@@ -60,18 +74,30 @@ function resolveLiveValue(repoRoot: string, name: string): number {
     .split("\n")
     .filter((p) => p.endsWith(".ts"));
 
-  const found: number[] = [];
-  const locations: string[] = [];
+  const index = new Map<string, { values: number[]; locations: string[] }>();
   for (const path of trackedPaths) {
     const content = readFileSync(join(repoRoot, path), "utf8");
     CONST_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = CONST_DECL_RE.exec(content)) !== null) {
-      if ((m[1] as string) !== name) continue;
-      found.push(Number.parseInt(m[2] as string, 10));
-      locations.push(path);
+      const declName = m[1] as string;
+      let entry = index.get(declName);
+      if (entry === undefined) {
+        entry = { values: [], locations: [] };
+        index.set(declName, entry);
+      }
+      entry.values.push(Number.parseInt(m[2] as string, 10));
+      entry.locations.push(path);
     }
   }
+  return index;
+}
+
+function resolveLiveValue(repoRoot: string, name: string): number {
+  if (declarationIndex === null) declarationIndex = buildDeclarationIndex(repoRoot);
+  const entry = declarationIndex.get(name);
+  const found = entry?.values ?? [];
+  const locations = entry?.locations ?? [];
   if (found.length === 0) {
     throw new Error(
       `campaign-scope-registry-partition: no declaration of ${name} found under test/, ` +

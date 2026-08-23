@@ -231,6 +231,19 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // OUT_OF_CAMPAIGN_SCOPE, an instrument-completeness fact rather than a v12
   // fidelity fact in its own right.
   "FRAME_EYEBROW_DIVERGENCE_CEILING",
+  // wave-45 (DEC-069 wave-44/45 amendments): the SSR mirror of the already-
+  // TIER2 SPA_CLASSLESS_CONTROL_CEILING above. Reads live 0 and is a
+  // conformance fact, not an instrument-completeness fact, so wave 44 awarded
+  // it a graded green row rather than an OUT_OF_CAMPAIGN_SCOPE excuse;
+  // removed from OUT_OF_CAMPAIGN_SCOPE in this same commit (the two lists
+  // must be disjoint -- test/campaign-scope-registry-partition.scan.test.ts).
+  "SSR_CLASSLESS_CONTROL_CEILING",
+  // wave-45 (DEC-069 wave-44/45 amendments): the doubly-unmatched count
+  // caption IS the containment evidence DEC-180 wave-42 demanded of
+  // FRAME_COUNT_CAPTION_UNMATCHED_CEILING's exclusion, so it is a conformance
+  // fact in its own right. Reads live 0; removed from OUT_OF_CAMPAIGN_SCOPE
+  // in this same commit.
+  "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
 ];
 
 /**
@@ -379,6 +392,16 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // it was printed by no row. The gating list wins; this constant now
   // prints as a real, non-zero TIER2 row.
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+  // wave-45 (DEC-069 wave-44/45 amendments): wired into TIER2 in the same
+  // commit that moved it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "SSR_CLASSLESS_CONTROL_CEILING",
+  // wave-45 (DEC-069 wave-44/45 amendments): wired into TIER2 in the same
+  // commit that moved it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
 ];
 
 /**
@@ -804,34 +827,32 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "screen: a false match is the instrument mis-reading itself, never a divergence the product "
     + "owes. The same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
     + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
-  COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING:
-    "measures how many drawn count captions neither of the caption ledger's two independent "
-    + "graders could resolve -- an instrument-completeness fact about the WEAKER of two joins "
-    + "agreeing with the stronger, not itself a v12 frame conformance fact (the fidelity count that "
-    + "IS one, FRAME_COUNT_CAPTION_UNMATCHED_CEILING, is registered separately above) "
-    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-42 amendment).",
+  // DEC-069 wave-45 amendment: FRAME_REPEATED_ROW_GAP_CEILING's reason is now
+  // PRINCIPLE-ONLY. The promotion-promise sentence wave 44 never authorised
+  // ("it is promoted once its measurement technique is proven complete enough
+  // to gate on") is struck -- it is what made
+  // `assertParkedPromisesAreHonestlyParked` throw with a promise no
+  // PARKED_FIDELITY_PROMISES row stood behind.
   FRAME_REPEATED_ROW_GAP_CEILING:
     "measures a newly-derived population -- every repeated-row group a v12 frame draws whose "
-    + "product-side row template this ledger cannot yet pin to a single rendering site -- that no "
-    + "instrument previously graded. A newly measured, previously-uncounted population must not "
-    + "move the campaign's goalposts mid-convergence; it is promoted once its measurement technique "
-    + "is proven complete enough to gate on, the same disposition already given to "
+    + "product-side row template this ledger cannot yet pin to a single rendering site -- an "
+    + "instrument-completeness fact about how precisely this ledger can pin a row template, not "
+    + "itself a v12 frame conformance fact about any screen. The same disposition already given to "
     + "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (test/frame-repeated-row/ceiling.ts, DEC-976 wave-40 "
-    + "amendment).",
+    + "amendment, DEC-069 wave-44/45 amendments).",
+  // DEC-069 wave-45 amendment: the "it is promoted, or retired, once every
+  // walk carries the clip" sentence evaded PROMOTION_PROMISE_RE only by
+  // accident of wording, which wave 45 named a loophole rather than a
+  // compliance. Struck: this reason is now principle-only, which matters
+  // because task w44-b drives this constant to 0.
   UNCLIPPED_EXTENT_DERIVATION_CEILING:
     "measures INSTRUMENT COVERAGE for one defect family -- how many `.ts`/`.tsx` files derive a "
     + "frame `extentEnd` from a `.dc.html` label scan without clipping it at that file's own "
     + "`</x-dc>` template close -- a fact about how completely DEC-967's wave-42 ruling has been "
     + "ported across the tree's twelve frame walks, not itself a v12 frame or 390-geometry "
-    + "conformance fact about any screen; it is promoted, or retired, once every walk carries the "
-    + "clip (app/src/phone-hidden-drawn-text.scan.test.ts, DEC-967 wave-42 amendment).",
-  SSR_CLASSLESS_CONTROL_CEILING:
-    "measures how many SSR-rendered controls carry no `chq-` class token any selector could reach "
-    + "-- a REACHABILITY fact about the markup's own instrumentability (a control no selector can "
-    + "name can be neither floored nor exempted, so it is a roster row rather than a graded "
-    + "divergence), the same 'row in the roster, not a silent pass' disposition "
-    + "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING already carries "
-    + "(app/src/phone-tap-target-scan/ssr-classless-control-ceiling.ts, DEC-996 wave-40 amendment).",
+    + "conformance fact about any screen "
+    + "(app/src/phone-hidden-drawn-text.scan.test.ts, DEC-967 wave-42 amendment, DEC-069 "
+    + "wave-44/45 amendments).",
 };
 
 /**
@@ -905,6 +926,23 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // clause (a) fails: its own count is non-zero.
   PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING: {
     siblingName: "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+  // DEC-069 wave-44 amendment, offender (2): registered by task w41-e with a
+  // promotion promise and no rule behind it. No completeness sibling exists --
+  // app/src/phone-hidden-container.scan.test.ts declares exactly one ceiling,
+  // so the container-capability count is its own whole conformance fact and
+  // clause (b) is vacuously satisfied. Clause (a) alone decides it, and its
+  // own count is non-zero, so it stays parked.
+  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // DEC-069 wave-44 amendment, offender (2): registered by task w41-f with a
+  // promotion promise and no rule behind it. Clause (b) HOLDS --
+  // docs/design/audit/desktop-eyebrow-label-v12.md itemises
+  // DESKTOP_EYEBROW_UNRESOLVED_CEILING's single unresolved row individually by
+  // coordinate, not as a bucketed reason-category count -- but clause (a)
+  // fails: its own count is non-zero, so it stays parked.
+  DESKTOP_EYEBROW_DIVERGENCE_CEILING: {
+    siblingName: "DESKTOP_EYEBROW_UNRESOLVED_CEILING",
     siblingFullyAdjudicated: true,
   },
 };
