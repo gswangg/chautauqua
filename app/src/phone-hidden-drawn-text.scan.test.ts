@@ -295,7 +295,7 @@ const UNCLIPPED_EXTENT_DERIVATION_FILES: string[] = EXTENT_SCAN_ROOTS.flatMap((r
 // a re-measurement; a merge-train commit that lands one of the in-flight
 // w41 clip lanes must TIGHTEN it in the same commit (mirrors every other
 // ratchet in this campaign).
-export const UNCLIPPED_EXTENT_DERIVATION_CEILING = 2;
+export const UNCLIPPED_EXTENT_DERIVATION_CEILING = 1;
 
 describe('DEC-725 phone hidden-drawn-text probe', () => {
   it('finds more than one phone display:none rule (vacuous-population tripwire, CSS side)', () => {
