@@ -9,13 +9,41 @@
 // docs/mobile-campaign.md -- via readdirSync over each directory, never a
 // hand-listed manifest (DEC-808).
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 
+/**
+ * Recursively walks `dir`, returning repo-relative-to-`dir` paths (POSIX
+ * separators, e.g. "settings-v12/w10-frame-verdicts.md") for every FILE
+ * whose own basename matches `namePattern` -- the pattern is tested against
+ * `entry.name`, never the full relative path, so a directory-scoped
+ * extension pattern like /^DEC-\d+\.md$/ still only matches files literally
+ * named that way, wherever they live in the tree.
+ *
+ * DEC-967 wave-43: this used to be a single-level readdirSync, invisible to
+ * anything under a subdirectory (docs/design/audit/settings-v12/ held three
+ * files no citation instrument could see). Three sibling instruments over
+ * the same docs/design/audit/ corpus already recurse
+ * (open-divergence-ledger.scan.test.ts, audit-gap-row-staleness.scan.test.ts,
+ * decision-path-references.scan.test.ts) -- this makes the two remaining
+ * flat enumerators (this function, and
+ * test/decision-doc-citation.scan.test.ts's auditDocFiles, which now calls
+ * this same helper) a TREE walk instead of a second, narrower copy
+ * (DEC-613: one implementation).
+ */
 export function mdFilesIn(dir: string, namePattern: RegExp = /\.md$/): string[] {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && namePattern.test(e.name))
-    .map((e) => e.name)
-    .sort();
+  const out: string[] = [];
+  function walk(current: string) {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && namePattern.test(entry.name)) {
+        out.push(relative(dir, full).split(sep).join("/"));
+      }
+    }
+  }
+  walk(dir);
+  return out.sort();
 }
 
 export interface SourceDoc {

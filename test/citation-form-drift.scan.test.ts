@@ -300,6 +300,11 @@ describe("citation-form-drift scan: line-keyed citations into app/src, src, test
     expect(ALL_DOCS.length).toBeGreaterThan(0);
   });
 
+  it("tree-walk tripwire: docs/design/audit/settings-v12/w10-frame-verdicts.md, a file only a recursive walk can reach, is in the enumerated population (DEC-967 wave-43)", () => {
+    const auditDocs = POPULATION_CLASSES.find((c) => c.label === "docs/design/audit/*.md")!.docs;
+    expect(auditDocs.map((d) => d.doc)).toContain("docs/design/audit/settings-v12/w10-frame-verdicts.md");
+  });
+
   it(
     "count of line-keyed, backtick-quoted citations into app/src/src/test/scripts/migrations never exceeds " +
       "LINE_KEYED_CITATION_CEILING (may only be lowered, by converting a citation to the drift-proof bare-path " +

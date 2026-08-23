@@ -64,6 +64,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isExhibitCitation } from "./citation-grammar";
+import { mdFilesIn } from "./citation-form-drift/population";
 
 const ROOT = resolve(__dirname, "..");
 const DECISIONS_DATA_DIR = join(ROOT, "src", "decisions-data");
@@ -524,14 +525,12 @@ export const UNRESOLVED_CITATION_CEILING = 0;
 
 const AUDIT_DIR = join(ROOT, "docs", "design", "audit");
 
-function auditDocFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith(".md"))
-    .map((e) => e.name)
-    .sort();
-}
-
-const AUDIT_DOC_NAMES = auditDocFiles(AUDIT_DIR);
+// DEC-967 wave-43: recursive walk (mdFilesIn, shared with
+// test/citation-form-drift/population.ts rather than a second copy --
+// DEC-613) so docs/design/audit/settings-v12/*.md is visible here too, not
+// just to the recursive siblings (open-divergence-ledger,
+// audit-gap-row-staleness, decision-path-references).
+const AUDIT_DOC_NAMES = mdFilesIn(AUDIT_DIR);
 const AUDIT_ENTRIES: [string, string][] = AUDIT_DOC_NAMES.map((name) => [
   `docs/design/audit/${name}`,
   readFileSync(join(AUDIT_DIR, name), "utf-8"),
@@ -683,6 +682,10 @@ const DECISIONS_REGISTRY_EXHIBIT_HEALED: Violation[] = DECISIONS_REGISTRY_PARTIT
 export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;
 
 describe("widened citation scan: campaign authority documents (DEC-967 wave-107 doc-integrity lens)", () => {
+  it("tree-walk tripwire: docs/design/audit/settings-v12/w10-frame-verdicts.md, a file only a recursive walk can reach, is in the enumerated population (DEC-967 wave-43)", () => {
+    expect(AUDIT_DOC_NAMES).toContain("settings-v12/w10-frame-verdicts.md");
+  });
+
   it.each(WIDENED_SOURCE_CLASSES)(
     "vacuous-population tripwire: $label contributes at least one checked (DIRECTION-1-resolved) citation",
     ({ entries }) => {
