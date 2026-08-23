@@ -28,6 +28,9 @@
 
 import { escapeHtml } from "../lib/html-escape";
 import { textToHtml } from "./render";
+import { DEC_037 } from "../decisions";
+
+void DEC_037;
 
 const PAGE_GROUND = "#E9E7E2"; // client/page ground behind the card
 const CARD_BG = "#F4F1E8"; // 560px card background
@@ -47,6 +50,11 @@ export interface EmailShellOptions {
   // (Chautauqua Comms.dc.html:719-724, `<sc-if value="{{ e.hasFact }}"`),
   // rendered between the body and the CTA block when present.
   fact?: { label: string; value: string } | null;
+  // DEC-037 amendment (wave 48): the masthead's second line -- the event's
+  // own dates and venue (src/domain/event-meta.ts's eventDatesLine), drawn
+  // by the vendored frame directly under the wordmark. Absent or blank
+  // emits no row and no new bytes.
+  eventMeta?: string | null;
 }
 
 /** Wraps plain-text email content in a complete HTML document: a 560px
@@ -57,6 +65,18 @@ export interface EmailShellOptions {
 export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
   const wordmark = opts.eventName && opts.eventName.trim() !== "" ? opts.eventName : "Chautauqua";
   const bodyHtml = textToHtml(text);
+  const hasEventMeta = opts.eventMeta != null && opts.eventMeta.trim() !== "";
+
+  // DEC-037 amendment (wave 48): Chautauqua Comms.dc.html:713 draws the
+  // masthead as two lines -- the wordmark, then a 12px MUTED_COLOR line
+  // reading the event's dates and venue -- both above the same
+  // MASTHEAD_RULE bottom border. When present the wordmark row's own
+  // bottom padding shrinks so the two lines sit close, matching the
+  // frame's tight masthead stack; the second row alone carries the
+  // table's 16px padding-bottom against the rule below it.
+  const eventMetaRow = hasEventMeta
+    ? `<tr><td style="padding-bottom:16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:${MUTED_COLOR};">${escapeHtml(opts.eventMeta!)}</td></tr>`
+    : "";
 
   // DEC-441 amendment (wave 32): Chautauqua Comms.dc.html:720
   // `border-left:3px solid #4E5C31; padding:2px 0 2px 15px; display:flex;
@@ -117,10 +137,11 @@ export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
               <td style="padding:32px 34px 0 34px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid ${MASTHEAD_RULE};">
                   <tr>
-                    <td style="padding-bottom:16px;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;color:${MASTHEAD_INK};">
+                    <td style="padding-bottom:${hasEventMeta ? "2px" : "16px"};font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;color:${MASTHEAD_INK};">
                       ${escapeHtml(wordmark)}
                     </td>
                   </tr>
+                  ${eventMetaRow}
                 </table>
               </td>
             </tr>

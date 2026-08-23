@@ -52,7 +52,7 @@ vi.mock("../src/server/repo/events", async () => {
   return {
     ...actual,
     getEventForOrg: vi.fn(async (_db: unknown, eventId: string, orgId: string) =>
-      orgId === "org1" && eventId === "ev1" ? { id: "ev1", name: "DevCon" } : null,
+      orgId === "org1" && eventId === "ev1" ? { id: "ev1", name: "DevCon", startDate: "2027-03-01", endDate: "2027-03-03", location: "Moscone West, San Francisco" } : null,
     ),
   };
 });

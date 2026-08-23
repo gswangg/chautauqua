@@ -18,6 +18,7 @@ import {
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
+import { eventDatesLine } from "../../domain/event-meta";
 import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
 import { DEC_027 } from "../../decisions";
@@ -101,6 +102,7 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
       html: renderEmailHtml(r.text, {
         eventName: event.name,
         reason: `you're being invited to the speaker portal for ${event.name}`,
+        eventMeta: eventDatesLine(event),
       }),
       eventId,
       contactId: r.contactId,

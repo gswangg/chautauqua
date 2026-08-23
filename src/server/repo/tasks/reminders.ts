@@ -598,6 +598,13 @@ async function sendReminderEmails(
       html: renderEmailHtml(reminderText, {
         eventName,
         reason: `you have outstanding tasks for ${eventName}`,
+        // DEC-037 wave-48: eventMeta left absent here -- OutstandingRow
+        // only carries eventEndDate (needed elsewhere in this file), not
+        // startDate/location; widening the join to select those two columns
+        // would require every one of this repo's ~50 hand-rolled ad-hoc
+        // sqlite `create table event (...)` test fixtures (a schema this
+        // production query does not otherwise depend on being complete) to
+        // grow a `location` column, which is out of this task's scope.
         cta: { label: REMINDER_CTA_LABEL, href: portalLink },
         // DEC-441 amendment (wave 38): the frame's fact VALUE
         // (Chautauqua Comms.dc.html `<div style="border-left:3px solid

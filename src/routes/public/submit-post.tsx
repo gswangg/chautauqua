@@ -47,6 +47,7 @@ import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim
 import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate } from "../../mail/render";
 import { renderEmailHtml } from "../../mail/shell";
+import { eventDatesLine } from "../../domain/event-meta";
 import { validateUpload, sanitizeFilenameForKey, CFP_FILE_FIELD_KIND, type ValidUpload } from "../../domain/files";
 import { fieldInputName } from "../../views/form-render";
 import { resolveBaseUrl } from "../../server/origin";
@@ -527,6 +528,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   const html = renderEmailHtml(text, {
     eventName: event.name,
     reason: "you submitted a talk to this event.",
+    eventMeta: eventDatesLine(event),
     cta: {
       label: existingUser ? "Sign in to view your submission" : "Claim your account to view your submission",
       href: claimUrl,

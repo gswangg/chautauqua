@@ -11,7 +11,8 @@ import { getPublicAgenda, getPublicBreaksByDay, getPublicEventBySlug } from "../
 import type { ScheduleBreak } from "../../server/repo/breaks";
 import { ThemeStyles } from "../../views/theme";
 import { PROGRAMME_CSS } from "./programme.css";
-import { eventDatesLine, setCacheHeaders } from "./shell";
+import { setCacheHeaders } from "./shell";
+import { eventDatesLine } from "../../domain/event-meta";
 import { formatDay, SpeakerNames } from "./cards";
 import { clockHMM } from "../../domain/clock";
 import { PublicEmptyState } from "./empty-state";

@@ -191,6 +191,9 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requir
         text,
         html: renderEmailHtml(text, {
           eventName: noteEvent?.name ?? null,
+          // DEC-037 wave-48: eventMeta left absent -- noteEvent is optional
+          // here (`noteEvent?.name`), so the masthead's dates/venue row has
+          // no guaranteed non-null source at this call site.
           reason: `an organizer left a note on your submission${requestChanges ? " requesting changes" : ""}`,
         }),
         eventId: scope.eventId,

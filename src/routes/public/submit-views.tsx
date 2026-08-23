@@ -19,7 +19,8 @@ import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { CfpStepsScript } from "./cfp-steps-script";
-import { eventDatesLine, validAccent, surfacePath } from "./shell";
+import { validAccent, surfacePath } from "./shell";
+import { eventDatesLine } from "../../domain/event-meta";
 import { DEC_902 } from "../../decisions";
 
 void DEC_902; // compile-checked dependency marker, DEC-902 wave-18 amendment

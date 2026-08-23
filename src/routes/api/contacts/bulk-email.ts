@@ -16,6 +16,7 @@ import { preflightRender, MAX_COMPOSE_RECIPIENTS, type RenderTarget, type Render
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
 import { templateUsesMergeField, BULK_EMAIL_MERGE_FIELDS } from "../../../mail/render";
 import { renderEmailHtml } from "../../../mail/shell";
+import { eventDatesLine } from "../../../domain/event-meta";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
@@ -32,7 +33,7 @@ void DEC_027;
 // never a private second literal.
 
 type BulkEmailRequest = {
-  event: { id: string; name: string };
+  event: { id: string; name: string; startDate: string; endDate: string; location: string | null };
   contacts: repo.ContactRow[];
   subject: string;
   bodyText: string;
@@ -343,6 +344,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
         html: renderEmailHtml(rendered.text, {
           eventName: event.name,
           reason: `an organizer sent a bulk email to contacts of ${event.name}`,
+          eventMeta: eventDatesLine(event),
         }),
         eventId: event.id,
         contactId: rendered.contactId,

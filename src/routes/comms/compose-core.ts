@@ -30,6 +30,7 @@ import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; //
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import { resolveBaseUrl } from "../../server/origin";
 import type { EmailShellOptions } from "../../mail/shell";
+import { eventDatesLine } from "../../domain/event-meta";
 
 export interface ComposeBody {
   templateId?: string;
@@ -385,11 +386,20 @@ export async function buildRenderTargets(
 /** DEC-037 amendment: the single source of the mail-shell options both
  * /compose/preview and /compose/send pass to renderEmailHtml, so a preview
  * renders exactly the shell the send call wraps every body in -- not a
- * separately hand-typed reason string that can drift from it. */
-export function composeEmailShellOptions(event: { name: string }): EmailShellOptions {
+ * separately hand-typed reason string that can drift from it. DEC-037
+ * wave-48 amendment: widened to also carry the masthead's second line
+ * (eventMeta), computed from the same startDate/endDate/location fields
+ * eventDatesLine already reads for the public shell's header. */
+export function composeEmailShellOptions(event: {
+  name: string;
+  startDate: string;
+  endDate: string;
+  location: string | null;
+}): EmailShellOptions {
   return {
     eventName: event.name,
     reason: `you're a participant in a submission at ${event.name}`,
+    eventMeta: eventDatesLine(event),
   };
 }
 
