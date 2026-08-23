@@ -30,6 +30,7 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { stripComments } from "./helpers/strip-source-comments";
 
 const ROOT = join(__dirname, "..");
 const SRC_ROOT = "src";
@@ -64,64 +65,10 @@ function walk(dir: string, out: string[]): void {
   }
 }
 
-/** Strips `//` line comments and `/* *\/` block comments, replacing every
- * stripped character with a space (newlines preserved verbatim) so the
- * output has EXACTLY the same length -- and therefore the same character
- * offsets and line numbers -- as `src`. String/template literals are
- * tracked so a `//` or `/*` inside a string (e.g. a URL) is never mistaken
- * for the start of a comment. Deliberately still a lightweight text pass,
- * not a real lexer -- good enough for this repo's existing comment style. */
-function stripComments(src: string): string {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    const c2 = i + 1 < n ? src[i + 1] : "";
-    if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") {
-        out += " ";
-        i++;
-      }
-      continue;
-    }
-    if (c === "/" && c2 === "*") {
-      out += "  ";
-      i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
-        out += src[i] === "\n" ? "\n" : " ";
-        i++;
-      }
-      if (i < n) {
-        out += "  ";
-        i += 2;
-      }
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      out += c;
-      i++;
-      while (i < n && src[i] !== quote) {
-        if (src[i] === "\\" && i + 1 < n) {
-          out += (src[i] ?? "") + (src[i + 1] ?? "");
-          i += 2;
-          continue;
-        }
-        out += src[i];
-        i++;
-      }
-      if (i < n) {
-        out += src[i];
-        i++;
-      }
-      continue;
-    }
-    out += c;
-    i++;
-  }
-  return out;
-}
+// stripComments (length-preserving so line numbers/offsets stay accurate)
+// now lives in test/helpers/strip-source-comments.ts, shared with
+// test/served-content-type-single-source.scan.test.ts and
+// test/user-content-nosniff.test.ts (DEC-613 wave-46: one owner).
 
 /** Brace-matches a `{` at `openIdx` (the index OF the `{`) to its closing
  * `}`, returning the index just past it. */

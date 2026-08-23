@@ -305,6 +305,7 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.xml}", async (c) => {
   });
   return c.body(buildSurfaceFeedXml(event, surfaceParam, paged, new Date()), 200, {
     "Content-Type": "application/xml; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
   });
 });
 
@@ -425,6 +426,7 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
     "Content-Disposition": contentDispositionAttachment(`${event.slug}-itinerary.ics`),
   });
 });
@@ -451,6 +453,7 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
     "Content-Disposition": contentDispositionAttachment(`${event.slug}-agenda.ics`),
   });
 });

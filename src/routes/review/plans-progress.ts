@@ -248,6 +248,7 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
     const csv = toCsv([header, ...dataRows]);
     return c.body(csv, 200, {
       "Content-Type": "text/csv; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
       "Content-Disposition": contentDispositionAttachment("results.csv"),
     });
   }

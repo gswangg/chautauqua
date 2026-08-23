@@ -64,6 +64,7 @@ exportsRoutes.get("/api/v1/events/:eventId/exports/showflow.csv", requireOrganiz
   }
   const csv = toCsv([table.header, ...table.rows]);
   c.header("Content-Type", "text/csv; charset=utf-8");
+  c.header("X-Content-Type-Options", "nosniff");
   c.header("Content-Disposition", contentDispositionAttachment("showflow.csv"));
   return c.body(csv);
 });
@@ -203,11 +204,13 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
 
   if (format === "json") {
     c.header("Content-Disposition", contentDispositionAttachment(`${kind}.json`));
+    c.header("X-Content-Type-Options", "nosniff");
     return c.json(table.records);
   }
 
   const csv = toCsv([table.header, ...table.rows]);
   c.header("Content-Type", "text/csv; charset=utf-8");
+  c.header("X-Content-Type-Options", "nosniff");
   c.header("Content-Disposition", contentDispositionAttachment(`${kind}.csv`));
   return c.body(csv);
 });

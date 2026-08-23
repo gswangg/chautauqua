@@ -20,11 +20,12 @@
 // match set can't pass the test vacuously.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { stripComments } from "./helpers/strip-source-comments";
 
 const ORG_A = "org-a";
 
@@ -263,6 +264,293 @@ describe("DEC-551/DEC-657 static guard: every makeFileStore(...).get(...) body r
     }
 
     expect(sawStoreGetBodyResponse).toBe(true);
+    expect(offenders).toEqual([]);
+  });
+});
+
+// -----------------------------------------------------------------------
+// DEC-551 wave-46 (task w46-c): the population above (makeFileStore(...)
+// .get(...) responses) is only PART of DEC-551's own sentence -- "every
+// route that streams stored user content sets X-Content-Type-Options:
+// nosniff". Seven live responses (src/routes/api/exports.ts x3,
+// src/routes/review/plans-progress.ts x1, src/routes/public/index.tsx x3)
+// stream stored user content via a DECLARED Content-Type header (literal or
+// non-literal) that isn't reachable through the store.get(...) shape above,
+// and neither this file's part (b) nor
+// test/served-content-type-single-source.scan.test.ts's scan (which only
+// checks the twin for NON-literal Content-Type values) ever looked at them.
+// This makes the guard STRUCTURAL over the wider, accidental-gap-free
+// population: every response under src/routes/**/*.{ts,tsx} that declares a
+// Content-Type (literal OR non-literal) whose value is not text/html must
+// set X-Content-Type-Options, either in the same header object literal, or
+// via a sibling c.header(...) call in the same run before the next
+// return/c.body/c.json.
+// -----------------------------------------------------------------------
+
+/** Brace-matches a `{` at `openIdx` (the index OF the `{`), returning the
+ * index just past its matching `}`. */
+function matchBraceNosniff(src: string, openIdx: number): number {
+  let depth = 1;
+  let i = openIdx + 1;
+  while (i < src.length && depth > 0) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") depth--;
+    i++;
+  }
+  return i;
+}
+
+/** Finds the nearest UNMATCHED `{` at or before `pos` -- the opening brace
+ * of the object literal `pos` sits inside. */
+function findEnclosingBraceOpenNosniff(src: string, pos: number): number {
+  let depth = 0;
+  for (let i = pos - 1; i >= 0; i--) {
+    if (src[i] === "}") depth++;
+    else if (src[i] === "{") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+/** Reads a call's argument list starting at the index of its opening `(`,
+ * returning the text between the parens and the index just past the
+ * matching `)`. */
+function readParenArgs(src: string, openParenIdx: number): { args: string; endIdx: number } {
+  let depth = 0;
+  let i = openParenIdx;
+  let start = -1;
+  for (; i < src.length; i++) {
+    if (src[i] === "(") {
+      depth++;
+      if (depth === 1) start = i + 1;
+    } else if (src[i] === ")") {
+      depth--;
+      if (depth === 0) return { args: src.slice(start, i), endIdx: i + 1 };
+    }
+  }
+  return { args: src.slice(start === -1 ? openParenIdx : start), endIdx: src.length };
+}
+
+function lineOfNosniff(src: string, idx: number): number {
+  return src.slice(0, idx).split("\n").length;
+}
+
+const CT_HTML_LITERAL_RE = /^"text\/html/i;
+const OBJECT_CT_KEY_RE = /"Content-Type"\s*:/g;
+const HEADER_CALL_CT_RE = /c\.header\(\s*"Content-Type"\s*,/g;
+
+/**
+ * Pure classifier (no fs access): given already-read src/routes source
+ * files, returns "path:line reason" strings for every declared,
+ * non-text/html Content-Type response that lacks a same-scope
+ * X-Content-Type-Options. Exported so the fixture controls below exercise
+ * the exact function the real-tree scan uses (DEC-967: never validate a
+ * detector by reading the same array it grades as its own evidence).
+ */
+export function findMissingNosniffProblems(files: { path: string; text: string }[]): {
+  offenders: string[];
+  populationSize: number;
+  filesWithPopulation: Set<string>;
+} {
+  const offenders: string[] = [];
+  const filesWithPopulation = new Set<string>();
+  let populationSize = 0;
+
+  for (const file of files) {
+    const src = stripComments(file.text);
+
+    // --- Style A: "Content-Type": <value> inside an object literal. ---
+    OBJECT_CT_KEY_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = OBJECT_CT_KEY_RE.exec(src))) {
+      let valueStart = m.index + m[0].length;
+      while (valueStart < src.length && /\s/.test(src[valueStart] ?? "")) valueStart++;
+      let depth = 0;
+      let i = valueStart;
+      let value = "";
+      while (i < src.length) {
+        const c = src[i];
+        if (c === "(" || c === "[" || c === "{") depth++;
+        if (c === ")" || c === "]" || c === "}") {
+          if (depth === 0) break;
+          depth--;
+        }
+        if (c === "," && depth === 0) break;
+        value += c;
+        i++;
+      }
+      value = value.trim();
+      if (CT_HTML_LITERAL_RE.test(value)) continue; // text/html is out of scope for this ratchet.
+
+      populationSize++;
+      filesWithPopulation.add(file.path);
+      const line = lineOfNosniff(src, m.index);
+
+      const braceOpen = findEnclosingBraceOpenNosniff(src, m.index);
+      if (braceOpen === -1) {
+        offenders.push(`${file.path}:${line} declared "Content-Type": ${value} is not inside a recognizable object literal -- cannot verify X-Content-Type-Options (DEC-551).`);
+        continue;
+      }
+      const braceClose = matchBraceNosniff(src, braceOpen);
+      const objectBody = src.slice(braceOpen + 1, braceClose - 1);
+      if (!objectBody.includes("X-Content-Type-Options")) {
+        offenders.push(`${file.path}:${line} declared "Content-Type": ${value} has no X-Content-Type-Options in the same header object (DEC-551).`);
+      }
+    }
+
+    // --- Style B: c.header("Content-Type", <value>) call. ---
+    HEADER_CALL_CT_RE.lastIndex = 0;
+    let hm: RegExpExecArray | null;
+    while ((hm = HEADER_CALL_CT_RE.exec(src))) {
+      const callOpenParen = src.indexOf("(", hm.index);
+      const { args, endIdx } = readParenArgs(src, callOpenParen);
+      const commaIdx = args.indexOf(",");
+      const value = (commaIdx === -1 ? "" : args.slice(commaIdx + 1)).trim();
+      if (CT_HTML_LITERAL_RE.test(value)) continue;
+
+      populationSize++;
+      filesWithPopulation.add(file.path);
+      const line = lineOfNosniff(src, hm.index);
+
+      // Same "run": scan forward from the end of this c.header(...) call,
+      // stopping at the first `return` keyword -- a sibling
+      // c.header("X-Content-Type-Options", ...) call anywhere before that
+      // return satisfies DEC-551; anything after the return belongs to a
+      // different response and does not count.
+      const returnIdx = src.indexOf("return", endIdx);
+      const window = returnIdx === -1 ? src.slice(endIdx) : src.slice(endIdx, returnIdx);
+      if (!window.includes('c.header("X-Content-Type-Options"') && !window.includes("c.header('X-Content-Type-Options'")) {
+        offenders.push(`${file.path}:${line} c.header("Content-Type", ${value}) has no sibling c.header("X-Content-Type-Options", ...) before the next return (DEC-551).`);
+      }
+    }
+  }
+
+  return { offenders, populationSize, filesWithPopulation };
+}
+
+function walkRouteSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory()) {
+      out.push(...walkRouteSourceFiles(full));
+    } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+function readRealRouteFiles(): { path: string; text: string }[] {
+  const repoRoot = join(__dirname, "..");
+  const abs = walkRouteSourceFiles(join(repoRoot, "src", "routes"));
+  return abs.map((full) => ({
+    path: relative(repoRoot, full).split("\\").join("/"),
+    text: readFileSync(full, { encoding: "utf-8" }),
+  }));
+}
+
+// Ceiling constant (DEC-808 shape: may only be LOWERED). Two-sided
+// companion below (test/campaign-ratchet-two-sided.scan.test.ts's peers'
+// shape) forces it back down the moment the measured count falls below it.
+export const DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING = 0;
+
+describe("DEC-551 wave-46 structural guard: every declared, non-text/html Content-Type response sets X-Content-Type-Options", () => {
+  it("vacuous-population tripwire: the real-tree population is non-empty and spans >= 4 route files", () => {
+    const files = readRealRouteFiles();
+    expect(files.length).toBeGreaterThan(0);
+    const { populationSize, filesWithPopulation } = findMissingNosniffProblems(files);
+    expect(populationSize).toBeGreaterThan(0);
+    expect(filesWithPopulation.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it(
+    `real tree: no declared, non-text/html Content-Type response under src/routes/**/*.{ts,tsx} is missing X-Content-Type-Options ` +
+      `(ceiling: DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING, may only be LOWERED)`,
+    () => {
+      const files = readRealRouteFiles();
+      const { offenders } = findMissingNosniffProblems(files);
+      if (offenders.length > DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING) {
+        throw new Error(
+          `${offenders.length} response(s) declare a Content-Type without X-Content-Type-Options, above the ratchet ` +
+            `ceiling of ${DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING} (DEC-551, may only be LOWERED):\n${offenders.join("\n")}`,
+        );
+      }
+      expect(offenders.length).toBeLessThanOrEqual(DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING);
+    },
+  );
+
+  // Two-sided ratchet companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts): forces the ceiling back
+  // down if the measured count ever falls stale below it.
+  it("the ceiling is not stale: the measured gap count does not fall below DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING (two-sided ratchet, DEC-808)", () => {
+    const files = readRealRouteFiles();
+    const { offenders } = findMissingNosniffProblems(files);
+    if (offenders.length < DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING) {
+      throw new Error(
+        `${offenders.length} gap(s) measured, below DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING=` +
+          `${DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING}. Lower the constant to exactly ${offenders.length} as part of ` +
+          `the SAME batch that landed the fix: export const DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBe(DECLARED_CONTENT_TYPE_NOSNIFF_GAP_CEILING);
+  });
+
+  // --- Fixture controls (DEC-967: never validate a detector by reading the
+  // same array it grades as its own evidence). ---
+
+  it("positive control: a fixture route declaring text/csv with no nosniff FIRES", () => {
+    const { offenders } = findMissingNosniffProblems([
+      {
+        path: "synthetic/fixture-missing.ts",
+        text: `fixtureRoutes.get("/fixture.csv", async (c) => {\n  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8" });\n});\n`,
+      },
+    ]);
+    expect(offenders.length).toBeGreaterThan(0);
+    expect(offenders[0]).toContain("synthetic/fixture-missing.ts:2");
+  });
+
+  it("positive control: a fixture route using c.header(\"Content-Type\", ...) with no sibling nosniff call FIRES", () => {
+    const { offenders } = findMissingNosniffProblems([
+      {
+        path: "synthetic/fixture-header-missing.ts",
+        text: `fixtureRoutes.get("/fixture.csv", async (c) => {\n  c.header("Content-Type", "text/csv; charset=utf-8");\n  return c.body(csv);\n});\n`,
+      },
+    ]);
+    expect(offenders.length).toBeGreaterThan(0);
+    expect(offenders[0]).toContain("synthetic/fixture-header-missing.ts:2");
+  });
+
+  it("negative control: the same fixture route WITH nosniff does NOT fire", () => {
+    const { offenders } = findMissingNosniffProblems([
+      {
+        path: "synthetic/fixture-present.ts",
+        text: `fixtureRoutes.get("/fixture.csv", async (c) => {\n  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "X-Content-Type-Options": "nosniff" });\n});\n`,
+      },
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it("negative control: the c.header(...) fixture route WITH a sibling nosniff call does NOT fire", () => {
+    const { offenders } = findMissingNosniffProblems([
+      {
+        path: "synthetic/fixture-header-present.ts",
+        text: `fixtureRoutes.get("/fixture.csv", async (c) => {\n  c.header("Content-Type", "text/csv; charset=utf-8");\n  c.header("X-Content-Type-Options", "nosniff");\n  return c.body(csv);\n});\n`,
+      },
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it("negative control: text/html Content-Type is out of scope even with no nosniff", () => {
+    const { offenders } = findMissingNosniffProblems([
+      {
+        path: "synthetic/fixture-html.ts",
+        text: `fixtureRoutes.get("/fixture.html", async (c) => {\n  return c.body(html, 200, { "Content-Type": "text/html; charset=utf-8" });\n});\n`,
+      },
+    ]);
     expect(offenders).toEqual([]);
   });
 });
