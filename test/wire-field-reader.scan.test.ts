@@ -787,6 +787,21 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
     }
   });
 
+  // KNOWN-SLOW (DEC-069, Amendment, wave 35, applied wave-37 task w37-h):
+  // this assertion calls hasReader() once per unread population member
+  // (~800+ fields), each call re-scanning every candidateFiles() entry with
+  // three regexes -- O(population x files), not a hook doing IO, but
+  // measured 2650-4013ms across repeat standalone runs on this host and
+  // observed timing out outright (`Error: Test timed out in 5000ms`) in a
+  // full `npm run test:fast` run at main `b69e12e73`, against vitest's
+  // DEFAULT 5000ms test timeout (as low as 24% margin on the
+  // worst-observed standalone run, and negative margin under full-tier
+  // contention) under the mandate's maxWorkers:2/maxForks:2
+  // machine-protection caps (vitest.config.ts) -- exactly the contention
+  // that makes this test's duration swing wave to wave and turns a green
+  // reading into a coin flip. An explicit 20000ms floor (~5x the
+  // worst-measured standalone run) turns "silently times out under load"
+  // into a stated decision instead of a race against a shrinking default.
   it("every population member the scan finds unread has exactly one ledger row, and no ledger row cites a field that reads clean (a ledger row exists ONLY for a real finding)", () => {
     const unread = population.filter((m) => !hasReader(m.field));
     const unreadKeys = new Set(unread.map((m) => m.key));
@@ -803,7 +818,7 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
       }
     }
     expect(problems, problems.join('\n')).toEqual([]);
-  });
+  }, 20000);
 
   it('every ledger row has a non-empty reason', () => {
     for (const entry of LEDGER) {
