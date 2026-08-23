@@ -952,3 +952,71 @@ Forcing both ceilings to `-1` before AND after adding `MANUAL_JOIN_WIDENING`
 (all `composed-unseen`) untouched. Disposition count: **14 RESOLVED, 0
 POPULATION-EXCLUDED, 0 OFFENDER.** Zero product CSS bytes moved this wave --
 desktop stays frozen, per this task's own scope.
+
+## Wave 55: comment-fold parse repair (executes the DEC-374 wave-52 amendment)
+
+Task w55-a. Wave 52 above only MEASURED the comment-fold defect and
+deferred correcting the parse to "a later, separately-scoped lane, sized
+directly from the roster below" -- this wave is that lane. `DEC_374`
+(`src/decisions-data/part2.ts`) already reads "every CSS-rule parse over a
+`*.css.ts` template literal must additionally strip CSS comments (wave-52
+amendment)"; this wave makes that true of `test/desktop-control-floor.scan
+.test.ts`'s own real grading path, not just its measurement section.
+
+### Repair
+
+`test/desktop-control-floor.scan.test.ts` now defines
+`COMMENT_FREE_NORMALIZED_BLOBS` (via the shared, string-aware
+`stripCssComments`, DEC-613, imported from `test/helpers/strip-css-comments
+.ts`) immediately after `NORMALIZED_BLOBS`, and `COMMENT_FREE_TOPLEVEL_BLOBS`
+immediately after `TOPLEVEL_BLOBS` -- both now defined BEFORE `TOKEN_INDEX`'s
+and `CONTROL_SHAPE_INDEX`'s build loops, which iterate the comment-free blobs
+instead of the raw ones. A CSS comment can therefore no longer fold into the
+next rule's selector text anywhere in this file's real grading path
+(`resolveTokenMinHeightIndexed`, `tokenIsControlShapedIndexed`,
+`gradeControl`, `OFFENDERS`, `UNRESOLVED` are all now driven by the repaired
+indexes -- unlike wave 52, which left them untouched). `TOPLEVEL_BLOBS`
+itself is unchanged (still comment-including) and remains the honest "raw"
+corpus for the `COMMENT_CREDITED_OFFENDERS` measurement/ratchet machinery,
+which is otherwise unchanged code -- it now simply measures an index that has
+already been repaired, so its own "raw" and "TOKEN_INDEX-derived" views of
+each token's credit can no longer diverge. The wave-52
+`COMMENT_FREE_NORMALIZED_BLOBS`/`COMMENT_FREE_TOPLEVEL_BLOBS` definitions
+that previously lived below the roster are removed as duplicates (DEC-613:
+one stripped-blob array, not two) -- the single earlier definition now
+serves both purposes.
+
+### Re-measured (forcing each to `-1` and reading the printed count/list back, this file's own required protocol)
+
+- `COMMENT_CREDITED_FLOOR_CEILING` lowered `5 -> 0`. All 5 previously
+  comment-credited `chq-` tokens now resolve no min-height at all through the
+  repaired index -- none of them had a genuine declaration, so the fold's
+  suppression effect (comment-credit standing in for a real gap) resolved to
+  "no credit, no offender", not "credit revealed as real". Lowered in this
+  same commit, per this file's own two-sided never-sits-below discipline.
+- `DESKTOP_FLOOR_DIVERGENCE_CEILING` unchanged `0 -> 0`. The fold's
+  suppression was proven one-directional (comments can only ADD tokens,
+  never remove a real one) but revealed no new offender this wave: none of
+  the 5 formerly comment-credited tokens' underlying controls resolve to a
+  genuine, divergent min-height once their comment-only credit is removed --
+  they instead move to `unresolved` (no credit at all), not `offender`.
+- `DESKTOP_FLOOR_UNRESOLVED_CEILING` unchanged `131 -> 131`. The 5 repaired
+  tokens' controls were already resolving to the same disposition through
+  other means (a genuine declaration elsewhere in `TOKEN_INDEX`, or an
+  already-`unresolved` row), so the repair moved zero rows across the
+  ok/offender/unresolved/excluded partition this file's own "every row
+  accounted for exactly once" invariant checks.
+
+Both desktop ceilings are still parked in `OUT_OF_CAMPAIGN_SCOPE` (unchanged
+this wave, out of this task's scope) -- their values held steady rather than
+rising, so no campaign goalpost moved and no promotion is owed for either.
+
+### Promotion
+
+`COMMENT_CREDITED_FLOOR_CEILING` reached `0` (clause a) with no completeness
+sibling to straddle (`siblingName: null`, `siblingFullyAdjudicated: true` in
+its own `PARKED_FIDELITY_PROMISES` row) -- both `assertParkedPromisesAreHonestlyParked`
+clauses clear. Paid in this same commit: the `OUT_OF_CAMPAIGN_SCOPE` entry
+and the `PARKED_FIDELITY_PROMISES` row are both deleted, and the name is
+added to `CAMPAIGN_CONSTANT_NAMES` and `TIER2_CEILING_NAMES` -- it now prints
+as a real, graded, green (0) campaign row instead of a parked excuse.

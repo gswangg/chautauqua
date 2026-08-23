@@ -531,6 +531,22 @@ const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap((f) => drawnControlsI
 const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_BLOBS: string[] = SOURCE_FILES.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
 
+/** The same NORMALIZED_BLOBS pipeline, with every CSS comment additionally
+ * removed via the shared, string-aware `stripCssComments` (DEC-613) BEFORE
+ * any `RULE_RE` parse below runs -- so a comment can never fold into a
+ * following rule's selector text (DEC-374 wave-52 amendment, wave-55
+ * repair). Parallel array to NORMALIZED_BLOBS/TOPLEVEL_BLOBS/SOURCE_FILES:
+ * index i is always the same source file's clean counterpart.
+ * `stripCssComments` is imported, never re-implemented (DEC-613's
+ * one-stripper rule); it is already string-aware enough to cover the
+ * `.css.ts` template-literal case (it tracks `"`/`'` quote state
+ * character-by-character regardless of the surrounding JS syntax), so no
+ * extension to the shared helper is needed. Defined here (before
+ * TOPLEVEL_BLOBS/TOKEN_INDEX/CONTROL_SHAPE_INDEX below) so every real
+ * grading index is built from comment-free source, never a second later
+ * copy of this same pipeline (DEC-613: one stripped-blob array, not two). */
+const COMMENT_FREE_NORMALIZED_BLOBS: string[] = NORMALIZED_BLOBS.map((b) => stripCssComments(b));
+
 // -- Composed-label resolution tier (DEC-393 wave-23 amendment; task w23-g)
 // -- consulted ONLY when neither the own-text nor the attribute tier below
 // finds a match. See test/helpers/composed-label-resolve.ts's own header
@@ -712,6 +728,16 @@ export function stripMediaBlocks(text: string): string {
 }
 
 const TOPLEVEL_BLOBS: string[] = NORMALIZED_BLOBS.map(stripMediaBlocks);
+/** Comment-free counterpart of TOPLEVEL_BLOBS (see COMMENT_FREE_NORMALIZED_BLOBS
+ * above) -- this is what TOKEN_INDEX and CONTROL_SHAPE_INDEX below are built
+ * from (DEC-374 wave-52 amendment, wave-55 repair), so a `/* ... *\/` comment
+ * can never fold into the next rule's selector text and falsely credit a
+ * token a min-height/control-shape it never declares. TOPLEVEL_BLOBS itself
+ * is left untouched (still comment-including) -- it remains the honest "raw"
+ * corpus for the comment-credit MEASUREMENT below (COMMENT_CREDITED_OFFENDERS),
+ * which needs the raw text to locate/cite the crediting rule the comment
+ * folded into. */
+const COMMENT_FREE_TOPLEVEL_BLOBS: string[] = COMMENT_FREE_NORMALIZED_BLOBS.map(stripMediaBlocks);
 const RULE_RE = /([^{}]+)\{([^{}]*)\}/g;
 
 function isTokenChar(ch: string | undefined): boolean {
@@ -809,7 +835,7 @@ function isControlShapedBody(body: string): boolean {
  * once at module load; the JOIN below is then a plain map lookup per token
  * instead of a corpus re-scan per token. */
 const TOKEN_INDEX = new Map<string, { hasRule: boolean; maxMinHeight: number | null; controlShaped: boolean }>();
-for (const blob of TOPLEVEL_BLOBS) {
+for (const blob of COMMENT_FREE_TOPLEVEL_BLOBS) {
   RULE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = RULE_RE.exec(blob))) {
@@ -949,7 +975,7 @@ function rightmostSelectorTokens(selectorText: string): string[] {
  * marked control-shaped the moment any one of its rules declares a border,
  * background, padding-inline, or min-height. */
 const CONTROL_SHAPE_INDEX = new Map<string, boolean>();
-for (const blob of TOPLEVEL_BLOBS) {
+for (const blob of COMMENT_FREE_TOPLEVEL_BLOBS) {
   RULE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = RULE_RE.exec(blob))) {
@@ -2042,8 +2068,9 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // desktop-control-floor-v12.md's "WAVE 53" section for the full receipt.
 export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 117;
 
-// -- WAVE 52 (DEC-374 wave-52 amendment, task w52-f): comment-credited
-// floors -- MEASUREMENT AND RATCHET ONLY -----------------------------------
+// -- WAVE 52 (DEC-374 wave-52 amendment, task w52-f); WAVE 55 (DEC-374
+// wave-52 amendment, task w55-a): comment-credited floors -- MEASUREMENT,
+// RATCHET, AND REPAIR --------------------------------------------------
 // PROVEN root cause (task description, not re-derived here): frame-source-
 // corpus's `stripComments` deliberately enters a template/single/double
 // STRING state on a quote and copies everything through verbatim to the
@@ -2056,25 +2083,23 @@ export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 117;
 // min-height it never declares. The error is proven ONE-DIRECTIONAL: a
 // comment can only ADD tokens to a selector (never remove a real one), so it
 // can only SUPPRESS true offenders already in `OFFENDERS`/`UNRESOLVED`
-// above. This section changes neither of those (TOKEN_INDEX,
-// resolveTokenMinHeightIndexed, gradeControl, OFFENDERS, UNRESOLVED are all
-// untouched) and no product CSS byte -- it measures the defect's own
-// population and ratchets it. Correcting the parse itself is a later lane's,
-// sized from the roster this section writes to
-// docs/design/audit/desktop-control-floor-v12.md's "Wave 52" section.
-
-/** The same NORMALIZED_BLOBS pipeline, with every CSS comment additionally
- * removed via the shared, string-aware `stripCssComments` (DEC-613) BEFORE
- * the `@media` strip -- so a comment can never fold into a following rule's
- * selector text. Parallel array to NORMALIZED_BLOBS/TOPLEVEL_BLOBS/
- * SOURCE_FILES: index i is always the same source file's clean counterpart.
- * `stripCssComments` is imported, never re-implemented (DEC-613's
- * one-stripper rule); it is already string-aware enough to cover the
- * `.css.ts` template-literal case (it tracks `"`/`'` quote state
- * character-by-character regardless of the surrounding JS syntax), so no
- * extension to the shared helper is needed. */
-const COMMENT_FREE_NORMALIZED_BLOBS: string[] = NORMALIZED_BLOBS.map((b) => stripCssComments(b));
-const COMMENT_FREE_TOPLEVEL_BLOBS: string[] = COMMENT_FREE_NORMALIZED_BLOBS.map(stripMediaBlocks);
+// above. Wave 52 only MEASURED this defect's population and ratcheted it,
+// deferring the repair. Wave 55 EXECUTES the repair DEC_374 already orders:
+// TOKEN_INDEX and CONTROL_SHAPE_INDEX above are now built from
+// COMMENT_FREE_TOPLEVEL_BLOBS (defined up near TOPLEVEL_BLOBS, before either
+// index's build loop runs), not TOPLEVEL_BLOBS -- so a comment can no longer
+// fold into a following rule's selector text anywhere in this file's real
+// grading path. `resolveTokenMinHeightIndexed`/`gradeControl`/`OFFENDERS`/
+// `UNRESOLVED` above are consequently now driven by the CLEAN index; the
+// fold being one-directional (comments only ever ADD tokens) means this
+// repair can only REVEAL previously-suppressed OFFENDER/UNRESOLVED rows,
+// never hide a real one. TOPLEVEL_BLOBS itself is untouched (still
+// comment-including) and remains the honest "raw" corpus below, so the
+// measurement/ratchet machinery (COMMENT_CREDITED_OFFENDERS) is unchanged
+// code, now simply measuring an index that has already been repaired --
+// with TOKEN_INDEX now built from the same comment-free blobs as the
+// "clean" comparison side, no token's real-pipeline credit can any longer
+// diverge from its comment-stripped credit, so the offender count is 0.
 
 /** True when `token` currently resolves a min-height over `rawBlobs` but
  * resolves NONE at all over `cleanBlobs` (the same blobs with CSS comments
@@ -2226,7 +2251,7 @@ const COMMENT_CREDITED_OFFENDERS: CommentCreditedOffender[] = findCommentCredite
 // ceiling counts an INSTRUMENT defect (a suppressed OFFENDER/UNRESOLVED
 // count elsewhere in this file), not a product CSS gap -- repairing the
 // parse itself is a later, separately-scoped lane.
-export const COMMENT_CREDITED_FLOOR_CEILING = 5;
+export const COMMENT_CREDITED_FLOOR_CEILING = 0;
 
 describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: digit-collapsed skeleton join -- fabricated positive (drawn digits differ from rendered digits) vs negative (no digit in label, skeleton never invoked)', () => {

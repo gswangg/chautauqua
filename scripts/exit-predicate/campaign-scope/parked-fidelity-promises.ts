@@ -89,9 +89,4 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // separate "could not resolve" join behind it. Clause (a) alone decides
   // it (currently non-zero).
   FRAME_REPEATED_ROW_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // No completeness sibling -- test/desktop-control-floor.scan.test.ts
-  // declares exactly one comment-credited-floor ceiling, so its own count
-  // is the whole conformance fact (an instrument-soundness one, not a v12
-  // frame fact). Clause (a) alone decides it (currently non-zero: 5).
-  COMMENT_CREDITED_FLOOR_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
 };

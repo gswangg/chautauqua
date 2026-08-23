@@ -287,4 +287,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // clause (a) alone decided and promotion moves no goalpost: it enters this
   // registry AT 0 (test/pack-prose-measure.scan.test.ts).
   "PACK_PROSE_MEASURE_DIVERGENCE_CEILING",
+  // wave-55 (task v12m-w55-a, DEC-374 wave-52 amendment, executed): the
+  // desktop-control-floor comment-fold parse repair (TOKEN_INDEX/
+  // CONTROL_SHAPE_INDEX now built from comment-stripped blobs) landed in
+  // this same commit and re-measures COMMENT_CREDITED_OFFENDERS live at 0
+  // -- an instrument-soundness fact with no completeness sibling to
+  // straddle, promoted out of OUT_OF_CAMPAIGN_SCOPE per its own
+  // PARKED_FIDELITY_PROMISES row (clause a alone decided it).
+  "COMMENT_CREDITED_FLOOR_CEILING",
 ];
