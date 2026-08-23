@@ -103,8 +103,10 @@ rules `.chq-prog-title`'s old `1.6rem` down to a flat `36px`/`26px`
 register — that site is already drained (`programme.css.ts`'s own
 `task-w49-h (DEC-990 amendment)` comment cites it and the class now
 declares `font-size: 36px`), and `1.6rem` is not among this ratchet's
-offenders. No standing ruling names any of the 13 offender or 6 unresolved
-sites above; none is excluded.
+offenders. Restated at wave 29 seeding time: no standing ruling named any
+offender or unresolved site. SUPERSEDED-IN-PLACE at wave 49 for the 6
+`gap` offenders — see "RULED_LEFT (wave 49)" at the end of this doc: each
+now has a standing, cited, resolve-checked ruling.
 
 ## Letter-spacing (measured, deliberately not graded this wave)
 
@@ -190,3 +192,39 @@ rows above; every `font-size` offender is drained).
 remain registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`
 — that disposition is a separate, unruled decision this task does not
 touch.
+
+## RULED_LEFT (wave 49, DEC-937/DEC-069 wave-49, task w49-b)
+
+SUPERSEDED-IN-PLACE: the "Ratchet disposition" and "Wave 35 repair"
+sections above still describe the 6 `gap` offenders as merely
+"adjudicated LEFT" prose with no code-checked exclusion table and the
+ceiling still registered as OUT_OF_CAMPAIGN_SCOPE. As of wave 49 that
+prose is a formal `RULED_LEFT` exclusion table in
+`test/pack-unit-grammar.scan.test.ts`, each row asserted (by a dedicated
+resolve-check `it`) to still resolve to its cited sheet/selector/line/value
+in the live tree — a stale row fails the suite loudly, never a silent
+"adjudicated" comment nobody re-checks.
+
+| sheet | selector | value | line | owning ruling |
+| --- | --- | --- | --- | --- |
+| `app/src/pages/comms/comms.css` | `.chq-comms-editor-actions` | `29px` | 2501 | DEC-937 wave-35 + wave-123 amendments (companion-gap: desktop 9px + 2×10px cancelled-padding); pinned by `app/src/pages/comms/comms-tier2-floor.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-write-failure-actions` | `29px` | 2249 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-head-actions` | `29px` | 2253 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/speakers/speakers.css` | `.chq-speakers-pager-actions` | `29px` | 2257 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts` and `app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts`. |
+| `app/src/pages/speakers/task-view.css` | `.chq-taskview-actions` | `29px` | 414 | DEC-937 wave-35 + wave-123 amendments; pinned by `app/src/pages/speakers/speakers-tier2-gap.test.ts`. |
+| `app/src/pages/submissions/detail.css` | `.chq-detail-layout` | `92px` | 102 | DEC-989 wave-42 amendment, gate-3 desktop-frame-pin: frame 02 at 1600px, body 700px + rail 320px + 92px gutter = 1112px, centred. |
+
+Each row is classified OUT of the offender count by the ratchet's
+`classifyOffenders`, never repaired — repairing any of them would redden
+the pinning test or move a green desktop frame verdict.
+
+## Promotion (wave 49)
+
+`PACK_UNIT_GRAMMAR_OFFENDERS_CEILING` lowered `6` -> `0` by classification
+(no CSS byte moved) and promoted out of
+`scripts/exit-predicate/campaign-scope.ts`'s `OUT_OF_CAMPAIGN_SCOPE` and
+its `PARKED_FIDELITY_PROMISES` row into `CAMPAIGN_CONSTANT_NAMES` and
+`TIER2_CEILING_NAMES` — a graded, gating campaign ceiling, not an excused
+one. `PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING` is untouched, still `6`; it
+remains the instrument-completeness sibling, same disposition as
+`FIELD_WIDTH_UNRESOLVED_CEILING`/`FRAME_EYEBROW_UNRESOLVED_CEILING`.

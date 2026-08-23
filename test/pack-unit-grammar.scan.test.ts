@@ -161,20 +161,27 @@ interface Declaration {
   readonly property: GradedProperty;
   readonly value: string;
   readonly path: string;
+  readonly line: number;
 }
 
 /** Every `property: value;` declaration in `text`, after shared-stripper
  * comment removal and @font-face stripping, value trimmed. Terminator is
  * `;` for a CSS rule or an unescaped quote for a `style="..."` attribute
  * (the pack's .dc.html files routinely omit the trailing `;` on the last
- * declaration before the closing quote). */
+ * declaration before the closing quote). `line` is the 1-indexed line
+ * number in `cleaned` -- valid against the ORIGINAL file because
+ * stripCssComments preserves line counts and none of this ratchet's six
+ * RULED_LEFT sites sits after an @font-face block (stripFontFace does NOT
+ * preserve line counts, so this guarantee is local to those six sites, not
+ * a general property of this function). */
 function findDeclarations(text: string, path: string, property: GradedProperty): Declaration[] {
   const cleaned = stripFontFace(stripCssComments(text));
   const re = new RegExp(`${property}:\\s*([^;"']+)`, 'g');
   const out: Declaration[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(cleaned)) !== null) {
-    out.push({ property, value: (m[1] as string).trim(), path });
+    const line = cleaned.slice(0, m.index).split('\n').length;
+    out.push({ property, value: (m[1] as string).trim(), path, line });
   }
   return out;
 }
@@ -204,6 +211,7 @@ interface Offender {
   readonly value: string;
   readonly computedPx: string;
   readonly path: string;
+  readonly line: number;
 }
 
 interface Unresolved {
@@ -241,13 +249,13 @@ function grade(sources: readonly Source[], vocab: Record<GradedProperty, Readonl
         if (PX_RE.test(d.value)) {
           pxTotal++;
           if (!vocab[property].has(d.value)) {
-            offenders.push({ property, unit: 'px', value: d.value, computedPx: d.value, path: d.path });
+            offenders.push({ property, unit: 'px', value: d.value, computedPx: d.value, path: d.path, line: d.line });
           }
         } else if (REM_RE.test(d.value)) {
           remTotal++;
           const computedPx = computeRemPx(d.value);
           if (!vocab[property].has(computedPx)) {
-            offenders.push({ property, unit: 'rem', value: d.value, computedPx, path: d.path });
+            offenders.push({ property, unit: 'rem', value: d.value, computedPx, path: d.path, line: d.line });
           }
         } else if (EM_RE.test(d.value)) {
           unresolved.push({ property, value: d.value, path: d.path, reason: 'em-inherits-unresolvable' });
@@ -264,33 +272,138 @@ const PACK_VOCAB = deriveVocabulary(packSources());
 const PRODUCT_SOURCES = productSources();
 const RESULT = grade(PRODUCT_SOURCES, PACK_VOCAB);
 
+// -- RULED_LEFT (DEC-937/DEC-069 wave-49, task w49-b) ------------------------
+// DEC-937 wave-35 amendment drained 7 of the 13 wave-29 offenders (all 7
+// off-grid font-size sites, repaired). The remaining 6 -- all `gap` -- are
+// each individually LEFT and adjudicated: repair is FORBIDDEN, not merely
+// undone, because each site's exact off-grid value is the OUTPUT of a
+// standing DEC-937 ruling a passing test pins byte-for-byte, or a DEC-989
+// desktop frame-pin measurement. Classified OUT of the offender count here,
+// never silently dropped from the population -- each row below is asserted
+// (in the resolve-check `it` beneath this table) to still resolve to its
+// cited sheet/selector/line/value in the live tree, so a pack re-cut or an
+// accidental repair rots this table LOUDLY rather than silently widening
+// what "ruled left" covers.
+interface RuledLeftRow {
+  /** repo-relative CSS sheet path */
+  readonly sheetPath: string;
+  readonly selector: string;
+  readonly value: string;
+  /** 1-indexed line of the `gap:` declaration in the CURRENT file */
+  readonly line: number;
+  readonly ruling: string;
+}
+
+const RULED_LEFT: readonly RuledLeftRow[] = [
+  {
+    sheetPath: 'app/src/pages/comms/comms.css',
+    selector: '.chq-comms-editor-actions',
+    value: '29px',
+    line: 2501,
+    ruling:
+      "DEC-937 wave-35 amendment (companion-gap: desktop's own 9px + 2*10px cancelled-padding " +
+      'compensation, DEC-937 wave-123 "the declared phone gap becomes the frame\'s own rendered gap ' +
+      'PLUS 2N, never a bare 2N"), pinned byte-for-byte by app/src/pages/comms/comms-tier2-floor.test.ts.',
+  },
+  {
+    sheetPath: 'app/src/pages/speakers/speakers.css',
+    selector: '.chq-speakers-write-failure-actions',
+    value: '29px',
+    line: 2249,
+    ruling:
+      'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
+      'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
+  },
+  {
+    sheetPath: 'app/src/pages/speakers/speakers.css',
+    selector: '.chq-speakers-head-actions',
+    value: '29px',
+    line: 2253,
+    ruling:
+      'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
+      'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
+  },
+  {
+    sheetPath: 'app/src/pages/speakers/speakers.css',
+    selector: '.chq-speakers-pager-actions',
+    value: '29px',
+    line: 2257,
+    ruling:
+      'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
+      'app/src/pages/speakers/speakers-tier2-gap.test.ts and ' +
+      'app/src/pages/speakers/speakers-pager-button-tap-floor.test.ts.',
+  },
+  {
+    sheetPath: 'app/src/pages/speakers/task-view.css',
+    selector: '.chq-taskview-actions',
+    value: '29px',
+    line: 414,
+    ruling:
+      'DEC-937 wave-35 amendment (companion-gap: desktop 9px + 2*10px), pinned byte-for-byte by ' +
+      'app/src/pages/speakers/speakers-tier2-gap.test.ts.',
+  },
+  {
+    sheetPath: 'app/src/pages/submissions/detail.css',
+    selector: '.chq-detail-layout',
+    value: '92px',
+    line: 102,
+    ruling:
+      'DEC-989 wave-42 amendment, gate-3 desktop-frame-pin clause: frame 02 measured at 1600px -- ' +
+      'body 700px + rail 320px + 92px gutter = 1112px, centred. Repairing to the pack\'s nearest ' +
+      'drawn gap literal would shrink the rail gutter and move a green desktop frame verdict.',
+  },
+];
+
+/** Nearest enclosing `selector {` line above `declLineIdx` (0-indexed), by
+ * walking upward for a line ending in an open brace with no other brace
+ * chars -- the same shape this ratchet's declarations are always drawn in. */
+function findEnclosingSelector(lines: readonly string[], declLineIdx: number): string | null {
+  for (let i = declLineIdx; i >= 0; i--) {
+    const m = /^\s*([^{}]+)\{\s*$/.exec(lines[i] as string);
+    if (m) return (m[1] as string).trim();
+  }
+  return null;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** True when `o` matches a RULED_LEFT row (same sheet file, same line, same
+ * literal gap value) -- classified OUT of the offender count. */
+function isRuledLeft(o: Offender, ruledLeft: readonly RuledLeftRow[]): boolean {
+  return ruledLeft.some(
+    (r) => o.property === 'gap' && o.path === join(REPO_ROOT, r.sheetPath) && o.line === r.line && o.value === r.value,
+  );
+}
+
+function classifyOffenders(
+  offenders: readonly Offender[],
+  ruledLeft: readonly RuledLeftRow[],
+): { trueOffenders: Offender[]; ruledLeftMatches: Offender[] } {
+  const trueOffenders: Offender[] = [];
+  const ruledLeftMatches: Offender[] = [];
+  for (const o of offenders) {
+    if (isRuledLeft(o, ruledLeft)) ruledLeftMatches.push(o);
+    else trueOffenders.push(o);
+  }
+  return { trueOffenders, ruledLeftMatches };
+}
+
+const { trueOffenders: TRUE_OFFENDERS, ruledLeftMatches: RULED_LEFT_MATCHES } = classifyOffenders(
+  RESULT.offenders,
+  RULED_LEFT,
+);
+
 /** Two-sided ratchets (DEC-808 wave-85 amendment shape): raised/lowered
- * only by a merge-train act, never a worker's edit mid-lane. MEASURE AND
- * RECORD ONLY this wave -- both are also registered in
- * scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE, not the campaign's
- * gating lists, until a later lane drains them (see this file's header
- * comment). */
-// DEC-937 wave-35 amendment: drained 7 of the 13 wave-29 offenders -- all 7
-// off-grid font-size sites, each desktop-visible and repaired to the
-// nearest on-grid computed px (kept as `rem` to preserve user font
-// scaling). The 6 off-grid `gap` sites are all LEFT and adjudicated in
-// docs/design/audit/pack-unit-grammar-v12.md: 5 sites (comms.css,
-// speakers.css x3, task-view.css) declare `gap: 29px` inside a phone
-// `@media (max-width: …)` companion-gap idiom, and DEC-937's OWN
-// wave-123 amendment requires this exact value ("the declared phone gap
-// becomes the frame's own rendered gap PLUS 2N, never a bare 2N") --
-// app/src/pages/comms/comms-tier2-floor.test.ts and
-// app/src/pages/speakers/speakers-tier2-gap.test.ts /
-// speakers-pager-button-tap-floor.test.ts pin it byte-for-byte, so
-// rounding to the px grid would silently redraw the frame's own
-// separation away from what it draws (a repair that reddens a
-// different, already-settled DEC-937 ruling is not a repair). The 6th,
-// `app/src/pages/submissions/detail.css`'s desktop `gap: 92px`, is a
-// DEC-989 wave-42 measured frame pin (frame 02 at 1600px: 700px body +
-// 320px rail + 92px gutter) -- repairing it would move a green desktop
-// frame verdict. DESKTOP IS FROZEN and a pinned phone idiom is frozen
-// the same way -- neither is repaired.
-export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = 6;
+ * only by a merge-train act, never a worker's edit mid-lane. */
+// DEC-937/DEC-069 wave-49 (task w49-b): all 6 remaining offenders are
+// RULED_LEFT (see table above) -- classification, not repair, drains this
+// ceiling to 0. Promoted into the graded campaign registry in the same
+// commit (scripts/exit-predicate/campaign-scope.ts: removed from
+// OUT_OF_CAMPAIGN_SCOPE and its PARKED_FIDELITY_PROMISES row, appended to
+// CAMPAIGN_CONSTANT_NAMES and TIER2_CEILING_NAMES).
+export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = 0;
 export const PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING = 6;
 
 describe('pack size-unit grammar (DEC-937 wave-29)', () => {
@@ -303,29 +416,80 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
     expect(PACK_VOCAB.gap.size).toBeGreaterThan(0);
   });
 
-  it('never exceeds PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (6) off-grid size declarations', () => {
-    if (RESULT.offenders.length > PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
+  it('never exceeds PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (0) off-grid size declarations, after RULED_LEFT classification', () => {
+    if (TRUE_OFFENDERS.length > PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
       throw new Error(
-        `${RESULT.offenders.length} product font-size/gap declarations compute to a px value ` +
-          `outside the pack's derived vocabulary, above the ceiling of ` +
+        `${TRUE_OFFENDERS.length} product font-size/gap declarations compute to a px value outside ` +
+          `the pack's derived vocabulary and are not RULED_LEFT, above the ceiling of ` +
           `${PACK_UNIT_GRAMMAR_OFFENDERS_CEILING}. Offenders:\n` +
-          RESULT.offenders
-            .map((o) => `  ${o.property}: ${o.value} (=${o.computedPx}) [${o.unit}] (${o.path})`)
-            .join('\n'),
+          TRUE_OFFENDERS.map((o) => `  ${o.property}: ${o.value} (=${o.computedPx}) [${o.unit}] (${o.path}:${o.line})`).join(
+            '\n',
+          ),
       );
     }
-    expect(RESULT.offenders.length).toBeLessThanOrEqual(PACK_UNIT_GRAMMAR_OFFENDERS_CEILING);
+    expect(TRUE_OFFENDERS.length).toBeLessThanOrEqual(PACK_UNIT_GRAMMAR_OFFENDERS_CEILING);
   });
 
-  it('never sits BELOW PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (6) without the ceiling being lowered to match', () => {
-    if (RESULT.offenders.length < PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
+  it('never sits BELOW PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (0) without the ceiling being lowered to match', () => {
+    if (TRUE_OFFENDERS.length < PACK_UNIT_GRAMMAR_OFFENDERS_CEILING) {
       throw new Error(
-        `${RESULT.offenders.length} product declarations sit off-grid, below the ceiling of ` +
+        `${TRUE_OFFENDERS.length} product declarations sit off-grid and un-ruled, below the ceiling of ` +
           `${PACK_UNIT_GRAMMAR_OFFENDERS_CEILING}. A stale ceiling licenses stagnation -- lower it ` +
-          `by replacing the line:\n  export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = ${RESULT.offenders.length};`,
+          `by replacing the line:\n  export const PACK_UNIT_GRAMMAR_OFFENDERS_CEILING = ${TRUE_OFFENDERS.length};`,
       );
     }
-    expect(RESULT.offenders.length).toBeGreaterThanOrEqual(PACK_UNIT_GRAMMAR_OFFENDERS_CEILING);
+    expect(TRUE_OFFENDERS.length).toBeGreaterThanOrEqual(PACK_UNIT_GRAMMAR_OFFENDERS_CEILING);
+  });
+
+  it('all 6 raw off-grid gap offenders are classified RULED_LEFT (none remain a true offender)', () => {
+    expect(RULED_LEFT_MATCHES.length).toBe(6);
+    expect(TRUE_OFFENDERS.filter((o) => o.property === 'gap')).toEqual([]);
+  });
+
+  it('RULED_LEFT rows each resolve to their cited sheet/selector/line/value in the current tree (anti-allowlist: a stale row fails loudly, never a bare "adjudicated" string)', () => {
+    for (const row of RULED_LEFT) {
+      const abs = join(REPO_ROOT, row.sheetPath);
+      const lines = readFileSync(abs, 'utf8').split('\n');
+      const declLine = lines[row.line - 1] ?? '';
+      const valueRe = new RegExp(`gap:\\s*${escapeRegex(row.value)}\\s*;`);
+      expect(
+        valueRe.test(declLine),
+        `${row.sheetPath}:${row.line} no longer declares \`gap: ${row.value}\` (saw: ${JSON.stringify(declLine)})`,
+      ).toBe(true);
+      const selector = findEnclosingSelector(lines, row.line - 1);
+      expect(selector, `${row.sheetPath}:${row.line} -- expected enclosing selector \`${row.selector}\`, found ${JSON.stringify(selector)}`).toBe(
+        row.selector,
+      );
+    }
+  });
+
+  it('a positive control: an offender NOT matching any RULED_LEFT row stays a true offender (synthetic fixture, never a live product count)', () => {
+    const synthetic: Offender = {
+      property: 'gap',
+      unit: 'px',
+      value: '29px',
+      computedPx: '29px',
+      path: join(REPO_ROOT, 'app/src/pages/comms/comms.css'),
+      line: 1, // not the RULED_LEFT-cited line for this file
+    };
+    const { trueOffenders, ruledLeftMatches } = classifyOffenders([synthetic], RULED_LEFT);
+    expect(trueOffenders).toEqual([synthetic]);
+    expect(ruledLeftMatches).toEqual([]);
+  });
+
+  it('a synthetic offender matching a RULED_LEFT row (path+line+value) is classified OUT of the offender count', () => {
+    const row = RULED_LEFT[0] as RuledLeftRow;
+    const synthetic: Offender = {
+      property: 'gap',
+      unit: 'px',
+      value: row.value,
+      computedPx: row.value,
+      path: join(REPO_ROOT, row.sheetPath),
+      line: row.line,
+    };
+    const { trueOffenders, ruledLeftMatches } = classifyOffenders([synthetic], RULED_LEFT);
+    expect(trueOffenders).toEqual([]);
+    expect(ruledLeftMatches).toEqual([synthetic]);
   });
 
   it('never exceeds PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING (6) em declarations', () => {
@@ -420,13 +584,21 @@ describe('pack size-unit grammar -- detector non-vacuity (DEC-967, synthetic fix
 
       const fixtureResult = grade(fixtureProductSources, fixtureVocab);
       expect(fixtureResult.offenders).toEqual([
-        { property: 'font-size', unit: 'px', value: '13px', computedPx: '13px', path: join(cssDir, 'widget.css') },
+        {
+          property: 'font-size',
+          unit: 'px',
+          value: '13px',
+          computedPx: '13px',
+          path: join(cssDir, 'widget.css'),
+          line: 3,
+        },
         {
           property: 'font-size',
           unit: 'rem',
           value: '0.85rem',
           computedPx: '13.6px',
           path: join(cssDir, 'widget.css'),
+          line: 5,
         },
       ]);
       expect(fixtureResult.unresolved).toEqual([

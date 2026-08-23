@@ -246,17 +246,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment). "
     + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
     + "rule does not apply yet.",
-  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING:
-    "measures a newly-derived size-unit population (every product font-size/gap declaration whose "
-    + "COMPUTED px value at the 16px root sits outside the pack's own drawn px vocabulary for that "
-    + "property) that no instrument previously graded -- a real conformance fact about this "
-    + "population, but a freshly measured, previously-uncounted population must not move the "
-    + "campaign's goalposts mid-convergence; it is promoted once a later lane drains it, the same "
-    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING "
-    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment). "
-    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
-    + "rule does not apply yet regardless of its PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING sibling's own "
-    + "adjudication state.",
   PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING:
     "measures how many of that same population are `em` literals, whose computed px depends on an "
     + "inherited size this scan cannot resolve -- an instrument-completeness fact about the ratchet's "

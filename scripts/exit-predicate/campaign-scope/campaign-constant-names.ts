@@ -270,4 +270,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // CEILING to 0 -- a DEVIATIONS-blessed field label is not a divergence.
   // Wired into TIER2 in this same commit; reads live 0.
   "DRAWN_FIELD_LABEL_DIVERGENCE_CEILING",
+  // wave-49 (DEC-937/DEC-069 wave-49, task w49-b): the six PACK_UNIT_GRAMMAR_
+  // OFFENDERS_CEILING gap sites are all RULED_LEFT by DEC-937's own wave-35/
+  // wave-123 amendments -- classified out of the offender count, never
+  // repaired (repair would redden the ruling that requires them). Ceiling
+  // reads live 0 by classification; promoted out of OUT_OF_CAMPAIGN_SCOPE in
+  // this same commit.
+  "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
 ];

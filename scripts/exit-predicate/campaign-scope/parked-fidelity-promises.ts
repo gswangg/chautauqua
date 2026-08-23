@@ -59,13 +59,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero).
   FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // Clause (b) holds (docs/design/audit/pack-unit-grammar-v12.md itemises
-  // every one of PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING's `em`-literal rows by
-  // coordinate), but clause (a) fails: its own count is non-zero.
-  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: {
-    siblingName: "PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING",
-    siblingFullyAdjudicated: true,
-  },
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero -- most of the ruling-unit population is still gap-verdict).
   RULING_UNIT_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
