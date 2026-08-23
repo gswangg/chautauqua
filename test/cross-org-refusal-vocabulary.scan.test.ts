@@ -17,6 +17,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 const ROOT = join(__dirname, "..");
 const SRC_ROOT = "src/routes";
@@ -53,7 +54,11 @@ describe("cross-org refusal vocabulary (DEC-005 wave-50 amendment)", () => {
   it("no route file contains the retired 'belongs to a different org' string", () => {
     const offenders: string[] = [];
     for (const rel of files) {
-      const src = readFileSync(join(ROOT, rel), "utf8");
+      // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair):
+      // a comment merely QUOTING the retired refusal string (e.g. a note
+      // explaining why it must never come back) must never be mistaken for
+      // a real reintroduction of it.
+      const src = stripTsComments(readFileSync(join(ROOT, rel), "utf8"));
       if (src.includes("belongs to a different org")) {
         offenders.push(rel);
       }
@@ -64,7 +69,7 @@ describe("cross-org refusal vocabulary (DEC-005 wave-50 amendment)", () => {
   it("no route file throws ApiError(\"forbidden\", ...) on a line comparing orgId to auth.orgId", () => {
     const offenders: string[] = [];
     for (const rel of files) {
-      const src = readFileSync(join(ROOT, rel), "utf8");
+      const src = stripTsComments(readFileSync(join(ROOT, rel), "utf8"));
       const lines = src.split("\n");
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;

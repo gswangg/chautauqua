@@ -8,15 +8,16 @@
 //   1. A CSS comment quoting a frame literal was graded as a violation
 //      (comment-blind-css-assertion-scan's own origin story, DEC-374).
 //   2. Frame prose quoting product copy was matched as product copy.
-//   3. test/test-tiers.test.ts's `importedModules()` applies
+//   3. test/test-tiers.test.ts's `importedModules()` applied
 //      IMPORT_SPECIFIER_RE to raw, un-stripped source -- so
 //      test/render-sweep-public-gate.test.ts's own header sentence ("must
-//      never import playwright") reads as a real import, and the DEC-727
-//      tier predicate has been enforcing nothing for an unknown number of
-//      waves. Owned by v12m-w38-c (in flight): this instrument COUNTS that
-//      offense honestly (so w38-c's landing flips this row) but does NOT
-//      repair test/test-tiers.test.ts or the DEC-727 tier predicate -- out
-//      of this task's scope by explicit instruction.
+//      never import playwright") read as a real import, and the DEC-727
+//      tier predicate had been enforcing nothing for an unknown number of
+//      waves. REPAIRED by v12m-w38-c (landed): test/test-tiers.test.ts now
+//      strips comments with `stripTsComments` before matching, and this
+//      row's own pin below was retired to its inverse (DEC-808 wave-45,
+//      task w45-c) to keep asserting a live fact about the tree rather than
+//      a stale one.
 //
 // POPULATION (walked, never hand-listed): every `.ts`/`.tsx` file under
 // test/** and app/src/** (readdirSync recursive, this file excludes only
