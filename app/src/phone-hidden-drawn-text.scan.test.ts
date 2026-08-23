@@ -129,7 +129,8 @@
 //   rule hid. TWIN-RESOLVED rows are graded, recorded and counted in
 //   neither ratchet (DEC-180: a resolution is recorded, never a silent
 //   drop).
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -302,6 +303,26 @@ export function designFiles(): string[] {
     .sort();
 }
 
+/** DEC-967 wave-42 amendment (porting v12m-w41-c's shape in
+ * test/phone-frame-ledger.scan.test.ts verbatim, per this file's own "port,
+ * don't cross-import a population walk" convention): the 1-based line of
+ * the single `</x-dc>` template close in `fullPath`, throwing loudly on
+ * zero or multiple matches. A frame's extent is never allowed to reach
+ * past this line -- without the clip, the last labelled block of a file
+ * swallows the template's own closing tag and everything after it
+ * (fixture `data-dc-script` bodies, trailing markup). */
+export function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
+
 function framesInFile(fileName: string): Frame[] {
   const full = join(DESIGN_ROOT, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
@@ -328,8 +349,17 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Extent end: next label line strictly after this frame's own line, or
+    // EOF -- clipped at the template's own close (DEC-967 wave-42
+    // amendment) so the last labelled block can never swallow `</x-dc>`
+    // and everything past it (fixture `data-dc-script` bodies included).
     const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return { fileName, line: frameLine, title, extentEnd: nextLabel ? nextLabel.line : Infinity };
+    return {
+      fileName,
+      line: frameLine,
+      title,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
+    };
   });
 }
 
@@ -586,6 +616,69 @@ const TWIN_RESOLVED_ROWS = GRADED_RULES.filter((g) => g.grade === 'TWIN-RESOLVED
 // drawn, visibly, by an unhidden sibling on the same cluster surface.
 export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 28;
 export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 40;
+
+// ---------------------------------------------------------------------------
+// DEC-967 wave-42 amendment: a two-sided completeness ratchet over every
+// `.ts`/`.tsx` file in the tree that derives an `extentEnd` from a
+// `.dc.html` label scan (the shape this file's own `framesInFile` and its
+// eleven siblings across app/src/test/src/scripts all share) WITHOUT
+// clipping that extent at its file's own template close. This is what
+// makes DEC-967's ruling self-enforcing instead of a twelve-file reading
+// exercise: every sibling ledger that ports the clip in makes this count
+// go down; a future ledger that copies the OLD unclipped shape makes it go
+// back up, and this scan catches it.
+// ---------------------------------------------------------------------------
+
+const EXTENT_SCAN_ROOTS = [APP_SRC_ROOT, SRC_ROOT, join(REPO_ROOT, 'test'), join(REPO_ROOT, 'scripts')];
+
+/** Every `.ts`/`.tsx` file under `root`, enumerated via readdirSync rather
+ * than named (DEC-808) -- unlike test/frame-source-corpus.ts's own
+ * `enumerateSourceFiles`, this walk deliberately does NOT exclude
+ * `.test.`/`.test.tsx` files: the population this ratchet grades is
+ * exactly the scan/ledger files DEC-967 names, which are almost entirely
+ * `*.scan.test.ts` files. */
+function enumerateTsFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+// A file is IN this population if it both (a) derives an `extentEnd` value
+// and (b) scans for the SAME `font-size:19px` frame-label marker every
+// `.dc.html` frame walk in this campaign keys on -- the combination that
+// distinguishes an actual frame-extent derivation from an unrelated use of
+// either token alone (e.g. a CSS `font-size:19px` declaration in product
+// code, or an unrelated `extentEnd`-named field in a different shape).
+const EXTENT_DERIVATION_RE = /extentEnd/;
+const FRAME_LABEL_MARKER_RE = /font-size:19px/;
+
+/** True if `absFile` derives a frame `extentEnd` from a `.dc.html` label
+ * scan without clipping it at that file's own template close. */
+function isUnclippedExtentDerivation(absFile: string): boolean {
+  const src = readFileSync(absFile, 'utf-8');
+  if (!EXTENT_DERIVATION_RE.test(src)) return false;
+  if (!FRAME_LABEL_MARKER_RE.test(src)) return false;
+  return !src.includes('templateCloseLine');
+}
+
+const UNCLIPPED_EXTENT_DERIVATION_FILES: string[] = EXTENT_SCAN_ROOTS.flatMap((root) =>
+  enumerateTsFiles(root).filter(isUnclippedExtentDerivation)
+).sort();
+
+// Measured on this branch (v12m-w42-d) by forcing to -1 and reading the
+// printed offender list back (never an expression naming the measured
+// set): 10 files still derive extentEnd from a .dc.html label scan without
+// the DEC-967 template-close clip (app/src/frame-citation-frames.ts and
+// nine test/*.scan.test.ts siblings). This file itself is now clipped and
+// so does not appear. May only be RAISED if the ratchet is proved stale by
+// a re-measurement; a merge-train commit that lands one of the in-flight
+// w41 clip lanes must TIGHTEN it in the same commit (mirrors every other
+// ratchet in this campaign).
+export const UNCLIPPED_EXTENT_DERIVATION_CEILING = 10;
 
 describe('DEC-725 phone hidden-drawn-text probe', () => {
   it('finds more than one phone display:none rule (vacuous-population tripwire, CSS side)', () => {
@@ -857,6 +950,49 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     }
   });
 
+  // --- DEC-967 wave-42 amendment: the frame-extent derivation is clipped at
+  // the template's own close, not just at the next label / EOF -----------
+
+  it('control (DEC-967 wave-42 amendment): a fabricated label-shaped string after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'phone-hidden-drawn-text-template-close-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <span>Zzy Before Close Label</span>', // line 3: inside the frame, before close
+        '</div>', // line 4
+        '</x-dc>', // line 5: template close
+        '<span>Zzy After Close Label</span>', // line 6: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(5);
+
+      // Mirrors framesInFile's own extentEnd computation above: no next
+      // label after the frame line (2), so the raw extent would run to
+      // Infinity -- clipped here to the template close, exactly as the
+      // production `extentEnd: Math.min(nextLabel ? nextLabel.line :
+      // Infinity, templateCloseLine(full))` does.
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, templateCloseLine(fixturePath));
+      expect(extentEnd).toBe(5);
+
+      const beforeLine = 3;
+      const afterLine = 6;
+      // POSITIVE: the before-close label sits inside the clipped extent.
+      expect(beforeLine >= frameLine && beforeLine < extentEnd).toBe(true);
+      // NEGATIVE: the after-close label, despite being label-shaped and in
+      // the same file, sits outside the clipped extent -- exactly the
+      // swallow this ruling closes (a frame's extent can never reach past
+      // its own template's `</x-dc>`).
+      expect(afterLine >= frameLine && afterLine < extentEnd).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('PREMISE-FALSE rows never exceed the ceiling (one-sided ratchet: may only fall)', () => {
     const detail = PREMISE_FALSE_ROWS.map((r) => `${r.sheet} :: ${r.selector} -- ${r.reason}`).join('\n');
     expect(
@@ -903,6 +1039,47 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
       expect(UNVERIFIABLE_ROWS).not.toContain(row);
       expect(row.reason).toContain('still-visible');
     }
+  });
+
+  // --- DEC-967 wave-42 amendment: the completeness ratchet over every
+  // still-unclipped frame-extent derivation in the tree --------------------
+
+  it('non-vacuity: this scan actually finds at least one file (itself, before the fix, or a sibling) that would trip a naive positive-only check', () => {
+    // Sanity: the marker combination alone (extentEnd + font-size:19px) is
+    // not vacuous -- it currently matches this very file (which passes
+    // ONLY because it also contains templateCloseLine) plus its siblings.
+    const rootsHaveAnyMarkerFile = EXTENT_SCAN_ROOTS.some((root) =>
+      enumerateTsFiles(root).some((f) => {
+        const src = readFileSync(f, 'utf-8');
+        return EXTENT_DERIVATION_RE.test(src) && FRAME_LABEL_MARKER_RE.test(src);
+      })
+    );
+    expect(rootsHaveAnyMarkerFile).toBe(true);
+  });
+
+  it('this file itself is no longer in the unclipped population (it derives extentEnd from a .dc.html label scan but clips it with templateCloseLine)', () => {
+    const here = fileURLToPath(import.meta.url);
+    expect(UNCLIPPED_EXTENT_DERIVATION_FILES).not.toContain(here);
+  });
+
+  it('unclipped extent-derivation files never exceed the ceiling (one-sided ratchet: may only fall as sibling clip lanes land)', () => {
+    const detail = UNCLIPPED_EXTENT_DERIVATION_FILES.join('\n');
+    expect(
+      UNCLIPPED_EXTENT_DERIVATION_FILES.length,
+      `unclipped extent-derivation files (${UNCLIPPED_EXTENT_DERIVATION_FILES.length}, ceiling ${UNCLIPPED_EXTENT_DERIVATION_CEILING}):\n${detail}`
+    ).toBeLessThanOrEqual(UNCLIPPED_EXTENT_DERIVATION_CEILING);
+  });
+
+  it('never sits ABOVE the measured unclipped-file truth without the ceiling being tightened to match (a stale ceiling licenses stagnation)', () => {
+    if (UNCLIPPED_EXTENT_DERIVATION_FILES.length < UNCLIPPED_EXTENT_DERIVATION_CEILING) {
+      throw new Error(
+        `${UNCLIPPED_EXTENT_DERIVATION_FILES.length} unclipped extent-derivation file(s), below the ` +
+          `ratchet ceiling of ${UNCLIPPED_EXTENT_DERIVATION_CEILING}. This is the ratchet working -- ` +
+          `tighten the ceiling in the same merge-train commit by replacing the line:\n` +
+          `  export const UNCLIPPED_EXTENT_DERIVATION_CEILING = ${UNCLIPPED_EXTENT_DERIVATION_FILES.length};`
+      );
+    }
+    expect(UNCLIPPED_EXTENT_DERIVATION_FILES.length).toBeGreaterThanOrEqual(UNCLIPPED_EXTENT_DERIVATION_CEILING);
   });
 });
 

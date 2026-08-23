@@ -145,6 +145,60 @@ ABOVE the measured truth" `it` (two-sided, per
 wave-35) is graded and recorded in the roster below but counted in neither
 ratchet.
 
+## Wave-42 amendment (DEC-967): extent derivation clipped at the template close
+
+Wave 41 found that every frame-extent derivation in the tree computed
+`extentEnd: nextLabel ? nextLabel.line : Infinity`, which lets the LAST
+labelled block of a `docs/design/*.dc.html` file swallow the file's own
+`</x-dc>` template close and everything after it — including the whole
+`<script data-dc-script>` fixture body. This file's own `framesInFile`
+(the frame-side population walk feeding both `TEXT_FINDINGS`-joined
+rosters below) had exactly this shape and was in NONE of v12m-w41-{b,c,d}'s
+scope.
+
+**Fix**: a `templateCloseLine(fullPath)` helper (ported, not imported, from
+`test/phone-frame-ledger.scan.test.ts`'s v12m-w41-c shape — this campaign's
+standing "port, don't cross-import a population walk" convention) resolves
+the file's single `</x-dc>` line and throws loudly on zero or multiple
+matches; `framesInFile`'s `extentEnd` is now
+`Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full))`.
+A synthetic control fixture (mirroring the w41-c precedent) proves a
+label-shaped string placed BEFORE a fabricated `</x-dc>` stays inside the
+clipped extent, and the identical shape placed AFTER it falls outside.
+
+**Per-row delta, measured by forcing each ceiling to `-1` and re-reading the
+printed roster**: both ceilings are **UNCHANGED** —
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` stays 28 (all 28 rows
+SURVIVED against the clipped extent) and
+`PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING` stays 40 (all 40 rows
+SURVIVED). Zero rows evaporated. This means none of the 28 PREMISE-FALSE or
+40 UNVERIFIABLE matches in the current rosters below were matching against
+swallowed `<script data-dc-script>` fixture JavaScript rather than pack
+markup — every one is a real match against drawn frame content (or, for
+UNVERIFIABLE, a real composed-text miss), and each row named individually
+in the "PREMISE-FALSE roster" / "UNVERIFIABLE roster" sections below is a
+genuine phone conformance divergence (or an unresolvable composed-text
+claim), not an instrument artefact of the unclipped extent. Nothing in
+this file's rosters needs re-attribution as a result of the clip.
+
+**Completeness ratchet**: a new two-sided `UNCLIPPED_EXTENT_DERIVATION_CEILING`
+(seeded at 10, measured by forcing to `-1`) counts every `.ts`/`.tsx` file
+under `app/src`, `src`, `test` and `scripts` that derives an `extentEnd`
+from a `.dc.html` label scan (matched by the same `font-size:19px` marker
+every frame walk in this campaign keys on) without also containing
+`templateCloseLine`. This file itself no longer counts (it is now
+clipped). The 10 remaining offenders: `app/src/frame-citation-frames.ts`
+and nine `test/*.scan.test.ts` siblings —
+`desktop-control-floor.scan.test.ts`, `frame-control-floor.scan.test.ts`,
+`phone-frame-ledger.scan.test.ts` (the v12m-w41-c fix has not yet merged
+to main as measured on this branch), `frame-eyebrow-label.scan.test.ts`,
+`phone-dock-ledger.scan.test.ts`, `frame-control-label.scan.test.ts`,
+`desktop-frame-ledger.scan.test.ts`, `desktop-control-label.scan.test.ts`
+and `desktop-field-width.scan.test.ts`. As each in-flight w41 clip lane (or
+a future lane covering the rest) lands on main, this ceiling must be
+tightened in the same merge-train commit, per every other ratchet in this
+campaign.
+
 ## Both worked-example rows, re-measured under scoping + twin detection
 
 - `.chq-review-criteria-head-row` is now **TWIN-RESOLVED**, not
