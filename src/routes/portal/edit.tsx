@@ -213,11 +213,30 @@ export function EditPage(props: {
           formatEventCloseDateLabel's docstring (src/lib/event-time.ts:250)
           names: formatting the raw label in a zone west of UTC resolves to
           the PREVIOUS calendar day, so this screen printed one date and
-          the public confirmation page printed another for the same form. */}
+          the public confirmation page printed another for the same form.
+          DEC-041 (wave-46 amendment): the sentence is branched on
+          tracksEditable -- the SAME lock-state boolean the Tracks section
+          below already derives from canEditTracks -- not on closeDate
+          alone. An accepted speaker's canEditSubmission stays true past
+          the close date while canEditTracks does not, so closeDate !==
+          null is no longer sufficient to say the deadline is still live:
+          it can be a CLOSED deadline the accepted exception is still
+          honouring. Never a second date comparison here; dayLabelEndInstant
+          stays on every closeDate-bearing branch for the same D8 reason. */}
       {data.form.closeDate !== null ? (
         <p class="chq-portal-sub">
-          You can change this until the form closes on{" "}
-          {formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)}
+          {tracksEditable ? (
+            <>
+              You can change this until the form closes on{" "}
+              {formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)}
+            </>
+          ) : (
+            <>
+              The form closed on{" "}
+              {formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)}, and
+              an accepted speaker can still edit this.
+            </>
+          )}
         </p>
       ) : null}
       {/* DEC-041 (wave-117 amendment): this form's FormFieldsSection calls

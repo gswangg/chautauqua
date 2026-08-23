@@ -846,6 +846,13 @@ function confirmationBodySentence(props: {
   if (props.state === "pending-existing-contact") {
     return `We emailed ${props.submittedEmail} a confirmation, with a link to set a password.`;
   }
+  // DEC-041 (wave-46 amendment): this sentence is true at ITS OWN render
+  // time (submission moment, before any accepted-exception past-close
+  // state can exist) and is left unchanged here. The portal edit screen
+  // (src/routes/portal/edit.tsx, ~:217) states this same rule again once
+  // the speaker returns later and the form may have since closed -- see
+  // that file's DEC-041 comment for the branch this one must not drift
+  // from.
   const closeSentence = props.form.closeDate
     ? ` You can edit this talk until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`
     : "";

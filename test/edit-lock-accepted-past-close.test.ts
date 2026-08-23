@@ -14,6 +14,7 @@ import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 import type { PortalSubmissionDetail } from "../src/server/repo/portal/data";
 
 const PAST_CLOSE = Date.parse("2020-01-01T00:00:00Z"); // well in the past -> form closed
+const FUTURE_CLOSE = Date.parse("2099-01-01T00:00:00Z"); // well in the future -> form open
 
 const ACCEPTED_DATA: EditableSubmissionData = {
   submission: { id: "s1", status: "accepted", title: "Talk title", description: "desc" },
@@ -26,13 +27,37 @@ const ACCEPTED_DATA: EditableSubmissionData = {
   formatLabel: null,
 };
 
+const PENDING_FUTURE_DATA: EditableSubmissionData = {
+  submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
+  form: { id: "f1", closeDate: FUTURE_CLOSE, timezone: "America/Los_Angeles" },
+  fields: [],
+  answers: {},
+  offeredTrackIds: [],
+  allTracks: [],
+  selectedTrackIds: [],
+  formatLabel: null,
+};
+
+const ACCEPTED_NO_CLOSE_DATA: EditableSubmissionData = {
+  submission: { id: "s1", status: "accepted", title: "Talk title", description: "desc" },
+  form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
+  fields: [],
+  answers: {},
+  offeredTrackIds: [],
+  allTracks: [],
+  selectedTrackIds: [],
+  formatLabel: null,
+};
+
+let currentData: EditableSubmissionData = ACCEPTED_DATA;
+
 vi.mock("../src/server/repo/portal-edit", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal-edit")>(
     "../src/server/repo/portal-edit",
   );
   return {
     ...actual,
-    loadEditableSubmission: vi.fn(async () => ACCEPTED_DATA),
+    loadEditableSubmission: vi.fn(async () => currentData),
     getPortalParticipants: vi.fn(async () => []),
   };
 });
@@ -90,6 +115,7 @@ function buildApp(routes: unknown) {
 
 describe("accepted submission past close (DEC-041 restored exception)", () => {
   it("GET /portal/submissions/:id/edit renders the editable FORM, not 'Editing closed'", async () => {
+    currentData = ACCEPTED_DATA;
     const { portalEditRoutes } = await import("../src/routes/portal/edit");
     const app = buildApp(portalEditRoutes);
     const res = await app.request("/portal/submissions/s1/edit");
@@ -100,11 +126,46 @@ describe("accepted submission past close (DEC-041 restored exception)", () => {
   });
 
   it("submission detail page still offers an Edit link", async () => {
+    currentData = ACCEPTED_DATA;
     const { portalRoutes } = await import("../src/routes/portal/index");
     const app = buildApp(portalRoutes);
     const res = await app.request("/portal/submissions/s1");
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Edit submission");
+  });
+
+  it("DEC-041 (wave-46): does not print a future deadline once the form is closed for an accepted speaker", async () => {
+    currentData = ACCEPTED_DATA;
+    const { portalEditRoutes } = await import("../src/routes/portal/edit");
+    const app = buildApp(portalEditRoutes);
+    const res = await app.request("/portal/submissions/s1/edit");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("until the form closes");
+    expect(html).toContain("The form closed on");
+    expect(html).toContain("an accepted speaker can still edit this");
+  });
+
+  it("DEC-041 (wave-46): a still-open form renders the original live-deadline sentence verbatim", async () => {
+    currentData = PENDING_FUTURE_DATA;
+    const { portalEditRoutes } = await import("../src/routes/portal/edit");
+    const app = buildApp(portalEditRoutes);
+    const res = await app.request("/portal/submissions/s1/edit");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("You can change this until the form closes on");
+    expect(html).not.toContain("The form closed on");
+  });
+
+  it("DEC-041 (wave-46): a form with no close date renders neither deadline sentence", async () => {
+    currentData = ACCEPTED_NO_CLOSE_DATA;
+    const { portalEditRoutes } = await import("../src/routes/portal/edit");
+    const app = buildApp(portalEditRoutes);
+    const res = await app.request("/portal/submissions/s1/edit");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("You can change this until the form closes on");
+    expect(html).not.toContain("The form closed on");
   });
 });
