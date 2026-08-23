@@ -168,11 +168,12 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
   // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
   "SSR_CLASSLESS_CONTROL_CEILING",
-  // wave-45 (DEC-069 wave-44/45 amendments): wired into TIER2 in the same
-  // commit that moved it out of OUT_OF_CAMPAIGN_SCOPE into
-  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
-  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
-  "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-55 (task w55-b, DEC-180/DEC-069 wave-55 amendment): wired into
+  // TIER2 in the same commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE /
+  // PARKED_FIDELITY_PROMISES into CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988). Reads live 0: a graded
+  // green conformance row.
+  "FRAME_COUNT_CAPTION_UNMATCHED_CEILING",
   // wave-48 (task w48-b, DEC-896 wave-48 amendment): wired into TIER2 in the
   // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
   // declared-but-unread knob (DEC-851/DEC-988).

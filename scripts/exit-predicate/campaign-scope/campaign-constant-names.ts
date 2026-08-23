@@ -251,12 +251,15 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // removed from OUT_OF_CAMPAIGN_SCOPE in this same commit (the two lists
   // must be disjoint -- test/campaign-scope-registry-partition.scan.test.ts).
   "SSR_CLASSLESS_CONTROL_CEILING",
-  // wave-45 (DEC-069 wave-44/45 amendments): the doubly-unmatched count
-  // caption IS the containment evidence DEC-180 wave-42 demanded of
-  // FRAME_COUNT_CAPTION_UNMATCHED_CEILING's exclusion, so it is a conformance
-  // fact in its own right. Reads live 0; removed from OUT_OF_CAMPAIGN_SCOPE
-  // in this same commit.
-  "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-55 (task w55-b, DEC-180/DEC-069 wave-55 amendment): the ledger's
+  // duplicate-vocabulary trap (FRAME_COUNT_CAPTION_UNMATCHED_CEILING and
+  // COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING grading the same fact under two
+  // names) is resolved -- UNMATCHED is redefined as rows NEITHER grader
+  // resolves (the now-deleted constant's own meaning), the weak-grader-only
+  // count survives as a non-ratcheted diagnostic, and this constant is
+  // promoted here, reading live 0. Removed from OUT_OF_CAMPAIGN_SCOPE /
+  // PARKED_FIDELITY_PROMISES in this same commit.
+  "FRAME_COUNT_CAPTION_UNMATCHED_CEILING",
   // wave-48 (task w48-b, DEC-896 wave-48 amendment): pack drawn column-track
   // vocabulary ratchet -- grades every drawn grid-template-columns track
   // list against the served CSS's declared value set, resolved through

@@ -57,9 +57,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // whole conformance fact. Clause (a) alone decides it (currently non-zero).
   DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
   // No completeness sibling. Clause (a) alone decides it (currently
-  // non-zero).
-  FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero -- most of the ruling-unit population is still gap-verdict).
   RULING_UNIT_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
   // Clause (b) holds (docs/design/audit/phone-hidden-drawn-text-v12.md's
