@@ -278,6 +278,17 @@ export function assertCampaignPopulationTotal(candidates: readonly string[]): vo
  *
  * Throws, naming every offender, if any graded ceiling is unrepresented in
  * both lists -- same voice as `assertCampaignPopulationTotal`.
+ *
+ * DEC-069 wave-42 amendment: `OUT_OF_CAMPAIGN_SCOPE` membership is no
+ * longer a legitimate discharge for a name that is a REAL member of
+ * `CAMPAIGN_CONSTANT_NAMES` (the module's own registry, not whatever
+ * synthetic `gradedNames` a caller passes) -- a graded ceiling belonging to
+ * both lists was previously excused into silence
+ * (TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING, printed by no row while
+ * simultaneously claimed as campaign-gating). This check is scoped to the
+ * real registry, not the `gradedNames`/`outOfScope` parameters, so the
+ * function's existing synthetic-fixture unit tests (which use ceiling
+ * names no real registry contains) keep their present behaviour.
  */
 export function assertEveryGradedCeilingIsGated(
   gradedNames: readonly string[],
@@ -287,7 +298,10 @@ export function assertEveryGradedCeilingIsGated(
   const isCeilingByShape = (name: string): boolean =>
     name === "CEILING" || name.endsWith("_CEILING");
   const gated = new Set(tier2Names);
-  const excused = new Set(Object.keys(outOfScope));
+  const realCampaignMembers = new Set(CAMPAIGN_CONSTANT_NAMES);
+  const excused = new Set(
+    Object.keys(outOfScope).filter((name) => !realCampaignMembers.has(name)),
+  );
   const offenders = gradedNames.filter(
     (name) => isCeilingByShape(name) && !gated.has(name) && !excused.has(name),
   );

@@ -180,6 +180,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING grades receipts this
   // wave's instrument cannot express a check for -- a roster count, not a
   // defect count, per clause (c)'s "a row in the roster, not a silent pass".
+  // DEC-069 wave-42 amendment: this second constant used to also carry an
+  // OUT_OF_CAMPAIGN_SCOPE entry, so it was simultaneously graded and
+  // excused -- printed by no row. The gating list wins: it is now also in
+  // TIER2_CEILING_NAMES below and prints as a real, non-zero (77) row.
+  // Draining that roster is owed to a later lane; this wave only makes the
+  // count visible.
   "TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING",
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
   // wave-35 (task v12m-w35-a, DEC-393 wave-35 amendment): an `inline-*`
@@ -352,6 +358,12 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // it out of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988, DEC-069 wave-36).
   "FIELD_WIDTH_DIVERGENCE_CEILING",
+  // wave-42 (task v12m-w42-a, DEC-069 wave-42 amendment): removed from
+  // OUT_OF_CAMPAIGN_SCOPE, where it sat alongside its CAMPAIGN_CONSTANT_NAMES
+  // membership above -- a name in both lists was graded but discharged, so
+  // it was printed by no row. The gating list wins; this constant now
+  // prints as a real, non-zero TIER2 row.
+  "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
 ];
 
 /**
@@ -365,13 +377,6 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
  * accounted for; anything else is an ungraded ratchet and throws.
  */
 export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
-  TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING:
-    "measures how many tap-floor-exempt receipts this wave's premise-checking instrument " +
-    "cannot express a check for (no automated predicate for the reason family, or no " +
-    "companion class distinct from the receipted selector named in the reason text) -- an " +
-    "instrument-completeness fact about the checker's own coverage, not itself a v12 frame " +
-    "or 390-geometry conformance fact. Its sibling, TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING, " +
-    "grades the real defect count and is a TIER2 exit gate.",
   DESKTOP_FLOOR_DIVERGENCE_CEILING:
     "measures whether a desktop control's declared min-height reaches the height its OWN " +
     "v12 frame draws for it (a control-geometry fidelity fact, distinct from whether a " +
@@ -564,7 +569,9 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "the campaign's goalposts mid-convergence; it is promoted once its measurement technique is "
     + "proven complete enough to gate on, the same disposition already given to "
     + "DESKTOP_FLOOR_DIVERGENCE_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
-    + "amendment).",
+    + "amendment). DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, "
+    + "FRAME_EYEBROW_UNRESOLVED_CEILING, is not 0 and carries no individual per-row adjudication, so "
+    + "promoting the divergence ceiling now would assert fidelity over an unverified remainder.",
   FRAME_EYEBROW_UNRESOLVED_CEILING:
     "measures how many drawn phone eyebrow rows the eyebrow ledger's own verbatim join could not "
     + "resolve (a value composed from live data at render time, which a static substring join can "
