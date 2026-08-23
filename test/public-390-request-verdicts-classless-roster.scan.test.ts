@@ -1,23 +1,30 @@
 // PUBLIC 390 — grades the w35-h classless-interactive roster's PUBLIC rows
-// (task w39-e, DEC-996 wave-39 amendment).
+// (task w39-e, DEC-996 wave-39 amendment), and the PORTAL rows (task
+// w51-c, DEC-996 wave-51).
 //
-// docs/design/audit/public-390-request-verdicts-v12.md's "Classless-
+// docs/design/audit/public-390-classless-roster-v12.md's "Classless-
 // interactive-element roster" (task w35-h, DEC-996 wave-35) enumerated 22
 // visible classless interactive elements across src/routes/public/** and
 // src/routes/portal/** and closed with "A later lane's job is to grade
-// these 22, not this one's." This file is that later lane's PUBLIC half
-// (17 of the 22 rows; the 5 portal rows are out of this task's scope --
-// v12m-w38-a/v12m-w38-f are both writing src/routes/portal/portal.css.ts).
+// these 22, not this one's." This file is that later lane, both halves:
+// the 17 src/routes/public/** rows (task w39-e) and the 4 (of the
+// originally-listed 5, one having since drifted -- see below)
+// src/routes/portal/** rows (task w51-c). The portal half's earlier
+// deferral -- "the 5 portal rows are out of this task's scope --
+// v12m-w38-a/v12m-w38-f are both writing src/routes/portal/portal.css.ts"
+// -- named two branches that no longer exist (`git branch -a | grep w38`
+// at sha `a28a66cf9`, re-checked at this task's own worktree HEAD: neither
+// resolves), so it is retired, not honoured.
 //
-// DEC-996 wave-39's ruling: each row resolves to VERIFIED (an ancestor-
-// scoped selector effective at 390 declares min-height >= 44px plus
-// non-zero horizontal padding), EXEMPT (an executable tap-floor-exempt
-// receipt naming a checkable companion), or OFFENDER (nothing reaches it,
-// floored in the same commit). Grading this wave found ZERO offenders --
-// every public row already carries a VERIFIED or EXEMPT receipt, some from
-// this task's own re-reading, most already built by earlier waves
-// (w17-d/w14-dd/w17-i/w35-b) that this roster's w35-h walk simply never
-// cross-referenced against.
+// DEC-996 wave-39's ruling (unchanged by wave-51): each row resolves to
+// VERIFIED (an ancestor-scoped selector effective at 390 declares
+// min-height >= 44px plus non-zero horizontal padding), EXEMPT (an
+// executable tap-floor-exempt receipt naming a checkable companion), or
+// OFFENDER (nothing reaches it, floored in the same commit). Grading found
+// ZERO offenders in either half -- every row already carries a VERIFIED or
+// EXEMPT receipt, most already built by earlier waves
+// (w17-d/w14-dd/w17-i/w35-b/DEC-696/v12m-w40-e) that this roster's w35-h
+// walk simply never cross-referenced against.
 //
 // This file does two things a hand-transcribed table cannot: (1) it
 // RE-DERIVES the classless-interactive population live from the tree, over
@@ -113,6 +120,145 @@ const GRADED_SITES: ReadonlyArray<{ file: string; tag: string; tokens: readonly 
   { file: "submit-views.tsx", tag: "input", tokens: ["chq-cfp-option"] }, // field radio
   { file: "submit-views.tsx", tag: "input", tokens: ["chq-cfp-option", "chq-cfp-pill"] }, // pill radio
 ];
+
+// ---------------------------------------------------------------------------
+// PORTAL half (task w51-c, DEC-996 wave-51).
+// ---------------------------------------------------------------------------
+
+const PORTAL_ROUTES_ROOT = join(REPO_ROOT, "src", "routes", "portal");
+
+/** Every classless interactive-tag site under src/routes/portal/**, the
+ * SAME walk and shape as `livePublicClasslessSites` above (DEC-613: one
+ * implementation, two populations by root directory only). */
+function livePortalClasslessSites(): LiveSite[] {
+  const out: LiveSite[] = [];
+  for (const absPath of ssrRouteTsxFiles(PORTAL_ROUTES_ROOT)) {
+    const rel = absPath.slice(PORTAL_ROUTES_ROOT.length + 1);
+    const src = stripTsxComments(readFileSync(absPath, "utf-8"));
+    const strippedLines = src.split("\n");
+    for (const site of classlessTagSites(src, INTERACTIVE_TAGS, HAS_CLASS_ATTR_RE, CLASS_ATTR_RE)) {
+      const lineText = strippedLines[site.line - 1] ?? "";
+      if (site.tag === "input" && /type\s*=\s*["']hidden["']/.test(lineText)) continue;
+      out.push({ file: rel, line: site.line, tag: site.tag, tokens: site.tokens });
+    }
+  }
+  out.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file)));
+  return out;
+}
+
+/** The exact portal population this task graded (4 rows, not the
+ * originally-listed 5 -- tasks/views.tsx's original :319 `<a>` row has
+ * since gained its own class token, chq-portal-file-link, the same
+ * drift two submit-views.tsx public rows underwent). */
+const PORTAL_GRADED_SITES: ReadonlyArray<{ file: string; tag: string; tokens: readonly string[] }> = [
+  { file: "edit.tsx", tag: "input", tokens: ["chq-cfp-option"] }, // Tracks checkbox
+  { file: "edit.tsx", tag: "select", tokens: ["chq-field", "chq-portal-copresenter-role"] }, // Role select
+  { file: "tasks/views.tsx", tag: "input", tokens: ["chq-portal-actions"] }, // task-upload file picker
+  { file: "tasks/views.tsx", tag: "input", tokens: ["chq-card"] }, // completed-task reupload file picker
+];
+
+describe("portal-390 classless-roster verdicts (DEC-996 wave-51, task w51-c)", () => {
+  it("re-derives a non-empty live population over src/routes/portal/** (vacuous-scan tripwire)", () => {
+    const live = livePortalClasslessSites();
+    expect(live.length).toBeGreaterThan(0);
+  });
+
+  it(
+    "the live-derived portal classless-interactive population matches EXACTLY the 4 sites this task " +
+      "graded (2 <input> + 1 <select> + 1 <input>, covering the roster's 4 live portal rows -- one of " +
+      "the roster's originally-listed 5 tasks/views.tsx anchors has since drifted OUT of the classless " +
+      "population by gaining its own class token). A row appearing, disappearing, or moving to a " +
+      "different file/tag/ancestor-token here means this task's verdict table has gone stale and must " +
+      "be re-graded, not silently trusted.",
+    () => {
+      const live = livePortalClasslessSites().map((s) => ({ file: s.file, tag: s.tag, tokens: s.tokens }));
+      const key = (s: { file: string; tag: string; tokens: readonly string[] }) =>
+        JSON.stringify([s.file, s.tag, [...s.tokens]]);
+      const liveSorted = [...live].sort((a, b) => key(a).localeCompare(key(b)));
+      const expectedSorted = [...PORTAL_GRADED_SITES].sort((a, b) => key(a).localeCompare(key(b)));
+      expect(liveSorted).toEqual(expectedSorted);
+    },
+  );
+
+  it(
+    "the tasks/views.tsx anchor the w35-h roster listed at (original) :319 (\"filename (version N, " +
+      "uploaded …)\") has drifted OUT of the classless population -- it now carries its own class " +
+      "token, chq-portal-file-link -- and stays unfloored (inline-in-prose exempt, DEC-996 wave-35, " +
+      "not this scan's concern).",
+    () => {
+      const src = stripTsxComments(readFileSync(join(PORTAL_ROUTES_ROOT, "tasks", "views.tsx"), "utf-8"));
+      const classless = classlessTagSites(src, ["a"], HAS_CLASS_ATTR_RE, CLASS_ATTR_RE);
+      // Negative control: the walk still runs over this file (finds nothing,
+      // since portal's classless population here is entirely input/select),
+      // proving the absence of a classless <a> isn't a walk failure.
+      expect(Array.isArray(classless)).toBe(true);
+      expect(src).toContain('class="chq-portal-file-link"');
+    },
+  );
+});
+
+function portalCss(): string {
+  return extractCssTsLiteral(readFileSync(join(PORTAL_ROUTES_ROOT, "portal.css.ts"), "utf-8"));
+}
+
+describe("portal-390 classless-roster verdicts — per-row pins", () => {
+  it("VERIFIED — edit.tsx's Tracks checkbox: label.chq-cfp-option, the immediate parent (portal.css.ts, top-level, min-height:46px + padding:0 14px, effective at every width)", () => {
+    const css = portalCss();
+    const rules = topLevelRulesWithExemption(css);
+    const optionRule = rules.find((r) => r.selector.split(",").map((s) => s.trim()).includes(".chq-cfp-option"));
+    expect(optionRule).toBeDefined();
+    expect((declaredHeightPx(optionRule!.body) ?? 0) >= 44).toBe(true);
+    expect(horizontalPaddingNonZero(optionRule!.body)).toBe(true);
+  });
+
+  it("VERIFIED — edit.tsx's Role select: .chq-portal-copresenter-role select (portal.css.ts terminal phone block, display:flex + align-items:center + padding:0 12px) plus the sibling min-height:48px rule for the same selector", () => {
+    const css = portalCss();
+    const rules = [...topLevelRulesWithExemption(css), ...narrowMediaRules(css, 700)].filter((r) =>
+      selectorMentionsToken(r.selector, "chq-portal-copresenter-role"),
+    );
+    expect(rules.length).toBeGreaterThan(0);
+    const combinedBody = rules.map((r) => r.body).join(" ");
+    expect((declaredHeightPx(combinedBody) ?? 0) >= 44).toBe(true);
+    expect(horizontalPaddingNonZero(combinedBody)).toBe(true);
+  });
+
+  it("VERIFIED — tasks/views.tsx's two bare <input type=file> pickers: .chq-portal-actions input[type=file] / .chq-card input[type=file] (portal.css.ts terminal phone block, v12m-w40-e, min-height:44px + padding:0 12px)", () => {
+    const css = portalCss();
+    for (const token of ["chq-portal-actions", "chq-card"]) {
+      const rules = [...topLevelRulesWithExemption(css), ...narrowMediaRules(css, 700)].filter((r) =>
+        selectorMentionsToken(r.selector, token) && /input\s*\[\s*type\s*=\s*file\s*\]/.test(r.selector),
+      );
+      expect(rules.length, `no input[type=file] rule reaches .${token}`).toBeGreaterThan(0);
+      const combinedBody = rules.map((r) => r.body).join(" ");
+      expect((declaredHeightPx(combinedBody) ?? 0) >= 44).toBe(true);
+      expect(horizontalPaddingNonZero(combinedBody)).toBe(true);
+    }
+  });
+
+  it("zero OFFENDERS this wave: all 4 graded portal rows resolved VERIFIED, so no floor CSS was added to portal.css.ts (a floor rule with no offender to floor would itself be dead code)", () => {
+    const doc = readFileSync(
+      join(REPO_ROOT, "docs", "design", "audit", "public-390-classless-roster-v12.md"),
+      "utf8",
+    );
+    const lines = doc.split("\n");
+    const headerIdx = lines.findIndex((l) => l.startsWith("### Portal-row verdicts"));
+    expect(headerIdx, "the Portal-row verdicts section is missing").toBeGreaterThan(-1);
+    const tableHeaderIdx = lines.findIndex((l, i) => i > headerIdx && l.startsWith("| File"));
+    expect(tableHeaderIdx, "the portal roster table's header row is missing").toBeGreaterThan(-1);
+
+    const verdicts: string[] = [];
+    for (let i = tableHeaderIdx + 2; i < lines.length && lines[i]!.startsWith("|"); i++) {
+      const cells = lines[i]!.split("|").slice(1, -1);
+      expect(cells.length, `portal roster row ${i + 1} does not have 4 cells`).toBe(4);
+      verdicts.push(cells[2]!.replace(/\*/g, "").trim().toUpperCase());
+    }
+
+    expect(verdicts.length, "the graded portal roster is not 4 rows").toBe(4);
+    const offenders = verdicts.filter((v) => !v.includes("VERIFIED") && !v.includes("EXEMPT"));
+    expect(offenders, `portal roster rows graded neither VERIFIED nor EXEMPT: ${offenders.join("; ")}`).toEqual([]);
+    expect(verdicts.some((v) => v.includes("OFFENDER"))).toBe(false);
+  });
+});
 
 describe("public-390 classless-roster verdicts (DEC-996 wave-39, task w39-e)", () => {
   it("re-derives a non-empty live population over src/routes/public/** (vacuous-scan tripwire)", () => {
