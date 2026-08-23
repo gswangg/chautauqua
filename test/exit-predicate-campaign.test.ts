@@ -294,14 +294,28 @@ describe("baseFixture/allGreenFixture two-directional derivation (DEC-069 w6-e)"
 
   it("baseFixture(): no declared row names a constant outside CAMPAIGN_CONSTANT_NAMES (no orphan fixture rows)", () => {
     const roster = new Set(CAMPAIGN_CONSTANT_NAMES);
+    // addParkedPromiseFixtureLines (above) declares one line per
+    // PARKED_FIDELITY_PROMISES name/sibling -- purely so
+    // assertParkedPromisesAreHonestlyParked has something to resolve, per
+    // its own header comment. Those names are OUT_OF_CAMPAIGN_SCOPE by
+    // design, never CAMPAIGN_CONSTANT_NAMES, so findCampaignCeilingCandidates
+    // (which has no file-extension filter of its own -- see loadCampaignFiles,
+    // which reads every tracked .ts file, test or not) legitimately reports
+    // them as _CEILING/_FLOOR-shaped candidates. assertCampaignPopulationTotal
+    // itself accepts a candidate that is EITHER graded OR excused (see its
+    // `graded.has(name) && !excused.has(name)` check above); this fixture
+    // check must mirror that same two-bucket acceptance, not just the graded
+    // half of it, or every future PARKED_FIDELITY_PROMISES addition reads as
+    // a false orphan here (DEC-180 wave-54).
+    const excused = new Set(Object.keys(OUT_OF_CAMPAIGN_SCOPE));
     const candidateNames = new Set(findCampaignCeilingCandidates(baseFixture()));
     // EXPECTED_TOTAL/EXPECTED_TOTAL_PRE_DEVIATION/EXPECTED_DEVIATION_DEFERRED
     // are floor-population constants, not _CEILING/_FLOOR-shaped names, and
     // fall outside findCampaignCeilingCandidates' own naming convention --
     // check those directly against CAMPAIGN_CONSTANT_NAMES instead.
     const nonCeilingShaped = ["CLAIMED_FLOOR", "EXPECTED_TOTAL", "EXPECTED_TOTAL_PRE_DEVIATION", "EXPECTED_DEVIATION_DEFERRED"];
-    const orphans = [...candidateNames].filter((n) => !roster.has(n));
-    expect(orphans, `baseFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES: ${orphans.join(", ")}`).toEqual([]);
+    const orphans = [...candidateNames].filter((n) => !roster.has(n) && !excused.has(n));
+    expect(orphans, `baseFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES and OUT_OF_CAMPAIGN_SCOPE: ${orphans.join(", ")}`).toEqual([]);
     for (const name of nonCeilingShaped) {
       expect(roster.has(name), `${name} is declared in baseFixture() but absent from CAMPAIGN_CONSTANT_NAMES`).toBe(true);
     }
@@ -323,9 +337,12 @@ describe("baseFixture/allGreenFixture two-directional derivation (DEC-069 w6-e)"
 
   it("allGreenFixture(): no declared row names a constant outside CAMPAIGN_CONSTANT_NAMES (no orphan fixture rows)", () => {
     const roster = new Set(CAMPAIGN_CONSTANT_NAMES);
+    // See the identical baseFixture() case above: the parked-promise fixture
+    // rows are legitimately OUT_OF_CAMPAIGN_SCOPE, not orphans.
+    const excused = new Set(Object.keys(OUT_OF_CAMPAIGN_SCOPE));
     const candidateNames = new Set(findCampaignCeilingCandidates(allGreenFixture()));
-    const orphans = [...candidateNames].filter((n) => !roster.has(n));
-    expect(orphans, `allGreenFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES: ${orphans.join(", ")}`).toEqual([]);
+    const orphans = [...candidateNames].filter((n) => !roster.has(n) && !excused.has(n));
+    expect(orphans, `allGreenFixture() declares candidate(s) absent from CAMPAIGN_CONSTANT_NAMES and OUT_OF_CAMPAIGN_SCOPE: ${orphans.join(", ")}`).toEqual([]);
   });
 });
 
@@ -785,9 +802,21 @@ describe("formatCampaignReport", () => {
   });
 
   it("with suiteVerifiedAtSha NOT an ancestor of productSha (stale), rows degrade the same as unverified", () => {
+    // DEC-069 wave-43 amendment (task w43-e, HOLE 1): formatCampaignReport's
+    // CAMPAIGN line only resolves to a definite DONE/NOT DONE once BOTH
+    // suiteVerifiedAtSha and framesVerifiedAtSha are non-null -- a null
+    // either side means "never measured", printed as the weaker DECLARED
+    // ONLY -- NOT MEASURED, never as a false NOT DONE (see the neighbouring
+    // "independent of frame-tier evidence" test above, which asserts exactly
+    // this for the omitted-frames case). This test means to isolate the
+    // FAST-TIER stale-sha case, so it must supply a (non-null, non-ancestor)
+    // framesVerifiedAtSha too -- otherwise the omitted frames evidence alone
+    // forces DECLARED ONLY and the suite-side assertion below is never
+    // actually exercised.
     const report = buildCampaignReport(allGreenFixture(), {
       productSha: "product-sha",
       suiteVerifiedAtSha: "stale-suite-sha",
+      framesVerifiedAtSha: "stale-frames-sha",
       isAncestor: () => false,
     });
     const formatted = formatCampaignReport(report);
