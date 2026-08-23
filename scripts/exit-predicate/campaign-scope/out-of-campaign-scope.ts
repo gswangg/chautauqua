@@ -158,18 +158,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "about any screen the product draws. Grading it would put a documentation-formatting count in "
     + "the campaign's exit total, where a prose repair would read as product convergence "
     + "(test/citation-form-drift.scan.test.ts, DEC-967).",
-  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING:
-    "measures whether a drawn v12 FIELD label (an 11px/800-weight/0.1em-tracking eyebrow span "
-    + "over an input-shaped box) matches the WORDS the app's hardcoded label actually renders -- "
-    + "a fidelity fact distinct from whether a frame is CITED or a control's declared WIDTH "
-    + "matches (test/desktop-field-width.scan.test.ts), the same disposition already given to "
-    + "FIELD_WIDTH_DIVERGENCE_CEILING and DESKTOP_FLOOR_DIVERGENCE_CEILING. A newly measured "
-    + "population's non-zero row would move the campaign's goalposts mid-convergence; it "
-    + "measures fidelity now (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task w25-i) "
-    + "and is promoted once its measurement technique is proven complete enough to gate on. "
-    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero (a real, standing "
-    + "divergence), so the promotion rule does not apply yet regardless of its "
-    + "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING sibling's own adjudication state.",
   DRAWN_FIELD_LABEL_UNRESOLVED_CEILING:
     "measures how many drawn v12 FIELD-label rows this ledger's join could not resolve to any "
     + "grade (STORED-FIELD-LABEL, HARDCODED-MATCHES or HARDCODED-DIVERGES) -- an "

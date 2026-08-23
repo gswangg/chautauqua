@@ -177,4 +177,9 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // same commit that declared it in CAMPAIGN_CONSTANT_NAMES above -- never a
   // declared-but-unread knob (DEC-851/DEC-988).
   "PACK_GRID_TRACK_UNMATCHED_CEILING",
+  // wave-49 (DEC-613/DEC-069 amendment, task w49-c): wired into TIER2 in the
+  // same commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "DRAWN_FIELD_LABEL_DIVERGENCE_CEILING",
 ];

@@ -263,4 +263,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // var()/minmax(0,X) before comparison
   // (test/pack-grid-track-vocabulary.scan.test.ts).
   "PACK_GRID_TRACK_UNMATCHED_CEILING",
+  // wave-49 (DEC-613/DEC-069 amendment, task w49-c): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE in the same commit that reclassified both
+  // remaining rows BLESSED (docs/design/DEVIATIONS.md §7) and dropped
+  // test/drawn-field-label.scan.test.ts's DRAWN_FIELD_LABEL_DIVERGENCE_
+  // CEILING to 0 -- a DEVIATIONS-blessed field label is not a divergence.
+  // Wired into TIER2 in this same commit; reads live 0.
+  "DRAWN_FIELD_LABEL_DIVERGENCE_CEILING",
 ];

@@ -56,13 +56,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // No completeness sibling -- the citation-resolvability count is its own
   // whole conformance fact. Clause (a) alone decides it (currently non-zero).
   DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // Clause (b) holds (docs/design/audit/drawn-field-label-v12.md's one
-  // DRAWN_FIELD_LABEL_UNRESOLVED_CEILING row is individually adjudicated in
-  // place), but clause (a) fails: its own count is non-zero.
-  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING: {
-    siblingName: "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING",
-    siblingFullyAdjudicated: true,
-  },
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero).
   FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
