@@ -251,6 +251,7 @@ export function OverviewPage() {
           variant="fresh"
           what="Nothing needs you yet"
           reason="This event has no submissions, no speakers and no schedule. It starts when the call for papers opens."
+          reasonClassName="chq-overview-brand-new-reason"
           action={{ label: 'Set up the call for papers', to: '/settings?section=cfp' }}
           secondary={{ label: 'Add a speaker by hand ›', to: '/speakers' }}
         />

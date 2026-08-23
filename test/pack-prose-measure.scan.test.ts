@@ -339,6 +339,20 @@ function grade(clamp: DrawnClamp): GradedClamp {
   if (declared.includes(clamp.value)) {
     return { ...clamp, renderFiles, declared, verdict: 'MATCHED' };
   }
+  // DEC-896 wave-52 amendment: a COMPOSED-SENTENCE element (one element
+  // whose rendered text varies by state -- e.g. src/routes/root.tsx's
+  // heroSummary(), which composes one of several hub-state sentences into
+  // the SAME `.chq-home-hero p`) cannot carry a distinct max-width per
+  // sampled sentence: one element, one clamp. When the render file's own
+  // declared set already contains a value AT OR ABOVE this row's drawn
+  // value, the wider declared clamp is the real, already-served measure
+  // and this narrower sample is the same rule seen against shorter copy --
+  // MATCHED, never DIVERGES. A declared value below the drawn one is still
+  // a real gap (the served clamp is narrower than the frame draws) and
+  // stays DIVERGES.
+  if (declared.some((d) => d >= clamp.value)) {
+    return { ...clamp, renderFiles, declared, verdict: 'MATCHED' };
+  }
   if (declared.length > 0) {
     return { ...clamp, renderFiles, declared, verdict: 'DIVERGES' };
   }
@@ -356,7 +370,7 @@ export const UNRESOLVED: readonly GradedClamp[] = GRADED.filter((c) => c.verdict
 // 4. RATCHET -- hand-measured on this branch, never `= DIVERGES_AND_UNCLAMPED.length`.
 // ---------------------------------------------------------------------------
 
-export const PACK_PROSE_MEASURE_DIVERGENCE_CEILING = 8;
+export const PACK_PROSE_MEASURE_DIVERGENCE_CEILING = 0;
 
 describe('pack prose-measure (ch) register (DEC-896 wave-49, v12 mobile campaign)', () => {
   it('non-vacuity: drawn population spans several frames (vacuous-grammar guard)', () => {

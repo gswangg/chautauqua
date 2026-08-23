@@ -20,10 +20,14 @@ export function ErrorSummary(props: {
   heading: string;
   kept?: string;
   problems: Array<{ anchorId: string; label: string }>;
+  /** Optional additional class appended after `chq-error-summary` -- for a
+   * caller whose heading/kept prose has its own v12 frame measure
+   * (DEC-896 wave-52), never for altering the shared block's own chrome. */
+  className?: string;
 }) {
-  const { heading, kept, problems } = props;
+  const { heading, kept, problems, className } = props;
   return (
-    <div className="chq-error-summary" role="alert">
+    <div className={className ? `chq-error-summary ${className}` : 'chq-error-summary'} role="alert">
       <h2>{heading}</h2>
       {kept && <p>{kept}</p>}
       <ul>

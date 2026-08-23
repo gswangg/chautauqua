@@ -93,6 +93,15 @@
   color: var(--chq-muted);
 }
 
+/* Chautauqua Overview.dc.html:463 draws the brand-new-event EmptyState's
+   reason sentence at max-width:52ch (DEC-896 wave-52 pack-prose-measure
+   repair). Own class, appended after the shared .chq-empty-reason rule
+   every other EmptyState caller renders through -- never widening that
+   shared rule. */
+.chq-overview-brand-new-reason {
+  max-width: 52ch;
+}
+
 .chq-overview-toolbar {
   display: flex;
   gap: 9px;

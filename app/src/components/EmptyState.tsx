@@ -50,9 +50,13 @@ export interface EmptyStateProps {
   // never gets a primary action either, so there is nothing for a
   // secondary link to sit beside).
   secondary?: EmptyStateSecondary | null;
+  /** Optional additional class appended after `chq-empty-reason` -- for a
+   * caller whose reason prose has its own v12 frame measure (DEC-896
+   * wave-52), never for altering the shared block's own chrome. */
+  reasonClassName?: string;
 }
 
-export function EmptyState({ variant, what, reason, action, escape, secondary }: EmptyStateProps) {
+export function EmptyState({ variant, what, reason, action, escape, secondary, reasonClassName }: EmptyStateProps) {
   // Fail loudly rather than silently dropping a prop the variant forbids --
   // a caller that passes `action` on a 'filtered' empty state, or `escape`
   // on a 'fresh' one, has misread B7's split, and a component that quietly
@@ -75,7 +79,9 @@ export function EmptyState({ variant, what, reason, action, escape, secondary }:
     // -fresh/-filtered rules looking dead.
     <div className={variant === 'fresh' ? 'chq-empty-block chq-empty-block-fresh' : 'chq-empty-block chq-empty-block-filtered'}>
       <p className="chq-empty-what">{what}</p>
-      {reason && <p className="chq-empty-reason">{reason}</p>}
+      {reason && (
+        <p className={reasonClassName ? `chq-empty-reason ${reasonClassName}` : 'chq-empty-reason'}>{reason}</p>
+      )}
       {(action || secondary) && (
         <div className="chq-empty-actions">
           {action &&

@@ -259,10 +259,14 @@ export const PORTAL_CSS = `
     gap: 16px;
     flex-wrap: wrap;
   }
+  /* Chautauqua Public and Portal.dc.html:1486 draws this banner's sentence
+     at max-width:52ch (DEC-896 wave-52 pack-prose-measure repair). Own
+     class -- no other element shares it. */
   .chq-portal-preview-banner-text {
     font-size: 13px;
     line-height: 1.5;
     color: var(--chq-muted);
+    max-width: 52ch;
   }
   /* tap-floor-exempt: composition -- this class only ever appears beside
      the floored .chq-portal-standalone-link base (src/routes/portal/

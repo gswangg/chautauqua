@@ -1511,6 +1511,20 @@
   font-size: 13px;
   color: var(--chq-ink-2);
   margin: 0;
+  /* Chautauqua Review.dc.html:911 draws this exact sentence's block at
+     max-width:56ch (DEC-896 wave-52 pack-prose-measure repair). Own class,
+     not the shared .chq-error-summary/.chq-review-criteria-locked-text
+     rules, which clamp other sentences to other measures. */
+  max-width: 56ch;
+}
+
+/* Chautauqua Review.dc.html:887 draws the 'before this plan can open'
+   ErrorSummary at max-width:64ch (DEC-896 wave-52 pack-prose-measure
+   repair). Own class appended by PlanEditor.tsx alongside the shared
+   .chq-error-summary block -- never widening that shared rule, which every
+   other ErrorSummary caller on the page also renders through. */
+.chq-review-plan-open-errors {
+  max-width: 64ch;
 }
 
 /* DEC-124 amendment (w30-d): the empty-criteria card -- 'no criteria yet'
