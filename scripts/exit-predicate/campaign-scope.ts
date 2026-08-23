@@ -786,6 +786,18 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "technique, not itself a v12 frame or 390-geometry conformance fact, the same disposition "
     + "already given to FRAME_EYEBROW_UNRESOLVED_CEILING and DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/desktop-eyebrow-label.scan.test.ts, DEC-986 wave-41 amendment).",
+
+  TRUNCATION_TRIAD_OFFENDERS_CEILING:
+    "measures a newly-derived population -- every rule declaring `text-overflow: ellipsis` "
+    + "whose SAME chq- class token carries no effective non-normal white-space and no effective "
+    + "overflow/overflow-x hidden|clip companion at the 390 frame -- that no instrument "
+    + "previously graded. Every one of its 5 measured rows is individually adjudicated in "
+    + "docs/design/audit/phone-truncation-triad-v12.md: two are deliberate phone-authored "
+    + "white-space:normal overrides (wrapping is the drawn intent, not a defect), three are "
+    + "desktop-only <th> elements a hidden phone <thead> never draws (DESKTOP IS FROZEN, "
+    + "DEC-385 -- the only repair site is the top-level rule this lane may not touch). A fully "
+    + "adjudicated roster with no candidate defect is a conformance fact already closed, not a "
+    + "live gate (app/src/phone-truncation-triad.scan.test.ts, DEC-808 wave-43 amendment).",
 };
 
 /**
