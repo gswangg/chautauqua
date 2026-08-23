@@ -47,6 +47,12 @@ export interface EmailShellOptions {
   // (Chautauqua Comms.dc.html:719-724, `<sc-if value="{{ e.hasFact }}"`),
   // rendered between the body and the CTA block when present.
   fact?: { label: string; value: string } | null;
+  // DEC-441 amendment (wave 47): the frame's sign-off line
+  // (Chautauqua Speakers.dc.html:531), rendered once, after the fact/CTA
+  // blocks and before the footer -- callers that already fold the sign-off
+  // into their plain-text body must NOT also pass it here (it would render
+  // a second time in the HTML). Absent/null emits no row and no new bytes.
+  signOff?: string | null;
 }
 
 /** Wraps plain-text email content in a complete HTML document: a 560px
@@ -96,6 +102,12 @@ export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
         `</td></tr>`
       : "";
 
+  // DEC-441 amendment (wave 47): built exactly like factBlock/ctaBlock above.
+  const signOffBlock =
+    opts.signOff != null
+      ? `<tr><td style="padding:18px 34px 0 34px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:${BODY_COLOR};">${escapeHtml(opts.signOff)}</td></tr>`
+      : "";
+
   const footerLine2 =
     opts.eventName && opts.eventName.trim() !== ""
       ? `${escapeHtml(opts.eventName)} &middot; sent with <span style="font-weight:700;">Chautauqua</span>`
@@ -129,7 +141,7 @@ export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
                 ${bodyHtml}
               </td>
             </tr>
-            ${factBlock}${ctaBlock}
+            ${factBlock}${ctaBlock}${signOffBlock}
             <tr>
               <td style="padding:16px 34px 28px 34px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${MASTHEAD_RULE};">
