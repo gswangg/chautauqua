@@ -106,6 +106,8 @@ import {
 import { DESIGN_ROOT, designFileNames } from '../app/src/frame-citation-core';
 import { ENTITY_MAP, enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
 import { ssrCssSources } from './helpers/ssr-css-sources';
+import { stripCssComments } from './helpers/strip-css-comments';
+import { stripTsComments } from './helpers/strip-ts-comments';
 
 void DEC_896; // wave-49: this file is the instrument DEC-896's wave-49 amendment describes.
 
@@ -231,12 +233,18 @@ const SOURCE_FILES = enumerateSourceFiles(APP_SRC_DIR).concat(
 interface NormalizedFile {
   readonly path: string;
   readonly blob: string;
+  /** Comment-STRIPPED source (DEC-374): `declaredMaxWidthsFor` regexes
+   * `<N>ch` literals and `chq-` class tokens out of this, so a comment
+   * merely QUOTING a clamp must not be graded as a declared one. Stripped
+   * per extension -- `//` opens a comment in TS but not in CSS, where it
+   * appears inside `https://` URLs. */
   readonly raw: string;
 }
 
 const NORMALIZED_FILES: readonly NormalizedFile[] = SOURCE_FILES.map((path) => {
-  const raw = readFileSync(path, 'utf-8');
-  return { path, raw, blob: normalizeSource(raw) };
+  const onDisk = readFileSync(path, 'utf-8');
+  const stripped = path.endsWith('.css') ? stripCssComments(onDisk) : stripTsComments(onDisk);
+  return { path, raw: stripped, blob: normalizeSource(onDisk) };
 });
 
 /** Every render file at least one of `textRuns` matches verbatim,
@@ -264,9 +272,9 @@ function cssFiles(): { path: string; text: string }[] {
   for (const entry of readdirSync(APP_SRC_DIR, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
     const full = join(entry.parentPath, entry.name);
-    out.push({ path: full, text: readFileSync(full, 'utf-8') });
+    out.push({ path: full, text: stripCssComments(readFileSync(full, 'utf-8')) });
   }
-  for (const src of ssrCssSources()) out.push({ path: src.path, text: src.text });
+  for (const src of ssrCssSources()) out.push({ path: src.path, text: stripCssComments(src.text) });
   return out;
 }
 
