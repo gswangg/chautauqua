@@ -79,6 +79,14 @@ function extractCssText(filePath: string): string {
  * first so they're never misread as page clamps.
  */
 function findMaxWidthDeclarations(text: string): Array<{ selector: string; px: number }> {
+  // DEC-613 wave-45 migration (task w45-d): every caller passes the
+  // extracted `*_CSS` template-literal body (via extractCssText above),
+  // never a whole raw .ts module, so routing through the shared,
+  // string-aware stripCssComments carries no risk of the third carve-out
+  // class (a `//`-comment's own prose desyncing the shared stripper's
+  // quote-tracking over raw TypeScript source, per this ratchet's own
+  // module header) -- there is no `//` handling to lose here either, the
+  // private stripper was already block-comment-only.
   const noComments = stripCssComments(text);
   // Strip @media (...) preludes -- keep the body, drop the parenthesized
   // condition itself so a `max-width: 900px` inside the parens is never

@@ -426,4 +426,51 @@
 // 66 - 5, confirmed by reading the offender list (the five converted files
 // absent, all 61 others -- including error-vocabulary-parity.scan.test.ts,
 // reverted -- present as before). Ceiling lowered to match: 66 -> 61.
+//
+// MEGABATCH COMPOSITION (wave-45 thunderdome): task w45-d reached the same
+// migration independently, and the 2 files it converted
+// (test/public-when-gutter.test.ts, test/ssr-page-clamp.scan.test.ts) are a
+// strict SUBSET of the 5 task w44-h converted above -- the union is 5, not 7,
+// so the composed ceiling is 66 - 5 = 61 and NOT 64. w45-d's own note, kept
+// verbatim for its third-carve-out finding (module-reachability), follows.
+//
+// v12m-w45-d (wave 45, task w45-d, DEC-613/DEC-808 wave-45): the merge train
+// had put the ceiling back over its wave-37-d value -- forced -1 and
+// measured RED at this branch's tree BEFORE any change: 66, not the 64 the
+// declared ceiling still read (the wave-37-d 64-file roster, re-derived at
+// commit 41b2c8ec4 by forcing the ceiling to -1 there and reading the
+// offender list back, is a strict SUBSET of the 66; no wave-37-d offender
+// dropped out of the population). Diffing the two rosters (never by
+// arithmetic on a batch size) found exactly 2 new offenders:
+// test/module-reachability.scan.test.ts and
+// test/unstripped-source-regex.scan.test.ts. The latter is this wave's own
+// task w45-c's hard exclusion (DEC-613 wave-45 clause (b)) and out of scope
+// here. The former turned out to be a THIRD carve-out (DEC-613's wave-26-f
+// amendment): its local stripComments walks the source char-by-char
+// stripping BOTH `/* */` block comments and `//` line comments over WHOLE
+// raw .ts/.tsx/.js/.mjs modules across app/src, src and scripts (the
+// module-reachability graph's own import-specifier extraction), the exact
+// capability the shared, CSS-only test/helpers/strip-css-comments.ts does
+// not have -- migrating would silently stop stripping `//` comments over
+// raw TypeScript source, not just change offsets. Left unconverted, DEC-613
+// wave-45 carve-out. With neither of the two newly-arrived offenders
+// eligible, 2 other files were picked from the same 64-file wake instead,
+// following the same CSS-only-content pattern this ratchet's history has
+// used since v12m-w8-ef: test/public-when-gutter.test.ts (its private
+// `stripComments` strips only already-evaluated CARDS_CSS/RAIL_CSS string
+// constants, never raw TypeScript prose) and test/ssr-page-clamp.scan.
+// test.ts (its private `stripComments` is called only on the output of its
+// own extractCssText -- the extracted `*_CSS` template-literal body -- at
+// every call site, never a whole raw .ts module; verified by reading every
+// call site, not assumed). Both migrated to import test/helpers/strip-css-
+// comments.ts's shared, string-aware stripCssComments in place of the
+// private block-comment-only regex. Both files' own tests still pass
+// unchanged (`npx vitest run test/public-when-gutter.test.ts test/ssr-page-
+// clamp.scan.test.ts`: 13 tests, all green, same count before and after).
+// Re-measured with the ceiling forced to -1 again: EXACTLY 64, exactly
+// 66 - 2, confirmed by reading the offender list (the two migrated files
+// absent, all 64 others -- including test/module-reachability.scan.test.ts
+// and test/unstripped-source-regex.scan.test.ts -- present as before).
+// Ceiling stays at 64 (the hard bar per DEC-808 wave-45: never raised to 66
+// to absorb the wake).
 export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 61;
