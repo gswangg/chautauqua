@@ -16,7 +16,14 @@ import { useCurrentEvent } from '../../../lib/useCurrentEvent';
 import { validateRoomForm, validateTrackForm, type RoomForm, type RoomFormErrors, type TrackForm, type TrackFormErrors } from '../formState';
 import { nextSwatch } from './trackSwatches';
 import { EMPTY_ROOM, EMPTY_TRACK, roomBaseline, trackBaseline, type Room, type Track } from './types';
-import { DEC_941 } from '../../../../../src/decisions';
+import { DEC_941, DEC_020 } from '../../../../../src/decisions';
+
+// DEC-020 (wave-55 amendment): the `track.id`/`room.id in next` prototype-
+// inclusive membership guards below (immediately followed by a same-key
+// write into `next`) are the guard-then-write hazard shape DEC-020 rules on
+// -- fixed to Object.prototype.hasOwnProperty.call alongside
+// src/domain/evaluation/criteria.ts's aggregateDropdownCriterion.
+void DEC_020;
 
 void DEC_941; // closing the drill-in retires the add forms; an unsaved add draft arms the discard confirm
 
@@ -86,7 +93,7 @@ export function useTracksRoomsPanel(sectionKey: string) {
       let changed = false;
       const next = { ...prev };
       for (const track of tracks) {
-        if (!(track.id in next)) {
+        if (!Object.prototype.hasOwnProperty.call(next, track.id)) {
           next[track.id] = trackBaseline(track);
           changed = true;
         }
@@ -100,7 +107,7 @@ export function useTracksRoomsPanel(sectionKey: string) {
       let changed = false;
       const next = { ...prev };
       for (const room of rooms) {
-        if (!(room.id in next)) {
+        if (!Object.prototype.hasOwnProperty.call(next, room.id)) {
           next[room.id] = roomBaseline(room);
           changed = true;
         }

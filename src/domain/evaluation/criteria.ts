@@ -15,7 +15,7 @@ import { overCapFieldMessage } from "../cap-copy";
 // DEC-676: criteria carry optional one-line guidance, a plan-wide weighted
 // share display, and default-plan criteria -- see normalizeGuidance,
 // criterionWeightShares, DEFAULT_PLAN_CRITERIA below.
-import { DEC_676 } from "../../decisions";
+import { DEC_676, DEC_020 } from "../../decisions";
 // DEC-147 amendment (wave 80): criteriaForRound's internal JSON.parse moves
 // through plan-json.ts's validated parser. plan-json.ts imports roundMetaFor
 // from this module (to reuse its validation rather than duplicate it) --
@@ -25,6 +25,7 @@ import { DEC_676 } from "../../decisions";
 import { parseRoundCriteria } from "./plan-json";
 
 void DEC_676;
+void DEC_020;
 
 /** DEC-082 (wave-43 amendment), moved to pure core DEC-422 (amendment, wave
  * 59): rounds must be a positive integer, capped at MAX_PLAN_ROUNDS --
@@ -285,7 +286,7 @@ export function aggregateDropdownCriterion(
         `aggregateDropdownCriterion: missing or non-string score for criterion "${criterion.id}"`,
       );
     }
-    if (!(value in counts)) {
+    if (!Object.prototype.hasOwnProperty.call(counts, value)) {
       throw new Error(
         `aggregateDropdownCriterion: score "${value}" for criterion "${criterion.id}" is not one of its options`,
       );
