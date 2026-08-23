@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 // DEC-393/DEC-394 44px phone tap floor: the old 40px floor (DEC-367) must
 // never creep back in the way the stray breakpoints did (see
@@ -65,7 +66,6 @@ const TAP_FLOOR_EXEMPT_SET = new Set(TAP_FLOOR_EXEMPT.map(([selector]) => select
  * grammar below could not match the block at all and phoneMediaBodies
  * returned zero bodies, failing every vocabulary member at once. Comments
  * carry no declarations, so dropping them first is both safe and necessary. */
-const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** Strips top-level @media {...} blocks (one level of nested braces), then
  * returns only the CONTENTS of every @media (max-width: 700px) block found
@@ -148,7 +148,7 @@ describe("44px tap-target floor is a POSITIVE invariant (DEC-394 amendment, wave
     expect(TAP_FLOOR_VOCAB.length).toBeGreaterThanOrEqual(5);
   });
 
-  const stylesCss = stripComments(readFileSync(STYLES_CSS_PATH, "utf8"));
+  const stylesCss = stripCssComments(readFileSync(STYLES_CSS_PATH, "utf8"));
   const phoneBodies = phoneMediaBodies(stylesCss).join("\n");
 
   it("found at least one phone block to scan", () => {

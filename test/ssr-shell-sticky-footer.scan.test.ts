@@ -27,6 +27,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEC_808 } from "../src/decisions";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 // DEC-808 is a compile-checked dependency of this file's population and
 // verdict logic (see the header above): referencing the constant here
@@ -45,12 +46,6 @@ function allFiles(root: string, suffix: string): string[] {
     out.push(join(entry.parentPath, entry.name));
   }
   return out.sort();
-}
-
-/** Strips /* ... *\/ block comments so a decision note quoting CSS/JSX-
- * shaped text is never mistaken for real markup or a real rule. */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 // ---------------------------------------------------------------------
@@ -77,7 +72,7 @@ function deriveShellMembers(): ShellMember[] {
 
   for (const file of files) {
     const raw = readFileSync(file, "utf-8");
-    const text = stripComments(raw);
+    const text = stripCssComments(raw);
 
     const footerMatches = [...text.matchAll(FOOTER_RE)];
     if (footerMatches.length === 0) continue;
@@ -160,7 +155,7 @@ interface Rule {
 }
 
 function parseRules(cssText: string): Rule[] {
-  const noComments = stripComments(cssText);
+  const noComments = stripCssComments(cssText);
   // Template-literal interpolations (`${HOME_BODY_MEASURE}` etc) are read
   // from raw TS source, unevaluated -- their `${` / `}` are real characters
   // that would corrupt the brace-matching rule parser below (a selector

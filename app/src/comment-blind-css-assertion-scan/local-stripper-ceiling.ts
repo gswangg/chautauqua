@@ -346,4 +346,59 @@
 // 66 - 2, confirmed by reading the offender list (the two migrated files
 // absent, all 64 others present as before). Ceiling lowered to match:
 // 66 -> 64. Discharges DEC-613's wave-36 amendment for this task's slice.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 64;
+// v12m-w44-h (wave 44, task w44-h, DEC-374 wave-44 second clause): forced -1
+// and measured RED at this branch's tree BEFORE any change: 66, matching the
+// declared ceiling (the merge train's "added two" the task description
+// named). Read back the full 66-file roster rather than trusting any prior
+// figure. Converted 5 of the 66 to import test/helpers/strip-css-comments.ts's
+// shared, string-aware stripCssComments in place of a local strip[Css]Comments
+// declaration -- every one genuinely CSS-only content (a real `.css` file, an
+// already-extracted `*_CSS` template-literal body, or an already-evaluated
+// CSS-string constant), never a whole raw `.ts`/`.tsx` module's prose:
+// test/tap-target-floor.test.ts (reads app/src/styles.css only),
+// test/ssr-page-clamp.scan.test.ts (every call site routes through its own
+// extractCssText, never the raw file), test/phone-page-title-duplication.
+// scan.test.ts (its local copy was already named `stripCssComments`,
+// colliding with the shared symbol -- deleted outright, same shape as
+// w36-d's inline-style-phone-override.scan.test.ts), test/public-when-gutter.
+// test.ts (strips only the imported CARDS_CSS/RAIL_CSS constants, never the
+// raw stylesCss/themeTs reads that sit beside them in the same file), and
+// test/ssr-shell-sticky-footer.scan.test.ts (its local stripper is `/* */`
+// block-comment-only with no `//` line-comment handling -- the SAME
+// capability ceiling the shared helper has, so no capability was lost;
+// applied to raw `.tsx` view-file text, so this one was verified empirically
+// by running its own 5 tests post-conversion, not just reasoned about, given
+// w26-f's raw-.ts corruption precedent).
+//
+// Every migrated file's own tests still pass unchanged (`npx vitest run
+// test/tap-target-floor.test.ts test/ssr-page-clamp.scan.test.ts test/phone-
+// page-title-duplication.scan.test.ts test/public-when-gutter.test.ts
+// test/ssr-shell-sticky-footer.scan.test.ts`: 30 tests, all green) -- no
+// false receipt was found in this batch.
+//
+// ATTEMPTED AND REJECTED (do not retry without new information):
+// test/error-vocabulary-parity.scan.test.ts -- tried and REVERTED. Its
+// SSR_SOURCE/SPA_SOURCE are the WHOLE raw `.css`/`.css.ts` file text
+// including each file's own `//`-comment prose header. Swapping in the
+// shared, quote-tracking stripCssComments made `.chq-field-error` and
+// `.chq-field-invalid.chq-field-invalid` -- both genuinely declared on BOTH
+// sides (src/views/error-states.css.ts:28,51) -- report as SPA-only: a
+// corrupted parse of the SSR side (an apostrophe inside a `//` comment in
+// the file's own header desyncs the shared stripper's quote state machine,
+// same as w26-f's src/routes/review/reviewer.ts finding), not a real
+// divergence. Left on its own local, non-quote-tracking, block-comment-only
+// stripComments, unconverted.
+// test/on-brand-anchor-hover.scan.test.ts, test/table-class-conformance.
+// test.ts, and the entire `//`-line-comment-aware family (every remaining
+// *.scan.test.ts that strips both `//` and `/* */` over raw `.ts`/`.tsx`
+// source to find real call sites/JSX -- surveyed roughly two dozen of the
+// 66, all sharing one of two copy-pasted quote/comment-tracking templates)
+// were checked and left alone: each strips `//` line comments, a real
+// capability the shared, CSS-only test/helpers/strip-css-comments.ts does
+// not have, over source where a stripped-out banned token inside a `//`
+// comment is a real false-positive risk this ratchet cannot introduce.
+// Re-measured with the ceiling forced to -1 again: EXACTLY 61, exactly
+// 66 - 5, confirmed by reading the offender list (the five converted files
+// absent, all 61 others -- including error-vocabulary-parity.scan.test.ts,
+// reverted -- present as before). Ceiling lowered to match: 66 -> 61.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 61;
