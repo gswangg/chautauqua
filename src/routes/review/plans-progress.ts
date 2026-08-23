@@ -419,6 +419,9 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
       text,
       html: renderEmailHtml(text, {
         eventName: remindEvent?.name ?? null,
+        // DEC-037 wave-48: eventMeta left absent -- remindEvent is optional
+        // here (`remindEvent?.name`), so the masthead's dates/venue row has
+        // no guaranteed non-null source at this call site.
         reason: reviewerOutstandingReason(remindEvent?.name ?? null, plan.name),
       }),
       eventId: plan.eventId,

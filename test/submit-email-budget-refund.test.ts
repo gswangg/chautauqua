@@ -28,6 +28,12 @@ const EVENT_ROW = {
   recordPrefix: "SES",
   timezone: "UTC",
   brandingJson: null,
+  // DEC-037 wave-48 amendment: the submit confirmation email now builds
+  // the mail masthead's second line (eventDatesLine) from these two
+  // fields.
+  startDate: "2027-03-01",
+  endDate: "2027-03-03",
+  location: "Moscone West, San Francisco",
 };
 
 const FORM_ROW = {

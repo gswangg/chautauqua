@@ -120,6 +120,10 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
         text,
         html: renderEmailHtml(text, {
           eventName: anchorEventName,
+          // DEC-037 wave-48: eventMeta left absent at this call site by
+          // this wave's stated scope (w48-a task list), not because the row
+          // is unavailable -- anchorEvent in this branch is a full
+          // EventRecord (startDate/endDate/location all present).
           reason: accountCreatedReason(anchorEventName),
         }),
         eventId: anchorEventId,

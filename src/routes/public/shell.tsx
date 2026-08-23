@@ -7,7 +7,7 @@ import type { PublicEvent } from "../../server/repo/public";
 import { ThemeStyles } from "../../views/theme";
 import { PUBLIC_CSS } from "./public.css";
 import { DEC_374, DEC_371, DEC_593, DEC_322 } from "../../decisions";
-import { formatEventDayRange } from "../../lib/event-time";
+import { eventDatesLine } from "../../domain/event-meta";
 import { normalizeHexColor } from "../../domain/color";
 import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
 
@@ -205,29 +205,6 @@ export function BaseStyles() {
       <style dangerouslySetInnerHTML={{ __html: PUBLIC_CSS }} />
     </>
   );
-}
-
-/** Parses a 'YYYY-MM-DD' day field (DEC-010) to a UTC-midnight epoch ms —
- * no formatting here, just field extraction; the rendering itself is
- * formatEventDayRange in src/lib/event-time.ts (DEC-918: one server-side
- * calendar-day grammar). Malformed input falls back to NaN, which
- * formatEventDayRange's Date arithmetic will surface as "Invalid Date"
- * rather than throwing mid-render — matching this surface's fail-soft
- * contract for organizer-entered scheduling data. */
-export function dayMs(iso: string): number {
-  const [year, month, date] = iso.split("-").map(Number);
-  if (!year || !month || !date) return NaN;
-  return Date.UTC(year, month - 1, date);
-}
-
-/** "12-14 May 2027 · Moscone West, San Francisco" style meta line for the
- * public header (DEC-377: every field here traces to PublicEvent's own
- * startDate/endDate/location columns, nothing illustrative; DEC-918: the
- * range itself renders through formatEventDayRange, the ONE server-side
- * calendar-day grammar). */
-export function eventDatesLine(event: PublicEvent): string {
-  const dates = formatEventDayRange(dayMs(event.startDate), dayMs(event.endDate));
-  return event.location ? `${dates} · ${event.location}` : dates;
 }
 
 /** Mobile-first shared layout with event branding + surface nav (DEC-022,

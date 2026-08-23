@@ -48,6 +48,7 @@ import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOK
 import { renderTemplate } from "../../mail/render";
 import { renderEmailHtml } from "../../mail/shell";
 import { submissionConfirmedReason } from "../../mail/reasons";
+import { eventDatesLine } from "../../domain/event-meta";
 import { validateUpload, sanitizeFilenameForKey, CFP_FILE_FIELD_KIND, type ValidUpload } from "../../domain/files";
 import { fieldInputName } from "../../views/form-render";
 import { resolveBaseUrl } from "../../server/origin";
@@ -528,6 +529,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   const html = renderEmailHtml(text, {
     eventName: event.name,
     reason: submissionConfirmedReason(event.name),
+    eventMeta: eventDatesLine(event),
     cta: {
       label: existingUser ? "Sign in to view your submission" : "Claim your account to view your submission",
       href: claimUrl,

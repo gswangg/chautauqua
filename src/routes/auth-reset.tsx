@@ -167,6 +167,10 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
           const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
           const html = renderEmailHtml(text, {
             eventName: anchorEvent.name,
+            // DEC-037 wave-48: eventMeta left absent at this call site by
+            // this wave's stated scope (w48-a task list), not because the
+            // row is unavailable -- anchorEvent here is a full EventRecord
+            // (startDate/endDate/location all present).
             reason: passwordResetReason(anchorEvent.name),
             cta: { label: "Set a new password", href: resetUrl },
           });

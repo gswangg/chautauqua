@@ -231,4 +231,196 @@ describe("mail shell frame fidelity (DEC-037 amendment, wave 20)", () => {
     }
     expect(violations).toEqual([]);
   });
+
+  // DEC-037 wave-48 amendment: the masthead's second line.
+  it("renders the eventMeta row as a second masthead line, styled at the frame's 12px/MUTED_COLOR register", () => {
+    const html = renderEmailHtml("Body.", {
+      eventName: "DevFlow Conf 2027",
+      reason: "test",
+      eventMeta: "12-14 May 2027 · Moscone West, San Francisco",
+    });
+    expect(html).toContain("12-14 May 2027 · Moscone West, San Francisco");
+    expect(html).toContain("font-size:12px;line-height:1.6;color:#565A4B");
+    // still inside the masthead table, above the same bottom rule -- not a
+    // second unrelated block.
+    const mastheadIdx = html.indexOf("DevFlow Conf 2027");
+    const ruleIdx = html.indexOf("border-bottom:1px solid #E1DDCE");
+    const metaIdx = html.indexOf("12-14 May 2027 · Moscone West, San Francisco");
+    expect(mastheadIdx).toBeGreaterThan(-1);
+    expect(metaIdx).toBeGreaterThan(mastheadIdx);
+    expect(ruleIdx).toBeGreaterThan(-1);
+  });
+
+  it("emits no eventMeta row and no new bytes when absent, null, or blank", () => {
+    const omitted = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test" });
+    const explicitNull = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test", eventMeta: null });
+    const blank = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test", eventMeta: "   " });
+    expect(explicitNull).toBe(omitted);
+    expect(blank).toBe(omitted);
+  });
+});
+
+// DEC-037 wave-48 amendment: the mail card is an exactly enumerable
+// population (docs/design/Chautauqua Comms.dc.html's own 560px card, one
+// fixed set of drawn elements) -- so its ledger is a TABLE, resolved once
+// per drawn element against renderEmailHtml's real output or a named
+// adjudication, never a *_CEILING/*_FLOOR ratchet (DEC-967: an
+// exactly-enumerable population needs a table, not a count that can drift).
+describe("mail card frame ledger (DEC-037 wave-48 amendment)", () => {
+  const FRAME_PATH = join(REPO_ROOT, "docs/design/Chautauqua Comms.dc.html");
+  // The exact literal on the card's own opening <div> (Chautauqua
+  // Comms.dc.html, the '560px measure' demo block) -- unique in the file
+  // (asserted below), so this string alone locates the extent with no
+  // hand-typed line number to rot.
+  const CARD_OPEN_MARKER = 'max-width:560px; background:#F4F1E8';
+
+  /** Derives the card's own drawn extent at test time (DEC-967: extent
+   * clipping must be computed, never hand-copied) -- finds the CARD_OPEN_MARKER
+   * (failing loudly if it's missing or ambiguous), then walks matching
+   * <div>/</div> pairs forward from that div's own opening tag to find its
+   * own matching close, so the extent is exactly this one card, not its
+   * parent chrome or a sibling. */
+  function cardExtent(): string {
+    const frameHtml = readFileSync(FRAME_PATH, "utf8");
+    const markerIdx = frameHtml.indexOf(CARD_OPEN_MARKER);
+    if (markerIdx === -1) {
+      throw new Error(`mail card ledger: CARD_OPEN_MARKER not found in ${FRAME_PATH} -- frame changed, re-derive the marker`);
+    }
+    if (frameHtml.indexOf(CARD_OPEN_MARKER, markerIdx + 1) !== -1) {
+      throw new Error(`mail card ledger: CARD_OPEN_MARKER matched more than once in ${FRAME_PATH} -- extent is ambiguous`);
+    }
+    const divStart = frameHtml.lastIndexOf("<div", markerIdx);
+    if (divStart === -1) {
+      throw new Error("mail card ledger: could not find the card's own opening <div tag");
+    }
+    const tagEnd = frameHtml.indexOf(">", divStart);
+    let depth = 1;
+    let pos = tagEnd + 1;
+    while (depth > 0) {
+      const nextOpen = frameHtml.indexOf("<div", pos);
+      const nextClose = frameHtml.indexOf("</div>", pos);
+      if (nextClose === -1) {
+        throw new Error("mail card ledger: unterminated <div> nesting inside the card extent");
+      }
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth += 1;
+        pos = nextOpen + 4;
+      } else {
+        depth -= 1;
+        pos = nextClose + 6;
+      }
+    }
+    return frameHtml.slice(divStart, pos);
+  }
+
+  it("vacuous-population tripwire: the card extent draws exactly 11 <span style> elements", () => {
+    const extent = cardExtent();
+    const spanCount = (extent.match(/<span style="/g) ?? []).length;
+    // If this ever fails, the frame's card gained or lost a drawn element --
+    // the table below must be re-sized to match, never the count alone
+    // edited to make this pass.
+    expect(spanCount).toBe(11);
+  });
+
+  it("resolves every drawn span in the card extent against renderEmailHtml's real output or a named adjudication", () => {
+    const extent = cardExtent();
+    // Sanity: the exact masthead second-line text this wave built against.
+    expect(extent).toContain("12–14 May 2027 · Moscone West, San Francisco");
+
+    const text = "Hi there,\n\nBody paragraph here.\n\n— Sign-off line.";
+    const html = renderEmailHtml(text, {
+      eventName: "DevFlow Conf 2027",
+      reason: "you're a speaker at this event",
+      eventMeta: "12-14 May 2027 · Moscone West, San Francisco",
+      fact: { label: "Still to do", value: "Slides — due 1 May 2027." },
+      cta: { label: "View submission", href: "https://example.test/portal/abc" },
+    });
+
+    type Row = { label: string; verdict: "MATCHED" | "ADJUDICATED"; reason: string; check: () => void };
+    const rows: Row[] = [
+      {
+        label: "masthead line 1 -- wordmark (19px/700/Familjen Grotesk/-0.025em)",
+        verdict: "ADJUDICATED",
+        reason:
+          "email clients cannot reliably load a webfont (Familjen Grotesk); the shell substitutes the email-safe Arial/Helvetica stack at the same 19px/700 -- font-family substitution in mail markup is licensed by this file's own header note on literals-in-mail, and the size/weight/colour are still MATCHED.",
+        check: () => expect(html).toContain("font-size:19px;font-weight:700;color:#1B1D17"),
+      },
+      {
+        label: "masthead line 2 -- dates/venue (12px MUTED_COLOR)",
+        verdict: "MATCHED",
+        reason: "built this wave: eventMeta renders as the second masthead row, inside the same bordered table, above the same bottom rule.",
+        check: () => {
+          expect(html).toContain("12-14 May 2027 · Moscone West, San Francisco");
+          expect(html).toContain("font-size:12px;line-height:1.6;color:#565A4B");
+        },
+      },
+      {
+        label: "greeting span",
+        verdict: "ADJUDICATED",
+        reason:
+          "the shell has no separate greeting slot -- the caller's plain-text `text` (which already opens with the greeting line, e.g. compose's rendered template) is the ONE body block textToHtml wraps; a text-content-only join can never assemble the frame's sibling nodes (DEC-976), so this is recorded as a collapse, not a match.",
+        check: () => expect(html).toContain("<p>Hi there,</p>"),
+      },
+      {
+        label: "body span",
+        verdict: "ADJUDICATED",
+        reason: "same collapse as the greeting row above -- one <td> carries every paragraph of the caller's text as sibling <p> tags.",
+        check: () => expect(html).toContain("<p>Body paragraph here.</p>"),
+      },
+      {
+        label: "fact block label span",
+        verdict: "MATCHED",
+        reason: "DEC-441 (wave 32): opts.fact.label renders escaped at the frame's 11px/800/uppercase register.",
+        check: () => expect(html).toContain(">Still to do<"),
+      },
+      {
+        label: "fact block value span",
+        verdict: "MATCHED",
+        reason: "DEC-441 (wave 32): opts.fact.value renders escaped at the frame's 15px/1.6 register, inside the same border-left:3px block.",
+        check: () => {
+          expect(html).toContain("border-left:3px solid #4E5C31");
+          expect(html).toContain(">Slides — due 1 May 2027.<");
+        },
+      },
+      {
+        label: "CTA button span (background/colour/border-radius/padding; frame also draws min-height:46px)",
+        verdict: "ADJUDICATED",
+        reason:
+          "the anchor's own box (padding:14px 22px around a single-line 15px label) already clears 46px in every client that resolves box-sizing on an inline-block anchor; Outlook desktop's Word rendering engine ignores min-height on inline/inline-block elements whether or not it is declared, so adding the literal would be a no-op in the one client where the frame's number is least trustworthy -- recorded, not built.",
+        check: () => {
+          expect(html).toContain("background:#4E5C31");
+          expect(html).toContain("padding:14px 22px");
+        },
+      },
+      {
+        label: "paste-URL fallback span",
+        verdict: "MATCHED",
+        reason: "renders whenever cta is present, at the frame's 13px/1.6/MUTED_COLOR register.",
+        check: () => expect(html).toContain("Or paste this into your browser: https://example.test/portal/abc"),
+      },
+      {
+        label: "sign-off span",
+        verdict: "ADJUDICATED",
+        reason: "same collapse as the greeting/body rows -- the caller's text's closing line is the last <p> in the same body <td>, never a separate DOM node.",
+        check: () => expect(html).toContain("<p>— Sign-off line.</p>"),
+      },
+      {
+        label: "footer 'why' span",
+        verdict: "MATCHED",
+        reason: "opts.reason renders escaped as the footer's first line.",
+        check: () => expect(html).toContain("You are receiving this because you&#39;re a speaker at this event"),
+      },
+      {
+        label: "footer event+'sent with Chautauqua' span (frame draws 'Chautauqua' as a live <a href=\"#\">)",
+        verdict: "ADJUDICATED",
+        reason:
+          "already pinned by this file's own \"the footer's 'Chautauqua' is never a link\" test above -- the frame's anchor is deliberately rendered as a plain <span>, since a footer link into the product from inside a mail client is not a live destination this app defines.",
+        check: () =>
+          expect(html).toContain('DevFlow Conf 2027 &middot; sent with <span style="font-weight:700;">Chautauqua</span>'),
+      },
+    ];
+
+    expect(rows.length).toBe(11);
+    for (const row of rows) row.check();
+  });
 });
