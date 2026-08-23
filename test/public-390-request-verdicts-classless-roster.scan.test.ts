@@ -67,9 +67,10 @@ interface LiveSite {
 
 /** Every classless interactive-tag site under src/routes/public/**, using
  * the SAME `classlessTagSites` walk the w35-h roster's own description
- * names (docs/design/audit/public-390-request-verdicts-v12.md:136), minus
- * `<input type="hidden">` (inert, no hit-box, out of population by the
- * roster's own construction). */
+ * names (docs/design/audit/public-390-classless-roster-v12.md:11, moved
+ * there from public-390-request-verdicts-v12.md by the custodian
+ * decomposition), minus `<input type="hidden">` (inert, no hit-box, out
+ * of population by the roster's own construction). */
 function livePublicClasslessSites(): LiveSite[] {
   const out: LiveSite[] = [];
   for (const absPath of ssrRouteTsxFiles(PUBLIC_ROUTES_ROOT)) {
@@ -91,8 +92,10 @@ function livePublicClasslessSites(): LiveSite[] {
  * src/routes/public, line in COMMENT-STRIPPED source -- not the raw file
  * line docs cite, since a leading block-comment banner shifts the two).
  * Raw-file line numbers for the human-readable table live in
- * docs/design/audit/public-390-request-verdicts-v12.md; this array is the
- * live-walk fixture that proves the table hasn't drifted. */
+ * docs/design/audit/public-390-classless-roster-v12.md (moved there from
+ * public-390-request-verdicts-v12.md by the custodian decomposition);
+ * this array is the live-walk fixture that proves the table hasn't
+ * drifted. */
 const GRADED_SITES: ReadonlyArray<{ file: string; tag: string; tokens: readonly string[] }> = [
   { file: "agenda-grid.tsx", tag: "a", tokens: ["chq-pub-agenda-block-title"] },
   { file: "agenda-rail.tsx", tag: "a", tokens: ["chq-pub-rail-day-row"] }, // RoomsRailSection
