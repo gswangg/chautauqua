@@ -388,13 +388,16 @@ true.
 |---|---|---|---|
 | ~~FALSE-PREMISE~~ **VERIFIED (wave-39)** | scoped | `app/src/pages/contacts/contacts.css` (line 596) | wave-36 point-in-time: companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar. SUPERSEDED wave-39: receipt re-pointed at .chq-btn (the class that actually carries min-height:48px + centred flex + non-zero horizontal padding, merged across app/src/styles.css's base rule and this file's phone-media override); now resolves VERIFIED. |
 | ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `app/src/pages/agenda/agenda.css` (line 1003) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-btn`, named in prose without a leading dot (obeying the desktop-control-floor scan's own comment grammar); companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup; now resolves VERIFIED. |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css` (line 76) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `app/src/pages/content/content.css` (line 76) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-pill`, merged across every matching rule (the shell's element-qualified `a.chq-pill` rule in `app/src/styles.css`) already satisfying min-height:44px + centred flex + non-zero horizontal padding; now resolves VERIFIED. |
 | ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `app/src/pages/overview/overview.css` (line 429) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-overview-link-btn`, named in prose without a leading dot; companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup; now resolves VERIFIED. |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/review/review.css` (line 90) | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1313) | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1876) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `app/src/pages/review/review.css` (line 90) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-pill`, merged across every matching rule (the shell's element-qualified rule in `app/src/styles.css`), already satisfying the 44px-floor grammar; now resolves VERIFIED. |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `app/src/pages/speakers/speakers.css` (line 1313, now 1322) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-speakers-name-link`, merged across every matching rule, already satisfying the 44px-floor grammar (`.chq-row-title`'s shared base rule in `app/src/styles.css`); now resolves VERIFIED. |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `app/src/pages/speakers/speakers.css` (line 1876, now 1885) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-pill`, merged across every matching rule (the element-qualified rule speakers renders `.chq-pill` through), already satisfying the 44px-floor grammar; now resolves VERIFIED. |
 | ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-51)** | composition | `src/routes/public/css/agenda.css.ts` (line 768) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-51: the bare-token companion tier resolves `chq-pub-day-pill`, named in prose without a leading dot; companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup; now resolves VERIFIED. |
-| UNVERIFIABLE-PREMISE | composition | `src/views/error-states.css.ts` (line 72) | no companion class named in the reason (distinct from the receipted selector itself) |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `src/views/error-states.css.ts` (line 72) | wave-30 point-in-time: no companion class named in the reason. SUPERSEDED wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-error-summary-link`, merged across every matching rule, already satisfying the 44px-floor grammar; now resolves VERIFIED. |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `src/routes/portal/portal.css.ts` (line 576) | not in the 98-row wave-30 snapshot (receipt added by task v12m-w40-e: a new `composition` receipt on `.chq-cfp-option`, mirroring `cfp.css.ts`'s identical twin, naming no companion class — added directly as UNVERIFIABLE-PREMISE). wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-cfp-option`, merged across every matching rule (the shared floored `label.chq-cfp-option` wrapper, min-height:46px + centred flex + non-zero horizontal padding), already satisfying the 44px-floor grammar; now resolves VERIFIED. |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | composition | `src/routes/public/cfp.css.ts` (line 158) | not in the 98-row wave-30 snapshot (receipt added by task v12m-w40-e, `.chq-cfp-option`'s own twin of the `portal.css.ts` receipt above, same reasoning, added directly as UNVERIFIABLE-PREMISE). wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class `.chq-cfp-option`, merged across every matching rule, already satisfying the 44px-floor grammar; now resolves VERIFIED. |
+| ~~UNVERIFIABLE-PREMISE~~ **VERIFIED (wave-54)** | inline | `src/routes/public/cfp.css.ts` (line 503) | wave-44 point-in-time: the true UNVERIFIABLE-PREMISE survivor of that wave's repair pass — the pending-existing-contact state's "Already have a password? Log in ›" classless-anchor CSS rule, whose own selector's `:not(.chq-btn)` clause makes `chq-btn` a self-token rather than a usable companion. wave-54: the self-floored tier (rung 0) resolves the receipt's OWN receipted class(es), merged across every matching rule in the swept corpus (this rule's own phone-media block, min-height:44px + display:inline-flex + align-items:center + padding:0 2px, `cfp.css.ts:344`), already satisfying the 44px-floor grammar; now resolves VERIFIED. |
 | UNVERIFIABLE-PREMISE | inline | `src/routes/portal/tasks/views.tsx` (line 314) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 51) | no companion class named in the reason (distinct from the receipted selector itself) |
 | UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 135) | no companion class named in the reason (distinct from the receipted selector itself) |
@@ -549,3 +552,81 @@ snapshot line and this wave's re-measured line, one wave of drift apart):
 `TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moves 40 -> 34.
 `TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` stays 0 -- the widened reader
 surfaced no real 44px-floor defect this wave.
+
+## Wave 54 (task w54-g, DEC-393 wave-54 amendment): self-floored tier (rung 0) drains TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING
+
+Root cause: the audit roster's `composition`/`inline`/`modifier` rows
+falling to the generic "no companion class named in the reason (distinct
+from the receipted selector itself)" fallthrough include several whose
+reason states the receipt's OWN receipted selector already carries the
+44px floor (a shared/element-qualified rule the receipt's own class
+matches directly) rather than naming a separate companion class at all --
+the instrument had no predicate for that shape and rostered every one of
+them UNVERIFIABLE-PREMISE, even though the underlying premise ("this
+control is already floored") is directly checkable against the tree.
+
+The sibling `inline-prose-exemption-premise` instrument
+(`test/inline-prose-exemption-premise.scan.test.ts`) already closed this
+exact gap for its own population in wave 52 (`selfFloored`,
+`INLINE_PROSE_UNVERIFIABLE_CEILING` 1 -> 0). Ported unchanged: a new
+`judgeSelfFloored` (`test/tap-floor-exempt-premise/self-floored.ts`) checks
+whether the receipt's own `receiptedClasses` tokens -- merged across every
+rule in the swept corpus that mentions them, via the EXISTING
+`tokenReachesFloor` helper `judgeSelfScoped` already uses (DEC-613: no
+second copy of the merge-and-test grammar) -- already satisfy the full
+floor grammar. Wired into `judgeReceipt` immediately after the
+`render-gate` dispatch, before the companion-name extraction and before the
+generic no-companion fallthrough -- the same position the inline sibling's
+rung 0 occupies -- for every family EXCEPT `scoped`, which keeps its own
+strictly-superset tier (`judgeSelfScoped`: the identical merged-floor check
+plus a present-in-markup requirement this port does not impose, so the two
+tiers are never a duplicate judging the same premise for the same family).
+
+Forced to `-1` and re-measured standalone (never by arithmetic on the
+wave-51 base of 34 -- the exact trap this constant's own comment history
+already records falling into once):
+
+| Verdict | Before (34 UNVERIFIABLE) | After (26 UNVERIFIABLE) |
+|---|---|---|
+| UNVERIFIABLE-PREMISE | 34 | 26 |
+| VERIFIED | 69 | 77 (approx., population count carries forward unchanged) |
+| FALSE-PREMISE | 0 | 0 |
+
+Eight rows moved from UNVERIFIABLE-PREMISE to VERIFIED via the self-floored
+tier (updated in place in the roster table above):
+
+- `app/src/pages/content/content.css` (line 76) -- own class `.chq-pill`
+- `app/src/pages/review/review.css` (line 90) -- own class `.chq-pill`
+- `app/src/pages/speakers/speakers.css` (line 1313, now 1322) -- own class
+  `.chq-speakers-name-link`
+- `app/src/pages/speakers/speakers.css` (line 1876, now 1885) -- own class
+  `.chq-pill`
+- `src/views/error-states.css.ts` (line 72) -- own class
+  `.chq-error-summary-link`
+- `src/routes/portal/portal.css.ts` (line 576) -- own class
+  `.chq-cfp-option` (not in the 98-row wave-30 snapshot; added by task
+  v12m-w40-e)
+- `src/routes/public/cfp.css.ts` (line 158) -- own class `.chq-cfp-option`
+  (not in the 98-row wave-30 snapshot; added by task v12m-w40-e, the
+  `.chq-cfp-option` receipt's own twin of the `portal.css.ts` row above)
+- `src/routes/public/cfp.css.ts` (line 503) -- own class
+  `.chq-cfp-confirm-actions`, the wave-44 audit's own recorded true
+  UNVERIFIABLE-PREMISE survivor (the pending-existing-contact
+  "Already have a password? Log in ›" anchor, whose selector's
+  `:not(.chq-btn)` clause makes `chq-btn` a self-token rather than a usable
+  companion) -- resolved not via a companion at all but by its own
+  receipted selector's phone-media rule (`cfp.css.ts:344`: min-height:44px
+  + display:inline-flex + align-items:center + padding:0 2px)
+
+`TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moves 34 -> 26.
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` stays 0 -- the new tier resolved
+every self-floored candidate VERIFIED; none newly resolves as a false
+self-floor claim, so no ceiling was raised and no new finding is recorded
+here.
+
+### Finding for a later wave (not repaired in this lane, per DEC-393 wave-30 clause "do not repair product CSS in that lane")
+
+None. Draining this ceiling turned up no `FALSE-PREMISE` row -- every
+receipt the self-floored tier could resolve this wave was a TRUE premise
+(the control really is already floored by its own class), not a defect the
+instrument had been silently missing.
