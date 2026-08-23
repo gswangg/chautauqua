@@ -240,7 +240,17 @@ const AUDIT_FILE_FLOOR = 140;
 // measured against only their own branch's share of the corpus. Re-measured
 // live over the fully integrated tree and raised to the enumerator's own
 // printed count, per this test's own instruction.
-const TOKEN_ROW_FLOOR = 282;
+// RAISED 282 -> 288 (task v12m-w54-e): this task's wave-54 Settings+Content
+// adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
+// table added six DESKTOP DIVERGENCE verdicts (Settings :134/:150/:220/
+// :825/:844, Content :146) -- "DIVERGENCE" shares this scan's `diverg`
+// stem, so it opens six new DIVERGES-token rows. All six are CLOSED, not
+// OPEN (each row's own table cell carries its DEC-896 citation in-
+// paragraph), so OPEN_DIVERGENCE_CEILING is untouched; only this staleness
+// floor moves, per this test's own instruction, in the same commit that
+// grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task created no
+// audit file.
+const TOKEN_ROW_FLOOR = 288;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
