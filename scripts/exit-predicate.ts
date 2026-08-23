@@ -40,12 +40,13 @@ import {
 import { buildCampaignReport, formatCampaignReport, loadCampaignFiles } from "./exit-predicate/campaign";
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const USAGE =
+    "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha> " +
+    "[--suite-verified-sha <sha>] [--frames-verified-sha <sha>]";
+
   const flagIdx = process.argv.indexOf("--product-sha");
   if (flagIdx === -1 || !process.argv[flagIdx + 1]) {
-    throw new Error(
-      "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha> " +
-        "[--suite-verified-sha <sha>]",
-    );
+    throw new Error(USAGE);
   }
   const productSha = process.argv[flagIdx + 1] as string;
 
@@ -60,12 +61,25 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (suiteFlagIdx !== -1) {
     const val = process.argv[suiteFlagIdx + 1];
     if (!val) {
-      throw new Error(
-        "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha> " +
-          "[--suite-verified-sha <sha>]",
-      );
+      throw new Error(USAGE);
     }
     suiteVerifiedAtSha = val;
+  }
+
+  // DEC-069 wave-43 amendment (task w43-e, HOLE 1): the SAME shape one tier
+  // over -- evidence that `npx vitest run frame-verdicts.render
+  // frame390.render` (every v12 frame-verdict render file, SLOW tier, never
+  // exercised by `npm run test:fast`) has been run green, supplied on the
+  // command line only. Never discovered by spawning vitest from this
+  // process (wave-132 instrument-integrity repair applies to this tier too).
+  const framesFlagIdx = process.argv.indexOf("--frames-verified-sha");
+  let framesVerifiedAtSha: string | null = null;
+  if (framesFlagIdx !== -1) {
+    const val = process.argv[framesFlagIdx + 1];
+    if (!val) {
+      throw new Error(USAGE);
+    }
+    framesVerifiedAtSha = val;
   }
 
   const REPO_ROOT = join(import.meta.dirname, "..");
@@ -101,6 +115,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const campaignReport = buildCampaignReport(campaignFiles, {
     productSha,
     suiteVerifiedAtSha,
+    framesVerifiedAtSha,
     isAncestor,
   });
   console.log(formatCampaignReport(campaignReport));
@@ -119,6 +134,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         "exit-predicate: no --suite-verified-sha given -- the fast-tier suite has not been " +
           "verified against this tree. Run `npm run test:fast`, then re-run this script with " +
           "--suite-verified-sha <sha the suite passed at>.",
+      );
+    }
+    if (framesVerifiedAtSha === null) {
+      console.error(
+        "exit-predicate: no --frames-verified-sha given -- the v12 frame-verdict render suite " +
+          "has not been verified against this tree (this is a SEPARATE, slow-tier suite: " +
+          "`npm run test:fast` never runs it -- see docs/mobile-campaign.md). Run " +
+          "`npx vitest run frame-verdicts.render frame390.render`, then re-run this script with " +
+          "--frames-verified-sha <sha the suite passed at>.",
       );
     }
     process.exit(1);

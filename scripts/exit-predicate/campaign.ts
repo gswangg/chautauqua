@@ -187,23 +187,47 @@ export interface CampaignVerdict {
   // product sha's changes) still print DONE on the row text even though
   // `campaignDone` itself correctly reads false.
   readonly suiteVerified: boolean;
+  // DEC-069 wave-43 amendment (task w43-e, HOLE 1): the fast-tier suite
+  // (`npm run test:fast`) runs only `*.test.ts` files -- every
+  // `*.render.test.tsx` file, including EVERY v12 frame-verdict render
+  // file, is SLOW tier and is invisible to `suiteVerifiedAtSha`
+  // (docs/mobile-campaign.md, load-bearing). A campaign whose subject
+  // matter is per-frame render receipts cannot be graded DONE on fast-tier
+  // evidence alone. This is the SAME shape as `suiteVerifiedAtSha` /
+  // `suiteVerified` above, one tier over: the sha (if any) at which
+  // `npx vitest run frame-verdicts.render frame390.render` was last run
+  // green, and whether that sha is an ancestor of the graded product sha.
+  readonly framesVerifiedAtSha: string | null;
+  readonly framesVerified: boolean;
   readonly campaignDone: boolean;
 }
 
 /**
- * Evidence that the fast-tier suite (`npm run test:fast`) has been run
- * green at a given sha, supplied by the caller -- this module performs no
- * process spawning and discovers nothing about test results on its own
- * (wave-132, task w7-e). `isAncestor` is the SAME predicate shape
- * `gradePredicate` takes for its five DEC-069 slots (see that function's
- * doc comment): "is `ancestorSha` an ancestor of (or equal to)
- * `descendantSha`?". `campaignDone` requires `suiteVerifiedAtSha !== null`
- * AND `isAncestor(productSha, suiteVerifiedAtSha)` -- i.e. the verified
- * tree already contains every change in the product sha being graded.
+ * Evidence that the fast-tier suite (`npm run test:fast`) AND the v12
+ * frame-verdict render suite (`npx vitest run frame-verdicts.render
+ * frame390.render`) have each been run green at a given sha, supplied by
+ * the caller -- this module performs no process spawning and discovers
+ * nothing about test results on its own (wave-132, task w7-e; extended
+ * wave-43, task w43-e, to a second tier for the same reason: NEVER
+ * discover evidence by spawning vitest from this process). `isAncestor` is
+ * the SAME predicate shape `gradePredicate` takes for its five DEC-069
+ * slots (see that function's doc comment): "is `ancestorSha` an ancestor
+ * of (or equal to) `descendantSha`?". `campaignDone` requires BOTH
+ * `suiteVerifiedAtSha !== null` AND `isAncestor(productSha,
+ * suiteVerifiedAtSha)` (fast tier) AND the same pair for
+ * `framesVerifiedAtSha` (frame tier) -- i.e. both verified trees already
+ * contain every change in the product sha being graded.
+ *
+ * `framesVerifiedAtSha` defaults to `null` (never verified) when omitted,
+ * so every existing caller that has not yet been updated to supply frame-
+ * tier evidence degrades to "not measured" rather than failing to compile
+ * -- the same fail-loud-not-fail-silent posture as an absent
+ * `suiteVerifiedAtSha`: campaignDone simply can never read true without it.
  */
 export interface SuiteEvidence {
   readonly productSha: string;
   readonly suiteVerifiedAtSha: string | null;
+  readonly framesVerifiedAtSha?: string | null;
   readonly isAncestor: (ancestorSha: string, descendantSha: string) => boolean;
 }
 
@@ -215,23 +239,39 @@ export interface CampaignReport {
 
 /**
  * Every `<NAME>_CEILING` / `<NAME>_FLOOR` (or bare `CEILING`) constant
- * declared as `[export ]const <NAME> = <integer>;` on its own line of a
- * `*.test.ts` / `*.test.tsx` file among `files` -- AT ANY INDENTATION, not
- * only true top level. `CONST_DECL_RE` matches leading whitespace (`^[ \t]*`)
- * on purpose: a declaration nested inside a `describe(...)` block is found
- * exactly like one at the file's own top level (DEC-808 wave-32 amendment).
- * Narrowing this to genuine top-level-only would mint a hiding place for a
- * future ratchet -- nest it one `describe` deeper and it stops being
- * registered. Derived from file CONTENT only -- no fs, no assumption about
- * which files exist beyond what is passed in. Deduped and sorted; a name
- * declared in more than one file (e.g. CLAIMED_FLOOR) appears once.
+ * declared as `[export ]const <NAME> = <integer>;` on its own line of ANY
+ * file among `files` -- AT ANY INDENTATION, not only true top level.
+ * `CONST_DECL_RE` matches leading whitespace (`^[ \t]*`) on purpose: a
+ * declaration nested inside a `describe(...)` block is found exactly like
+ * one at the file's own top level (DEC-808 wave-32 amendment). Narrowing
+ * this to genuine top-level-only would mint a hiding place for a future
+ * ratchet -- nest it one `describe` deeper and it stops being registered.
+ *
+ * DEC-069 wave-43 amendment (task w43-e): this used to filter `files` down
+ * to `/\.test\.tsx?$/` before scanning, on the theory that every ratchet
+ * lives in a vitest suite -- false. The campaign's own custodian
+ * decompositions repeatedly split ratchet constants out into plain,
+ * non-test `.ts` helper modules (e.g.
+ * app/src/phone-tap-target-scan/ceilings.ts,
+ * test/frame-caption-ledger/ceiling.ts) so more than one scan file can
+ * import the same value; a `.test.tsx?`-only filter makes every such module
+ * invisible to `assertCampaignPopulationTotal`, which is exactly the
+ * "hand-listed population wearing a disguise" shape DEC-808 forbids one
+ * level up. No filter is applied here at all: the caller (`main()` in
+ * scripts/exit-predicate.ts, via `loadCampaignFiles`) already scopes `files`
+ * to every git-tracked `.ts` file under test/, app/src/ and scripts/, so
+ * this function trusts that population rather than re-deriving a narrower
+ * one of its own (DEC-613: one population, not two).
+ *
+ * Derived from file CONTENT only -- no fs, no assumption about which files
+ * exist beyond what is passed in. Deduped and sorted; a name declared in
+ * more than one file (e.g. CLAIMED_FLOOR) appears once.
  */
 export function findCampaignCeilingCandidates(
   files: readonly CampaignFile[],
 ): readonly string[] {
   const names = new Set<string>();
   for (const file of files) {
-    if (!/\.test\.tsx?$/.test(file.path)) continue;
     CONST_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = CONST_DECL_RE.exec(file.content)) !== null) {
@@ -519,6 +559,13 @@ export function buildCampaignReport(
   const { productSha, suiteVerifiedAtSha, isAncestor } = suiteEvidence;
   const suiteVerified =
     suiteVerifiedAtSha !== null && isAncestor(productSha, suiteVerifiedAtSha);
+  // DEC-069 wave-43 amendment (task w43-e, HOLE 1): a second, independent
+  // ancestry check over the frame-tier sha -- never derived from
+  // `suiteVerified` above, since a fast-tier-green sha says nothing about
+  // whether the slow-tier v12 frame-verdict render suite was ever run.
+  const framesVerifiedAtSha = suiteEvidence.framesVerifiedAtSha ?? null;
+  const framesVerified =
+    framesVerifiedAtSha !== null && isAncestor(productSha, framesVerifiedAtSha);
 
   const verdict: CampaignVerdict = {
     desktopClaimed: desktopClaimed.value,
@@ -531,7 +578,9 @@ export function buildCampaignReport(
     tier2Done,
     suiteVerifiedAtSha,
     suiteVerified,
-    campaignDone: desktopDone && phoneDone && tier2Done && suiteVerified,
+    framesVerifiedAtSha,
+    framesVerified,
+    campaignDone: desktopDone && phoneDone && tier2Done && suiteVerified && framesVerified,
   };
 
   return { rows, verdict };
@@ -587,27 +636,49 @@ export function formatCampaignReport(report: CampaignReport): string {
   // report regardless of suiteVerified -- defeating the very degrade this
   // function performs on the verdict lines below. Reworded to describe the
   // same invariant without ever emitting the bare token.
+  // DEC-069 wave-43 amendment (task w43-e, HOLE 1): the legend now names
+  // BOTH tiers this report's row verdicts depend on -- the fast-tier
+  // ratchet-count evidence every row already needed, and the frame-tier
+  // render evidence the CAMPAIGN line now also requires, so a reader can no
+  // longer mistake a green fast-tier figure for proof of the phone product
+  // itself (docs/mobile-campaign.md, load-bearing prose this repairs).
   const legend =
     "DECLARED is what the constant SAYS, never what the tree measures -- " +
     "re-measure by running the owning test. Every row verdict below (desktop, " +
-    "phone, tier-2) is only as trustworthy as the last fast-tier suite run: " +
-    "each one stays undecided, printing DECLARED ONLY -- NOT MEASURED, unless " +
-    "a --suite-verified-sha that is an ancestor of the graded product sha was " +
-    "supplied.";
+    "phone, tier-2) [fast-tier] is only as trustworthy as the last fast-tier " +
+    "suite run (`npm run test:fast`): each one stays undecided, printing " +
+    "DECLARED ONLY -- NOT MEASURED, unless a --suite-verified-sha that is an " +
+    "ancestor of the graded product sha was supplied. The frames row " +
+    "[frame-tier] is a SEPARATE check: `npm run test:fast` runs only " +
+    "*.test.ts files, so every *.render.test.tsx file -- including every v12 " +
+    "frame-verdict render file -- is never exercised by a fast-tier run. It " +
+    "stays undecided, printing NOT VERIFIED, unless a --frames-verified-sha " +
+    "that is an ancestor of the graded product sha was supplied (evidence " +
+    "that `npx vitest run frame-verdicts.render frame390.render` passed " +
+    "there). CAMPAIGN below requires BOTH tiers verified.";
 
   const v = report.verdict;
   const suiteVerified = v.suiteVerified;
   const desktopLine = suiteVerified
     ? `desktop: ${v.desktopClaimed} claimed + ${v.desktopDeferred} deviation-deferred ` +
       `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
-      `${v.desktopDone ? "DONE" : "NOT DONE"}`
-    : "desktop: DECLARED ONLY -- NOT MEASURED";
+      `${v.desktopDone ? "DONE" : "NOT DONE"} [fast-tier]`
+    : "desktop: DECLARED ONLY -- NOT MEASURED [fast-tier]";
   const phoneLine = suiteVerified
-    ? `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"}`
-    : "phone:   DECLARED ONLY -- NOT MEASURED";
+    ? `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"} [fast-tier]`
+    : "phone:   DECLARED ONLY -- NOT MEASURED [fast-tier]";
   const tier2Line = suiteVerified
-    ? `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`
-    : "tier-2:  DECLARED ONLY -- NOT MEASURED";
+    ? `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"} [fast-tier]`
+    : "tier-2:  DECLARED ONLY -- NOT MEASURED [fast-tier]";
+  // DEC-069 wave-43 (task w43-e, HOLE 1): a fourth verdict line, gated on
+  // `framesVerified` (the slow-tier v12 frame-verdict render suite), never
+  // folded into `suiteVerified` above -- the two ancestry checks are
+  // independent (see SuiteEvidence's doc comment) and this line's whole
+  // purpose is to make the previously-invisible tier visible on its own.
+  const framesLine = v.framesVerified
+    ? "frames:  v12 frame-verdict render suite verified [frame-tier]"
+    : "frames:  NOT VERIFIED -- run `npx vitest run frame-verdicts.render " +
+      "frame390.render`, then re-run with --frames-verified-sha <sha> [frame-tier]";
   // w14-aa (wave-139): the CAMPAIGN row carried the bare word DONE as a
   // substring of "NOT DONE" even with no evidence at all, so it degrades too.
   // Its guard is deliberately the WEAKER `suiteVerifiedAtSha === null` rather
@@ -615,12 +686,15 @@ export function formatCampaignReport(report: CampaignReport): string {
   // ancestor) `campaignDone` is already false, so "CAMPAIGN: NOT DONE" is a
   // true statement, not an unmeasured claim -- whereas the three ledger rows
   // above would be asserting counts they cannot back, which is why they use
-  // the ancestry-aware `suiteVerified`.
+  // the ancestry-aware `suiteVerified`. Wave-43 (task w43-e) extends the same
+  // reasoning to the frame tier: only a wholly ABSENT frames sha degrades the
+  // CAMPAIGN line to "not measured" prose; a present-but-stale one still
+  // yields a true "NOT DONE" via `campaignDone` itself.
   const campaignLine =
-    v.suiteVerifiedAtSha === null
-      ? "CAMPAIGN: DECLARED ONLY -- NOT MEASURED"
-      : `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`;
-  const verdictLines = [desktopLine, phoneLine, tier2Line, campaignLine];
+    v.suiteVerifiedAtSha === null || v.framesVerifiedAtSha === null
+      ? "CAMPAIGN: DECLARED ONLY -- NOT MEASURED [fast-tier + frame-tier]"
+      : `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"} [fast-tier + frame-tier]`;
+  const verdictLines = [desktopLine, phoneLine, tier2Line, framesLine, campaignLine];
 
   return `${table}\n${legend}\n\n${verdictLines.join("\n")}`;
 }
