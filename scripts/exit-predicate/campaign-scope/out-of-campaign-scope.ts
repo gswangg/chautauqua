@@ -533,4 +533,14 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "(test/pack-prose-measure.scan.test.ts, DEC-896 wave-49 amendment, task w49-e). This lane moves "
     + "no CSS byte; repair is a later lane's, sized from docs/design/audit/pack-prose-measure-v12.md's "
     + "roster.",
+
+  FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR:
+    "the vacuity tripwire (currently 43) for the SAME test-corpus-determinism population its "
+    + "already-registered sibling FRAME_VERDICT_ASYNC_QUERY_CEILING excuses immediately above -- "
+    + "a fact about whether this receipt can be trusted to fail only on a real product defect, "
+    + "never a v12 frame or 390-geometry conformance fact, never silently pass over a shrunken "
+    + "population because a rename or a moved directory made the walk see fewer files than the "
+    + "wave-43 measured set. A floor whose sibling ceiling is excused cannot itself be a graded "
+    + "campaign row (test/frame-verdict-async-query.scan.test.ts, DEC-976 wave-43 amendment, "
+    + "DEC-069 wave-50 amendment).",
 };
