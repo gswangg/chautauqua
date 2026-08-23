@@ -221,7 +221,17 @@ export {
 // citation scans stay green) closes that row again. The single disappearing
 // row is therefore identified, not guessed.
 const AUDIT_FILE_FLOOR = 138;
-const TOKEN_ROW_FLOOR = 265;
+// RAISED 264 -> 266 (task v12m-w52-e): this task's wave-52 Review+Overview
+// adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
+// table added two DESKTOP DIVERGENCE verdicts (docs/design/audit/pack-grid
+// -track-vocabulary-v12.md's :848/:852 rows) -- "DIVERGENCE" shares this
+// scan's `diverg` stem, so it opens two new DIVERGES-token rows. Both are
+// CLOSED, not OPEN (each row's own table cell carries its DEC-896 citation
+// in-paragraph), so OPEN_DIVERGENCE_CEILING is untouched; only this
+// staleness floor moves, per this test's own instruction, in the same
+// commit that grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task
+// created no audit file.
+const TOKEN_ROW_FLOOR = 266;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
