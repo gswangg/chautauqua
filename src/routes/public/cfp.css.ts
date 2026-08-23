@@ -51,7 +51,12 @@ export const CFP_CSS = `
   /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
      idiom): submit-views.tsx:598 renders the .chq-cfp-intro-cta note's
      "New speaker? <a>...</a> by submitting..." line as one running
-     sentence; the classless <a> is a phrase, not a standalone control. */
+     sentence; the classless <a> is a phrase, not a standalone control.
+     This is the same anchor DEVIATIONS.md §10's first entry records
+     (submit-views.tsx's chq-cfp-intro-cta-link, rung 3): neither rung 1
+     nor rung 2 grounds it, so the deviation is recorded rather than left
+     silent (wave-44 amendment, task w44-g -- ties this wrapper's own
+     receipt to the same DEVIATIONS.md §10 entry as the anchor's). */
   .chq-cfp-intro-cta { margin: 0; font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
   /* w5-c (frame 10--14): the YOU section sits ~54px below Your talk --
      document flow between the form's two top-level <section>s carried no
@@ -135,7 +140,13 @@ export const CFP_CSS = `
   /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
      idiom): submit-views.tsx's .chq-cfp-identity-note renders its lead
      sentence and trailing sign-in link as one running sentence inside this
-     note; the classless <a> is a phrase, not a standalone control. */
+     note; the classless <a> is a phrase, not a standalone control. This
+     is the same anchor DEVIATIONS.md §10's second entry records
+     (submit-views.tsx's chq-cfp-identity-note-link, rung 3): neither
+     rung 1 nor rung 2 grounds it, so the deviation is recorded rather
+     than left silent (wave-44 amendment, task w44-g -- ties this
+     wrapper's own receipt to the same DEVIATIONS.md §10 entry as the
+     anchor's). */
   .chq-cfp-identity-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
   /* DEC-951: a one-column list at the form's measure -- the fieldset never
@@ -497,13 +508,24 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        filled primary CTA (class="chq-btn chq-btn-primary"), which already
        carries theme.ts's shared .chq-btn floor and is untouched by this
        exemption -- it is scoped by TOKEN, the classless-anchor scan's own
-       grammar, and only ever reaches a classless (unclassed) anchor. */
+       grammar, and only ever reaches a classless (unclassed) anchor.
+       CHECKED (wave-44, task w44-g): this selector's own :not(.chq-btn)
+       clause makes chq-btn (no leading dot here -- a dotted literal reads
+       as a grounding claim to this file's own scan, which this note
+       deliberately is not) a self-token, not a usable companion, for
+       this receipt specifically, and chq-btn-primary alone (the only
+       other candidate reaching the same /login destination) declares no
+       centred-flex in any of its own rules anywhere in the tree -- so
+       rung 2 genuinely fails here too, and DEVIATIONS.md carries no entry
+       for this specific link (its §10 covers only the CFP intro-cta,
+       identity-note, and docs auth-link anchors). Stays UNVERIFIABLE, a
+       roster row rather than a silent pass. */
     .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); }
 
     /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task
        w35-b): grounded per the wave-35 ladder as the first and second
-       entries of DEVIATIONS.md's wave-35 rulings section (rung 3, not
-       rung 1/2) -- neither the desktop nor 390 "Submit a talk" frame
+       entries of DEVIATIONS.md §10 (rung 3, not rung 1/2) -- neither
+       the desktop nor 390 "Submit a talk" frame
        extent (Chautauqua Public and Portal.dc.html:891-1010 /
        :1017-1065) draws either anchor's own copy as a control, and the
        page carries no same-surface floored twin reaching either

@@ -625,7 +625,13 @@ export const THEME_CSS = `
      inside prose, not a standalone control. Scoped by TOKEN (the scan's
      own grammar): a future classless anchor rendered as a real standalone
      control inside some OTHER .chq-section must get its own class rather
-     than ride this exemption. */
+     than ride this exemption. SUPERSEDED IN PART (wave-44, task w44-g):
+     that same anchor now also carries its own JSX class token per DEC-996
+     wave-35, chq-docs-auth-link, and is separately recorded as
+     DEVIATIONS.md §10's third entry (rung 3) -- this older, pre-DEC-996
+     receipt (scoped to the chq-section token) describes the same anchor
+     and stays grounded by the same citation rather than left an orphan
+     claim. */
   .chq-section {
     margin: 26px 0;
   }
@@ -678,7 +684,17 @@ export const THEME_CSS = `
      across the SSR surface; this exemption is scoped by TOKEN (the scan's
      own grammar), not by file -- if a future classless anchor lands inside
      some OTHER .chq-card as a real standalone control, it must get its own
-     class and leave this token's exemption alone. */
+     class and leave this token's exemption alone. SUPERSEDED IN PART
+     (wave-44, task w44-g): that same anchor now carries its own JSX class
+     token per DEC-996 wave-35, chq-portal-file-link, and is grounded per
+     the wave-35 ladder's rung 2 by portal.css.ts's own receipt for the
+     identical anchor -- VersionHistory renders immediately below this
+     paragraph and its .chq-portal-version-link anchor already carries the
+     44px floor (min-height:44px, centred flex, padding-inline:8px) while
+     resolving the identical chain-latest content this link's own route
+     serves. This older, pre-DEC-996 receipt (scoped to the chq-card
+     token) describes the same anchor and stays grounded by the same
+     companion rather than left an orphan claim. */
   .chq-card {
     background: var(--chq-surface);
     border: 1px solid var(--chq-rule);
