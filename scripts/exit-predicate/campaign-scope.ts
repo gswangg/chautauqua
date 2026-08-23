@@ -675,4 +675,14 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "draws. The fast tier is the only instrument that can ever supply the exit predicate's "
     + "--suite-verified-sha, so this measures the gate's integrity, never product convergence "
     + "(test/gate-timeout-margin.scan.test.ts, DEC-069 wave-35 amendment).",
+  PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING:
+    "measures a newly-derived population -- a phone `display:none` rule whose SELECTOR is not "
+    + "itself interactive but whose target element's JSX subtree contains an interactive descendant, "
+    + "so hiding the container removes a capability the selector-keyed filter cannot see -- that no "
+    + "instrument previously graded. A real capability-removal fact about this specific population, "
+    + "but a newly measured, previously-uncounted population must not move the campaign's goalposts "
+    + "mid-convergence; it is promoted once later waves adjudicate each row against its own v12 frame "
+    + "and either receipt or repair it, the same disposition already given to "
+    + "PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING (app/src/phone-hidden-container.scan.test.ts, "
+    + "DEC-808 wave-41 amendment).",
 };
