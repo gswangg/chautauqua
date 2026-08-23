@@ -803,7 +803,14 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // otherwise have gone stale from the split (net -5 from the split itself)
 // plus repairing 5 more pre-existing drifted citations discovered while
 // doing so.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1228;
+// Lowered 1228 -> 1227 (task w44-c): src/decisions-data/DEC-967.md's own
+// wave-146 and wave-43 amendments each carried a line-keyed citation that
+// resolved to a real file but the wrong line/quote (test/deviations-ledger.
+// scan.test.ts:498-506 into a 401-line file; a chained App.tsx:290 /
+// settings.css:708 / Chautauqua Settings.dc.html:364 backtick run each
+// misreading its neighbour's citation as its own receipt quote) -- both
+// converted to bare prose, closing 1 unresolved citation.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1227;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {

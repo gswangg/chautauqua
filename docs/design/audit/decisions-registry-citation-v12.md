@@ -151,3 +151,16 @@ After: **1234**, re-measured by re-running the scan on the repaired tree
 with the ceiling still forced to `-1`.
 `DECISIONS_REGISTRY_CITATION_CEILING` lowered 1260 → 1234; the two-sided
 "ceiling is not stale" companion is green in the same run.
+
+## Wave-44 update (task w44-c)
+
+A prior wave's custodian split already lowered
+`DECISIONS_REGISTRY_CITATION_CEILING` from 1234 to 1228, unrelated to this
+task. Re-measured live, not inherited, on this branch:
+`src/decisions-data/DEC-967.md` carried one more unresolved decisions/
+registry citation (`test/deviations-ledger.scan.test.ts`'s own line-count
+had drifted under it, and a three-way chained `App.tsx`/`settings.css`/
+`Chautauqua Settings.dc.html` backtick run misread each neighbour's
+citation as its own receipt quote), repaired by converting both to bare
+prose per DEC-967's own drift-proof shape. Live measurement today:
+`DECISIONS_REGISTRY_CITATION_CEILING = 1227`.

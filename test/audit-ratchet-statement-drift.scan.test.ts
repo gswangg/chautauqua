@@ -226,7 +226,13 @@ function findOffenders(): Offender[] {
 //     `CODE_COMMENT_CITATION_CEILING = 37`, live value 0.
 //   - docs/design/audit/decisions-registry-citation-v12.md:
 //     `DECISIONS_REGISTRY_CITATION_CEILING` states 1234, live value 1228.
-const AUDIT_RATCHET_STATEMENT_DRIFT_CEILING = 2;
+// Lowered 2 -> 1 (task w44-c): this task's own two files
+// (code-comment-citation-v12.md, decisions-registry-citation-v12.md) are
+// now repaired and re-measured live, closing both offenders above. The
+// one remaining offender is docs/design/audit/phone-hidden-drawn-text-v12.md
+// (`UNCLIPPED_EXTENT_DERIVATION_CEILING` states 10, live value 1) -- owned
+// by task w44-b, not repaired here.
+const AUDIT_RATCHET_STATEMENT_DRIFT_CEILING = 1;
 
 describe("audit-ratchet-statement-drift", () => {
   it("VACUOUS-POPULATION TRIPWIRE: the walk finds both docs this wave repaired, and each carries at least one real statement", () => {
