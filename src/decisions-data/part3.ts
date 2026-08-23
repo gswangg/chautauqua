@@ -25,7 +25,7 @@ export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not
 export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
 export const DEC_439 = "The three measured SPEC §7 budget misses are stage-1 product defects, and each is fixed by shrinking what one request loads";
 export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmission's fail-loudly throws must not be laundered into SQL";
-export const DEC_441 = "Amendment (wave 47): the HTML reminder email is COMPOSED to its frame — the shell body carries only what the frame draws above the fact block, and the sign-off gets its own shell slot after the CTA";
+export const DEC_441 = "Wave-48 amendment: the outbound email's reason clause is one vocabulary with one owner, in the frame's sentence register";
 export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
 export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
 export const DEC_444 = "The last WCAG AA offender is remedied by re-pointing the rule to --chq-muted; --chq-disabled's value and the contrast checker are both untouchable";
