@@ -126,23 +126,72 @@ Both mechanisms share ONE `clusterKeyForPath` normalisation (DEC-613) —
 cluster scoping and "same phone surface" for twin detection are the same
 population key, not two private notions of surface.
 
+## TSX-side cluster scoping + generic-verb corroboration (wave-39 amendment, DEC-725)
+
+Wave-35 scoped the FRAME side of the join to each sheet's own cluster
+(`scopeBlobsForSheet`) but left the TSX side global: a text finding from ANY
+component anywhere in the tree could still supply the literal that grades
+ANY sheet's rule, because nothing checked that the finding's OWN file
+belonged to the rule's cluster. The roster convicted itself: `.chq-agenda-
+head-actions .chq-btn-secondary` (agenda.css, cluster "agenda") was graded
+PREMISE-FALSE on the word "Cancel" sourced from `app/src/components/
+EventSwitcher.tsx` — a shared component `clusterKeyForPath` returns
+`undefined` for, matched only by coincidence against the Agenda frame.
+Three changes, all in `app/src/phone-hidden-drawn-text.scan.test.ts`:
+
+1. **TSX-side cluster scoping** (`findingsScopedForSheet`) — mirrors
+   `scopeBlobsForSheet`'s own `clusterKeyForPath` normalisation (DEC-613,
+   never a second cluster vocabulary): a `cluster`-scope sheet's candidate
+   findings are narrowed to files resolving to that SAME cluster key.
+   `shared-root` and `no-frame-fallback` sheets keep the full, unscoped
+   finding population, mirroring the frame-side fallback those same two
+   kinds already receive.
+2. **Generic-verb corroboration** — even within one cluster, a single short,
+   generic control word ("Cancel", "Edit", "Save", "Open", "Approve") drawn
+   by one component and hidden by an unrelated rule in the SAME cluster is
+   still coincidental agreement, not a same-screen contradiction. A
+   candidate whose entire text is a single GENERIC verb — derived from the
+   corpus, never a hand list (DEC-180): a word recurring as the complete,
+   static, own-text of controls in `GENERIC_VERB_MIN_COMPONENTS` (3) or more
+   DISTINCT files (`genericVerbsIn`) — may not, alone, produce PREMISE-FALSE.
+   It needs corroboration from another finding among the SAME rule's own
+   matches that also resolves against a frame extent: a longer multi-word
+   run, or the identical token repeating the same text (`hasCorroboration`).
+3. **CSS-selector class-token fix** — `tokensOf(selector)` previously
+   matched any `chq-` substring anywhere in the selector text, including
+   inside an ATTRIBUTE NAME: `[data-chq-cfp-step="1"] .chq-cfp-step-back`
+   embeds the substring `chq-cfp-step` inside `data-chq-cfp-step` (never a
+   class selector), which pulled in every `.chq-cfp-step` finding —
+   including the unrelated "You" section label three sections away — as if
+   it were a real match for `.chq-cfp-step-back`/`.chq-cfp-step-next`/
+   `.chq-cfp-step-talk`'s own rule. `tokensOf` now requires a leading `.`
+   (`CSS_CLASS_TOKEN_RE`): a genuine class selector only, never a substring
+   of an attribute name. This is the SAME shape as (1), one layer earlier in
+   the pipeline: a token the rule's own selector never actually named
+   supplying the literal that condemns it.
+
+Negative controls (both directions, proving this is a repaired predicate and
+not merely a lowered ceiling): a synthetic IN-CLUSTER multi-word match still
+grades PREMISE-FALSE; a synthetic CROSS-CLUSTER single-verb match grades
+PREMISE-OK once TSX-side scoping excludes the stranger component.
+
 ## Ratchet: measured `-1`, two constants, both two-sided
 
-`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 28`,
-`PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 40` (wave-35, re-measured
-against the cluster-scoped + twin-detecting instrument; down from 59/35 —
-PREMISE-FALSE fell as coincidental cross-cluster matches resolved to
-PREMISE-OK or TWIN-RESOLVED, and UNVERIFIABLE rose because a handful of
-rules that were PREMISE-FALSE under the old, unscoped join no longer match
-any in-cluster frame extent and fall through to their own composed
-finding instead). Both registered in `scripts/exit-predicate.ts`'s
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 20`,
+`PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 49` (wave-39, re-measured
+against the TSX-cluster-scoped + generic-verb-corroborated + class-token-only
+instrument; down from 28/40 for PREMISE-FALSE, up for UNVERIFIABLE — rows
+that were PREMISE-FALSE only via a cross-component match, an uncorroborated
+bare verb, or the `data-chq-cfp-step` token-extraction bug fall through to
+their own composed finding instead, exactly as wave-35 recorded for cluster
+scoping). Both registered in `scripts/exit-predicate.ts`'s
 `OUT_OF_CAMPAIGN_SCOPE` (a newly-derived, previously-uncounted population
 must not move the campaign's goalposts mid-convergence — the same
 disposition already given to `FRAME_EYEBROW_DIVERGENCE_CEILING` /
 `FRAME_EYEBROW_UNRESOLVED_CEILING`). Both carry a companion "never sits
 ABOVE the measured truth" `it` (two-sided, per
-`test/campaign-ratchet-two-sided.scan.test.ts`). TWIN-RESOLVED (26 rows,
-wave-35) is graded and recorded in the roster below but counted in neither
+`test/campaign-ratchet-two-sided.scan.test.ts`). TWIN-RESOLVED (19 rows,
+wave-39) is graded and recorded in the roster below but counted in neither
 ratchet.
 
 ## Both worked-example rows, re-measured under scoping + twin detection
@@ -165,86 +214,71 @@ so neither claim here rests on this prose: if a later wave changes either
 row, those probes fail and force this section to be rewritten rather than
 letting it quietly go stale.
 
-## PREMISE-FALSE roster (28 rows)
+## PREMISE-FALSE roster (20 rows)
 
-- `app/src/pages/agenda/agenda.css` :: `.chq-agenda-head-actions .chq-btn-secondary` -- "Cancel" (app/src/components/EventSwitcher.tsx) is drawn verbatim at Chautauqua Agenda.dc.html:127 "Agenda"
-- `app/src/pages/agenda/agenda.css` :: `.chq-agenda-armed-bar` -- "Cancel" (app/src/pages/Agenda.tsx) is drawn verbatim at Chautauqua Agenda.dc.html:127 "Agenda"
-- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions` -- "Edit" (app/src/pages/contacts/ContactDrawer.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:407 "Contact · 390"
-- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-pipeline-head > .chq-btn` -- "Edit" (app/src/pages/agenda/BreaksPanel.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:407 "Contact · 390"
 - `app/src/pages/contacts/contacts.css` :: `.chq-contacts-title-row .chq-summary` -- "Contacts" (app/src/pages/contacts/ContactsApp.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:179 "Contacts"
 - `app/src/pages/content/content.css` :: `.chq-content-worklist .chq-bulkbar` -- "Approve" (app/src/pages/content/SessionList.tsx) is drawn verbatim at Chautauqua Content.dc.html:198 "Content"
 - `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-bulkbar-count` -- "Approve" (app/src/pages/content/SessionList.tsx) is drawn verbatim at Chautauqua Content.dc.html:198 "Content"
-- `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary` -- "Open" (app/src/pages/contacts/ContactsTable.tsx) is drawn verbatim at Chautauqua Content.dc.html:198 "Content"
+- `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary` -- "Approve" (app/src/pages/content/SessionList.tsx) is drawn verbatim at Chautauqua Content.dc.html:198 "Content"
 - `app/src/pages/content/content.css` :: `.chq-content-comment-actions` -- "Ask for changes" (app/src/pages/content/CommentThread.tsx) is drawn verbatim at Chautauqua Content.dc.html:373 "Session · deliverable"
 - `app/src/pages/review/scorecard.css` :: `.chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value` -- "Overall" (app/src/pages/review/Scorecard.tsx) is drawn verbatim at Chautauqua Review.dc.html:280 "Reviewer scorecard · /review/plans/:id/submissions/:id"
 - `app/src/pages/settings/settings-drill-rows.css` :: `.chq-settings-drillrow-head-hide` -- "Add a track" (app/src/pages/settings/TracksRoomsPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:347 "Settings · Tracks and rooms"
-- `app/src/pages/settings/settings-lists.css` :: `.chq-settings-token-create .chq-btn-primary, .chq-settings-people-invite-action` -- "Save" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Settings.dc.html:316 "Settings · Event"
+- `app/src/pages/settings/settings-lists.css` :: `.chq-settings-token-create .chq-btn-primary, .chq-settings-people-invite-action` -- "Invite someone" (app/src/pages/settings/PeopleRolesPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:552 "Settings · People and roles"
 - `app/src/pages/settings/settings.css` :: `[data-screen='true'] .chq-settings-saved-embed-heading` -- "Saved embeds" (app/src/pages/settings/SavedEmbedsPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:578 "Settings · Saved embeds"
 - `app/src/pages/settings/settings.css` :: `.chq-settings-public-pages-own-hidden` -- "Public pages" (app/src/pages/settings/PublicPagesPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:481 "Settings · Public pages"
-- `app/src/pages/settings/settings.css` :: `.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action` -- "Edit" (app/src/pages/agenda/BreaksPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:347 "Settings · Tracks and rooms"
 - `app/src/pages/submissions/detail.css` :: `.chq-detail-page .chq-participants-table thead` -- "Triage" (app/src/pages/submissions/SubmissionDetailPage.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:355 "Submission detail"
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-table thead` -- "Accept" (app/src/pages/submissions/SubmissionsTable.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions"
 - `app/src/styles.css` :: `.chq-shell:has([data-chq-phone-head]) .chq-header` -- "chautauqua" (app/src/App.tsx) is drawn verbatim at Chautauqua Account.dc.html:121 "Sign in · 390"
 - `app/src/styles.css` :: `.chq-header-identity .chq-user-identity` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id"
-- `app/src/styles.css` :: `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` -- "Save" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390"
 - `app/src/styles.css` :: `.chq-shell:has(.chq-phone-dock) .chq-tabbar` -- "Save" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390"
 - `app/src/styles.css` :: `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` -- "Sign out" (app/src/App.tsx) is drawn verbatim at Chautauqua Review.dc.html:413 "Reviewer queue · /review/plans/:id"
 - `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-step-you` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
-- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="2"] .chq-cfp-step-talk` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
-- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
-- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-step-back` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
-- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="2"] .chq-cfp-step-next` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
-- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="all"] .chq-cfp-steps, [data-chq-cfp-step="all"] .chq-cfp-step-next, [data-chq-cfp-step="all"] .chq-cfp-step-back` -- "You" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session"
+- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)` -- "Save draft" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:505 "Portal · Hotel stay form"
+- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="2"] .chq-cfp-step-next` -- "Next: about you" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:1017 "Submit a talk"
+- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="all"] .chq-cfp-steps, [data-chq-cfp-step="all"] .chq-cfp-step-next, [data-chq-cfp-step="all"] .chq-cfp-step-back` -- "Next: about you" (src/routes/public/submit-views.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:1017 "Submit a talk"
 
-## UNVERIFIABLE roster (40 rows)
+These 20 rows survived TSX-side cluster scoping, generic-verb corroboration
+AND the class-token-only fix -- each is a genuine, in-cluster, either
+multi-word or corroborated same-token match, and is a candidate for a future
+repair lane naming its own sheet/selector/frame line above.
+
+## UNVERIFIABLE roster (49 rows)
 
 - `app/src/pages/agenda/agenda.css` :: `.chq-agenda-day-tabs` -- app/src/pages/Agenda.tsx :: chq-agenda-day-tabs renders a composed (non-static) text child: "{formatDayLabel(day)}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/agenda/agenda.css` :: `.chq-agenda-summary` -- app/src/pages/Agenda.tsx :: chq-agenda-summary renders a composed (non-static) text child: "{`${agenda?.summary.unplaced ?? 0} unplaced · `}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/agenda/agenda.css` :: `.chq-agenda-head-actions .chq-btn-secondary` -- app/src/pages/Agenda.tsx :: chq-agenda-head-actions renders a composed (non-static) text child: "{autoSchedulePendingLabel.label}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/agenda/agenda.css` :: `.chq-agenda-armed-bar` -- app/src/pages/Agenda.tsx :: chq-agenda-armed-bar renders a composed (non-static) text child: "{armed && (" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/comms/comms.css` :: `.chq-comms-batch-recipients .chq-comms-recipient-col-heads-row` -- app/src/pages/comms/RecentSends.tsx :: chq-comms-batch-recipients renders a composed (non-static) text child: "{statusTally(statusCounts)}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/comms/comms.css` :: `.chq-comms-batch-recipients .chq-comms-recipient-row > span:empty` -- app/src/pages/comms/ComposeWizard.tsx :: chq-comms-recipient-row renders a composed (non-static) text child: "{r.name}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/comms/comms.css` :: `.chq-comms-templates-table thead` -- app/src/pages/comms/TemplatesTab.tsx :: chq-comms-templates-table renders a composed (non-static) text child: "{t.name}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/comms/comms.css` :: `.chq-comms-compose-table thead` -- app/src/pages/comms/ComposeWizard.tsx :: chq-comms-compose-table renders a composed (non-static) text child: "{s.title}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-pipeline-columns` -- app/src/pages/contacts/PipelineBoard.tsx :: chq-contacts-pipeline-columns renders a composed (non-static) text child: "{PIPELINE_STAGE_LABELS[stage]}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-merge-compare-head` -- app/src/pages/contacts/MergePage.tsx :: chq-contacts-merge-compare-head renders a composed (non-static) text child: "{keepHeadLabel}" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import .chq-steps` -- app/src/pages/comms/ComposeWizard.tsx :: chq-steps renders a composed (non-static) text child: "{
-          const isDone = idx" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import-columns` -- app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-columns renders a composed (non-static) text child: "{
-              const sample = dataRows[0]?.[i] ?? '';
-              const skipped = !mapping[col];
-              return (" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import-columns` -- app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-columns renders a composed (non-static) text child: "{ const sample = dataRows[0]?.[i] ?? ''; const skipped = !mapping[col]; return (" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import-review-table thead` -- app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-review-table renders a composed (non-static) text child: "{row.line}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-merge-primary-desktop-label` -- app/src/pages/contacts/MergePage.tsx :: chq-contacts-merge-primary-desktop-label renders a composed (non-static) text child: "{keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-merge-impact-name` -- app/src/pages/contacts/MergePage.tsx :: chq-contacts-merge-impact-name renders a composed (non-static) text child: "{keepContact.firstName} {keepContact.lastName}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import-subtitle-desktop` -- app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-subtitle-desktop renders a composed (non-static) text child: "{(fileName ?? 'Pasted CSV') + ' · ' + countOf(dataRows.length, 'row')}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/contacts/contacts.css` :: `.chq-contacts-filter-match-count` -- app/src/pages/contacts/FilterRulesPanel.tsx :: chq-contacts-filter-match-count renders a composed (non-static) text child: "{totalCount === null ? `${matchCount} match` : `${matchCount} of ${totalCount} match`}" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-rail` -- app/src/pages/contacts/DirectoryRail.tsx :: chq-contacts-rail renders a composed (non-static) text child: "{  }
-        {topCompaniesLoaded && topCompanies.length === 0 ? (" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-segment-summary` -- app/src/pages/contacts/ContactsApp.tsx :: chq-contacts-segment-summary renders a composed (non-static) text child: "Segment:
-              {  }" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-filter-rules-row` -- app/src/pages/contacts/FilterRulesPanel.tsx :: chq-contacts-filter-rules-row renders a composed (non-static) text child: "{
-        const pos = i + 1;
-        const custom = isCustomField(rule.field);
-        const fieldSelectValue = custom ? CUSTOM_FIELD_CHOICE : rule.field;
-        const customKey = customKeyOf(rule.field);
-
-        return (" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/content/content.css` :: `.chq-content-files-download-all-wrap` -- app/src/pages/content/FilesLibrary.tsx :: chq-content-files-download-all-wrap renders a composed (non-static) text child: "{downloadPending
-                  ? 'Downloading…'
-                  : items.length === total
-                    ? `Download all ${items.length} (.zip)`
-                    : `Download ${countOf(items.length, 'file')} (.zip)`}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-rail` -- app/src/pages/contacts/DirectoryRail.tsx :: chq-contacts-rail renders a composed (non-static) text child: "{ } {topCompaniesLoaded && topCompanies.length === 0 ? (" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-segment-summary` -- app/src/pages/contacts/ContactsApp.tsx :: chq-contacts-segment-summary renders a composed (non-static) text child: "Segment: { }" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-filter-rules-row` -- app/src/pages/contacts/FilterRulesPanel.tsx :: chq-contacts-filter-rules-row renders a composed (non-static) text child: "{ const pos = i + 1; const custom = isCustomField(rule.field); const fieldSelectValue = custom ? CUSTOM_FIELD_CHOICE : rule.field; const customKey = customKeyOf(rule.field); return (" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/content/content.css` :: `.chq-content-files-download-all-wrap` -- app/src/pages/content/FilesLibrary.tsx :: chq-content-files-download-all-wrap renders a composed (non-static) text child: "{downloadPending ? 'Downloading…' : items.length === total ? `Download all ${items.length} (.zip)` : `Download ${countOf(items.length, 'file')} (.zip)`}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/content/upload-zone.css` :: `.chq-content-upload-caps` -- app/src/pages/content/UploadZone.tsx :: chq-content-upload-caps renders a composed (non-static) text child: "{uploadHintText(kind)}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/content/upload-zone.css` :: `.chq-content-upload-prompt-desktop` -- app/src/pages/content/UploadZone.tsx :: chq-content-upload-prompt-desktop renders a composed (non-static) text child: "{uploadPendingLabel.label}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/forms/forms.css` :: `.chq-forms-field-kind, .chq-forms-field-required, .chq-forms-field-optional, .chq-forms-field-help, .chq-forms-field-condition` -- app/src/pages/forms/FieldList.tsx :: chq-forms-field-help renders a composed (non-static) text child: "{row.caption}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/forms/forms.css` :: `.chq-forms-header-actions` -- app/src/pages/forms/FormsPage.tsx :: chq-forms-header-actions renders a composed (non-static) text child: "{windowSaving ? 'Saving…' : 'Save'}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/overview/overview.css` :: `.chq-overview-overflow` -- app/src/pages/Overview.tsx :: chq-overview-overflow renders a composed (non-static) text child: "{payload.overdueTasks.total - payload.overdueTasks.rows.length} more overdue" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/overview/overview.css` :: `.chq-overview-clash-entries-desktop` -- app/src/pages/overview/AgendaWorkSection.tsx :: chq-overview-clash-entries-desktop renders a composed (non-static) text child: "{entry.title}{' '}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/review/review.css` :: `.chq-review-results-table thead` -- app/src/pages/review/PlanEditor.tsx :: chq-review-results-table renders a composed (non-static) text child: "{pr.name}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/review/review.css` :: `.chq-review-criteria-eyebrow` -- app/src/pages/review/PlanEditor.tsx :: chq-review-criteria-eyebrow renders a composed (non-static) text child: "Locked — {countOf(activeRoundLockedCount, 'review')} scored against these criteria" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/review/scorecard.css` :: `.chq-review-answers` -- app/src/pages/review/Scorecard.tsx :: chq-review-answers renders a composed (non-static) text child: "{a.label}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/settings/settings-drill-rows.css` :: `.chq-settings-portal-welcome-summary` -- app/src/pages/settings/PortalSettingsPanel.tsx :: chq-settings-portal-welcome-summary renders a composed (non-static) text child: "{`Shown above the task list · ${countOf(paragraphs, 'paragraph')}`}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/settings/settings-drill-rows.css` :: `.chq-settings-drillrow-pills-desktop` -- app/src/pages/settings/YourDataPanel.tsx :: chq-settings-drillrow-pills-desktop renders a composed (non-static) text child: "{renderExportPills()}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/settings/settings.css` :: `.chq-settings-content` -- app/src/pages/Settings.tsx :: chq-settings-content renders a composed (non-static) text child: "&lsaquo; {editingSection ? editingSection.label : viewingEmbeds ? 'Public pages' : 'Settings'}" -- a static substring join can never verify a value assembled at render time
-- `app/src/pages/speakers/speakers.css` :: `.chq-speakers-grid-wrap` -- app/src/pages/speakers/OnboardingGrid.tsx :: chq-speakers-grid-wrap renders a composed (non-static) text child: "{
-                    const done = taskDoneLabel(task);
-                    return (" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/speakers/speakers.css` :: `.chq-speakers-grid-wrap` -- app/src/pages/speakers/OnboardingGrid.tsx :: chq-speakers-grid-wrap renders a composed (non-static) text child: "{ const done = taskDoneLabel(task); return (" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/speakers/speakers.css` :: `.chq-speakers-toolbar` -- app/src/pages/speakers/OnboardingGrid.tsx :: chq-speakers-toolbar renders a composed (non-static) text child: "{REMIND_SKIP_RULE_SENTENCE}" -- a static substring join can never verify a value assembled at render time
+- `app/src/pages/speakers/task-view.css` :: `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` -- app/src/pages/speakers/TaskView.tsx :: chq-taskview-answers renders a composed (non-static) text child: "{tab === 'answered' ? 'Their answers' : 'Where it stands'}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/submissions/detail.css` :: `.chq-detail-back-full` -- app/src/pages/submissions/SubmissionDetailPage.tsx :: chq-detail-back-full renders a composed (non-static) text child: "{DECISION_ACTION_LABELS.waitlisted}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/submissions/detail.css` :: `.chq-detail-ref-position-full` -- app/src/pages/submissions/SubmissionDetailPage.tsx :: chq-detail-ref-position-full renders a composed (non-static) text child: "{detail.ref} &middot; {listPosition.position} of {listPosition.total}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-status-label, .chq-submissions-filterbar-divider, .chq-submissions-columnpicker` -- app/src/pages/submissions/ColumnPicker.tsx :: chq-submissions-columnpicker renders a composed (non-static) text child: "{columnsSummary(columns, visibleFieldIds)}" -- a static substring join can never verify a value assembled at render time
@@ -252,36 +286,32 @@ letting it quietly go stale.
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-filterbar-sort-select` -- app/src/pages/submissions/FilterBar.tsx :: chq-submissions-filterbar-sort-select renders a composed (non-static) text child: "{sortLabel(sort)}" -- a static substring join can never verify a value assembled at render time
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-status-pending-desktop` -- app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-desktop renders a composed (non-static) text child: "{STATUS_LABELS.pending}" -- a static substring join can never verify a value assembled at render time
 - `app/src/styles.css` :: `.chq-nav` -- src/routes/public/shell.tsx :: chq-nav renders a composed (non-static) text child: "{SURFACE_LABELS[s]}" -- a static substring join can never verify a value assembled at render time
+- `app/src/styles.css` :: `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` -- app/src/App.tsx :: chq-tabbar renders a composed (non-static) text child: "{ const to = section.path.replace(/\/\*$/, ''); return (" -- a static substring join can never verify a value assembled at render time
 - `src/routes/docs-site.css.ts` :: `.chq-docs-nav` -- src/routes/docs-site.tsx :: chq-docs-nav renders a composed (non-static) text child: "{group.label}" -- a static substring join can never verify a value assembled at render time
 - `src/routes/docs-site.css.ts` :: `.chq-docs-figure-placeholder` -- src/routes/docs-site.tsx :: chq-docs-figure-placeholder renders a composed (non-static) text child: "screenshot &middot; {block.shotId}" -- a static substring join can never verify a value assembled at render time
+- `src/routes/portal/portal.css.ts` :: `.chq-portal-shell > .chq-portal-footer .chq-portal-signout` -- src/routes/portal/shared.tsx :: chq-portal-shell renders a composed (non-static) text child: "{props.branding.logoUrl ?" -- a static substring join can never verify a value assembled at render time
 - `src/routes/portal/portal.css.ts` :: `.chq-portal-taskform-submit` -- src/routes/portal/tasks/views.tsx :: chq-portal-taskform-submit renders a composed (non-static) text child: "{TASK_FORM_SUBMIT_LABEL}" -- a static substring join can never verify a value assembled at render time
+- `src/routes/public/cfp.css.ts` :: `[data-chq-cfp-step="2"] .chq-cfp-step-talk` -- src/routes/public/submit-views.tsx :: chq-cfp-step-talk renders a composed (non-static) text child: ": null} {formatField ? (" -- a static substring join can never verify a value assembled at render time
 - `src/routes/public/cfp.css.ts` :: `.chq-cfp-actions-note` -- src/routes/public/submit-views.tsx :: chq-cfp-actions-note renders a composed (non-static) text child: "Resuming your saved draft from {formatEventDateTime(props.savedAt, props.timeZone)}." -- a static substring join can never verify a value assembled at render time
 
-## TWIN-RESOLVED roster (26 rows, wave-35 -- graded and recorded, counted in neither ratchet)
+## TWIN-RESOLVED roster (19 rows, wave-39 -- graded and recorded, counted in neither ratchet)
 
-- `app/src/pages/agenda/agenda.css` :: `.chq-phone-agenda-wordmark` -- "chautauqua" (app/src/pages/agenda/PhoneAgenda.tsx) is drawn verbatim at Chautauqua Agenda.dc.html:127 "Agenda", but an identical, still-visible text child exists on the same phone surface: "chautauqua" (app/src/pages/agenda/PhoneAgenda.tsx :: chq-phone-agenda-head-top) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/agenda/agenda.css` :: `.chq-agenda-head .chq-page-title` -- "Agenda" (app/src/pages/Agenda.tsx) is drawn verbatim at Chautauqua Agenda.dc.html:127 "Agenda", but an identical, still-visible text child exists on the same phone surface: "Agenda" (app/src/pages/agenda/PhoneAgenda.tsx :: chq-phone-agenda-h1) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/comms/comms.css` :: `.chq-comms-templates-table thead` -- "Open" (app/src/pages/comms/TemplatesTab.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/comms/TemplatesTab.tsx :: chq-comms-template-row-selected) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/comms/comms.css` :: `.chq-comms-main-landing` -- "Comms" (app/src/pages/Comms.tsx) is drawn verbatim at Chautauqua Comms.dc.html:177 "Comms", but an identical, still-visible text child exists on the same phone surface: "Comms" (app/src/pages/Comms.tsx :: chq-comms-phone-landing-title) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/comms/comms.css` :: `.chq-comms-batch-toggle-label-desktop` -- "Open" (app/src/pages/comms/RecentSends.tsx) is drawn verbatim at Chautauqua Comms.dc.html:286 "Templates · 390", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/comms/TemplatesTab.tsx :: chq-comms-template-row-selected) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-import-review-table thead` -- "Email" (app/src/pages/contacts/ImportWizard.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:179 "Contacts", but an identical, still-visible text child exists on the same phone surface: "Email" (app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-review-col-email) -- the frame's requirement is met by that twin, not by the hidden element
+- `app/src/pages/comms/comms.css` :: `.chq-comms-main-landing` -- "Comms" (app/src/pages/Comms.tsx) is drawn verbatim at Chautauqua Comms.dc.html:177 "Comms", but an identical, still-visible text child exists on the same phone surface: "Comms" (app/src/pages/Comms.tsx :: chq-measure-table) -- the frame's requirement is met by that twin, not by the hidden element
+- `app/src/pages/contacts/contacts-panels.css` :: `.chq-contacts-pipeline-head > .chq-btn` -- "Email" (app/src/pages/contacts/ContactDrawer.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:179 "Contacts", but an identical, still-visible text child exists on the same phone surface: "Email" (app/src/pages/contacts/ImportWizard.tsx :: chq-contacts-import-review-col-email) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/contacts/contacts.css` :: `.chq-contacts-table thead` -- "Labels" (app/src/pages/contacts/ContactsTable.tsx) is drawn verbatim at Chautauqua Contacts.dc.html:522 "Merge · 390", but an identical, still-visible text child exists on the same phone surface: "Labels" (app/src/pages/contacts/ContactsTable.tsx :: chq-contacts-col-labels) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/content/content.css` :: `.chq-content-table thead` -- "Download" (app/src/pages/content/FilesLibrary.tsx) is drawn verbatim at Chautauqua Content.dc.html:338 "Files · 390", but an identical, still-visible text child exists on the same phone surface: "Download" (app/src/pages/content/FilesLibrary.tsx :: chq-content-files-col-actions) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/content/content.css` :: `.chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(1)` -- "Download" (app/src/pages/content/FilesLibrary.tsx) is drawn verbatim at Chautauqua Content.dc.html:338 "Files · 390", but an identical, still-visible text child exists on the same phone surface: "Download" (app/src/pages/content/FilesLibrary.tsx :: chq-content-files-col-actions) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-content-table tr.chq-content-row > td:nth-child(6)` -- "Download" (app/src/pages/content/FilesLibrary.tsx) is drawn verbatim at Chautauqua Content.dc.html:338 "Files · 390", but an identical, still-visible text child exists on the same phone surface: "Download" (app/src/pages/content/FilesLibrary.tsx :: chq-content-files-col-actions) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/forms/forms.css` :: `.chq-forms-add-question` -- "Add a question" (app/src/pages/forms/FormsPage.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:468 "CFP form · 390", but an identical, still-visible text child exists on the same phone surface: "Add a question" (app/src/pages/forms/FormsPage.tsx :: chq-forms-add-question-phone) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/forms/forms.css` :: `.chq-forms-header-actions` -- "Preview" (app/src/pages/forms/FormsPage.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:468 "CFP form · 390", but an identical, still-visible text child exists on the same phone surface: "Preview" (app/src/pages/forms/FormsPage.tsx :: chq-forms-phone-footer) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/overview/overview.css` :: `.chq-overview-clash-eyebrow-group > .chq-overview-row-title-sm, .chq-overview-clash-eyebrow-group > .chq-overview-row-meta` -- "share this slot" (app/src/pages/overview/AgendaWorkSection.tsx) is drawn verbatim at Chautauqua Overview.dc.html:190 "Overview", but an identical, still-visible text child exists on the same phone surface: "share this slot" (app/src/pages/overview/AgendaWorkSection.tsx :: chq-overview-clash-line-phone) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/review/review.css` :: `.chq-review-results-table thead` -- "Speaker" (app/src/pages/review/ResultsTable.tsx) is drawn verbatim at Chautauqua Review.dc.html:934 "Scorecard · a criterion unscored", but an identical, still-visible text child exists on the same phone surface: "Speaker" (app/src/pages/review/ResultsTable.tsx :: chq-review-results-col-speaker) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/review/review.css` :: `.chq-review-criteria-head-row` -- "Weight" (app/src/pages/review/PlanEditor.tsx) is drawn verbatim at Chautauqua Review.dc.html:594 "Plan editor · 390", but an identical, still-visible text child exists on the same phone surface: "Weight" (app/src/pages/review/PlanEditor.tsx :: chq-review-criterion-weight) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/settings/settings.css` :: `.chq-settings-layout[data-drilled='true'] .chq-settings-rail` -- "Open" (app/src/pages/Settings.tsx) is drawn verbatim at Chautauqua Settings.dc.html:275 "Settings", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/Settings.tsx :: chq-rail-link) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/settings/settings.css` :: `.chq-settings-panel .chq-table thead` -- "Speakers" (app/src/pages/comms/ComposeWizard.tsx) is drawn verbatim at Chautauqua Settings.dc.html:510 "Settings · Speaker portal", but an identical, still-visible text child exists on the same phone surface: "Speakers" (app/src/pages/comms/ComposeWizard.tsx :: chq-comms-compose-col-speaker) -- the frame's requirement is met by that twin, not by the hidden element
+- `app/src/pages/settings/settings.css` :: `.chq-settings-panel .chq-table thead` -- "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:393 "Settings · Your data", but an identical, still-visible text child exists on the same phone surface: "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx :: chq-settings-summary-row-action) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/settings/settings.css` :: `.chq-settings-page:has(.chq-settings-layout[data-drilled='true']) > .chq-page-title` -- "Open" (app/src/pages/Settings.tsx) is drawn verbatim at Chautauqua Settings.dc.html:275 "Settings", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/Settings.tsx :: chq-rail-link) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/settings/settings.css` :: `.chq-settings-saved-embed-body` -- "Edit" (app/src/pages/settings/SavedEmbedsPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:347 "Settings · Tracks and rooms", but an identical, still-visible text child exists on the same phone surface: "Edit" (app/src/pages/settings/CallForPapersPanel.tsx :: chq-settings-questions-list) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/settings/settings.css` :: `[data-screen='true'] .chq-settings-saved-embeds-open` -- "Open" (app/src/pages/settings/SavedEmbedsPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:275 "Settings", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/Settings.tsx :: chq-rail-link) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/settings/settings.css` :: `.chq-settings-panel > .chq-settings-section-head > h2` -- "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:393 "Settings · Your data", but an identical, still-visible text child exists on the same phone surface: "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx :: chq-settings-summary-row-action) -- the frame's requirement is met by that twin, not by the hidden element
-- `app/src/pages/speakers/task-view.css` :: `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting .chq-taskview-head-row` -- "Open" (app/src/pages/speakers/TaskView.tsx) is drawn verbatim at Chautauqua Speakers.dc.html:133 "Speakers", but an identical, still-visible text child exists on the same phone surface: "Open" (app/src/pages/speakers/RosterPanel.tsx :: chq-speakers-roster-row) -- the frame's requirement is met by that twin, not by the hidden element
+- `app/src/pages/settings/settings.css` :: `.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action` -- "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx) is drawn verbatim at Chautauqua Settings.dc.html:393 "Settings · Your data", but an identical, still-visible text child exists on the same phone surface: "Revoke" (app/src/pages/settings/ApiTokensPanel.tsx :: chq-settings-summary-row-action) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-filterbar .chq-submissions-filterbar-select` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/submissions/submissions.css` :: `.chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted'])` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `src/routes/portal/portal.css.ts` :: `.chq-portal-actions-footer` -- "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session", but an identical, still-visible text child exists on the same phone surface: "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx :: chq-portal-actions-note) -- the frame's requirement is met by that twin, not by the hidden element
-- `src/routes/portal/portal.css.ts` :: `.chq-portal-shell > .chq-portal-footer .chq-portal-signout` -- "chautauqua" (src/routes/portal/shared.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:414 "Speaker portal", but an identical, still-visible text child exists on the same phone surface: "chautauqua" (src/routes/portal/shared.tsx :: chq-portal-brandline) -- the frame's requirement is met by that twin, not by the hidden element

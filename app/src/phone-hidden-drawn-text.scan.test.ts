@@ -423,6 +423,26 @@ export interface SheetScope {
   frameFile: string | undefined;
 }
 
+/** Wave-39 amendment (DEC-725): the TSX-SIDE mirror of `scopeBlobsForSheet`
+ * -- a sheet whose scope kind is `cluster` may only be joined against
+ * findings whose OWN file resolves to that SAME cluster key (the identical
+ * `clusterKeyForPath` normalisation, never a second cluster vocabulary,
+ * DEC-613). `shared-root` and `no-frame-fallback` sheets keep the full,
+ * unscoped finding population -- their OWN components are not owned by one
+ * cluster either, mirroring the fallback those two kinds already get on the
+ * frame side. Pure over its inputs so the non-vacuity section can drive it
+ * over synthetic fixtures. */
+export function findingsScopedForSheet(
+  sheet: string,
+  scope: SheetScope,
+  allFindings: readonly TextFinding[],
+  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
+): TextFinding[] {
+  if (scope.kind !== 'cluster') return [...allFindings];
+  const sheetKey = surfaceKeyOf(sheet);
+  return allFindings.filter((f) => surfaceKeyOf(f.file) === sheetKey);
+}
+
 /** The frame-extent population a CSS rule from `sheet` is graded against.
  * Pure over its `allBlobs`/`knownFrameFiles` inputs so the non-vacuity
  * section can drive it over synthetic fixtures without touching the real
@@ -447,6 +467,106 @@ export function scopeBlobsForSheet(
 // Join: CSS rule -> chq- tokens -> TSX text findings -> frame extents.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Wave-39 amendment (DEC-725): a shared control verb from an UNRELATED
+// component can no longer condemn a sheet. Two tightenings:
+//
+//   (1) TSX-SIDE CLUSTER SCOPING -- the wave-35 amendment scoped the FRAME
+//   side of the join (`scopeBlobsForSheet`) to each sheet's own cluster, but
+//   left the TSX side global: a finding from ANY component anywhere in the
+//   tree could supply the literal that grades ANY sheet's rule. The worked
+//   example that motivated this: `.chq-agenda-head-actions .chq-btn-
+//   secondary` (agenda.css, cluster "agenda") was graded PREMISE-FALSE on
+//   the word "Cancel" sourced from `app/src/components/EventSwitcher.tsx`
+//   -- a shared component outside any page cluster (`clusterKeyForPath`
+//   returns `undefined` for it) -- matched only by coincidence against the
+//   Agenda frame. `gradeRule` now requires a candidate finding's OWN file
+//   to resolve to the SAME cluster key as the rule's sheet (the identical
+//   `clusterKeyForPath` normalisation `scopeBlobsForSheet` already uses --
+//   never a second cluster vocabulary, DEC-613). Sheets whose scope kind is
+//   `shared-root` or `no-frame-fallback` keep the full, unscoped finding
+//   population, mirroring the frame-side fallback those same two kinds
+//   already receive (a shared root's or unclustered sheet's own components
+//   are not owned by one cluster either).
+//
+//   (2) GENERIC-VERB CORROBORATION -- even within one cluster, a single
+//   short, generic control word ("Edit", "Save", "Open", "Approve") drawn
+//   by ONE component and hidden by an unrelated rule in the SAME cluster is
+//   still coincidental agreement, not a same-screen contradiction (the six
+//   `src/routes/public/cfp.css.ts` rows all ground on the bare word "You"
+//   against "Portal · Edit your session"). A candidate whose ENTIRE text is
+//   a single GENERIC verb -- derived from the corpus, never a hand list
+//   (DEC-180): a word that appears as the complete, static, own-text of
+//   some control in `GENERIC_VERB_MIN_COMPONENTS` or more DISTINCT files --
+//   may not, alone, produce PREMISE-FALSE. It needs corroboration from
+//   another finding among the SAME rule's own matches that also resolves
+//   against a frame extent: either a longer, multi-word run (a real,
+//   specific phrase is much less likely to be coincidence), or the
+//   identical token repeating the same text elsewhere (the same class,
+//   drawn twice, is the rule's own literal, not a stranger's).
+// ---------------------------------------------------------------------------
+
+// Any static (non-composed), single-word (no internal whitespace) text
+// finding is a GENERIC-VERB CANDIDATE; it is promoted to the actual
+// GENERIC_VERBS set only once the SAME word recurs as the complete own-text
+// of controls in this many or more distinct files -- one bare-word
+// coincidence names nothing, but a word repeating across unrelated
+// components is exactly the shared-vocabulary shape this amendment guards
+// against (DEC-180: derived from the corpus, never hand-listed).
+export const GENERIC_VERB_MIN_COMPONENTS = 3;
+
+/** Every single-word static text that recurs as the complete own-text of a
+ * control in `GENERIC_VERB_MIN_COMPONENTS` or more distinct files across
+ * `findings` -- pure over its input so the non-vacuity section can drive it
+ * over synthetic fixtures. */
+export function genericVerbsIn(
+  findings: readonly TextFinding[],
+  minComponents: number = GENERIC_VERB_MIN_COMPONENTS
+): ReadonlySet<string> {
+  const filesByWord = new Map<string, Set<string>>();
+  for (const f of findings) {
+    if (f.composed || /\s/.test(f.text)) continue; // multi-word runs are never "generic verbs"
+    if (!filesByWord.has(f.text)) filesByWord.set(f.text, new Set());
+    filesByWord.get(f.text)!.add(f.file);
+  }
+  const out = new Set<string>();
+  for (const [word, files] of filesByWord) {
+    if (files.size >= minComponents) out.add(word);
+  }
+  return out;
+}
+
+const GENERIC_VERBS: ReadonlySet<string> = genericVerbsIn(TEXT_FINDINGS);
+
+/** Whether `finding`'s own text is a generic-verb candidate requiring
+ * corroboration: static, single-word, and a member of `genericVerbs`. */
+function isUncorroboratedCandidate(finding: TextFinding, genericVerbs: ReadonlySet<string>): boolean {
+  return !finding.composed && !/\s/.test(finding.text) && genericVerbs.has(finding.text);
+}
+
+/** Whether some OTHER finding among this rule's own `matches` corroborates
+ * `f`'s frame match: a longer multi-word run that also resolves against a
+ * frame extent, or the SAME token repeating the identical text (the rule's
+ * own literal recurring, not a stranger's). Pure over its inputs so the
+ * non-vacuity section can drive it over synthetic fixtures. */
+export function hasCorroboration(
+  f: TextFinding,
+  matches: readonly TextFinding[],
+  blobs: readonly FrameBlob[],
+  genericVerbs: ReadonlySet<string> = GENERIC_VERBS
+): boolean {
+  return matches.some((g) => {
+    if (g === f || g.composed) return false;
+    if (!matchingFrame(g.text, blobs)) return false;
+    if (isUncorroboratedCandidate(g, genericVerbs)) {
+      // another equally-generic candidate corroborates only by sharing f's
+      // OWN token (the rule's own literal recurring, not a second stranger).
+      return g.token === f.token;
+    }
+    return true; // a multi-word (or non-generic) independent match corroborates on its own
+  });
+}
+
 export type Grade = 'PREMISE-FALSE' | 'UNVERIFIABLE' | 'PREMISE-OK' | 'TWIN-RESOLVED';
 
 export interface GradedRule {
@@ -456,8 +576,21 @@ export interface GradedRule {
   reason: string;
 }
 
+// Wave-39 amendment (DEC-725): a CSS SELECTOR token must be a genuine CLASS
+// selector -- `.chq-x` -- not merely a `chq-` substring anywhere in the
+// selector text. Without the leading `.` anchor, `CHQ_TOKEN_RE` also matched
+// `chq-cfp-step` INSIDE the ATTRIBUTE NAME of `[data-chq-cfp-step="1"]`
+// (an attribute selector, never a class selector), pulling in every
+// `.chq-cfp-step` finding -- including the unrelated "You" section label --
+// as if it were a real match for `.chq-cfp-step-back`/`.chq-cfp-step-next`'s
+// own rule. This is the SAME shape as the EventSwitcher.tsx cross-component
+// match this wave closes, one layer earlier in the pipeline: a token that
+// was never actually named by the rule's own class selector supplying the
+// literal that condemns it.
+const CSS_CLASS_TOKEN_RE = /\.(chq-[a-z0-9-]+)/g;
+
 function tokensOf(selector: string): string[] {
-  return [...new Set([...selector.matchAll(CHQ_TOKEN_RE)].map((m) => m[0]))];
+  return [...new Set([...selector.matchAll(CSS_CLASS_TOKEN_RE)].map((m) => m[1]!))];
 }
 
 // Every `chq-` token that is phone-hidden by SOME rule, anywhere in the
@@ -513,7 +646,8 @@ export function gradeRule(
   findings: readonly TextFinding[],
   blobs: readonly FrameBlob[],
   hiddenTokens: ReadonlySet<string> = HIDDEN_TOKENS,
-  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
+  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath,
+  genericVerbs: ReadonlySet<string> = GENERIC_VERBS
 ): GradedRule | undefined {
   const tokens = tokensOf(selector);
   const matches = findings.filter((f) => tokens.includes(f.token));
@@ -523,6 +657,13 @@ export function gradeRule(
     if (f.composed) continue;
     const frame = matchingFrame(f.text, blobs);
     if (frame) {
+      // Wave-39 amendment (DEC-725): a candidate whose entire text is a
+      // single GENERIC control verb cannot, alone, condemn this rule --
+      // it needs corroboration from another of THIS rule's own matches
+      // (a multi-word run, or the same token's literal recurring).
+      if (isUncorroboratedCandidate(f, genericVerbs) && !hasCorroboration(f, matches, blobs, genericVerbs)) {
+        continue;
+      }
       const twin = findTwin(f, findings, hiddenTokens, surfaceKeyOf);
       if (twin) {
         return {
@@ -566,7 +707,8 @@ const KNOWN_FRAME_FILES: ReadonlySet<string> = new Set(designFiles());
 
 const GRADED_RULES: GradedRule[] = PHONE_DISPLAY_NONE_RULES.map((r) => {
   const scope = scopeBlobsForSheet(r.sheet, FRAME_BLOBS, KNOWN_FRAME_FILES);
-  const g = gradeRule(r.selector, TEXT_FINDINGS, scope.blobs);
+  const scopedFindings = findingsScopedForSheet(r.sheet, scope, TEXT_FINDINGS);
+  const g = gradeRule(r.selector, scopedFindings, scope.blobs);
   return g ? { ...g, sheet: r.sheet } : undefined;
 }).filter((g): g is GradedRule => g !== undefined);
 
@@ -584,8 +726,19 @@ const TWIN_RESOLVED_ROWS = GRADED_RULES.filter((g) => g.grade === 'TWIN-RESOLVED
 // width:390 frame extent in the pack, not scoped to the hidden rule's own
 // page or feature") and twin-detection resolved rows whose text is still
 // drawn, visibly, by an unhidden sibling on the same cluster surface.
-export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 28;
-export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 40;
+// Wave-39 amendment (DEC-725): both re-measured against the TSX-side
+// cluster-scoped + generic-verb-corroborated instrument. PREMISE-FALSE fell
+// from 28 as (a) a cross-cluster component (EventSwitcher.tsx, no cluster of
+// its own) could no longer supply a stranger's literal, (b) a CSS-selector
+// token-extraction bug that pulled `chq-cfp-step` out of the ATTRIBUTE NAME
+// `data-chq-cfp-step` (never a class selector) stopped contaminating
+// `.chq-cfp-step-back`/`.chq-cfp-step-next`/`.chq-cfp-step-talk`'s own
+// matches with the unrelated "You" section label, and (c) a handful of
+// single, uncorroborated generic verbs ("Cancel", "Edit") no longer alone
+// condemn a rule. UNVERIFIABLE rose as those same rows fell through to their
+// own composed finding, exactly as wave-35 recorded for cluster scoping.
+export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 20;
+export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 49;
 
 describe('DEC-725 phone hidden-drawn-text probe', () => {
   it('finds more than one phone display:none rule (vacuous-population tripwire, CSS side)', () => {
@@ -692,6 +845,123 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     expect(scope.blobs).toEqual([]); // Agenda's own frame carries none of this synthetic Overview-only text
     const graded = gradeRule('.chq-x-fake-scope-miss', findings, scope.blobs);
     expect(graded?.grade).toBe('PREMISE-OK'); // unscoped, this would have wrongly graded PREMISE-FALSE
+  });
+
+  // --- wave-39 amendment: TSX-side cluster scoping + generic-verb
+  // corroboration (DEC-725) -- a shared control verb from an UNRELATED
+  // component can no longer condemn a sheet. ------------------------------
+
+  it('findingsScopedForSheet narrows a cluster-scoped sheet\'s findings to its OWN cluster, excluding a same-token match from an unrelated component (the worked EventSwitcher.tsx/agenda.css shape)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/components/EventSwitcher.tsx', token: 'chq-btn-secondary', text: 'Cancel', composed: false },
+      { file: 'app/src/pages/agenda/DayGrid.tsx', token: 'chq-agenda-cancel', text: 'Cancel', composed: false },
+    ];
+    const known = new Set(['Chautauqua Agenda.dc.html']);
+    const scope = scopeBlobsForSheet('app/src/pages/agenda/agenda.css', [], known);
+    expect(scope.kind).toBe('cluster');
+    const scoped = findingsScopedForSheet('app/src/pages/agenda/agenda.css', scope, findings);
+    expect(scoped.map((f) => f.file)).toEqual(['app/src/pages/agenda/DayGrid.tsx']);
+    expect(clusterKeyForPath('app/src/components/EventSwitcher.tsx')).toBeUndefined();
+  });
+
+  it('findingsScopedForSheet keeps the FULL, unscoped finding population for shared-root and no-frame-fallback sheets (their own components are not owned by one cluster either)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/components/EventSwitcher.tsx', token: 'chq-x', text: 'Anything', composed: false },
+      { file: 'app/src/pages/agenda/DayGrid.tsx', token: 'chq-y', text: 'Other', composed: false },
+    ];
+    const sharedRootScope = scopeBlobsForSheet('app/src/styles.css', [], new Set());
+    expect(findingsScopedForSheet('app/src/styles.css', sharedRootScope, findings)).toEqual(findings);
+    const fallbackScope = scopeBlobsForSheet('app/src/pages/forms/forms.css', [], new Set());
+    expect(findingsScopedForSheet('app/src/pages/forms/forms.css', fallbackScope, findings)).toEqual(findings);
+  });
+
+  it('NEGATIVE CONTROL: a synthetic IN-CLUSTER multi-word match still grades PREMISE-FALSE (tightening does not over-tighten a genuine, specific-phrase match)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Fixture.tsx', token: 'chq-x-fake-multiword', text: 'A Genuinely Specific Phrase', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Chautauqua Agenda.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>A Genuinely Specific Phrase</span>') },
+    ];
+    const known = new Set(['Chautauqua Agenda.dc.html']);
+    const scope = scopeBlobsForSheet('app/src/pages/agenda/fixture.css', blobs, known);
+    const scoped = findingsScopedForSheet('app/src/pages/agenda/fixture.css', scope, findings);
+    const graded = gradeRule('.chq-x-fake-multiword', scoped, scope.blobs);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('NEGATIVE CONTROL: a synthetic CROSS-CLUSTER single-verb match grades PREMISE-OK once TSX-side cluster scoping excludes the stranger component (the exact EventSwitcher.tsx/agenda.css shape, end to end)', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/components/StrangerModal.tsx', token: 'chq-btn-secondary', text: 'Cancel', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Chautauqua Agenda.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Cancel</span>') },
+    ];
+    const known = new Set(['Chautauqua Agenda.dc.html']);
+    const scope = scopeBlobsForSheet('app/src/pages/agenda/fixture.css', blobs, known);
+    expect(clusterKeyForPath('app/src/components/StrangerModal.tsx')).toBeUndefined();
+    const scoped = findingsScopedForSheet('app/src/pages/agenda/fixture.css', scope, findings);
+    expect(scoped).toEqual([]); // the stranger component carries no cluster to match agenda's own
+    const graded = gradeRule('.chq-btn-secondary', scoped, scope.blobs);
+    expect(graded).toBeUndefined(); // outside the population entirely: no text-bearing finding left for this token
+  });
+
+  it('genericVerbsIn promotes a word only once it recurs as the complete own-text of a control in enough DISTINCT files, never on a single coincidental sighting', () => {
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/a/A.tsx', token: 'chq-a', text: 'Edit', composed: false },
+      { file: 'app/src/pages/b/B.tsx', token: 'chq-b', text: 'Edit', composed: false },
+    ];
+    expect(genericVerbsIn(findings, 3).has('Edit')).toBe(false); // only 2 distinct files, below the threshold
+    expect(genericVerbsIn(findings, 2).has('Edit')).toBe(true);
+    // a multi-word run is never a "generic verb" candidate, however often it recurs
+    const multiWord: TextFinding[] = [
+      { file: 'app/src/pages/a/A.tsx', token: 'chq-a', text: 'Two Words', composed: false },
+      { file: 'app/src/pages/b/B.tsx', token: 'chq-b', text: 'Two Words', composed: false },
+      { file: 'app/src/pages/c/C.tsx', token: 'chq-c', text: 'Two Words', composed: false },
+    ];
+    expect(genericVerbsIn(multiWord, 2).has('Two Words')).toBe(false);
+  });
+
+  it('an UNCORROBORATED generic-verb candidate (its rule\'s only match, no multi-word or same-token sibling) does not, alone, grade PREMISE-FALSE', () => {
+    const genericVerbs = new Set(['Cancel']);
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Lone.tsx', token: 'chq-x-fake-lone-verb', text: 'Cancel', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Chautauqua Agenda.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Cancel</span>') },
+    ];
+    const graded = gradeRule('.chq-x-fake-lone-verb', findings, blobs, HIDDEN_TOKENS, clusterKeyForPath, genericVerbs);
+    expect(graded?.grade).toBe('PREMISE-OK'); // no other match to corroborate it, so the bare verb alone cannot condemn the rule
+  });
+
+  it('a generic-verb candidate CORROBORATED by a multi-word sibling match on the same rule still grades PREMISE-FALSE', () => {
+    const genericVerbs = new Set(['Cancel']);
+    const findings: TextFinding[] = [
+      { file: 'app/src/pages/agenda/Corroborated.tsx', token: 'chq-x-fake-corrob', text: 'Cancel', composed: false },
+      { file: 'app/src/pages/agenda/Corroborated.tsx', token: 'chq-x-fake-corrob', text: 'A Genuinely Specific Phrase', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      {
+        fileName: 'Chautauqua Agenda.dc.html',
+        line: 1,
+        title: 'Fixture frame',
+        normalized: normalizeSource('<span>Cancel</span><span>A Genuinely Specific Phrase</span>'),
+      },
+    ];
+    const graded = gradeRule('.chq-x-fake-corrob', findings, blobs, HIDDEN_TOKENS, clusterKeyForPath, genericVerbs);
+    expect(graded?.grade).toBe('PREMISE-FALSE');
+  });
+
+  it('a CSS selector token is a genuine CLASS selector (`.chq-x`) only -- a `chq-` substring inside an ATTRIBUTE NAME (`[data-chq-x="1"]`) is never extracted as a token (the .chq-cfp-step-back/.chq-cfp-step-you shape)', () => {
+    const findings: TextFinding[] = [
+      { file: 'src/routes/public/Fixture.tsx', token: 'chq-x', text: 'Elsewhere', composed: false },
+    ];
+    const blobs: FrameBlob[] = [
+      { fileName: 'Chautauqua Public and Portal.dc.html', line: 1, title: 'Fixture frame', normalized: normalizeSource('<span>Elsewhere</span>') },
+    ];
+    // `[data-chq-x="1"] .chq-y` -- the attribute name embeds `chq-x` as a
+    // pure substring; only `.chq-y` is a genuine class selector.
+    const graded = gradeRule('[data-chq-x="1"] .chq-y', findings, blobs);
+    expect(graded).toBeUndefined(); // `chq-x` was never a class token on this selector, so `.chq-y` (no findings at all) is outside the population
   });
 
   // --- wave-35 amendment: twin detection (DEC-725, reusing DEC-919's
