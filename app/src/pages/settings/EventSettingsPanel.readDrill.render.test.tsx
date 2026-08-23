@@ -88,7 +88,7 @@ function mockAllSections() {
       tracks: [],
       fields: [],
     },
-    [`GET /api/v1/events/${EVENT_ID}/pages`]: listEnvelope([]),
+    [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 0, speakers: 0, scheduled: 0 },
     [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([]),
     [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [], rows: [], total: 0, page: 1, perPage: 1, counts: {} },
     'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
