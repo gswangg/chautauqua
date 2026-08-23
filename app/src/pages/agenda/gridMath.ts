@@ -41,7 +41,28 @@ export function gridRowEnd(endMin: number, dayStartMin: number, gridMin: number)
  * a single interval operation, not two independently-clamped bounds. An
  * interval that does not intersect [dayStartMin, dayEndMin) returns null (no
  * band should be drawn); an intersecting interval returns a well-ordered
- * rowStart < rowEnd, clipped to the window edges when it spills past them. */
+ * clamped startMin < endMin, clipped to the window edges when it spills past
+ * them. THE ONE clamp implementation in the tree (DEC-613) -- every caller
+ * that needs interval-level clamping (desktop grid rows, phone slot minutes)
+ * goes through this, not a re-derived copy. */
+export function clampIntervalToWindow(
+  startMin: number,
+  endMin: number,
+  dayStartMin: number,
+  dayEndMin: number,
+): { startMin: number; endMin: number } | null {
+  if (endMin <= dayStartMin || startMin >= dayEndMin) return null;
+  const clampedStart = Math.max(startMin, dayStartMin);
+  const clampedEnd = Math.min(endMin, dayEndMin);
+  if (clampedEnd <= clampedStart) return null;
+  return { startMin: clampedStart, endMin: clampedEnd };
+}
+
+/** DEC-021 wave-34: the desktop grid's row-space wrapper over
+ * clampIntervalToWindow -- converts the clamped interval to a well-ordered
+ * `rowStart < rowEnd` in CSS grid-row space, or null when there is no band
+ * to draw (either no intersection, or the clamped interval degenerates to a
+ * zero-row span). */
 export function clampBreakToWindow(
   startMin: number,
   endMin: number,
@@ -49,11 +70,10 @@ export function clampBreakToWindow(
   dayEndMin: number,
   gridMin: number,
 ): { rowStart: number; rowEnd: number } | null {
-  if (endMin <= dayStartMin || startMin >= dayEndMin) return null;
-  const clampedStart = Math.max(startMin, dayStartMin);
-  const clampedEnd = Math.min(endMin, dayEndMin);
-  const rowStart = minutesToGridRow(clampedStart, dayStartMin, gridMin);
-  const rowEnd = gridRowEnd(clampedEnd, dayStartMin, gridMin);
+  const clamped = clampIntervalToWindow(startMin, endMin, dayStartMin, dayEndMin);
+  if (clamped === null) return null;
+  const rowStart = minutesToGridRow(clamped.startMin, dayStartMin, gridMin);
+  const rowEnd = gridRowEnd(clamped.endMin, dayStartMin, gridMin);
   if (rowEnd <= rowStart) return null;
   return { rowStart, rowEnd };
 }
