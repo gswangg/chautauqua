@@ -145,13 +145,18 @@ export const REPEATED_ANSWER_MESSAGE =
 /** DEC-422/DEC-598: reads a single-valued (text/select/textarea) answer part
  * out of a parseBody({all:true}) body value. A duplicated form part comes
  * back from Hono as an array — that is refused (`ok: false`) rather than
- * stringified into a merged "a,b" value. `undefined` (no answer posted) is a
- * valid, present "no answer" result, matching every other field-kind's
- * absent-answer handling. */
+ * stringified into a merged "a,b" value. A multipart part arriving as a
+ * File under a text-kind field's name is refused the same way, rather than
+ * coerced via `String(raw)` into the literal `"[object File]"` — a File is
+ * not a text/select/textarea answer, per this function's own contract
+ * (DEC-422 wave-51). `undefined` (no answer posted) is a valid, present
+ * "no answer" result, matching every other field-kind's absent-answer
+ * handling. */
 export function readSingleFormValue(raw: unknown): { ok: true; value: string | undefined } | { ok: false } {
   if (Array.isArray(raw)) return { ok: false };
   if (raw === undefined) return { ok: true, value: undefined };
-  return { ok: true, value: typeof raw === "string" ? raw : String(raw) };
+  if (typeof raw !== "string") return { ok: false };
+  return { ok: true, value: raw };
 }
 
 /** DEC-422/DEC-598: reads a single-valued file-kind part. A duplicated file
