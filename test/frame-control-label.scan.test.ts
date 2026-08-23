@@ -120,7 +120,8 @@
 // include, so importing it does not pull this file's own `describe`/`it`
 // suite along, unlike importing this file directly). No behaviour change:
 // same regexes, same population, same grades.
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
@@ -132,6 +133,24 @@ export type { ControlLabel };
 const REPO_ROOT = join(DESIGN_ROOT, '..', '..');
 const APP_SRC_ROOT = join(REPO_ROOT, 'app', 'src');
 const SRC_ROOT = join(REPO_ROOT, 'src');
+
+/** DEC-967 wave-41 amendment: the 1-based line of the single `</x-dc>`
+ * template close in `fullPath`, throwing loudly on zero or multiple
+ * matches. The frame-extent clipping this feeds lives in
+ * ./frame-control-label/population.ts's `framesInFile` (the extraction
+ * grammar's own home since the wave-40 decomposition); this copy exists so
+ * the synthetic control below can drive the predicate directly. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
 
@@ -586,5 +605,52 @@ describe('frame control-label ledger (DEC-976/DEC-967 wave-128, v12 mobile campa
       );
     }
     expect(UNMATCHED.length).toBeGreaterThanOrEqual(FOOTER_LABEL_CEILING);
+  });
+
+  it('control (DEC-967 wave-41 amendment): a fabricated control label after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <a href="#" style="min-height:44px; display:flex">Zzy Before Close Anchor</a>', // line 3
+        '</div>', // line 4
+        '</x-dc>', // line 5: template close
+        '<a href="#" style="min-height:44px; display:flex">Zzy After Close Anchor</a>', // line 6: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+      const content = lines.join('\n');
+      const lineStartIndex: number[] = [0];
+      for (let i = 0; i < lines.length; i++) {
+        lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
+      }
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(5);
+
+      // Mirrors controlLabelsInFile's own extentEnd computation above: no
+      // next label after the frame line (2), so the raw extent would run
+      // to Infinity -- clipped here to the template close, exactly as the
+      // production `extentEnd: Math.min(nextLabel ? nextLabel.line :
+      // Infinity, templateCloseLine(full))` does.
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, closeLine);
+      expect(extentEnd).toBe(5);
+
+      const startOff = lineStartIndex[frameLine - 1]!;
+      const endOff = lineStartIndex[extentEnd - 1]!;
+      const text = content.slice(startOff, endOff);
+      const extracted = labelsInFrameText(text, lineStartIndex, startOff).map((e) => e.label);
+
+      // POSITIVE: the before-close anchor label sits inside the clipped extent.
+      expect(extracted).toContain('Zzy Before Close Anchor');
+      // NEGATIVE: the after-close anchor label, despite wearing the
+      // identical control shape in the same file, sits outside the
+      // clipped extent -- exactly the swallow this ruling closes.
+      expect(extracted).not.toContain('Zzy After Close Anchor');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -249,6 +249,22 @@ function isLabelLine(line: string): boolean {
   return line.includes('font-size:19px') && LABEL_SPAN_RE.test(line);
 }
 
+/** DEC-967 wave-41 amendment: the 1-based line of the single `</x-dc>`
+ * template close in `fileName`, throwing loudly on zero or multiple
+ * matches. Ported (not imported) per this file's own PORTING NOTE
+ * precedent -- every ledger this ruling touches carries its own copy. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
+
 function designFiles(): string[] {
   return readdirSync(DESIGN_ROOT, { withFileTypes: true })
     .filter((e) => e.isFile() && e.name.endsWith('.dc.html'))
@@ -282,8 +298,16 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Clipped at the template's own close (DEC-967 wave-41 amendment) so
+    // the last labelled block can never swallow `</x-dc>` and everything
+    // past it.
     const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return { fileName, line: frameLine, title, extentEnd: nextLabel ? nextLabel.line : Infinity };
+    return {
+      fileName,
+      line: frameLine,
+      title,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
+    };
   });
 }
 
@@ -1527,5 +1551,54 @@ describe('"Draft" abbreviation exemption (DEC-613 wave-34 amendment, task w34-g)
     // just to a floating quote that happens to still be somewhere in the
     // file.
     expect(cssText).toContain('.chq-cfp-save-draft');
+  });
+});
+
+describe('control (DEC-967 wave-41 amendment): frame extent clipped at the template close', () => {
+  it('a fabricated drawn control after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="font-size:19px">Zzy Frame</span>', // line 1: label
+        '<div style="width:390px; height:844px">', // line 2: frame line
+        '  <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px">Zzy Before Close Present</div>', // line 3
+        '</div>', // line 4
+        '</x-dc>', // line 5: template close
+        '<div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px">Zzy After Close Absent</div>', // line 6: after close -- must not enter
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+      const content = lines.join('\n');
+      const lineStartIndex: number[] = [0];
+      for (let i = 0; i < lines.length; i++) {
+        lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
+      }
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(5);
+
+      // Mirrors drawnControlsInFile's own extentEnd computation above: no
+      // next label after the frame line (2), so the raw extent would run
+      // to Infinity -- clipped here to the template close, exactly as the
+      // production `extentEnd: Math.min(nextLabel ? nextLabel.line :
+      // Infinity, templateCloseLine(full))` does.
+      const frameLine = 2;
+      const extentEnd = Math.min(Infinity, closeLine);
+      expect(extentEnd).toBe(5);
+
+      const startOff = lineStartIndex[frameLine - 1]!;
+      const endOff = lineStartIndex[extentEnd - 1]!;
+      const text = content.slice(startOff, endOff);
+      const extracted = drawnControlsInFrameText(text).map((e) => e.label);
+
+      // POSITIVE: the before-close control sits inside the clipped extent.
+      expect(extracted).toContain('Zzy Before Close Present');
+      // NEGATIVE: the after-close control, despite wearing the identical
+      // painted-face shape in the same file, sits outside the clipped
+      // extent -- exactly the swallow this ruling closes.
+      expect(extracted).not.toContain('Zzy After Close Absent');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

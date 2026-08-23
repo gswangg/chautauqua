@@ -56,6 +56,22 @@ export function designFiles(): string[] {
     .sort();
 }
 
+/** DEC-967 wave-41 amendment: the 1-based line of the single `</x-dc>`
+ * template close in `fullPath`, throwing loudly on zero or multiple
+ * matches. A frame extent is clipped at it so the last labelled block can
+ * never swallow `</x-dc>` and the `<script data-dc-script>` body past it. */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
+
 export function framesInFile(fileName: string): Frame[] {
   const full = join(DESIGN_ROOT, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
@@ -82,12 +98,15 @@ export function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Clipped at the template's own close (DEC-967 wave-41 amendment) so
+    // the last labelled block can never swallow `</x-dc>` and everything
+    // past it.
     const nextLabel = labelLines.find((l) => l.line > frameLine);
     return {
       fileName,
       line: frameLine,
       title,
-      extentEnd: nextLabel ? nextLabel.line : Infinity,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
     };
   });
 }
