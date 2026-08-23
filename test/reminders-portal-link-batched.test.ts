@@ -215,7 +215,29 @@ describe("remindNow — organizer fan-out mints all claim tokens concurrently (D
     // crypto.subtle) token generation far enough to reach its FIRST kv.put
     // — a real macrotask delay, since SubtleCrypto resolves across actual
     // event-loop ticks, not just queued microtasks.
-    await new Promise((r) => setTimeout(r, 50));
+    //
+    // A fixed sleep cannot decide this: it is a wall-clock GUESS at how
+    // long twelve real crypto.subtle mints take to reach their first
+    // kv.put, and that duration is contention-dependent, not constant —
+    // measured 64ms standalone but 127ms inside the full fast tier (DEC-903
+    // wave-47). A condition wait instead polls for the actual fact under
+    // test (all N puts issued) with a generous overall bound, so it is
+    // insensitive to how long the mints happen to take on this run: it
+    // returns as soon as the condition holds, and only fails if it
+    // genuinely never holds. The ordering claim survives fully intact — a
+    // sequential per-recipient await loop can still never get past 1
+    // issued put at a time, so it can never satisfy `issued.length === N`
+    // and the wait will still time out and fail for that implementation.
+    const pollStart = Date.now();
+    const pollBoundMs = 5000;
+    while (issued.length < N) {
+      if (Date.now() - pollStart > pollBoundMs) {
+        throw new Error(
+          `timed out after ${pollBoundMs}ms waiting for ${N} issued kv.put calls; observed ${issued.length}`,
+        );
+      }
+      await new Promise((r) => setTimeout(r, 5));
+    }
 
     // Every recipient's createClaimToken has reached (and blocked on) its
     // first kv.put — one issued put per recipient — before any of them
