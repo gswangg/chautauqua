@@ -463,6 +463,12 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
   // token set from the tree's own receipts rather than a hand-listed array.
   // That is a genuine non-test import, so the ledger entry went stale and is
   // removed rather than kept as a second, contradicting claim.
+  "app/src/phone-tap-target-scan/public-390-ancestor-floor.ts":
+    "Derivation module for the same phone-tap-target scan family -- its only consumers are " +
+    "test/public-390-roster-tag-resolution.scan.test.ts and test/public-390-offender-roster.scan.test.ts " +
+    "(both import FLOORED_BY_ANCESTOR_ROWS), and test-file imports don't confer reachability (DEC-518); " +
+    "it is the scan's own code, never SPA bundle code, same shape as its core.ts / anchor-floor.ts / ssr.ts " +
+    "/ undeclared.ts siblings above -- exported for exactly one derived output.",
   "app/src/phone-tap-target-scan/anchor-floor.ts":
     "Row-action-anchor half of the same wave-v12m-w8 decomposition -- imported only by " +
     "app/src/phone-tap-target-anchor-floor.scan.test.ts (wave v12m-w12 split), and test-file imports don't " +

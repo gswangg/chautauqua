@@ -348,7 +348,7 @@ describe("mail card frame ledger (DEC-037 wave-48 amendment)", () => {
       {
         label: "masthead line 2 -- dates/venue (12px MUTED_COLOR)",
         verdict: "MATCHED",
-        reason: "built this wave: eventMeta renders as the second masthead row, inside the same bordered table, above the same bottom rule.",
+        reason: "eventMeta renders as the second masthead row, inside the same bordered table, above the same bottom rule.",
         check: () => {
           expect(html).toContain("12-14 May 2027 · Moscone West, San Francisco");
           expect(html).toContain("font-size:12px;line-height:1.6;color:#565A4B");

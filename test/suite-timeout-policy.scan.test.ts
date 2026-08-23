@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { globSync } from "tinyglobby";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 // DEC-069 wave-25 amendment: a global `testTimeout` raise disarms hang
 // detection for the whole suite (~16,880 tests) to rescue a handful of slow
@@ -26,13 +27,28 @@ describe("suite timeout policy (DEC-069 wave-25 amendment)", () => {
         test: { testTimeout: 30000 },
       });
     `;
-    expect(TESTTIMEOUT_RE.test(FABRICATED_CONFIG)).toBe(true);
+    expect(TESTTIMEOUT_RE.test(stripTsComments(FABRICATED_CONFIG))).toBe(true);
+
+    // Synthetic negative control (DEC-374 wave-56): a config whose ONLY
+    // occurrence of the word sits inside a comment -- e.g. the wave-47
+    // comment in vitest.fast.config.ts explaining why raising testTimeout is
+    // the wrong fix for load flakiness -- must NOT be reported. Matching the
+    // raw file text makes the scan read its own recorded lesson as a
+    // violation of that lesson; comments must be stripped first (DEC-613:
+    // reuse the tree's existing comment stripper).
+    const FABRICATED_CONFIG_COMMENT_ONLY = `
+      // Do not add a global testTimeout here -- see DEC-069 wave-25.
+      export default defineConfig({
+        test: {},
+      });
+    `;
+    expect(TESTTIMEOUT_RE.test(stripTsComments(FABRICATED_CONFIG_COMMENT_ONLY))).toBe(false);
 
     const configFiles = ["vitest.config.ts", "vitest.fast.config.ts"];
     const offenders: string[] = [];
     for (const rel of configFiles) {
       const source = readFileSync(resolve(ROOT, rel), "utf8");
-      if (TESTTIMEOUT_RE.test(source)) offenders.push(rel);
+      if (TESTTIMEOUT_RE.test(stripTsComments(source))) offenders.push(rel);
     }
     expect(offenders).toEqual([]);
   });
