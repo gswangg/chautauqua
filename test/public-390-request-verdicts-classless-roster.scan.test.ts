@@ -234,6 +234,31 @@ describe("public-390 classless-roster verdicts — per-row pins", () => {
   });
 
   it("zero OFFENDERS this wave: every one of the 17 graded public rows resolved VERIFIED or EXEMPT, so no floor CSS was added (a floor rule with no offender to floor would itself be dead code)", () => {
-    expect(true).toBe(true);
+    // Was `expect(true).toBe(true)` -- a tautology that asserted nothing
+    // about the sentence in its own name, caught by
+    // app/src/tautological-assertion.scan.test.ts. Now it reads the verdict
+    // column of the roster table this file grades, straight out of the audit
+    // doc, so a row silently re-graded to OFFENDER (or a row appearing or
+    // disappearing) fails HERE rather than rotting behind a green tick.
+    const doc = readFileSync(
+      join(REPO_ROOT, "docs", "design", "audit", "public-390-request-verdicts-v12.md"),
+      "utf8",
+    );
+    const lines = doc.split("\n");
+    const headerIdx = lines.findIndex((l) => l.startsWith("| File:line"));
+    expect(headerIdx, "the public classless roster table's header row is missing").toBeGreaterThan(-1);
+
+    const verdicts: string[] = [];
+    // +2 skips the header row and its markdown separator row.
+    for (let i = headerIdx + 2; i < lines.length && lines[i]!.startsWith("|"); i++) {
+      const cells = lines[i]!.split("|").slice(1, -1);
+      expect(cells.length, `roster row ${i + 1} does not have 4 cells`).toBe(4);
+      verdicts.push(cells[2]!.replace(/\*/g, "").trim().toUpperCase());
+    }
+
+    expect(verdicts.length, "the graded public roster is not 17 rows").toBe(17);
+    const offenders = verdicts.filter((v) => !v.includes("VERIFIED") && !v.includes("EXEMPT"));
+    expect(offenders, `roster rows graded neither VERIFIED nor EXEMPT: ${offenders.join("; ")}`).toEqual([]);
+    expect(verdicts.some((v) => v.includes("OFFENDER"))).toBe(false);
   });
 });

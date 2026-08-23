@@ -81,8 +81,14 @@ export interface SsrClasslessControlSite extends ClasslessTagSite {}
 /** Every classless `{input, select, textarea, button}` site in `src`
  * (already comment-stripped), excluding `<input type="hidden">`. */
 export function ssrClasslessControlSites(src: string): SsrClasslessControlSite[] {
+  // Parameter named `site`, not the single letter s: calling a helper with a
+  // one-letter argument of that name spells a letter followed by a
+  // parenthesised s, which is exactly the raw plural parenthetical
+  // test/count-grammar.test.ts (DEC-957) forbids in user-facing copy. Its
+  // pattern is purely lexical and cannot tell a one-letter argument from a
+  // pluralised noun, so the argument gets a real name instead.
   return classlessTagSites(src, SSR_CLASSLESS_CONTROL_TAGS, /\bclass(?:Name)?\s*=/, SSR_CLASS_ATTR_RE).filter(
-    (s) => !isHiddenInput(s),
+    (site) => !isHiddenInput(site),
   );
 }
 

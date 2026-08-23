@@ -454,8 +454,16 @@ const CLASSLESS = ROSTER.filter((s) => s.verdict === "CLASSLESS-TWIN");
 // `profileDock` -- the live desktop double-Save root cause -- and
 // tasks/views.tsx's `tasksPageDockPrimary` dock). Never arithmetic, never a
 // snapshot: both ceilings below are read from this same ROSTER at seed time.
+// MEGABATCH COMPOSITION (wave-44 thunderdome): CLASSLESS 3 -> 2, LOWERED to
+// the live measurement as this file's own two-sided "does not sit stale
+// above the measured count" companion requires. The departing row is
+// profile.tsx's `profileDock`: a portal lane in this same megabatch gave it
+// a dedicated token (`class="chq-portal-profile-dock chq-btn
+// chq-btn-primary"`), so it is no longer a CLASSLESS twin. index.tsx's
+// session-detail `dock` and tasks/views.tsx's `tasksPageDockPrimary` are
+// unchanged and remain the population. OFFENDER stays 0.
 export const TWIN_VISIBILITY_OFFENDER_CEILING = 0;
-export const TWIN_VISIBILITY_CLASSLESS_CEILING = 3;
+export const TWIN_VISIBILITY_CLASSLESS_CEILING = 2;
 
 describe("phone twin-visibility ledger (w39-b, DEC-576)", () => {
   it("found exactly the five known dock={...} call sites under src/routes/portal/**", () => {

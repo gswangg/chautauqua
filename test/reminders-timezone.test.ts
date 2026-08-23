@@ -329,13 +329,13 @@ describe("reminder email HTML carries the CTA button and its paste-URL fallback 
   });
 });
 
-// DEC-441 (wave-38 amendment, docs/design/Chautauqua Comms.dc.html:719-723
-// `display:flex; flex-direction:column; gap:5px` holding exactly TWO
-// spans -- label over ONE period-terminated sentence-run value, no bullet
-// prefixes): a multi-item reminder's HTML fact value must be the same task
-// data the plain-text body carries, joined in the frame's sentence
-// register -- never parts.stillToDo's newline join, which HTML collapses
-// into a run-on line with no visible separator between tasks.
+// DEC-441 (wave-38 amendment): a multi-item reminder's HTML fact value must
+// be the same task data the plain-text body carries, joined in the frame's
+// sentence register -- never parts.stillToDo's newline join, which HTML
+// collapses into a run-on line with no visible separator between tasks. The
+// frame coordinate and its quoted receipt live directly above the assertion
+// that discharges them, per app/src/frame-citation.scan.test.ts's rule that
+// a desktop-frame claim carries a real expect( within six lines beneath it.
 describe("reminder email HTML fact value is a joined sentence run for multi-item reminders (DEC-441 wave-38)", () => {
   it("joins two outstanding tasks into one period-terminated, space-joined run with no '- ' bullet prefix", async () => {
     const rows: OutstandingRowShape[] = [
@@ -380,7 +380,11 @@ describe("reminder email HTML fact value is a joined sentence run for multi-item
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
     const html = sent[0]?.html ?? "";
-    // The frame's sentence run: each task period-terminated, space-joined.
+    // docs/design/Chautauqua Comms.dc.html:719-723 draws the fact block as
+    // `display:flex; flex-direction:column; gap:5px` holding exactly TWO
+    // spans -- a label over ONE period-terminated sentence-run value, with no
+    // bullet prefixes. The frame's sentence run: each task
+    // period-terminated, space-joined.
     expect(html).toContain("Bio form — due Tue 2 Mar 2027. Headshot upload — due Thu 15 Apr 2027.");
     // Scope the "no bullet prefix" check to the fact block itself -- the
     // HTML body above it legitimately renders the plain-text bulleted

@@ -92,3 +92,16 @@ mid-convergence (DEC-069). `TWIN_VISIBILITY_OFFENDER_CEILING` promotes once
 proven complete enough to gate on; `TWIN_VISIBILITY_CLASSLESS_CEILING`
 promotes once its 3 rows are drained to dock-specific classes reachable by
 CSS (the `profile.tsx` row is `v12m-w38-f`'s to close).
+
+## Wave-44 update (thunderdome medic): the profile.tsx row closed
+
+The row this ledger named as `v12m-w38-f`'s to close is closed. That lane
+landed in this megabatch and gave `profile.tsx`'s `profileDock` a
+dock-specific token of its own (`class="chq-portal-profile-dock chq-btn
+chq-btn-primary"`), so it is reachable by CSS and is no longer a CLASSLESS
+twin. Re-measured live off the roster, never arithmetic:
+`TWIN_VISIBILITY_CLASSLESS_CEILING = 2`, LOWERED in the same commit as this
+statement per the ledger's own two-sided "does not sit stale above the
+measured count" companion. The remaining two rows are `index.tsx`'s
+session-detail `dock` and `tasks/views.tsx`'s `tasksPageDockPrimary`.
+`TWIN_VISIBILITY_OFFENDER_CEILING` is unchanged at 0.

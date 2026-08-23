@@ -323,3 +323,33 @@ separately-ruled wave work -- the same disposition
 population (wave-152, task w8-ef). This wave ships the instrument, one
 concrete repair (`test/module-reachability.scan.test.ts`), and the
 `ENTRY_OR_ALLOWED` entries the repair's own newly-surfaced orphans required.
+
+## Wave-44 update (thunderdome medic)
+
+Re-measured live on the composed megabatch tree, not inherited from this
+doc's own roster above. Two independent moves, both accounted for file by
+file in `app/src/unstripped-source-regex-scan/ceiling.ts`'s own header:
+
+- **-1**: `test/test-tiers.test.ts` is no longer an offender. Task
+  `v12m-w38-c` landed the repair this instrument's seeding note said would
+  "flip this row" -- the DEC-727 tier predicate now strips comments before
+  applying its import regex. The scan's pin asserting that file is still an
+  offender was inverted into a regression guard in the same commit, so the
+  repair cannot silently come undone.
+- **+7**: seven scan-shaped files landed by lanes that branched *before*
+  this instrument was seeded, so no lane could see the family it was
+  joining: `app/src/phone-hidden-drawn-text/frame-blobs.ts`,
+  `test/audit-ratchet-statement-drift.scan.test.ts`,
+  `test/campaign-scope-registry-partition.scan.test.ts`,
+  `test/desktop-eyebrow-label.scan.test.ts`,
+  `test/deviations-ledger/resolvers.ts`,
+  `test/frame-control-label/population.ts` and
+  `test/render-sweep-advisory-gate-promotion.scan.test.ts`. Each was
+  confirmed absent at the seeding commit by `git log --diff-filter=A`.
+
+221 - 1 + 7 = 227, and the live walk prints the same. None of the
+seven is repaired here: adding a stripping step to a ratchet instrument
+changes what it measures, and three of the seven carry ceilings of their
+own, so each repair is its own re-ratcheting wave -- the same disposition
+recorded above. Live measurement today:
+`UNSTRIPPED_SOURCE_REGEX_CEILING = 227`.
