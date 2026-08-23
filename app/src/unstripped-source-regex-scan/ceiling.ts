@@ -86,4 +86,76 @@
 // separately-ruled wave work, the same disposition
 // comment-blind-css-assertion-scan's own first landing gave its 39-file
 // population. Ceiling seeded at the measured value: 221.
-export const UNSTRIPPED_SOURCE_REGEX_CEILING = 221;
+//
+// v12m-w45-c (wave 45, task w45-c, DEC-808 wave-45 clause (a)/(b)/(c),
+// DEC-613): REPAIR, not re-seed. The wave-37..42 merge train landed 31
+// branches (v12m-w37-{c..h}, w38-{a..i}, custodian-w38-7, custodian-w40-8,
+// w39-{a..g}, w40-{a..g}, w41-{a..g}, w42-{a..f}) whose new scan-shaped
+// .ts/.tsx files never adopted a stripping step, pushing the measured count
+// from the seeded 221 to 227 -- a 6-file overshoot the ceiling's "may only
+// fall" discipline forbids papering over with a re-seed. Forced to -1 and
+// the roster read back (never arithmetic) confirmed 227. Cross-checking the
+// printed roster against `git log --diff-filter=A 5727fecc7..HEAD -- test
+// app/src` (the v12m-w39-f landing commit that first seeded this ceiling)
+// found 20 tracked .ts/.tsx files added to the tree since that seeding, of
+// which 7 appeared on the printed offender roster:
+//   - app/src/phone-hidden-drawn-text/frame-blobs.ts (var: content)
+//   - test/audit-ratchet-statement-drift.scan.test.ts (var: text)
+//   - test/campaign-scope-registry-partition.scan.test.ts (var: content)
+//   - test/desktop-eyebrow-label.scan.test.ts (var: content)
+//   - test/deviations-ledger/resolvers.ts (var: text)
+//   - test/frame-control-label/population.ts (var: content)
+//   - test/render-sweep-advisory-gate-promotion.scan.test.ts (var: source)
+// Three of these seven -- frame-blobs.ts, desktop-eyebrow-label.scan.test.ts
+// and frame-control-label/population.ts -- read docs/design/*.dc.html
+// design-frame markup, not TS/CSS source. A first attempt applied
+// test/helpers/strip-css-comments.ts's stripCssComments to their `content`
+// before matching; this was REJECTED on inspection, the same discipline
+// this file's own w39-f history paragraph above already established once:
+// "Chautauqua Account.dc.html" draws the literal route text "/admin/*",
+// whose `/*` stripCssComments's quote-blind-but-comment-eager walk reads as
+// a genuine block-comment opener with no legitimate `*/` anywhere near it,
+// silently swallowing real drawn content up to a FAR-AWAY unrelated `*/` --
+// desktop-eyebrow-label.scan.test.ts's own vacuous-population tripwire
+// caught it immediately (245 eyebrows measured, 242 after the naive apply).
+// These three files were left UNREPAIRED and their edits reverted; DEC-808
+// wave-45 clause (c) ("if the newly-added files number fewer than 6,
+// continue... repair further files from the SAME printed roster") was
+// invoked to substitute three TS-source-only replacements from the same
+// 227-file roster instead, all genuinely safe (test/helpers/
+// strip-ts-comments.ts's stripTsComments is string-aware over `'`/`"`/`` ` ``
+// so a literal `/*`-shaped substring inside a real string/template literal
+// is never misread as a comment opener -- unlike stripCssComments's
+// coarser quote handling, this is exactly why DEC-613 keeps the two
+// strippers separate rather than reusing one for both grammars):
+// test/cross-org-refusal-vocabulary.scan.test.ts (var: src, a vocabulary
+// ban across every src/routes/**/*.ts file), test/text-vocabulary.scan.
+// test.ts (var: contents, a vocabulary ban across src/** and app/src/**)
+// and test/list-filter-vocabulary.test.ts (var: text, a literal-vocabulary
+// extraction across src/mail/**) -- each already carrying a many-file
+// vocabulary ban/require regex, outranking a single literal
+// `.includes(selector)` in one render test per clause (c)'s own ordering.
+// All 4 remaining TS repairs (audit-ratchet-statement-drift.scan.test.ts,
+// campaign-scope-registry-partition.scan.test.ts, deviations-ledger/
+// resolvers.ts and render-sweep-advisory-gate-promotion.scan.test.ts) were
+// repaired by importing the EXISTING stripTsComments -- never a local copy
+// (DEC-613) -- and applying it BEFORE the risky content match; a comment
+// merely quoting an `export const NAME = N;`/`X_BLOCKING`/import-specifier
+// shape must never be mistaken for a real, live declaration (the exact
+// instance-3 shape this instrument's own header names).
+// deviations-ledger/resolvers.ts's fileContains was deliberately left
+// UNSTRIPPED: a DEVIATIONS.md "present" citation's literal is legitimately
+// allowed to live in a comment (e.g. a deliberate-non-build note), so
+// stripping there would turn real, honored citations into false "does not
+// contain" problems -- this file's genuine repair instead strips
+// termAppearsInTree, whose risk direction (a term named only in a comment
+// misread as genuinely present in live code) matches the family. No naive
+// `.replace(/\/\*[\s\S]*?\*\//g,'')` one-liner was authored anywhere (this
+// file's own w39-f history paragraph above records why that shape was
+// already REJECTED once). Re-forced to -1 and the roster read back AGAIN
+// after all repairs: 220 -- all 6 net-new repaired files confirmed absent
+// from the new roster (227 - 6 substituted-in repairs - 1 already-safe
+// deviations-ledger/resolvers.ts repair via a different function = 220; the
+// three reverted HTML-frame edits contribute nothing to the delta). Ceiling
+// lowered to the re-measured value: 220.
+export const UNSTRIPPED_SOURCE_REGEX_CEILING = 220;

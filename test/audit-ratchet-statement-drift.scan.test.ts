@@ -63,6 +63,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEC_069, DEC_808, DEC_903 } from "../src/decisions";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 void DEC_903; // this file's whole reason to exist: catch a doc's newest ratchet statement disagreeing with the live constant
 void DEC_808; // population enumerated via readdirSync, never a hand-listed file list
@@ -172,7 +173,11 @@ function liveConstantValues(): Map<string, number[]> {
       if (!entry.isFile()) continue;
       if (!SOURCE_EXTS.some((ext) => entry.name.endsWith(ext))) continue;
       const filePath = join(entry.parentPath, entry.name);
-      const text = readFileSync(filePath, "utf-8");
+      // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair):
+      // a comment merely QUOTING an `export const NAME = N;` shape (e.g. a
+      // worked example in a doc-comment) must never be mistaken for a real
+      // exported ratchet constant.
+      const text = stripTsComments(readFileSync(filePath, "utf-8"));
       exportRe.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = exportRe.exec(text)) !== null) {

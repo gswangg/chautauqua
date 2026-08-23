@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 const ROOT = join(__dirname, "..");
 const SRC_ROOT = join(ROOT, "src");
@@ -59,7 +60,10 @@ export function findCapitalizeFirstOffenders(root: string, repoRoot: string): st
   for (const file of walk(root)) {
     const rel = relative(repoRoot, file).split("\\").join("/");
     if (rel === OWNER) continue;
-    const contents = readFileSync(file, "utf8");
+    // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair): a
+    // comment merely QUOTING the capitalize-first idiom (e.g. an example in
+    // a doc comment) must never be mistaken for a real re-declaration of it.
+    const contents = stripTsComments(readFileSync(file, "utf8"));
     if (hasCapitalizeFirstIdiom(contents)) offenders.push(rel);
   }
   return offenders.sort();

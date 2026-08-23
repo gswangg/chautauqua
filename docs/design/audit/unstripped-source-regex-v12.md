@@ -2,13 +2,25 @@
 
 Task w39-f (INSTRUMENT, plus one concrete repair -- see below). Instrument:
 `test/unstripped-source-regex.scan.test.ts`. Ratchet:
-`UNSTRIPPED_SOURCE_REGEX_CEILING = 221`, in
+`UNSTRIPPED_SOURCE_REGEX_CEILING = 220`, in
 `app/src/unstripped-source-regex-scan/ceiling.ts`, measured on this branch
 by forcing the constant to `-1` and reading the printed offender list back
 (never by arithmetic). Registered `OUT_OF_CAMPAIGN_SCOPE` in
 `scripts/exit-predicate/campaign-scope.ts` (instrument-coverage fact, not
 itself a v12 frame or 390-geometry conformance fact -- see that file's own
 entry for the reason).
+
+DEC-808 wave-45 amendment (task v12m-w45-c): the merge train landing
+v12m-w37-{c..h}/w38-{a..i}/w39-{a..g}/w40-{a..g}/w41-{a..g}/w42-{a..f}
+pushed the measured count from the seeded 221 to 227; six files were
+repaired (five net-new since the w39-f seed, one substituted per DEC-808
+clause (c) after a design-frame HTML repair attempt was rejected) and the
+ceiling was re-measured and lowered to 220. See
+`app/src/unstripped-source-regex-scan/ceiling.ts`'s own history comment for
+the full repair list and roster cross-check. The roster below is the
+wave-39 snapshot and is now stale by that delta; it is not re-printed here
+(later wave work, same disposition as the rest of this doc's "Disposition"
+section already grants).
 
 ## Why this instrument exists
 

@@ -8,15 +8,16 @@
 //   1. A CSS comment quoting a frame literal was graded as a violation
 //      (comment-blind-css-assertion-scan's own origin story, DEC-374).
 //   2. Frame prose quoting product copy was matched as product copy.
-//   3. test/test-tiers.test.ts's `importedModules()` applies
+//   3. test/test-tiers.test.ts's `importedModules()` applied
 //      IMPORT_SPECIFIER_RE to raw, un-stripped source -- so
 //      test/render-sweep-public-gate.test.ts's own header sentence ("must
-//      never import playwright") reads as a real import, and the DEC-727
-//      tier predicate has been enforcing nothing for an unknown number of
-//      waves. Owned by v12m-w38-c (in flight): this instrument COUNTS that
-//      offense honestly (so w38-c's landing flips this row) but does NOT
-//      repair test/test-tiers.test.ts or the DEC-727 tier predicate -- out
-//      of this task's scope by explicit instruction.
+//      never import playwright") read as a real import, and the DEC-727
+//      tier predicate had been enforcing nothing for an unknown number of
+//      waves. REPAIRED by v12m-w38-c (landed): test/test-tiers.test.ts now
+//      strips comments with `stripTsComments` before matching, and this
+//      row's own pin below was retired to its inverse (DEC-808 wave-45,
+//      task w45-c) to keep asserting a live fact about the tree rather than
+//      a stale one.
 //
 // POPULATION (walked, never hand-listed): every `.ts`/`.tsx` file under
 // test/** and app/src/** (readdirSync recursive, this file excludes only
@@ -209,11 +210,25 @@ describe("unstripped-source-regex family (DEC-374 wave-39, task w39-f)", () => {
     expect(files.length).toBeGreaterThan(500);
   });
 
-  it("test/test-tiers.test.ts is honestly counted as an offender (v12m-w38-c owns its repair; this instrument must not hide it)", () => {
+  // RETIRED (DEC-808 wave-45, task w45-c): this pin used to assert that
+  // test/test-tiers.test.ts was HONESTLY counted as an offender, because at
+  // wave 39 it genuinely was and v12m-w38-c's repair was still in flight.
+  // w38-c has since landed: test/test-tiers.test.ts now imports and applies
+  // `stripTsComments` (test/helpers/strip-ts-comments.ts) to its own source
+  // BEFORE running IMPORT_SPECIFIER_RE against it (see
+  // importsSlowModule's `const source = stripTsComments(rawSource);`), so
+  // the old pin's `.toBe(true)` had gone stale -- asserting a fact the tree
+  // no longer makes true, the exact "a green pin can memorialize a gap
+  // instead of closing it" shape, inverted. A retired pin that leaves no
+  // receipt is how the same claim comes back, so this is written as the
+  // pin's own inverse rather than deleted outright.
+  it("test/test-tiers.test.ts is NOT an offender (v12m-w38-c landed: it carries stripTsComments, applied before its risky IMPORT_SPECIFIER_RE match)", () => {
     const testTiers = files.find((f) => f.rel === "test/test-tiers.test.ts");
     expect(testTiers, "test/test-tiers.test.ts not found by the walk").toBeTruthy();
-    expect(isUnstrippedSourceRegexOffender(testTiers!.content)).toBe(true);
-    expect(offenders.some((o) => o.rel === "test/test-tiers.test.ts")).toBe(true);
+    expect(testTiers!.content).toContain("stripTsComments");
+    expect(hasStrippingStep(testTiers!.content)).toBe(true);
+    expect(isUnstrippedSourceRegexOffender(testTiers!.content)).toBe(false);
+    expect(offenders.some((o) => o.rel === "test/test-tiers.test.ts")).toBe(false);
   });
 
   it("no more than UNSTRIPPED_SOURCE_REGEX_CEILING files apply a content match to un-stripped source they read off disk (may only fall)", () => {

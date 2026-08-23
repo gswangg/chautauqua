@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
@@ -209,7 +210,10 @@ describe("Source scan: every email_log status literal under src/mail/** is in EM
     const literalRe = /status\s*[:=]\s*"([^"]*)"/g;
     const found = new Set<string>();
     for (const file of files) {
-      const text = readFileSync(file, "utf8");
+      // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair):
+      // a comment merely QUOTING a `status: "..."` shape must never be
+      // mistaken for a real status-literal declaration.
+      const text = stripTsComments(readFileSync(file, "utf8"));
       let m: RegExpExecArray | null;
       while ((m = literalRe.exec(text)) !== null) {
         found.add(m[1]!);

@@ -4,6 +4,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { stripTsComments } from "../helpers/strip-ts-comments";
 
 export function fileExists(root: string, p: string): boolean {
   try {
@@ -15,6 +16,13 @@ export function fileExists(root: string, p: string): boolean {
 }
 
 export function fileContains(root: string, file: string, literal: string): boolean {
+  // NOT stripped, deliberately: unlike this module's other resolvers, a
+  // "present" citation's literal is legitimately allowed to live in a
+  // comment (e.g. a deliberate-non-build note explaining a DEC ruling in
+  // prose) -- stripping here would turn real, honored citations into false
+  // "does not contain" problems. This resolver's risk direction is the
+  // opposite of the unstripped-source-regex family's (DEC-374/DEC-808
+  // wave-45): termAppearsInTree below carries this file's genuine repair.
   const text = readFileSync(join(root, file), "utf8");
   return text.includes(literal);
 }
@@ -38,7 +46,13 @@ export function termAppearsInTree(root: string, term: string): boolean {
   const needle = term.toLowerCase();
   for (const absenceRoot of ABSENCE_ROOTS) {
     for (const file of walkTsFiles(join(root, absenceRoot))) {
-      if (readFileSync(file, "utf8").toLowerCase().includes(needle)) return true;
+      // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair):
+      // a comment merely QUOTING the term (e.g. this very family's own
+      // header prose naming a forbidden identifier as an example) must
+      // never be mistaken for the term genuinely appearing as live code --
+      // the exact risk this instrument's family exists to catch.
+      const text = stripTsComments(readFileSync(file, "utf8"));
+      if (text.toLowerCase().includes(needle)) return true;
     }
   }
   return false;

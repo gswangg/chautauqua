@@ -34,6 +34,7 @@ import {
   OUT_OF_CAMPAIGN_SCOPE,
   TIER2_CEILING_NAMES,
 } from "../scripts/exit-predicate/campaign-scope";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 void DEC_069; // wave-42: this file is the instrument that reads the DEC-069 wave-42 ruling.
 
@@ -63,7 +64,10 @@ function resolveLiveValue(repoRoot: string, name: string): number {
   const found: number[] = [];
   const locations: string[] = [];
   for (const path of trackedPaths) {
-    const content = readFileSync(join(repoRoot, path), "utf8");
+    // Stripped (DEC-374/DEC-808 wave-45, unstripped-source-regex repair): a
+    // comment merely QUOTING a `const NAME = N;` shape must never be
+    // mistaken for the constant's real, live declaration.
+    const content = stripTsComments(readFileSync(join(repoRoot, path), "utf8"));
     CONST_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = CONST_DECL_RE.exec(content)) !== null) {
