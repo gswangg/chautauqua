@@ -60,17 +60,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "different H1 title (a genuine subject collision under one id) with no registry note " +
     "resolving which document governs -- a fact about the decision-registry ledger's own " +
     "internal consistency and citability, not a v12 frame or 390-geometry conformance fact.",
-  FRAME_FLOOR_DIVERGENCE_CEILING:
-    "measures fidelity of a control's DECLARED min-height against the height its OWN phone " +
-    "frame draws (which may exceed the ruled 44px minimum), a finer-grained fact than the " +
-    "existing tap-floor family already grades (whether a control clears the ruled minimum at " +
-    "all). A new non-zero row in the exit gate for a fact this granular would move the " +
-    "campaign's goalposts mid-convergence; it measures fidelity now and is promoted by a " +
-    "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING. " +
-    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
-    "UNRESOLVED_COUNT_TRIPWIRE, carries a non-zero unresolved population with no individual " +
-    "per-row adjudication (bucketed by reason category, a sample cited rather than every row), " +
-    "so grading the divergence ceiling now would assert fidelity over an unverified remainder.",
   COMMENT_BLIND_CSS_ASSERTION_CEILING:
     "measures TEST-INSTRUMENT SOUNDNESS -- whether a test file applies a raw-text match " +
     "assertion to an un-stripped CSS source, which can make a negative assertion fail on a " +

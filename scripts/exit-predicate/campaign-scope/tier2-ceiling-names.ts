@@ -198,4 +198,9 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // into CAMPAIGN_CONSTANT_NAMES above. Reads live 0: the desktop-control-
   // floor comment-fold parse is repaired, a graded green conformance row.
   "COMMENT_CREDITED_FLOOR_CEILING",
+  // wave-55 (DEC-995 wave-53 ask, task w55-c): wired into TIER2 in the same
+  // commit that promoted it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
+  "FRAME_FLOOR_DIVERGENCE_CEILING",
 ];
