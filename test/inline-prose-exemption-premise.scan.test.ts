@@ -51,6 +51,9 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { stripCssComments } from "./helpers/strip-css-comments";
+import { DEC_393 } from "../src/decisions";
+
+void DEC_393; // compile-checked dependency marker only (rung 3, wave-42 amendment); text assertions below target the durable doc.
 
 const REPO_ROOT = join(__dirname, "..");
 const ROOTS = ["src", "app/src"];
@@ -90,7 +93,7 @@ function productFiles(): ProductFile[] {
     .sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export type Verdict = "GROUNDED" | "UNGROUNDED" | "UNVERIFIABLE";
+export type Verdict = "GROUNDED" | "UNGROUNDED" | "UNVERIFIABLE" | "GROUNDED-BY-DEVIATION";
 
 export interface InlineReceipt {
   file: string;
@@ -190,19 +193,97 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// ---------------------------------------------------------------------------
+// Rung 3 (DEC-393 wave-42 amendment): a receipt with no companion class can
+// still be GROUNDED-BY-DEVIATION when its reason cites a real DEVIATIONS.md
+// section whose own body text names one of the receipt's own `chq-` class
+// tokens verbatim. Parsed from the real file on disk (never a fixture copy)
+// -- `## N.` headings, extent running to the next heading or EOF.
+// ---------------------------------------------------------------------------
+
+export interface DeviationSection {
+  number: number;
+  body: string;
+}
+
+const HEADING_RE = /^## (\d+)\./gm;
+
+export function parseDeviationsSections(text: string): DeviationSection[] {
+  const headings: Array<{ number: number; headingStart: number; bodyStart: number }> = [];
+  let m: RegExpExecArray | null;
+  HEADING_RE.lastIndex = 0;
+  while ((m = HEADING_RE.exec(text)) !== null) {
+    headings.push({ number: Number(m[1]), headingStart: m.index, bodyStart: m.index + m[0].length });
+  }
+  return headings.map((h, i) => ({
+    number: h.number,
+    body: text.slice(h.bodyStart, i + 1 < headings.length ? headings[i + 1]!.headingStart : text.length),
+  }));
+}
+
+/** Every `chq-` class token this receipt can claim as "its own": whatever
+ * selector it directly decorates, plus any BARE (not `.`- or `#`-prefixed)
+ * `chq-` token in its own reason text. A `.`/`#`-prefixed token is always a
+ * REFERENCE to some other selector or anchor id (a companion candidate
+ * rung 2 already tried, or a destination id like `#chq-cfp-submit-form`
+ * mentioned in passing) -- never this receipt's own token. This mirrors the
+ * DEC-996 wave-35 authoring convention itself: the receipt's own class is
+ * deliberately written bare in these reasons ("chq-cfp-intro-cta-link, no
+ * leading dot here -- a dotted literal reads as a grounding claim to this
+ * file's own scan, which this receipt deliberately is not") specifically so
+ * it is never misread as a companion. */
+function ownTokensOf(receipt: InlineReceipt): string[] {
+  const out = new Set<string>(receipt.receiptedClasses);
+  for (const m of receipt.reason.matchAll(/(?<![.#])\bchq-[\w-]+\b/g)) out.add(m[0]);
+  return [...out];
+}
+
+const DEVIATIONS_CITATION_RE = /DEVIATIONS\.md['’]?s?\s*(?:§|section\s+)(\d+)/i;
+
+function judgeByDeviation(receipt: InlineReceipt, sections: DeviationSection[]): InlineRosterRow {
+  const cite = receipt.reason.match(DEVIATIONS_CITATION_RE);
+  if (!cite) {
+    return {
+      ...receipt,
+      verdict: "UNVERIFIABLE",
+      detail: "reason names no companion .chq-* class and cites no DEVIATIONS.md section number (rung 1/2/3 all fail)",
+    };
+  }
+  const num = Number(cite[1]);
+  const section = sections.find((s) => s.number === num);
+  if (!section) {
+    return {
+      ...receipt,
+      verdict: "UNVERIFIABLE",
+      detail: `cites DEVIATIONS.md §${num}, but no such "## ${num}." heading exists in docs/design/DEVIATIONS.md (rung 3 fails: dead section citation)`,
+    };
+  }
+  const tokens = ownTokensOf(receipt);
+  const namedToken = tokens.find((t) => section.body.includes(t));
+  if (!namedToken) {
+    return {
+      ...receipt,
+      verdict: "UNVERIFIABLE",
+      detail: `cites DEVIATIONS.md §${num} (a real section), but that section's body names none of this receipt's own chq- class token(s) [${tokens.join(", ") || "none"}] (rung 3 fails: unnamed receipt)`,
+    };
+  }
+  return {
+    ...receipt,
+    verdict: "GROUNDED-BY-DEVIATION",
+    detail: `cites DEVIATIONS.md §${num}, which names this receipt's own .${namedToken} verbatim (rung 3: recorded deviation, DEC-393 wave-35/42 amendments)`,
+  };
+}
+
 export function judgeInlineReceipt(
   receipt: InlineReceipt,
   allChunks: Array<{ selector: string; body: string }>,
   allText: string,
+  deviationSections: DeviationSection[] = [],
 ): InlineRosterRow {
   const mentioned = [...receipt.reason.matchAll(/\.(chq-[\w-]+)/g)].map((c) => c[1] as string);
   const companion = mentioned.find((c) => !receipt.receiptedClasses.includes(c));
   if (!companion) {
-    return {
-      ...receipt,
-      verdict: "UNVERIFIABLE",
-      detail: "reason names no companion .chq-* class or destination-grounding reference this instrument can check (roster row, DEC-393 wave-35 amendment)",
-    };
+    return judgeByDeviation(receipt, deviationSections);
   }
   const tokenRe = new RegExp(`\\.${escapeRe(companion)}(?![\\w-])`);
   const bodies = allChunks.filter((c) => tokenRe.test(c.selector)).map((c) => c.body);
@@ -229,7 +310,9 @@ const FILES = productFiles();
 const ALL_TEXT = FILES.map((f) => f.text).join("\n");
 const ALL_CHUNKS = FILES.flatMap((f) => cssRegionsOf(f).flatMap((region) => ruleChunks(region)));
 const RECEIPTS = allInlineReceipts(FILES);
-const ROSTER: InlineRosterRow[] = RECEIPTS.map((r) => judgeInlineReceipt(r, ALL_CHUNKS, ALL_TEXT));
+const DEVIATIONS_TEXT = readFileSync(join(REPO_ROOT, "docs/design/DEVIATIONS.md"), "utf8");
+const DEVIATIONS_SECTIONS = parseDeviationsSections(DEVIATIONS_TEXT);
+const ROSTER: InlineRosterRow[] = RECEIPTS.map((r) => judgeInlineReceipt(r, ALL_CHUNKS, ALL_TEXT, DEVIATIONS_SECTIONS));
 
 // Ratchets (DEC-393 wave-35 amendment, task v12m-w35-a). Seeded by forcing
 // both to -1, running this file, and reading the printed roster back --
@@ -257,7 +340,16 @@ export const INLINE_PROSE_UNGROUNDED_CEILING = 0;
 // they land UNVERIFIABLE here exactly as they do in the wave-30 sibling.
 // Neither branch's number is right for the merged tree; 11 is the merged
 // suite's own printed count.
-export const INLINE_PROSE_UNVERIFIABLE_CEILING = 11;
+// RUNG 3 (DEC-393 wave-42 amendment): 11 -> 8. Three of the eleven
+// UNVERIFIABLE receipts are exactly the rung-3 outcomes DEVIATIONS.md's
+// "## 10. Wave 35 rulings" section records (submit-views.tsx's
+// chq-cfp-intro-cta-link and chq-cfp-identity-note-link, tools.css.ts's
+// chq-docs-auth-link) -- each now resolves GROUNDED-BY-DEVIATION instead
+// of UNVERIFIABLE, once their four wrong "DEVIATIONS.md section 9"
+// citations were repaired to the real section 10 (this wave's second,
+// independent fix). Seeded by forcing this constant to -1, running this
+// file, and reading the printed count back -- never by arithmetic.
+export const INLINE_PROSE_UNVERIFIABLE_CEILING = 8;
 
 describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-393 wave-35 amendment)", () => {
   it("population sanity: walked a non-trivial number of real inline receipts (vacuous-population tripwire, DEC-999)", () => {
@@ -326,10 +418,55 @@ describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-39
     expect(roster.length).toBe(INLINE_PROSE_UNVERIFIABLE_CEILING);
   });
 
-  it("every receipt in the population resolves to exactly one of the three verdicts (no receipt is silently dropped)", () => {
+  it("every receipt in the population resolves to exactly one of the four verdicts (no receipt is silently dropped)", () => {
     expect(ROSTER.length).toBe(RECEIPTS.length);
     for (const row of ROSTER) {
-      expect(["GROUNDED", "UNGROUNDED", "UNVERIFIABLE"]).toContain(row.verdict);
+      expect(["GROUNDED", "UNGROUNDED", "UNVERIFIABLE", "GROUNDED-BY-DEVIATION"]).toContain(row.verdict);
     }
+  });
+});
+
+describe("rung 3: GROUNDED-BY-DEVIATION (DEC-393 wave-42 amendment)", () => {
+  const sections: DeviationSection[] = [
+    { number: 10, body: "This section discusses `.chq-fake-devlink` at length." },
+  ];
+
+  it("a receipt citing a real section that names its own chq- token resolves GROUNDED-BY-DEVIATION", () => {
+    const receipt: InlineReceipt = {
+      file: "synthetic.tsx",
+      line: 1,
+      reason: "inline-in-prose -- recorded as DEVIATIONS.md §10's first entry (rung 3). chq-fake-devlink carries its own token.",
+      receiptedClasses: [],
+    };
+    const verdict = judgeInlineReceipt(receipt, [], "", sections);
+    expect(verdict.verdict).toBe("GROUNDED-BY-DEVIATION");
+  });
+
+  it("the same receipt citing a real section that does NOT name its token stays UNVERIFIABLE", () => {
+    const receipt: InlineReceipt = {
+      file: "synthetic.tsx",
+      line: 1,
+      reason: "inline-in-prose -- recorded as DEVIATIONS.md §10's first entry (rung 3). chq-some-other-token here.",
+      receiptedClasses: [],
+    };
+    const verdict = judgeInlineReceipt(receipt, [], "", sections);
+    expect(verdict.verdict).toBe("UNVERIFIABLE");
+    expect(verdict.detail).toMatch(/names none of this receipt's own chq- class token/);
+  });
+
+  it("the same receipt citing a non-existent section number stays UNVERIFIABLE", () => {
+    const receipt: InlineReceipt = {
+      file: "synthetic.tsx",
+      line: 1,
+      reason: "inline-in-prose -- recorded as DEVIATIONS.md §999's first entry (rung 3). chq-fake-devlink here.",
+      receiptedClasses: [],
+    };
+    const verdict = judgeInlineReceipt(receipt, [], "", sections);
+    expect(verdict.verdict).toBe("UNVERIFIABLE");
+    expect(verdict.detail).toMatch(/no such "## 999\." heading/);
+  });
+
+  it("parseDeviationsSections on the real DEVIATIONS.md finds section 10 (the wave-35 rulings section)", () => {
+    expect(DEVIATIONS_SECTIONS.some((s) => s.number === 10)).toBe(true);
   });
 });
