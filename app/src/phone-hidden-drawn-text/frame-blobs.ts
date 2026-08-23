@@ -40,6 +40,26 @@ export function designFiles(): string[] {
     .sort();
 }
 
+/** DEC-967 wave-42 amendment (porting v12m-w41-c's shape in
+ * test/phone-frame-ledger.scan.test.ts verbatim, per this campaign's "port,
+ * don't cross-import a population walk" convention): the 1-based line of
+ * the single `</x-dc>` template close in `fullPath`, throwing loudly on
+ * zero or multiple matches. A frame's extent is never allowed to reach
+ * past this line -- without the clip, the last labelled block of a file
+ * swallows the template's own closing tag and everything after it
+ * (fixture `data-dc-script` bodies, trailing markup). */
+export function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((line, idx) => {
+    if (line.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fullPath}: expected exactly one </x-dc>, found ${matches.length} (lines ${matches.join(', ')})`);
+  }
+  return matches[0]!;
+}
+
 function framesInFile(fileName: string): Frame[] {
   const full = join(DESIGN_ROOT, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
@@ -66,8 +86,17 @@ function framesInFile(fileName: string): Frame[] {
     if (title === undefined) {
       throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
     }
+    // Extent end: next label line strictly after this frame's own line, or
+    // EOF -- clipped at the template's own close (DEC-967 wave-42
+    // amendment) so the last labelled block can never swallow `</x-dc>`
+    // and everything past it (fixture `data-dc-script` bodies included).
     const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return { fileName, line: frameLine, title, extentEnd: nextLabel ? nextLabel.line : Infinity };
+    return {
+      fileName,
+      line: frameLine,
+      title,
+      extentEnd: Math.min(nextLabel ? nextLabel.line : Infinity, templateCloseLine(full)),
+    };
   });
 }
 
