@@ -357,10 +357,26 @@ describe('every campaign ratchet is two-sided (DEC-808 wave-85 amendment, enforc
   let files: SourceFile[];
   let offenders: Offender[];
 
+  // KNOWN-SLOW (DEC-069, Amendment, wave 35, applied wave-37 task w37-h):
+  // findOffenders() re-parses every walked test/app/src file's `it(...)`
+  // bodies once PER population constant (~30+ constants x ~1400+ files) to
+  // classify each block's assertion direction -- measured 19349-21346ms
+  // across repeat standalone runs on this host (walkTsFiles itself is
+  // ~230-270ms; the classification pass is the cost), and a full
+  // `npm run test:fast` run at main `b69e12e73` observed this file taking
+  // 35.6s overall with 3 of its 8 tests reported SKIPPED -- the 3 tests
+  // that depend on this exact hook's population (this describe block has
+  // exactly 3 `it`s), i.e. the pre-existing 30000ms timeout was itself
+  // blowing under full-tier contention and vitest was skipping the
+  // dependent tests as a consequence, not by deliberate design. An
+  // explicit 60000ms floor (~1.7x the worst full-tier-observed run) turns
+  // "silently times out and skips its own population's tests under load"
+  // into a stated decision instead of a race against a margin that was
+  // already too thin.
   beforeAll(() => {
     files = [...walkTsFiles(TEST_DIR), ...walkTsFiles(APP_SRC_DIR)];
     offenders = findOffenders(files, POPULATION);
-  }, 30000);
+  }, 60000);
 
   it('the derived population is non-empty and above a floor (guards against a broken import or a changed constant shape leaving this gate green over an empty set)', () => {
     expect(POPULATION.length).toBeGreaterThan(25);
