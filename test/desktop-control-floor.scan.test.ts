@@ -292,9 +292,10 @@ import { collapseDigitsToSkeleton, enumerateSourceFiles, normalizeSource } from 
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
 import { stripCssComments } from './helpers/strip-css-comments';
-import { DEC_374, DEC_746, DEC_964 } from '../src/decisions';
+import { DEC_374, DEC_651, DEC_746, DEC_964 } from '../src/decisions';
 void DEC_964; // wave-26 amendment: a cross-surface own-text match (the join's ONLY match resolves into a source file that renders no frame in the same .dc.html cluster) grades UNRESOLVED, never OFFENDER -- gated on a positive receipt test, never a blanket escape.
 void DEC_374; // wave-52 amendment: the shared source stripper is string-literal-blind by design, so a `*.css.ts` rule parse must additionally strip CSS comments -- see the "WAVE 52" section below.
+void DEC_651; // wave-53 amendment: the desktop drawn-floor ledger's 14 non-composed UNRESOLVED rows get the same per-row adjudication, measure-only -- see MANUAL_JOIN_WIDENING below.
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -1385,7 +1386,14 @@ export interface GradedRow {
    * "newly-resolved" naming -- not part of the grading grammar itself.
    * WAVE 23 (DEC-393 amendment) adds 'composed'. WAVE 29 (DEC-808
    * amendment) adds 'skeleton'. */
-  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | null;
+  /** WAVE 53 (DEC-651 amendment, task w53-c): a per-coordinate widened join
+   * -- the ancestor/sibling token that actually paints the control face,
+   * verified by hand against the real render source, for a row whose
+   * automatic own-text/attribute/composed/skeleton tiers land on the WRONG
+   * element (an input's placeholder vs. its own `.chq-input`, an option's
+   * text vs. its enclosing `.chq-select`, a dynamically-rendered role/label
+   * vs. the static text the naive join finds elsewhere). */
+  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | 'manual-widened' | null;
   /** WAVE 26 amendment (DEC-964): set only when reason === 'cross-surface-match'
    * -- the repo-relative path of the named receipt test that asserts the
    * REAL control's floor byte-for-byte, carried onto the row so the ledger
@@ -1741,7 +1749,171 @@ const CROSS_SURFACE_RECEIPT_INDEX: Map<string, { receiptPath: string }> = (() =>
  * WAVE 26 amendment (DEC-964): an OFFENDER row whose sole own-text match is
  * a cross-surface mismatch (see above) is reclassified UNRESOLVED, gated on
  * a named, live receipt. */
+// -- WAVE 53 (DEC-651 amendment, task w53-c): per-row manual join widening --
+// The desktop drawn-floor ledger's own-text/attribute/composed/skeleton
+// tiers all join on the drawn LABEL's literal text. Fourteen rows (the
+// file's own wave-29/33 unresolved detail, minus the 121 `composed-unseen`
+// rows out of this task's scope) land on the WRONG element or no element at
+// all for a shape those tiers structurally cannot see: an `<input>`'s
+// rendered VALUE is never a text node (`value={form.durationMin}`, an
+// `<option>` inherits no class of its own, a role/kind button renders its
+// label from a shared vocabulary constant rather than a literal string).
+// Each entry below is a hand-verified (fileName, line) -> real-control-token
+// mapping, checked against the actual render source (cited in each note),
+// never a guess -- and every one of the 14 rows named in
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 53" section is
+// covered by exactly one of these entries. Once resolved, the row runs
+// through the SAME `finalizeTokens` every other tier uses -- no bespoke
+// verdict, no hand-typed declaredMinHeight number: DESKTOP IS FROZEN, so
+// this widens the INSTRUMENT'S join, never asserts a number the CSS itself
+// doesn't already carry.
+interface ManualJoinWidening {
+  fileName: string;
+  line: number;
+  tokens: string[];
+  note: string;
+}
+
+const MANUAL_JOIN_WIDENING: ManualJoinWidening[] = [
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 241,
+    tokens: ['chq-input'],
+    note:
+      'BreaksPanel.tsx:449 renders the "Minutes" break-duration field as ' +
+      '<input id="chq-break-duration" className="chq-input" type="number" value={form.durationMin} /> ' +
+      '-- the drawn "20" is that input\'s live VALUE, never a text node the own-text join can match.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 567,
+    tokens: ['chq-select'],
+    note:
+      'BulkEmailModal.tsx:381-387 renders the Template field as ' +
+      '<select id="bulk-email-template" className="chq-select"><option value="">No template — write it here</option>...</select> ' +
+      '-- own-text matches the <option>, which carries no class of its own; the real control is its enclosing <select>.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 601,
+    tokens: ['chq-add-to-event-role-btn'],
+    note:
+      'AddToEventModal.tsx:176 renders every "As" role chip (Speaker/Reviewer/Guest) with ' +
+      'className={`chq-btn chq-add-to-event-role-btn${role === opt.value ? \' is-selected\' : \'\'}`} from ' +
+      'PARTICIPANT_ROLE_OPTIONS -- a shared vocabulary, never a literal "Speaker" string, so own-text lands on an ' +
+      'unrelated worklist-column-header/page-title token set instead. contacts-panels.css:1215 floors the real ' +
+      'class at 46px, top-level, matching the frame exactly.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 602,
+    tokens: ['chq-add-to-event-role-btn'],
+    note:
+      'Same control as :601 above (the "As" role chip group\'s unselected state, "Reviewer"). Supersedes the ' +
+      'cross-surface-match disposition\'s chq-pill mis-attribution (contacts-role-chip-floor.scan.test.ts, DEC-393 ' +
+      'wave-17): that receipt already names chq-add-to-event-role-btn as the real control at 46px, matching the ' +
+      'frame\'s drawn 46px exactly -- this is RESOLVED, not an artefact needing exclusion.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 824,
+    tokens: ['chq-input'],
+    note:
+      'NewContactModal.tsx:140-148 renders "First name" as a FormRow label PLUS a sibling ' +
+      '<input className="chq-input" placeholder="First name" /> -- own-text matches the label span ' +
+      '(chq-portal-field-label), never the real input beside it.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 828,
+    tokens: ['chq-input'],
+    note: 'NewContactModal.tsx:150-157, "Last name" -- same shape as :824 above.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 839,
+    tokens: ['chq-input'],
+    note: 'NewContactModal.tsx:178-185, "Company" -- same shape as :824 above.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1435,
+    tokens: ['chq-input'],
+    note:
+      'src/routes/portal/edit.tsx:445-449, the co-presenter "First name" field: ' +
+      '<label class="chq-portal-field-label" for="cp-first-name">First name</label>' +
+      '<input id="cp-first-name" class="chq-input" .../> -- same label-vs-input shape as the Contacts rows above.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1439,
+    tokens: ['chq-input'],
+    note: 'src/routes/portal/edit.tsx:455-459, the co-presenter "Last name" field -- same shape as :1435 above.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1064,
+    tokens: ['chq-select'],
+    note:
+      'EmbedsPanel.tsx:392-397 renders the embed "Surface" field as ' +
+      '<select className="chq-select" ...>, whose current value happens to read "Sessions" -- own-text finds that ' +
+      'literal word elsewhere in unrelated page-title/section-label registers, never this select.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1287,
+    tokens: ['chq-input'],
+    note:
+      'PeopleRolesPanel.tsx:535-538, the "Invite someone" modal\'s "First name" field -- same FormRow-label-vs-input ' +
+      'shape as the Contacts rows above.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1291,
+    tokens: ['chq-input'],
+    note: 'PeopleRolesPanel.tsx:545-548, "Last name" -- same shape as :1287 above.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 314,
+    tokens: ['chq-detail-decision-secondary-pair'],
+    note:
+      'Supersedes the cross-surface-match disposition\'s chq-overview-btn mis-attribution ' +
+      '(submissions-decision-pair-floor.scan.test.ts, DEC-964 wave-26): SubmissionDetailPage.tsx renders the ' +
+      'secondary decision pair\'s label via decisionActionLabel(status), never a literal "Waitlist" string, inside ' +
+      '.chq-detail-decision-secondary-pair; detail.css floors ".chq-detail-decision-secondary-pair .chq-btn" at ' +
+      'the frame\'s own 44px, top-level -- RESOLVED, not an artefact needing exclusion.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 680,
+    tokens: ['chq-input'],
+    note:
+      'FieldModal.tsx:231-242, the CFP form field editor\'s "Label" input: ' +
+      '<FormRow label="Label" htmlFor="field-label" ...><input id="field-label" className="chq-input" value={label} .../></FormRow> ' +
+      '-- own-text matches the drawn VALUE ("Audience level", a stored field label), never the input rendering it.',
+  },
+];
+
+function manualJoinWideningFor(control: DrawnControl): ManualJoinWidening | null {
+  return MANUAL_JOIN_WIDENING.find((e) => e.fileName === control.fileName && e.line === control.line) ?? null;
+}
+
 function gradeControl(control: DrawnControl): GradedRow {
+  const manual = manualJoinWideningFor(control);
+  if (manual !== null) {
+    const fin = finalizeTokens(control, manual.tokens);
+    return {
+      control,
+      status: fin.status,
+      reason: fin.reason,
+      tokens: manual.tokens,
+      declaredMinHeight: fin.declaredMinHeight,
+      excludedReason: null,
+      matchTier: 'manual-widened',
+      receiptPath: null,
+    };
+  }
   const { row: preRow, ownTextSourceFiles } = gradeControlPreCrossSurface(control);
   const row = applySkeletonAndComposedDisposition(control, preRow);
   if (row.status === 'offender' && row.matchTier === 'own-text') {
@@ -1817,6 +1989,14 @@ const EXCLUDED: GradedRow[] = GRADED.filter((r) => r.status === 'excluded');
 // themselves `unresolved`, not `offender` -- MEASURED, not assumed: see
 // docs/design/audit/desktop-control-floor-v12.md's "WAVE 33" section for
 // the full receipt). Zero product CSS bytes moved; desktop stays frozen.
+// WAVE 53 (DEC-651 amendment, task w53-c): the 14 non-composed unresolved
+// rows (2 no-token, 10 no-control-shape, 2 cross-surface-match) were
+// individually adjudicated via `MANUAL_JOIN_WIDENING` -- re-measured on
+// this branch (forcing both ceilings to -1 before AND after): 0 offenders
+// (UNCHANGED), all 14 RESOLVED to `ok` (none OFFENDER, none
+// POPULATION-EXCLUDED). Full per-row disposition in
+// docs/design/audit/desktop-control-floor-v12.md's "WAVE 53" section. Zero
+// product CSS bytes moved; desktop stays frozen.
 export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // Lowered wave-13-xb (DEC-613): re-measured at 137, was stale at 138.
 // WAVE 23 (DEC-393 amendment, task w23-g): the composed-label tier
@@ -1855,7 +2035,12 @@ export const DESKTOP_FLOOR_DIVERGENCE_CEILING = 0;
 // frame's own control count. The DEC-746 move is offender->excluded only and
 // moves zero unresolved rows; the 4-row unresolved delta is entirely the
 // population exclusion's own `composed-unseen` rows leaving the population.
-export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 131;
+// WAVE 53 (DEC-651 amendment, task w53-c): re-measured on this branch
+// (forcing both ceilings to -1 before AND after): 117 unresolved (was 131)
+// -- exactly the 14 rows `MANUAL_JOIN_WIDENING` resolves to `ok`, all other
+// 117 rows (all `composed-unseen`) untouched. See docs/design/audit/
+// desktop-control-floor-v12.md's "WAVE 53" section for the full receipt.
+export const DESKTOP_FLOOR_UNRESOLVED_CEILING = 117;
 
 // -- WAVE 52 (DEC-374 wave-52 amendment, task w52-f): comment-credited
 // floors -- MEASUREMENT AND RATCHET ONLY -----------------------------------
@@ -2667,3 +2852,4 @@ describe('non-vacuity: a drawn control past the tmpdir copy own </x-dc> is not s
     expect(labels).not.toContain('After close');
   });
 });
+
