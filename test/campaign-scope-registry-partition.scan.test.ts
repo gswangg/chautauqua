@@ -44,14 +44,17 @@ const CONST_DECL_RE =
   /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+)\s*;[ \t]*$/gm;
 
 /**
- * Reads a named constant's LIVE value off the git-tracked tree under
- * test/, app/src/ and scripts/ -- the same population `loadCampaignFiles`
- * (scripts/exit-predicate/campaign.ts) scans -- resolving to exactly one
- * declaration. Throws loudly on zero or more-than-one matches; never a
- * hard-coded value map (the task's own instruction, and DEC-808's "a
- * default is an invitation to guess").
+ * Module-scope index of every `[export ]const <NAME> = <int>;` declaration
+ * found under test/, app/src/ and scripts/ -- built ONCE by walking
+ * `git ls-files` and reading each tracked `.ts` file a single time, rather
+ * than once per promotion-promise entry (DEC-976 wave-45: `resolveLiveValue`
+ * was O(names x tree) and grew every wave a ratchet was registered, timing
+ * the gating `it` out at 5000ms with no offender list printed). Built lazily
+ * on first use so importing this file never pays the walk's cost.
  */
-function resolveLiveValue(repoRoot: string, name: string): number {
+let liveValueIndex: Map<string, { value: number; path: string }[]> | null = null;
+
+function buildLiveValueIndex(repoRoot: string): Map<string, { value: number; path: string }[]> {
   const trackedPaths = execFileSync(
     "git",
     ["ls-files", "--", "test", "app/src", "scripts"],
@@ -60,18 +63,37 @@ function resolveLiveValue(repoRoot: string, name: string): number {
     .split("\n")
     .filter((p) => p.endsWith(".ts"));
 
-  const found: number[] = [];
-  const locations: string[] = [];
+  const index = new Map<string, { value: number; path: string }[]>();
   for (const path of trackedPaths) {
     const content = readFileSync(join(repoRoot, path), "utf8");
     CONST_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = CONST_DECL_RE.exec(content)) !== null) {
-      if ((m[1] as string) !== name) continue;
-      found.push(Number.parseInt(m[2] as string, 10));
-      locations.push(path);
+      const name = m[1] as string;
+      const value = Number.parseInt(m[2] as string, 10);
+      const entries = index.get(name) ?? [];
+      entries.push({ value, path });
+      index.set(name, entries);
     }
   }
+  return index;
+}
+
+/**
+ * Reads a named constant's LIVE value off the git-tracked tree under
+ * test/, app/src/ and scripts/ -- the same population `loadCampaignFiles`
+ * (scripts/exit-predicate/campaign.ts) scans -- resolving to exactly one
+ * declaration. Throws loudly on zero or more-than-one matches; never a
+ * hard-coded value map (the task's own instruction, and DEC-808's "a
+ * default is an invitation to guess"). The underlying tree walk is
+ * memoized at module scope (see `buildLiveValueIndex`) so repeated calls
+ * across many names cost one walk, not one per name.
+ */
+function resolveLiveValue(repoRoot: string, name: string): number {
+  if (liveValueIndex === null) {
+    liveValueIndex = buildLiveValueIndex(repoRoot);
+  }
+  const found = liveValueIndex.get(name) ?? [];
   if (found.length === 0) {
     throw new Error(
       `campaign-scope-registry-partition: no declaration of ${name} found under test/, ` +
@@ -81,10 +103,10 @@ function resolveLiveValue(repoRoot: string, name: string): number {
   if (found.length > 1) {
     throw new Error(
       `campaign-scope-registry-partition: ${name} declared ${found.length} times ` +
-        `(${locations.join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
+        `(${found.map((f) => f.path).join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
     );
   }
-  return found[0] as number;
+  return (found[0] as { value: number; path: string }).value;
 }
 
 const PROMOTION_PROMISE_RE = /promoted (once|by a later)/;
