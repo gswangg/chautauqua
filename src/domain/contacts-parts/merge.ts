@@ -189,24 +189,51 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
   const discardedByKey = new Map<string, string[]>();
   const labelByKey = new Map<string, string>();
 
+  // DEC-936 wave-54: planMerge fills firstName/lastName through two
+  // INDEPENDENT fill() calls, so a primary can keep one part while the
+  // other is filled from the duplicate in the SAME merge. previewMerge used
+  // to diff the two records' WHOLE fullName strings: whenever the survivor's
+  // fullName was non-blank it took the "keep" branch and pushed the
+  // duplicate's WHOLE name onto `discarded`, even when part of that
+  // duplicate name (e.g. its firstName) was exactly what planMerge just
+  // WROTE into the merged record. Tracked cumulatively across every
+  // duplicate in the fold so a part kept in one iteration is never later
+  // downgraded to a bare "fill".
+  let nameKept = false;
+  let nameFilled = false;
+
   let survivor = primary;
   for (const duplicate of duplicates) {
     const before = survivor;
     const { merged } = planMerge(before, duplicate);
 
-    // Name: firstName+lastName folded to one row (DEC-748 amendment).
+    // Name: firstName+lastName folded to one row (DEC-748 amendment), but
+    // each part is now diffed against planMerge's own per-part fill so the
+    // row can never report as discarded a value the merge actually wrote.
+    // A part the primary held (before non-blank) is kept, and only THAT
+    // part's differing duplicate value is discarded. A part the primary
+    // lacked is a fill and contributes nothing to `discarded`. When one
+    // duplicate call keeps one part and fills the other, neither "keep" nor
+    // "fill" alone is an honest single verdict, so the row is reported as
+    // "combine" -- the same outcome Labels already uses for a union of
+    // both sides' contributions.
     labelByKey.set("name", "Name");
-    const beforeName = fullName(before);
-    const dupName = fullName(duplicate);
-    if (dupName !== beforeName) {
-      if (beforeName === "") {
-        if (!outcomeByKey.has("name")) outcomeByKey.set("name", "fill");
+    const nameParts: ("firstName" | "lastName")[] = ["firstName", "lastName"];
+    for (const part of nameParts) {
+      const beforeVal = (before[part] ?? "").trim();
+      const dupVal = (duplicate[part] ?? "").trim();
+      if (dupVal === beforeVal) continue;
+      if (beforeVal === "") {
+        nameFilled = true;
       } else {
-        outcomeByKey.set("name", "keep");
+        nameKept = true;
         const list = discardedByKey.get("name") ?? [];
-        if (!list.includes(dupName)) list.push(dupName);
+        if (!list.includes(dupVal)) list.push(dupVal);
         discardedByKey.set("name", list);
       }
+    }
+    if (nameFilled || nameKept) {
+      outcomeByKey.set("name", nameFilled && nameKept ? "combine" : nameKept ? "keep" : "fill");
     }
 
     for (const { key, label } of MERGE_PREVIEW_STANDARD_FIELDS) {

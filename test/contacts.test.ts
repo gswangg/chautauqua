@@ -327,7 +327,63 @@ describe("previewMerge (DEC-748 amendment, wave 2: fixed six-row identity contra
     const name = fields.find((f) => f.key === "name")!;
     expect(name.outcome).toBe("keep");
     expect(name.kept).toBe("Pat Primary");
-    expect(name.discarded).toEqual(["Pat Duplicate"]);
+    // firstName is identical on both sides ("Pat"), so only lastName was
+    // actually discarded -- not the whole duplicate name (DEC-936 wave-54).
+    expect(name.discarded).toEqual(["Duplicate"]);
+  });
+
+  it("DEC-936 wave-54: a part-fill + part-keep merge never reports the filled part as discarded", () => {
+    // planMerge writes firstName from the duplicate (primary's is blank)
+    // while KEEPING primary's own lastName -- merged is "Marcus Okafor".
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "", lastName: "Okafor" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "Marcus", lastName: "Chen" });
+
+    const plan = planMerge(primary, duplicate);
+    expect(plan.merged.firstName).toBe("Marcus");
+    expect(plan.merged.lastName).toBe("Okafor");
+
+    const fields = previewMerge(primary, [duplicate]);
+    const name = fields.find((f) => f.key === "name")!;
+    expect(name.kept).toBe(`${plan.merged.firstName} ${plan.merged.lastName}`.trim());
+    expect(name.kept).toBe("Marcus Okafor");
+    // The written firstName ("Marcus") must never appear as discarded.
+    expect(name.discarded).not.toContain("Marcus");
+    expect(name.discarded).not.toContain("Marcus Chen");
+    // Only the lastName planMerge actually dropped ("Chen") is discarded.
+    expect(name.discarded).toEqual(["Chen"]);
+    // Neither "keep" nor "fill" alone is honest here -- one part was kept,
+    // the other filled -- so the row reports "combine".
+    expect(name.outcome).toBe("combine");
+  });
+
+  it("DEC-936 wave-54: both name parts present and both differing keeps the existing keep/discard shape", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "Ada", lastName: "Lovelace" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "Grace", lastName: "Hopper" });
+
+    const plan = planMerge(primary, duplicate);
+    expect(plan.merged.firstName).toBe("Ada");
+    expect(plan.merged.lastName).toBe("Lovelace");
+
+    const fields = previewMerge(primary, [duplicate]);
+    const name = fields.find((f) => f.key === "name")!;
+    expect(name.outcome).toBe("keep");
+    expect(name.kept).toBe("Ada Lovelace");
+    expect(name.discarded).toEqual(["Grace", "Hopper"]);
+  });
+
+  it("DEC-936 wave-54: a pure fill (primary name entirely blank) reports 'fill' with no discards", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "", lastName: "" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "Marcus", lastName: "Chen" });
+
+    const plan = planMerge(primary, duplicate);
+    expect(plan.merged.firstName).toBe("Marcus");
+    expect(plan.merged.lastName).toBe("Chen");
+
+    const fields = previewMerge(primary, [duplicate]);
+    const name = fields.find((f) => f.key === "name")!;
+    expect(name.outcome).toBe("fill");
+    expect(name.kept).toBe("Marcus Chen");
+    expect(name.discarded).toEqual([]);
   });
 
   it("emits a 'keep' row with a blank discarded entry when the duplicate's side is empty and the primary's is not", () => {
