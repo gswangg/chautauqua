@@ -184,7 +184,11 @@ export function findOffenders(files: string[]): Offender[] {
 
 // Measured over the real tree at this task's own commit (never guessed,
 // never seeded at 0 -- forced to -1 first and this roster read back).
-export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 730;
+// DEC-069 wave-50 amendment: re-measured at 731 (was 730 at wave-43; one
+// new post-await bare query landed in the tree since then) -- raised, not
+// lowered, because the measured count sits ABOVE the stale constant, not
+// below it.
+export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 731;
 
 describe('frame-verdict async-query determinism (DEC-976 wave-43, w43-b)', () => {
   const population = findPopulation();
@@ -248,5 +252,42 @@ describe('frame-verdict async-query determinism (DEC-976 wave-43, w43-b)', () =>
       (mm) => mm.index >= goodFirstAwait && !goodSpans.some(([s, e]) => mm.index >= s && mm.index <= e),
     );
     expect(goodCaught).toHaveLength(0);
+  });
+
+  // BELOW-direction companion (DEC-808 wave-85 amendment, enforced by
+  // test/campaign-ratchet-two-sided.scan.test.ts): the offender ceiling `it`
+  // above may only ever be LOWERED. This companion fails if the measured
+  // offender count has fallen below FRAME_VERDICT_ASYNC_QUERY_CEILING
+  // without the constant itself having been lowered to match, so a repair
+  // that shrinks the offender roster can never sit stale behind an
+  // over-generous ceiling.
+  it('the ceiling is not stale: the measured offender count does not sit below FRAME_VERDICT_ASYNC_QUERY_CEILING without the constant having been lowered to match', () => {
+    const offenders = findOffenders(population);
+    if (offenders.length < FRAME_VERDICT_ASYNC_QUERY_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} offenders, below FRAME_VERDICT_ASYNC_QUERY_CEILING = ` +
+          `${FRAME_VERDICT_ASYNC_QUERY_CEILING} -- lower the constant: ` +
+          `export const FRAME_VERDICT_ASYNC_QUERY_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(FRAME_VERDICT_ASYNC_QUERY_CEILING);
+  });
+
+  // ABOVE-direction companion for the population FLOOR (DEC-808 wave-85
+  // amendment): the floor `it` above only ever fails when the population
+  // shrinks. This companion fails if the walk finds MORE files than the
+  // floor without the floor having been raised to match -- a stale floor
+  // licenses stagnation just as much as a stale ceiling does (same idiom
+  // as test/open-divergence-ledger.scan.test.ts's AUDIT_FILE_FLOOR pair).
+  it(`FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR (${FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR}) is not stale below the walked file count (a stale floor licenses stagnation)`, () => {
+    if (population.length > FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR) {
+      throw new Error(
+        `The walk reaches ${population.length} files, above the floor of ` +
+          `${FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR}. This is the guard working: the corpus grew. ` +
+          `Raise the floor in the same commit by replacing the line:\n` +
+          `  export const FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR = ${population.length};`,
+      );
+    }
+    expect(population.length).toBeLessThanOrEqual(FRAME_VERDICT_ASYNC_QUERY_POPULATION_FLOOR);
   });
 });

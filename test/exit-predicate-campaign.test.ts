@@ -560,7 +560,12 @@ describe("findCampaignCeilingCandidates", () => {
   it("finds a _CEILING declared in a plain, non-test .ts helper module -- not only in *.test.ts(x) files (DEC-069 w43-e)", () => {
     const files: CampaignFile[] = [
       { path: "app/src/some-lane-scan/ceiling.ts", content: "export const SOME_LANE_OFFENDERS_CEILING = 4;" },
-      { path: "app/src/some-lane-scan.scan.test.ts", content: "import { SOME_LANE_OFFENDERS_CEILING } from './ceiling';\nexpect(1).toBe(1);" },
+      {
+        path: "app/src/some-lane-scan.scan.test.ts",
+        content:
+          "import { SOME_LANE_OFFENDERS_CEILING } from './ceiling';\n"
+          + "expect(SOME_LANE_OFFENDERS_CEILING).toBeGreaterThanOrEqual(0);",
+      },
     ];
     expect(findCampaignCeilingCandidates(files)).toEqual(["SOME_LANE_OFFENDERS_CEILING"]);
   });
