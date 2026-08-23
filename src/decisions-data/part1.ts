@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Amendment (wave 43): suite evidence is TIER-SCOPED, and the exit predicate's ratchet-discovery walk covers the same corpus its registration sibling does";
+export const DEC_069 = "Wave-44 amendment: every declared ratchet gets a bucket in the same commit, and a parked promotion promise is discharged by a rule or by a clause-(b) refusal — never by silence";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "Amendment (wave 40): gap prose is an exemption reason — a lane token in it needs the same same-line DEC citation a table row does";
+export const DEC_099 = "Wave-44 amendment: a merge train that lands an audit doc lands its unadjudicated rows too, and a corpus floor is raised only with a re-measurement receipt";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
