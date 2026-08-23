@@ -232,3 +232,13 @@ newly resolved to a divergence -- row 11 resolves to an exact 620==620
 match, consistent with DEC-896 wave-24's own already-adjudicated
 equivalence). `FIELD_WIDTH_UNRESOLVED_CEILING` lowered `4` -> `3`. No CSS
 byte touched; desktop stays frozen.
+
+## WAVE 39 (DEC-808 wave-39, residue read-out, task w39-g)
+
+`FIELD_WIDTH_UNRESOLVED_CEILING` was one of three named UNOWNED residues
+never re-verified since wave-26 landed it. Forced to `-1` and the offender
+list read back on this branch: still EXACTLY 3, the same rows (8, 9, 10 --
+`Chautauqua Settings.dc.html:827`/`:846`/`:929`, tracks/rooms/resources
+repeated-row names), each still `no-label-match` for the same reason wave
+26's Adjudications section already gives. Desktop stays frozen; no code or
+CSS byte touched. No drift since wave 26. Ceiling stays at 3.
