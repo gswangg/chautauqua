@@ -1,4 +1,4 @@
-# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36; two more floor-grammar tiers wave-40)
+# tap-floor-exempt receipt premise audit (DEC-393 wave-30 amendment; second floor-grammar tier wave-34; three predicate-less families wave-36; two more floor-grammar tiers wave-40; ANCHORLESS-CONTAINER tier wave-44)
 
 Instrument: `test/tap-floor-exempt-premise.scan.test.ts`. Population: every
 real `/* tap-floor-exempt: ... */` (or JSX `{/* ... */}`) comment under
@@ -184,7 +184,8 @@ read, not a second machine-checked predicate, and is recorded as such:
   `review.css`, `scorecard.css`, `submissions/detail.css`,
   `submissions.css`, `styles.css` — a render-fact claim the same shape
   `judgeRenderGate` already checks for a different premise, just never
-  built for "no bare anchor" instead of "never mounts"), "a visually-hidden
+  built for "no bare anchor" instead of "never mounts" as of wave 40; wave
+  44 below builds exactly this tier), "a visually-hidden
   input's operable target is its `<label>`" (`comms.css` (line 158),
   `content.css` (line 432), `portal.css.ts` (line 361), `speakers/task-view.css` (line 284) —
   several already NAME the label's own `.chq-*` class, e.g. `.chq-check-hit`,
@@ -217,17 +218,92 @@ ceiling) — it is recorded here, by hand, as the honest classification the
 task asked for, left open for a future wave to decide which of the 49 are
 worth a fourth tier.
 
+## Wave 44 (task w44-e, DEC-393 wave-44 clause (a)): the ANCHORLESS-CONTAINER tier
+
+The wave-40 section above named the largest of the two buckets it read by
+hand in the `other` family: "≈30 receipts" stating "renders only `<button>`
+children, never a bare anchor" — a render-FACT claim about the markup, which
+none of the CSS-selector-searching tiers built through wave 40 have anything
+to say about (they all search `allChunks`, a flat list of CSS rule
+selector/body pairs; this claim is about JSX children, not a companion
+selector). This wave adds a fifth tier, `judgeContainerAnchorAbsence`,
+gated by a textual predicate (`isContainerAnchorAbsenceCandidate`) over the
+`other` family's own reason text — never the family label alone, which
+every prior wave's tiers already outgrew — that recognises the shape
+("no anchor", "never a bare `<a>`/`<Link>`", "renders only `<button>`
+...") while excluding several OTHER shapes the same vocabulary also
+produces in this population: the receipted token itself rendering AS an
+anchor elsewhere (`theme.ts`'s `.chq-wordmark`, `overview.css`'s deadline-
+cell `<Link>`, `portal.css.ts`'s `.chq-wordmark` `<span>` twin), a native-
+control label/`htmlFor` association ("the label is the click/tap anchor"),
+an ancestor-visibility claim (a `<thead>` set to `display:none`), or a
+purely decorative-sizing claim (a checkbox/radio glyph, a colour swatch, a
+`.chq-pill`) that says nothing about anchors at all.
+
+Unlike every tier above, this one does not search CSS at all: it walks the
+real JSX/TSX **markup corpus** (`test/frame-source-corpus.ts`'s
+`enumerateSourceFiles` + `stripComments` — DEC-613, the same enumerator and
+comment stripper every frame-label ledger already shares, never a second
+copy). It locates the receipted class as a literal `className`/`class`
+word, walks it to its own BALANCED matching close tag via a hand-rolled
+brace/quote-aware tag scanner (a `[^>]*>` regex would misread the `>` in a
+JSX handler like `onClick={() => onSelect(item.id)}` as the tag's own
+close; the scanner instead tracks brace depth and quote state
+character-by-character, invisible to an embedded `>`), and inspects every
+`<a`/`<Link`/`<NavLink` strictly inside. The scanner also recurses into
+every visited tag's OWN `attrsText` — this codebase's `<ModalFrame
+actions={<>...</>} ...>` render-prop idiom puts real, rendered JSX inside a
+`{...}` ATTRIBUTE VALUE, invisible to a walk that only ever jumps forward
+by a tag's own end.
+
+VERIFIED when no anchor is found inside, or every one found carries
+`.chq-btn`/`.chq-link-button` (this codebase's two floored button-styled-
+anchor classes — see `review.css`'s PlanList worked example: "Export
+results CSV" `<a className="chq-btn chq-btn-secondary">` and "New plan"
+`<Link className="chq-btn chq-btn-primary">`, both `chq-btn`-styled).
+FALSE-PREMISE the moment a bare anchor carrying neither class is found
+inside — a real 44px-floor gap, and it raises
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` rather than being softened into
+UNVERIFIABLE, exactly the point of building a real predicate instead of
+leaving these 37 receipts in the `other` bucket forever. UNVERIFIABLE-
+PREMISE only when the receipted class token appears nowhere in the markup
+corpus at all (`app/src/pages/forms/forms.css`'s
+`.chq-forms-field-modal-actions-right` receipt resolves this way on the
+FIRST pass, before the render-prop recursion above was added — it is only
+reachable inside `FieldModal.tsx`'s `<ModalFrame actions={...}>` call).
+
+Forced to `-1` and re-measured standalone (never by arithmetic on the
+wave-40 base, the exact trap DEC-808 warns against): bucketing the 55
+`other`-family reasons by their own text found **37** stating this
+checkable premise — the 32 the task named (across `content.css`,
+`review.css`, `submissions.css`, `styles.css`, `detail.css`, `comms.css`,
+`contacts.css`, `forms.css`, `scorecard.css`) plus 5 more the same textual
+gate legitimately admits (`contacts-panels.css` `:295`/`:997`,
+`overview.css`'s deadline-cell receipt, `settings.css`'s `<th>`-only
+column-width receipt). All 37 resolve **VERIFIED** against the real
+markup corpus, including the `forms.css` render-prop-nested one above.
+`UNVERIFIABLE-PREMISE` moves **77 -> 40**. `FALSE-PREMISE` stays **0**: no
+bare, unfloored anchor was found inside any of the 37 real containers this
+tier can now check — the whole population it resolves was already a true
+premise, not a defect this wave discovered.
+
+Both falsifiability controls this tier's siblings all carry ship in the
+scan file itself, run through the REAL matcher via dependency injection
+(a synthetic `MarkupFile[]` corpus, never a re-implementation): a
+container holding only `.chq-btn`-classed buttons resolves VERIFIED; the
+same container with one bare `<a>` added resolves FALSE-PREMISE.
+
 ## Verdict counts
 
-Wave 40 (task w40-f): re-measured directly (never by arithmetic), the
-population has grown to **101** receipts (three intervening waves' worth of
-new/edited receipts since wave 36's 98-receipt snapshot).
+Wave 44 (task w44-e): re-measured directly (never by arithmetic), the
+population has grown to **104** receipts (intervening waves' worth of
+new/edited receipts since wave 40's 101-receipt snapshot).
 
 | Verdict | Count | Meaning |
 |---|---|---|
-| VERIFIED | 25 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar). |
-| UNVERIFIABLE-PREMISE | 76 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css` (line 596), see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
+| VERIFIED | 64 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar), or (5) wave-44's ANCHORLESS-CONTAINER tier (the receipted class's real markup holds no anchor, or only `.chq-btn`/`.chq-link-button`-classed ones). |
+| UNVERIFIABLE-PREMISE | 40 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet (and does not match the wave-44 anchorless-container shape either, or matches it but the receipted class is absent from the whole markup corpus), a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
+| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css`, see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
 
 ## The worked example (built this wave)
 
@@ -306,7 +382,7 @@ its own premise (`.chq-btn` carries the shared phone floor) was already
 true.
 
 ## Full roster (98 rows)
-## Full roster (98-row wave-30 snapshot; NOT regenerated wave-to-wave except for rows a given wave's own task changed — the population is 101 as of wave 40, see "Verdict counts" above; the two rows wave 40 changed are updated in place below, the rest is historical)
+## Full roster (98-row wave-30 snapshot; NOT regenerated wave-to-wave except for rows a given wave's own task changed — the population is 104 as of wave 44, see "Verdict counts" above; the two rows wave 40 changed and the 37 rows wave 44 changed are updated in place below, the rest is historical)
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
