@@ -76,6 +76,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource, stripComments } from './frame-source-corpus';
 import { captionsInText } from './frame-caption-ledger/population';
+import { ALL_LABELS as ALL_CONTROL_LABELS } from './frame-control-label/population';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..');
@@ -422,6 +423,26 @@ const PRESENT_UNMOUNTED = GRADED.filter((r) => r.grade === 'PRESENT-UNMOUNTED');
 export const FRAME_CONDITIONAL_STATE_DIVERGENCE_CEILING = 0;
 export const FRAME_CONDITIONAL_STATE_UNMOUNTED_CEILING = 0;
 
+// Clause 4's standing guard ceiling: measured on this branch by forcing to
+// -1 and reading the printed roster (DEC-808 doctrine): 10 false matches.
+// Each is a pre-existing candidate of the caption/eyebrow/control-label
+// ledgers (never field-label this wave -- its 3 overlapping candidates all
+// RESOLVE ELSEWHERE, see the audit doc) whose only occurrence in its own
+// dc.html file sits inside a false-hinted sc-if extent -- text the demo
+// pack's own hint commits to never showing, so this candidate's membership
+// in a "drawn word" population is a population artifact of scanning inside
+// a dead branch, not a rendering gap. The `cell.clash`/`slot.clash` (Agenda),
+// `c.isChoice` (Review, all three repeated frames), and `m.current`
+// (Speakers) sc-if rows these ten candidates trace back to already grade
+// MATCHED above via this file's own independent TIER1/TIER2 join against
+// real product source -- these ten are not new, unfound product gaps; they
+// are named, adjudicated, and disposed of in
+// docs/design/audit/frame-conditional-state-v12.md's "False-hinted overlap"
+// section (DEC-383 wave-40) rather than left to rot as an un-owned handoff
+// paragraph. A NEW false match rising above this ceiling fails loudly and
+// must be adjudicated there before the ceiling may rise.
+export const FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING = 10;
+
 // ---------------------------------------------------------------------------
 // Overlap measurement (task clause 3): how many rows from the drawn-WORD
 // ledgers fall inside a FALSE-hinted sc-if's extent. Measured, not acted
@@ -433,6 +454,75 @@ interface OverlapResult {
   readonly captionOverlap: number;
   readonly eyebrowOverlap: number;
   readonly fieldLabelOverlap: number;
+  readonly controlLabelOverlap: number;
+}
+
+// ---------------------------------------------------------------------------
+// Clause (2)/(3): for every row that falls inside a false-hinted extent, does
+// it ALSO resolve against product text drawn in the TRUE-hinted sibling
+// branch or in static chrome (fine -- the row's grade stands, the pack does
+// draw these words SOMEWHERE), or does it resolve ONLY because its words sit
+// inside a branch the app never renders (a FALSE MATCH -- this population
+// row is an artifact of scanning inside dead copy, not evidence the pack
+// visibly draws it)?
+//
+// `trueRenderedCorpus` answers this by blanking every false-hinted sc-if
+// extent's own characters (never newlines, so line numbers of anything
+// outside those extents are unaffected) out of the file's content. A
+// candidate's literal text "resolves elsewhere" iff it still occurs
+// (verbatim substring) somewhere in that blanked text -- which can only be
+// true if an occurrence exists OUTSIDE every false-hinted extent, i.e. in a
+// true-hinted sibling branch or in static chrome that is always drawn.
+// ---------------------------------------------------------------------------
+
+interface FalseHintedCandidate {
+  readonly ledger: 'caption' | 'eyebrow' | 'field-label' | 'control-label';
+  readonly file: string;
+  readonly line: number;
+  readonly text: string;
+}
+
+/** Blanks every [start,end) range's non-newline characters out of `content`
+ * (offsets and line numbers of everything else are preserved). Exported so
+ * the non-vacuity fixture below can drive this exact function over a
+ * fabricated string, never a real product count (DEC-967). */
+export function trueRenderedCorpus(content: string, falseRanges: { start: number; end: number }[]): string {
+  const chars = content.split('');
+  for (const r of falseRanges) {
+    for (let i = r.start; i < r.end && i < chars.length; i++) {
+      if (chars[i] !== '\n') chars[i] = ' ';
+    }
+  }
+  return chars.join('');
+}
+
+/** The general join at the heart of clause (2)/(3): given a file's raw
+ * content, its false-hinted byte ranges, and a set of candidate {offset,
+ * text} hits somewhere in that content, splits the candidates that fall
+ * INSIDE a false-hinted range into RESOLVES-ELSEWHERE (their literal text
+ * also occurs outside every false-hinted range) and FALSE-MATCH (it does
+ * not). Candidates outside every false-hinted range are not part of this
+ * join's population at all (untouched, not returned in either bucket).
+ * Exported so the non-vacuity fixture below can drive this exact function
+ * over a fabricated string, never a real product count (DEC-967). */
+export function splitFalseHintedCandidates(
+  content: string,
+  falseRanges: { start: number; end: number }[],
+  candidates: { offset: number; text: string }[]
+): { resolvesElsewhere: { offset: number; text: string }[]; falseMatch: { offset: number; text: string }[] } {
+  const trueCorpus = trueRenderedCorpus(content, falseRanges);
+  const resolvesElsewhere: { offset: number; text: string }[] = [];
+  const falseMatch: { offset: number; text: string }[] = [];
+  for (const c of candidates) {
+    const inFalseRange = falseRanges.some((r) => c.offset >= r.start && c.offset < r.end);
+    if (!inFalseRange) continue;
+    if (trueCorpus.includes(c.text)) {
+      resolvesElsewhere.push(c);
+    } else {
+      falseMatch.push(c);
+    }
+  }
+  return { resolvesElsewhere, falseMatch };
 }
 
 // Local, DELIBERATELY SIMPLIFIED candidate regexes for the eyebrow and
@@ -462,49 +552,143 @@ const INPUT_BOX_RE = /border:1px solid #BAB6A6/;
  * drawing actually rendered them, when the drawing in fact shows the
  * OTHER branch. This file changes none of those ledgers' populations or
  * ceilings. */
-function measureFalseHintedOverlap(): OverlapResult {
+/** Per-file candidate hits for all four drawn-word ledgers, tagged with
+ * offset+text+which ledger. Caption uses the real, imported
+ * `captionsInText`; control-label uses the real, imported `ALL_LABELS`
+ * (clause 1's fix -- previously "not measured"); eyebrow and field-label use
+ * the local, deliberately-approximate candidate regexes documented above
+ * (importing their own `.scan.test.ts` files pulls their `describe`/`it`
+ * suites into this file's collection, verified empirically). */
+function candidatesForFile(file: string, content: string): FalseHintedCandidate[] {
+  const rel = relative(REPO_ROOT, file);
+  const out: FalseHintedCandidate[] = [];
+
+  for (const c of captionsInText(content)) {
+    // captionsInText reports a 1-indexed LINE, not a byte offset -- the
+    // line's own first-character offset stands in for it (adequate for the
+    // range-membership test below: a false-hinted extent's span always
+    // covers whole lines in this pack, per the frame-geometry idiom every
+    // sc-if block is written inside).
+    const lineStart = content.split('\n').slice(0, c.line - 1).join('\n').length + (c.line > 1 ? 1 : 0);
+    out.push({ ledger: 'caption', file: rel, line: c.line, text: c.text });
+    CAPTION_OFFSETS.set(`${rel}:${c.line}:${c.text}`, lineStart);
+  }
+
+  EYEBROW_CANDIDATE_RE.lastIndex = 0;
+  let em: RegExpExecArray | null;
+  while ((em = EYEBROW_CANDIDATE_RE.exec(content)) !== null) {
+    const style = em[2]!;
+    const text = em[3]!.trim();
+    if (!UPPERCASE_STYLE_RE.test(style)) continue;
+    if (text.length < 2 || text.includes('{{')) continue;
+    out.push({ ledger: 'eyebrow', file: rel, line: lineOf(content, em.index), text });
+    EYEBROW_OFFSETS.set(`${rel}:${lineOf(content, em.index)}:${text}`, em.index);
+  }
+
+  const lines = content.split('\n');
+  let runningOffset = 0;
+  for (const line of lines) {
+    const m = FIELD_LABEL_CANDIDATE_RE.exec(line);
+    if (m && !m[1]!.includes('{{')) {
+      const windowEnd = Math.min(content.length, runningOffset + line.length + 400);
+      const window = content.slice(runningOffset, windowEnd);
+      if (INPUT_BOX_RE.test(window)) {
+        const text = m[1]!.trim();
+        out.push({ ledger: 'field-label', file: rel, line: lineOf(content, runningOffset), text });
+        FIELD_LABEL_OFFSETS.set(`${rel}:${lineOf(content, runningOffset)}:${text}`, runningOffset);
+      }
+    }
+    runningOffset += line.length + 1;
+  }
+
+  const bareName = file.split('/').pop()!;
+  for (const l of ALL_CONTROL_LABELS) {
+    if (l.fileName !== bareName) continue;
+    out.push({ ledger: 'control-label', file: rel, line: l.line, text: l.label });
+    CONTROL_LABEL_OFFSETS.set(`${rel}:${l.line}:${l.label}`, l.offset);
+  }
+
+  return out;
+}
+
+// Offset lookups keyed by `rel:line:text` -- populated as a side effect of
+// candidatesForFile (each ledger's own extraction pass already computes the
+// real offset once; these maps avoid recomputing it a second time for the
+// split join below).
+const CAPTION_OFFSETS = new Map<string, number>();
+const EYEBROW_OFFSETS = new Map<string, number>();
+const FIELD_LABEL_OFFSETS = new Map<string, number>();
+const CONTROL_LABEL_OFFSETS = new Map<string, number>();
+
+function offsetOf(c: FalseHintedCandidate): number {
+  const key = `${c.file}:${c.line}:${c.text}`;
+  const map =
+    c.ledger === 'caption'
+      ? CAPTION_OFFSETS
+      : c.ledger === 'eyebrow'
+        ? EYEBROW_OFFSETS
+        : c.ledger === 'field-label'
+          ? FIELD_LABEL_OFFSETS
+          : CONTROL_LABEL_OFFSETS;
+  const offset = map.get(key);
+  if (offset === undefined) throw new Error(`offsetOf: no recorded offset for ${c.ledger} ${key}`);
+  return offset;
+}
+
+interface FalseMatchResult {
+  readonly overlap: OverlapResult;
+  /** Rows whose text also occurs outside every false-hinted extent in the
+   * same file (a true-hinted sibling branch or static chrome) -- the pack
+   * DOES draw these words somewhere; their existing grade in the owning
+   * ledger stands unchanged. */
+  readonly resolvedElsewhere: FalseHintedCandidate[];
+  /** Rows whose text occurs ONLY inside a false-hinted (never-rendered-by-
+   * hint) extent -- the row is an artifact of scanning inside a branch the
+   * demo pack itself commits to NOT showing. */
+  readonly falseMatches: FalseHintedCandidate[];
+}
+
+function measureFalseHintedGrading(): FalseMatchResult {
   const ranges = falseHintedByteRanges();
   let captionOverlap = 0;
   let eyebrowOverlap = 0;
   let fieldLabelOverlap = 0;
+  let controlLabelOverlap = 0;
+  const resolvedElsewhere: FalseHintedCandidate[] = [];
+  const falseMatches: FalseHintedCandidate[] = [];
 
   for (const file of DC_FILES) {
     const content = readFileSync(file, 'utf-8');
     const fileRanges = ranges.filter((r) => r.file === file);
+    const candidates = candidatesForFile(file, content);
     if (fileRanges.length === 0) continue;
-    const inRange = (offset: number) => fileRanges.some((r) => offset >= r.start && offset < r.end);
 
-    for (const c of captionsInText(content)) {
-      // captionsInText reports a 1-indexed LINE, not a byte offset -- convert
-      // via the line's own first-character offset.
-      const lineStart = content.split('\n').slice(0, c.line - 1).join('\n').length + (c.line > 1 ? 1 : 0);
-      if (inRange(lineStart)) captionOverlap++;
-    }
+    const withOffsets = candidates.map((c) => ({ ...c, offset: offsetOf(c) }));
+    const { resolvesElsewhere: elsewhere, falseMatch } = splitFalseHintedCandidates(
+      content,
+      fileRanges,
+      withOffsets.map((c) => ({ offset: c.offset, text: c.text }))
+    );
+    const elsewhereOffsets = new Set(elsewhere.map((e) => e.offset));
+    const falseOffsets = new Set(falseMatch.map((e) => e.offset));
 
-    EYEBROW_CANDIDATE_RE.lastIndex = 0;
-    let em: RegExpExecArray | null;
-    while ((em = EYEBROW_CANDIDATE_RE.exec(content)) !== null) {
-      const style = em[2]!;
-      const text = em[3]!.trim();
-      if (!UPPERCASE_STYLE_RE.test(style)) continue;
-      if (text.length < 2 || text.includes('{{')) continue;
-      if (inRange(em.index)) eyebrowOverlap++;
-    }
-
-    const lines = content.split('\n');
-    let runningOffset = 0;
-    for (const line of lines) {
-      const m = FIELD_LABEL_CANDIDATE_RE.exec(line);
-      if (m && !m[1]!.includes('{{')) {
-        const windowEnd = Math.min(content.length, runningOffset + line.length + 400);
-        const window = content.slice(runningOffset, windowEnd);
-        if (INPUT_BOX_RE.test(window) && inRange(runningOffset)) fieldLabelOverlap++;
-      }
-      runningOffset += line.length + 1;
+    for (const c of withOffsets) {
+      const inOverlap = elsewhereOffsets.has(c.offset) || falseOffsets.has(c.offset);
+      if (!inOverlap) continue;
+      if (c.ledger === 'caption') captionOverlap++;
+      else if (c.ledger === 'eyebrow') eyebrowOverlap++;
+      else if (c.ledger === 'field-label') fieldLabelOverlap++;
+      else controlLabelOverlap++;
+      if (elsewhereOffsets.has(c.offset)) resolvedElsewhere.push(c);
+      else falseMatches.push(c);
     }
   }
 
-  return { falseHintedExtents: ranges.length, captionOverlap, eyebrowOverlap, fieldLabelOverlap };
+  return {
+    overlap: { falseHintedExtents: ranges.length, captionOverlap, eyebrowOverlap, fieldLabelOverlap, controlLabelOverlap },
+    resolvedElsewhere,
+    falseMatches,
+  };
 }
 
 function falseHintedByteRanges(): { file: string; start: number; end: number }[] {
@@ -604,17 +788,93 @@ describe('frame conditional-state ledger (DEC-383 wave-29)', () => {
     expect(keys).toEqual([]);
   });
 
-  it('overlap measurement: how many drawn-word-ledger rows fall inside a false-hinted sc-if extent (recorded in the audit doc; no ledger touched this lane)', () => {
-    const overlap = measureFalseHintedOverlap();
+  it('overlap measurement: how many drawn-word-ledger rows fall inside a false-hinted sc-if extent, and of those, how many resolve elsewhere vs. are false matches (recorded in the audit doc; none of the four sibling ledgers is touched by this lane)', () => {
+    const { overlap, resolvedElsewhere, falseMatches } = measureFalseHintedGrading();
     expect(overlap.falseHintedExtents).toBeGreaterThan(0);
     // Printed so the audit doc's numbers are reproducible from this run,
     // not retyped by hand.
     // eslint-disable-next-line no-console
     console.log(
       `false-hinted extents=${overlap.falseHintedExtents} caption-overlap=${overlap.captionOverlap} ` +
-        `eyebrow-overlap=${overlap.eyebrowOverlap} field-label-overlap=${overlap.fieldLabelOverlap}`,
+        `eyebrow-overlap=${overlap.eyebrowOverlap} field-label-overlap=${overlap.fieldLabelOverlap} ` +
+        `control-label-overlap=${overlap.controlLabelOverlap} resolved-elsewhere=${resolvedElsewhere.length} ` +
+        `false-matches=${falseMatches.length}`,
     );
-    expect(overlap.captionOverlap + overlap.eyebrowOverlap + overlap.fieldLabelOverlap).toBeGreaterThanOrEqual(0);
+    expect(
+      overlap.captionOverlap + overlap.eyebrowOverlap + overlap.fieldLabelOverlap + overlap.controlLabelOverlap
+    ).toBeGreaterThanOrEqual(0);
+    expect(resolvedElsewhere.length + falseMatches.length).toBeLessThanOrEqual(
+      overlap.captionOverlap + overlap.eyebrowOverlap + overlap.fieldLabelOverlap + overlap.controlLabelOverlap
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Clause (4): a standing guard. A NEW ledger row landing inside a
+  // false-hinted extent must be REPORTED (this ratchet fails loudly and
+  // names it), never silently absorbed into a ledger's "drawn word" count.
+  // Every currently-known false match is named below (ADJUDICATED in this
+  // same file, so the ratchet can hold at the measured count without a
+  // future row silently joining it); the ceiling is a single exported
+  // const, forced to -1 and re-measured on this branch, two-sided per every
+  // other ledger in this campaign.
+  // -------------------------------------------------------------------------
+  describe('false-hinted extent guard (clause 4: a new row inside a false-hinted extent is reported, not silently counted)', () => {
+    it(`FALSE_MATCH_CEILING ratchet: at most ${FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING} false matches (rows whose drawn-word-ledger candidate text occurs ONLY inside a false-hinted sc-if extent, never in a true-hinted sibling branch or static chrome)`, () => {
+      const { falseMatches } = measureFalseHintedGrading();
+      if (falseMatches.length > FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING) {
+        const roster = falseMatches
+          .map((c) => `  - [${c.ledger}] ${c.file}:${c.line} "${c.text}"`)
+          .join('\n');
+        throw new Error(
+          `${falseMatches.length} false matches > ceiling ${FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING}:\n${roster}\n` +
+            `Adjudicate each new row in docs/design/audit/frame-conditional-state-v12.md before raising this ceiling.`
+        );
+      }
+      expect(falseMatches.length).toBeLessThanOrEqual(FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING);
+    });
+
+    it(`never sits BELOW FALSE_MATCH_CEILING (${FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING}) without the ceiling being lowered to match`, () => {
+      const { falseMatches } = measureFalseHintedGrading();
+      if (falseMatches.length < FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING) {
+        throw new Error(
+          `${falseMatches.length} false matches, below the ceiling of ${FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING}. ` +
+            `Lower the ceiling in the same commit:\n  export const FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING = ${falseMatches.length};`
+        );
+      }
+      expect(falseMatches.length).toBeGreaterThanOrEqual(FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING);
+    });
+
+    it('POSITIVE control: a synthetic candidate whose text sits ONLY inside a false-hinted extent is reported as a false match, never silently counted', () => {
+      const content =
+        'STATIC PREFIX <sc-if value="{{ x.y }}" hint-placeholder-val="{{ false }}">Zzqxw Only In Dead Branch</sc-if> STATIC SUFFIX';
+      const falseStart = content.indexOf('Zzqxw Only In Dead Branch') - 1;
+      const falseEnd = falseStart + 'Zzqxw Only In Dead Branch'.length + 2;
+      const { falseMatch, resolvesElsewhere } = splitFalseHintedCandidates(
+        content,
+        [{ start: falseStart, end: falseEnd }],
+        [{ offset: content.indexOf('Zzqxw Only In Dead Branch'), text: 'Zzqxw Only In Dead Branch' }]
+      );
+      expect(falseMatch).toHaveLength(1);
+      expect(resolvesElsewhere).toHaveLength(0);
+    });
+
+    it('NEGATIVE control: the same words, present in a true-hinted sibling branch too, resolve elsewhere and are NOT a false match', () => {
+      const content =
+        'TRUE BRANCH <sc-if value="{{ x.y }}" hint-placeholder-val="{{ true }}">Zzqxw Shared Words</sc-if> ' +
+        'FALSE BRANCH <sc-if value="{{ x.z }}" hint-placeholder-val="{{ false }}">Zzqxw Shared Words</sc-if>';
+      const falseOpenLiteral = '<sc-if value="{{ x.z }}" hint-placeholder-val="{{ false }}">';
+      const falseOpenIdx = content.indexOf(falseOpenLiteral);
+      const falseStart = falseOpenIdx + falseOpenLiteral.length;
+      const falseEnd = content.indexOf('</sc-if>', falseStart);
+      const candidateOffset = content.indexOf('Zzqxw Shared Words', falseStart);
+      const { falseMatch, resolvesElsewhere } = splitFalseHintedCandidates(
+        content,
+        [{ start: falseStart, end: falseEnd }],
+        [{ offset: candidateOffset, text: 'Zzqxw Shared Words' }]
+      );
+      expect(resolvesElsewhere).toHaveLength(1);
+      expect(falseMatch).toHaveLength(0);
+    });
   });
 
   describe('non-vacuity (DEC-967: prove the join over a SYNTHETIC fixture, never a live row identity)', () => {
