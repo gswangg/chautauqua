@@ -218,7 +218,7 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // the 37 real containers this tier can now check -- the whole population
 // it resolves was already a true premise, not a defect this wave
 // discovered.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 40;
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 34;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
@@ -263,6 +263,50 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     const chunks = [{ selector: ".chq-fake-companion", body: "color: red;" }];
     const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-companion">x</a>');
     expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  // DEC-393 wave-51 (task w51-b): the desktop-control-floor scan
+  // (src/routes/public/cfp.css.ts) forbids a dot-prefixed class name in
+  // CSS-comment prose, so a composition receipt obeying that rule names its
+  // companion as a BARE token -- these three controls exercise that tier.
+
+  it("positive control (bare-token companion): a composition receipt naming its companion as a BARE token (no leading dot) whose companion IS floored resolves VERIFIED", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- both children are floored chq-fake-bare-companion controls, no leading dot in this prose (desktop-control-floor scan grammar)",
+      receiptedClasses: ["chq-fake-bare-target"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-bare-companion", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-bare-companion">x</a>');
+    expect(verdict.verdict).toBe("VERIFIED");
+  });
+
+  it("negative control (bare-token companion): a composition receipt naming a BARE-token companion that is NOT floored resolves FALSE-PREMISE", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- both children are floored chq-fake-bare-unfloored controls, no leading dot in this prose (desktop-control-floor scan grammar)",
+      receiptedClasses: ["chq-fake-bare-target-2"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-bare-unfloored", body: "color: red;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-bare-unfloored">x</a>');
+    expect(verdict.verdict).toBe("FALSE-PREMISE");
+  });
+
+  it("guard (bare-token companion): a bare token that IS the receipt's own receipted class is never treated as its own companion", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- chq-fake-self-bare-target is a self-contained control, chq-fake-self-bare-target carries its own floor",
+      receiptedClasses: ["chq-fake-self-bare-target"],
+      family: "composition",
+    };
+    const chunks = [{ selector: ".chq-fake-self-bare-target", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeReceipt(receipt, chunks, '<a class="chq-fake-self-bare-target">x</a>');
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
   });
 
   it("negative control: a receipt naming no companion class resolves UNVERIFIABLE-PREMISE, never a silent pass", () => {
