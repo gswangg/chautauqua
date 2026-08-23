@@ -89,3 +89,67 @@ horizontal padding) was appended to `styles.css`'s terminal `@media
   settings-cluster anchors) — this lane's population was measured on
   `main` only, per the task's instruction not to anticipate it; the merge
   train re-measures the integrated tree.
+
+## SSR classless NON-ANCHOR control population (task v12m-w40-e, DEC-393)
+
+Explicitly disjoint from everything above (the SPA population, `app/src/**`)
+and from `SSR_CLASSLESS_ANCHOR_CEILING` (`app/src/phone-tap-target-ssr-
+classless-anchor.scan.test.ts`, owned by v12m-w39-e, which grades the SAME
+`src/routes/**` surface's classless `<a>` sites). Neither of those two
+ratchets ever looked at a classless `<input>`/`<select>`/`<textarea>`/
+`<button>` under `src/routes/**` — an EMPTY population, not a
+zero-offender one (DEC-808).
+
+### Population
+
+Every `src/routes/public/**/*.tsx` and `src/routes/portal/**/*.tsx` tag
+(excluding `*.test.*`) in `{input, select, textarea, button}` declaring no
+`class=`/`className=`, excluding `<input type="hidden">` (inert, no hit
+box), keyed on its nearest enclosing element's `chq-` token via the same
+depth-only tag-stack walk (`core.ts`'s `classlessTagSites`) the SPA and
+SSR-anchor populations above already share.
+
+The wave-35-h roster in this same audit doc's sibling,
+`public-390-request-verdicts-v12.md`, named seven such rows by
+`path:line`; four of the seven line numbers had drifted onto unrelated
+lines by the time this task ran. Re-derived at HEAD instead of trusted:
+**7 raw sites**, unchanged in count from the wave-35-h roster, spread
+across 3 files:
+
+| # | Site | Tag | Enclosing token(s) | Disposition |
+|---|------|-----|---------------------|-------------|
+| 1 | `src/routes/portal/edit.tsx` — Tracks fieldset checkbox (`name="trackIds"`) | `<input>` | `chq-cfp-option` | **Exempt (composition)** — already carried by portal.css.ts line 572's pre-existing exempt-composition receipt (the wrapping `<label class="chq-cfp-option">` is the floored click/tap surface) |
+| 2 | `src/routes/portal/edit.tsx` — co-presenter Role `<select id="cp-role">` | `<select>` | `chq-field`, `chq-portal-copresenter-role` | **Floored** — `portal.css.ts` terminal `@media (max-width:700px)` block, new `.chq-portal-copresenter-role select` rule (`display:flex; align-items:center; padding:0 12px`), additive beside the pre-existing `min-height:48px` rule on the same selector |
+| 3 | `src/routes/portal/tasks/views.tsx` — task-upload `<input type="file">` | `<input>` | `chq-portal-actions` | **Floored** — `portal.css.ts` terminal block, new `.chq-portal-actions input[type=file], .chq-card input[type=file]` rule (`display:flex; align-items:center; min-height:44px; padding:0 12px`) |
+| 4 | `src/routes/portal/tasks/views.tsx` — reupload `<input type="file">` (completed file_request) | `<input>` | `chq-card` | **Floored** — same rule as #3 |
+| 5 | `src/routes/public/submit-views.tsx` — `TrackChoices` radio (`name="trackIds"`) | `<input>` | `chq-cfp-option` | **Exempt (composition)** — cfp.css.ts line 147's new exempt-composition receipt, mirroring portal.css.ts line 572's identical shape for the SAME shared class |
+| 6 | `src/routes/public/submit-views.tsx` — `FormatChoices` radio (session-format) | `<input>` | `chq-cfp-option` | **Exempt (composition)** — same receipt as #5 (same class) |
+| 7 | `src/routes/public/submit-views.tsx` — `AudienceChoices` radio (audience-level pill) | `<input>` | `chq-cfp-option`, `chq-cfp-pill` | **Exempt (composition)** — same receipt as #5 (first token `chq-cfp-option` resolves the exemption) |
+
+### Predicate
+
+Same three-clause floor every other population in this directory uses:
+`min-height >= 44px` AND literal `display: flex` (+ `align-items: center`)
+AND non-zero horizontal padding, all inside some
+`@media (max-width: <=700px)` block, on a selector reaching the site
+through its enclosing chq- token — reached via a parent-scoped selector
+(`.chq-portal-actions input[type=file]`, `.chq-portal-copresenter-role
+select`), never by inventing a new class on the element itself.
+
+### Ceiling
+
+`SSR_CLASSLESS_CONTROL_CEILING` in the dedicated
+`app/src/phone-tap-target-scan/ssr-classless-control-ceiling.ts` module
+(deliberately NOT `ceilings.ts`, which `SSR_CLASSLESS_ANCHOR_CEILING` and
+`v12m-w39-e` occupy) — two-sided from the start, seeded by forcing the
+constant to `-1` and reading the printed offender list on this branch.
+Re-measured after the three fixes and one new exemption above: **0**.
+
+### Companion side-effect
+
+The new `.chq-cfp-option` composition receipt in `cfp.css.ts` added one
+row to `test/tap-floor-exempt-premise.scan.test.ts`'s UNVERIFIABLE-PREMISE
+population (it names no distinct companion class, mirroring its
+portal.css.ts line 572 twin, so the instrument correctly cannot settle it
+either way) — `TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moved
+77 -> 78 in the same commit, re-measured on this branch.

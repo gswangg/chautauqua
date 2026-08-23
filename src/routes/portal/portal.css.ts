@@ -1123,6 +1123,17 @@ ${EMPTY_PHONE_CSS}
   .chq-portal-copresenter-role select {
     min-height: 48px;
   }
+  /* v12m-w40-e (DEC-393): the Role <select> above declares no class of its
+     own (edit.tsx), so a class-token-keyed scan can't see it -- additive,
+     phone-only floor completing the three-clause conformance the
+     min-height rule above only started (display:flex + align-items:center
+     + horizontal padding), scoped to the select alone so the two sibling
+     .chq-input text fields in the shared rule above are untouched. */
+  .chq-portal-copresenter-role select {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
   .chq-portal-done-when {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1366,5 +1377,21 @@ ${EMPTY_PHONE_CSS}
      as the last rule of this sheet's one terminal max-width block,
      desktop byte-identical. */
   .chq-portal-file-link {}
+
+  /* v12m-w40-e (DEC-393): tasks/views.tsx renders two bare
+     <input type="file"> pickers (the task-upload form and the
+     completed-task reupload form) with no class of their own -- no
+     visually-hidden wrapper, no custom trigger, the native control paints
+     directly, so unlike the checkbox/radio composition shape above it IS
+     its own tap surface. Additive, phone-only floor reaching both via
+     their enclosing token (.chq-portal-actions / .chq-card), never by
+     inventing a class on the element. */
+  .chq-portal-actions input[type=file],
+  .chq-card input[type=file] {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+  }
 }
 ${ERROR_STATES_PHONE_CSS}`;

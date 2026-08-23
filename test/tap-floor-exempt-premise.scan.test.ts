@@ -589,7 +589,23 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // that ceiling; it sits at 0 because the DEC-393 wave-39 repair above
 // re-pointed contacts.css's `scoped` receipt at `.chq-btn`, which the
 // self-scoped tier likewise resolves VERIFIED.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 76;
+// v12m-w40-e (DEC-393): cfp.css.ts:147 got a new `tap-floor-exempt:
+// composition` receipt on `.chq-cfp-option`, mirroring portal.css.ts:572's
+// pre-existing identical receipt for the SAME shared class (a bare radio/
+// checkbox input wrapped in `label class="chq-cfp-option"`, the label
+// being the real click/tap surface). The new receipt names no distinct
+// companion class (deliberately -- naming one it can't verify would read
+// as a false claim), so it resolves UNVERIFIABLE-PREMISE, same as its
+// portal.css.ts twin. Re-measured on this branch: 77 -> 78.
+//
+// MEGABATCH COMPOSITION (wave-40 thunderdome): w40-f and w40-e both moved
+// UNVERIFIABLE-PREMISE from the same base of 77 along disjoint axes --
+// w40-f's two new tiers RESOLVED one existing row (77 -> 76), w40-e ADDED
+// one new receipt in a family neither new tier verifies (77 -> 78).
+// Composing the two disjoint deltas gives 77 - 1 + 1 = 77. FALSE-PREMISE
+// stays 0: w39-a's contacts.css repair is in this tree and neither wave-40
+// lane touched that ceiling.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 77;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {

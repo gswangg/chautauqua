@@ -144,6 +144,18 @@ export const CFP_CSS = `
      760px measure) rather than sizing to its content. */
   .chq-cfp-fieldset { border: none; margin: 0; padding: 0; max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
   .chq-cfp-fieldset legend { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); padding: 0; }
+  /* tap-floor-exempt: composition -- v12m-w40-e (DEC-393), mirrors
+     portal.css.ts's identical exemption on this SAME shared class:
+     TrackChoices/FormatChoices/AudienceChoices (this file) each wrap a
+     bare radio input type=radio as the sole child of a
+     label class=chq-cfp-option (the Audience-level variant adds a second,
+     pill-shaped modifier class alongside it) -- the label is the
+     floored wrapper (min-height:46px, centred flex, padding:0 14px, all
+     four floor clauses at every width, not gated by a media query) and
+     its label semantics make the whole row, not the small radio glyph
+     alone, the click/tap surface. No input of this shape renders outside
+     one of these three components, so the wrapper's floor is the input's
+     floor by construction. */
   .chq-cfp-option {
     display: flex;
     align-items: center;
