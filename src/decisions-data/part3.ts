@@ -25,7 +25,7 @@ export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not
 export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
 export const DEC_439 = "The three measured SPEC §7 budget misses are stage-1 product defects, and each is fixed by shrinking what one request loads";
 export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmission's fail-loudly throws must not be laundered into SQL";
-export const DEC_441 = "DEC-441 wave-38: the mail shell's fact VALUE is one run — a caller composing a multi-item fact joins it in the frame's own sentence register, never with a newline HTML collapses";
+export const DEC_441 = "Amendment (wave 47): the HTML reminder email is COMPOSED to its frame — the shell body carries only what the frame draws above the fact block, and the sign-off gets its own shell slot after the CTA";
 export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
 export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
 export const DEC_444 = "The last WCAG AA offender is remedied by re-pointing the rule to --chq-muted; --chq-disabled's value and the contrast checker are both untouchable";
@@ -197,7 +197,7 @@ export const DEC_609 = "The content worklist is four columns: a row is a session
 export const DEC_610 = "Saving a view is a dialog like every other dialog, and on a phone the decision lives on the card";
 export const DEC_611 = "Overview names the public surfaces it produces, and links to them by the event's own slug";
 export const DEC_612 = "External record identity is one namespaced external_ref column per imported table, unique inside its own owner scope";
-export const DEC_613 = "Wave-45 amendment: two stripper populations, one owner each — 'declares a local stripper' and 'has no stripper at all' can never both be true of one file";
+export const DEC_613 = "Amendment (wave 47): the reminder preview renders the value the send composed, never the other register's parts re-joined — and the card is faithful to frame :522-531, sign-off and ink included";
 export const DEC_614 = "Layer 2 (their REST API) is named in prose, never shown as a dead control";
 export const DEC_615 = "Auto-schedule reports a reason per unplaced session, from a closed vocabulary with one renderer";
 export const DEC_616 = "The contact drawer is a record, not a form: labelled facts, one history section, one action bar";
