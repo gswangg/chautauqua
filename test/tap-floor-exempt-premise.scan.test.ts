@@ -411,6 +411,21 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // selector named, per that task's own instruction (do not repair product
 // CSS in that lane). FALSE-PREMISE ceiling moves 0 -> 1.
 //
+// SUPERSEDED (DEC-393 wave-39, task w39-a): "do not repair product CSS in
+// that lane" is retracted for this one row -- it was the campaign's last
+// unowned non-zero exit-predicate ceiling, so this wave repairs the
+// receipt in place (option (a): re-point the `scoped to` clause) rather
+// than filing another roster row. The premise was false as written
+// because it named `.chq-contacts-drawer-actions` (the pure flex
+// wrapper, no floor of its own) as the floored companion; the real floor
+// is `.chq-btn`, which carries a shared base rule (display:inline-flex;
+// align-items:center; padding:10px 16px, app/src/styles.css) plus this
+// file's own phone-media `.chq-contacts-drawer-actions-right .chq-btn`
+// rule (min-height:48px; padding:0 16px). The receipt at contacts.css
+// (immediately above `.chq-contacts-drawer-actions-right`) now names
+// `.chq-btn` as the companion instead, and re-measuring resolves it
+// VERIFIED. FALSE-PREMISE ceiling moves 1 -> 0.
+//
 // MEGABATCH COMPOSITION (wave-36 thunderdome): w35-b and w36-f both moved
 // this constant from the same wave-34 base of 86, along disjoint axes --
 // w35-b ADDED 2 rows to the roster (86 -> 88, two new inline-in-prose
@@ -421,7 +436,7 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // 1 unchanged (w35-b introduced none; wave 34's replaced-content grammar
 // tier had already resolved the population's only prior instance).
 export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 77;
-export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
+export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
   it("this instrument is DEC-393's own wave-30 amendment build (durable decision doc, cited by directory per DEC-976 -- a DEC_NNN registry constant is mutable and asserts nothing durable)", () => {
