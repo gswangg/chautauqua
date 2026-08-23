@@ -400,3 +400,9 @@ changes what it measures, and three of the seven carry ceilings of their
 own, so each repair is its own re-ratcheting wave -- the same disposition
 recorded above. Live measurement today:
 `UNSTRIPPED_SOURCE_REGEX_CEILING = 227`.
+
+**Update (task w50-d, wave 50)**: `UNSTRIPPED_SOURCE_REGEX_CEILING` moved
+`227` -> `219` since the paragraph above was written (live value
+re-measured at this task's branch point,
+`app/src/unstripped-source-regex-scan/ceiling.ts:235`) -- further offenders
+drained by other lanes, not repaired by this docs-only task.
