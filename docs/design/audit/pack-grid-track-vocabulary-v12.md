@@ -37,32 +37,34 @@ is ceiling-0) — a `path:line` form is used ONLY for `docs/design/*.dc.html`
 citations, which sit outside the app/src, src, test, scripts, migrations
 population that scan grades.
 
-Two rows are HAND-VERIFIED (the two rows named in DEC-896's wave-48
-amendment); every other row's "nearest shipped value" is left unadjudicated
-this wave — this instrument measures divergence, it does not guess a
-correspondence a human has not confirmed.
+Two rows are HAND-VERIFIED from DEC-896's wave-48 amendment; a further 17
+rows (the Comms + Contacts clusters — 9 + 8) are HAND-VERIFIED from
+wave-51 — see
+the Wave 51 section below. Every other row's "nearest shipped value" is left
+unadjudicated this wave — this instrument measures divergence, it does not
+guess a correspondence a human has not confirmed.
 
 | Frame file | Frame label | Drawn value | Nearest shipped value | Verdict |
 | --- | --- | --- | --- | --- |
 | `docs/design/Chautauqua Agenda.dc.html:75` | Day grid · 1600 | `62px repeat(4, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:157` | Compose · step 3 of 4 · 1600 | `150px 1fr 130px 150px auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:424` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:428` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:634` | Comms · history | `150px 1fr 108px 150px 88px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:639` | Comms · history | `150px 1fr 108px 150px 88px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:649` | Comms · history | `150px 1fr 108px 150px 88px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:653` | Comms · history | `150px 1fr 108px 150px 88px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:664` | Comms · history | `150px 1fr 108px 150px 88px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:773` | Compose · send blocked | `1fr 190px 150px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Comms.dc.html:777` | Compose · send blocked | `1fr 190px 150px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:97` | Directory · 1600 | `26px 1fr 130px 118px auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:101` | Directory · 1600 | `26px 1fr 130px 118px auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:130` | Directory · 1600 | `1fr 44px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:292` | Import CSV · step 2 of 3 | `1fr 26px 1fr` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:366` | Duplicates · merge | `132px 1fr 1fr` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:379` | Duplicates · merge | `132px 1fr 1fr` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:690` | Import CSV · step 3 of 3 | `190px 1fr auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Contacts.dc.html:792` | Import CSV · the file will not do | `64px 1fr` | not adjudicated this wave | UNMATCHED |
+| `docs/design/Chautauqua Comms.dc.html:157` | Compose · step 3 of 4 · 1600 | `150px 1fr 130px 150px auto` | `app/src/pages/comms/comms.css` `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` — same first four tracks, last track pinned to 96px where the frame draws `auto` (a documented fidelity fix, same file, "Frame 07-comms--08 fidelity fix: the trailing action track was `auto`" — a shared per-row action button gave two different `auto` widths and misaligned the columns) (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:424` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | `app/src/pages/comms/comms.css` `.chq-comms-compose-col-slot` — the compose step-1 recipient table is an HTML `<table>` with `table-layout:fixed` and per-`<th>` widths (`.chq-comms-compose-col-select{width:26px}`, `.chq-comms-compose-col-speaker{width:170px}`, `.chq-comms-compose-col-status{width:130px}`, `.chq-comms-compose-col-slot{width:150px}`, Submission unwidthed remainder), same file's own comment: "Frame 07-comms--05: kept on one line ... widened from 118px, which wrapped ... at the table's narrower breakpoints" — first four tracks match the frame exactly, the fifth (Slot) is a documented widen from 118px to 150px (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:428` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | same row as `:424` — `app/src/pages/comms/comms.css` `.chq-comms-compose-col-slot` widened 118px→150px, first four tracks match (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:634` | Comms · history | `150px 1fr 108px 150px 88px` | `app/src/pages/comms/comms.css` `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` — the History tab's column-head row inherits this same custom property (same file: ".chq-comms-batch-col-heads-row ... the History tab's own column heads ... over the SAME --chq-comms-batch-grid the batch rows below use"); shipped third and fifth tracks (130px, 96px) differ from the frame's drawn 108px/88px (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:639` | Comms · history | `150px 1fr 108px 150px 88px` | same `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` (`app/src/pages/comms/comms.css`, `.chq-comms-batch-row`) — third/fifth tracks (130px/96px) differ from the frame's 108px/88px (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:649` | Comms · history | `150px 1fr 108px 150px 88px` | same `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` (`app/src/pages/comms/comms.css`, disclosure's own head row `.chq-comms-recipient-col-heads-row`, which shares `.chq-comms-recipient-row`'s grid) — third/fifth tracks differ (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:653` | Comms · history | `150px 1fr 108px 150px 88px` | same `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` (`app/src/pages/comms/comms.css`, `.chq-comms-batch-recipients .chq-comms-recipient-row`) — third/fifth tracks differ (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:664` | Comms · history | `150px 1fr 108px 150px 88px` | same `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` (`app/src/pages/comms/comms.css`, the disclosure's trailing "N more" row, same grid) — third/fifth tracks differ (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:773` | Compose · send blocked | `1fr 190px 150px` | `app/src/pages/comms/ComposeWizard.tsx` `chq-comms-merge-warning` — the merge-field-conflict state renders ONE `chq-comms-merge-warning` advisory paragraph (own comment: "the frame's own consequence sentence ... is false for this app ... this band states the refusal instead"), never the frame's per-recipient `Recipient / Missing` breakdown table the `1fr 190px 150px` track list lays out — no such table exists in the shipped component (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Comms.dc.html:777` | Compose · send blocked | `1fr 190px 150px` | same row as `:773` — `app/src/pages/comms/ComposeWizard.tsx` `chq-comms-merge-warning` replaces the frame's per-recipient table with one summary paragraph, no `Recipient`/`Missing` table ships (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:97` | Directory · 1600 | `26px 1fr 130px 118px auto` | `app/src/styles.css` `.chq-contacts-table .chq-contacts-col-select` — desktop `<table table-layout:fixed>` column widths: select `width: 46px;` (own comment: "18px control + shared .chq-table 16px first-cell inset + air (user-filed)"), Company `width: 130px;` (matches), Labels `width: 118px;` (matches), Actions `width: 96px;` (own comment: "User-filed (gate-9): width:1px shrink-hack is literal") where the frame draws `26px`/`auto` — select and actions tracks are documented user-filed departures, Company and Labels match exactly (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:101` | Directory · 1600 | `26px 1fr 130px 118px auto` | same row as `:97` — `app/src/styles.css` `.chq-contacts-table .chq-contacts-col-select` is `width: 46px;` not the frame's `26px`, `.chq-contacts-col-actions` is `width: 96px;` not the frame's `auto` (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:130` | Directory · 1600 | `1fr 44px` | `app/src/pages/contacts/contacts.css` `.chq-contacts-rail-row` — the "Where they work" company row is `display: flex; align-items: baseline; justify-content: space-between;` with the count (`.chq-contacts-rail-count`) sized to its own content, never a CSS grid with a fixed 44px count track; the technique itself (flex, not `grid-template-columns`) is why the scan's population never sees a declaration here at all (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:292` | Import CSV · step 2 of 3 | `1fr 26px 1fr` | `app/src/pages/contacts/contacts-panels.css` `.chq-contacts-import-column-row` — own comment: "G13 (frame 08-contacts--03): the match step is a full-width row list ... never a two-up grid of bordered cards"; shipped is `display: flex; align-items: center;` with the id column `flex: 1`, the arrow `flex: none`, and the target `.chq-contacts-import-column-select` right-flushed with `max-width` rather than the frame's equal `1fr` target pane (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:366` | Duplicates · merge | `132px 1fr 1fr` | `app/src/pages/contacts/contacts-panels.css` `.chq-contacts-merge-compare-head` `grid-template-columns: 130px 1fr 1fr;` — same track shape, the Field label track ships 2px narrower than drawn (130px vs. the frame's 132px) (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:379` | Duplicates · merge | `132px 1fr 1fr` | `app/src/pages/contacts/contacts-panels.css` `.chq-contacts-merge-compare-row` `grid-template-columns: 130px 1fr 1fr;` — same 2px narrower Field track as `.chq-contacts-merge-compare-head` above (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:690` | Import CSV · step 3 of 3 | `190px 1fr auto` | `app/src/pages/contacts/contacts-panels.css` `.chq-contacts-import-review-col-email` — own comment: "w23-b (DEC-902): docs/design/Chautauqua Contacts.dc.html:690's update row is `190px 1fr auto` -- Email is the frame's identity track. Line is real data the mock's name-over-email layout lacked ... Action is the sole unwidthed remainder ... Skip this row hugs its single checkbox"; the frame's dedicated 3-track "already exist" preview list ships as ONE combined 4-column `<table>` (Line `width: 56px;` new, Email `width: 190px;` matches, Action unwidthed remainder matches the frame's `1fr`, Skip `width: 112px;` resolves the frame's `auto`) covering every review row, not a standalone already-exist list (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
+| `docs/design/Chautauqua Contacts.dc.html:792` | Import CSV · the file will not do | `64px 1fr` | `app/src/pages/contacts/ImportWizard.tsx` `chq-error-summary-rows` — own comment: "G13 (frame 08-contacts--15): every rejected row names its own reason ... in the frame's vocabulary"; shipped renders `<li>Row {row.line} — {row.problem}</li>`, one flowing text line with no CSS grid and no separate 64px Row-number column at all (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
 | `docs/design/Chautauqua Content.dc.html:81` | Worklist · 1600 | `26px 1fr 168px 200px 152px auto` | not adjudicated this wave | UNMATCHED |
 | `docs/design/Chautauqua Content.dc.html:85` | Worklist · 1600 | `26px 1fr 168px 200px 152px auto` | not adjudicated this wave | UNMATCHED |
 | `docs/design/Chautauqua Content.dc.html:146` | Session deliverables · /content/:submissionId | `52px 1fr auto` | not adjudicated this wave | UNMATCHED |
@@ -134,3 +136,71 @@ ungraded in the pack.
 Not this lane's spend. This instrument measures and ratchets only; desktop
 stays frozen and repair (raising `PACK_GRID_TRACK_UNMATCHED_CEILING` back
 down as rows are closed) is a later wave's work against this ledger.
+
+## Wave 51 (task w51-g): the Comms + Contacts clusters adjudicated
+
+DOCS ONLY — no CSS byte, no constant moved (DEC-896). The ratchet stays
+two-sided and green at 72; adjudicating a row's "Nearest shipped value" and
+verdict does not remove it from the population, it only replaces the
+placeholder text with a real correspondence (or an honest non-correspondence)
+a human confirmed by opening both the frame extent and the shipped source.
+
+Took the 9 `Chautauqua Comms.dc.html` rows (`:157`, `:424`, `:428`, `:634`,
+`:639`, `:649`, `:653`, `:664`, `:773`, `:777`) and the 8
+`Chautauqua Contacts.dc.html` rows (`:97`, `:101`, `:130`, `:292`, `:366`,
+`:379`, `:690`, `:792`) — all 17 rows the doc's table names for those two
+frame files. All 17 resolve to **DESKTOP DIVERGENCE**; none is a
+NORMALISATION-GAP (none of the divergences are whitespace/`minmax(0,X)`/
+`var()`-resolution artefacts the scan's three normalisation transforms would
+erase) and none is NOT-A-ROW (every extent is a live table/row/list the
+reachability filter was right to admit — no explainer-panel or state-
+illustration prose among them).
+
+Three shapes of divergence, all real and all pre-existing (none introduced
+by this lane, none repaired by this lane):
+
+1. **Documented, deliberate pixel/track differences with an in-code
+   citation.** `:157`/`:634`/`:639`/`:649`/`:653`/`:664` (Comms' shared
+   `--chq-comms-batch-grid`, comms.css) and `:424`/`:428` (Comms'
+   `.chq-comms-compose-col-slot`, same file) each carry a comment naming the
+   exact frame line(s) and the exact pixel change (`auto`→`96px` fixing a
+   per-row auto-width misalignment; `118px`→`150px` fixing text wrap) —
+   except `:634`–`:664`, where the *shipped* third/fifth tracks (130px/96px)
+   differ from the *frame's* 108px/88px with no comment addressing that
+   specific gap (the comment there addresses the trailing-track fix from the
+   `:157`/compose context, not the History tab's own numbers) — real,
+   unexplained-in-place divergence, still DESKTOP DIVERGENCE, not repaired.
+   `:366`/`:379` (Contacts' `.chq-contacts-merge-compare-head`/`-row`) is a
+   plain undocumented 2px difference (130px shipped vs. 132px drawn).
+   `:97`/`:101` (Contacts directory table, `app/src/styles.css`) is
+   documented user-filed (comment: "18px control + shared .chq-table 16px
+   first-cell inset + air (user-filed)" / "User-filed (gate-9): width:1px
+   shrink-hack is literal").
+
+2. **A different layout technique achieves a similar but not identical
+   result.** `:130` (Contacts "Where they work" rail row) and `:292`
+   (Contacts CSV column-mapping row) both ship as `display:flex` rows, never
+   `grid-template-columns` — `:292`'s own comment states this is deliberate
+   ("G13 (frame 08-contacts--03): ... never a two-up grid of bordered
+   cards"). Flex without an explicit fixed-width second track does not
+   reproduce a grid's hard pixel column, so these are real divergences, not
+   scan blind spots the three listed normalisations could close.
+
+3. **The frame's per-row breakdown never shipped as its own structure.**
+   `:773`/`:777` (Comms merge-field-conflict "Recipient / Missing" table) —
+   the shipped `chq-comms-merge-warning` is one summary paragraph, its own
+   comment explains the frame's literal consequence is false for this app
+   and names the actual (different) refusal behaviour instead; no
+   `Recipient`/`Missing` table exists anywhere in ComposeWizard.tsx.
+   `:690` (Contacts "N already exist" preview list) — the shipped
+   `chq-contacts-import-review-table` is ONE combined 4-column review table
+   covering every plan row (new + updated), not a standalone 3-track
+   already-exist list; its own comment (w23-b, DEC-902) walks the
+   frame-to-shipped column correspondence in full. `:792` (Contacts
+   rejected-row list) — shipped is a flowing `Row {n} — {problem}` text
+   line per `<li>`, no grid, no separate Row-number column.
+
+No row was left NOT ADJUDICATED: every one of the 17 has a confirmed
+shipped correspondence (a component, a class, and — where the file carries
+one — the comment explaining the gap). No CSS changed; no verdict here
+claims a repair.
