@@ -376,3 +376,82 @@ repair lane naming its own sheet/selector/frame line above.
 - `app/src/pages/submissions/submissions.css` :: `.chq-submissions-filterbar .chq-submissions-filterbar-select` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `app/src/pages/submissions/submissions.css` :: `.chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted'])` -- "Needs triage" (app/src/pages/submissions/FilterBar.tsx) is drawn verbatim at Chautauqua Submissions.dc.html:137 "Submissions", but an identical, still-visible text child exists on the same phone surface: "Needs triage" (app/src/pages/submissions/FilterBar.tsx :: chq-submissions-status-pending-phone) -- the frame's requirement is met by that twin, not by the hidden element
 - `src/routes/portal/portal.css.ts` :: `.chq-portal-actions-footer` -- "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx) is drawn verbatim at Chautauqua Public and Portal.dc.html:600 "Portal · Edit your session", but an identical, still-visible text child exists on the same phone surface: "Title and abstract show on the public pages · co-presenters do not" (src/routes/portal/edit.tsx :: chq-portal-actions-note) -- the frame's requirement is met by that twin, not by the hidden element
+
+## Shell-row adjudication (wave 50)
+
+DEC-725 wave-50, shell lane: the four `app/src/styles.css` rows named in
+this ledger's own roster, adjudicated against their cited frame extents.
+This section moves no product byte -- all four verdicts below are (b) or
+(c), and none removes a row from the live population, so
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` (`app/src/phone-hidden-drawn-text.scan.test.ts`)
+stays at 20 (re-measured, unchanged; see "Ratchet re-measurement" below).
+
+1. `.chq-shell:has([data-chq-phone-head]) .chq-header` -- "chautauqua" --
+   **(b) INSTRUMENT ARTEFACT.** The cited extent, `Sign in · 390`, draws
+   `chautauqua` inside `docs/design/Chautauqua Account.dc.html`, which reads
+   `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">chautauqua</span>`
+   directly under the frame's unauthenticated sign-in stack. `app/src/App.tsx`'s
+   `.chq-wordmark` -- the only element the hidden CSS selector's `.chq-header`
+   reaches -- lives inside the AUTHENTICATED SPA shell (`app/src/App.tsx`'s
+   `Header()`), which never mounts on the sign-in screen at all: the sign-in
+   surface is server-rendered by `src/routes/auth-views.tsx`, whose own
+   `<h1 className="chq-auth-wordmark">chautauqua</h1>` (styled by
+   `src/routes/auth.css.ts`, not `app/src/styles.css`) is what actually
+   satisfies this literal. The join between the shell's hidden selector and
+   the sign-in frame's wordmark is a coincidental cross-surface verbatim
+   match on the word "chautauqua" -- two unrelated components on two
+   unrelated CSS files that happen to render the same product name.
+
+2. `.chq-header-identity .chq-user-identity` -- "Sign out" --
+   **(b) INSTRUMENT ARTEFACT.** The cited extent, `Reviewer queue · /review/plans/:id`,
+   draws `docs/design/Chautauqua Review.dc.html`'s phone subscreen, whose
+   only "Sign out" affordance is
+   `<a href="#" style="margin-left:auto; font-size:13px; font-weight:700; display:inline-flex; align-items:center; min-height:44px">Sign out</a>`
+   inside the frame's OWN bottom band
+   (`flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px`) --
+   not inside the header identity block, which this same frame instead
+   draws as the reviewer's name (`Sam Whitfield`), no Sign out. On the live
+   tree that bottom-band "Sign out" is `app/src/pages/review/ReviewerQueue.tsx`'s
+   own drill-in footer (`<div className="chq-phone-dock chq-review-phone-dock">`
+   ... `Sign out`), gated by `data-chq-phone-signout="true"` on the page
+   root -- the exact attribute `app/src/styles.css`'s
+   `.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity`
+   carve-out excludes for precisely this reason (comment at that rule:
+   "this drill-in mints its OWN Sign out inside its .chq-phone-dock band").
+   The frame's "Sign out" is drawn by that different affordance, not by
+   `.chq-header-identity .chq-user-identity`.
+
+3. `.chq-shell:has(.chq-phone-dock) .chq-tabbar` -- "Save" --
+   **(c) CORRECTLY DRAWN OPT-OUT.** The cited extent, `Templates · 390`, draws
+   `docs/design/Chautauqua Comms.dc.html`'s phone template editor with a
+   docked footer -- `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+   containing `Save`/`Cancel` -- and no five-tab band anywhere in the same
+   390x844 shell. `app/src/pages/comms/TemplatesTab.tsx` sets
+   `data-chq-phone-dock={true}` on its page root exactly while editing and
+   renders `<div className="chq-comms-editor-actions chq-phone-dock">Save…</div>`,
+   which is what `.chq-shell:has(.chq-phone-dock) .chq-tabbar { display: none }`
+   is answering. This is the DEC-576/DEC-381 dock-vs-tabbar opt-out pairing
+   docs/mobile-campaign.md's Wave-1 handoff already records as CLOSED,
+   confirmed here against the Comms frame rather than assumed.
+
+4. `body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar` -- "Sign out" --
+   **(b) INSTRUMENT ARTEFACT**, doubly coincidental. First, the cited extent
+   is the same Reviewer-queue subscreen as row 2 above, which mounts no
+   `.chq-scrim` modal at all -- this selector only fires for a PORTALED
+   modal dock (`app/src/pages/contacts/ImportWizard.tsx`, via
+   `ModalFrame.tsx`'s `createPortal` to `document.body`), a different
+   surface than the reviewer drill-in. Second, `app/src/App.tsx`'s
+   `.chq-tabbar` element (`<nav className="chq-tabbar" aria-label="Primary, phone">`)
+   closes at its own `</nav>` and its balanced markup is dots + section
+   labels + "More", never "Sign out" -- "Sign out" belongs to the sibling
+   `{moreOpen && (<div className="chq-scrim">…<button>Sign out</button></div>)}`
+   block that follows `</nav>` in the same fragment. The literal is drawn
+   by that sibling More-sheet button, not by `.chq-tabbar`.
+
+### Ratchet re-measurement
+
+`npx vitest run app/src/phone-hidden-drawn-text.scan.test.ts` still reports
+`PREMISE_FALSE_ROWS.length === 20` after this adjudication -- none of the
+four verdicts above is (a), so no CSS byte moved and no row left the
+population. `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` stays `20`
+(both directions of the two-sided ratchet still hold exactly).
