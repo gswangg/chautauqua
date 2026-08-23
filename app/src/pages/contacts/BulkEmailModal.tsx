@@ -470,6 +470,10 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
 
       {confirmingSend && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): this confirm's subject is the whole
+          // selection of recipients (contactIds), not a single named record
+          // -- there is no one object to interpolate, so the title names
+          // the action on the selection instead.
           title="Send this email?"
           body={`${countOf(contactIds.length, 'recipient')} · ${resolvedSendSubject}`}
           confirmLabel={`Send ${countOf(contactIds.length, 'email')}`}

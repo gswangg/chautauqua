@@ -2951,6 +2951,10 @@ export function PlanEditor() {
 
       {leaveConfirmOpen && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): subject is the panel's own
+          // unsaved-edit state across every dirty field (dirtyFieldLabels
+          // can name several), not one single named record -- no object to
+          // interpolate.
           title="Leave without saving?"
           body={`${joinWithAnd(dirtyFieldLabels())} ${plural(dirtyFieldLabels().length, 'is', 'are')} not saved yet.`}
           confirmLabel="Leave"
@@ -2962,6 +2966,11 @@ export function PlanEditor() {
 
       {anonymizeRatchetConfirmOpen && (
         <ConfirmDialog
+          // DEC-941 (wave-43 amendment): subject is a setting change
+          // (anonymity is a flag on the plan, not a named row) -- the title
+          // already carries the verb and its object per DESIGN-RULINGS'
+          // "primary carries the verb" rule, and there is no separate
+          // record identity to interpolate.
           title="Turn off anonymity?"
           body="Anyone who already reviewed under anonymity keeps that promise — it cannot be revoked for evaluations already submitted. Turning this off only changes what happens from here on."
           confirmLabel="Turn off anonymity"

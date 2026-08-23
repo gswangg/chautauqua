@@ -438,7 +438,16 @@ export function MergePage() {
 
           {confirmOpen && (
             <ConfirmDialog
-              title="Merge these records?"
+              // DEC-941 (wave-43 amendment): same shape as confirmPhrase two
+              // props down -- a 2-record group has a single named discarded
+              // record to interpolate; a 3+ group has no single object, so
+              // it names the count instead (matches the head row's own
+              // "Discarding · N other records" copy).
+              title={
+                soleDiscard
+                  ? `Merge "${soleDiscard.firstName} ${soleDiscard.lastName}" into this record?`
+                  : `Merge these ${discardedContacts.length} records?`
+              }
               body="History from the other record moves onto the kept record. The discarded record is deleted. This can't be undone."
               confirmLabel="Merge contacts"
               weight="irreversible"

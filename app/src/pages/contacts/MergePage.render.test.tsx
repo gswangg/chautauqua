@@ -315,7 +315,7 @@ describe('MergePage render (DEC-684)', () => {
     // DEC-992: the primary button names its target instead of a bare "Merge".
     fireEvent.click(screen.getByRole('button', { name: 'Merge into Jane Doe' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Merge "Jane Doe" into this record?' });
     // DEC-941 (wave-58 amendment): irreversible weight -- the primary stays
     // disabled until the losing contact's own name is typed.
     expect(within(dialog).getByRole('button', { name: 'Merge contacts' })).toBeDisabled();
@@ -537,7 +537,7 @@ describe('MergePage render (item 10, frame 08-contacts--05: one tinted consequen
 
     fireEvent.click(screen.getByRole('button', { name: 'Merge into Jane Doe' }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Merge "Jane Doe" into this record?' });
     expect(within(dialog).getByText(/discarded record is deleted/)).toBeInTheDocument();
   });
 });

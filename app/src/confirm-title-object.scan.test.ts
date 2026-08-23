@@ -81,14 +81,42 @@ interface Occurrence {
   readonly line: number;
   readonly titleIsLiteral: boolean | null; // null: no title= prop found at all
   readonly titleSource: string | null;
+  readonly hasPrincipleComment: boolean;
+}
+
+// DEC-941 (wave-43 amendment): a literal-title site is a RESIDUAL only if
+// its own comment states, in the DEC-099 shape, the principle that makes it
+// one -- a fact about the subject that stays true with every branch name
+// and wave number deleted (no "later wave", no "unmerged", no lane token).
+// This is a narrow, purpose-built check scoped to THIS site's population
+// (a ConfirmDialog tag's own comment lines), not a re-implementation of
+// exemption-reason-is-a-principle.scan.test.ts's fuller SCHEDULE_PATTERNS
+// vocabulary (DEC-613: a second copy of that whole vocabulary would be the
+// trap) -- it only guards the one shape a residual comment could plausibly
+// take here: a bare branch/lane token standing in for a principle.
+const RESIDUAL_LANE_TOKEN_RE = /\b(?:task|v12m)-w\d+-[a-z]+\b/;
+
+/** True if `rawTagSrc` (the ConfirmDialog tag's RAW, comment-preserving
+ * source, same [start,end) span as the stripped tagSrc used for title
+ * grading) carries a `//` comment line citing DEC-941 as its principle,
+ * with no lane token standing in for that principle. */
+function hasPrincipleComment(rawTagSrc: string): boolean {
+  const commentLines = rawTagSrc
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('//'));
+  if (commentLines.length === 0) return false;
+  const joined = commentLines.join(' ');
+  if (!/DEC-941\s*\(wave-\d+ amendment\)/.test(joined)) return false;
+  return !RESIDUAL_LANE_TOKEN_RE.test(joined);
 }
 
 /** Finds every `<ConfirmDialog ...>` opening tag in `src`, brace-depth
  * tracked so a `>` inside a JSX expression attribute (e.g. an arrow
  * function or ternary) never mistakenly closes the tag early -- same idiom
  * as confirm-verb.scan.test.ts's findConfirmDialogTags. */
-function findConfirmDialogTags(src: string): { tagSrc: string; lineNumber: number }[] {
-  const tags: { tagSrc: string; lineNumber: number }[] = [];
+function findConfirmDialogTags(src: string): { tagSrc: string; lineNumber: number; start: number; end: number }[] {
+  const tags: { tagSrc: string; lineNumber: number; start: number; end: number }[] = [];
   const tagStartRe = /<ConfirmDialog(?=[\s/>])/g;
   let match: RegExpExecArray | null;
   while ((match = tagStartRe.exec(src)) !== null) {
@@ -107,7 +135,7 @@ function findConfirmDialogTags(src: string): { tagSrc: string; lineNumber: numbe
     if (end === -1) continue; // malformed / unterminated -- skip rather than false-positive
     const tagSrc = src.slice(start, end + 1);
     const lineNumber = src.slice(0, start).split('\n').length;
-    tags.push({ tagSrc, lineNumber });
+    tags.push({ tagSrc, lineNumber, start, end });
   }
   return tags;
 }
@@ -146,11 +174,13 @@ function extractTitleForm(tagSrc: string): { titleIsLiteral: boolean | null; tit
 function scan(files: string[]): Occurrence[] {
   const all: Occurrence[] = [];
   for (const path of files) {
-    const src = stripComments(readFileSync(path, 'utf-8'));
+    const raw = readFileSync(path, 'utf-8');
+    const src = stripComments(raw); // stripComments preserves length/newlines, so indices align with `raw`
     const relFile = relative(SRC_ROOT, path);
     for (const tag of findConfirmDialogTags(src)) {
       const { titleIsLiteral, titleSource } = extractTitleForm(tag.tagSrc);
-      all.push({ file: relFile, line: tag.lineNumber, titleIsLiteral, titleSource });
+      const rawTagSrc = raw.slice(tag.start, tag.end + 1);
+      all.push({ file: relFile, line: tag.lineNumber, titleIsLiteral, titleSource, hasPrincipleComment: hasPrincipleComment(rawTagSrc) });
     }
   }
   return all;
@@ -173,7 +203,19 @@ function scan(files: string[]): Occurrence[] {
 // (merge commit 6723d6483, "confirm titles name their object across
 // contacts/comms/content/submissions/review/speakers", DEC-941 wave-23
 // amendment) converted the remaining clusters this comment forecast.
-export const CONFIRM_TITLE_OBJECT_CEILING = 9;
+//
+// Wave 43 (task w43-f, DEC-941 wave-43 amendment): the residual 9 were
+// given a RULE rather than sitting as an unexplained count (DEC-069's
+// "exclusion with a promotion promise and no promotion rule" trap). Each
+// was graded: where the dialog's subject was a single named row already
+// held in state (FormsPage.tsx's editCascadeConfirm.field, MergePage.tsx's
+// soleDiscard), the title now interpolates that name -- 2 converted. The
+// remaining 7 have no single named object (a whole selection, a panel-wide
+// state, a workflow transition, a singleton setting) and are not offenders
+// -- each now carries a comment on its ConfirmDialog tag stating that
+// principle in the DEC-099 shape, and the instrument below asserts every
+// remaining literal-title site carries one. Lowered 9 -> 7.
+export const CONFIRM_TITLE_OBJECT_CEILING = 7;
 
 describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 wave-9 amendment)', () => {
   const FILES = srcFiles();
@@ -206,6 +248,48 @@ describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 w
     const offenders = occurrences.filter((o) => o.titleIsLiteral === true);
     const rendered = offenders.map((o) => `${o.file}:${o.line} (${o.titleSource})`).join('\n');
     expect(offenders.length, `bare fixed-string <ConfirmDialog title= sites:\n${rendered}`).toBeLessThanOrEqual(CONFIRM_TITLE_OBJECT_CEILING);
+  });
+
+  // DEC-941 (wave-43 amendment), DEC-069 ("an exclusion with a promotion
+  // promise and no promotion rule is a permanent loophole"): every
+  // remaining bare-literal-title site must carry, on its own ConfirmDialog
+  // tag, a comment stating the DEC-099-shaped principle that makes it a
+  // residual rather than an offender -- so the residual can never again be
+  // a count with no rule for its members.
+  it('every bare fixed-string title= site carries a principle comment on its own tag (DEC-941 wave-43 amendment)', () => {
+    const occurrences = scan(FILES);
+    const offenders = occurrences.filter((o) => o.titleIsLiteral === true && !o.hasPrincipleComment);
+    const rendered = offenders.map((o) => `${o.file}:${o.line} (${o.titleSource})`).join('\n');
+    expect(offenders, `bare fixed-string title= sites with no principle comment:\n${rendered}`).toEqual([]);
+  });
+
+  // Negative control: the principle-comment predicate rejects a lane token
+  // standing in for a principle, even when it cites DEC-941.
+  it('negative control: a DEC-941 comment carrying a lane token is not accepted as a principle', () => {
+    const fixture = [
+      '<ConfirmDialog',
+      '  // DEC-941 (wave-43 amendment): owned by v12m-w43-z, revisit then',
+      '  title="Bare title"',
+      '  onConfirm={f}',
+      '  onCancel={g}',
+      '/>',
+    ].join('\n');
+    expect(hasPrincipleComment(fixture)).toBe(false);
+  });
+
+  // Positive control: a real comment shape (no lane token, cites DEC-941,
+  // states a durable fact) is accepted.
+  it('positive control: a durable DEC-941 principle comment with no lane token is accepted', () => {
+    const fixture = [
+      '<ConfirmDialog',
+      '  // DEC-941 (wave-43 amendment): subject is a whole selection, not a',
+      '  // single named record -- no object to interpolate.',
+      '  title="Bare title"',
+      '  onConfirm={f}',
+      '  onCancel={g}',
+      '/>',
+    ].join('\n');
+    expect(hasPrincipleComment(fixture)).toBe(true);
   });
 
   // Two-sided companion (DEC-808 wave-85 amendment idiom): fails, naming the

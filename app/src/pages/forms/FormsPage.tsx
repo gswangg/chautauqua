@@ -544,7 +544,10 @@ export function FormsPage() {
 
       {editCascadeConfirm && (
         <ConfirmDialog
-          title="Confirm field change"
+          // DEC-941 (wave-43 amendment): title names the field the caller
+          // already holds in editCascadeConfirm.field, same idiom as the
+          // delete-field confirms immediately above.
+          title={`Confirm change to "${editCascadeConfirm.field.label}"?`}
           body={editCascadeConfirm.message}
           confirmLabel="Change field anyway"
           pending={editCascadeBusy}
