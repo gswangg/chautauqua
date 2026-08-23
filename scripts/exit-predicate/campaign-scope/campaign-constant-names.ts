@@ -277,4 +277,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // reads live 0 by classification; promoted out of OUT_OF_CAMPAIGN_SCOPE in
   // this same commit.
   "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
+  // wave-55 (DEC-995 wave-53 ask, task w55-c): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE in the same commit that itemises all 106 rows of
+  // its sibling, UNRESOLVED_COUNT_TRIPWIRE (docs/design/audit/
+  // frame-control-floor-390-v12.md's "WAVE 55 amendment" section) --
+  // per-row, not bucketed by reason category, paying the wave-53 promise
+  // that never landed. Both promotion clauses clear: the ceiling's own
+  // count is 0, and its sibling is now fully adjudicated. Wired into TIER2
+  // in this same commit; reads live 0.
+  "FRAME_FLOOR_DIVERGENCE_CEILING",
 ];

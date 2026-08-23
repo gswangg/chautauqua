@@ -46,13 +46,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
     siblingName: "DESKTOP_FLOOR_UNRESOLVED_CEILING",
     siblingFullyAdjudicated: false,
   },
-  // Clause (b) fails: UNRESOLVED_COUNT_TRIPWIRE's unresolved rows are
-  // bucketed by reason category with a cited sample, never itemised one row
-  // at a time (docs/design/audit/frame-control-floor-390-v12.md).
-  FRAME_FLOOR_DIVERGENCE_CEILING: {
-    siblingName: "UNRESOLVED_COUNT_TRIPWIRE",
-    siblingFullyAdjudicated: false,
-  },
   // No completeness sibling -- the citation-resolvability count is its own
   // whole conformance fact. Clause (a) alone decides it (currently non-zero).
   DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
