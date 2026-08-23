@@ -489,18 +489,18 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); }
 
     /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task
-       w35-b): grounded per the wave-35 ladder as DEVIATIONS.md §9's
-       first and second entries (rung 3, not rung 1/2) -- neither the
-       desktop nor 390 "Submit a talk" frame extent (Chautauqua Public
-       and Portal.dc.html:891-1010 / :1017-1065) draws either anchor's own
-       copy as a control, and the page carries no same-surface floored twin
-       reaching either destination (#chq-cfp-submit-form / /login). The two
+       w35-b): grounded per the wave-35 ladder as the first and second
+       entries of DEVIATIONS.md's wave-35 rulings section (rung 3, not
+       rung 1/2) -- neither the desktop nor 390 "Submit a talk" frame
+       extent (Chautauqua Public and Portal.dc.html:891-1010 /
+       :1017-1065) draws either anchor's own copy as a control, and the
+       page carries no same-surface floored twin reaching either
+       destination (#chq-cfp-submit-form / /login). The two
        copy runs are cited by file + class token, never reproduced here
        (DEC-613 wave-146: this sheet is inlined verbatim into the served
        page, so a comment quoting product copy leaks that copy onto the
        page a second time) -- see src/routes/public/submit-views.tsx's two
-       anchors and docs/design/DEVIATIONS.md's section-10 entries. No new
-       declaration:
+       anchors and those same DEVIATIONS.md entries. No new declaration:
        this empty rule exists only so the exemption is scoped by TOKEN,
        matching the JSX class tokens now on both anchors
        (.chq-cfp-intro-cta-link, .chq-cfp-identity-note-link). */
