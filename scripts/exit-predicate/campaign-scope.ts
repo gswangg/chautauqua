@@ -215,6 +215,16 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // itself stays OUT_OF_CAMPAIGN_SCOPE, an instrument-completeness fact
   // rather than a v12 fidelity fact in its own right.
   "FIELD_WIDTH_DIVERGENCE_CEILING",
+  // wave-37 (task w37-c, DEC-069 wave-36 promotion rule, executed): re-
+  // MEASURED 0 on this branch (test/frame-eyebrow-label.scan.test.ts). Passes
+  // clause (a) (own count 0) and clause (b) -- its instrument-completeness
+  // sibling, FRAME_EYEBROW_UNRESOLVED_CEILING (16), is not itself 0 but every
+  // one of its 16 rows is individually adjudicated with its own composing
+  // source expression named in docs/design/audit/frame-eyebrow-label-390-v12
+  // .md (not a bucketed reason-category count) -- the sibling itself stays
+  // OUT_OF_CAMPAIGN_SCOPE, an instrument-completeness fact rather than a v12
+  // fidelity fact in its own right.
+  "FRAME_EYEBROW_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -352,6 +362,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // it out of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988, DEC-069 wave-36).
   "FIELD_WIDTH_DIVERGENCE_CEILING",
+  // wave-37 (task w37-c): wired into TIER2 in the same commit that promoted
+  // it out of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988, DEC-069 wave-36
+  // promotion rule).
+  "FRAME_EYEBROW_DIVERGENCE_CEILING",
 ];
 
 /**
@@ -378,7 +393,7 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "frame is CITED or whether a control's WORDS match) -- a new non-zero row in the exit " +
     "gate would move the campaign's goalposts mid-convergence; it measures fidelity now and " +
     "is promoted once its measurement technique is proven complete enough to gate on. " +
-    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
+    "DEC-069 promotion clause (b) refusal: its instrument-completeness sibling, " +
     "DESKTOP_FLOOR_UNRESOLVED_CEILING, is neither 0 nor individually row-adjudicated -- its " +
     "unresolved population is bucketed by reason category over roughly half the total rows, " +
     "so grading the divergence ceiling now would sell that instrument blindness as desktop " +
@@ -411,10 +426,10 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "all). A new non-zero row in the exit gate for a fact this granular would move the " +
     "campaign's goalposts mid-convergence; it measures fidelity now and is promoted by a " +
     "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING. " +
-    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
+    "DEC-069 promotion clause (b) refusal: its instrument-completeness sibling, " +
     "UNRESOLVED_COUNT_TRIPWIRE, carries a non-zero unresolved population with no individual " +
-    "per-row adjudication, so grading the divergence ceiling now would assert fidelity over an " +
-    "unverified remainder.",
+    "per-row adjudication (bucketed by reason category, a sample cited rather than every row), " +
+    "so grading the divergence ceiling now would assert fidelity over an unverified remainder.",
   COMMENT_BLIND_CSS_ASSERTION_CEILING:
     "measures TEST-INSTRUMENT SOUNDNESS -- whether a test file applies a raw-text match " +
     "assertion to an un-stripped CSS source, which can make a negative assertion fail on a " +
@@ -442,7 +457,9 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "are internally trustworthy, not a v12 frame or 390-geometry conformance fact. A newly " +
     "measured, previously-uncounted population must not move the campaign's goalposts " +
     "mid-convergence; it is promoted once its measurement technique is proven complete enough " +
-    "to gate on, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING.",
+    "to gate on, the same disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING. " +
+    "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion " +
+    "rule does not apply yet regardless of any completeness sibling.",
   NEGATIVE_MARGIN_ADJACENCY_CEILING:
     "measures a STATIC, authoring-time property of every CSS rule in the tracked tree -- " +
     "whether a negative top/all-sides margin's preceding-comment receipt names an external " +
@@ -508,7 +525,10 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "FIELD_WIDTH_DIVERGENCE_CEILING and DESKTOP_FLOOR_DIVERGENCE_CEILING. A newly measured "
     + "population's non-zero row would move the campaign's goalposts mid-convergence; it "
     + "measures fidelity now (test/drawn-field-label.scan.test.ts, DEC-613 wave-25 task w25-i) "
-    + "and is promoted once its measurement technique is proven complete enough to gate on.",
+    + "and is promoted once its measurement technique is proven complete enough to gate on. "
+    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero (a real, standing "
+    + "divergence), so the promotion rule does not apply yet regardless of its "
+    + "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING sibling's own adjudication state.",
   DRAWN_FIELD_LABEL_UNRESOLVED_CEILING:
     "measures how many drawn v12 FIELD-label rows this ledger's join could not resolve to any "
     + "grade (STORED-FIELD-LABEL, HARDCODED-MATCHES or HARDCODED-DIVERGES) -- an "
@@ -556,15 +576,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "whether a mint can be flooded with unbounded rows, not itself a v12 frame or 390-geometry "
     + "conformance fact (test/mint-door-cap-census.scan.test.ts, DEC-180 wave-23 amendment).",
 
-  FRAME_EYEBROW_DIVERGENCE_CEILING:
-    "measures a newly-derived word population (a phone frame's drawn text-transform:uppercase "
-    + "eyebrow, disjoint by construction from the caption ledger, both control-label ledgers and the "
-    + "field-label ledgers) that no instrument previously graded -- a real copy-fidelity fact about "
-    + "this specific population, but a newly measured, previously-uncounted population must not move "
-    + "the campaign's goalposts mid-convergence; it is promoted once its measurement technique is "
-    + "proven complete enough to gate on, the same disposition already given to "
-    + "DESKTOP_FLOOR_DIVERGENCE_CEILING (test/frame-eyebrow-label.scan.test.ts, DEC-976 wave-27 "
-    + "amendment).",
   FRAME_EYEBROW_UNRESOLVED_CEILING:
     "measures how many drawn phone eyebrow rows the eyebrow ledger's own verbatim join could not "
     + "resolve (a value composed from live data at render time, which a static substring join can "
@@ -601,15 +612,20 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
     + "promoted once its measurement technique is proven complete enough to gate on, the same "
     + "disposition already given to DESKTOP_FLOOR_UNRESOLVED_CEILING and FRAME_EYEBROW_UNRESOLVED_CEILING "
-    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment).",
+    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment). "
+    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
+    + "rule does not apply yet.",
   PACK_UNIT_GRAMMAR_OFFENDERS_CEILING:
     "measures a newly-derived size-unit population (every product font-size/gap declaration whose "
     + "COMPUTED px value at the 16px root sits outside the pack's own drawn px vocabulary for that "
     + "property) that no instrument previously graded -- a real conformance fact about this "
     + "population, but a freshly measured, previously-uncounted population must not move the "
     + "campaign's goalposts mid-convergence; it is promoted once a later lane drains it, the same "
-    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING and FRAME_EYEBROW_DIVERGENCE_CEILING "
-    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment).",
+    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING "
+    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment). "
+    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
+    + "rule does not apply yet regardless of its PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING sibling's own "
+    + "adjudication state.",
   PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING:
     "measures how many of that same population are `em` literals, whose computed px depends on an "
     + "inherited size this scan cannot resolve -- an instrument-completeness fact about the ratchet's "
@@ -640,8 +656,10 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "this ledger's gap-verdict prose forbids. A newly measured, previously-uncounted population "
     + "must not move the campaign's goalposts mid-convergence; it is promoted once later waves drain "
     + "individual units to genuine 1:1 citations, the same disposition already given to "
-    + "FRAME_EYEBROW_DIVERGENCE_CEILING and PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
-    + "(test/design-rulings-ledger.scan.test.ts, DEC-582 wave-31 amendment).",
+    + "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
+    + "(test/design-rulings-ledger.scan.test.ts, DEC-582 wave-31 amendment). "
+    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero (most of the "
+    + "population still gap-verdict), so the promotion rule does not apply yet.",
   // NOTE (wave-31 merge train): v12m-w31-f also registered
   // BACKTICK_PARITY_CEILING here, believing it had "landed unregistered".
   // It was in fact already registered above (see the BACKTICK_PARITY_CEILING
@@ -658,8 +676,10 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "capability/copy-fidelity fact about this specific population, but a newly measured, "
     + "previously-uncounted population must not move the campaign's goalposts mid-convergence; it is "
     + "promoted once its measurement technique is proven complete enough to gate on, the same "
-    + "disposition already given to FRAME_EYEBROW_DIVERGENCE_CEILING (app/src/phone-hidden-drawn-text.scan.test.ts, "
-    + "DEC-725 wave-31 amendment).",
+    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING (app/src/phone-hidden-drawn-text.scan.test.ts, "
+    + "DEC-725 wave-31 amendment). DEC-069 promotion clause (a) refusal: its own measured count is "
+    + "non-zero, so the promotion rule does not apply yet regardless of its "
+    + "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING sibling's own adjudication state.",
   PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING:
     "measures how many of that same population's hidden rules resolve to a COMPOSED (non-static) "
     + "text child the static substring join can never verify -- an instrument-completeness fact about "
@@ -675,4 +695,79 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "draws. The fast tier is the only instrument that can ever supply the exit predicate's "
     + "--suite-verified-sha, so this measures the gate's integrity, never product convergence "
     + "(test/gate-timeout-margin.scan.test.ts, DEC-069 wave-35 amendment).",
+};
+
+/**
+ * DEC-069 wave-36 promotion rule, executed as CODE (discharged wave-37, task
+ * w37-c): every `OUT_OF_CAMPAIGN_SCOPE` entry whose own prose carries a
+ * promotion promise ("it measures fidelity now and is promoted once/by
+ * ...") must have a row here naming the sibling constant its clause (b)
+ * depends on, and whether that sibling's outstanding rows are individually,
+ * per-row adjudicated in its own audit doc -- a documented FACT about the
+ * audit doc's shape, never a measured *_CEILING VALUE (this lane owns no
+ * ceiling value; `scripts/exit-predicate/campaign.ts`'s
+ * `assertParkedPromisesAreHonestlyParked` reads the real, live counts at
+ * assertion time via `findConstantDeclarations`). `siblingName: null` means
+ * the promise names no completeness-sibling ceiling at all -- its own
+ * single count already carries the whole conformance fact, so clause (b) is
+ * vacuously satisfied and clause (a) alone decides it.
+ *
+ * A promise-bearing `OUT_OF_CAMPAIGN_SCOPE` entry missing from this table,
+ * or a table entry whose real, live evidence now clears both clauses while
+ * its ceiling still sits in `OUT_OF_CAMPAIGN_SCOPE` rather than
+ * `CAMPAIGN_CONSTANT_NAMES`/`TIER2_CEILING_NAMES`, both throw -- a promise
+ * with no rule behind it, and a passing promise left unpaid, are the same
+ * loophole DEC-069 wave-36 was written to close.
+ */
+export interface ParkedFidelityPromise {
+  readonly siblingName: string | null;
+  readonly siblingFullyAdjudicated: boolean;
+}
+
+export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPromise>> = {
+  // Clause (b) fails: DESKTOP_FLOOR_UNRESOLVED_CEILING's 131 unresolved rows
+  // are bucketed by reason category (test/desktop-control-floor.scan.test.ts),
+  // never itemised one row at a time.
+  DESKTOP_FLOOR_DIVERGENCE_CEILING: {
+    siblingName: "DESKTOP_FLOOR_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: false,
+  },
+  // Clause (b) fails: UNRESOLVED_COUNT_TRIPWIRE's unresolved rows are
+  // bucketed by reason category with a cited sample, never itemised one row
+  // at a time (docs/design/audit/frame-control-floor-390-v12.md).
+  FRAME_FLOOR_DIVERGENCE_CEILING: {
+    siblingName: "UNRESOLVED_COUNT_TRIPWIRE",
+    siblingFullyAdjudicated: false,
+  },
+  // No completeness sibling -- the citation-resolvability count is its own
+  // whole conformance fact. Clause (a) alone decides it (currently non-zero).
+  DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/drawn-field-label-v12.md's one
+  // DRAWN_FIELD_LABEL_UNRESOLVED_CEILING row is individually adjudicated in
+  // place), but clause (a) fails: its own count is non-zero.
+  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING: {
+    siblingName: "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+  // No completeness sibling. Clause (a) alone decides it (currently
+  // non-zero).
+  FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/pack-unit-grammar-v12.md itemises
+  // every one of PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING's `em`-literal rows by
+  // coordinate), but clause (a) fails: its own count is non-zero.
+  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: {
+    siblingName: "PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+  // No completeness sibling. Clause (a) alone decides it (currently
+  // non-zero -- most of the ruling-unit population is still gap-verdict).
+  RULING_UNIT_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/phone-hidden-drawn-text-v12.md's
+  // "UNVERIFIABLE roster" itemises every one of
+  // PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING's rows individually), but
+  // clause (a) fails: its own count is non-zero.
+  PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING: {
+    siblingName: "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING",
+    siblingFullyAdjudicated: true,
+  },
 };

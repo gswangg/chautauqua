@@ -48,7 +48,13 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CAMPAIGN_CONSTANT_NAMES, OUT_OF_CAMPAIGN_SCOPE, TIER2_CEILING_NAMES } from "./campaign-scope";
+import {
+  CAMPAIGN_CONSTANT_NAMES,
+  OUT_OF_CAMPAIGN_SCOPE,
+  PARKED_FIDELITY_PROMISES,
+  type ParkedFidelityPromise,
+  TIER2_CEILING_NAMES,
+} from "./campaign-scope";
 
 export interface CampaignFile {
   readonly path: string;
@@ -302,6 +308,93 @@ export function assertEveryGradedCeilingIsGated(
   }
 }
 
+/**
+ * DEC-069 wave-36 promotion rule for `OUT_OF_CAMPAIGN_SCOPE` fidelity
+ * ceilings, discharged as CODE wave-37 (task w37-c): a parked ceiling is
+ * promotable once (a) its own measured count is 0 AND (b) its
+ * instrument-completeness sibling either measures 0 or is recorded (via
+ * `campaign-scope.ts`'s `PARKED_FIDELITY_PROMISES`) as fully, individually
+ * row-adjudicated in its own audit doc -- never a bucketed reason-category
+ * count standing in for one. `sibling === null` means the promise names no
+ * completeness-sibling ceiling at all; clause (b) is then vacuously true and
+ * clause (a) alone decides it.
+ */
+export function isParkedFidelityPromisePromotable(
+  ownValue: number,
+  sibling: { readonly value: number } | null,
+  siblingFullyAdjudicated: boolean,
+): boolean {
+  if (ownValue !== 0) return false;
+  if (sibling === null) return true;
+  return sibling.value === 0 || siblingFullyAdjudicated;
+}
+
+const PROMOTION_PROMISE_RE = /is promoted (?:once|by)/;
+
+/**
+ * Throws if `outOfScope` carries a promotion-promise sentence ("it measures
+ * fidelity now and is promoted once/by ...") with no `promises` entry behind
+ * it -- DEC-069 wave-36's exact loophole, a promise with no rule -- OR if a
+ * registered `promises` entry's real, live evidence (read from `files` via
+ * `findConstantDeclarations`, never a hardcoded value in this module per
+ * DEC-180) now clears both promotion clauses while its ceiling is still
+ * sitting in `outOfScope` rather than `CAMPAIGN_CONSTANT_NAMES`/
+ * `TIER2_CEILING_NAMES` -- a passing promise left unpaid.
+ */
+export function assertParkedPromisesAreHonestlyParked(
+  files: readonly CampaignFile[],
+  outOfScope: Readonly<Record<string, string>>,
+  promises: Readonly<Record<string, ParkedFidelityPromise>>,
+): void {
+  const promising = Object.keys(outOfScope).filter((name) =>
+    PROMOTION_PROMISE_RE.test(outOfScope[name] as string),
+  );
+  const missingRule = promising.filter((name) => !(name in promises));
+  if (missingRule.length > 0) {
+    throw new Error(
+      `exit-predicate campaign: ${missingRule.length} OUT_OF_CAMPAIGN_SCOPE entry(ies) carry a ` +
+        `promotion promise ("is promoted once/by ...") with no PARKED_FIDELITY_PROMISES entry ` +
+        `behind it -- a promise with no rule (DEC-069 wave-36): ${missingRule.join(", ")}.`,
+    );
+  }
+
+  const namesToRead = new Set<string>();
+  for (const [name, promise] of Object.entries(promises)) {
+    namesToRead.add(name);
+    if (promise.siblingName !== null) namesToRead.add(promise.siblingName);
+  }
+  const matches = findConstantDeclarations(files, namesToRead);
+
+  const promotable: string[] = [];
+  for (const [name, promise] of Object.entries(promises)) {
+    const own = resolveSingle(
+      matches.filter((m) => m.name === name),
+      name,
+    );
+    const sibling =
+      promise.siblingName === null
+        ? null
+        : {
+            value: resolveSingle(
+              matches.filter((m) => m.name === promise.siblingName),
+              promise.siblingName,
+            ).value,
+          };
+    if (isParkedFidelityPromisePromotable(own.value, sibling, promise.siblingFullyAdjudicated)) {
+      promotable.push(name);
+    }
+  }
+  if (promotable.length > 0) {
+    throw new Error(
+      `exit-predicate campaign: ${promotable.length} parked fidelity ceiling(s) now clear both ` +
+        `DEC-069 wave-36 promotion clauses (own count 0, sibling clean or fully row-adjudicated) ` +
+        `but are still sitting in OUT_OF_CAMPAIGN_SCOPE -- promote each into ` +
+        `CAMPAIGN_CONSTANT_NAMES and TIER2_CEILING_NAMES, don't leave a passing promise unpaid: ` +
+        `${promotable.join(", ")}.`,
+    );
+  }
+}
+
 function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow {
   const m = resolveSingle(
     matches.filter((c) => c.name === name),
@@ -338,6 +431,7 @@ export function buildCampaignReport(
 ): CampaignReport {
   assertCampaignPopulationTotal(findCampaignCeilingCandidates(files));
   assertEveryGradedCeilingIsGated(CAMPAIGN_CONSTANT_NAMES, TIER2_CEILING_NAMES, OUT_OF_CAMPAIGN_SCOPE);
+  assertParkedPromisesAreHonestlyParked(files, OUT_OF_CAMPAIGN_SCOPE, PARKED_FIDELITY_PROMISES);
 
   const names = new Set(CAMPAIGN_CONSTANT_NAMES);
   const matches = findConstantDeclarations(files, names);

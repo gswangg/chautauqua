@@ -14,14 +14,17 @@ import { describe, expect, it } from "vitest";
 import {
   assertCampaignPopulationTotal,
   assertEveryGradedCeilingIsGated,
+  assertParkedPromisesAreHonestlyParked,
   buildCampaignReport,
   CAMPAIGN_CONSTANT_NAMES,
   type CampaignFile,
   findCampaignCeilingCandidates,
   findConstantDeclarations,
   formatCampaignReport,
+  isParkedFidelityPromisePromotable,
   loadCampaignFiles,
   OUT_OF_CAMPAIGN_SCOPE,
+  PARKED_FIDELITY_PROMISES,
   type SuiteEvidence,
   TIER2_CEILING_NAMES,
 } from "../scripts/exit-predicate";
@@ -158,6 +161,35 @@ interface FixtureValues {
  * co-located with EXPECTED_TOTAL_PRE_DEVIATION (the desktop ledger) and
  * once with EXPECTED_TOTAL (the phone ledger).
  */
+// DEC-069 wave-36 promotion rule (task w37-c): buildCampaignReport now also
+// runs assertParkedPromisesAreHonestlyParked, which resolves a declaration
+// for every PARKED_FIDELITY_PROMISES name (and its named sibling, if any)
+// out of the SAME files it is given -- so every fixture corpus below must
+// carry one too, or every buildCampaignReport() call in this file throws
+// "no declaration ... was found" before ever reaching what each test
+// actually means to exercise. Deliberately declared at a `.ts` (never
+// `.test.ts`) path: findCampaignCeilingCandidates only walks `*.test.tsx?`
+// files, so these rows are invisible to it and to the
+// baseFixture()/allGreenFixture() "no orphan fixture rows" checks below,
+// exactly as the real corpus's own non-test ceiling modules
+// (STARVED_FLEX_TRACK_CEILING, WIDTH_FLOOR_OFFENDERS_CEILING) already are.
+// Value is always 1 (clause (a) always fails, own count non-zero) so these
+// rows can never spuriously trip the "promotable but still parked" throw --
+// the dedicated describe block below exercises the promotable/non-promotable
+// paths directly with its own synthetic files.
+const PARKED_PROMISE_FIXTURE_PATH = "test/campaign-fixture-generated/parked-fidelity-promises.ts";
+
+function addParkedPromiseFixtureLines(addLine: (path: string, line: string) => void): void {
+  const names = new Set<string>();
+  for (const [name, promise] of Object.entries(PARKED_FIDELITY_PROMISES)) {
+    names.add(name);
+    if (promise.siblingName !== null) names.add(promise.siblingName);
+  }
+  for (const name of names) {
+    addLine(PARKED_PROMISE_FIXTURE_PATH, `export const ${name} = 1;`);
+  }
+}
+
 function buildFixtureFiles(values: FixtureValues): CampaignFile[] {
   const linesByPath = new Map<string, string[]>();
   const addLine = (path: string, line: string): void => {
@@ -182,6 +214,8 @@ function buildFixtureFiles(values: FixtureValues): CampaignFile[] {
     fileForName("EXPECTED_TOTAL_PRE_DEVIATION"),
     "`replacing the line:\\n  export const CLAIMED_FLOOR = ${CLAIMS.length};`",
   );
+
+  addParkedPromiseFixtureLines(addLine);
 
   return [...linesByPath.entries()].map(([path, lines]) => ({ path, content: lines.join("\n") }));
 }
@@ -769,7 +803,16 @@ describe("CAMPAIGN_CONSTANT_NAMES / baseFixture() mirror (DEC-069 wave-5)", () =
   });
 
   it("every constant baseFixture() declares is registered in CAMPAIGN_CONSTANT_NAMES", () => {
-    const declared = [...declaredNamesIn(baseFixture())];
+    // DEC-069 wave-36 promotion rule (task w37-c): addParkedPromiseFixtureLines
+    // adds one row per PARKED_FIDELITY_PROMISES name (and sibling) at
+    // PARKED_PROMISE_FIXTURE_PATH so buildCampaignReport's new
+    // assertParkedPromisesAreHonestlyParked call can resolve them -- those
+    // names are OUT_OF_CAMPAIGN_SCOPE by design, never CAMPAIGN_CONSTANT_NAMES,
+    // so this mirror excludes only that one dedicated fixture file, not any
+    // constant by name (a name mirror gap here would still be caught: any
+    // OTHER file declaring one of these names would still be counted).
+    const relevantFiles = baseFixture().filter((f) => f.path !== PARKED_PROMISE_FIXTURE_PATH);
+    const declared = [...declaredNamesIn(relevantFiles)];
     const campaignSet = new Set(CAMPAIGN_CONSTANT_NAMES);
     const orphaned = declared.filter((name) => !campaignSet.has(name));
     expect(
@@ -780,6 +823,112 @@ describe("CAMPAIGN_CONSTANT_NAMES / baseFixture() mirror (DEC-069 wave-5)", () =
             `stale (delete the row), or it belongs in CAMPAIGN_CONSTANT_NAMES and is missing there.`
         : undefined,
     ).toEqual([]);
+  });
+});
+
+// DEC-069 wave-36 promotion rule, executed as CODE (discharged wave-37, task
+// w37-c): isParkedFidelityPromisePromotable is the pure predicate;
+// assertParkedPromisesAreHonestlyParked is its wiring into the real corpus
+// (never a hardcoded ceiling value in this module -- everything below reads
+// synthetic CampaignFile fixtures, matching this file's own "no I/O in an
+// exported function" contract).
+describe("DEC-069 wave-36 promotion rule (task w37-c)", () => {
+  describe("isParkedFidelityPromisePromotable", () => {
+    it("own count 0, sibling clean (0) -- promotable", () => {
+      expect(isParkedFidelityPromisePromotable(0, { value: 0 }, false)).toBe(true);
+    });
+
+    it("own count 0, sibling non-zero but fully row-adjudicated -- promotable (clause b holds)", () => {
+      expect(isParkedFidelityPromisePromotable(0, { value: 16 }, true)).toBe(true);
+    });
+
+    it("own count 0, sibling non-zero and NOT fully row-adjudicated -- not promotable (clause b fails)", () => {
+      expect(isParkedFidelityPromisePromotable(0, { value: 131 }, false)).toBe(false);
+    });
+
+    it("own count non-zero -- not promotable regardless of sibling (clause a fails)", () => {
+      expect(isParkedFidelityPromisePromotable(3, { value: 0 }, true)).toBe(false);
+    });
+
+    it("no sibling at all -- clause (b) is vacuous, clause (a) alone decides", () => {
+      expect(isParkedFidelityPromisePromotable(0, null, false)).toBe(true);
+      expect(isParkedFidelityPromisePromotable(1, null, false)).toBe(false);
+    });
+  });
+
+  describe("assertParkedPromisesAreHonestlyParked", () => {
+    // Shared synthetic OUT_OF_CAMPAIGN_SCOPE fixture: one entry carrying the
+    // exact promotion-promise phrasing (both real phrasings the production
+    // table uses -- "is promoted once" and "is promoted by").
+    const promisingScope: Readonly<Record<string, string>> = {
+      FIXTURE_PROMISE_A_CEILING:
+        "measures a fidelity fact; it measures fidelity now and is promoted once its measurement " +
+        "technique is proven complete enough to gate on.",
+      FIXTURE_PROMISE_B_CEILING:
+        "measures a fidelity fact; it measures fidelity now and is promoted by a later ruling once " +
+        "drained.",
+      FIXTURE_NON_PROMISE_CEILING: "measures a build/typecheck-tooling health check, never a v12 fact.",
+    };
+
+    it("non-vacuity: a synthetic parked ceiling passing both clauses IS reported promotable (throws)", () => {
+      const files: CampaignFile[] = [
+        { path: "test/fixture-a.scan.test.ts", content: "export const FIXTURE_PROMISE_A_CEILING = 0;" },
+        { path: "test/fixture-a-sibling.scan.test.ts", content: "export const FIXTURE_PROMISE_A_SIBLING_CEILING = 0;" },
+        { path: "test/fixture-b.scan.test.ts", content: "export const FIXTURE_PROMISE_B_CEILING = 1;" },
+      ];
+      const promises: Readonly<Record<string, { siblingName: string | null; siblingFullyAdjudicated: boolean }>> = {
+        FIXTURE_PROMISE_A_CEILING: { siblingName: "FIXTURE_PROMISE_A_SIBLING_CEILING", siblingFullyAdjudicated: false },
+        FIXTURE_PROMISE_B_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+      };
+      expect(() => assertParkedPromisesAreHonestlyParked(files, promisingScope, promises)).toThrow(
+        /FIXTURE_PROMISE_A_CEILING/,
+      );
+    });
+
+    it("non-vacuity: a synthetic parked ceiling failing clause (b) is NOT reported promotable (does not throw)", () => {
+      const files: CampaignFile[] = [
+        { path: "test/fixture-a.scan.test.ts", content: "export const FIXTURE_PROMISE_A_CEILING = 0;" },
+        {
+          path: "test/fixture-a-sibling.scan.test.ts",
+          content: "export const FIXTURE_PROMISE_A_SIBLING_CEILING = 5;",
+        },
+        { path: "test/fixture-b.scan.test.ts", content: "export const FIXTURE_PROMISE_B_CEILING = 1;" },
+      ];
+      const promises: Readonly<Record<string, { siblingName: string | null; siblingFullyAdjudicated: boolean }>> = {
+        FIXTURE_PROMISE_A_CEILING: { siblingName: "FIXTURE_PROMISE_A_SIBLING_CEILING", siblingFullyAdjudicated: false },
+        FIXTURE_PROMISE_B_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+      };
+      expect(() => assertParkedPromisesAreHonestlyParked(files, promisingScope, promises)).not.toThrow();
+    });
+
+    it("throws if a promise-bearing OUT_OF_CAMPAIGN_SCOPE entry has no PARKED_FIDELITY_PROMISES row behind it", () => {
+      const files: CampaignFile[] = [
+        { path: "test/fixture-a.scan.test.ts", content: "export const FIXTURE_PROMISE_A_CEILING = 0;" },
+        { path: "test/fixture-b.scan.test.ts", content: "export const FIXTURE_PROMISE_B_CEILING = 1;" },
+      ];
+      // FIXTURE_PROMISE_A_CEILING is missing from the rule table entirely --
+      // a promise with no rule, DEC-069 wave-36's own named loophole.
+      const promises: Readonly<Record<string, { siblingName: string | null; siblingFullyAdjudicated: boolean }>> = {
+        FIXTURE_PROMISE_B_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+      };
+      expect(() => assertParkedPromisesAreHonestlyParked(files, promisingScope, promises)).toThrow(
+        /FIXTURE_PROMISE_A_CEILING/,
+      );
+    });
+
+    it("a non-promise-bearing OUT_OF_CAMPAIGN_SCOPE entry needs no rule row at all", () => {
+      const files: CampaignFile[] = [];
+      // promisingScope's FIXTURE_NON_PROMISE_CEILING carries no promotion
+      // promise; an empty promises table must not throw over it.
+      expect(() => assertParkedPromisesAreHonestlyParked(files, { FIXTURE_NON_PROMISE_CEILING: promisingScope.FIXTURE_NON_PROMISE_CEILING as string }, {})).not.toThrow();
+    });
+
+    it("the real OUT_OF_CAMPAIGN_SCOPE / PARKED_FIDELITY_PROMISES pair is internally consistent over the real corpus (no promise missing a rule, no rule passing both clauses while still parked)", () => {
+      const files = loadCampaignFiles(join(import.meta.dirname, ".."));
+      expect(() =>
+        assertParkedPromisesAreHonestlyParked(files, OUT_OF_CAMPAIGN_SCOPE, PARKED_FIDELITY_PROMISES),
+      ).not.toThrow();
+    });
   });
 });
 
