@@ -712,15 +712,51 @@ export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
  * offered-tracks group, `type=checkbox`. theme.ts's bare-type floor rule
  * names `input[type=search|text|email|tel|url|password|date|file]`, bare
  * `select`/`textarea` -- radio and checkbox are absent from every list.
- * HONEST RE-MEASUREMENT: 0 of the 20 rows reclassify FLOORED-SINCE-
- * SNAPSHOT -- the hypothesis that the bare-type floor rule already covers
- * this population is FALSE for all 20 (they are anchors, radios, and
- * checkboxes, none of which the rule names). Re-measured count is EQUAL to
- * 20, not higher -- per DEC-808 wave-38 clause (d) the ceiling stays at 20;
- * this amendment's contribution is the receipt that a re-check happened,
- * not a numeric change. See docs/design/audit/public-390-interactive-offenders-v12.md's
- * own wave-44 section for the full route/tag re-derivation. */
-export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 20;
+ * HONEST RE-MEASUREMENT (wave-44): 0 of the 20 rows reclassify FLOORED-
+ * SINCE-SNAPSHOT under this ONE mechanism -- the hypothesis that a BARE-TAG
+ * floor rule already covers this population is FALSE for all 20 (they are
+ * anchors, radios, and checkboxes, none of which theme.ts's bare-type list
+ * names). Re-measured count was EQUAL to 20, not higher -- per DEC-808
+ * wave-38 clause (d) the ceiling stayed at 20; that amendment's
+ * contribution was the receipt that a re-check happened, not a numeric
+ * change.
+ *
+ * DEC-808 wave-50 amendment (task w50-b), CORRECTING w44-j: w44-j tested
+ * exactly ONE reaching mechanism (a BARE-TAG selector) and stopped there --
+ * it never checked whether a WRAPPING element's class is the real hit box
+ * for a classless child. Native `<label>`/list-row click-delegation makes
+ * it exactly that: test/public-390-request-verdicts-classless-roster.scan.test.ts
+ * (DEC-996 wave-39, task w39-e) had ALREADY built and graded this ANCESTOR
+ * axis for 15 of these same sites, restricted to src/routes/public/**, and
+ * found every one VERIFIED or EXEMPT -- w44-j's "ZERO reclassify" finding
+ * never cross-referenced it. app/src/phone-tap-target-scan/public-390-
+ * ancestor-floor.ts (the single owner of this derivation, DEC-613) reuses
+ * that same walk (`classlessTagSites`) over the 4 routes/7 route+tag pairs
+ * this roster's 20 CANDIDATE rows span, and test/public-390-roster-tag-
+ * resolution.scan.test.ts proves each one, with synthetic controls:
+ *   - 14 `input` rows (11 at /submit/devflow-conf-2027, 3 at
+ *     /portal/submissions/…/edit): every classless radio/pill/checkbox
+ *     resolves to ancestor `label.chq-cfp-option`, which carries BOTH a
+ *     live floor (min-height:46px, centred flex, padding:0 14px, every
+ *     width) AND an explicit `tap-floor-exempt: composition` receipt in
+ *     both src/routes/public/cfp.css.ts and src/routes/portal/portal.css.ts.
+ *   - 4 `a` rows (both `/e|embed/…/agenda`, both `/submit/…` anchors):
+ *     resolve to ancestor chq-pub-agenda-block-title / chq-pub-rail-day-row
+ *     (rail.css.ts, real floors) or chq-cfp-links / chq-cfp-confirm-actions
+ *     (cfp.css.ts, real floor / inline-in-prose receipt).
+ *   - 2 `a` rows (/docs/api, /portal/tasks) DRIFTED out of the classless
+ *     population entirely since the wave-30 snapshot -- the SAME anchors
+ *     now carry their own chq-docs-auth-link / chq-portal-file-link class
+ *     tokens (DEVIATIONS.md §10 rung 3 / DEC-393 wave-38), each with a live
+ *     `tap-floor-exempt: inline-in-prose` receipt (tools.css.ts /
+ *     portal.css.ts) -- the identical drift shape w39-e's own second
+ *     describe block already documented for two submit-views.tsx anchors.
+ * All 20 resolve. Ceiling LOWERED 20 -> 0 with this re-derivation as its
+ * receipt (DEC-967: measured, never invented) -- test/public-390-offender-
+ * roster.scan.test.ts's EXEMPT-BY-COMPOSITION clause imports the resolved
+ * set and subtracts it from candidateCount; the campaign's biggest graded
+ * gating row is closed. */
+export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 0;
 
 /** DEC-808 wave-30 amendment clause (d), the vacuity clause: a route whose
  * population produced zero matched elements (minControlHeight === null)
