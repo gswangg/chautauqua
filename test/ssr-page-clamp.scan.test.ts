@@ -23,6 +23,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -51,12 +52,6 @@ const AUTH_CSS_FILE = join(SRC, "routes", "auth.css.ts");
 const BARE_PAGE_CSS_FILE = join(SRC, "views", "bare-page.css.ts");
 const PORTAL_SHARED_FILE = join(SRC, "routes", "portal", "shared.tsx");
 
-/** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
- * text is never mistaken for a real rule. */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "");
-}
-
 /**
  * Extracts the exported `..._CSS` template-literal CSS text from an SSR
  * stylesheet module (mirrors ssr-css-contract.scan.test.ts). theme.ts's
@@ -84,7 +79,15 @@ function extractCssText(filePath: string): string {
  * first so they're never misread as page clamps.
  */
 function findMaxWidthDeclarations(text: string): Array<{ selector: string; px: number }> {
-  const noComments = stripComments(text);
+  // DEC-613 wave-45 migration (task w45-d): every caller passes the
+  // extracted `*_CSS` template-literal body (via extractCssText above),
+  // never a whole raw .ts module, so routing through the shared,
+  // string-aware stripCssComments carries no risk of the third carve-out
+  // class (a `//`-comment's own prose desyncing the shared stripper's
+  // quote-tracking over raw TypeScript source, per this ratchet's own
+  // module header) -- there is no `//` handling to lose here either, the
+  // private stripper was already block-comment-only.
+  const noComments = stripCssComments(text);
   // Strip @media (...) preludes -- keep the body, drop the parenthesized
   // condition itself so a `max-width: 900px` inside the parens is never
   // read as a declaration.

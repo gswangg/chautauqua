@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CARDS_CSS } from "../src/routes/public/css/cards.css";
 import { RAIL_CSS } from "../src/routes/public/css/rail.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 const ROOT = join(__dirname, "..");
 const stylesCss = readFileSync(join(ROOT, "app/src/styles.css"), "utf8");
@@ -20,10 +21,13 @@ const themeTs = readFileSync(join(ROOT, "src/views/theme.ts"), "utf8");
 // `grid-template-columns:126px 1fr auto` legitimately appears inside a comment
 // in cards.css.ts. Strip comments first (the standing idiom across this repo's
 // CSS scans) so the guard still fails on a real hand-copied rule and never on
-// the receipt that proves where the token's value came from.
-const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
-const CARDS_RULES = stripComments(CARDS_CSS);
-const RAIL_RULES = stripComments(RAIL_CSS);
+// the receipt that proves where the token's value came from. (DEC-613 wave-45
+// migration, task w45-d: routed through test/helpers/strip-css-comments.ts's
+// shared, string-aware stripCssComments instead of a private block-comment-
+// only regex -- both inputs are already-evaluated CSS-string constants, no
+// raw TypeScript prose ever reaches it.)
+const CARDS_RULES = stripCssComments(CARDS_CSS);
+const RAIL_RULES = stripCssComments(RAIL_CSS);
 
 describe("task-w4-g: --chq-pub-when-gutter is the ONE public time/room gutter measure", () => {
   it("declares the 126px literal exactly once in each of the SPA :root and the mirrored SSR THEME_CSS", () => {
