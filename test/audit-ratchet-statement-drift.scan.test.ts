@@ -241,7 +241,16 @@ function findOffenders(): Offender[] {
 // one remaining offender is docs/design/audit/phone-hidden-drawn-text-v12.md
 // (`UNCLIPPED_EXTENT_DERIVATION_CEILING` states 10, live value 1) -- owned
 // by task w44-b, not repaired here.
-const AUDIT_RATCHET_STATEMENT_DRIFT_CEILING = 1;
+// Lowered 1 -> 0 (task w51-d): the wave-44-b offender above was closed by
+// an intervening lane. Re-measured with the constant forced to -1, which
+// found three fresh offenders (design-rulings-ledger-v12.md /
+// RULING_UNIT_GAP_CEILING 118 vs live 104; frame-verdict-async-query-v12.md
+// / FRAME_VERDICT_ASYNC_QUERY_CEILING 730 vs live 731;
+// unstripped-source-regex-v12.md / UNSTRIPPED_SOURCE_REGEX_CEILING 227 vs
+// live 219) -- each doc repaired with a wave-51 measurement paragraph
+// stating the live value at this sha, never touching the live constants
+// themselves.
+const AUDIT_RATCHET_STATEMENT_DRIFT_CEILING = 0;
 
 describe("audit-ratchet-statement-drift", () => {
   it("VACUOUS-POPULATION TRIPWIRE: the walk finds both docs this wave repaired, and each carries at least one real statement", () => {

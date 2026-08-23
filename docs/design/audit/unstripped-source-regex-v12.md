@@ -394,15 +394,13 @@ file in `app/src/unstripped-source-regex-scan/ceiling.ts`'s own header:
   `test/render-sweep-advisory-gate-promotion.scan.test.ts`. Each was
   confirmed absent at the seeding commit by `git log --diff-filter=A`.
 
-221 - 1 + 7 = 227, and the live walk prints the same. None of the
-seven is repaired here: adding a stripping step to a ratchet instrument
-changes what it measures, and three of the seven carry ceilings of their
-own, so each repair is its own re-ratcheting wave -- the same disposition
-recorded above. Live measurement today:
-`UNSTRIPPED_SOURCE_REGEX_CEILING = 227`.
+221 - 1 + 7 = 227, and the live walk prints the same at the sha this
+paragraph was written on. None of the seven is repaired here: adding a
+stripping step to a ratchet instrument changes what it measures, and three
+of the seven carry ceilings of their own, so each repair is its own
+re-ratcheting wave -- the same disposition recorded above.
 
-**Update (task w50-d, wave 50)**: `UNSTRIPPED_SOURCE_REGEX_CEILING` moved
-`227` -> `219` since the paragraph above was written (live value
-re-measured at this task's branch point,
-`app/src/unstripped-source-regex-scan/ceiling.ts:235`) -- further offenders
-drained by other lanes, not repaired by this docs-only task.
+**Wave-51 measurement**: `UNSTRIPPED_SOURCE_REGEX_CEILING = 219` live
+(`app/src/unstripped-source-regex-scan/ceiling.ts`) at this sha — the
+population drained further since the paragraph above was written. This is
+a measurement at the current sha, not a new arithmetic claim.

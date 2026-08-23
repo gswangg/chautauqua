@@ -2,7 +2,7 @@
 
 Population: 43 files (recursive walk, app/src/** + test/**, `*frame-verdicts.render.test.tsx` / `*frame390.render.test.tsx`).
 
-Total offenders: 730 (FRAME_VERDICT_ASYNC_QUERY_CEILING = 730).
+Total offenders: measured 731 at this sha (FRAME_VERDICT_ASYNC_QUERY_CEILING = 731).
 
 ## Per-file counts
 

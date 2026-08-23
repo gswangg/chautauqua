@@ -202,6 +202,8 @@ describe("reminder email HTML composes to the frame exactly once per section (DE
       return count;
     }
 
+    // docs/design/Chautauqua Speakers.dc.html:526 `Still to do` -- the
+    // reminder card's "Still to do" eyebrow label, drawn exactly once.
     expect(occurrences(html, ">Still to do<")).toBe(1);
     expect(occurrences(html, "Upload headshot")).toBe(1);
     expect(occurrences(html, "Complete your bio")).toBe(1);
