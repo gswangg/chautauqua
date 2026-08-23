@@ -284,7 +284,8 @@ claims a repair.
 
 ## Wave 53 (task w53-d): the remaining six frame clusters adjudicated
 
-Wave-53 (task w53-d) adjudicated 32 rows: every row whose frame file is
+Wave-53 (task w53-d, DEC-896 wave-53 amendment) adjudicated 32 rows: every
+row whose frame file is
 `Chautauqua Settings.dc.html` (9), `Chautauqua Public and Portal.dc.html`
 (8), `Chautauqua Speakers.dc.html` (5), `Chautauqua Content.dc.html` (5),
 `Chautauqua Submissions.dc.html` (4) and `Chautauqua Agenda.dc.html` (1) —

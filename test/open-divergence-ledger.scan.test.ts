@@ -166,12 +166,12 @@ export {
 // untouched because w32-f added and deleted no audit document.
 // RE-MEASURED (task custodian-test_open_divergence_ledger_scan_test_ts,
 // wave 35 -- contention decomposition): this file carried an UNRESOLVED
-// merge-conflict marker (a bare `// RAISED 138 -> 140 (wave-50..53 megabatch integration, restated by task
+// merge-conflict marker (a bare `// RAISED 138 -> 142 (wave-50..54 megabatch integration, restated by task
 // v12m-w54-d): the merged waves added audit files to docs/design/audit/;
 // raised to the enumerator's own printed count, per this test's own
 // instruction, never computed by arithmetic in this comment. Both branches
 // arrived at the same 140 independently over the integrated corpus.
-const AUDIT_FILE_FLOOR = 140;
+const AUDIT_FILE_FLOOR = 142;
 // RAISED 264 -> 266 (task v12m-w52-e): this task's wave-52 Review+Overview
 // adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
 // table added two DESKTOP DIVERGENCE verdicts (docs/design/audit/pack-grid
@@ -182,7 +182,7 @@ const AUDIT_FILE_FLOOR = 140;
 // staleness floor moves, per this test's own instruction, in the same
 // commit that grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task
 // created no audit file.
-// RAISED 266 -> 283 (wave-50..54 megabatch integration): the two branch
+// RAISED 266 -> 302 (wave-50..54 megabatch integration): the two branch
 // values arbitrated at merge time (w51-d's 265, w52-e's 266) were each
 // measured against only their own branch's share of the corpus; the
 // wave-50..53 lanes re-measured the integrated tree at 282, and the three
@@ -198,7 +198,7 @@ const AUDIT_FILE_FLOOR = 140;
 // Re-measured live over the fully integrated tree and raised to the
 // enumerator's own printed count, never computed by arithmetic in this
 // comment.
-const TOKEN_ROW_FLOOR = 291;
+const TOKEN_ROW_FLOOR = 302;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,

@@ -71,7 +71,7 @@ export const DEC_065 = "A task file's authoritative assignment link is consulted
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "Wave-55 amendment: more than one lane may pay a promotion promise in the same wave, provided each edits only its own constant's key in each registry file and lands ceiling change plus promotion in ONE commit";
+export const DEC_069 = "A dead exit predicate is a suite failure, not a planner discovery — the live registries get a real-tree self-test";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "An adjudication row written into docs/design/audit/** carries its own citation on its own line (wave-52 amendment)";
+export const DEC_099 = "A verdict cell with no same-line DEC tag is an open divergence row, wherever in the table it sits";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Wave-55 amendment: the count-caption ledger carries a third verdict, CAPTION-LEDGER-RESOLVED, and the constant that duplicated it is deleted rather than left beside it";
+export const DEC_180 = "Phone-floor root parity promotes at zero, and the instrument's own recorded blind spot is discharged by hand in the same commit";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
