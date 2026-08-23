@@ -600,4 +600,22 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "(test/pack-padding-vocabulary.scan.test.ts, DEC-069 wave-53 amendment, task w53-e). This lane "
     + "moves no CSS byte; repair is a later lane's, sized from "
     + "docs/design/audit/pack-padding-vocabulary-v12.md's roster.",
+
+  PHONE_FLOOR_ROOT_PARITY_CEILING:
+    "measures a newly-derived population -- every native-control family (checkbox, radio, "
+    + "text-input, date-input, file-input, file-selector-button, select, textarea, button, "
+    + "nav-link) floored to >=44px min-height/height on one of app/src/styles.css / "
+    + "src/views/theme.ts's terminal phone blocks (or unconditionally) but not the other -- that "
+    + "no instrument previously graded (every pre-existing tap-floor ratchet grades one root's own "
+    + "selectors against the 44px floor, never the two roots against each other, per DEC-409's own "
+    + "'the two stylesheet roots ... must agree' clause, src/views/theme.ts:309). A real, live "
+    + "44px-conformance fact -- this wave's own measurement is 1 (the checkbox family, unfloored on "
+    + "src/views/theme.ts, docs/design/audit/phone-floor-root-parity-v12.md) -- but its own repair "
+    + "site (src/views/theme.ts / app/src/styles.css / src/views/form-render.tsx) is owned by a "
+    + "concurrent branch this instrument-only lane may not touch; grading it now would gate the "
+    + "exit predicate on a defect this lane cannot close. Promoted out of OUT_OF_CAMPAIGN_SCOPE "
+    + "into TIER2_CEILING_NAMES the moment a later wave's repair drops it to 0 in the same commit "
+    + "(the LINE_KEYED_CITATION_CEILING/PACK_UNIT_GRAMMAR_OFFENDERS_CEILING disposition already "
+    + "used elsewhere in this file) (test/phone-floor-root-parity.scan.test.ts, DEC-180 wave-53 "
+    + "amendment, task w53-f).",
 };
