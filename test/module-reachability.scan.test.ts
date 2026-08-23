@@ -487,6 +487,11 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "imported only by app/src/phone-tap-target-undeclared.scan.test.ts, and test-file imports don't confer " +
     "reachability (DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / " +
     "anchor-floor.ts / ssr.ts siblings above.",
+  "app/src/phone-tap-target-scan/ssr-classless-control-ceiling.ts":
+    "Isolated ratchet-constant holder (DEC-996 wave-40) for `SSR_CLASSLESS_CONTROL_CEILING`, split into its " +
+    "own file so a lane re-measuring the SSR classless-control roster never collides with ./ssr.ts's " +
+    "population/predicate machinery -- imported only by the SSR tap-target scan suite, and test-file imports " +
+    "don't confer reachability (DEC-518); same shape as its ceilings.ts / width-ceiling.ts siblings.",
   "app/src/phone-tap-target-scan/width-ceiling.ts":
     "Isolated ratchet-constant holder (DEC-808 wave-26, task w26-j) for `WIDTH_FLOOR_OFFENDERS_CEILING`, split " +
     "into its own file so a lane re-measuring the width-half floor never collides with ./width-floor.ts's " +

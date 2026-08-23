@@ -398,7 +398,7 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "frame is CITED or whether a control's WORDS match) -- a new non-zero row in the exit " +
     "gate would move the campaign's goalposts mid-convergence; it measures fidelity now and " +
     "is promoted once its measurement technique is proven complete enough to gate on. " +
-    "DEC-069 promotion clause (b) refusal: its instrument-completeness sibling, " +
+    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
     "DESKTOP_FLOOR_UNRESOLVED_CEILING, is neither 0 nor individually row-adjudicated -- its " +
     "unresolved population is bucketed by reason category over roughly half the total rows, " +
     "so grading the divergence ceiling now would sell that instrument blindness as desktop " +
@@ -431,7 +431,7 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     "all). A new non-zero row in the exit gate for a fact this granular would move the " +
     "campaign's goalposts mid-convergence; it measures fidelity now and is promoted by a " +
     "later ruling once drained, the same disposition already given to LINE_KEYED_CITATION_CEILING. " +
-    "DEC-069 promotion clause (b) refusal: its instrument-completeness sibling, " +
+    "DEC-069 wave-36 clause (b) refusal: its instrument-completeness sibling, " +
     "UNRESOLVED_COUNT_TRIPWIRE, carries a non-zero unresolved population with no individual " +
     "per-row adjudication (bucketed by reason category, a sample cited rather than every row), " +
     "so grading the divergence ceiling now would assert fidelity over an unverified remainder.",
@@ -786,6 +786,52 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "technique, not itself a v12 frame or 390-geometry conformance fact, the same disposition "
     + "already given to FRAME_EYEBROW_UNRESOLVED_CEILING and DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/desktop-eyebrow-label.scan.test.ts, DEC-986 wave-41 amendment).",
+  // Megabatch registration pass (wave-37..42 thunderdome): six ratchets
+  // landed in this batch declared but registered nowhere, which makes them
+  // invisible to the exit predicate and to the two-sided population walk
+  // (DEC-808 wave-24 clause 3). Each is registered here on the merits of
+  // its own instrument's stated subject -- none of the six is a v12 frame
+  // or 390-geometry conformance fact about a screen the product draws.
+  AUDIT_RATCHET_STATEMENT_DRIFT_CEILING:
+    "measures how many audit-doc paragraphs make a statement about a live ratchet constant that "
+    + "disagrees with that constant's current value -- a DOC-INTEGRITY fact about the audit corpus's "
+    + "own narration, not itself a v12 frame or 390-geometry conformance fact about any screen the "
+    + "product draws, the same disposition already given to DECISIONS_REGISTRY_CITATION_CEILING "
+    + "(test/audit-ratchet-statement-drift.scan.test.ts, DEC-903 wave-41 amendment).",
+  FRAME_CONDITIONAL_STATE_FALSE_MATCH_CEILING:
+    "measures the FALSE-MATCH rate of the conditional-state ledger's own sc-if/frame join -- an "
+    + "instrument-completeness fact about that join's precision, not a fidelity fact about any "
+    + "screen: a false match is the instrument mis-reading itself, never a divergence the product "
+    + "owes. The same disposition already given to FRAME_EYEBROW_UNRESOLVED_CEILING "
+    + "(test/frame-conditional-state.scan.test.ts, DEC-383 wave-29 amendment).",
+  COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING:
+    "measures how many drawn count captions neither of the caption ledger's two independent "
+    + "graders could resolve -- an instrument-completeness fact about the WEAKER of two joins "
+    + "agreeing with the stronger, not itself a v12 frame conformance fact (the fidelity count that "
+    + "IS one, FRAME_COUNT_CAPTION_UNMATCHED_CEILING, is registered separately above) "
+    + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-42 amendment).",
+  FRAME_REPEATED_ROW_GAP_CEILING:
+    "measures a newly-derived population -- every repeated-row group a v12 frame draws whose "
+    + "product-side row template this ledger cannot yet pin to a single rendering site -- that no "
+    + "instrument previously graded. A newly measured, previously-uncounted population must not "
+    + "move the campaign's goalposts mid-convergence; it is promoted once its measurement technique "
+    + "is proven complete enough to gate on, the same disposition already given to "
+    + "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING (test/frame-repeated-row/ceiling.ts, DEC-976 wave-40 "
+    + "amendment).",
+  UNCLIPPED_EXTENT_DERIVATION_CEILING:
+    "measures INSTRUMENT COVERAGE for one defect family -- how many `.ts`/`.tsx` files derive a "
+    + "frame `extentEnd` from a `.dc.html` label scan without clipping it at that file's own "
+    + "`</x-dc>` template close -- a fact about how completely DEC-967's wave-42 ruling has been "
+    + "ported across the tree's twelve frame walks, not itself a v12 frame or 390-geometry "
+    + "conformance fact about any screen; it is promoted, or retired, once every walk carries the "
+    + "clip (app/src/phone-hidden-drawn-text.scan.test.ts, DEC-967 wave-42 amendment).",
+  SSR_CLASSLESS_CONTROL_CEILING:
+    "measures how many SSR-rendered controls carry no `chq-` class token any selector could reach "
+    + "-- a REACHABILITY fact about the markup's own instrumentability (a control no selector can "
+    + "name can be neither floored nor exempted, so it is a roster row rather than a graded "
+    + "divergence), the same 'row in the roster, not a silent pass' disposition "
+    + "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING already carries "
+    + "(app/src/phone-tap-target-scan/ssr-classless-control-ceiling.ts, DEC-996 wave-40 amendment).",
 };
 
 /**
