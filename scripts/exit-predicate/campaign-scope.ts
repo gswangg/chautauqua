@@ -231,6 +231,20 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // OUT_OF_CAMPAIGN_SCOPE, an instrument-completeness fact rather than a v12
   // fidelity fact in its own right.
   "FRAME_EYEBROW_DIVERGENCE_CEILING",
+  // wave-45 (task w45-f, DEC-393): src/routes/portal/portal.css.ts shipped
+  // .chq-portal-file-link {} TWICE in its one terminal max-width block,
+  // each copy under its own tap-floor-exempt receipt comment, because two
+  // wave-38 lanes landed the same receipt with neither able to see the
+  // other. test/ssr-duplicate-exemption-receipt.scan.test.ts sweeps every
+  // SSR sheet (ssrCssSources(), DEC-808) for the shape going forward.
+  // Repaired and re-MEASURED 0 on this branch.
+  "SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING",
+  // wave-45 (task w45-f, DEC-393): sibling ceiling, same file -- flags one
+  // selector declared twice with an identical EMPTY body regardless of
+  // whether either copy carries a receipt comment (a defensive net for the
+  // same duplicate-declaration shape without the receipt-comment idiom).
+  // Repaired and re-MEASURED 0 on this branch.
+  "SSR_DUPLICATE_EMPTY_SELECTOR_CEILING",
 ];
 
 /**
@@ -379,6 +393,12 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // it was printed by no row. The gating list wins; this constant now
   // prints as a real, non-zero TIER2 row.
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+  // wave-45 (task w45-f): wired into TIER2 in the same commit that
+  // declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988). A real 44px duplicate-
+  // exemption-receipt defect count, both measured 0 post-repair.
+  "SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING",
+  "SSR_DUPLICATE_EMPTY_SELECTOR_CEILING",
 ];
 
 /**
