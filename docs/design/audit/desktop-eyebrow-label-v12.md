@@ -147,7 +147,7 @@ here (DESKTOP IS FROZEN):
    Sign out`), the pack's own stand-in for "the signed-in organiser's
    name", drawn in nav/footer chrome across roughly a dozen frames; the
    live app renders the actual signed-in user's name, never this literal
-   string, in `app/src/routes/AppShell.tsx`'s nav header. One real
+   string, in `app/src/App.tsx`'s nav header identity block. One real
    composing fact, counted once per frame it recurs in.
 3. **Style-guide / documentation prose painted in the pack's eyebrow
    idiom** — e.g. `Chautauqua Docs.dc.html:249`, `01 · Prose`, one of nine
