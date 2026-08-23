@@ -129,6 +129,8 @@
 //   rule hid. TWIN-RESOLVED rows are graded, recorded and counted in
 //   neither ratchet (DEC-180: a resolution is recorded, never a silent
 //   drop).
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
