@@ -125,10 +125,10 @@ function resolveLiveValue(repoRoot: string, name: string): number {
   if (found.length > 1) {
     throw new Error(
       `campaign-scope-registry-partition: ${name} declared ${found.length} times ` +
-        `(${found.map((f) => f.path).join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
+        `(${locations.join(", ")}) -- an ambiguous constant can never safely decide a rule.`,
     );
   }
-  return (found[0] as { value: number; path: string }).value;
+  return found[0] as number;
 }
 
 const PROMOTION_PROMISE_RE = /promoted (once|by a later)/;

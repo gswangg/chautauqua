@@ -3,7 +3,8 @@
 // test/tap-floor-exempt-premise.scan.test.ts alongside its sibling tiers,
 // no behavior change. It is the one tier that walks RENDERED MARKUP rather
 // than CSS selectors, so it carries its own markup scanner and corpus.
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { enumerateSourceFiles, stripComments } from "../frame-source-corpus";
 import { REPO_ROOT, ROOTS } from "./population";
 import type { Receipt, RosterRow } from "./receipts";
