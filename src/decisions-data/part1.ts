@@ -39,7 +39,7 @@ export const DEC_033 = "Form builder SPA at /admin/submissions/forms consuming t
 export const DEC_034 = "CI (typecheck + tests) plus a 2k-row perf harness that boots wrangler dev locally — budgets enforced, zero secrets";
 export const DEC_035 = "Ratify bootstrap split: src/server/app.ts + src/server/scheduled.ts";
 export const DEC_036 = "Form window semantics: open_date enforced via formWindowState";
-export const DEC_037 = "Wave-48 amendment: the outbound email card's masthead is TWO lines, and the second one is the event's own dates and venue";
+export const DEC_037 = "The event-meta line is optional copy and must never be able to 500 a persisted write (wave-52 amendment)";
 export const DEC_038 = "Scoped KV rate limiter in src/lib/rate-limit.ts; login/claim limits";
 export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans only via getPlanForOrg";
 export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "Wave-44 amendment: a merge train that lands an audit doc lands its unadjudicated rows too, and a corpus floor is raised only with a re-measurement receipt";
+export const DEC_099 = "An adjudication row written into docs/design/audit/** carries its own citation on its own line (wave-52 amendment)";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
