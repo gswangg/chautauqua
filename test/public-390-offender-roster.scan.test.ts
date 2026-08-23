@@ -50,14 +50,25 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { DEC_180, DEC_613, DEC_808 } from "../src/decisions";
+import * as RenderSweep from "../scripts/render-sweep";
 import { MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
+import * as RenderSweepLib from "../scripts/render-sweep-lib";
 import {
+  MIN_TAP_TARGET_PX,
   PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING,
   PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING,
   PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR,
   classifyAdminMobileOffender,
 } from "../scripts/render-sweep-lib";
-import { allCssFiles, hasExemptionForToken } from "../app/src/phone-tap-target-scan/core";
+import {
+  allCssFiles,
+  hasExemptionForToken,
+  hasMinHeightFloor,
+  narrowMediaRules,
+  selectorMentionsToken,
+  topLevelRulesWithExemption,
+} from "../app/src/phone-tap-target-scan/core";
+import { extractCssTsLiteral } from "../app/src/phone-tap-target-scan/ssr";
 
 void DEC_808; // this scan's whole reason to exist: grading the public/portal 390 population for the first time
 void DEC_180; // every route named below is a REAL member of MOBILE_ROUTE_MANIFEST, never hand-listed
@@ -230,7 +241,12 @@ function parseRosterOffenderLines(markdown: string): RosterOffenderLine[] {
   const rows: RosterOffenderLine[] = [];
   let route = "";
   const routeRe = /^##\s+(\/\S*)/;
-  const offenderRe = /^-\s+(.+?)\s+w=(\d+)px\s+h=(\d+)px\s+—\s+\*\*(EXEMPT|CANDIDATE)\*\*/;
+  // DEC-808 wave-42 amendment: accepts the new REPAIRED-SINCE-SNAPSHOT
+  // label alongside the original EXEMPT/CANDIDATE pair -- the label text is
+  // never trusted for classification (see classifyRows below, which
+  // re-derives EXEMPT/CANDIDATE/REPAIRED-SINCE-SNAPSHOT from the tree on
+  // every run), only matched here so a re-labelled roster row still parses.
+  const offenderRe = /^-\s+(.+?)\s+w=(\d+)px\s+h=(\d+)px\s+—\s+\*\*(EXEMPT|CANDIDATE|REPAIRED-SINCE-SNAPSHOT)\*\*/;
   for (const line of lines) {
     const trimmed = line.trim();
     const routeMatch = routeRe.exec(trimmed);
@@ -272,6 +288,50 @@ function allSrcTsSourceFiles(root: string): string[] {
   return out.sort();
 }
 
+/** DEC-808 wave-42 amendment: every source text this scan can ask about a
+ * class token's CURRENT declared geometry -- real `.css` files read as-is
+ * (already valid CSS), plus every `src/**` `.ts`/`.tsx` module's embedded
+ * CSS-in-template-literal text (extractCssTsLiteral, the SAME extraction
+ * app/src/phone-tap-target-scan/ssr.ts's CSS-in-TS reader uses, DEC-613:
+ * one predicate, never a second copy) -- so a token whose rule lives in a
+ * `.css.ts` module (e.g. `chq-docs-phone-back` in docs-site.css.ts) is
+ * still reachable by the real CSS-rule grammar (topLevelRulesWithExemption
+ * / narrowMediaRules), which a raw un-extracted TS file would garble. */
+function currentStylesheetTexts(): string[] {
+  return [
+    ...allCssFiles(join(REPO_ROOT, "app", "src")).map((f) => readFileSync(f, "utf8")),
+    ...allSrcTsSourceFiles(join(REPO_ROOT, "src")).map((f) => extractCssTsLiteral(readFileSync(f, "utf8"))),
+  ];
+}
+
+// Computed once at module load (mirrors ROSTER_TEXT/OFFENDER_LINES above) --
+// walking + reading + extracting the whole app/src+src tree is expensive
+// enough that calling it fresh inside every `it` blows past vitest's
+// default per-test timeout.
+const CURRENT_STYLESHEET_TEXTS = currentStylesheetTexts();
+
+/** DEC-808 wave-42 amendment, VERIFIED DEFECT 1: a roster row's recorded
+ * `h=NNpx` is FROZEN wave-30 snapshot prose -- it never changes when the
+ * tree is repaired. A token is REPAIRED-SINCE-SNAPSHOT when some rule
+ * effective at 390 (a top-level rule, which applies everywhere, or a rule
+ * inside an `@media (max-width: <=700px)` block, DEC-385's single-
+ * direction narrow-overrides-wide idiom) declares a `min-height`/`height`
+ * of at least MIN_TAP_TARGET_PX for that token -- i.e. the tree now
+ * CONTRADICTS the roster's frozen `h=` reading. Built entirely from the
+ * tap-floor scan's own exported floor grammar (hasMinHeightFloor,
+ * selectorMentionsToken, topLevelRulesWithExemption, narrowMediaRules,
+ * app/src/phone-tap-target-scan/core.ts) -- DEC-613: imported, never
+ * re-authored. */
+function tokenRepairedSinceSnapshot(sourceTexts: readonly string[], token: string): boolean {
+  for (const text of sourceTexts) {
+    const rules = [...topLevelRulesWithExemption(text), ...narrowMediaRules(text, 700)];
+    for (const rule of rules) {
+      if (selectorMentionsToken(rule.selector, token) && hasMinHeightFloor(rule.body)) return true;
+    }
+  }
+  return false;
+}
+
 /** DEC-996/DEC-180: derives the exempt class-token set for the given
  * candidate tokens by walking the tree's own receipts -- never a hand-
  * written array. Same derivation the admin roster scan runs, over this
@@ -303,21 +363,36 @@ function candidateTokensOf(rows: readonly RosterOffenderLine[]): Set<string> {
   return tokens;
 }
 
+/** DEC-808 wave-42 amendment: a row's class tokens (empty for a bare
+ * `a`/`input` tag with no class attribute at all -- 20 of this roster's 22
+ * CANDIDATE lines, which no static stylesheet lookup can address). */
+function rowTokens(row: RosterOffenderLine): string[] {
+  return [...row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)].map((m) => m[0].slice(1));
+}
+
 function classifyRows(
   rows: readonly RosterOffenderLine[],
   exemptTokens: ReadonlySet<string>,
-): { candidateCount: number; candidateRows: string[] } {
+  stylesheetTexts: readonly string[] = CURRENT_STYLESHEET_TEXTS,
+): { candidateCount: number; candidateRows: string[]; repairedRows: string[] } {
   let candidateCount = 0;
   const candidateRows: string[] = [];
+  const repairedRows: string[] = [];
   for (const row of rows) {
     const line = `${row.selector} w=${row.width}px h=${row.height}px`;
     const result = classifyAdminMobileOffender(line, exemptTokens);
-    if (result.classification === "CANDIDATE") {
-      candidateCount++;
-      candidateRows.push(`${row.route} ${row.selector}`);
+    if (result.classification !== "CANDIDATE") continue; // already EXEMPT -- not this clause's concern
+    // DEC-808 wave-42 amendment, clause (a): a row REPAIRED-SINCE-SNAPSHOT
+    // is excluded from the CANDIDATE count -- a repaired control needs no
+    // exemption receipt, it simply no longer offends.
+    if (rowTokens(row).some((t) => tokenRepairedSinceSnapshot(stylesheetTexts, t))) {
+      repairedRows.push(`${row.route} ${row.selector}`);
+      continue;
     }
+    candidateCount++;
+    candidateRows.push(`${row.route} ${row.selector}`);
   }
-  return { candidateCount, candidateRows };
+  return { candidateCount, candidateRows, repairedRows };
 }
 
 describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)", () => {
@@ -374,5 +449,136 @@ describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)"
       classification: "EXEMPT",
       receipt: "chq-wordmark",
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-808 wave-42 amendment: REPAIRED-SINCE-SNAPSHOT re-grounding (VERIFIED
+// DEFECT 1) and the vacuity floor's live-predicate re-grounding (VERIFIED
+// DEFECT 2).
+// ---------------------------------------------------------------------------
+
+describe("public-390-offender-roster REPAIRED-SINCE-SNAPSHOT re-grounding (DEC-808 wave-42 amendment)", () => {
+  it("MIN_TAP_TARGET_PX is the same 44px floor the tap-floor scan's own grammar (hasMinHeightFloor) checks against", () => {
+    expect(MIN_TAP_TARGET_PX).toBe(44);
+  });
+
+  it("of the roster's CANDIDATE-labelled rows, exactly the two class-bearing ones (chq-docs-phone-back, chq-pub-activefilters-clear) reclassify REPAIRED-SINCE-SNAPSHOT against the tree's current stylesheets", () => {
+    const stylesheetTexts = CURRENT_STYLESHEET_TEXTS;
+    const { repairedRows } = classifyRows(
+      OFFENDER_LINES,
+      deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES)),
+      stylesheetTexts,
+    );
+    expect(repairedRows.sort()).toEqual(
+      [
+        "/docs/start-here a.chq-docs-phone-back",
+        "/embed/e/seed_embed_0001 a.chq-pub-activefilters-clear",
+      ].sort(),
+    );
+  });
+
+  it("every roster row with NO class token (a bare a/input tag) can never reclassify REPAIRED-SINCE-SNAPSHOT (no token to look up)", () => {
+    const bareTokenRows = OFFENDER_LINES.filter((r) => rowTokens(r).length === 0);
+    expect(bareTokenRows.length).toBeGreaterThan(0);
+    const stylesheetTexts = CURRENT_STYLESHEET_TEXTS;
+    for (const row of bareTokenRows) {
+      expect(rowTokens(row).some((t) => tokenRepairedSinceSnapshot(stylesheetTexts, t))).toBe(false);
+    }
+  });
+
+  // Synthetic control both ways (DEC-808 wave-42 amendment BUILD clause 4):
+  // a fabricated token with a 44px rule reclassifies REPAIRED-SINCE-SNAPSHOT;
+  // the identical row with no such rule stays CANDIDATE.
+  it("synthetic control: a token with a current 44px rule classifies REPAIRED-SINCE-SNAPSHOT; the identical token with no such rule stays CANDIDATE", () => {
+    const repairedCss = `
+      .chq-w42c-repaired {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+      }
+    `;
+    const unrepairedCss = `
+      .chq-w42c-unrepaired {
+        color: red;
+      }
+    `;
+    expect(tokenRepairedSinceSnapshot([repairedCss], "chq-w42c-repaired")).toBe(true);
+    expect(tokenRepairedSinceSnapshot([unrepairedCss], "chq-w42c-unrepaired")).toBe(false);
+    // ...also effective inside a narrow (<=700px) media block, DEC-385's
+    // single-direction narrow-overrides-wide idiom -- not just top-level.
+    const narrowRepairedCss = `
+      .chq-w42c-narrow-repaired { color: red; }
+      @media (max-width: 700px) {
+        .chq-w42c-narrow-repaired { min-height: 44px; }
+      }
+    `;
+    expect(tokenRepairedSinceSnapshot([narrowRepairedCss], "chq-w42c-narrow-repaired")).toBe(true);
+    // ...a media block wider than 700px is not "effective at 390" by this
+    // codebase's own terminal-breakpoint convention and must not count.
+    const tooWideCss = `
+      @media (max-width: 900px) {
+        .chq-w42c-too-wide { min-height: 44px; }
+      }
+    `;
+    expect(tokenRepairedSinceSnapshot([tooWideCss], "chq-w42c-too-wide")).toBe(false);
+
+    const rows: RosterOffenderLine[] = [
+      { route: "/synthetic", selector: "a.chq-w42c-repaired", width: 20, height: 19 },
+      { route: "/synthetic", selector: "a.chq-w42c-unrepaired", width: 20, height: 19 },
+    ];
+    const { candidateRows, repairedRows } = classifyRows(rows, new Set(), [repairedCss, unrepairedCss]);
+    expect(repairedRows).toEqual(["/synthetic a.chq-w42c-repaired"]);
+    expect(candidateRows).toEqual(["/synthetic a.chq-w42c-unrepaired"]);
+  });
+});
+
+describe("public-390-offender-roster vacuity floor re-grounding (DEC-808 wave-42 amendment, VERIFIED DEFECT 2)", () => {
+  /** The vacuity clause section's own prose (everything from its `## Vacuity
+   * clause` heading to the end of the file), the population this scan
+   * checks the doc's own claim about which predicate produced the 4. */
+  function vacuitySectionText(markdown: string): string {
+    const idx = markdown.indexOf("## Vacuity clause");
+    if (idx === -1) throw new Error("public-390-offender-roster: no '## Vacuity clause' section found");
+    return markdown.slice(idx);
+  }
+
+  /** Every `[A-Z][A-Z0-9_]*_SELECTOR` identifier the vacuity section's prose
+   * names -- a fossil predicate name (one retired from the tree) fails this
+   * scan loudly rather than silently pinning a number nothing can now
+   * reproduce (DEC-808 wave-42 amendment). */
+  function selectorIdentifiersIn(text: string): string[] {
+    return [...new Set([...text.matchAll(/\b([A-Z][A-Z0-9_]*_SELECTOR)\b/g)].map((m) => m[1]!))];
+  }
+
+  it("the roster's vacuity section names INTERACTIVE_CONTROL_SELECTOR as the population it grades, never the fossil phrase naming the retired MOBILE_CONTROL_SELECTOR as that population", () => {
+    const section = vacuitySectionText(ROSTER_TEXT);
+    expect(section).toContain("INTERACTIVE_CONTROL_SELECTOR");
+    // The exact wave-30 fossil phrasing this amendment replaces -- a
+    // historical mention that MOBILE_CONTROL_SELECTOR was retired is fine
+    // (and present, as provenance); the doc must never again ASSERT it as
+    // the current population the floor grades.
+    expect(section).not.toContain("under the narrow MOBILE_CONTROL_SELECTOR population");
+  });
+
+  it("every selector identifier the vacuity section's prose names still exists as a real exported binding (a fossil predicate name fails loudly)", () => {
+    const identifiers = selectorIdentifiersIn(vacuitySectionText(ROSTER_TEXT));
+    expect(identifiers.length).toBeGreaterThan(0);
+    for (const id of identifiers) {
+      const existsAsExport = id in RenderSweepLib || id in RenderSweep;
+      expect(existsAsExport, `${id} is not exported from scripts/render-sweep-lib.ts or scripts/render-sweep.ts -- a fossil predicate name`).toBe(true);
+    }
+  });
+
+  it("PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR's own comment in scripts/render-sweep-lib.ts names INTERACTIVE_CONTROL_SELECTOR, never re-introduces the retired MOBILE_CONTROL_SELECTOR as the population it grades", () => {
+    const libSrc = readFileSync(join(REPO_ROOT, "scripts", "render-sweep-lib.ts"), "utf8");
+    const declIdx = libSrc.indexOf("export const PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR");
+    expect(declIdx).toBeGreaterThan(-1);
+    // The JSDoc block immediately preceding the declaration -- from the last
+    // `/**` before declIdx to declIdx itself.
+    const commentStart = libSrc.lastIndexOf("/**", declIdx);
+    const comment = libSrc.slice(commentStart, declIdx);
+    expect(comment).toContain("INTERACTIVE_CONTROL_SELECTOR");
+    expect(comment).toContain("retired");
   });
 });
