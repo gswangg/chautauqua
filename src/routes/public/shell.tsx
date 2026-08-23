@@ -225,7 +225,7 @@ export function PublicShell(props: { event: PublicEvent; active: Surface; title:
       <body style={`--chq-brandable-accent: ${accent};`}>
         <header class="chq-pub-header">
           <div class="chq-pub-header-meta">
-            <span class="chq-pub-header-dates">{eventDatesLine(event)}</span>
+            {eventDatesLine(event) ? <span class="chq-pub-header-dates">{eventDatesLine(event)}</span> : null}
             <span class="chq-pub-header-title">
               {b.logoUrl ? <img class="chq-pub-header-logo" src={b.logoUrl} alt="" /> : null}
               {event.name}

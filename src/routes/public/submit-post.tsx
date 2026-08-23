@@ -549,10 +549,15 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       portal_link: claimUrl,
     },
   );
+  // DEC-037 wave-52: eventDatesLine returns "" for a fixture/row missing a
+  // day field -- guard here the same way submit-views.tsx's hasEventDates
+  // guards the on-screen header for the same data, rather than spreading
+  // an unguarded eventMeta key into renderEmailHtml's options.
+  const eventMeta = eventDatesLine(event);
   const html = renderEmailHtml(confirmation.text, {
     eventName: event.name,
     reason: submissionConfirmedReason(event.name),
-    eventMeta: eventDatesLine(event),
+    ...(eventMeta ? { eventMeta } : {}),
     cta: {
       label: confirmation.ctaLabel,
       href: claimUrl,

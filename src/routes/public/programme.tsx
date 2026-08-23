@@ -122,7 +122,7 @@ export function ProgrammeDocument(props: {
       <body>
         <main class="chq-prog-main">
           <h1 class="chq-prog-title chq-pub-surface-title">{event.name}</h1>
-          <p class="chq-prog-meta">{eventDatesLine(event)}</p>
+          {eventDatesLine(event) ? <p class="chq-prog-meta">{eventDatesLine(event)}</p> : null}
           {items.length < total ? (
             <p class="chq-prog-note">
               Showing the first {items.length} of {total} scheduled sessions.
