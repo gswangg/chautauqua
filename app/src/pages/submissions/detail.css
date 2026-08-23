@@ -1196,6 +1196,18 @@
     padding: 0 14px;
   }
 
+  /* docs/design/Chautauqua Submissions.dc.html:390/:391 -- the dock's
+     pending-state secondary pair (Decline + the third control) draws at
+     `min-height:46px`, the SAME floor as the primary two rules up, not the
+     44px the in-aside desktop pair carries (docs/design/Chautauqua
+     Submissions.dc.html:314). Scoped to `.chq-phone-dock` AND to the
+     primary-sibling combinator so the in-aside pair and the decided-state
+     pair (no primary sibling) keep their existing 44px untouched -- w56-c,
+     docs/design/audit/frame-control-floor-390-v12.md:253. */
+  .chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn {
+    min-height: 46px;
+  }
+
   /* The rail's other content (triage label / stated line / note / back
      link) still renders when the dock holds the rail -- keep each on its
      own full-width line, same as the in-aside geometry, rather than

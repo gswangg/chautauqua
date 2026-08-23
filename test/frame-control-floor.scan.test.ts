@@ -1163,29 +1163,28 @@ const WIDENED_JOIN_RESOLUTIONS: WidenedJoinResolution[] = [
   {
     fileName: 'Chautauqua Submissions.dc.html',
     line: 391,
-    // WAVE 53 finding: a genuine, previously-invisible offender. The own-
-    // text tier's match (.chq-detail-back-short) is a real element -- the
-    // width-toggled short form of the DECISION_ACTION_LABELS.waitlisted
+    // WAVE 53 found a genuine offender here; WAVE 56 (w56-c) repaired it.
+    // The own-text tier's match (.chq-detail-back-short) is a real element
+    // -- the width-toggled short form of the DECISION_ACTION_LABELS.waitlisted
     // button (app/src/pages/submissions/SubmissionDetailPage.tsx's
     // decisionActionLabel, DEC-878 wave-129 amendment) -- but the SPAN
     // carries no height of its own; the real floor lives on its ancestor
     // <button className="chq-btn chq-btn-secondary">, itself wrapped in
     // .chq-detail-decision-secondary-pair inside the phone .chq-phone-dock
-    // scaffold. app/src/pages/submissions/detail.css's own comment (near
-    // its .chq-phone-dock rules) already states the frame draws all three
-    // dock buttons -- Accept, Decline, Wait -- at min-height:46px, but the
-    // shipped CSS only raises .chq-detail-decision-primary (Accept) to
-    // 46px; .chq-detail-decision-secondary-pair .chq-btn (Decline AND
-    // Wait) stays at the desktop-derived 44px in both its base and its
-    // .chq-phone-dock override. No rule anywhere raises the secondary
-    // pair's phone floor to 46px.
-    resolvedHeight: 44,
+    // scaffold. app/src/pages/submissions/detail.css's terminal
+    // max-width:700px block now adds
+    // .chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn
+    // { min-height: 46px } -- dock-scoped and primary-sibling-scoped, so the
+    // in-aside pair and the decided-state pair (no primary sibling) keep
+    // their prior 44px and the desktop aside stays byte-identical.
+    resolvedHeight: 46,
     tokens: ['chq-btn', 'chq-btn-secondary', 'chq-detail-decision-secondary-pair', 'chq-detail-back-short'],
     citation:
-      'app/src/pages/submissions/detail.css declares .chq-detail-decision-secondary-pair .chq-btn min-height:44px ' +
-      "both at top level and inside its .chq-phone-dock override -- never 46px -- while the frame's own 390 " +
-      'Submission-detail dock draws all three of Accept/Decline/Wait at min-height:46px (the same file\'s own ' +
-      "comment above its .chq-phone-dock rules names all three citations). A genuine 44px-vs-46px gap.",
+      'app/src/pages/submissions/detail.css declares ' +
+      '.chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn ' +
+      'min-height:46px (w56-c) -- meeting the drawn 46px floor for Decline and Wait inside the dock, ' +
+      "while .chq-detail-decision-secondary-pair .chq-btn's base and non-dock rules stay 44px for the " +
+      'in-aside pair and the decided-state pair.',
   },
   {
     fileName: 'Chautauqua Settings.dc.html',
@@ -1498,7 +1497,17 @@ const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved' && g.r
 // No product CSS byte moved this wave (instrument-only scope); left for a
 // future wave's repair lane. See docs/design/audit/
 // frame-control-floor-390-v12.md's "WAVE 53" section.
-export const FRAME_FLOOR_DIVERGENCE_CEILING = 1;
+//
+// WAVE 56 (task w56-c): repaired. detail.css's terminal max-width:700px
+// block now adds
+// .chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn
+// { min-height: 46px }, dock-scoped and primary-sibling-scoped so the
+// in-aside pair and the decided-state pair keep their prior 44px and the
+// desktop aside stays byte-identical (DEC-385). Re-measured on this branch
+// (forcing this ceiling to -1, reading the printed offender list back):
+// LOWERED 1 -> 0. See docs/design/audit/frame-control-floor-390-v12.md
+// row 11 ("Wait").
+export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
 // on this branch the same way. See the audit doc for the wave-25
