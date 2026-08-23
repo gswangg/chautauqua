@@ -202,7 +202,10 @@ export const DOCS_SITE_CSS = `
      Suppressing the ring is banned -- this field has no border of its own
      (the wrapper draws it), so a silenced ring would leave focus invisible. */
   .chq-docs-search-input:focus-visible { outline: 2px solid var(--chq-brand); outline-offset: 2px; }
-  .chq-docs-search-submit { padding: 6px 14px; border: none; border-radius: 3px; background: var(--chq-ink); color: var(--chq-surface); font-size: 13px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer; }
+  /* DEC-937 wave-43: 0.01em was off the pack's letter-spacing grammar
+     (the 13 frames draw -0.01em/0.02em, never +0.01em); repaired to the
+     nearest in-vocabulary value. */
+  .chq-docs-search-submit { padding: 6px 14px; border: none; border-radius: 3px; background: var(--chq-ink); color: var(--chq-surface); font-size: 13px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }
 
   /* Header search sits before the leaving link, so the leaving link no
      longer needs its own margin-left: auto once a search field is present

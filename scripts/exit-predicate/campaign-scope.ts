@@ -786,6 +786,40 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "technique, not itself a v12 frame or 390-geometry conformance fact, the same disposition "
     + "already given to FRAME_EYEBROW_UNRESOLVED_CEILING and DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/desktop-eyebrow-label.scan.test.ts, DEC-986 wave-41 amendment).",
+
+  PACK_TYPOGRAPHY_LETTER_SPACING_OFFENDERS_CEILING:
+    "measures a newly-derived TYPOGRAPHY-REGISTER population (every product letter-spacing "
+    + "declaration, token-resolved, whose literal em value sits outside the pack's own drawn "
+    + "em vocabulary) that no instrument previously graded -- pack-unit-grammar's own header names "
+    + "this population live and explicitly unrouted since wave-29 ('a later lane should treat this "
+    + "as a NEW ratchet with its own vocabulary-derivation shape, not an extension of this one'). A "
+    + "real conformance fact about this population, but a freshly measured, previously-uncounted "
+    + "population must not move the campaign's goalposts mid-convergence; it is promoted once a "
+    + "later wave proves the measurement technique complete enough to gate on, the same disposition "
+    + "already given to PACK_UNIT_GRAMMAR_OFFENDERS_CEILING "
+    + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment). "
+    + "DEC-069 promotion clause (a) refusal: not yet proven complete enough to gate on.",
+  PACK_TYPOGRAPHY_LETTER_SPACING_UNRESOLVED_CEILING:
+    "measures how many of that same letter-spacing population are var(--chq-...) references this "
+    + "scan could not resolve to a declared token -- an instrument-completeness fact about the "
+    + "ratchet's own token-resolution technique, not itself a v12 frame or 390-geometry conformance "
+    + "fact, the same disposition already given to PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING "
+    + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment).",
+  PACK_TYPOGRAPHY_TEXT_TRANSFORM_OFFENDERS_CEILING:
+    "measures the same newly-derived TYPOGRAPHY-REGISTER shape applied to text-transform (every "
+    + "product declaration, token-resolved, whose keyword sits outside the pack's own drawn keyword "
+    + "vocabulary) -- its one measured offender (.chq-wordmark's `lowercase`) is a settled DEC-884 "
+    + "exclusion pinned by eleven test files, so this ceiling is a bookkeeping count of an already-"
+    + "adjudicated site rather than open debt, but stays out of the gated lists for the same reason "
+    + "as its letter-spacing sibling: a freshly measured, previously-uncounted population must not "
+    + "move the campaign's goalposts mid-convergence "
+    + "(test/pack-typography-register.scan.test.ts, DEC-937/DEC-884 wave-43 amendment).",
+  PACK_TYPOGRAPHY_TEXT_TRANSFORM_UNRESOLVED_CEILING:
+    "measures how many of that same text-transform population are var(--chq-...) references this "
+    + "scan could not resolve to a declared token -- an instrument-completeness fact about the "
+    + "ratchet's own token-resolution technique, the same disposition already given to "
+    + "PACK_TYPOGRAPHY_LETTER_SPACING_UNRESOLVED_CEILING "
+    + "(test/pack-typography-register.scan.test.ts, DEC-937 wave-43 amendment).",
 };
 
 /**
