@@ -207,8 +207,12 @@ describe("round-scoped criteria + free-text criterion (task w2-a)", () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { roundCriteria: Record<string, unknown> };
+    const body = (await res.json()) as {
+      roundCriteria: Record<string, unknown>;
+      hasSubmittedEvaluation: boolean;
+    };
     expect(body.roundCriteria).toEqual(plan.roundCriteria);
+    expect(body.hasSubmittedEvaluation).toBe(false);
   });
 
   it("POST create validates roundCriteria the same way as base criteria (rating needs weight > 0)", async () => {
