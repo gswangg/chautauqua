@@ -211,16 +211,13 @@ function checkPromotionCompliance(
 // ---------------------------------------------------------------------------
 
 const RENDER_SWEEP_PROMOTION_RULES: PromotionRegistry = {
-  PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING: {
-    reason:
-      "advisory until the public/portal 390 CANDIDATE offender population it grades (PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING) is fully drained -- a still-nonzero population is unfinished measurement, not gate-worthy failure yet; gating on it today would fail the sweep for every route the moment it is turned on, which is not this flag's job (DEC-808 wave-30/35).",
-    predicate: {
-      kind: "constant",
-      constantName: "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING",
-      satisfied: (value) => value === 0,
-      describe: "PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING === 0",
-    },
-  },
+  // w56-i (DEC-069 wave-41 amendment): PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING's
+  // entry lived here until its own predicate (PUBLIC_MOBILE_CANDIDATE_DEFECT_
+  // CEILING === 0) came back satisfied -- the flag has now been flipped to
+  // `true` in scripts/render-sweep-lib.ts, so it needs no promotion rule
+  // (checkPromotionCompliance only grades flags currently reading `false`);
+  // this entry is deliberately removed, not left stale, so "the registry
+  // covers exactly the false flags" stays exact.
   TYPE_ROLE_BLOCKING: {
     reason:
       "advisory until a live getComputedStyle reading of DESIGN-RULINGS' type-scale roles comes back all-PASS and is reconfirmed on a later branch (DEC-387's flip rule) -- that reading needs a booted server, so no fast-tier test can take it; the recorded-reading artifact carries what evidence exists and what is still owed.",
@@ -260,10 +257,13 @@ describe(`render-sweep advisory *_BLOCKING flags carry a promotion rule (${DEC_0
     );
   });
 
-  it("the two positive precedents (ADMIN_MOBILE_PASS_BLOCKING, FONT_FLOOR_BLOCKING) read true and need no promotion rule", () => {
+  it("the three positive precedents (ADMIN_MOBILE_PASS_BLOCKING, FONT_FLOOR_BLOCKING, PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING) read true and need no promotion rule", () => {
+    // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING joined this set at w56-i (DEC-069
+    // wave-41 amendment): its promotion predicate (PUBLIC_MOBILE_CANDIDATE_
+    // DEFECT_CEILING === 0) came back satisfied and the owed flip landed.
     const trueFlags = flags.filter((f) => f.value);
     expect(trueFlags.map((f) => f.name).sort()).toEqual(
-      ["ADMIN_MOBILE_PASS_BLOCKING", "FONT_FLOOR_BLOCKING"].sort(),
+      ["ADMIN_MOBILE_PASS_BLOCKING", "FONT_FLOOR_BLOCKING", "PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING"].sort(),
     );
   });
 

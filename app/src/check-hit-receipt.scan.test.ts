@@ -450,32 +450,41 @@ describe('check-hit receipt: every in-cell .chq-check is wrapped in .chq-check-h
     // per-row select) -- two are the real `<input className="chq-check chq-taskview-check">`
     // sites, the other two are the `<label className="chq-check-hit">` wrapper's OWN opening tag
     // (CHECK_CLASS_RE's `\bchq-check\b` also matches inside "chq-check-hit" at the hyphen
-    // boundary; this is pre-existing scan behaviour, unchanged here). Exact line list, not just
-    // non-zero, so a future site silently falling OUT of this bucket (e.g. reverting to a `<td>`)
-    // is caught here.
+    // boundary; this is pre-existing scan behaviour, unchanged here).
+    //
+    // w56-i (DEC-099 wave-56): the four-element EXACT LINE LIST used to be hand-pinned here
+    // ([568, 571, 591, 594]) -- every edit above these sites in the file (e.g. w54-c's phone
+    // select-all control) shifts all four and reddens this test for a reason that has nothing to
+    // do with what it grades. Re-anchored on shape instead: assert the COUNT (4, still exact --
+    // catches a site silently falling out of the bucket), then classify each site by its OWN
+    // structural role (nearest-ancestor kind, and for the input sites, the wrapping label's own
+    // `className`) rather than its line number. The line list is still printed below, as a
+    // diagnostic only -- never asserted.
     const taskViewSites = allSites.filter((s) => s.file === 'app/src/pages/speakers/TaskView.tsx');
-    expect(taskViewSites.map((s) => s.line)).toEqual([568, 571, 591, 594]);
+    const diagnosticLines = taskViewSites.map((s) => s.line);
+    expect(taskViewSites, `TaskView.tsx .chq-check sites at lines ${diagnosticLines.join(', ')}`).toHaveLength(4);
 
-    // The two real input sites (571, 594): nearest ancestor is the `.chq-check-hit` label itself
-    // (DEC-393 wave-124 shape) -- the widened `ariaCell` ancestor one level further out is what
-    // proves the label is genuinely wrapping a table-cell site in the first place (proved directly
-    // against the file's raw, unwrapped ARIA markup in the `nearestOpenAncestor` unit block below).
-    const inputSites = taskViewSites.filter((s) => s.line === 571 || s.line === 594);
+    // The two real input sites: nearest ancestor is the `.chq-check-hit` label itself (DEC-393
+    // wave-124 shape) -- the widened `ariaCell` ancestor one level further out (asserted on the
+    // OTHER two sites below) is what proves the label is genuinely wrapping a table-cell site in
+    // the first place (proved directly against the file's raw, unwrapped ARIA markup in the
+    // `nearestOpenAncestor` unit block below).
+    const inputSites = taskViewSites.filter((s) => s.nearestOpenTag === 'label' && s.nearestLabelIsCheckHit);
+    expect(inputSites, `TaskView.tsx check-hit-wrapped input sites at lines ${diagnosticLines.join(', ')}`).toHaveLength(2);
     for (const s of inputSites) {
-      expect(s.nearestOpenTag).toBe('label');
-      expect(s.nearestLabelIsCheckHit).toBe(true);
       expect(population.some((p) => p.file === s.file && p.line === s.line)).toBe(true);
     }
 
-    // The two label-open-tag "sites" (568, 591): scanned mid-tag, before their own `<label ...>`
-    // closes, so their nearest ancestor is the enclosing `<span role="columnheader"|"cell">` --
-    // this IS the DEC-991 widened ariaCell ancestor, proving the widened walk is what admits the
-    // label wrap to population membership at all (it is not itself unwrapped, so it is excluded
-    // from `unwrapped in-cell .chq-check site` by `isWrappedInCheckHit` finding its own text).
-    const labelTagSites = taskViewSites.filter((s) => s.line === 568 || s.line === 591);
-    for (const s of labelTagSites) {
-      expect(s.nearestOpenTag).toBe('ariaCell');
-    }
+    // The two label-open-tag "sites": scanned mid-tag, before their own `<label ...>` closes, so
+    // their nearest ancestor is the enclosing `<span role="columnheader"|"cell">` -- this IS the
+    // DEC-991 widened ariaCell ancestor, proving the widened walk is what admits the label wrap to
+    // population membership at all (it is not itself unwrapped, so it is excluded from `unwrapped
+    // in-cell .chq-check site` by `isWrappedInCheckHit` finding its own text).
+    const labelTagSites = taskViewSites.filter((s) => s.nearestOpenTag === 'ariaCell');
+    expect(labelTagSites, `TaskView.tsx label-open-tag sites at lines ${diagnosticLines.join(', ')}`).toHaveLength(2);
+
+    // Every site must land in one bucket or the other -- no third shape.
+    expect(inputSites.length + labelTagSites.length).toBe(taskViewSites.length);
   });
 
   it('a non-check-hit label-wrapped .chq-check is excluded from population ONLY when it is actually floored or has real content -- never unconditionally (DEC-393 wave-26 amendment)', () => {
