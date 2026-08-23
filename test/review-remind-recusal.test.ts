@@ -6,7 +6,7 @@
 // that reviewer. Mocked repo/mailer, mirrors test/review-remind-mailer-
 // failure.test.ts's harness pattern (no D1/wrangler dependency in stage 1).
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -118,8 +118,14 @@ afterEach(() => {
   capturedText = "";
 });
 
+let reviewRoutes: (typeof import("../src/routes/review"))["reviewRoutes"];
+
+// the module graph load is setup, not the assertion's cost -- DEC-727 wave-47
+beforeAll(async () => {
+  ({ reviewRoutes } = await import("../src/routes/review"));
+});
+
 async function buildApp(auth: AuthInfo) {
-  const { reviewRoutes } = await import("../src/routes/review");
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {

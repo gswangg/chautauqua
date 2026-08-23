@@ -8,7 +8,7 @@
 // it is absent -- format null, format with no parseable duration
 // (sessionFormatLabel(raw) === raw), and no deliverable at all.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -70,8 +70,14 @@ vi.mock("../src/server/repo/portal", async () => {
 
 const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", contactId: "ct-1" };
 
+let portalRoutes: (typeof import("../src/routes/portal/index"))["portalRoutes"];
+
+// the module graph load is setup, not the assertion's cost -- DEC-727 wave-47
+beforeAll(async () => {
+  ({ portalRoutes } = await import("../src/routes/portal/index"));
+});
+
 async function buildPortalApp() {
-  const { portalRoutes } = await import("../src/routes/portal/index");
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {

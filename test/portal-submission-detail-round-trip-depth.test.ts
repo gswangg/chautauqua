@@ -15,7 +15,7 @@
 // delay+in-flight tracker measures the route's OWN Promise.all scheduling
 // behaviourally, not a source grep for the string "Promise.all".
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -143,8 +143,14 @@ afterEach(() => {
   participantsCalls.length = 0;
 });
 
+let portalRoutes: (typeof import("../src/routes/portal/index"))["portalRoutes"];
+
+// the module graph load is setup, not the assertion's cost -- DEC-727 wave-47
+beforeAll(async () => {
+  ({ portalRoutes } = await import("../src/routes/portal/index"));
+});
+
 async function buildApp(auth: AuthInfo, tracker: Tracker) {
-  const { portalRoutes } = await import("../src/routes/portal/index");
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {
