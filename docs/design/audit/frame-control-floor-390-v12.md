@@ -215,3 +215,79 @@ amendment (DEC-069: appended, never deleted) -- a reader landing on either
 paragraph alone should follow the doc forward to the WAVE 34 and WAVE 37
 sections rather than treat "left for a future wave's repair lane" as
 still-open work.
+
+## WAVE 53 (task w53-b, DEC-995's wave-53 amendment): the sixteen non-composed unresolved rows, adjudicated individually
+
+Per the task's own instruction, the sixteen NON-COMPOSED unresolved rows
+named at :28-49/:97 above (the eleven `no-control-shape` rows, plus
+"Headshot" moved into that bucket by the wave-26 attribute tier, plus the
+four `no-token` rows) are each given exactly one disposition below, with a
+receipt: **RESOLVED** (the row IS a control; its floor lives on an
+ancestor or sibling token the union join never consults -- the join is
+widened, hand-verified, and the row rejoins the graded population),
+**POPULATION-EXCLUDED** (not a control at all -- excluded at the
+population step with a named predicate and a ruling id, following
+`test/desktop-control-floor.scan.test.ts`'s `isStatesSwatchFrameTitle`/
+`RULING_SETTLED_EXCLUSIONS` precedent exactly), or **OFFENDER** (a genuine
+floor gap -- the divergence ceiling rises honestly). No row remains merely
+bucketed. Implemented in `test/frame-control-floor.scan.test.ts` as
+`WIDENED_JOIN_RESOLUTIONS` (RESOLVED/OFFENDER, checked first in
+`gradeControl`, before every other tier) and
+`POPULATION_EXCLUDED_FIELD_LABELS` (applied to `ALL_CONTROLS` before
+grading begins).
+
+### The sixteen rows
+
+| # | Label | Citation | Disposition | Receipt |
+| - | - | - | - | - |
+| 1 | "See the recipients" | Comms:350, `chq-comms-batch-toggle-label-phone` | RESOLVED, OK | Ancestor `<button className="chq-btn chq-btn-secondary chq-comms-batch-toggle">` (`app/src/pages/comms/RecentSends.tsx`) wraps the resolved span; `app/src/styles.css`'s phone block gives `.chq-btn` `min-height:44px` -- exactly meets the drawn 44px floor. |
+| 2 | "Merge them" | Contacts:537, `chq-contacts-merge-primary-phone-label` | RESOLVED, OK | Ancestor `<button className="chq-btn chq-btn-primary">` (`app/src/pages/contacts/MergePage.tsx`) sits inside `.chq-contacts-merge-footer`; `app/src/pages/contacts/contacts-panels.css`'s phone block gives `.chq-contacts-merge-footer .chq-btn` `min-height:48px` -- exactly meets the drawn 48px floor. |
+| 3 | "Upload a file for the speaker" | Content:417, `chq-content-upload-prompt-phone` | RESOLVED, OK | Ancestor `<div className="chq-upload-zone chq-content-upload-zone">` (`app/src/pages/content/UploadZone.tsx`), two levels up; `content.css` declares `min-height:50px` (narrowed to 46px in `upload-zone.css`'s own phone block) -- union max 50px clears the drawn 46px floor. |
+| 4 | "First name" | Public and Portal:645, `chq-portal-field-label` | POPULATION-EXCLUDED | `src/routes/portal/profile.tsx`'s `<label for="firstName">First name</label>` -- a form-field NAME, not a tap target (`src/decisions-data/DEC-393.md`'s wave-31 amendment: a typography/column-register token set grades UNRESOLVED, never a silent exemption -- here made an explicit, receipted population exclusion instead, per the task's own instruction). |
+| 5 | "Last name" | Public and Portal:649, `chq-portal-field-label` | POPULATION-EXCLUDED | Same shape as "First name" -- `src/routes/portal/profile.tsx`'s `<label for="lastName">Last name</label>`. |
+| 6 | "Bio" | Settings:523, `chq-portal-field-label` | RESOLVED, OK | Mis-attributed by the own-text tier to an unrelated portal-profile field label sharing the word "Bio". The real control is `app/src/pages/settings/PortalSettingsPanel.tsx`'s `SpeakerEditPills` -- a `<span className="chq-pill chq-pill-static[ is-active]">{field.label}</span>` the own-text tier cannot see (the text is a JSX expression, never a literal). `settings.css`'s phone block gives `.chq-settings-portal-pills .chq-pill` `min-height:44px` -- exactly meets the drawn 44px floor. |
+| 7 | "Links" | Settings:525, `chq-contacts-record-label` | RESOLVED, OK | Same `SpeakerEditPills` strip as "Bio" (mis-attributed to an unrelated `ContactDrawer.tsx` heading). Same `.chq-pill` 44px floor. |
+| 8 | "Title" | Settings:526, `chq-submissions-col-title`/`chq-portal-field-label` | RESOLVED, OK | Same `SpeakerEditPills` strip, fourth pill -- `SPEAKER_EDIT_FIELDS[3].label` is `"Session title"`, which the frame draws abbreviated to `"Title"` (the same width-conditioned-copy shape this ledger already accepts for "Wait"/Waitlist); flagged as a content note, not a geometry gap. Same `.chq-pill` 44px floor. |
+| 9 | "Abstract" | Settings:527, `chq-section-label`/`chq-detail-section-title`/`chq-detail-section-title-frameless` | RESOLVED, OK | Same `SpeakerEditPills` strip, fifth pill -- exact word match, mis-attributed to unrelated section-title headings. Same `.chq-pill` 44px floor. |
+| 10 | "Needs triage" | Submissions:149, `chq-submissions-status-pending-phone` | RESOLVED, OK | Ancestor `<button className="chq-pill[ is-active]" data-status="pending">` (`app/src/pages/submissions/FilterBar.tsx`) wraps the resolved span; `.chq-pill`'s house 44px phone floor applies -- exactly meets the drawn 44px floor. |
+| 11 | "Wait" | Submissions:391, `chq-detail-back-short` | **OFFENDER** | Ancestor `<button className="chq-btn chq-btn-secondary">` (`app/src/pages/submissions/SubmissionDetailPage.tsx`'s `decisionActionLabel`, DEC-878 wave-129 amendment), inside `.chq-detail-decision-secondary-pair`, inside the phone `.chq-phone-dock` scaffold. `detail.css` declares `.chq-detail-decision-secondary-pair .chq-btn` `min-height:44px` both at top level and inside its `.chq-phone-dock` override -- the frame draws all three dock buttons (Accept/Decline/Wait) at `min-height:46px` (the same file's own comment already names this), but only `.chq-detail-decision-primary` (Accept) was ever raised to 46px. A genuine, previously-invisible 44px-vs-46px gap. `FRAME_FLOOR_DIVERGENCE_CEILING` raised 0 -> 1. Not fixed this wave (instrument-only scope, zero product bytes); left for a future wave's repair lane. |
+| 12 | "Headshot" | Settings:524 (moved from `no-label-match` by wave-26's attribute tier) | RESOLVED, OK | Same `SpeakerEditPills` strip, second pill -- `SPEAKER_EDIT_FIELDS[1].label` is `"Headshot"`, exact match. The wave-26 attribute tier instead mis-resolved this row to an unrelated wrapper `<div title="Headshot">` (the profile-picture uploader section). Same `.chq-pill` 44px floor. |
+| 13 | "Browse the sessions ›" | Account:141, no-token | RESOLVED, OK | `src/routes/auth-views.tsx` renders a bare, classless `<a>` inside `<div className="chq-auth-footer-links">`. `auth.css.ts`'s terminal phone block declares `.chq-auth-footer-links a` `min-height:44px` (DEC-367 wave-57 amendment) -- exactly meets the drawn 44px floor. The class exists on the ANCESTOR div, not the anchor itself, so `classTokensNear`'s nearest-enclosing-tag walk finds nothing. |
+| 14 | "Browse the sessions ›" | Public and Portal:1092, no-token | RESOLVED, OK | Same classless-anchor shape, `src/routes/public/submit-views.tsx` inside `<div class="chq-cfp-links">`. `cfp.css.ts` declares `.chq-cfp-links a, .chq-cfp-confirm-actions a:not(.chq-btn)` `min-height:44px` (its own header comment names both :1092 and :1135 as the two rows this rule was written for) -- exactly meets the drawn 44px floor. |
+| 15 | "+ Rule" | Contacts:192, no-token | RESOLVED, OK | `app/src/pages/contacts/FilterRulesPanel.tsx` renders `<button className="chq-contacts-filter-add-chip">+ Rule</button>` -- a REAL `chq-` class the join misses mechanically: the button's `onClick` handler body contains a bare `<` comparison (`rules.length < MAX_SEGMENT_RULES`), and `classTokensNear`'s `lastIndexOf('<', prevGt)` walk finds that operator's `<` instead of the real `<button` tag opener, reading `className` from a garbage tag chunk. `contacts.css`'s phone block declares `.chq-contacts-filter-add-chip` `min-height:44px` -- exactly meets the drawn 44px floor. |
+| 16 | "Log in ›" | Public and Portal:1135, no-token | RESOLVED, OK | `src/routes/public/submit-views.tsx` renders a bare, classless `<a href="/login">` inside `<div class="chq-cfp-confirm-actions">`. The same `cfp.css.ts` rule cited for row 14 reaches this anchor too (it carries no `.chq-btn` class) -- exactly meets the drawn 44px floor. A nearby "tap-floor-exempt: inline-in-prose" receipt covers a DIFFERENT check (the flex-centred lens), not this min-height. |
+
+### Before/after breakdown
+
+**MEASURED (this branch, both ceilings forced to `-1`, printed lists/breakdown read back):**
+
+- **BEFORE**: 106 unresolved (90 `composed-unseen`, 4 `no-token`, 12
+  `no-control-shape`), 0 offenders, 235 drawn controls in the population.
+- **AFTER**: 90 unresolved (90 `composed-unseen`, 0 `no-token`, 0
+  `no-control-shape`), **1 offender** ("Wait"), **233** drawn controls in
+  the population (2 removed by `POPULATION_EXCLUDED_FIELD_LABELS`) -- 13
+  of the sixteen rows resolved OK, 2 population-excluded, 1 offender.
+
+### Net effect
+
+- `FRAME_FLOOR_DIVERGENCE_CEILING`: **0 -> 1** (one genuine offender,
+  "Wait" -- see row 11 above). Not fixed this wave (instrument-only scope,
+  zero product CSS/TS bytes touched).
+- `UNRESOLVED_COUNT_TRIPWIRE`: **106 -> 90** (sixteen rows drained: 13
+  RESOLVED-OK + 1 RESOLVED-OFFENDER out of UNRESOLVED into the graded
+  population, 2 POPULATION-EXCLUDED out of the population entirely).
+- `ALL_CONTROLS.length`: **235 -> 233** (the two POPULATION-EXCLUDED
+  field-name-eyebrow rows). The "Chautauqua Public and Portal.dc.html"
+  per-file tripwire in the non-vacuity test moves **55 -> 53** to match.
+- Zero product CSS/TS bytes changed this wave (test + audit doc only, per
+  the task's own scope).
+- The 90 `composed-unseen` rows are untouched -- they need a new join
+  tier (a later lane's work), not adjudication, exactly as the task
+  scoped it.
+
+Commands run: `npx vitest run test/frame-control-floor.scan.test.ts
+test/campaign-ratchet-two-sided.scan.test.ts
+test/audit-ratchet-statement-drift.scan.test.ts
+test/citation-form-drift.scan.test.ts
+test/open-divergence-ledger.scan.test.ts` (targeted per this task's own
+instruction, never the full suite).

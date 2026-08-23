@@ -221,6 +221,21 @@ import {
   looksLikeDataValue,
   skeletonOwnTextTokens,
 } from './skeleton-join';
+import { DEC_393 } from '../src/decisions';
+
+// WAVE 53 (task w53-b): DEC_393's own text is a mutable scribe-owned
+// constant (DEC-976 wave-32's own standing lesson -- never assert its
+// prose), so this import is a compile-checked DEPENDENCY MARKER only,
+// pointing at src/decisions-data/DEC-393.md's wave-31 amendment (the
+// desktop ledger's own ruling that a token set resolving to nothing but a
+// typography/column register grades UNRESOLVED, never OFFENDER and never a
+// silent exemption) -- the POPULATION_EXCLUDED_FIELD_LABELS table below
+// applies that same ruling's *reasoning* to two rows this file's own union
+// join mis-resolves onto that same token, but does so as an explicit,
+// receipted population-step exclusion (never silent), the shape
+// test/desktop-control-floor.scan.test.ts's RULING_SETTLED_EXCLUSIONS/
+// isStatesSwatchFrameTitle already use for the identical problem.
+void DEC_393;
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -497,7 +512,51 @@ function drawnControlsInFile(fileName: string): DrawnControl[] {
   return out;
 }
 
-const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
+// -- WAVE 53 (task w53-b, DEC-995's wave-53 amendment): population-step
+// exclusion for portal profile field-name eyebrows -----------------------
+//
+// Adjudicating the sixteen NON-COMPOSED unresolved rows named in
+// docs/design/audit/frame-control-floor-390-v12.md:28-49/97 individually
+// (per the task's own instruction, none may remain merely bucketed) found
+// two of the eleven `no-control-shape` rows are not controls at all:
+// "First name" (Chautauqua Public and Portal.dc.html:645) and "Last name"
+// (:649) are real, own-text-equal matches -- but the ONLY element in the
+// whole corpus whose own text is exactly that string is
+// src/routes/portal/profile.tsx's `<label class="chq-portal-field-label"
+// for="firstName">First name</label>` (and the sibling `for="lastName"`
+// label) -- a form-field NAME, not a tap target, exactly the
+// "typography/column register" shape src/decisions-data/DEC-393.md's
+// wave-31 amendment already rules for the desktop ledger (see the DEC_393
+// dependency marker above). Excluded here at the POPULATION step, named by
+// citation rather than by a bare line range, the same shape
+// test/desktop-control-floor.scan.test.ts's RULING_SETTLED_EXCLUSIONS
+// table uses.
+const POPULATION_EXCLUDED_FIELD_LABELS: { fileName: string; line: number; label: string; reason: string }[] = [
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 645,
+    label: 'First name',
+    reason:
+      'src/routes/portal/profile.tsx renders a label element reading "First name" for the firstName field -- ' +
+      'a form-field NAME labelling an adjacent input, not itself an interactive control or tap target (src/decisions-data/DEC-393.md, wave-31 amendment).',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 649,
+    label: 'Last name',
+    reason:
+      'src/routes/portal/profile.tsx renders a label element reading "Last name" for the lastName field -- ' +
+      'same shape as "First name" above, same field-name-eyebrow disposition.',
+  },
+];
+
+function isPopulationExcludedFieldLabel(control: { fileName: string; line: number }): boolean {
+  return POPULATION_EXCLUDED_FIELD_LABELS.some((e) => e.fileName === control.fileName && e.line === control.line);
+}
+
+const ALL_CONTROLS: DrawnControl[] = designFiles()
+  .flatMap(drawnControlsInFile)
+  .filter((c) => !isPopulationExcludedFieldLabel(c));
 
 // -- Source corpus: comment-stripped, entity-decoded, whitespace-collapsed
 // (`normalizeSource`, DEC-967's one-stripper rule -- shared with the
@@ -1016,8 +1075,232 @@ export interface Graded {
   /** WAVE 23 (DEC-393 amendment): which tier resolved this row's tokens --
    * not part of the grading grammar itself, carried through for the
    * ledger's own reporting. WAVE 26 (DEC-995 amendment) adds 'attribute'.
-   * WAVE 31 (DEC-808 wave-31 amendment) adds 'skeleton'. */
-  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | null;
+   * WAVE 31 (DEC-808 wave-31 amendment) adds 'skeleton'. WAVE 53 (task
+   * w53-b) adds 'widened-join'. */
+  matchTier: 'own-text' | 'attribute' | 'composed' | 'skeleton' | 'widened-join' | null;
+}
+
+// -- WAVE 53 (task w53-b, DEC-995's wave-53 amendment): hand-verified
+// widened-join resolutions for the fourteen remaining non-composed
+// unresolved rows (the eleven `no-control-shape` rows plus "Headshot",
+// which the attribute tier's wave-26 own text moved into that same
+// bucket, plus the four `no-token` rows -- two POPULATION-EXCLUDED above,
+// leaving fourteen here) -----------------------------------------------
+//
+// Every row below IS a control -- its floor lives on an ancestor or
+// sibling class token this file's own-text/attribute joins never consult
+// (the nearest ENCLOSING tag only, never a parent further up the tree, and
+// never a sibling render site sharing one data-driven component). Each
+// entry is HAND-VERIFIED against the real source and the real CSS rule
+// that governs it (never re-derived from the generic mentions-based
+// `resolveTokenMinHeight`/`tokenIsControlShaped` pair used elsewhere in
+// this file, which would risk picking up an unrelated same-token rule
+// elsewhere in the corpus with a taller OR shorter height and reporting a
+// height that is not actually the one this specific control renders at --
+// `.chq-btn`'s own min-height alone ranges 44px-48px across a dozen
+// unrelated scoped rules in this corpus, so a naive "add the ancestor
+// token and let the generic resolver run" widening would silently borrow
+// the wrong one). `resolvedHeight` is fed straight into this file's
+// existing OFFENDER grammar (`resolvedHeight < control.drawnFloor`), so a
+// row whose real ancestor floor falls short of its own frame's drawn floor
+// grades OFFENDER here exactly as an own-text-resolved row would --
+// "resolved" is not a synonym for "conforming".
+interface WidenedJoinResolution {
+  fileName: string;
+  line: number;
+  resolvedHeight: number;
+  tokens: string[];
+  citation: string;
+}
+
+const WIDENED_JOIN_RESOLUTIONS: WidenedJoinResolution[] = [
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 350,
+    resolvedHeight: 44,
+    tokens: ['chq-btn', 'chq-comms-batch-toggle', 'chq-comms-batch-toggle-label-phone'],
+    citation:
+      "app/src/pages/comms/RecentSends.tsx's history row-toggle button carries " +
+      'className="chq-btn chq-btn-secondary chq-comms-batch-toggle" around the ' +
+      '.chq-comms-batch-toggle-label-phone span the own-text tier resolved; ' +
+      "app/src/styles.css's terminal max-width:700px block gives .chq-btn min-height 44px, " +
+      'exactly meeting the drawn 44px floor (DEC-833).',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 537,
+    resolvedHeight: 48,
+    tokens: ['chq-btn', 'chq-btn-primary', 'chq-contacts-merge-footer', 'chq-contacts-merge-primary-phone-label'],
+    citation:
+      "app/src/pages/contacts/MergePage.tsx's primary merge button (className=\"chq-btn chq-btn-primary\") " +
+      'wraps the .chq-contacts-merge-primary-phone-label span inside a .chq-contacts-merge-footer container; ' +
+      "app/src/pages/contacts/contacts-panels.css's phone block declares " +
+      '.chq-contacts-merge-footer .chq-btn min-height:48px, exactly meeting the drawn 48px floor.',
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 417,
+    resolvedHeight: 50,
+    tokens: ['chq-content-upload-zone', 'chq-content-upload-prompt-phone'],
+    citation:
+      "app/src/pages/content/UploadZone.tsx's outer drop-zone div carries " +
+      'className="chq-upload-zone chq-content-upload-zone", two levels above the ' +
+      '.chq-content-upload-prompt-phone span the own-text tier resolved; ' +
+      "app/src/pages/content/content.css declares .chq-content-upload-zone min-height:50px " +
+      "(narrowed to 46px in app/src/pages/content/upload-zone.css's own phone block) -- " +
+      'the union maximum, 50px, clears the drawn 46px floor either way.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 149,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-submissions-status-pending-phone'],
+    citation:
+      "app/src/pages/submissions/FilterBar.tsx's status-pill button carries className=\"chq-pill\" " +
+      '(or "chq-pill is-active") around the .chq-submissions-status-pending-phone span the own-text tier resolved; ' +
+      "app/src/styles.css's terminal phone block gives .chq-pill min-height 44px, exactly meeting the drawn 44px floor.",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 391,
+    // WAVE 53 finding: a genuine, previously-invisible offender. The own-
+    // text tier's match (.chq-detail-back-short) is a real element -- the
+    // width-toggled short form of the DECISION_ACTION_LABELS.waitlisted
+    // button (app/src/pages/submissions/SubmissionDetailPage.tsx's
+    // decisionActionLabel, DEC-878 wave-129 amendment) -- but the SPAN
+    // carries no height of its own; the real floor lives on its ancestor
+    // <button className="chq-btn chq-btn-secondary">, itself wrapped in
+    // .chq-detail-decision-secondary-pair inside the phone .chq-phone-dock
+    // scaffold. app/src/pages/submissions/detail.css's own comment (near
+    // its .chq-phone-dock rules) already states the frame draws all three
+    // dock buttons -- Accept, Decline, Wait -- at min-height:46px, but the
+    // shipped CSS only raises .chq-detail-decision-primary (Accept) to
+    // 46px; .chq-detail-decision-secondary-pair .chq-btn (Decline AND
+    // Wait) stays at the desktop-derived 44px in both its base and its
+    // .chq-phone-dock override. No rule anywhere raises the secondary
+    // pair's phone floor to 46px.
+    resolvedHeight: 44,
+    tokens: ['chq-btn', 'chq-btn-secondary', 'chq-detail-decision-secondary-pair', 'chq-detail-back-short'],
+    citation:
+      'app/src/pages/submissions/detail.css declares .chq-detail-decision-secondary-pair .chq-btn min-height:44px ' +
+      "both at top level and inside its .chq-phone-dock override -- never 46px -- while the frame's own 390 " +
+      'Submission-detail dock draws all three of Accept/Decline/Wait at min-height:46px (the same file\'s own ' +
+      "comment above its .chq-phone-dock rules names all three citations). A genuine 44px-vs-46px gap.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 523,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-pill-static'],
+    citation:
+      "app/src/pages/settings/PortalSettingsPanel.tsx's SpeakerEditPills renders SPEAKER_EDIT_FIELDS " +
+      '(Bio/Headshot/Links/Session title/Abstract) as <span className="chq-pill chq-pill-static[ is-active]">' +
+      '{field.label}</span> -- the own-text tier cannot see this render site at all (the text is a JSX ' +
+      'expression, never a literal string, so it never own-text-matches any label) and instead mis-resolved ' +
+      '"Bio" to an unrelated portal-profile field-name label sharing the same word. ' +
+      "app/src/pages/settings/settings.css's phone block declares .chq-settings-portal-pills .chq-pill " +
+      'min-height:44px, exactly meeting the drawn 44px floor -- same disposition for every pill in this strip ' +
+      '("Headshot"/"Links"/"Title"/"Abstract" below).',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 524,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-pill-static'],
+    citation:
+      'Same SpeakerEditPills strip as "Bio" above (SPEAKER_EDIT_FIELDS[1].label === "Headshot", exact match) -- ' +
+      "the wave-26 attribute tier instead mis-resolved this row to an unrelated wrapper div's title=\"Headshot\" " +
+      'attribute (the profile-picture uploader section). Same .chq-settings-portal-pills .chq-pill 44px floor applies.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 525,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-pill-static'],
+    citation:
+      'Same SpeakerEditPills strip as "Bio" above (SPEAKER_EDIT_FIELDS[2].label === "Links", exact match) -- ' +
+      'the own-text tier instead mis-resolved this row to an unrelated ContactDrawer.tsx section-heading span ' +
+      'sharing the same word. Same .chq-settings-portal-pills .chq-pill 44px floor applies.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 526,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-pill-static'],
+    citation:
+      'Same SpeakerEditPills strip as "Bio" above, fourth pill (SPEAKER_EDIT_FIELDS[3].label === "Session title", ' +
+      'a wording the frame draws abbreviated to "Title" -- the same DEC-878-style width-conditioned-copy shape ' +
+      'this ledger already accepts for "Wait"/Waitlist, flagged here as a content note rather than blocking the ' +
+      'disposition since geometry, not wording, is this ledger\'s own scope) -- the own-text tier instead ' +
+      "mis-resolved this row to an unrelated Submissions-list column header and a portal-profile field label " +
+      'sharing the word "Title". Same .chq-settings-portal-pills .chq-pill 44px floor applies.',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 527,
+    resolvedHeight: 44,
+    tokens: ['chq-pill', 'chq-pill-static'],
+    citation:
+      'Same SpeakerEditPills strip as "Bio" above, fifth pill (SPEAKER_EDIT_FIELDS[4].label === "Abstract", exact ' +
+      'match) -- the own-text tier instead mis-resolved this row to unrelated Settings/Submissions section-title ' +
+      'headings sharing the same word. Same .chq-settings-portal-pills .chq-pill 44px floor applies.',
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 141,
+    resolvedHeight: 44,
+    tokens: ['chq-auth-footer-links'],
+    citation:
+      'src/routes/auth-views.tsx renders a bare, classless <a> for "Browse the sessions ›" inside a ' +
+      '<div className="chq-auth-footer-links"> wrapper -- the own-text tier finds the own-text match but no ' +
+      "chq- class on the anchor itself (`classTokensNear`'s nearest-enclosing-tag walk finds none). " +
+      "src/routes/auth.css.ts's terminal phone block declares .chq-auth-footer-links a min-height:44px, " +
+      'exactly meeting the drawn 44px floor (DEC-367 wave-57 amendment).',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1092,
+    resolvedHeight: 44,
+    tokens: ['chq-cfp-links'],
+    citation:
+      'src/routes/public/submit-views.tsx renders a bare, classless <a> for "Browse the sessions ›" inside a ' +
+      '<div class="chq-cfp-links"> wrapper, same classless-anchor shape as the Account.dc.html row above. ' +
+      'src/routes/public/cfp.css.ts declares ".chq-cfp-links a, .chq-cfp-confirm-actions a:not(.chq-btn)" ' +
+      'min-height:44px (its own header comment names both :1092 and :1135 as the two rows this exact rule ' +
+      'was written for), exactly meeting the drawn 44px floor.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 192,
+    resolvedHeight: 44,
+    tokens: ['chq-contacts-filter-add-chip'],
+    citation:
+      'app/src/pages/contacts/FilterRulesPanel.tsx renders the "+ Rule" chip as ' +
+      '<button className="chq-contacts-filter-add-chip">+ Rule</button> -- a REAL chq- class the join misses ' +
+      "for a mechanical reason: the button's onClick handler body contains a bare `<` comparison " +
+      '(`rules.length < MAX_SEGMENT_RULES`), and `classTokensNear`\'s `blob.lastIndexOf(\'<\', prevGt)` walk finds ' +
+      "that operator's `<` instead of the real `<button` tag opener, so it reads className from a garbage tag " +
+      "chunk and finds nothing. app/src/pages/contacts/contacts.css's phone block declares " +
+      '.chq-contacts-filter-add-chip min-height:44px, exactly meeting the drawn 44px floor.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1135,
+    resolvedHeight: 44,
+    tokens: ['chq-cfp-confirm-actions'],
+    citation:
+      'src/routes/public/submit-views.tsx renders a bare, classless <a href="/login"> for "Log in ›" inside a ' +
+      '<div class="chq-cfp-confirm-actions"> wrapper. The same src/routes/public/cfp.css.ts rule cited for the ' +
+      '"Browse the sessions ›" row above (".chq-cfp-links a, .chq-cfp-confirm-actions a:not(.chq-btn)" ' +
+      'min-height:44px) reaches this anchor too (it carries no .chq-btn class); a separate, later rule in the ' +
+      "same file only adds `display:flex` to .chq-cfp-links a (not this selector) and a nearby " +
+      '"tap-floor-exempt: inline-in-prose" receipt covers a DIFFERENT check (the flex-centred lens), not this ' +
+      'min-height. Exactly meets the drawn 44px floor.',
+  },
+];
+
+function widenedJoinResolutionFor(control: { fileName: string; line: number }): WidenedJoinResolution | null {
+  return WIDENED_JOIN_RESOLUTIONS.find((r) => r.fileName === control.fileName && r.line === control.line) ?? null;
 }
 
 /** WAVE 25 REPAIR (DEC-393 amendment, task w25-b): resolves the token set
@@ -1031,6 +1314,23 @@ export interface Graded {
  * no CONTROL-SHAPED member grades UNRESOLVED (`no-control-shape`) rather
  * than OFFENDER. */
 export function gradeControl(control: DrawnControl): Graded {
+  // WAVE 53 (task w53-b): a hand-verified widened-join resolution takes
+  // priority over every other tier -- these fourteen rows are already
+  // individually adjudicated (see WIDENED_JOIN_RESOLUTIONS above) and must
+  // never fall through to the generic own-text/attribute/composed/skeleton
+  // machinery, which is exactly what mis-attributed most of them in the
+  // first place.
+  const widened = widenedJoinResolutionFor(control);
+  if (widened !== null) {
+    return {
+      control,
+      resolvedHeight: widened.resolvedHeight,
+      reason: 'resolved',
+      tokens: widened.tokens,
+      matchTier: 'widened-join',
+    };
+  }
+
   let tokens: string[] = [];
   let ownTextMatched = false;
   for (const blob of NORMALIZED_BLOBS) {
@@ -1183,7 +1483,22 @@ const UNRESOLVED: Graded[] = GRADED.filter((g) => g.reason !== 'resolved' && g.r
 // branch (forcing this ceiling to -1, reading the printed offender list
 // back): LOWERED 1 -> 0, zero offenders. See
 // docs/design/audit/frame-control-floor-390-v12.md's "WAVE 34" section.
-export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
+//
+// WAVE 53 (task w53-b, DEC-995's wave-53 amendment): adjudicating the
+// sixteen non-composed unresolved rows individually (WIDENED_JOIN_RESOLUTIONS
+// above) surfaced one genuine, previously-invisible offender: "Wait"
+// (Chautauqua Submissions.dc.html:391, drawn min-height:46px). The real
+// control is the .chq-detail-decision-secondary-pair .chq-btn button (the
+// own-text tier's match, .chq-detail-back-short, is a real but heightless
+// sibling span inside it) -- app/src/pages/submissions/detail.css declares
+// that selector min-height:44px, both at top level and inside its
+// .chq-phone-dock override, while the frame draws all three dock buttons
+// (Accept/Decline/Wait) at 46px. Re-measured on this branch (forcing this
+// ceiling to -1, reading the printed offender list back): RAISED 0 -> 1.
+// No product CSS byte moved this wave (instrument-only scope); left for a
+// future wave's repair lane. See docs/design/audit/
+// frame-control-floor-390-v12.md's "WAVE 53" section.
+export const FRAME_FLOOR_DIVERGENCE_CEILING = 1;
 
 // Non-vacuity tripwire for the UNRESOLVED bucket (DEC-180/808), re-measured
 // on this branch the same way. See the audit doc for the wave-25
@@ -1237,7 +1552,24 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // composed-unseen, -1 OFFENDER; the bucket's own total this wave is
 // 90+4+12=106). See docs/design/audit/frame-control-floor-390-v12.md's
 // "WAVE 34" section.
-export const UNRESOLVED_COUNT_TRIPWIRE = 106;
+//
+// WAVE 53 (task w53-b, DEC-995's wave-53 amendment): the sixteen
+// non-composed unresolved rows (4 `no-token` + 12 `no-control-shape`) are
+// each individually adjudicated -- none left merely bucketed (per the
+// task's own mandate). Two ("First name"/"Last name",
+// Chautauqua Public and Portal.dc.html:645/649) are POPULATION-EXCLUDED
+// (see POPULATION_EXCLUDED_FIELD_LABELS, applied before ALL_CONTROLS is
+// built -- they no longer appear anywhere in this file's population at
+// all, graded or unresolved). Thirteen resolve OK and one ("Wait") grades
+// OFFENDER via WIDENED_JOIN_RESOLUTIONS above (see
+// FRAME_FLOOR_DIVERGENCE_CEILING's own WAVE 53 note). Re-measured on this
+// branch (forcing this tripwire to -1, reading the printed reason
+// breakdown back): 90 `composed-unseen`, 0 `no-token`, 0 `no-control-shape`
+// -- LOWERED 106 -> 90 (net: -16 rows removed from UNRESOLVED, composed-
+// unseen unchanged at 90). See docs/design/audit/
+// frame-control-floor-390-v12.md's "WAVE 53" section for the full
+// sixteen-row table.
+export const UNRESOLVED_COUNT_TRIPWIRE = 90;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {
@@ -1256,13 +1588,17 @@ describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campa
       'Chautauqua Docs.dc.html': 3,
       'Chautauqua Home.dc.html': 11,
       'Chautauqua Overview.dc.html': 10,
-      'Chautauqua Public and Portal.dc.html': 55,
+      'Chautauqua Public and Portal.dc.html': 53,
       'Chautauqua Review.dc.html': 18,
       'Chautauqua Settings.dc.html': 33,
       'Chautauqua Speakers.dc.html': 8,
       'Chautauqua Submissions.dc.html': 16,
     });
-    expect(ALL_CONTROLS.length).toBe(235);
+    // WAVE 53 (task w53-b): 235 -> 233, two portal profile field-name
+    // eyebrows ("First name"/"Last name", Chautauqua Public and
+    // Portal.dc.html:645/649) excluded at the population step -- see
+    // POPULATION_EXCLUDED_FIELD_LABELS above.
+    expect(ALL_CONTROLS.length).toBe(233);
   });
 
   it('non-vacuity: synthetic positive/negative controls over a fabricated single-file population in a tmpdir', () => {

@@ -256,7 +256,11 @@ describe("audit-ratchet-statement-drift", () => {
   it("resolves the LIVE value of a real exported ratchet constant from the tree", () => {
     const live = liveConstantValues();
     expect(live.get("CANCELLED_PADDING_GAP_CEILING")).toEqual([0]);
-    expect(live.get("FRAME_FLOOR_DIVERGENCE_CEILING")).toEqual([0]);
+    // WAVE 53 (task w53-b): raised 0 -> 1, one genuine offender ("Wait",
+    // Chautauqua Submissions.dc.html:391) -- see
+    // test/frame-control-floor.scan.test.ts's own WAVE 53 note above this
+    // constant.
+    expect(live.get("FRAME_FLOOR_DIVERGENCE_CEILING")).toEqual([1]);
   });
 
   it("extracts all four documented statement shapes from synthetic fixture text", () => {
