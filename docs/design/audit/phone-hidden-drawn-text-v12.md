@@ -551,3 +551,197 @@ own roster forced to `-1` (read back, never trusted from a prior wave): the
 PREMISE-FALSE population is still 20 rows, byte-identical to the roster
 below -- none of these four verdicts removes a row, so the ceiling is left
 at `20`, unmoved, correctly.
+
+## Wave-55 amendment (DEC-725, task w55-d): Slice A -- 8 SPA page-sheet rows individually opened
+
+This ledger's own closing sentence under the PREMISE-FALSE roster has called
+each of its 20 rows "a candidate for a future repair lane naming its own
+sheet/selector/frame line" since wave-39. Wave-51 opened the four shared-root
+`app/src/styles.css` rows (see above); the 16 page-sheet rows had never been
+individually opened. This is SLICE A -- 8 of those 16 (the other 8 belong to
+task w55-e, "Slice B"). DOC-ONLY: this amendment moves no CSS byte and no
+ceiling. Each verdict below was reached the same way the wave-51 amendment's
+method states verbatim: opening the cited `.dc.html` file from its
+`font-size:19px` label line through to the NEXT label (never stopping at the
+roster's cited line alone), reading the live component tree that mounts the
+selector's opposite side, and reading the standing provenance comment already
+sitting above the rule in its own sheet, then recording one verdict from the
+file's own four-verdict grammar (REAL DEFECT / INSTRUMENT ARTEFACT /
+CORRECTLY DRAWN OPT-OUT / TWIN-RESOLVED).
+
+### Row 1 -- `app/src/pages/contacts/contacts.css` :: `.chq-contacts-title-row .chq-summary` ("Contacts")
+
+Verdict: **INSTRUMENT ARTEFACT.** Chautauqua Contacts.dc.html's "Contacts"
+frame extent (label line 175, extent 175-229) draws its H1 "Contacts" at line
+185, inside the phone card's own header band. On the live tree,
+`ContactsApp.tsx` renders `<div className="chq-contacts-title-row"><h1
+className="chq-page-title">Contacts</h1>{summary && <span
+className="chq-summary">{summary}</span>}</div>` -- `.chq-contacts-title-row`
+is the OUTER wrapping div, and the rule under review's own two-token selector
+pulls that ancestor token into the population walk's `tokensOf(selector)`
+alongside the narrower `.chq-summary` it actually hides. The balanced-close-
+tag walk on that ancestor token sweeps in the sibling `<h1>`'s "Contacts"
+text, which the hide never touches (`.chq-page-title` carries no phone rule
+anywhere in this file). `contacts.css`'s own standing DEC-919 comment above
+this rule (line ~1341) already certifies `.chq-summary`'s real content: a
+composed line built from five clauses (`N people`, `M speakers`, `R
+returning speaker(s)`, `across E events`, `K possible duplicates`) --
+"Contacts" is not, and never was, one of them. The literal this row's
+citation names is drawn by the always-visible `.chq-page-title` sibling the
+selector's ancestor token happens to also wrap, not by `.chq-summary` itself.
+
+### Row 2 -- `app/src/pages/content/content.css` :: `.chq-content-worklist .chq-bulkbar` ("Approve")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT.** Chautauqua Content.dc.html's "Content"
+frame extent (label line 195, extent 195-243) draws no bulk bar at rest --
+only per-row `Approve`/`Open` verbs (line 222) inside each card, plus a tab
+bar footer. The rule under review, `.chq-content-worklist .chq-bulkbar {
+display: none }`, hides the bulk bar in that exact REST state, matching this
+extent's own anatomy (no bulk band anywhere in it). The "Approve" literal
+that resolves this candidate is genuinely drawn by `SessionList.tsx`'s
+`chq-bulkbar-actions` primary button (`Approve {selectedIds.size}`, a static
+"Approve " child plus a composed count) -- but that content, and the docked
+band that holds it, belongs to the SELECTING mode, drawn in the SIBLING
+`Content · selecting` extent (label line 243, extent 243-288) at its own
+docked footer (frame lines 279-280, `Approve 2` over "Approving sends
+nothing..."), which the standing comment above `.chq-content-worklist-
+selecting .chq-bulkbar` (content.css line ~1797) already cites verbatim and
+which the un-hidden sibling rule (`display: flex`) draws un-hidden at that
+mode. The cluster-scoped join credited this REST-mode hide with a match
+found anywhere in the whole Content.dc.html file rather than narrowing to
+the REST extent alone, so the citation lands on line 198 (inside the "Content"
+extent) even though the literal's real, always-reachable home is the
+selecting-mode dock the file's own comment already names.
+
+### Row 3 -- `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-bulkbar-count` ("Approve")
+
+Verdict: **INSTRUMENT ARTEFACT.** `.chq-bulkbar-count`'s own text, per
+`SessionList.tsx`, is `{selectedIds.size} selected` -- entirely composed, no
+static "Approve" anywhere in it. The rule's selector's OTHER token,
+`.chq-content-worklist-selecting`, is the outer page-root wrapper class
+(`className={phoneSelectMode ? 'chq-content-worklist chq-content-worklist-
+selecting' : 'chq-content-worklist'}`) around the ENTIRE selecting-mode page
+-- table rows, chipstrip, and the bulk-bar dock together. `tokensOf(selector)`
+pulls that wrapper token into the walk, whose balanced-close-tag sweep
+reaches the nested `chq-bulkbar-actions` primary button's static "Approve "
+child many levels deeper in the same tree, many DOM nodes away from
+`.chq-bulkbar-count`. The rule under review hides only the `{n} selected`
+counter (superseded by the frame's own dock anatomy, which the wave-51-
+adjacent selecting-mode sibling rule already draws correctly); "Approve" is
+never inside the element this rule actually touches.
+
+### Row 4 -- `app/src/pages/content/content.css` :: `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary` ("Approve")
+
+Verdict: **INSTRUMENT ARTEFACT.** The rule hides `SessionList.tsx`'s
+"Clear" tertiary button (`<button className="chq-btn chq-btn-tertiary"
+onClick={...}>Clear</button>`) inside `chq-bulkbar-actions`'s selecting-mode
+dock -- per this file's own standing comment above the rule (line ~1849,
+"Clear's capability... has a verified phone home"), a deliberate DEC-720/
+DESIGN-RULINGS-A1 opt-out ("one verb, one scope: the bar owns Approve"). The
+middle selector token, `.chq-bulkbar-actions`, is the shared wrapper `<div>`
+around BOTH the primary "Approve {n}" button and the tertiary "Clear" button
+as siblings. `tokensOf(selector)` pulls that ancestor token into the walk,
+whose balanced-close-tag sweep reaches the sibling primary button's static
+"Approve " text. The element the rule actually hides (`.chq-btn-tertiary`,
+"Clear") never itself carries the word "Approve" -- the literal belongs to
+the sibling primary button the ancestor token also wraps, one container
+level up from the rule's own reach.
+
+### Row 5 -- `app/src/pages/content/content.css` :: `.chq-content-comment-actions` ("Ask for changes")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT.** Chautauqua Content.dc.html's "Session ·
+deliverable" frame extent (label line 369, extent 369-434) draws a docked
+footer band (lines 421-426) holding "Ask for changes" (line 423) and "Send
+note only" (line 424) as the LAST child of the 390 frame. The rule under
+review hides `CommentThread.tsx`'s INLINE composer row (`chq-content-comment-
+actions`, "Ask for changes" / "Send note only" as an in-flow pair) at phone.
+The file's own standing w13-g/DEC-576/DEC-808-wave-52 comment directly above
+the rule (content.css line ~1977) already documents why: `CommentThread.tsx`
+mounts a SECOND, docked `.chq-phone-dock` footer (`data-chq-phone-dock`,
+lines 150-174) with the SAME "Ask for changes"/"Send note only" pair and the
+same `submit(true)`/`submit(false)` handlers, matching the frame's dock
+anatomy exactly -- the inline row becomes redundant chrome at this width and
+is hidden in favour of the always-visible dock twin, never removing the
+capability.
+
+### Row 6 -- `app/src/pages/review/scorecard.css` :: `.chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value` ("Overall")
+
+Verdict: **INSTRUMENT ARTEFACT.** Chautauqua Review.dc.html's "Reviewer
+scorecard" frame extent (label line 276, extent 276-351) draws an "Overall"
+eyebrow at line 324 beside a 34px value at line 328. `Scorecard.tsx` renders
+`<p className="chq-review-overall-line"><span
+className="chq-section-label">Overall</span><span
+className="chq-review-overall-value">{formatScore(overallScore)}</span>{...
+<span className="chq-review-overall-value-phone">Not yet</span>}</p>`. The
+rule under review only ever hides the DESKTOP score span
+(`.chq-review-overall-value`) in the one state where the phone "Not yet"
+twin is present -- a deliberate, DEC-889-wave-159-documented substitution
+between two mutually-exclusive value spans, confirmed by the same file's own
+comment above the rule (scorecard.css line ~423). "Overall" is not this
+value span's own text; it belongs to the sibling `.chq-section-label`, which
+the `:has()` selector's OUTER token, `.chq-review-overall-line`, also wraps.
+`tokensOf(selector)` pulls that ancestor token into the population walk, and
+its balanced-close-tag sweep supplies the eyebrow's static text as if it
+were the narrower `.chq-review-overall-value` rule's own finding.
+`.chq-section-label` is never phone-hidden anywhere in this file -- the
+frame's "Overall" requirement is always met, untouched by this rule.
+
+### Row 7 -- `app/src/pages/submissions/detail.css` :: `.chq-detail-page .chq-participants-table thead` ("Triage")
+
+Verdict: **INSTRUMENT ARTEFACT.** Chautauqua Submissions.dc.html's
+"Submission detail" 390 extent (label line 352, extent 352-399) draws a "‹
+Triage" back link at line 358, inside the phone card's header band -- no
+participants table anywhere in this extent. On the live tree,
+`SubmissionDetailPage.tsx` mounts `<div className="chq-page chq-detail-page
+chq-measure-wide">`, with the back link's phone label
+(`<span className="chq-detail-back-short">Triage</span>`, line 1154) near the
+top and the `<table className="chq-table chq-participants-table"
+id="submission-participants-table">` (line 1662) far below it, both inside
+the SAME page-root wrapper. The rule under review's leading token,
+`.chq-detail-page`, is that whole page-root class; `tokensOf(selector)`
+pulls it into the walk, and its balanced-close-tag sweep reaches the
+unrelated back-link text dozens of DOM levels away from
+`.chq-participants-table thead`, the narrow element the rule actually hides
+(the participants column-header row, restructured into stacked labels on
+phone a few lines below this rule in the same file). "Triage" is never
+inside the table this rule touches.
+
+### Row 8 -- `app/src/pages/submissions/submissions.css` :: `.chq-submissions-table thead` ("Accept")
+
+Verdict: **INSTRUMENT ARTEFACT.** Chautauqua Submissions.dc.html's
+"Submissions" 390 extent (label line 134, extent 134-187) draws a per-row
+`Accept`/`Decline`/`Read` action group inside each stacked card (line 165)
+-- no table header row anywhere in this extent. On the live tree,
+`SubmissionsTable.tsx` mounts `<table className="chq-table chq-submissions-
+table">` (line 540) wrapping BOTH the `<thead>` (column headers) and the
+`<tbody>`, whose per-row `<td>` (line 635) renders
+`<div className="chq-submissions-row-triage" role="group" ...><button
+className="chq-btn chq-btn-primary" ...>Accept</button>...</div>` -- the SAME
+Accept/Decline pairing the frame's card action group draws. The rule under
+review's leading token, `.chq-submissions-table`, is the whole `<table>`
+element; `tokensOf(selector)` pulls it into the walk, and its balanced-
+close-tag sweep reaches the tbody row-action button many nodes below the
+`thead` the rule actually hides (submissions.css line ~649, restructuring
+desktop's tabular header into the stacked-card layout this same terminal
+block builds). "Accept" is drawn by the still-visible tbody triage button,
+matching the frame's own per-row action, never by the `thead` this rule
+hides.
+
+### Outcome for `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING`
+
+All eight Slice-A rows resolve without a CSS change: five INSTRUMENT
+ARTEFACTs (in every one of the five, a wrapping ANCESTOR token pulled into
+`tokensOf(selector)` by the rule's own multi-token descendant selector
+sweeps in a sibling or cousin element's still-visible text that the rule
+never touches -- the same "bulk container token" shape this ledger's own
+wave-35 twin-detection methodology already names, here striking the
+PREMISE-FALSE join's CSS-selector side rather than the twin-candidate side)
+and three CORRECTLY DRAWN OPT-OUTs (a mode-toggled or width-toggled sibling
+rule, in the SAME sheet, already draws the literal un-hidden at the extent
+that actually carries it). Re-measured with `app/src/phone-hidden-drawn-
+text.scan.test.ts`'s own roster read back live (never trusted from a prior
+wave): the PREMISE-FALSE population is still 20 rows, byte-identical to the
+roster above -- none of these eight verdicts removes a row, so
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` is left at `20`, unmoved,
+correctly. No REAL DEFECT and no TWIN-RESOLVED verdict was reached in this
+slice; Slice B (task w55-e) owns the remaining 8 page-sheet rows.
