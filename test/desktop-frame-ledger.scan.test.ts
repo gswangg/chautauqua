@@ -106,10 +106,11 @@
 // CLAIMED_FLOOR reaching the full reachable desktop population (100 of 100),
 // which together with the 2 deviation-deferred frames accounts for the whole
 // 102-frame pack.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -163,8 +164,33 @@ function designFiles(): string[] {
     .sort();
 }
 
-function labelsInFile(fileName: string): RawLabel[] {
-  const full = join(DESIGN_ROOT, fileName);
+/** 1-based line number of `fileName`'s single `</x-dc>` template close tag.
+ * Ported (never imported -- each of the four desktop-ledger files carries
+ * its own copy, per this file's existing convention of self-contained scan
+ * files) so every frame extent clips at the template's own close rather
+ * than running into `<script data-dc-script>` or past EOF (DEC-967 wave-41
+ * amendment). Throws loudly if the tag is missing or appears more than
+ * once, so a re-cut pack that breaks the one-close-per-file invariant fails
+ * immediately instead of silently mis-clipping every extent in the file. */
+// `root` defaults to DESIGN_ROOT for every real population walk; the
+// non-vacuity control test below is the only caller that ever passes a
+// tmpdir instead, so a fabricated frame past a copy's own `</x-dc>` can be
+// exercised through these exact functions rather than a re-implementation.
+function templateCloseLine(fileName: string, root: string = DESIGN_ROOT): number {
+  const full = join(root, fileName);
+  const lines = readFileSync(full, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((content, idx) => {
+    if (content.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fileName}: expected exactly one </x-dc>, found ${matches.length}`);
+  }
+  return matches[0]!;
+}
+
+function labelsInFile(fileName: string, root: string = DESIGN_ROOT): RawLabel[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
   const labels: RawLabel[] = [];
   lines.forEach((content, idx) => {
@@ -178,15 +204,16 @@ function labelsInFile(fileName: string): RawLabel[] {
 /** Every label-opened frame in `fileName`, tagged with whether its extent
  * contains a phone (width:390px+height:844) line -- i.e. whether it is the
  * phone ledger's population wearing this file's label grammar. */
-function allFramesInFile(fileName: string): { frame: Frame; isPhone: boolean }[] {
-  const full = join(DESIGN_ROOT, fileName);
+function allFramesInFile(fileName: string, root: string = DESIGN_ROOT): { frame: Frame; isPhone: boolean }[] {
+  const full = join(root, fileName);
   const relFile = relative(REPO_ROOT, full);
   const lines = readFileSync(full, 'utf-8').split('\n');
-  const labels = labelsInFile(fileName);
+  const labels = labelsInFile(fileName, root);
 
+  const closeLine = templateCloseLine(fileName, root);
   return labels.map((label, i) => {
     const nextLabel = labels[i + 1];
-    const extentEnd = nextLabel ? nextLabel.line : Infinity;
+    const extentEnd = Math.min(nextLabel ? nextLabel.line : Infinity, closeLine);
     const extentLines = lines.slice(label.line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
     const isPhone = extentLines.some(isFrameLine);
     return {
@@ -686,5 +713,60 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
       );
     }
     expect(CLAIMS.length + EXCLUDED.length).toBeGreaterThanOrEqual(ALL_FRAMES.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NON-VACUITY (DEC-967 wave-41): a fabricated frame-shaped fixture written to
+// a real tmpdir copy, exercised through templateCloseLine/allFramesInFile/
+// citationClaims exactly as the population walk above uses them -- proves
+// the clip actually moves the boundary rather than merely reading back a
+// constant this file itself wrote.
+// ---------------------------------------------------------------------------
+
+describe('non-vacuity: the last frame extent clips at the tmpdir copy own </x-dc>', () => {
+  let dir: string;
+  const FIXTURE_NAME = 'Fixture Desktop.dc.html';
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'desktop-frame-ledger-close-fixture-'));
+    const lines = [
+      '<x-dc>',
+      `  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Fixture · last frame</span>`,
+      '  <span>content line still inside the template body, before the close</span>',
+      '</x-dc>',
+      '<script type="text/x-dc" data-dc-script">',
+      '  <span>content line inside the script body, past the close</span>',
+      '</script>',
+    ];
+    writeFileSync(join(dir, FIXTURE_NAME), lines.join('\n') + '\n', 'utf8');
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('templateCloseLine resolves the fixture single </x-dc>, and the last frame extentEnd clips to it (never Infinity/EOF)', () => {
+    const closeLine = templateCloseLine(FIXTURE_NAME, dir);
+    expect(closeLine).toBe(4);
+    const entries = allFramesInFile(FIXTURE_NAME, dir);
+    expect(entries.length).toBe(1);
+    expect(entries[0]!.frame.extentEnd).toBe(4);
+  });
+
+  it('a citation before the close lands inside the frame; the same frame-shaped fixture content after the close does not', () => {
+    const frame = allFramesInFile(FIXTURE_NAME, dir)[0]!.frame;
+    const before: Citation = {
+      citingFile: 'fixture',
+      frameFileName: FIXTURE_NAME,
+      firstLine: 3,
+      matchText: 'fixture-before',
+    };
+    const after: Citation = {
+      citingFile: 'fixture',
+      frameFileName: FIXTURE_NAME,
+      firstLine: 6,
+      matchText: 'fixture-after',
+    };
+    expect(citationClaims(before, frame)).toBe(true);
+    expect(citationClaims(after, frame)).toBe(false);
   });
 });

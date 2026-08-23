@@ -100,10 +100,11 @@
 //
 // This file names the app's ungraded desktop field-width fidelity; it does
 // not close it, and it touches no CSS byte anywhere in the tree.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -144,8 +145,29 @@ interface FrameExtent {
   extentEnd: number;
 }
 
-function labelsInFile(fileName: string): RawLabel[] {
-  const full = join(DESIGN_ROOT, fileName);
+/** 1-based line number of `fileName`'s single `</x-dc>` template close tag.
+ * Ported (never imported -- each of the four desktop-ledger files carries
+ * its own copy) from test/desktop-frame-ledger.scan.test.ts, so every frame
+ * extent clips at the template's own close rather than running into
+ * `<script data-dc-script>` or past EOF (DEC-967 wave-41 amendment). Throws
+ * loudly if the tag is missing or appears more than once. `root` defaults to
+ * DESIGN_ROOT; the non-vacuity control test below is the only caller that
+ * ever passes a tmpdir instead. */
+function templateCloseLine(fileName: string, root: string = DESIGN_ROOT): number {
+  const full = join(root, fileName);
+  const lines = readFileSync(full, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((content, idx) => {
+    if (content.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fileName}: expected exactly one </x-dc>, found ${matches.length}`);
+  }
+  return matches[0]!;
+}
+
+function labelsInFile(fileName: string, root: string = DESIGN_ROOT): RawLabel[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
   const labels: RawLabel[] = [];
   lines.forEach((content, idx) => {
@@ -156,13 +178,14 @@ function labelsInFile(fileName: string): RawLabel[] {
   return labels;
 }
 
-function allFramesInFile(fileName: string): { frame: FrameExtent; isPhone: boolean }[] {
-  const full = join(DESIGN_ROOT, fileName);
+function allFramesInFile(fileName: string, root: string = DESIGN_ROOT): { frame: FrameExtent; isPhone: boolean }[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
-  const labels = labelsInFile(fileName);
+  const labels = labelsInFile(fileName, root);
+  const closeLine = templateCloseLine(fileName, root);
   return labels.map((label, i) => {
     const nextLabel = labels[i + 1];
-    const extentEnd = nextLabel ? nextLabel.line : Infinity;
+    const extentEnd = Math.min(nextLabel ? nextLabel.line : Infinity, closeLine);
     const extentLines = lines.slice(label.line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
     const isPhone = extentLines.some(isPhoneFrameLine);
     return { frame: { fileName, line: label.line, title: label.title, extentEnd }, isPhone };
@@ -261,8 +284,12 @@ export function drawnFieldWidthsInFrameText(
   return out;
 }
 
-function drawnFieldWidthsInFile(fileName: string, frames: FrameExtent[]): DrawnFieldWidth[] {
-  const full = join(DESIGN_ROOT, fileName);
+function drawnFieldWidthsInFile(
+  fileName: string,
+  frames: FrameExtent[],
+  root: string = DESIGN_ROOT
+): DrawnFieldWidth[] {
+  const full = join(root, fileName);
   const content = readFileSync(full, 'utf-8');
   const lines = content.split('\n');
   const lineStartIndex: number[] = [0];
@@ -836,5 +863,39 @@ describe('B10 desktop field-width ledger (DEC-896/DEC-808 wave-28, v12 mobile ca
       );
     }
     expect(UNRESOLVED.length).toBeGreaterThanOrEqual(FIELD_WIDTH_UNRESOLVED_CEILING);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NON-VACUITY (DEC-967 wave-41): a fabricated max-width-shaped string on
+// either side of a tmpdir copy's own </x-dc>, run through
+// drawnFieldWidthsInFile exactly as ALL_WIDTHS above is built.
+// ---------------------------------------------------------------------------
+
+describe('non-vacuity: a drawn field width past the tmpdir copy own </x-dc> is not swept into the last frame extent', () => {
+  let dir: string;
+  const FIXTURE_NAME = 'Fixture Field Width.dc.html';
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'desktop-field-width-close-fixture-'));
+    const lines = [
+      '<x-dc>',
+      `  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Fixture · last frame</span>`,
+      '  <input style="max-width:420px">Before close</input>',
+      '</x-dc>',
+      '<script type="text/x-dc" data-dc-script">',
+      '  <input style="max-width:420px">After close</input>',
+      '</script>',
+    ];
+    writeFileSync(join(dir, FIXTURE_NAME), lines.join('\n') + '\n', 'utf8');
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('the max-width element before </x-dc> is captured; the identically-shaped one after it is not', () => {
+    const entries = allFramesInFile(FIXTURE_NAME, dir).filter((e) => !e.isPhone).map((e) => e.frame);
+    const widths = drawnFieldWidthsInFile(FIXTURE_NAME, entries, dir);
+    expect(widths.length).toBe(1);
+    expect(widths[0]!.line).toBe(3);
   });
 });

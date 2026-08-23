@@ -283,10 +283,11 @@
 // This file names the app's ungraded desktop control-floor fidelity; it
 // does not close it, and it does not touch app/src/styles.css or any
 // other desktop CSS -- desktop stays frozen.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collapseDigitsToSkeleton, enumerateSourceFiles, normalizeSource } from './frame-source-corpus';
 import { COMPOSED_EXCLUSIONS, FIXTURE_EXCLUSIONS } from './desktop-control-label.scan.test';
 import { discoverComposedHelpers, resolveComposedLabel, type ComposedHelper } from './helpers/composed-label-resolve';
@@ -334,8 +335,29 @@ interface FrameExtent {
   extentEnd: number;
 }
 
-function labelsInFile(fileName: string): RawLabel[] {
-  const full = join(DESIGN_ROOT, fileName);
+/** 1-based line number of `fileName`'s single `</x-dc>` template close tag.
+ * Ported (never imported -- each of the four desktop-ledger files carries
+ * its own copy) from test/desktop-frame-ledger.scan.test.ts, so every frame
+ * extent clips at the template's own close rather than running into
+ * `<script data-dc-script>` or past EOF (DEC-967 wave-41 amendment). Throws
+ * loudly if the tag is missing or appears more than once. `root` defaults to
+ * DESIGN_ROOT; the non-vacuity control test below is the only caller that
+ * ever passes a tmpdir instead. */
+function templateCloseLine(fileName: string, root: string = DESIGN_ROOT): number {
+  const full = join(root, fileName);
+  const lines = readFileSync(full, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((content, idx) => {
+    if (content.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fileName}: expected exactly one </x-dc>, found ${matches.length}`);
+  }
+  return matches[0]!;
+}
+
+function labelsInFile(fileName: string, root: string = DESIGN_ROOT): RawLabel[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
   const labels: RawLabel[] = [];
   lines.forEach((content, idx) => {
@@ -349,13 +371,14 @@ function labelsInFile(fileName: string): RawLabel[] {
 /** Every label-opened frame in `fileName`, tagged with whether its extent
  * contains a phone (width:390px+height:844) line -- identical derivation
  * to test/desktop-frame-ledger.scan.test.ts's own allFramesInFile. */
-function allFramesInFile(fileName: string): { frame: FrameExtent; isPhone: boolean }[] {
-  const full = join(DESIGN_ROOT, fileName);
+function allFramesInFile(fileName: string, root: string = DESIGN_ROOT): { frame: FrameExtent; isPhone: boolean }[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
-  const labels = labelsInFile(fileName);
+  const labels = labelsInFile(fileName, root);
+  const closeLine = templateCloseLine(fileName, root);
   return labels.map((label, i) => {
     const nextLabel = labels[i + 1];
-    const extentEnd = nextLabel ? nextLabel.line : Infinity;
+    const extentEnd = Math.min(nextLabel ? nextLabel.line : Infinity, closeLine);
     const extentLines = lines.slice(label.line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
     const isPhone = extentLines.some(isPhoneFrameLine);
     return { frame: { fileName, line: label.line, title: label.title, extentEnd }, isPhone };
@@ -467,8 +490,8 @@ export function drawnControlsInFrameText(
   return out;
 }
 
-function drawnControlsInFile(fileName: string): DrawnControl[] {
-  const full = join(DESIGN_ROOT, fileName);
+function drawnControlsInFile(fileName: string, root: string = DESIGN_ROOT): DrawnControl[] {
+  const full = join(root, fileName);
   const content = readFileSync(full, 'utf-8');
   const lines = content.split('\n');
   const lineStartIndex: number[] = [0];
@@ -476,7 +499,7 @@ function drawnControlsInFile(fileName: string): DrawnControl[] {
     lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
   }
 
-  const frames = populatedFrames(allFramesInFile(fileName));
+  const frames = populatedFrames(allFramesInFile(fileName, root));
   const out: DrawnControl[] = [];
   for (const frame of frames) {
     const startOff = lineStartIndex[frame.line - 1]!;
@@ -496,7 +519,7 @@ function drawnControlsInFile(fileName: string): DrawnControl[] {
   return out;
 }
 
-const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap(drawnControlsInFile);
+const ALL_CONTROLS: DrawnControl[] = designFiles().flatMap((f) => drawnControlsInFile(f));
 
 // -- Match side: normalized non-test app/src/** + src/** corpus ------------
 // (frame-source-corpus's shared stripper/decoder -- DEC-967's one-stripper
@@ -2345,5 +2368,39 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
       'Chautauqua Contacts.dc.html:602',
       'Chautauqua Submissions.dc.html:314',
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NON-VACUITY (DEC-967 wave-41): a fabricated drawn-control-shaped string on
+// either side of a tmpdir copy's own </x-dc>, run through
+// drawnControlsInFile exactly as ALL_CONTROLS above is built.
+// ---------------------------------------------------------------------------
+
+describe('non-vacuity: a drawn control past the tmpdir copy own </x-dc> is not swept into the last frame extent', () => {
+  let dir: string;
+  const FIXTURE_NAME = 'Fixture Control Floor.dc.html';
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'desktop-control-floor-close-fixture-'));
+    const lines = [
+      '<x-dc>',
+      `  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Fixture · last frame</span>`,
+      '  <a style="min-height:44px; border-radius:8px; border:1px solid #000">Before close</a>',
+      '</x-dc>',
+      '<script type="text/x-dc" data-dc-script">',
+      '  <a style="min-height:44px; border-radius:8px; border:1px solid #000">After close</a>',
+      '</script>',
+    ];
+    writeFileSync(join(dir, FIXTURE_NAME), lines.join('\n') + '\n', 'utf8');
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('the control drawn before </x-dc> is captured; the identically-shaped one after it is not', () => {
+    const controls = drawnControlsInFile(FIXTURE_NAME, dir);
+    const labels = controls.map((c) => c.label);
+    expect(labels).toContain('Before close');
+    expect(labels).not.toContain('After close');
   });
 });
