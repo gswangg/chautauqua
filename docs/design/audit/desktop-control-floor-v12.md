@@ -758,3 +758,102 @@ by printing every States-frame row's pre-exclusion status (see
 accounting assertion, unchanged in shape, total lowered `266 -> 247` because
 the population itself shrank by 19 real rows, never by loosening the
 assertion). Zero product CSS bytes moved -- this wave is instrument-only.
+
+## WAVE 53 (DEC-651 wave-53 amendment, task w53-c): the 14 non-composed unresolved rows are adjudicated individually, not left bucketed
+
+DEC-651's wave-53 amendment (mirroring DEC-995's wave-53 amendment for the
+phone half) named the post-wave-33 131-row unresolved bucket's own
+composition -- 121 `composed-unseen` + 2 `no-token` + 10 `no-control-shape`
++ 2 `cross-surface-match` -- as itself non-homogeneous, and required each of
+the FOURTEEN non-`composed-unseen` rows to get one of exactly three
+dispositions, with a receipt: RESOLVED (the join widens to the
+ancestor/sibling token that actually paints the control face, and the row
+rejoins the graded population), POPULATION-EXCLUDED (not a control, per the
+`isStatesSwatchFrameTitle`/`RULING_SETTLED_EXCLUSIONS` precedent, carrying a
+ruling id), or OFFENDER (a genuine floor gap, recorded not fixed --
+DESKTOP IS FROZEN). The 121 `composed-unseen` rows are unchanged, out of
+scope.
+
+Recovered the current per-row identity exactly as WAVE 29/33 did: forced
+both ceilings to `-1` on this branch and read the printed reason breakdown
+back, cross-checked against this doc's own WAVE 29/33 sections above.
+
+### The fourteen rows, hand-verified against the real render source
+
+Every row below resolves via a hand-verified per-coordinate token
+override (`MANUAL_JOIN_WIDENING` in `test/desktop-control-floor.scan.test.ts`)
+that widens the join to the REAL control's class, then runs through the
+SAME `finalizeTokens` every other tier in the file already uses -- no
+hand-typed declared-height number anywhere in this wave's work, only the
+tokens, checked against source and cited below. **All fourteen resolve
+`ok`: zero rows raise `DESKTOP_FLOOR_DIVERGENCE_CEILING`, zero rows needed a
+fresh `POPULATION-EXCLUDED` table entry.**
+
+| row (bare path + line) | drawn label | prior reason | real control | real declared floor | drawn floor | disposition |
+|---|---|---|---|---|---|---|
+| `Chautauqua Agenda.dc.html`:241 | "20" | `no-token` | `BreaksPanel.tsx`:449 `<input id="chq-break-duration" className="chq-input" type="number" value={form.durationMin}>` -- the "Minutes" break-duration field; its rendered VALUE is never a text node, so own-text can never match it | 48px (`chq-input`, max across the corpus's top-level rules) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Contacts.dc.html`:567 | "No template — write it here" | `no-token` | `BulkEmailModal.tsx`:381-387 `<select id="bulk-email-template" className="chq-select"><option value="">No template — write it here</option>...` -- own-text matched the `<option>`, which carries no class of its own | 46px (`chq-select`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Contacts.dc.html`:601 | "Speaker" | `no-control-shape` | `AddToEventModal.tsx`:176 `className={`chq-btn chq-add-to-event-role-btn${role === opt.value ? ' is-selected' : ''}`}`, driven by `PARTICIPANT_ROLE_OPTIONS` (a shared vocabulary, never a literal "Speaker" string) -- own-text landed on an unrelated worklist-column-header/page-title token set instead | 46px (`chq-add-to-event-role-btn`, `contacts-panels.css`:1215, top-level) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Contacts.dc.html`:602 | "Reviewer" | `cross-surface-match` (receipt: `app/src/pages/contacts/contacts-role-chip-floor.scan.test.ts`, DEC-393 wave-17) | Same control as `:601` above (the "As" role chip group's unselected state). The existing cross-surface-match disposition's `chq-pill` attribution (PeopleRolesPanel.tsx, a different Settings modal) was already known to be a mis-join per wave-159's own analysis; the wave-17 receipt already names `chq-add-to-event-role-btn` as the real, 46px control | 46px (`chq-add-to-event-role-btn`) | 46px | **RESOLVED** -- OK (supersedes the cross-surface-match table entry, no longer a quiet third bucket) |
+| `Chautauqua Contacts.dc.html`:824 | "First name" | `no-control-shape` | `NewContactModal.tsx`:140-148 renders a `FormRow` label PLUS a sibling `<input className="chq-input" placeholder="First name">` -- own-text matched the label span (`chq-portal-field-label`), never the real input beside it | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Contacts.dc.html`:828 | "Last name" | `no-control-shape` | `NewContactModal.tsx`:150-157, same shape as `:824` | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Contacts.dc.html`:839 | "Company" | `no-control-shape` | `NewContactModal.tsx`:178-185, same shape as `:824` | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Public and Portal.dc.html`:1435 | "First name" | `no-control-shape` | `src/routes/portal/edit.tsx`:445-449, the co-presenter "First name" field -- `<label class="chq-portal-field-label" for="cp-first-name">` + sibling `<input class="chq-input">` | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Public and Portal.dc.html`:1439 | "Last name" | `no-control-shape` | `src/routes/portal/edit.tsx`:455-459, same shape as `:1435` | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Settings.dc.html`:1064 | "Sessions" | `no-control-shape` | `EmbedsPanel.tsx`:392-397 `<select className="chq-select">` (the embed "Surface" field), whose current value happens to read "Sessions" -- own-text found that literal word elsewhere in unrelated page-title/section-label registers | 46px (`chq-select`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Settings.dc.html`:1287 | "First name" | `no-control-shape` | `PeopleRolesPanel.tsx`:535-538, the "Invite someone" modal's "First name" field -- same `FormRow`-label-vs-input shape as the Contacts rows above | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Settings.dc.html`:1291 | "Last name" | `no-control-shape` | `PeopleRolesPanel.tsx`:545-548, same shape as `:1287` | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+| `Chautauqua Submissions.dc.html`:314 | "Waitlist" | `cross-surface-match` (receipt: `app/src/pages/submissions/submissions-decision-pair-floor.scan.test.ts`, DEC-964 wave-26) | `SubmissionDetailPage.tsx` renders the secondary decision pair's label via `decisionActionLabel(status)`, never a literal "Waitlist" string, inside `.chq-detail-decision-secondary-pair`; the wave-26 receipt already names `detail.css`'s `.chq-detail-decision-secondary-pair .chq-btn` top-level rule as the real control | 44px (`chq-detail-decision-secondary-pair`) | 44px | **RESOLVED** -- OK (supersedes the cross-surface-match table entry, no longer a quiet third bucket) |
+| `Chautauqua Submissions.dc.html`:680 | "Audience level" | `no-control-shape` | `FieldModal.tsx`:231-242, the CFP form field editor's "Label" input -- `<FormRow label="Label" htmlFor="field-label"><input id="field-label" className="chq-input" value={label}>` -- own-text matched the drawn VALUE (a stored field label), never the input rendering it | 48px (`chq-input`) | 46px | **RESOLVED** -- OK |
+
+### The two `cross-surface-match` rows get an explicit call, not a quiet third bucket
+
+Per this wave's own required split: `:602` "Reviewer" and `:314` "Waitlist"
+each already carried a positive, live receipt test (wave-17 and wave-26
+respectively) asserting the REAL control's floor byte-for-byte. Both
+receipts independently prove the real control MEETS the frame's drawn
+floor exactly (46=46, 44=44) -- so the correct call for both is **RESOLVED**
+(the cross-surface token legitimately governs nothing; the join simply
+needed to reach the real, already-correctly-floored control the receipt
+already names), never POPULATION-EXCLUDED as an artefact. Both rows'
+`MANUAL_JOIN_WIDENING` entries supersede the `cross-surface-match`
+disposition outright -- `gradeControl` checks the manual table FIRST, so
+neither row reaches the `crossSurfaceDisposition` branch at all. The
+`CROSS_SURFACE_RECEIPTS`/`RULING_SETTLED_EXCLUSIONS`-style tables and their
+own non-vacuity tests are left in place (unused by these two coordinates
+now, still load-bearing for any future row of the same shape) -- append-only,
+per this task's own instruction.
+
+### Why the same `.chq-input`/`.chq-select` join resolves EVERY plain-field-name row `ok`, never `offender`
+
+The eight `.chq-input` rows (`:824`/`:828`/`:839`/`:1287`/`:1291`/`:1435`/
+`:1439`/`:680`) and the two `.chq-select` rows (`:567`/`:1064`) all draw
+`min-height:46px`. `resolveTokenMinHeightIndexed` -- the SAME indexed join
+`finalizeTokens` runs for every one of this file's other 247 rows, unmodified
+by this wave -- takes the MAXIMUM declared `min-height` across every
+top-level rule in the whole `app/src/**`+`src/**` corpus that mentions the
+token, and several desktop-scoped rules outside `app/src/styles.css`'s base
+44px declaration (`src/routes/portal/portal.css.ts`:753's `.chq-input,
+.chq-select ... { min-height: 46px }`, a portal-specific desktop block)
+already push `.chq-input`'s corpus-wide maximum to 48px and `.chq-select`'s
+to 46px -- both `>=` the 46px drawn floor. This is the instrument's own
+pre-existing, already-audited algorithm (DEC-393 wave-151's own GRADE
+clause 3, "the MAXIMUM declared min-height across every qualifying rule …
+is the row's resolved floor"), applied here for the first time to a
+manually-widened token set rather than an automatically-resolved one --
+never a bespoke verdict invented for this wave.
+
+### Re-measured
+
+Forcing both ceilings to `-1` before AND after adding `MANUAL_JOIN_WIDENING`
+(this file's own required protocol):
+
+| | offenders | unresolved (composed-unseen / no-token / no-control-shape / cross-surface-match) |
+|---|---|---|
+| PRE (wave 33 tree) | 0 | 131 (121 / 2 / 10 / 2) |
+| POST (wave 53: 14 rows manually resolved) | 0 | 117 (121 / 0 / 0 / 0) |
+
+`DESKTOP_FLOOR_DIVERGENCE_CEILING` **stays 0** (unchanged -- all 14 rows resolved `ok`, none `offender`). `DESKTOP_FLOOR_UNRESOLVED_CEILING` lowered `131 -> 117` -- exactly the 14 rows this wave resolves, the remaining 117
+(all `composed-unseen`) untouched. Disposition count: **14 RESOLVED, 0
+POPULATION-EXCLUDED, 0 OFFENDER.** Zero product CSS bytes moved this wave --
+desktop stays frozen, per this task's own scope.
