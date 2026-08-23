@@ -26,6 +26,7 @@ import { describe, expect, it } from "vitest";
 import { DEC_393 } from "../src/decisions";
 import { cssRegionsOf, ruleChunks } from "./tap-floor-exempt-premise/css-grammar";
 import { judgeReceipt } from "./tap-floor-exempt-premise/judge";
+import { judgeInlineTier } from "./tap-floor-exempt-premise/inline-tier";
 import { productFiles, REPO_ROOT } from "./tap-floor-exempt-premise/population";
 import { allReceipts, extractReceipts } from "./tap-floor-exempt-premise/receipts";
 import { judgeRenderGate } from "./tap-floor-exempt-premise/render-gate";
@@ -241,7 +242,27 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // eight, nor any other receipt, newly resolves as a false self-floor claim.
 // docs/design/audit/tap-floor-exempt-premise-v12.md records the flipped
 // rows.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 26;
+// Wave 56 (task w56-e, DEC-613): drained a gating ceiling by giving the
+// `inline` family the grader it already had a sibling for, rather than a
+// second copy of the grounding grammar. test/inline-prose-exemption-
+// premise/judge.ts's judgeInlineReceipt (extracted from its own scan test
+// into a sibling module directory, the same idiom this file's own
+// judge.ts/*.ts split already uses) is now called directly by a new
+// `family === "inline"` tier at this instrument's existing no-companion
+// fallthrough (test/tap-floor-exempt-premise/judge.ts's judgeInlineTier).
+// Forced to -1 and re-measured standalone (never by arithmetic on the
+// wave-54 base -- the exact trap this constant's own comment history
+// already records twice): 26 -> 19. All 7 `inline`-family receipts named
+// by the wave-56 task (cfp.css.ts:51/140/532, submit-views.tsx:626/794,
+// tools.css.ts:73, theme.ts:638) resolve VERIFIED via the sibling's
+// GROUNDED-BY-DEVIATION rung; the 19 UNVERIFIABLE-PREMISE survivors are
+// entirely `other`/`modifier` family rows this wave's task did not touch.
+// FALSE-PREMISE stays 0: none of the 7 resolved UNGROUNDED (a real 44px
+// defect) on the sibling grader -- the whole `inline` residue this wave
+// drained was a true grounding claim, not a defect this wave discovered.
+// docs/design/audit/tap-floor-exempt-premise-v12.md records the flipped
+// rows in its Wave 56 section.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 19;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
@@ -729,6 +750,105 @@ describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amen
     const verdict = judgeReceipt(receipt, chunks, "");
     expect(verdict.verdict).toBe("FALSE-PREMISE");
     expect(verdict.detail).toMatch(/self-scoped tier/);
+  });
+
+  // The four judgeInlineTier controls below call the tier function
+  // DIRECTLY (test/tap-floor-exempt-premise/inline-tier.ts), not through
+  // judgeReceipt: judgeReceipt's own dot-mention gate (`mentioned.find(...)`)
+  // resolves any reason with a dot-prefixed `.chq-*` companion mention via
+  // its own judgeCompanionFloor BEFORE this tier's fallthrough is ever
+  // reached, so the sibling's GROUNDED/UNGROUNDED (named-companion) rungs
+  // are only reachable by calling judgeInlineTier in isolation -- exactly
+  // why this tier lives in its own file, the same reason every other tier
+  // here does (DEC-613 wave-56, task w56-e).
+  it("inline tier positive control (DEC-613, task w56-e): the sibling grader's GROUNDED (named companion, floored) maps to VERIFIED, citing the sibling grader", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "inline-in-prose -- .chq-fake-inline-companion reaches the same destination",
+      receiptedClasses: ["chq-fake-inline-target"],
+      family: "inline",
+    };
+    const chunks = [{ selector: ".chq-fake-inline-companion", body: "display:flex; align-items:center; min-height:44px; padding:0 8px;" }];
+    const verdict = judgeInlineTier(receipt, chunks, '<a class="chq-fake-inline-companion">x</a>', []);
+    expect(verdict?.verdict).toBe("VERIFIED");
+    expect(verdict?.detail).toMatch(/judgeInlineReceipt resolves this receipt GROUNDED\b/);
+  });
+
+  it("inline tier negative control (DEC-613, task w56-e): the sibling grader's UNGROUNDED (named companion, NOT floored) maps to FALSE-PREMISE -- a real 44px defect, never softened", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "inline-in-prose -- .chq-fake-inline-companion reaches the same destination",
+      receiptedClasses: ["chq-fake-inline-target"],
+      family: "inline",
+    };
+    const chunks = [{ selector: ".chq-fake-inline-companion", body: "color: red;" }];
+    const verdict = judgeInlineTier(receipt, chunks, '<a class="chq-fake-inline-companion">x</a>', []);
+    expect(verdict?.verdict).toBe("FALSE-PREMISE");
+    expect(verdict?.detail).toMatch(/judgeInlineReceipt resolves this receipt UNGROUNDED/);
+  });
+
+  it("inline tier positive control, rung 3 (DEC-613, task w56-e): the sibling grader's GROUNDED-BY-DEVIATION (no companion, real DEVIATIONS.md grounding) maps to VERIFIED -- the shape all 7 real receipts named by this task actually take", () => {
+    const receipt: Receipt = {
+      file: "synthetic.tsx",
+      line: 1,
+      reason: "inline-in-prose -- recorded as DEVIATIONS.md §10's first entry (rung 3). chq-fake-devlink carries its own token.",
+      receiptedClasses: [],
+      family: "inline",
+    };
+    const sections = [{ number: 10, body: "This section discusses `.chq-fake-devlink` at length." }];
+    const verdict = judgeInlineTier(receipt, [], "", sections);
+    expect(verdict?.verdict).toBe("VERIFIED");
+    expect(verdict?.detail).toMatch(/judgeInlineReceipt resolves this receipt GROUNDED-BY-DEVIATION/);
+  });
+
+  it("inline tier negative control (DEC-613, task w56-e): the sibling grader's UNVERIFIABLE (no companion, no DEVIATIONS citation) maps to UNVERIFIABLE-PREMISE, never VERIFIED by omission", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "inline-in-prose -- a phrase inside a running sentence",
+      receiptedClasses: ["chq-fake-inline-target"],
+      family: "inline",
+    };
+    const verdict = judgeInlineTier(receipt, [], "", []);
+    expect(verdict?.verdict).toBe("UNVERIFIABLE-PREMISE");
+    expect(verdict?.detail).toMatch(/judgeInlineReceipt resolves this receipt UNVERIFIABLE/);
+  });
+
+  it("inline tier scope guard (DEC-613, task w56-e, wave-51 lesson): judgeInlineTier returns null outright for a non-`inline` family, so `composition`'s own no-companion fallthrough is never routed through the sibling's grammar", () => {
+    const receipt: Receipt = {
+      file: "synthetic.css",
+      line: 1,
+      reason: "composition -- a phrase inside a running sentence, no companion class named here, not floored",
+      receiptedClasses: ["chq-fake-composition-not-self-floored"],
+      family: "composition",
+    };
+    expect(judgeInlineTier(receipt, [], "", [])).toBeNull();
+    // ...and end-to-end through judgeReceipt, that same receipt resolves the
+    // ordinary UNVERIFIABLE-PREMISE fallthrough, never citing the sibling.
+    const chunks = [{ selector: ".chq-fake-composition-not-self-floored", body: "color: red;" }];
+    const verdict = judgeReceipt(receipt, chunks, "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+    expect(verdict.detail).not.toMatch(/judgeInlineReceipt/);
+  });
+
+  it("inline tier end-to-end (DEC-613, task w56-e): a real `inline` receipt shaped like the 7 named by this task (no dot-mentioned companion) reaches judgeInlineTier through judgeReceipt itself and resolves VERIFIED via the sibling's DEVIATIONS grounding", () => {
+    const receipt: Receipt = {
+      file: "synthetic.tsx",
+      line: 1,
+      reason: "inline-in-prose -- recorded as DEVIATIONS.md §10's first entry (rung 3). chq-fake-devlink carries its own token.",
+      receiptedClasses: [],
+      family: "inline",
+    };
+    // judgeReceipt itself always resolves rung 3 against the REAL
+    // docs/design/DEVIATIONS.md on disk (no section 10 entry names this
+    // synthetic token), so this exercises the wiring path, not rung 3's
+    // grounding logic (covered directly above) -- it must land on the
+    // sibling's UNVERIFIABLE branch, still mapped through this tier.
+    const verdict = judgeReceipt(receipt, [], "");
+    expect(verdict.verdict).toBe("UNVERIFIABLE-PREMISE");
+    expect(verdict.detail).toMatch(/judgeInlineReceipt resolves this receipt UNVERIFIABLE/);
   });
 
   it(`FALSE-PREMISE ceiling: at most ${TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING} receipt(s) claim a companion floor that isn't real`, () => {
