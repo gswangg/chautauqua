@@ -121,3 +121,21 @@ measurement), registered in the campaign exit predicate
 of each row above (widening its container's phone `gap` to `2N`, appended in
 its sheet's terminal `@media (max-width: 700px)` block per DEC-385
 single-direction) is left for a future wave to spend against this ledger.
+
+## Wave 37 amendment (DEC-903): the paragraph above is SUPERSEDED-IN-PLACE
+
+The paragraph immediately above this heading is a stale ratchet statement,
+not a live one — DEC-903 wave-37's own instrument
+(`test/audit-ratchet-statement-drift.scan.test.ts`) caught it: the live
+`app/src/cancelled-padding-gap.scan.test.ts` reads
+`export const CANCELLED_PADDING_GAP_CEILING = 0;`, not the "seeded at 22"
+this doc's own paragraph above still asserts, and the "left for a future
+wave to spend" clause no longer describes the tree — the widening repair
+this doc names has already landed. Evidence the repair is built, not merely
+claimed: `app/src/pages/speakers/speakers.css` and
+`app/src/pages/speakers/task-view.css` each carry `gap: 29px` inside their
+own terminal `@media (max-width: 700px)` block, comfortably clearing every
+row's `2N = 20px` requirement above. This paragraph is appended per DEC-069
+(a row is CLOSED, never deleted) — the Rows table and the paragraph above
+remain byte-for-byte as this branch's own historical measurement; the live
+value is `CANCELLED_PADDING_GAP_CEILING = 0`, not 22.
