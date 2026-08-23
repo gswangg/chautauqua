@@ -63,7 +63,7 @@ Re-measured by forcing both ceilings to `-1` and reading the roster back:
   `chq-session-card-conflict`) appears in either live 390 roster.
 - 4 of the 5 `modifier` receipts resolve **VERIFIED** (`.chq-btn` and
   `.chq-docs-nav-link` are both real, floored companions present in
-  markup); `src/views/error-states.css.ts:46` stays **UNVERIFIABLE-PREMISE**
+  markup); `src/views/error-states.css.ts` (line 46) stays **UNVERIFIABLE-PREMISE**
   — its reason names element types (`input`/`select`/`textarea`/`fieldset`),
   not a `.chq-*` companion class, so the companion predicate has nothing to
   resolve.
@@ -85,7 +85,7 @@ Re-measured by forcing both ceilings to `-1` and reading the roster back:
   NOT touched in this lane. **SUPERSEDED wave-39 (task w39-a):** this
   row was the campaign's last unowned non-zero exit-predicate ceiling, so
   it was repaired in place rather than left as a permanent roster row —
-  see the "Wave 39" section below. `app/src/pages/submissions/detail.css:278`
+  see the "Wave 39" section below. `app/src/pages/submissions/detail.css` (line 278)
   stays **UNVERIFIABLE-PREMISE** — its named container
   (`.chq-detail-participant-row-actions`) is already part of the
   receipted selector itself (a compound `.chq-detail-participant-row-actions
@@ -134,7 +134,7 @@ Forced to `-1` and re-measured standalone — never by arithmetic on a prior
 wave's composition, the exact trap this constant already fell into once at
 wave-36 (88 - 11 = 77, wrong for the merged tree):
 
-- `src/views/error-states.css.ts:46` **stays UNVERIFIABLE-PREMISE**.
+- `src/views/error-states.css.ts` (line 46) **stays UNVERIFIABLE-PREMISE**.
   `input`/`select`/`textarea` are each reached by `theme.ts`'s own bare-type
   phone-media rule (`min-height: 44px`); `fieldset` is reached by NO rule
   anywhere in the tree — a `<fieldset>` is a grouping container, never
@@ -144,7 +144,7 @@ wave-36 (88 - 11 = 77, wrong for the merged tree):
   arm-exact grammar correctly refuses to credit to `fieldset` itself. This
   is an honest gap: the receipt's own premise is broader than the tree
   supports, not an instrument miss.
-- `app/src/pages/submissions/detail.css:278` **now resolves VERIFIED**. Its
+- `app/src/pages/submissions/detail.css` (line 278) **now resolves VERIFIED**. Its
   receipted selector is the compound `.chq-detail-participant-row-actions
   .chq-link-button`; the reason names only the container (already in
   `receiptedClasses`, so the pre-wave-40 companion search found nothing
@@ -152,7 +152,7 @@ wave-36 (88 - 11 = 77, wrong for the merged tree):
   real floor in `app/src/styles.css`'s phone-media block (`min-height:44px;
   min-width:44px; display:flex; align-items:center; padding:0 6px;`), a
   sheet this receipt's own file never touches. (The same file's own
-  `v12m-w6-h` comment at `detail.css:1224` had already noted, for a
+  `v12m-w6-h` comment at `detail.css` (line 1224) had already noted, for a
   DIFFERENT selector, that `.chq-link-button` "carries no floor anywhere" —
   that note predates the `styles.css` phone-media rule above and is now
   stale; not corrected here, out of this lane's scope.)
@@ -185,27 +185,27 @@ read, not a second machine-checked predicate, and is recorded as such:
   `submissions.css`, `styles.css` — a render-fact claim the same shape
   `judgeRenderGate` already checks for a different premise, just never
   built for "no bare anchor" instead of "never mounts"), "a visually-hidden
-  input's operable target is its `<label>`" (`comms.css:158`,
-  `content.css:432`, `portal.css.ts:361`, `speakers/task-view.css:284` —
+  input's operable target is its `<label>`" (`comms.css` (line 158),
+  `content.css` (line 432), `portal.css.ts` (line 361), `speakers/task-view.css` (line 284) —
   several already NAME the label's own `.chq-*` class, e.g. `.chq-check-hit`,
   which the EXISTING companion floor-grammar could check today if this
   shape got its own recognised family), "an empty `<th>` spacer, no
-  children at all" (`content.css:879`, `settings.css:2583`,
-  `styles.css:1444`), and a handful naming a companion this instrument's
-  first-word regex simply does not recognise yet (`comms.css:1235`,
-  `comms.css:2268`, `contacts-panels.css:997`, `overview.css:148`,
-  `overview.css:608`, `review.css:331`, `review.css:1574`,
-  `review.css:1793`, `submissions.css:27`, `submissions.css:206`,
-  `styles.css:1365`, `styles.css:1388`, `styles.css:1704`,
-  `content.css:908`, `theme.ts:538`, `chrome.css.ts:36`).
+  children at all" (`content.css` (line 879), `settings.css` (line 2583),
+  `styles.css` (line 1444)), and a handful naming a companion this instrument's
+  first-word regex simply does not recognise yet (`comms.css` (line 1235),
+  `comms.css` (line 2268), `contacts-panels.css` (line 997), `overview.css` (line 148),
+  `overview.css` (line 608), `review.css` (line 331), `review.css` (line 1574),
+  `review.css` (line 1793), `submissions.css` (line 27), `submissions.css` (line 206),
+  `styles.css` (line 1365), `styles.css` (line 1388), `styles.css` (line 1704),
+  `content.css` (line 908), `theme.ts` (line 538), `chrome.css.ts` (line 36)).
 - **6 of 55 are grounded only in a design/scope authority**, not a
   tree-checkable fact — no scan, however widened, could settle them, because
-  the claim is a value or priority judgement: `styles.css:1772` (enlarging
+  the claim is a value or priority judgement: `styles.css` (line 1772) (enlarging
   the colour-swatch grid to 44px "is a distinct visual-redesign task, out of
-  scope … tracked as a follow-up"), `styles.css:1948` (the 18px checkbox
+  scope … tracked as a follow-up"), `styles.css` (line 1948) (the 18px checkbox
   glyph's own size is deliberately unchanged; "enlarging it is a
-  system-wide redesign"), `overview.css:564`, `styles.css:2879`,
-  `src/routes/public/css/rail.css.ts:671` and `src/routes/public/home.css.ts:
+  system-wide redesign"), `overview.css` (line 564), `styles.css` (line 2879),
+  `src/routes/public/css/rail.css.ts` (line 671) and `src/routes/public/home.css.ts:
   152` (four aesthetic/typography calls: flooring an inline phrase would
   "break the line box," each without naming a companion an instrument could
   check instead). These six are the honest, un-shrinkable gap — grounded in
@@ -227,7 +227,7 @@ new/edited receipts since wave 36's 98-receipt snapshot).
 |---|---|---|
 | VERIFIED | 25 | the receipt names a companion (or, for `render-gate`, a gated component) whose premise this instrument can check and which checks out: (1) a real min-height:44px + centred flex (`flex`/`inline-flex`) + non-zero horizontal padding rule (merged across every rule mentioning it), or (2) wave-34's replaced-content tier (co-styled with an `img` element selector, own width/height >=44px on both axes), or (3) wave-36's `render-gate` two-tier predicate (named, existing receipt test that mentions the component; AND the selector token absent from both live 390 rosters), or (4) wave-40's ELEMENT-TYPE tier (every named bare element type reached by a min-height:44px arm) or SELF-SCOPED tier (any of the receipted selector's own classes reaches the floor grammar). |
 | UNVERIFIABLE-PREMISE | 76 | this wave's instrument cannot express a check for the receipt — either its reason family (`other`) has no predicate yet, a `composition`/`inline-*`/`modifier`/`scoped` reason names no companion class distinct from the receipted selector itself (and, for `modifier`, names no element-type list either, or names one with an unreached type), or a `render-gate` reason names no existing/component-mentioning receipt test. Per DEC-393 wave-30 clause (c): a roster row, not a silent pass. |
-| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css:596`, see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
+| FALSE-PREMISE | 0 (was 1 through wave 36; repaired wave 39, see below) | the receipt named a companion class (or, for `scoped`, one of its own receipted classes) that is real but does NOT carry the floor-grammar tier this instrument checks for (`app/src/pages/contacts/contacts.css` (line 596), see wave-36 section above) — a real predicate-grammar defect; the wave-39 section below repairs the receipt in place and the row now resolves VERIFIED. |
 
 ## The worked example (built this wave)
 
@@ -274,7 +274,7 @@ real text-control defect through the replaced-content door.
 
 `TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` was the campaign's last non-zero
 exit-predicate row with no in-flight owner. Its single offender —
-`app/src/pages/contacts/contacts.css:596`'s `scoped` receipt above
+`app/src/pages/contacts/contacts.css` (line 596)'s `scoped` receipt above
 `.chq-contacts-drawer-actions-right` — was FALSE-PREMISE not because the
 receipt's underlying claim was wrong (the row genuinely renders only
 `.chq-btn`-classed `<button>` children, never a bare anchor) but because
@@ -310,102 +310,102 @@ true.
 
 | Verdict | Family | File:line | Detail |
 |---|---|---|---|
-| ~~FALSE-PREMISE~~ **VERIFIED (wave-39)** | scoped | `app/src/pages/contacts/contacts.css:596` | wave-36 point-in-time: companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar. SUPERSEDED wave-39: receipt re-pointed at .chq-btn (the class that actually carries min-height:48px + centred flex + non-zero horizontal padding, merged across app/src/styles.css's base rule and this file's phone-media override); now resolves VERIFIED. |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css:1003` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css:76` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css:429` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/review/review.css:90` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css:1313` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css:1876` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `src/routes/public/css/agenda.css.ts:768` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | composition | `src/views/error-states.css.ts:72` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/portal/tasks/views.tsx:314` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts:51` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts:135` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts:480` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx:625` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx:783` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx:924` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx:950` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts:620` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts:670` | no companion class named in the reason (distinct from the receipted selector itself) |
-| UNVERIFIABLE-PREMISE | modifier | `src/views/error-states.css.ts:46` | element-type tier: named element type(s) fieldset are not reached by any rule declaring min-height:44px anywhere in the tree |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:158` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:228` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:250` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:670` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:1235` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css:2268` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css:295` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css:997` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts.css:581` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:23` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:143` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:432` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:504` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:671` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:761` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:879` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css:908` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css:348` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css:361` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:148` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:564` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css:608` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:316` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:331` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1268` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1303` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1533` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1574` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1691` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css:1793` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/scorecard.css:98` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/settings/settings.css:2583` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/speakers/task-view.css:284` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:269` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:378` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css:731` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:27` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:206` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:403` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:620` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css:1157` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:997` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1365` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1388` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1444` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1704` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1772` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:1948` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `app/src/styles.css:2879` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts:102` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts:359` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/public/css/chrome.css.ts:36` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/public/css/rail.css.ts:671` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/routes/public/home.css.ts:152` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| UNVERIFIABLE-PREMISE | other | `src/views/theme.ts:538` | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
-| VERIFIED | scoped | `app/src/pages/submissions/detail.css:278` | self-scoped tier: the receipted selector's own class .chq-link-button declares the 44px floor (merged across 1 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/agenda/agenda.css:1121` | companion .chq-phone-footer-actions declares min-height:44px + centred flex + non-zero horizontal padding (merged across 4 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/content/content.css:60` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/overview/overview.css:404` | companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/overview/overview.css:457` | companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/speakers/speakers.css:2034` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
-| VERIFIED | composition | `app/src/pages/speakers/speakers.css:2071` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
-| VERIFIED | composition | `src/routes/docs-site.css.ts:215` | companion .chq-docs-article-title declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
-| VERIFIED | composition | `src/routes/portal/portal.css.ts:265` | companion .chq-portal-standalone-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
-| VERIFIED | composition | `src/routes/public/css/agenda.css.ts:584` | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
-| VERIFIED | composition | `src/routes/public/css/agenda.css.ts:817` | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
-| VERIFIED | composition | `src/routes/public/css/cards.css.ts:239` | companion .chq-pub-headshot-fallback is a replaced-content box (co-styled with an img selector) whose own width/height rules put both axes at >=44px (merged across 4 rule(s)) and appears in real markup |
-| VERIFIED | inline | `src/routes/public/css/agenda.css.ts:796` | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
-| VERIFIED | modifier | `src/routes/docs-site.css.ts:98` | companion .chq-docs-nav-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
-| VERIFIED | modifier | `src/routes/docs-site.css.ts:513` | companion .chq-docs-nav-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
-| VERIFIED | modifier | `src/views/theme.ts:461` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
-| VERIFIED | modifier | `src/views/theme.ts:486` | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:280` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-cell-btn does not appear in either live 390 roster |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:440` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-noroom-btn does not appear in either live 390 roster |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:478` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-cell-btn-clash does not appear in either live 390 roster |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:534` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-clash-item does not appear in either live 390 roster |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:693` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card does not appear in either live 390 roster |
-| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css:777` | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card-conflict does not appear in either live 390 roster |
+| ~~FALSE-PREMISE~~ **VERIFIED (wave-39)** | scoped | `app/src/pages/contacts/contacts.css` (line 596) | wave-36 point-in-time: companion .chq-contacts-drawer-actions found (6 rule(s), merged) but does not satisfy the 44px-floor grammar. SUPERSEDED wave-39: receipt re-pointed at .chq-btn (the class that actually carries min-height:48px + centred flex + non-zero horizontal padding, merged across app/src/styles.css's base rule and this file's phone-media override); now resolves VERIFIED. |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/agenda/agenda.css` (line 1003) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/content/content.css` (line 76) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/overview/overview.css` (line 429) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/review/review.css` (line 90) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1313) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `app/src/pages/speakers/speakers.css` (line 1876) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `src/routes/public/css/agenda.css.ts` (line 768) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | composition | `src/views/error-states.css.ts` (line 72) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/portal/tasks/views.tsx` (line 314) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 51) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 135) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/cfp.css.ts` (line 480) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx` (line 625) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx` (line 783) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx` (line 924) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/routes/public/submit-views.tsx` (line 950) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts` (line 620) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | inline | `src/views/theme.ts` (line 670) | no companion class named in the reason (distinct from the receipted selector itself) |
+| UNVERIFIABLE-PREMISE | modifier | `src/views/error-states.css.ts` (line 46) | element-type tier: named element type(s) fieldset are not reached by any rule declaring min-height:44px anywhere in the tree |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 158) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 228) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 250) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 670) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 1235) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/comms/comms.css` (line 2268) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css` (line 295) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts-panels.css` (line 997) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/contacts/contacts.css` (line 581) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 23) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 143) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 432) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 504) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 671) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 761) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 879) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/content/content.css` (line 908) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css` (line 348) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/forms/forms.css` (line 361) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css` (line 148) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css` (line 564) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/overview/overview.css` (line 608) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 316) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 331) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1268) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1303) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1533) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1574) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1691) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/review.css` (line 1793) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/review/scorecard.css` (line 98) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/settings/settings.css` (line 2583) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/speakers/task-view.css` (line 284) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css` (line 269) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css` (line 378) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/detail.css` (line 731) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css` (line 27) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css` (line 206) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css` (line 403) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css` (line 620) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/pages/submissions/submissions.css` (line 1157) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 997) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1365) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1388) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1444) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1704) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1772) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 1948) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `app/src/styles.css` (line 2879) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts` (line 102) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/portal/portal.css.ts` (line 359) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/public/css/chrome.css.ts` (line 36) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/public/css/rail.css.ts` (line 671) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/routes/public/home.css.ts` (line 152) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| UNVERIFIABLE-PREMISE | other | `src/views/theme.ts` (line 538) | reason family has no automated predicate this wave (roster row, DEC-393 wave-30 clause (c)) |
+| VERIFIED | scoped | `app/src/pages/submissions/detail.css` (line 278) | self-scoped tier: the receipted selector's own class .chq-link-button declares the 44px floor (merged across 1 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/agenda/agenda.css` (line 1121) | companion .chq-phone-footer-actions declares min-height:44px + centred flex + non-zero horizontal padding (merged across 4 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/content/content.css` (line 60) | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/overview/overview.css` (line 404) | companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/overview/overview.css` (line 457) | companion .chq-overview-link-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 9 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/speakers/speakers.css` (line 2034) | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
+| VERIFIED | composition | `app/src/pages/speakers/speakers.css` (line 2071) | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
+| VERIFIED | composition | `src/routes/docs-site.css.ts` (line 215) | companion .chq-docs-article-title declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
+| VERIFIED | composition | `src/routes/portal/portal.css.ts` (line 265) | companion .chq-portal-standalone-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
+| VERIFIED | composition | `src/routes/public/css/agenda.css.ts` (line 584) | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
+| VERIFIED | composition | `src/routes/public/css/agenda.css.ts` (line 817) | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
+| VERIFIED | composition | `src/routes/public/css/cards.css.ts` (line 239) | companion .chq-pub-headshot-fallback is a replaced-content box (co-styled with an img selector) whose own width/height rules put both axes at >=44px (merged across 4 rule(s)) and appears in real markup |
+| VERIFIED | inline | `src/routes/public/css/agenda.css.ts` (line 796) | companion .chq-pub-day-pill declares min-height:44px + centred flex + non-zero horizontal padding (merged across 1 rule(s)) and appears in real markup |
+| VERIFIED | modifier | `src/routes/docs-site.css.ts` (line 98) | companion .chq-docs-nav-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
+| VERIFIED | modifier | `src/routes/docs-site.css.ts` (line 513) | companion .chq-docs-nav-link declares min-height:44px + centred flex + non-zero horizontal padding (merged across 2 rule(s)) and appears in real markup |
+| VERIFIED | modifier | `src/views/theme.ts` (line 461) | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
+| VERIFIED | modifier | `src/views/theme.ts` (line 486) | companion .chq-btn declares min-height:44px + centred flex + non-zero horizontal padding (merged across 86 rule(s)) and appears in real markup |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 280) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-cell-btn does not appear in either live 390 roster |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 440) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-noroom-btn does not appear in either live 390 roster |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 478) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-cell-btn-clash does not appear in either live 390 roster |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 534) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions DayGrid; tier (ii): .chq-day-grid-clash-item does not appear in either live 390 roster |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 693) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card does not appear in either live 390 roster |
+| VERIFIED | render-gate | `app/src/pages/agenda/agenda.css` (line 777) | tier (i): app/src/pages/agenda/agenda-render-gate.receipt.test.ts exists and mentions SessionCard; tier (ii): .chq-session-card-conflict does not appear in either live 390 roster |
 
