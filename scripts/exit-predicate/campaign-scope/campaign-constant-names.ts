@@ -277,4 +277,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // reads live 0 by classification; promoted out of OUT_OF_CAMPAIGN_SCOPE in
   // this same commit.
   "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
+  // wave-54 (task v12m-w54-a, DEC-069 wave-54 amendment): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE -- PACK_PROSE_MEASURE_DIVERGENCE_CEILING's own
+  // PARKED_FIDELITY_PROMISES row had siblingName: null (clause (b) vacuous)
+  // while the ceiling itself already reads 0 (clause (a) satisfied), so
+  // clause (a) alone decided and promotion moves no goalpost: it enters this
+  // registry AT 0 (test/pack-prose-measure.scan.test.ts).
+  "PACK_PROSE_MEASURE_DIVERGENCE_CEILING",
 ];

@@ -92,13 +92,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // separate "could not resolve" join behind it. Clause (a) alone decides
   // it (currently non-zero).
   FRAME_REPEATED_ROW_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // No completeness sibling -- the UNRESOLVED half (15 of 26 rows: this
-  // scan's render-file join cannot pin them) is folded into
-  // test/pack-prose-measure.scan.test.ts's own GRADED/UNRESOLVED exports
-  // and docs/design/audit/pack-prose-measure-v12.md's table rather than
-  // graded by a second ceiling constant. Clause (a) alone decides it
-  // (currently non-zero).
-  PACK_PROSE_MEASURE_DIVERGENCE_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
   // No completeness sibling -- test/desktop-control-floor.scan.test.ts
   // declares exactly one comment-credited-floor ceiling, so its own count
   // is the whole conformance fact (an instrument-soundness one, not a v12
