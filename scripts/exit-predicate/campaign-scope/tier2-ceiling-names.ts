@@ -157,6 +157,12 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // it was printed by no row. The gating list wins; this constant now
   // prints as a real, non-zero TIER2 row.
   "TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING",
+  // wave-45 (task w45-f): wired into TIER2 in the same commit that
+  // declared these in CAMPAIGN_CONSTANT_NAMES above -- never a
+  // declared-but-unread knob (DEC-851/DEC-988). A real 44px duplicate-
+  // exemption-receipt defect count, both measured 0 post-repair.
+  "SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING",
+  "SSR_DUPLICATE_EMPTY_SELECTOR_CEILING",
   // wave-45 (DEC-069 wave-44/45 amendments): wired into TIER2 in the same
   // commit that moved it out of OUT_OF_CAMPAIGN_SCOPE into
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
