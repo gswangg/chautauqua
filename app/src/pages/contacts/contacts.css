@@ -1434,7 +1434,7 @@
     order: -1;
   }
 
-  /* src/decisions-data/DEC-919.md (wave-16 r5 amendment): the DirectoryRail stands down at 390 --
+  /* phone-hidden: src/decisions-data/DEC-919.md (wave-16 r5 amendment): the DirectoryRail stands down at 390 --
      the frame's phone body (docs/design/Chautauqua Contacts.dc.html:201
      `flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px`, :203
      `padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex;
@@ -1457,14 +1457,6 @@
      "Duplicates · N" tab opens DuplicatesView, the same detection pass in
      full with the same Merge affordance. See DirectoryRail.tsx's header
      comment for the same receipt. */
-  /* phone-hidden: re-lined (DEC-808 wave-56) -- the receipt directly above
-     names every surviving path: the headerless card list stays (the earlier
-     phone rule for `.chq-contacts-directory-grid`), "Where they work"'s
-     drill-through survives via FilterRulesPanel's "+ Rule" chip, "Saved
-     segments" via the chipstrip's Segments tab, "Possible duplicates" via
-     the chipstrip's Duplicates tab; the ranked top-companies aggregate has
-     no surviving path and is DEVIATIONS.md #7, a recorded deviation, not an
-     unaddressed defect. */
   .chq-contacts-rail {
     display: none;
   }
@@ -1520,7 +1512,7 @@
 
   /* phone-hidden: re-lined (DEC-808 wave-56) -- replaced by
      `.chq-contacts-segment-pills` immediately above in this same block
-     (ContactsApp.tsx), the DEC-919 task r1-c receipt already covers: select
+     (ContactsApp.tsx), the src/decisions-data/DEC-919.md task r1-c receipt already covers: select
      -> a pill, clear -> the "All" pill, which segment is active -> the
      pressed pill, per-segment count -> the pill label. */
   .chq-contacts-segment-summary {
@@ -1562,7 +1554,7 @@
      the rule set -> "Save as a segment", still inside this row and
      reachable whenever the builder is open. */
   /* phone-hidden: disclosure, not removal (DEC-808 wave-56) -- see the
-     DEC-919 capability receipt directly above: the `.is-builder-open` rule
+     src/decisions-data/DEC-919.md capability receipt directly above: the `.is-builder-open` rule
      immediately below reveals this same row, and every act (author, edit,
      remove, read, save) has a named surviving path through the chip strip
      (FilterRulesPanel.tsx). */
