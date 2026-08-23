@@ -951,39 +951,59 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "b7-empty-states::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Fresh and empty** hides the filter chrome entirely. Offering a status filter over zero rows is noise. The block gets room (44px above) and a real primary action.\"",
+      "EmptyState's 'fresh' variant carries its own top room via a dedicated class rule, matching the unit's own \"(44px above)\" clause -- the same component throws rather than render an `escape` link on 'fresh', matching \"hides the filter chrome entirely\".",
+    honored: {
+      file: "app/src/styles.css",
+      literal: ".chq-empty-block-fresh {\n  padding-top: 44px;\n}",
+      testFile: "app/src/components/EmptyState.render.test.tsx",
+    },
   },
   {
     key: "b7-empty-states::2",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Filtered to nothing** keeps its chrome visible *above* the message, because the fix is in the chrome, and the block is tighter (30px). It has no primary button — the escape link is the action.\"",
+      "EmptyState's 'filtered' variant is tighter at the top via a dedicated class rule, matching the unit's own \"(30px)\" clause -- the same component throws rather than render an `action` (primary button) on 'filtered', matching \"no primary button — the escape link is the action\".",
+    honored: {
+      file: "app/src/styles.css",
+      literal: ".chq-empty-block-filtered {\n  padding-top: 30px;\n}",
+      testFile: "app/src/components/EmptyState.render.test.tsx",
+    },
   },
   {
     key: "b7-empty-states::3",
-    status: "gap",
+    status: "prose",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"1. **Name what is empty, not what is missing.** \"No submissions yet\", never \"No data\" or \"Nothing to show here\". The noun tells the user which of twenty lists they are looking at.\"",
+      "a copy-writing convention across every call site's `what` string, not a single shippable claim -- its own words: \"1. **Name what is empty, not what is missing.** \"No submissions yet\", never \"No data\" or \"Nothing to show here\". The noun tells the user which of twenty lists they are looking at.\"",
   },
   {
     key: "b7-empty-states::4",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"2. **Give the reason only when it is actionable.** \"The call for papers opens on 1 February\" earns its place because it says when to come back. \"The query returned zero rows\" does not.\"",
+      "EmptyState's `reason` prop is optional and only rendered when supplied, matching the unit's own \"only when it is actionable\" clause -- a caller with no actionable reason passes nothing rather than a filler string.",
+    honored: {
+      file: "app/src/components/EmptyState.tsx",
+      literal: "{reason && (",
+      testFile: "app/src/components/EmptyState.render.test.tsx",
+    },
   },
   {
     key: "b7-empty-states::5",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"3. **One action, and only a real one.** A primary button when there is a genuine next step; **no button at all** when the user cannot act — an attendee waiting on a programme — and never a disabled on…\"",
+      "the component's own header comment states it enforces \"never a disabled control\" by construction rather than trusting each call site, matching the unit's own \"no button at all… and never a disabled one\" clause -- `action`/`escape` are both optional, never a disabled fallback.",
+    honored: {
+      file: "app/src/components/EmptyState.tsx",
+      literal: "Neither variant ever renders a disabled control",
+      testFile: "app/src/components/EmptyState.render.test.tsx",
+    },
   },
   {
     key: "b7-empty-states::6",
-    status: "gap",
+    status: "prose",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"4. **Distinguish fresh from filtered** (above).\"",
+      "a cross-reference back to the two bold units above, not a separate claim; its own words: \"4. **Distinguish fresh from filtered** (above).\"",
   },
   {
     key: "b7-empty-states::7",
@@ -993,15 +1013,25 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "b7-empty-states::8",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"6. **Never an empty table with headers.** Column headings over nothing read as a load failure. The message replaces the table; it does not sit under it.\"",
+      "a scan enumerating every <td> under app/src/pages walks the tree for the retired \"empty table with headers\" shape, matching the unit's own \"Never an empty table with headers… the message replaces the table\" clause; its own docstring opens \"DESIGN-RULINGS B7 rule 6\".",
+    honored: {
+      file: "app/src/b7-empty-table.scan.test.ts",
+      literal: "a loaded, empty row set never renders as",
+      testFile: "app/src/b7-empty-table.scan.test.ts",
+    },
   },
   {
     key: "b7-empty-states::9",
-    status: "gap",
+    status: "honored",
     reason:
-      "a numbered ruling unit (prose/rationale, no single code artifact); its own words: \"7. **No illustration, no centred hero.** Left-aligned in the content measure, the page's own type scale. A spot illustration turns a routine Tuesday into an occasion.\"",
+      "the component's own header comment states it enforces \"never… an illustration, or a centred hero\" by construction, matching the unit's own \"No illustration, no centred hero\" clause -- the block's CSS is left-aligned (`align-items: flex-start; text-align: left`).",
+    honored: {
+      file: "app/src/components/EmptyState.tsx",
+      literal: "disabled control, an illustration, or a",
+      testFile: "app/src/components/EmptyState.render.test.tsx",
+    },
   },
   {
     key: "b10-settings-edit-views-on-desktop::1",
@@ -1321,9 +1351,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "loading-the-first-paint::1",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Draw everything that needs no data immediately** — header, page title, toolbar shell. Only the rows wait.\"",
+      "PageSkeleton's own header comment states it is \"the ONE loading-structure primitive for a page's MAIN region\" -- everything outside that region (nav, `<h1>`) already renders while only the main region waits, matching the unit's own \"header, page title, toolbar shell… Only the rows wait\" clause.",
+    honored: {
+      file: "app/src/components/PageSkeleton.tsx",
+      literal: "render nav + a bare <h1> over an empty <main>, which two",
+      testFile: "app/src/components/PageSkeleton.render.test.tsx",
+    },
   },
   {
     key: "loading-the-first-paint::2",
@@ -1338,9 +1373,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "loading-the-first-paint::3",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **Blocks at the height the rows will become**, so nothing jumps when data lands. Varied widths on the title column only — a column of identical bars reads as a loading *graphic*, not as rows.\"",
+      "the skeleton's per-row title bar carries a varied width per nth-child while the narrow meta bars stay uniform, matching the unit's own \"Varied widths on the title column only\" clause -- its own CSS comment states the reason verbatim: \"a column of identical bars reads as a loading graphic, not as rows\".",
+    honored: {
+      file: "app/src/components/page-skeleton.css",
+      literal: "Title column: varied widths across the six rows -- a column of identical",
+      testFile: "app/src/components/PageSkeleton.render.test.tsx",
+    },
   },
   {
     key: "loading-the-first-paint::4",
@@ -1355,9 +1395,14 @@ const UNIT_LEDGER: UnitLedgerEntry[] = [
   },
   {
     key: "loading-the-first-paint::5",
-    status: "gap",
+    status: "honored",
     reason:
-      "a bullet ruling unit (prose/rationale, no single code artifact); its own words: \"- **No shimmer, no pulse.** An animation across a whole table is motion the user cannot act on and it competes with the content arriving. `#EFEBDF` — the hovered-row tone — reads as furniture rather t…\"",
+      "page-skeleton.css's own header comment states it is \"never a spinner/shimmer\", and every skeleton bar fills with the flat `--chq-surface-sunk` token (`#EFEBDF`, the hovered-row tone) rather than a gradient, matching the unit's own \"No shimmer, no pulse… reads as furniture\" clause.",
+    honored: {
+      file: "app/src/components/page-skeleton.css",
+      literal: "flat placeholder bars in the token palette, never a spinner/shimmer",
+      testFile: "app/src/components/loading-first-paint.scan.test.ts",
+    },
   },
   {
     key: "two-more-surfaces-that-shipped-without-frames::1",
@@ -1722,15 +1767,7 @@ const KNOWN_UNIT_GAPS: string[] = [
   "b8-interaction-states-standard::28",
   "b8-interaction-states-standard::29",
   "b8-interaction-states-standard::30",
-  "b7-empty-states::1",
-  "b7-empty-states::2",
-  "b7-empty-states::3",
-  "b7-empty-states::4",
-  "b7-empty-states::5",
-  "b7-empty-states::6",
   "b7-empty-states::7",
-  "b7-empty-states::8",
-  "b7-empty-states::9",
   "b10-settings-edit-views-on-desktop::1",
   "b10-settings-edit-views-on-desktop::2",
   "b10-settings-edit-views-on-desktop::3",
@@ -1769,9 +1806,6 @@ const KNOWN_UNIT_GAPS: string[] = [
   "cfp-form-editing-a-question::1",
   "cfp-form-editing-a-question::2",
   "cfp-form-editing-a-question::4",
-  "loading-the-first-paint::1",
-  "loading-the-first-paint::3",
-  "loading-the-first-paint::5",
   "two-more-surfaces-that-shipped-without-frames::1",
   "two-more-surfaces-that-shipped-without-frames::2",
   "settings-the-four-surfaces-that-shipped-without-frames::1",
@@ -1915,7 +1949,24 @@ const unitRealResolvers = {
 // real, verified citations and reclassified "honored". Re-measured by
 // running this file and reading back the failing assertion's printed
 // value, never computed by arithmetic on 118 - 6 - 8.
-export const RULING_UNIT_GAP_CEILING = 104;
+//
+// DEC-582 wave-55 (w55-f): 104 -> 93. B7 (empty states) and "Loading — the
+// first paint" units drained: 6 of the 9 b7-empty-states units were given
+// real, verified citations against app/src/components/EmptyState.tsx and
+// its own CSS -- both variants, the optional `reason`/`action`/`escape`
+// props, and the shared no-disabled/no-illustration guarantee its header
+// comment states by construction; 2 more (a naming convention and a bare
+// cross-reference, "::3" and "::6") were reclassified "prose" per the
+// same DEC-582 wave-45 standard (no shippable claim, and neither names a
+// `.chq-` class/route/component per the anti-abuse control); "::7" (the
+// escape link naming the exact filtered facet) stays a genuine gap -- a
+// per-caller editorial convention, not a single artifact. All 3 remaining
+// "loading-the-first-paint" gaps were given real citations against
+// PageSkeleton.tsx/page-skeleton.css. See "### Drained units (wave 55)" in
+// docs/design/audit/design-rulings-ledger-v12.md. Re-measured by running
+// this file and reading back the failing assertion's printed value, never
+// computed by arithmetic on 104 - 11.
+export const RULING_UNIT_GAP_CEILING = 93;
 
 describe("design-rulings-ledger ruling-unit population (DEC-582 wave-31 amendment)", () => {
   const derivedUnits = deriveRulingUnits();
