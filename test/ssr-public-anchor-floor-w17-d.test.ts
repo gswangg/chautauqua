@@ -83,10 +83,43 @@ describe("v12m-w17-d: public event surfaces' classless anchor floor (DEC-393 wav
     assertExempt(src, "chq-pub-detail-speaker-link");
   });
 
+  // DEC-996 wave-38: w35-b gave the next-day link its own class token, and a
+  // control that gains its own class token takes every instrument keyed on
+  // its old selector with it. The ancestor-scoped ".chq-pub-agenda-day-footer
+  // a" this case used to assert on no longer sits under the tap-floor-exempt
+  // receipt -- src/routes/public/css/agenda.css.ts now declares
+  // `.chq-pub-agenda-day-footer-next {` (base rule at line 278, restated
+  // inside the terminal phone block where the exempt receipt lives). The
+  // token-keyed form supersedes the ancestor-scoped one; this case now
+  // asserts the new shape.
   it("agenda.css.ts: agenda day-footer's next-day link is EXEMPT (inline-in-prose)", () => {
     const src = read("src/routes/public/css/agenda.css.ts");
     expect(src).toMatch(EXEMPT_GRAMMAR);
-    assertExempt(src, "chq-pub-agenda-day-footer a");
+    assertExempt(src, "chq-pub-agenda-day-footer-next");
+  });
+
+  // Negative control (DEC-613: never a second independently-typed source):
+  // proves this test's own assertExempt call and the sheet's receipt
+  // comment key on the SAME token, without typing that token a third time
+  // here -- both sides are derived: the asserted-on token comes from this
+  // file's own source (the literal passed to assertExempt in the case
+  // above), the receipt's named token comes from the sheet's prose (a
+  // generic quoted-selector capture, not a literal copy of the token).
+  it("agenda.css.ts: the token this test asserts on is the token the sheet's receipt names", () => {
+    const ownSrc = read("test/ssr-public-anchor-floor-w17-d.test.ts");
+    const caseMatch = ownSrc.match(
+      /it\("agenda\.css\.ts: agenda day-footer's next-day link[\s\S]*?assertExempt\(src, "([\w-]+)"\);/,
+    );
+    expect(caseMatch, "expected the day-footer case in this file to call assertExempt(src, \"...\")").not.toBeNull();
+    const assertedToken = caseMatch![1]!;
+
+    const sheetSrc = read("src/routes/public/css/agenda.css.ts");
+    const namedMatch = sheetSrc.match(/next-day link[\s\S]*?"\.([\w-]+)"/);
+    expect(namedMatch, "expected the sheet's receipt comment to name its token in a quoted selector near 'next-day link'").not.toBeNull();
+    const namedToken = namedMatch![1]!;
+
+    expect(namedToken).toBe(assertedToken);
+    assertExempt(sheetSrc, namedToken);
   });
 
   it("markup: the three rail-day-row sites and the agenda block title carry no new class (ancestor-scoped selector reaches them)", () => {
