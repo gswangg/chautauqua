@@ -212,4 +212,22 @@ export const FAKE_CSS = \`
     const all = sources.flatMap(({ path, text }) => findDuplicateEmptySelectors(path, text));
     expect(all, `offenders: ${all.join(", ")}`).toHaveLength(SSR_DUPLICATE_EMPTY_SELECTOR_CEILING);
   });
+
+  // DEC-808 wave-51 two-sided companions (task w51-a): the two `it`s above
+  // use `toHaveLength`, an idiom test/campaign-ratchet-two-sided.scan.test.ts's
+  // classifier does not recognise as either direction, so it reported both
+  // constants one-sided even though this file already pins them exactly.
+  // These companions restate the SAME measured counts as an EXACT
+  // `expect(NAME).toBe(measured)` assertion -- the shape the classifier
+  // treats as satisfying both directions at once -- rather than editing the
+  // pre-existing `it`s above (never edit an existing one).
+  it(`whole-population duplicate-receipt count exactly equals SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING (${SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING}) -- two-sided companion, DEC-808 wave-51`, () => {
+    const all = sources.flatMap(({ path, text }) => findDuplicateExemptionReceipts(path, text));
+    expect(SSR_DUPLICATE_EXEMPTION_RECEIPT_CEILING).toBe(all.length);
+  });
+
+  it(`whole-population duplicate-empty-selector count exactly equals SSR_DUPLICATE_EMPTY_SELECTOR_CEILING (${SSR_DUPLICATE_EMPTY_SELECTOR_CEILING}) -- two-sided companion, DEC-808 wave-51`, () => {
+    const all = sources.flatMap(({ path, text }) => findDuplicateEmptySelectors(path, text));
+    expect(SSR_DUPLICATE_EMPTY_SELECTOR_CEILING).toBe(all.length);
+  });
 });
