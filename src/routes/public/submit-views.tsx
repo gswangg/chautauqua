@@ -942,7 +942,17 @@ export function ConfirmationPage(props: {
               )}
               {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
                   w17-e): a phrase inside a sentence, not a standalone
-                  control. No declaration. */}
+                  control. No declaration. Grounded per the wave-35 ladder's
+                  rung 2 (wave-44, task w44-g): this ConfirmationPage's own
+                  has-account state (mutually exclusive with this one, same
+                  route/surface) renders a .chq-btn.chq-btn-primary anchor
+                  reaching this identical /login destination ("Log in to
+                  track it"), and .chq-btn already carries theme.ts's shared
+                  house floor (base .chq-btn: display:inline-flex,
+                  align-items:center, plus button/.chq-btn's own
+                  padding:0.5rem 1rem; theme.ts's phone max-width block adds
+                  button/.chq-btn min-height:44px) -- same surface, same
+                  destination, floored companion. */}
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>
@@ -968,7 +978,17 @@ export function ConfirmationPage(props: {
               </div>
               {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
                   w17-e): a phrase inside a sentence, not a standalone
-                  control. No declaration. */}
+                  control. No declaration. Grounded per the wave-35 ladder's
+                  rung 2 (wave-44, task w44-g): this ConfirmationPage's own
+                  has-account state (mutually exclusive with this one, same
+                  route/surface) renders a .chq-btn.chq-btn-primary anchor
+                  reaching this identical /login destination ("Log in to
+                  track it"), and .chq-btn already carries theme.ts's shared
+                  house floor (base .chq-btn: display:inline-flex,
+                  align-items:center, plus button/.chq-btn's own
+                  padding:0.5rem 1rem; theme.ts's phone max-width block adds
+                  button/.chq-btn min-height:44px) -- same surface, same
+                  destination, floored companion. */}
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>

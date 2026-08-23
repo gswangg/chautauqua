@@ -347,9 +347,32 @@ export const INLINE_PROSE_UNGROUNDED_CEILING = 0;
 // chq-docs-auth-link) -- each now resolves GROUNDED-BY-DEVIATION instead
 // of UNVERIFIABLE, once their four wrong "DEVIATIONS.md section 9"
 // citations were repaired to the real section 10 (this wave's second,
-// independent fix). Seeded by forcing this constant to -1, running this
-// file, and reading the printed count back -- never by arithmetic.
-export const INLINE_PROSE_UNVERIFIABLE_CEILING = 8;
+// independent fix).
+// WAVE 44 (task w44-g): 8 -> 1. The remaining eight were the CFP
+// intro-cta/identity-note paragraph wrappers (cfp.css.ts), the
+// intro-cta-link/identity-note-link declaration rule (cfp.css.ts), two
+// "Already have a password? Log in ›" receipts (submit-views.tsx), and
+// the two pre-DEC-996 shell-file receipts (theme.ts's .chq-section /
+// .chq-card, both describing anchors that now carry their own class
+// tokens elsewhere). Seven now resolve: the two paragraph wrappers and
+// the declaration rule cite the real DEVIATIONS.md §10 (a digit was
+// missing from the declaration rule's own citation, and the two
+// wrappers describe the same two anchors §10 already covers); the two
+// "Log in to track it" receipts name the confirmation page's own
+// same-surface .chq-btn CTA as a floored rung-2 companion; theme.ts's
+// .chq-section receipt cites the same §10 third entry as tools.css.ts's
+// grounded twin, and its .chq-card receipt names the same
+// .chq-portal-version-link rung-2 companion as portal.css.ts's grounded
+// twin for the identical anchor. The one true UNVERIFIABLE survivor is
+// cfp.css.ts's OTHER "Already have a password? Log in ›" receipt (the
+// pending-existing-contact state's classless-anchor CSS rule): its own
+// selector's `:not(.chq-btn)` clause makes chq-btn a self-token rather
+// than a usable companion for THIS receipt, chq-btn-primary alone
+// declares no centred-flex anywhere in the tree, and DEVIATIONS.md
+// carries no entry for this specific link. Seeded by forcing this
+// constant to -1, running this file, and reading the printed count back
+// -- never by arithmetic.
+export const INLINE_PROSE_UNVERIFIABLE_CEILING = 1;
 
 describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-393 wave-35 amendment)", () => {
   it("population sanity: walked a non-trivial number of real inline receipts (vacuous-population tripwire, DEC-999)", () => {
