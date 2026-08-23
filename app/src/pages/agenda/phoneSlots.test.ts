@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPhoneSlots, type PhoneBlockedInterval } from './phoneSlots';
+import { clampBreakToWindow } from './gridMath';
 import type { PlacedAgendaSession } from './types';
 
 const DAY_START_MIN = 540;
@@ -147,5 +148,74 @@ describe('buildPhoneSlots', () => {
     const other: PhoneBlockedInterval = { day: '2026-06-02', startMin: 720, endMin: 780, note: 'Lunch · 60 min' };
     const slots = build([], ROOM, [other]);
     expect(slots).toEqual([{ startMin: DAY_START_MIN, endMin: DAY_END_MIN, kind: 'free', sessions: [] }]);
+  });
+
+  // DEC-021 wave-38: the desktop grid never draws a band for a break with no
+  // intersection with [dayStartMin, dayEndMin) (clampBreakToWindow returns
+  // null); the phone builder must agree exactly, rather than emitting a
+  // phantom `blocked` run above/below the drawn day.
+  describe('break clamping matches the desktop grid (DEC-021 wave-38)', () => {
+    it('a break fully before the day window draws on neither surface', () => {
+      const brk: PhoneBlockedInterval = { day: DAY, startMin: 400, endMin: 460, note: 'Early · 60 min' };
+      expect(clampBreakToWindow(400, 460, DAY_START_MIN, DAY_END_MIN, GRID_MIN)).toBeNull();
+      const slots = build([], ROOM, [brk]);
+      expect(slots).toEqual([{ startMin: DAY_START_MIN, endMin: DAY_END_MIN, kind: 'free', sessions: [] }]);
+    });
+
+    it('a break fully after the day window draws on neither surface', () => {
+      const brk: PhoneBlockedInterval = { day: DAY, startMin: 1100, endMin: 1160, note: 'Late · 60 min' };
+      expect(clampBreakToWindow(1100, 1160, DAY_START_MIN, DAY_END_MIN, GRID_MIN)).toBeNull();
+      const slots = build([], ROOM, [brk]);
+      expect(slots).toEqual([{ startMin: DAY_START_MIN, endMin: DAY_END_MIN, kind: 'free', sessions: [] }]);
+    });
+
+    it('a break overlapping the start edge is clipped to the window, same as the desktop grid', () => {
+      // 08:40-09:20 vs a 09:00-18:00 day: clips to 09:00-09:20.
+      const brk: PhoneBlockedInterval = { day: DAY, startMin: 520, endMin: 560, note: 'Edge · 40 min' };
+      const desktop = clampBreakToWindow(520, 560, DAY_START_MIN, DAY_END_MIN, GRID_MIN);
+      expect(desktop).not.toBeNull();
+      const slots = build([], ROOM, [brk]);
+      expect(slots).toEqual([
+        { startMin: DAY_START_MIN, endMin: 560, kind: 'blocked', sessions: [], note: 'Edge · 40 min' },
+        { startMin: 560, endMin: DAY_END_MIN, kind: 'free', sessions: [] },
+      ]);
+    });
+
+    it('a break overlapping the end edge is clipped to the window, same as the desktop grid', () => {
+      // 17:40-18:20 vs a 09:00-18:00 day: clips to 17:40-18:00.
+      const brk: PhoneBlockedInterval = { day: DAY, startMin: 1060, endMin: 1100, note: 'Edge · 40 min' };
+      const desktop = clampBreakToWindow(1060, 1100, DAY_START_MIN, DAY_END_MIN, GRID_MIN);
+      expect(desktop).not.toBeNull();
+      const slots = build([], ROOM, [brk]);
+      expect(slots).toEqual([
+        { startMin: DAY_START_MIN, endMin: 1060, kind: 'free', sessions: [] },
+        { startMin: 1060, endMin: DAY_END_MIN, kind: 'blocked', sessions: [], note: 'Edge · 40 min' },
+      ]);
+    });
+
+    it('a break overlapping a session is clipped rather than emitted as a backwards-running row, and never swallows the surrounding free time', () => {
+      const s = session({ submissionId: 'sub-1', startMin: 720, endMin: 780 }); // 12:00-13:00
+      const brk: PhoneBlockedInterval = { day: DAY, startMin: 660, endMin: 750, note: 'Break · 90 min' }; // 11:00-12:30
+      const slots = build([s], ROOM, [brk]);
+
+      // Emitted list is strictly non-decreasing in time -- every row starts
+      // no earlier than the previous row's end.
+      for (let i = 1; i < slots.length; i += 1) {
+        expect(slots[i]!.startMin).toBeGreaterThanOrEqual(slots[i - 1]!.endMin);
+      }
+      // Total coverage spans the whole day with no gap.
+      expect(slots[0]!.startMin).toBe(DAY_START_MIN);
+      expect(slots[slots.length - 1]!.endMin).toBe(DAY_END_MIN);
+      for (let i = 1; i < slots.length; i += 1) {
+        expect(slots[i]!.startMin).toBe(slots[i - 1]!.endMin);
+      }
+      // The break starts first (11:00 vs the session's 12:00), so it draws
+      // in full and the later-starting session is clipped to where the
+      // break ends -- no phantom overlap, no row running backwards.
+      const blocked = slots.find((s2) => s2.kind === 'blocked');
+      expect(blocked).toEqual({ startMin: 660, endMin: 750, kind: 'blocked', sessions: [], note: 'Break · 90 min' });
+      const placed = slots.find((s2) => s2.kind === 'placed');
+      expect(placed).toEqual({ startMin: 750, endMin: 780, kind: 'placed', sessions: [s] });
+    });
   });
 });

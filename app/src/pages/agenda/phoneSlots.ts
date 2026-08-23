@@ -5,6 +5,7 @@
 
 import type { AgendaConflict, PlacedAgendaSession } from './types';
 import type { BlockedInterval } from '../../lib/schedule-vocabulary';
+import { clampIntervalToWindow } from './gridMath';
 
 export interface PhoneSlot {
   startMin: number;
@@ -86,6 +87,21 @@ export function buildPhoneSlots(args: BuildPhoneSlotsArgs): PhoneSlot[] {
     | { kind: 'placed' | 'clash'; startMin: number; endMin: number; sessions: PlacedAgendaSession[]; note?: undefined }
     | { kind: 'blocked'; startMin: number; endMin: number; sessions?: undefined; note: string };
 
+  // DEC-021 wave-38: a break is only a run at all when its extent still
+  // intersects the drawn day window -- clamped as ONE interval via the same
+  // clampIntervalToWindow the desktop grid's clampBreakToWindow wraps (DEC-613:
+  // one clamp implementation in the tree), never a re-derived pair of bounds.
+  // A break entirely outside [dayStartMin, dayEndMin) contributes no run here,
+  // matching DayGrid exactly; the break RECORD is untouched -- BreaksPanel's
+  // list still shows it, flagged.
+  const clampedBreaks = breaks
+    .filter((b) => b.day === day)
+    .flatMap((b): Run[] => {
+      const clamped = clampIntervalToWindow(b.startMin, b.endMin, dayStartMin, dayEndMin);
+      if (clamped === null) return [];
+      return [{ kind: 'blocked', startMin: clamped.startMin, endMin: clamped.endMin, note: b.note }];
+    });
+
   const runs: Run[] = [
     ...clusters.map(
       (c): Run => ({
@@ -95,19 +111,27 @@ export function buildPhoneSlots(args: BuildPhoneSlotsArgs): PhoneSlot[] {
         sessions: c.sessions,
       }),
     ),
-    ...breaks
-      .filter((b) => b.day === day)
-      .map((b): Run => ({ kind: 'blocked', startMin: b.startMin, endMin: b.endMin, note: b.note })),
+    ...clampedBreaks,
   ].sort((a, b) => a.startMin - b.startMin);
 
+  // Runs are swept in start order and clipped to `cursor` (the end of the
+  // last-emitted run) so the emitted list is strictly non-decreasing in
+  // time: a run that starts before the previous one ended has its visible
+  // start pulled forward to `cursor`, and a run entirely swallowed by the
+  // previous one (its clipped start would be >= its own end) contributes no
+  // row at all rather than a backwards-running one. No free gap is silently
+  // dropped -- one is emitted for every stretch of [cursor, run.startMin)
+  // that survives clipping.
   const slots: PhoneSlot[] = [];
   let cursor = dayStartMin;
   for (const run of runs) {
-    if (run.startMin > cursor) {
-      slots.push({ startMin: cursor, endMin: run.startMin, kind: 'free', sessions: [] });
+    const start = Math.max(run.startMin, cursor);
+    if (start >= run.endMin) continue;
+    if (start > cursor) {
+      slots.push({ startMin: cursor, endMin: start, kind: 'free', sessions: [] });
     }
     slots.push({
-      startMin: run.startMin,
+      startMin: start,
       endMin: run.endMin,
       kind: run.kind,
       sessions: run.sessions ?? [],
