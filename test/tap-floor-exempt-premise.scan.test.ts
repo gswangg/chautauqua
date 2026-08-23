@@ -218,7 +218,14 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // the 37 real containers this tier can now check -- the whole population
 // it resolves was already a true premise, not a defect this wave
 // discovered.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 40;
+//
+// Re-measured wave-53 (task w53-a, DEC-393 amendment, shell lane): live
+// roster reads 40 -> 37 measured on main BEFORE this task's own edits
+// (confirmed via `git stash`) -- a pre-existing drift from whichever
+// unrelated wave last moved this population, unconnected to this task's
+// checkbox/radio 44px fix. Corrected to the live value per DEC-808 (a
+// ratchet ceiling is re-derived from the tree, never inherited).
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 37;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {

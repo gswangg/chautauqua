@@ -327,6 +327,24 @@ export const THEME_CSS = `
 
   input[type=radio] { border-radius: 50%; }
 
+  /* .chq-check-hit wraps a class-less input[type=checkbox]/[type=radio]
+     with no floor-reaching label around it (src/views/form-render.tsx's
+     FieldControl "checkbox" case -- FormField already supplies the
+     <label> ancestor, so this is a <span>, not another label). Layout-
+     neutral at top level -- no padding, no size -- so desktop is byte-
+     identical to the bare input it replaces; the floor itself lives only
+     in the terminal @media (max-width: 700px) block below (DEC-385).
+     Twin of app/src/styles.css:1993's .chq-check-hit base rule. Same
+     composition-receipt idiom .chq-cfp-option already uses (portal.css.ts
+     :41, :574) so the static roster classifier can discharge a
+     .chq-check-hit-wrapped bare input the way it already discharges a
+     .chq-cfp-option-wrapped one -- DEC-393 wave-53 amendment. */
+  .chq-check-hit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   input[type=checkbox]:checked,
   input[type=checkbox]:indeterminate,
   input[type=radio]:checked {
@@ -808,6 +826,24 @@ export const THEME_CSS = `
       display: flex;
       align-items: center;
       padding-inline: 12px;
+    }
+
+    /* DEC-393 wave-53 amendment: closes the SSR class-less checkbox/radio
+       44px hole -- the base checkbox/radio rule above (:313) draws an
+       18x18 box with no phone floor, and form-render.tsx's FieldControl
+       renders a bare <input type=checkbox> with no reaching class. Twin
+       of app/src/styles.css:2846's .chq-check-hit phone rule: physical
+       padding/margin shorthand (not padding-inline/margin-inline -- this
+       control has no sibling gap to widen), the equal-and-opposite margin
+       keeps the 18px painted box (Chautauqua Speakers.dc.html:642) from
+       shifting. The input itself is NEVER widened: it stays 18px, and
+       box-sizing:border-box would make padding on the input a no-op for
+       hit area regardless -- the floor lives entirely on the wrapper. */
+    .chq-check-hit {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 13px;
+      margin: -13px;
     }
   }
 `;
