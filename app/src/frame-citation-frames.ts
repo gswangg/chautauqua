@@ -23,6 +23,55 @@ export interface FrameExtent {
   extentEnd: number;
 }
 
+// ---------------------------------------------------------------------------
+// DEC-967 wave-41 amendment (task w41-b, citation side): a `.dc.html:<line>`
+// landing past `</x-dc>` is not a frame citation. Every frame extent
+// previously ran to the next label line OR END-OF-FILE for the file's last
+// labelled block, which let the last block of every docs/design/*.dc.html
+// swallow the whole `<script data-dc-script>` body below `</x-dc>` -- 236
+// lines onto Portal/Resources, 1,049 style declarations tree-wide (field
+// guide, wave-41). `</x-dc>` closes the drawn template exactly one line
+// before the script tag opens in all 13 files; this is the single-line
+// clip point every frame extent below is now bounded by.
+// ---------------------------------------------------------------------------
+
+const templateCloseLineByFile = new Map<string, number>();
+
+/** The 1-based line number of the single `</x-dc>` closing tag in
+ * `fileName`'s drawn template, or throws loudly if the file has zero or
+ * more than one (fail-loudly: this derivation depends on there being
+ * exactly one template boundary per design file, and a file that violates
+ * that assumption must stop every extent computation, not silently pick
+ * one). */
+export function templateCloseLine(fileName: string): number {
+  let cached = templateCloseLineByFile.get(fileName);
+  if (cached !== undefined) return cached;
+  const lines = readFileSync(join(DESIGN_ROOT, fileName), 'utf-8').split('\n');
+  const hits: number[] = [];
+  lines.forEach((content, idx) => {
+    if (content.includes('</x-dc>')) hits.push(idx + 1);
+  });
+  if (hits.length !== 1) {
+    throw new Error(
+      `${fileName}: expected exactly one </x-dc> closing tag, found ${hits.length} ` +
+        `(templateCloseLine cannot derive a single template-close boundary)`
+    );
+  }
+  cached = hits[0]!;
+  templateCloseLineByFile.set(fileName, cached);
+  return cached;
+}
+
+/** True when `line` (a citation's cited FRAME line, 1-based) falls at or
+ * after the design file's template close -- inside or past the
+ * `<script data-dc-script>` body, never inside the drawn template. Such a
+ * citation is neither a frame claim nor an offender under any of the
+ * receipt ceilings (UNRECEIPTED_CLAIM_CEILING and siblings): it names a
+ * position the frame extents below no longer cover. */
+export function isPastTemplate(fileName: string, line: number): boolean {
+  return line > templateCloseLine(fileName);
+}
+
 export function isFrameLine(line: string): boolean {
   return line.includes('width:390px') && line.includes('height:844');
 }
@@ -41,9 +90,10 @@ export function frameExtentsInFile(fileName: string): FrameExtent[] {
     if (isLabelLine(content)) labelLineNums.push(lineNo);
     if (isFrameLine(content)) frameLineNums.push(lineNo);
   });
+  const close = templateCloseLine(fileName);
   return frameLineNums.map((line) => {
     const nextLabel = labelLineNums.find((l) => l > line);
-    return { fileName, line, extentEnd: nextLabel ?? Infinity };
+    return { fileName, line, extentEnd: Math.min(nextLabel ?? Infinity, close) };
   });
 }
 
@@ -98,12 +148,13 @@ export function desktopFrameExtentsInFile(fileName: string): DesktopFrameExtent[
   lines.forEach((content, idx) => {
     if (isDesktopLabelLine(content)) labelLineNums.push(idx + 1);
   });
+  const close = templateCloseLine(fileName);
   const out: DesktopFrameExtent[] = [];
   labelLineNums.forEach((line, i) => {
-    const extentEnd = labelLineNums[i + 1] ?? Infinity;
-    const extentLines = lines.slice(line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
+    const rawExtentEnd = labelLineNums[i + 1] ?? Infinity;
+    const extentLines = lines.slice(line - 1, rawExtentEnd === Infinity ? lines.length : rawExtentEnd - 1);
     if (extentLines.some(isFrameLine)) return; // has a width:390px+height:844 line -- phone, not desktop
-    out.push({ fileName, line, extentEnd });
+    out.push({ fileName, line, extentEnd: Math.min(rawExtentEnd, close) });
   });
   return out;
 }
