@@ -129,13 +129,21 @@
 //   rule hid. TWIN-RESOLVED rows are graded, recorded and counted in
 //   neither ratchet (DEC-180: a resolution is recorded, never a silent
 //   drop).
-import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_180, DEC_393, DEC_613, DEC_725, DEC_808, DEC_919, DEC_967 } from '../../src/decisions';
-import { enumerateSourceFiles, labelIsMatched, normalizeSource, stripComments } from '../../test/frame-source-corpus';
+import { normalizeSource } from '../../test/frame-source-corpus';
 import { PHONE_DISPLAY_NONE_RULES } from './phone-capability-removal.scan.test';
+import { clusterKeyForPath, scopeBlobsForSheet } from './phone-hidden-drawn-text/cluster-scope';
+import { designFiles, FRAME_BLOBS } from './phone-hidden-drawn-text/frame-blobs';
+import type { FrameBlob } from './phone-hidden-drawn-text/frame-blobs';
+import { findTwin, gradeRule } from './phone-hidden-drawn-text/grade';
+import type { GradedRule } from './phone-hidden-drawn-text/grade';
+import { textBearingFindingsIn, tokensOf } from './phone-hidden-drawn-text/text-findings';
+import type { TextFinding } from './phone-hidden-drawn-text/text-findings';
+
+const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 
 // Compile-checked dependency markers (CLAUDE.md: code depending on a
 // decision must reference its constant so the dependency is compile-
@@ -148,121 +156,18 @@ void DEC_180; // a composed-text miss narrows the GRADE (UNVERIFIABLE, with its 
 void DEC_967; // wave-138: a ledger that re-derives corpus enumeration privately is the failure this file's imports avoid; wave-143: the anti-vacuity guard is proved on a synthetic fixture, never anchored on a real offender a sibling lane may fix.
 void DEC_393; // wave-30's tap-floor-exempt ruling ("a receipt asserts a fact about markup, and no instrument checks it") is the same failure shape this file answers for phone-hidden receipts, one CSS property over.
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
-const DESIGN_ROOT = join(REPO_ROOT, 'docs', 'design');
 const APP_SRC_ROOT = join(REPO_ROOT, 'app', 'src');
 const SRC_ROOT = join(REPO_ROOT, 'src');
 
 // ---------------------------------------------------------------------------
-// TSX side: every chq- token on a text-bearing element, static-vs-composed.
+// TSX side (text-findings.ts), frame side (frame-blobs.ts) and cluster
+// scoping (cluster-scope.ts) are all extracted, imported above, and
+// re-exported at the bottom of this file (contention decomposition, no
+// behavior change -- this file previously carried all four modules'
+// substance directly, which made it the campaign's largest recurring merge
+// conflict; see CONTENTION DECOMPOSITION task notes).
 // ---------------------------------------------------------------------------
-
-export interface TextFinding {
-  file: string; // relative to REPO_ROOT
-  token: string;
-  text: string; // trimmed raw text child
-  composed: boolean; // a JSX expression (`{…}`) rather than literal prose
-}
-
-// Opening tag `<TAG attrs>` (self-closing tags carry no children and are
-// skipped) whose class/className attribute carries a chq- token; DEC-613
-// idiom shared with test/frame-control-label.scan.test.ts's own
-// TAG_RE/SPAN_RE style. Unlike a single-level sibling regex, a token-bearing
-// element's own text may sit BEHIND further nested markup (the worked
-// example: `.chq-review-criteria-head-row`'s "Weight " column-head literal
-// sits inside a nested `<span className="chq-review-criteria-head-cell">`,
-// not as the head-row `<div>`'s own direct child) -- so once a token-bearing
-// OPEN tag is found, its content is walked to the matching BALANCED close
-// tag (depth-counted on that exact tag name, mirrors
-// test/frame-control-label.scan.test.ts's `balancedDivEnd`, generalised to
-// any tag) and every text/JSX-expression run inside that whole block is
-// extracted as a candidate finding for the token(s) on the outer tag.
-const OPEN_TAG_RE = /<([A-Za-z][\w.]*)\b([^>]*?)(\/?)>/g;
-const CLASS_ATTR_RE = /(?:class|className)\s*=\s*(\{[^}]*\}|"[^"]*"|`[^`]*`)/;
-const CHQ_TOKEN_RE = /chq-[a-z0-9-]+/g;
-const TEXT_RUN_RE = />([^<>]+)</g;
-// A candidate must carry at least 3 consecutive letters to count as real
-// prose (mirrors the campaign's standing `isRealLabel`-shaped filter --
-// test/frame-control-label.scan.test.ts's own `isRealLabel` -- generalised
-// from "length >= 2" to "contains real letters" so bare punctuation/interp
-// noise (`(`, `}`, `{  }`) coming out of the balanced-block text-run walk
-// can never manufacture a match or an UNVERIFIABLE row).
-const MEANINGFUL_TEXT_RE = /[A-Za-z]{3,}/;
-
-/** Start offset (the `<` of `</tagName>`) of the balanced closing tag
- * matching the open tag `tagName` whose own `>` sits at `openTagEnd`.
- * Depth-counted so a nested occurrence of the same tag name can never
- * truncate the walk early. */
-function balancedCloseStart(src: string, tagName: string, openTagEnd: number): number {
-  const re = new RegExp(`<(/?)${tagName}\\b[^>]*?(/?)>`, 'g');
-  re.lastIndex = openTagEnd;
-  let depth = 1;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(src)) !== null) {
-    const isClose = m[1] === '/';
-    const selfClosing = !isClose && m[2] === '/';
-    if (selfClosing) continue;
-    if (isClose) {
-      depth -= 1;
-      if (depth === 0) return m.index;
-    } else {
-      depth += 1;
-    }
-  }
-  throw new Error(`balancedCloseStart: <${tagName}> at offset ${openTagEnd} never closed`);
-}
-
-/** Every distinct `chq-…` text-bearing finding across `root`'s non-test
- * `.tsx` files, comments stripped with the ONE shared stripper
- * (test/frame-source-corpus.ts's `stripComments`, DEC-613). */
-export function textBearingFindingsIn(root: string): TextFinding[] {
-  const out: TextFinding[] = [];
-  for (const abs of enumerateSourceFiles(root)) {
-    if (!abs.endsWith('.tsx')) continue;
-    const rel = abs.slice(REPO_ROOT.length + 1);
-    const src = stripComments(readFileSync(abs, 'utf-8'));
-    OPEN_TAG_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = OPEN_TAG_RE.exec(src)) !== null) {
-      if (m[3] === '/') continue; // self-closing: no children
-      const attrs = m[2] ?? '';
-      const classMatch = attrs.match(CLASS_ATTR_RE);
-      if (!classMatch) continue;
-      const classText = classMatch[1] ?? '';
-      const tokens = [...classText.matchAll(CHQ_TOKEN_RE)].map((t) => t[0]);
-      if (tokens.length === 0) continue;
-      const tagName = m[1]!;
-      const openTagEnd = m.index + m[0].length;
-      let closeStart: number;
-      try {
-        closeStart = balancedCloseStart(src, tagName, openTagEnd);
-      } catch {
-        continue; // malformed/unbalanced in this narrow slice -- skip, never invent a block
-      }
-      // `block` is the raw text strictly BETWEEN the open tag's `>` and the
-      // close tag's `<` -- for a LEAF element (no nested markup at all,
-      // e.g. `<span className="chq-x">Plain text</span>`) that means the
-      // block carries no `>`/`<` delimiter of its own, so TEXT_RUN_RE's
-      // `>(...)<` shape would find nothing even though the whole block IS
-      // one text run. Wrapping it back in its own boundary characters
-      // unifies the leaf case with the nested-container case (where the
-      // block's OWN interior `>`/`<` pairs, from its nested children,
-      // already delimit each run) under one regex pass.
-      const block = src.slice(openTagEnd, closeStart);
-      const wrapped = `>${block}<`;
-      TEXT_RUN_RE.lastIndex = 0;
-      let tm: RegExpExecArray | null;
-      while ((tm = TEXT_RUN_RE.exec(wrapped)) !== null) {
-        const text = (tm[1] ?? '').trim();
-        if (!MEANINGFUL_TEXT_RE.test(text)) continue;
-        const composed = text.includes('{');
-        for (const token of tokens) out.push({ file: rel, token, text, composed });
-      }
-    }
-  }
-  return out;
-}
 
 function findingsInRealTree(): TextFinding[] {
   return [...textBearingFindingsIn(APP_SRC_ROOT), ...textBearingFindingsIn(SRC_ROOT)];
@@ -271,194 +176,11 @@ function findingsInRealTree(): TextFinding[] {
 const TEXT_FINDINGS = findingsInRealTree();
 
 // ---------------------------------------------------------------------------
-// Frame side: every width:390/height:844 phone frame extent (ported from
-// test/frame-eyebrow-label.scan.test.ts / test/frame-control-label.scan.test.ts's
-// own Frame walk -- this campaign's standing "port, don't cross-import a
-// population walk" convention, so a worker touching one ledger's population
-// never becomes a merge-conflict on another's).
+// Join: CSS rule -> chq- tokens -> TSX text findings -> frame extents
+// (grade.ts). HIDDEN_TOKENS/GRADED_RULES stay here: they close over
+// PHONE_DISPLAY_NONE_RULES/TEXT_FINDINGS/FRAME_BLOBS, the three populations
+// this orchestrator file alone assembles.
 // ---------------------------------------------------------------------------
-
-interface Frame {
-  fileName: string;
-  line: number;
-  title: string;
-  extentEnd: number;
-}
-
-const LABEL_SPAN_RE = />([^<]+)<\/span>/;
-
-function isFrameLine(line: string): boolean {
-  return line.includes('width:390px') && line.includes('height:844');
-}
-
-function isLabelLine(line: string): boolean {
-  return line.includes('font-size:19px') && LABEL_SPAN_RE.test(line);
-}
-
-export function designFiles(): string[] {
-  return readdirSync(DESIGN_ROOT, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.dc.html'))
-    .map((e) => e.name)
-    .sort();
-}
-
-function framesInFile(fileName: string): Frame[] {
-  const full = join(DESIGN_ROOT, fileName);
-  const lines = readFileSync(full, 'utf-8').split('\n');
-
-  const labelLines: { line: number; title: string }[] = [];
-  const frameLineNums: number[] = [];
-  lines.forEach((content, idx) => {
-    const lineNo = idx + 1;
-    if (isLabelLine(content)) {
-      const m = content.match(LABEL_SPAN_RE);
-      if (m) labelLines.push({ line: lineNo, title: m[1]!.trim() });
-    }
-    if (isFrameLine(content)) frameLineNums.push(lineNo);
-  });
-
-  return frameLineNums.map((frameLine) => {
-    let title: string | undefined;
-    for (let i = labelLines.length - 1; i >= 0; i--) {
-      if (labelLines[i]!.line <= frameLine) {
-        title = labelLines[i]!.title;
-        break;
-      }
-    }
-    if (title === undefined) {
-      throw new Error(`${fileName}:${frameLine} -- no preceding font-size:19px label found`);
-    }
-    const nextLabel = labelLines.find((l) => l.line > frameLine);
-    return { fileName, line: frameLine, title, extentEnd: nextLabel ? nextLabel.line : Infinity };
-  });
-}
-
-interface FrameBlob {
-  fileName: string;
-  line: number;
-  title: string;
-  normalized: string;
-}
-
-function frameBlobsInFile(fileName: string): FrameBlob[] {
-  const full = join(DESIGN_ROOT, fileName);
-  const content = readFileSync(full, 'utf-8');
-  const lines = content.split('\n');
-  const lineStartIndex: number[] = [0];
-  for (let i = 0; i < lines.length; i++) lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
-
-  return framesInFile(fileName).map((frame) => {
-    const startOff = lineStartIndex[frame.line - 1]!;
-    const endOff = frame.extentEnd === Infinity ? content.length : lineStartIndex[frame.extentEnd - 1]!;
-    return {
-      fileName,
-      line: frame.line,
-      title: frame.title,
-      normalized: normalizeSource(content.slice(startOff, endOff)),
-    };
-  });
-}
-
-const FRAME_BLOBS: FrameBlob[] = designFiles().flatMap(frameBlobsInFile);
-
-/** The first phone frame whose extent contains `text` verbatim, or
- * `undefined` if none does. Uses `labelIsMatched`/`normalizeSource`
- * verbatim from test/frame-source-corpus.ts (DEC-613). */
-function matchingFrame(text: string, blobs: readonly FrameBlob[] = FRAME_BLOBS): FrameBlob | undefined {
-  return blobs.find((b) => labelIsMatched(text, [b.normalized]));
-}
-
-// ---------------------------------------------------------------------------
-// Cluster scoping (wave-35 amendment, DEC-725/DEC-808): a sheet's frame
-// join is narrowed to the ONE frame file its cluster owns, with an
-// explicit, asserted fallback to the full pack for shared roots and for
-// clusters the pack draws no same-named frame for. The SAME normalisation
-// (`clusterKeyForPath`) also keys twin-detection's "same phone surface"
-// test below, so the two amendments share one population key rather than
-// growing two private notions of "surface" (DEC-613).
-// ---------------------------------------------------------------------------
-
-const PAGES_PREFIX = 'app/src/pages/';
-
-/** The cluster key a REPO_ROOT-relative path belongs to, or `undefined` if
- * the path names no cluster (a shared root, or a tree this ledger's
- * mapping does not cover). Derived purely from the path string -- never a
- * hand list (DEC-808). */
-export function clusterKeyForPath(relPath: string): string | undefined {
-  if (relPath.startsWith(PAGES_PREFIX)) {
-    const rest = relPath.slice(PAGES_PREFIX.length);
-    const firstSeg = rest.split('/')[0]!;
-    // A root-level file directly under app/src/pages (no cluster
-    // subdirectory, e.g. `Agenda.tsx` or `not-found.css`) still names its
-    // own cluster by its own base name (`Agenda.tsx` -> `agenda`, matching
-    // `app/src/pages/agenda/*`'s own key) -- this is what lets a TSX
-    // finding in the top-level page component join the same surface as its
-    // subcomponents' findings and its cluster's CSS sheet.
-    const base = firstSeg.includes('.') ? firstSeg.split('.')[0]! : firstSeg;
-    return base.toLowerCase();
-  }
-  if (relPath.startsWith('src/routes/public/') || relPath.startsWith('src/routes/portal/')) return 'public-portal';
-  if (relPath.startsWith('src/routes/docs')) return 'docs';
-  return undefined;
-}
-
-/** The `docs/design/*.dc.html` file name a cluster key's OWN frame would
- * carry, were one to exist -- existence against the pack's real file list
- * is checked by the caller (`scopeBlobsForSheet`), never assumed here. */
-function frameFileNameForClusterKey(key: string): string {
-  if (key === 'public-portal') return 'Chautauqua Public and Portal.dc.html';
-  if (key === 'docs') return 'Chautauqua Docs.dc.html';
-  return `Chautauqua ${key.charAt(0).toUpperCase()}${key.slice(1)}.dc.html`;
-}
-
-// Sheets whose join EXPLICITLY stays full-pack -- never narrowed, because
-// their rules are not owned by any one cluster's frame (asserted by name in
-// the non-vacuity section below, so a future shared root can't silently
-// inherit whichever behaviour this set's absence would produce).
-const SHARED_ROOT_SHEETS = new Set(['app/src/styles.css', 'src/views/theme.ts']);
-
-export interface SheetScope {
-  blobs: FrameBlob[];
-  kind: 'cluster' | 'shared-root' | 'no-frame-fallback';
-  frameFile: string | undefined;
-}
-
-/** The frame-extent population a CSS rule from `sheet` is graded against.
- * Pure over its `allBlobs`/`knownFrameFiles` inputs so the non-vacuity
- * section can drive it over synthetic fixtures without touching the real
- * design pack. */
-export function scopeBlobsForSheet(
-  sheet: string,
-  allBlobs: readonly FrameBlob[],
-  knownFrameFiles: ReadonlySet<string>
-): SheetScope {
-  if (SHARED_ROOT_SHEETS.has(sheet)) {
-    return { blobs: [...allBlobs], kind: 'shared-root', frameFile: undefined };
-  }
-  const key = clusterKeyForPath(sheet);
-  const frameFile = key === undefined ? undefined : frameFileNameForClusterKey(key);
-  if (frameFile === undefined || !knownFrameFiles.has(frameFile)) {
-    return { blobs: [...allBlobs], kind: 'no-frame-fallback', frameFile: undefined };
-  }
-  return { blobs: allBlobs.filter((b) => b.fileName === frameFile), kind: 'cluster', frameFile };
-}
-
-// ---------------------------------------------------------------------------
-// Join: CSS rule -> chq- tokens -> TSX text findings -> frame extents.
-// ---------------------------------------------------------------------------
-
-export type Grade = 'PREMISE-FALSE' | 'UNVERIFIABLE' | 'PREMISE-OK' | 'TWIN-RESOLVED';
-
-export interface GradedRule {
-  sheet: string;
-  selector: string;
-  grade: Grade;
-  reason: string;
-}
-
-function tokensOf(selector: string): string[] {
-  return [...new Set([...selector.matchAll(CHQ_TOKEN_RE)].map((m) => m[0]))];
-}
 
 // Every `chq-` token that is phone-hidden by SOME rule, anywhere in the
 // tree -- the population `findTwin` excludes a candidate twin from (a twin
@@ -468,105 +190,11 @@ function tokensOf(selector: string): string[] {
 // enumeration rather than re-deriving it).
 const HIDDEN_TOKENS: ReadonlySet<string> = new Set(PHONE_DISPLAY_NONE_RULES.flatMap((r) => tokensOf(r.selector)));
 
-/** The wave-35 twin-detection clause (`phone-capability-removal.scan.
- * test.ts`'s own "desktop twin" receipt precedent, reused rather than
- * re-derived, DEC-613): some OTHER `chq-` token, never itself phone-hidden
- * anywhere in the tree, carrying the IDENTICAL static text on the SAME
- * cluster surface as `finding`. Pure over its inputs so the non-vacuity
- * section can drive it over synthetic fixtures. */
-export function findTwin(
-  finding: TextFinding,
-  findings: readonly TextFinding[],
-  hiddenTokens: ReadonlySet<string> = HIDDEN_TOKENS,
-  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
-): TextFinding | undefined {
-  const surface = surfaceKeyOf(finding.file);
-  if (surface === undefined) return undefined; // no surface to key a twin match on -- never treat two unrelated "undefined" surfaces as the same one
-  return findings.find((t) => {
-    if (t === finding || t.composed || t.text !== finding.text) return false;
-    if (hiddenTokens.has(t.token)) return false;
-    if (surfaceKeyOf(t.file) !== surface) return false;
-    // A twin must be a SPECIFIC element, not a bulk container: the
-    // balanced-close-tag walk above deliberately attributes NESTED text up
-    // to an outer token (so a token hidden BEHIND further markup is still
-    // found), which means a coarse outer wrapper token (e.g. a page-root
-    // `chq-page`) absorbs every distinct string nested anywhere inside it.
-    // A genuine twin label -- `.chq-detail-back-short` for a hidden
-    // `.chq-detail-back-full`, this scan's own worked precedent -- names
-    // exactly ONE static text in the whole findings population; requiring
-    // that here (rather than hand-listing wrapper token names, DEC-808)
-    // disqualifies the container case by what it measurably does, not by
-    // what it is called.
-    const distinctTextsForToken = new Set(
-      findings.filter((o) => o.token === t.token && !o.composed).map((o) => o.text)
-    );
-    return distinctTextsForToken.size === 1;
-  });
-}
-
-/** Grades one CSS rule's selector against a set of already-gathered text
- * findings and frame blobs -- pure, so the non-vacuity section below can
- * drive it over fabricated inputs. Returns `undefined` if the selector's
- * tokens carry no text-bearing finding at all (outside this population). */
-export function gradeRule(
-  selector: string,
-  findings: readonly TextFinding[],
-  blobs: readonly FrameBlob[],
-  hiddenTokens: ReadonlySet<string> = HIDDEN_TOKENS,
-  surfaceKeyOf: (file: string) => string | undefined = clusterKeyForPath
-): GradedRule | undefined {
-  const tokens = tokensOf(selector);
-  const matches = findings.filter((f) => tokens.includes(f.token));
-  if (matches.length === 0) return undefined;
-
-  for (const f of matches) {
-    if (f.composed) continue;
-    const frame = matchingFrame(f.text, blobs);
-    if (frame) {
-      const twin = findTwin(f, findings, hiddenTokens, surfaceKeyOf);
-      if (twin) {
-        return {
-          sheet: '',
-          selector,
-          grade: 'TWIN-RESOLVED',
-          reason:
-            `"${f.text}" (${f.file}) is drawn verbatim at ${frame.fileName}:${frame.line} "${frame.title}", ` +
-            `but an identical, still-visible text child exists on the same phone surface: "${twin.text}" ` +
-            `(${twin.file} :: ${twin.token}) -- the frame's requirement is met by that twin, not by the hidden element`,
-        };
-      }
-      return {
-        sheet: '',
-        selector,
-        grade: 'PREMISE-FALSE',
-        reason: `"${f.text}" (${f.file}) is drawn verbatim at ${frame.fileName}:${frame.line} "${frame.title}"`,
-      };
-    }
-  }
-
-  const composedFinding = matches.find((f) => f.composed);
-  if (composedFinding) {
-    return {
-      sheet: '',
-      selector,
-      grade: 'UNVERIFIABLE',
-      reason: `${composedFinding.file} :: ${composedFinding.token} renders a composed (non-static) text child: "${composedFinding.text}" -- a static substring join can never verify a value assembled at render time`,
-    };
-  }
-
-  return {
-    sheet: '',
-    selector,
-    grade: 'PREMISE-OK',
-    reason: `every static text child of [${tokens.join(', ')}] was checked against every width:390 frame extent and none matched`,
-  };
-}
-
 const KNOWN_FRAME_FILES: ReadonlySet<string> = new Set(designFiles());
 
 const GRADED_RULES: GradedRule[] = PHONE_DISPLAY_NONE_RULES.map((r) => {
   const scope = scopeBlobsForSheet(r.sheet, FRAME_BLOBS, KNOWN_FRAME_FILES);
-  const g = gradeRule(r.selector, TEXT_FINDINGS, scope.blobs);
+  const g = gradeRule(r.selector, TEXT_FINDINGS, scope.blobs, HIDDEN_TOKENS);
   return g ? { ...g, sheet: r.sheet } : undefined;
 }).filter((g): g is GradedRule => g !== undefined);
 
@@ -905,6 +533,18 @@ describe('DEC-725 phone hidden-drawn-text probe', () => {
     }
   });
 });
+
+// Re-exports of the extracted submodules' public surface (contention
+// decomposition, no behavior change): everything that used to be defined
+// directly in this file is still importable from it.
+export { clusterKeyForPath, scopeBlobsForSheet } from './phone-hidden-drawn-text/cluster-scope';
+export type { SheetScope } from './phone-hidden-drawn-text/cluster-scope';
+export { designFiles } from './phone-hidden-drawn-text/frame-blobs';
+export type { FrameBlob } from './phone-hidden-drawn-text/frame-blobs';
+export { findTwin, gradeRule } from './phone-hidden-drawn-text/grade';
+export type { Grade, GradedRule } from './phone-hidden-drawn-text/grade';
+export { textBearingFindingsIn } from './phone-hidden-drawn-text/text-findings';
+export type { TextFinding } from './phone-hidden-drawn-text/text-findings';
 
 export {
   FRAME_BLOBS,
