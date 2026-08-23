@@ -220,7 +220,12 @@ export {
 // Restoring the code span (with the ":line" left outside it, so both
 // citation scans stay green) closes that row again. The single disappearing
 // row is therefore identified, not guessed.
-const AUDIT_FILE_FLOOR = 138;
+// RAISED 138 -> 140 (task v12m-w54-d): the worktree's starting sha
+// (ecf47bcd1) already trails main's already-landed audit-file growth by two
+// files (main measures 140 at this same population) -- no audit file was
+// created by this task, this only catches the floor up to what the corpus
+// already carries.
+const AUDIT_FILE_FLOOR = 140;
 // RAISED 264 -> 266 (task v12m-w52-e): this task's wave-52 Review+Overview
 // adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
 // table added two DESKTOP DIVERGENCE verdicts (docs/design/audit/pack-grid
@@ -231,7 +236,16 @@ const AUDIT_FILE_FLOOR = 138;
 // staleness floor moves, per this test's own instruction, in the same
 // commit that grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task
 // created no audit file.
-const TOKEN_ROW_FLOOR = 266;
+// RAISED 266 -> 283 (task v12m-w54-d): main's own already-landed growth
+// accounts for 266 -> 282 (not measured by this task); this task's own
+// pack-grid-track-vocabulary-v12.md edit (9 rows adjudicated + one new
+// "Wave 54" section, all DEC-896-tagged) adds exactly one further
+// DIVERGES-token row ("DIVERGENCE" appears in the new section's own
+// verdict-tally prose). Every new occurrence carries its DEC-896 citation
+// in the same table row/paragraph, so OPEN_DIVERGENCE_CEILING is
+// untouched; only this staleness floor moves, in the same commit that
+// grows the corpus, per this test's own instruction.
+const TOKEN_ROW_FLOOR = 283;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,

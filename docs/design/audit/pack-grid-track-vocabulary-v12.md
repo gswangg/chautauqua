@@ -76,7 +76,7 @@ guess a correspondence a human has not confirmed.
 
 | Frame file | Frame label | Drawn value | Nearest shipped value | Verdict |
 | --- | --- | --- | --- | --- |
-| `docs/design/Chautauqua Agenda.dc.html:75` | Day grid · 1600 | `62px repeat(4, 1fr)` | not adjudicated this wave | UNMATCHED |
+| `docs/design/Chautauqua Agenda.dc.html:75` | Day grid · 1600 | `62px repeat(4, 1fr)` | DESKTOP DIVERGENCE (DEC-896, wave 54): `app/src/pages/agenda/DayGrid.tsx` computes `` `80px repeat(${columns.length}, minmax(140px, 1fr))` `` and assigns it via the inline `style={{ gridTemplateColumns }}` object -- a real, reachable room-lane board serving the same shape (fixed time gutter + N room tracks) but wider (80px vs. the frame's 62px) and each room track floored at `minmax(140px, 1fr)` rather than a bare `1fr`; the camelCase inline-style form also carries no literal `grid-template-columns:` colon syntax, so the scan's colon-keyed regex never reaches it in the first place. | DESKTOP DIVERGENCE |
 | `docs/design/Chautauqua Comms.dc.html:157` | Compose · step 3 of 4 · 1600 | `150px 1fr 130px 150px auto` | `app/src/pages/comms/comms.css` `--chq-comms-batch-grid: 150px 1fr 130px 150px 96px;` — same first four tracks, last track pinned to 96px where the frame draws `auto` (a documented fidelity fix, same file, "Frame 07-comms--08 fidelity fix: the trailing action track was `auto`" — a shared per-row action button gave two different `auto` widths and misaligned the columns) (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
 | `docs/design/Chautauqua Comms.dc.html:424` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | `app/src/pages/comms/comms.css` `.chq-comms-compose-col-slot` — the compose step-1 recipient table is an HTML `<table>` with `table-layout:fixed` and per-`<th>` widths (`.chq-comms-compose-col-select{width:26px}`, `.chq-comms-compose-col-speaker{width:170px}`, `.chq-comms-compose-col-status{width:130px}`, `.chq-comms-compose-col-slot{width:150px}`, Submission unwidthed remainder), same file's own comment: "Frame 07-comms--05: kept on one line ... widened from 118px, which wrapped ... at the table's narrower breakpoints" — first four tracks match the frame exactly, the fifth (Slot) is a documented widen from 118px to 150px (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
 | `docs/design/Chautauqua Comms.dc.html:428` | Compose · step 1 of 4 | `26px 1fr 170px 130px 118px` | same row as `:424` — `app/src/pages/comms/comms.css` `.chq-comms-compose-col-slot` widened 118px→150px, first four tracks match (wave-51, HAND-VERIFIED) | DESKTOP DIVERGENCE |
@@ -110,14 +110,14 @@ guess a correspondence a human has not confirmed.
 | `docs/design/Chautauqua Overview.dc.html:662` | States · hover, pending, drag | `110px 1fr 220px` | INSTRUMENT ARTEFACT (DEC-896, wave 52): the same B8 explainer's Motion section (Duration/Used for/Easing reference table for the motion tokens) -- documentation chrome, not a product screen; `grep -rn "110px 1fr 220px" app/src` is empty. | INSTRUMENT ARTEFACT |
 | `docs/design/Chautauqua Overview.dc.html:714` | Loading · the first paint | `74px 1fr 150px 108px 92px` | UNSERVED (DEC-896, wave 52): the frame mocks the Submissions page's loading skeleton as a CSS grid (Ref/Title/Speakers/Status/Sent); the shipped skeleton (`app/src/components/page-skeleton.css`'s `.chq-skeleton-row`/`.chq-skeleton-row-table`/`.chq-skeleton-bar-ref` etc) is `display:flex` with per-bar percentage widths, never a grid-template-columns declaration -- this exact track list is never built. | UNSERVED |
 | `docs/design/Chautauqua Overview.dc.html:718` | Loading · the first paint | `74px 1fr 150px 108px 92px` | UNSERVED (DEC-896, wave 52): same Loading skeleton row as :714 -- `app/src/components/page-skeleton.css` builds it with flexbox, never this grid. | UNSERVED |
-| `docs/design/Chautauqua Public and Portal.dc.html:67` | Sessions and agenda · 1600 | `126px 1fr auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:150` | Agenda · 1600 | `minmax(0, 1fr) minmax(0, 1180px) minmax(0, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:172` | Agenda · 1600 | `88px minmax(0, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:267` | Agenda · a track highlighted | `minmax(0, 1fr) minmax(0, 1180px) minmax(0, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:290` | Agenda · a track highlighted | `88px minmax(0, 1fr)` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:813` | My schedule · /e/:slug/schedule | `126px 1fr auto` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:1415` | Portal · Edit your session · desktop | `1fr 130px` | not adjudicated this wave | UNMATCHED |
-| `docs/design/Chautauqua Public and Portal.dc.html:1443` | Portal · Edit your session · desktop | `1fr 190px` | not adjudicated this wave | UNMATCHED |
+| `docs/design/Chautauqua Public and Portal.dc.html:67` | Sessions and agenda · 1600 | `126px 1fr auto` | INSTRUMENT ARTEFACT (DEC-896, wave 54): `src/routes/public/css/cards.css.ts`'s `.chq-pub-session-row` declares `grid-template-columns: var(--chq-pub-when-gutter) 1fr auto;`, and `--chq-pub-when-gutter: 126px;` (`app/src/styles.css`, `src/views/theme.ts`) resolves the value to exactly `126px 1fr auto` -- the frame's own citation for the token (cards.css.ts's comment names `.dc.html:67` directly). The scan's var() resolver only fires when a declared value is EXACTLY one `var(--x)` reference; a mixed value with a literal var() in only the first track is never resolved, so a byte-for-byte match reads UNMATCHED. | INSTRUMENT ARTEFACT |
+| `docs/design/Chautauqua Public and Portal.dc.html:150` | Agenda · 1600 | `minmax(0, 1fr) minmax(0, 1180px) minmax(0, 1fr)` | UNSERVED (DEC-896, wave 54): the frame's 3-track centering shell (a `1fr`/`1180px`/`1fr` grid, drawn twice more at `:267`/`:151` for the inner `minmax(0, 820px) 300px` pair) is never built as a CSS grid at all -- `app/src/styles.css`'s `.chq-measure-wide { max-width: var(--chq-measure-wide); margin: 0 auto; }` (1180px) centers the same content column with a max-width + `margin:auto` technique, and the inner 820px/300px split ships via `.chq-pub-sessions-fresh-layout`'s own `grid-template-columns: minmax(0, 820px) 300px;` (`src/routes/public/css/rail.css.ts`) reached through `justify-content:center` rather than nested inside an outer 3-track shell -- same visual result, no `grid-template-columns` declaration matching this outer track list anywhere in the corpus. | UNSERVED |
+| `docs/design/Chautauqua Public and Portal.dc.html:172` | Agenda · 1600 | `88px minmax(0, 1fr)` | UNSERVED (DEC-896, wave 54): the frame's per-slot time-gutter + content row; shipped as `.chq-pub-agenda-day-row` (`src/routes/public/css/agenda.css.ts`), a `display:flex` row whose `.chq-pub-agenda-day-time` child is `flex: 0 0 88px; width: 88px;` -- the 88px measure matches exactly, the mechanism is flexbox, never a `grid-template-columns` declaration. | UNSERVED |
+| `docs/design/Chautauqua Public and Portal.dc.html:267` | Agenda · a track highlighted | `minmax(0, 1fr) minmax(0, 1180px) minmax(0, 1fr)` | UNSERVED (DEC-896, wave 54): same outer 3-track centering shell as `:150` -- `app/src/styles.css`'s `.chq-measure-wide` max-width + `margin:auto` technique, no matching `grid-template-columns` declaration anywhere. | UNSERVED |
+| `docs/design/Chautauqua Public and Portal.dc.html:290` | Agenda · a track highlighted | `88px minmax(0, 1fr)` | UNSERVED (DEC-896, wave 54): same per-slot time-gutter row as `:172` -- `.chq-pub-agenda-day-row`/`.chq-pub-agenda-day-time` (`src/routes/public/css/agenda.css.ts`) is `display:flex` with `flex: 0 0 88px`, never `grid-template-columns`. | UNSERVED |
+| `docs/design/Chautauqua Public and Portal.dc.html:813` | My schedule · /e/:slug/schedule | `126px 1fr auto` | INSTRUMENT ARTEFACT (DEC-896, wave 54): same mixed var() value as `:67` -- `src/routes/public/css/rail.css.ts`'s `.chq-pub-schedule-row` declares `grid-template-columns: var(--chq-pub-when-gutter) 1fr auto;`, which resolves to exactly `126px 1fr auto`, but the scan's var() resolver only fires on a whole-value `var(--x)` reference, not a mixed value. | INSTRUMENT ARTEFACT |
+| `docs/design/Chautauqua Public and Portal.dc.html:1415` | Portal · Edit your session · desktop | `1fr 130px` | UNSERVED (DEC-896, wave 54): the frame's "On this session" participant row (name/note track + right-flushed role track); shipped as `.chq-portal-participant-row` (`src/routes/portal/portal.css.ts`), a `display:flex; justify-content:space-between;` row with the role label auto-sized to its own content -- same real element, no `grid-template-columns` declaration and no fixed 130px role track. | UNSERVED |
+| `docs/design/Chautauqua Public and Portal.dc.html:1443` | Portal · Edit your session · desktop | `1fr 190px` | UNSERVED (DEC-896, wave 54): the frame's "Add a co-presenter" Email/Role row; shipped as `.chq-portal-copresenter-email-role` (`src/routes/portal/portal.css.ts`), a `display:flex; flex-wrap:wrap;` pairing (`div:first-child { flex: 1 1 220px; }`, `.chq-portal-copresenter-role { flex: 0 1 190px; }`) -- the 190px role measure matches, the mechanism is flex-basis, never `grid-template-columns` (the class's own `grid-template-columns: 1fr 1fr;` at `:1121` is INSIDE the `max-width:700px` phone override, DEC-385, and grids the First-/Last-name pair, not this row). | UNSERVED |
 | `docs/design/Chautauqua Review.dc.html:124` | Organiser view · 1600 | `44px 1fr 132px 118px 190px 84px auto` | UNSERVED (DEC-896, wave 52): the frame's "Wave 1 results · ranked" head/row/expanded-head/expanded-row/footer all draw this grid, but the shipped table (`app/src/pages/review/review.css`'s `.chq-review-results-table`, DEC-902 wave-21 amendment) renders as a real HTML table with table-layout:fixed and per-column width classes (`.chq-review-results-col-rank` etc) instead of CSS Grid -- the columns are served, the grid-template-columns declaration is not. | UNSERVED |
 | `docs/design/Chautauqua Review.dc.html:128` | Organiser view · 1600 | `44px 1fr 132px 118px 190px 84px auto` | UNSERVED (DEC-896, wave 52): same results table as :124 -- `.chq-review-results-table` (`app/src/pages/review/review.css`, DEC-902) renders via an HTML table, not grid-template-columns. | UNSERVED |
 | `docs/design/Chautauqua Review.dc.html:143` | Organiser view · 1600 | `44px 1fr 132px 118px 190px 84px auto` | UNSERVED (DEC-896, wave 52): same results table as :124 -- `.chq-review-results-table` (`app/src/pages/review/review.css`, DEC-902) renders via an HTML table, not grid-template-columns. | UNSERVED |
@@ -150,6 +150,51 @@ guess a correspondence a human has not confirmed.
 | `docs/design/Chautauqua Submissions.dc.html:436` | CFP form builder · /submissions/forms | `18px 1fr 120px 92px auto` | not adjudicated this wave | UNMATCHED |
 
 Total: 72 rows, matching `PACK_GRID_TRACK_UNMATCHED_CEILING`.
+
+## Wave 54 (task w54-d): the Public-and-Portal + Agenda rows adjudicated
+
+Task w54-d adjudicated 9 of this table's rows: the 8 `docs/design/Chautauqua
+Public and Portal.dc.html` rows (`:67`, `:150`, `:172`, `:267`, `:290`,
+`:813`, `:1415`, `:1443`) and the 1 `docs/design/Chautauqua Agenda.dc.html`
+row (`:75`). DOCS ONLY -- no CSS byte moved, no constant was renamed or
+re-declared, and `PACK_GRID_TRACK_UNMATCHED_CEILING` stays at `72`;
+adjudication replaces a placeholder "not adjudicated this wave" cell with a
+confirmed correspondence, it does not remove a row from the measured
+population. Two sibling lanes (w54-e, w54-f) are adjudicating disjoint
+row slices of this same table in parallel this wave.
+
+Tally for these 9 rows (DEC-896, wave 54): **5 UNSERVED**, **3 INSTRUMENT
+ARTEFACT**, **1 DESKTOP DIVERGENCE**, 0 MATCHED-VIA-VAR.
+
+- **UNSERVED (5)** -- a real, reachable product element serves the same
+  visual columns through a different CSS mechanism, never the frame's own
+  `grid-template-columns`: the outer 3-track centering shell at `:150`/`:267`
+  is built with `.chq-measure-wide`'s `max-width` + `margin:0 auto`
+  (`app/src/styles.css`), not a grid; the per-slot 88px time-gutter row at
+  `:172`/`:290` is `.chq-pub-agenda-day-row`'s `display:flex` with
+  `flex: 0 0 88px` (`src/routes/public/css/agenda.css.ts`); the Portal
+  "On this session" participant row at `:1415` and the "Add a co-presenter"
+  Email/Role row at `:1443` are both `display:flex` pairings
+  (`.chq-portal-participant-row`, `.chq-portal-copresenter-email-role`,
+  `src/routes/portal/portal.css.ts`) rather than CSS grid.
+- **INSTRUMENT ARTEFACT (3)** -- a real declared `grid-template-columns:`
+  resolves, through its custom property, to the drawn value byte-for-byte,
+  but the scan's var() resolver only substitutes a value that is EXACTLY one
+  `var(--x)` reference; `.chq-pub-session-row` (`:67`) and
+  `.chq-pub-schedule-row` (`:813`) both declare
+  `var(--chq-pub-when-gutter) 1fr auto`, and `--chq-pub-when-gutter: 126px;`
+  makes both resolve to the frame's exact `126px 1fr auto` -- invisible to
+  the instrument because the var() sits in only the first of three tracks,
+  not the whole value.
+- **DESKTOP DIVERGENCE (1)** -- `docs/design/Chautauqua Agenda.dc.html:75`'s
+  admin day-grid board (`62px repeat(4, 1fr)`) is real and reachable
+  (`app/src/pages/agenda/DayGrid.tsx`), but ships a genuinely different
+  track list -- `` `80px repeat(${columns.length}, minmax(140px, 1fr))` ``,
+  assigned via an inline `style={{ gridTemplateColumns }}` object rather
+  than a literal `grid-template-columns:` string, so the scan's colon-keyed
+  regex cannot see it at all; independent of the syntax gap, the shipped
+  time gutter is 80px wide against the frame's 62px and each room track is
+  floored at `minmax(140px, 1fr)` rather than a bare `1fr`.
 
 ## Rejected in the same measurement pass
 
