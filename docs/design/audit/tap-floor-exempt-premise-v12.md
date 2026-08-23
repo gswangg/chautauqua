@@ -31,13 +31,13 @@ construction, whether or not its premise was actually checkable. This wave
 adds three more recognised families, all with a real predicate, none of
 them restructuring `composition`/`inline-*`:
 
-- **`modifier`** (5 receipts — `src/views/theme.ts:461`, `:486`;
-  `src/routes/docs-site.css.ts:98`, `:513`; `src/views/error-states.css.ts:46`).
+- **`modifier`** (5 receipts — two in src/views/theme.ts, two in
+  src/routes/docs-site.css.ts, one in src/views/error-states.css.ts).
   The reason names a BASE class the receipted selector composes onto.
   Routed through the EXISTING companion floor-grammar tiers unchanged — no
   new grammar, just a family label the instrument now recognises.
-- **`scoped`** (2 receipts — `app/src/pages/contacts/contacts.css:596`,
-  `app/src/pages/submissions/detail.css:278`). The reason names a CONTAINER
+- **`scoped`** (2 receipts — app/src/pages/contacts/contacts.css and
+  app/src/pages/submissions/detail.css). The reason names a CONTAINER
   class. Same companion predicate as `modifier`/`composition`.
 - **`render-gate`** (6 receipts, all `app/src/pages/agenda/agenda.css` —
   `:280`, `:440`, `:478`, `:534`, `:693`, `:777`). The claim is "the
@@ -68,7 +68,7 @@ Re-measured by forcing both ceilings to `-1` and reading the roster back:
   not a `.chq-*` companion class, so the companion predicate has nothing to
   resolve.
 - 1 of the 2 `scoped` receipts resolves **FALSE-PREMISE**:
-  `app/src/pages/contacts/contacts.css:596` names
+  app/src/pages/contacts/contacts.css names
   `.chq-contacts-drawer-actions` as the container that "only ever renders
   `<button>` children," but that container's own merged CSS (base rule +
   its phone-media override, plus the two compound `.chq-contacts-
