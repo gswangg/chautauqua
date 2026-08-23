@@ -198,6 +198,15 @@ so no row is silently OPEN against `test/open-divergence-ledger.scan.test.ts`.
    (`docs/design/DEVIATIONS.md` §6, DEC-032). No code exists to grade this
    label against.
 
+## WAVE 39 (DEC-808 wave-39, residue read-out, task w39-g)
+
+`DRAWN_FIELD_LABEL_UNRESOLVED_CEILING` was one of three named UNOWNED
+residues never re-verified since it landed. Forced to `-1` and the
+offender list read back on this branch: still EXACTLY 1, the same row
+(`Chautauqua Settings.dc.html:1173`, "Keep declined submissions for"), for
+the same DEVIATIONS §6/DEC-032 deferred-non-build reason recorded above.
+No drift. Ceiling stays at 1.
+
 ## Full population by frame
 
 Every row of the 121-row population, grouped by `docs/design/*.dc.html`

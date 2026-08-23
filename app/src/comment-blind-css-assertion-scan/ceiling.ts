@@ -230,4 +230,15 @@
 // the same file (they are pure scanning/stripping vocabulary, no `expect(`
 // calls of their own), so this class-1 ceiling is unaffected by the
 // widening. Ceiling stays at 1 (measured count sits AT the ceiling).
+// v12m-w39-g (DEC-808 wave-39, residue read-out): this ceiling was one of
+// three named UNOWNED residues never re-verified since landing. Forced to
+// -1 and the offender list read back on this branch: still EXACTLY 1, the
+// same offender (contacts-phone-standdown-receipts.test.ts), whose sole
+// `*_CSS`-shaped identifier is extracted BY LOCATING a CSS comment block
+// and every assertion checks the COMMENT'S OWN TEXT -- routing it through
+// stripCssComments would erase the subject under test, and the file has no
+// other assertion to give a real `stripCssComments(` call site (the same
+// subject-test carve-out as cfp-phone-steps.test.ts's phone-hidden: check,
+// per DEC-374's v12m-w13-rg amendment). No drift since v12m-w29-h: the
+// comment's own claim held up under re-measurement. Ceiling stays at 1.
 export const COMMENT_BLIND_CSS_ASSERTION_CEILING = 1;
