@@ -269,7 +269,15 @@ describe("audit-ratchet-statement-drift", () => {
     // Chautauqua Submissions.dc.html:391) -- see
     // test/frame-control-floor.scan.test.ts's own WAVE 53 note above this
     // constant.
-    expect(live.get("FRAME_FLOOR_DIVERGENCE_CEILING")).toEqual([1]);
+    // WAVE 57 (merge train, thunderdome medic): back to 0. That offender was
+    // repaired inside the same train by the dock-scoped `min-height: 46px`
+    // rule w56-c added to detail.css, and test/frame-control-floor.scan.
+    // test.ts's own two-sided companion forced the constant down with it.
+    // This assertion is a LIVE-RESOLUTION probe, not a second ratchet: its
+    // job is to prove liveConstantValues() really reads the tree, so it
+    // tracks whatever the tree currently exports rather than pinning a value
+    // of its own (pinning one is what made it red here).
+    expect(live.get("FRAME_FLOOR_DIVERGENCE_CEILING")).toEqual([0]);
   });
 
   it("extracts all four documented statement shapes from synthetic fixture text", () => {

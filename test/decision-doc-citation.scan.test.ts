@@ -813,7 +813,24 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // settings.css:708 / Chautauqua Settings.dc.html:364 backtick run each
 // misreading its neighbour's citation as its own receipt quote) -- both
 // converted to bare prose, closing 1 unresolved citation.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1227;
+// Lowered 1227 -> 1224 (wave-57 merge train, thunderdome medic). The tree had
+// drifted to 1237 -- ten rows OVER the declared ceiling -- so per the DEC-069
+// RULE above the repair was the citations, never the constant. Thirteen
+// offenders repaired: decisions/DEC-535.md's two (the J4 remind handler moved
+// out of src/routes/review/plans.ts into plans-progress.ts when that monolith
+// was decomposed, and `runDueReminders` drifted off :831), both re-anchored on
+// the DEC-518 drift-proof repo-relative-path-plus-backtick-quote shape with no
+// `:line`; and all eleven in decisions/DEC-026.md -- five bare basenames that
+// went ambiguous as the contacts layer grew a second and third `merge.ts` /
+// `history.ts` (each given its repo-relative prefix), three line-keyed
+// citations repointed at the construct they name after it moved
+// (`mergeOnePair`'s fold, `previewMerge`'s call site, the phone import-column
+// assertion, whose stale width:100% claim was corrected to the width:262px /
+// max-width:48% the test actually pins), and a run of three adjacent code
+// spans de-adjacented into a plain list per the DEC-008 wave-10 precedent
+// (adjacent `path:line` spans read as each other's receipt quote).
+// Re-measured 1224 by re-running this scan on the repaired tree.
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1224;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {

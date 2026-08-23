@@ -1961,10 +1961,10 @@ button.chq-speakers-status-overdue:hover {
   /* -- from the former "matrix becomes cards" block -- */
 
   /* phone-hidden: re-lined (DEC-808 wave-52) as .chq-speakers-cards
-     immediately below -- the frame's own "Matrix becomes one card per
-     speaker" collapse (docs/design/Chautauqua Speakers.dc.html:130),
-     same data, same row handlers, one-card-per-speaker instead of the
-     desktop grid. */
+     immediately below -- the frame's own collapse at
+     docs/design/Chautauqua Speakers.dc.html:130 `Matrix becomes one card
+     per speaker`, same data, same row handlers, one-card-per-speaker
+     instead of the desktop grid. */
   .chq-speakers-grid-wrap {
     display: none;
   }

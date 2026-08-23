@@ -690,8 +690,8 @@ GROUNDED-BY-DEVIATION (updated in place in the roster table above):
 - `src/routes/tools.css.ts:73` -- cites DEVIATIONS.md's real §10
 - `src/views/theme.ts:638` -- cites DEVIATIONS.md's real §10
 
-(Two other `inline`-family receipts, `cfp.css.ts:503` and `theme.ts:694`,
-were already VERIFIED before this wave via this instrument's own rung 0
+(Two other `inline`-family receipts -- cfp.css.ts:503, and theme.ts:694 in a
+separate sheet -- were already VERIFIED before this wave via this instrument's own rung 0
 self-floored tier -- that dispatch order is unchanged, so this wave's tier
 never touches them.)
 

@@ -1200,7 +1200,8 @@
      pending-state secondary pair (Decline + the third control) draws at
      `min-height:46px`, the SAME floor as the primary two rules up, not the
      44px the in-aside desktop pair carries (docs/design/Chautauqua
-     Submissions.dc.html:314). Scoped to `.chq-phone-dock` AND to the
+     Submissions.dc.html:314 `min-height:44px`). Scoped to
+     `.chq-phone-dock` AND to the
      primary-sibling combinator so the in-aside pair and the decided-state
      pair (no primary sibling) keep their existing 44px untouched -- w56-c,
      docs/design/audit/frame-control-floor-390-v12.md:253. */

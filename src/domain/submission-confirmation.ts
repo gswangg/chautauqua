@@ -1,5 +1,6 @@
 // DEC-441 wave-49: the "Submission received" confirmation email
-// (docs/design/Chautauqua Comms.dc.html:859-874, `emails[0]`, trigger "On
+// (docs/design/Chautauqua Comms.dc.html:859-874 `name: 'Submission
+// received',` -- the frame's own `emails[0]` entry, trigger "On
 // submit · best-effort, never blocks the save" -- the one email
 // src/routes/public/submit-post.tsx sends) has never been graded against
 // the frame. This pure module composes the pieces the frame draws:

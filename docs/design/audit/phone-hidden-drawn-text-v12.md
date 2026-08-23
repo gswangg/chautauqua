@@ -770,8 +770,9 @@ no head-level "Add a track" link at all -- the desktop head action this rule
 hides has no counterpart in the 390 body band. Instead, the frame draws a
 dashed, centred, `min-height:44px` pill reading "Add a track" (line 365)
 directly below the Tracks list, and a second one reading "Add a room" (line
-389) below the Rooms list. The rule's own standing comment (settings-drill-
-rows.css:225-245, DEC-919 wave-99) already names this: `TracksRoomsPanel.tsx`
+389) below the Rooms list. The rule's own standing comment
+(app/src/pages/settings/settings-drill-rows.css:225-245, DEC-919 wave-99)
+already names this: `TracksRoomsPanel.tsx`
 renders BOTH the head link (hidden here) and the dashed sibling
 (`.chq-settings-drillrow-add`, turned on by the adjacent `display:flex`
 rule two rules above) wired to the identical `setShowAddTrack`/

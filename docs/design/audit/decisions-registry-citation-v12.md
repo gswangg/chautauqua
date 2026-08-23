@@ -164,3 +164,36 @@ had drifted under it, and a three-way chained `App.tsx`/`settings.css`/
 citation as its own receipt quote), repaired by converting both to bare
 prose per DEC-967's own drift-proof shape. Live measurement today:
 `DECISIONS_REGISTRY_CITATION_CEILING = 1227`.
+
+## WAVE 57 (merge-train repair pass, thunderdome medic)
+
+The wave-44-c measurement recorded above (`DECISIONS_REGISTRY_CITATION_CEILING`
+`= 1227`) was overtaken by the wave-55/56/57 train, which drifted the true
+count up to 1237 -- ten rows OVER the declared ceiling. Per the DEC-069 RULE
+carried in the constant's own comment, the repair is the citations and never
+the constant.
+
+Thirteen offenders repaired, and the ceiling then lowered to the re-measured
+value rather than to a hoped-for one:
+
+- `decisions/DEC-535.md` (2). The J4 bulk reviewer-nudge handler moved out of
+  `src/routes/review/plans.ts` into `src/routes/review/plans-progress.ts` when
+  that monolith was decomposed, leaving a line-keyed citation pointing into a
+  28-line stub; and the cron fan-out's `runDueReminders` drifted off its
+  quoted line. Both re-anchored on the DEC-518 drift-proof shape -- repo-relative
+  path immediately followed by a backtick-quoted verbatim construct, no `:line`
+  suffix -- so neither can rot from line movement again.
+- `decisions/DEC-026.md` (11). Five bare-basename citations that resolved
+  uniquely when written and went AMBIGUOUS as the contacts layer grew second
+  and third files of the same name (`merge.ts` now exists three times,
+  `history.ts` twice); each given its repo-relative prefix. Three line-keyed
+  citations repointed at the construct they name after it moved -- the
+  `mergeOnePair` fold, `previewMerge`'s call site, and the phone
+  import-column assertion, whose stale `width:100%` claim was corrected to
+  the `width:262px` / `max-width:48%` the test actually pins. And one run of
+  three adjacent code spans de-adjacented into a plain list per the DEC-008
+  wave-10 precedent, since adjacent `path:line` spans read as each other's
+  receipt quote.
+
+Re-measured on the repaired tree by running the scan: the live value today is
+`DECISIONS_REGISTRY_CITATION_CEILING = 1224`.

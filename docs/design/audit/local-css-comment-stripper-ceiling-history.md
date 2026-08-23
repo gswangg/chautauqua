@@ -325,8 +325,9 @@ import clears this ratchet's per-file offender flag for the whole file
 regardless, since `isLocalStripperOffender` is `declaresLocalStripper &&
 !importsSharedStripper` -- file-grained, not per-declaration-site).
 Both migrated files' own assertions still pass unchanged (`npx vitest
-run --config vitest.fast.config.ts test/error-invalid-outranks-base.
-test.ts app/src/page-measure.test.ts`: 24 tests, all green) -- no false
+run --config vitest.fast.config.ts` over
+test/error-invalid-outranks-base.test.ts and
+app/src/page-measure.test.ts: 24 tests, all green) -- no false
 receipt was found in this batch. Newer arrivals than these two --
 app/src/confirm-title-object.scan.test.ts, app/src/pages/contacts/
 SegmentPillStrip.bound390.render.test.tsx, app/src/pages/contacts/
@@ -400,10 +401,11 @@ applied to raw `.tsx` view-file text, so this one was verified empirically
 by running its own 5 tests post-conversion, not just reasoned about, given
 w26-f's raw-.ts corruption precedent).
 
-Every migrated file's own tests still pass unchanged (`npx vitest run
-test/tap-target-floor.test.ts test/ssr-page-clamp.scan.test.ts test/phone-
-page-title-duplication.scan.test.ts test/public-when-gutter.test.ts
-test/ssr-shell-sticky-footer.scan.test.ts`: 30 tests, all green) -- no
+Every migrated file's own tests still pass unchanged (`npx vitest run` over
+test/tap-target-floor.test.ts, test/ssr-page-clamp.scan.test.ts,
+test/phone-page-title-duplication.scan.test.ts,
+test/public-when-gutter.test.ts and
+test/ssr-shell-sticky-footer.scan.test.ts: 30 tests, all green) -- no
 false receipt was found in this batch.
 
 ATTEMPTED AND REJECTED (do not retry without new information):

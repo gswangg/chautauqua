@@ -2024,7 +2024,8 @@
   /* phone-hidden: re-lined (DEC-808 wave-52) -- while
      .chq-comms-main-landing is on this wrapper, the sibling
      .chq-comms-phone-landing band (frame docs/design/Chautauqua
-     Comms.dc.html:177, gated `isPhone`) draws the phone landing
+     Comms.dc.html:177 `width:390px; height:844px`, gated by the isPhone
+     flag) draws the phone landing
      dashboard instead, whose own draft-card/Recent-Sends entry controls
      (onReadDraft/choosePhoneTab) set phoneEntered true -- the same flag
      that drops this class and reveals Compose/Templates/History here. */

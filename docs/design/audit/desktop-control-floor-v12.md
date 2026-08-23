@@ -1020,3 +1020,21 @@ clauses clear. Paid in this same commit: the `OUT_OF_CAMPAIGN_SCOPE` entry
 and the `PARKED_FIDELITY_PROMISES` row are both deleted, and the name is
 added to `CAMPAIGN_CONSTANT_NAMES` and `TIER2_CEILING_NAMES` -- it now prints
 as a real, graded, green (0) campaign row instead of a parked excuse.
+
+## WAVE 57 (merge-train re-measurement, thunderdome medic) -- statement drift, not a ceiling move
+
+No constant moves here and no row is re-adjudicated. Two sections of this
+document were written on different branch points of the wave-56/57 train and
+landed in an order that leaves the LATER paragraph restating the EARLIER
+value: the comment-fold section's `DESKTOP_FLOOR_UNRESOLVED_CEILING`
+unchanged `131 -> 131` line sits below the 14-row resolution section that
+had already lowered the same constant `131 -> 117`. Read top-to-bottom the
+document therefore states a number the tree has not carried since that
+lane merged, which is precisely the defect
+`test/audit-ratchet-statement-drift.scan.test.ts` exists to catch.
+
+Corrected in place, by statement rather than by rewriting either section
+(the corpus is append-only, DEC-180 wave-20): the live value in
+`test/desktop-control-floor.scan.test.ts` today is
+`DESKTOP_FLOOR_UNRESOLVED_CEILING = 117`, and `DESKTOP_FLOOR_DIVERGENCE_CEILING = 0`.
+Both remain parked in `OUT_OF_CAMPAIGN_SCOPE`, unchanged by this correction.
