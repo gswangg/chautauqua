@@ -230,17 +230,29 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       });
     }
 
-    // DEC-604 amendment (findings wave 15): a roster import's whole batch
+    // DEC-604 amendment (findings wave 15), amended again (DEC-604
+    // amendment, wave 46, "src/routes/api/contacts/import.ts's cap
+    // pre-check ... must count the dispositions the apply path will
+    // perform, not every parsed row"): a roster import's whole batch
     // lands on ONE shared submission (DEC-810) -- refuse BEFORE any write
     // (and before the dryRun branch, so the Review step discloses this too)
-    // when the distinct not-already-on-the-event-roster contacts in the
-    // file would exceed MAX_PARTICIPANTS_PER_SUBMISSION on that one
-    // session. Closes the door pushContactsToEvent -> insertActiveParticipants
+    // when the distinct not-already-on-the-event-roster contacts the apply
+    // path will actually write would exceed MAX_PARTICIPANTS_PER_SUBMISSION
+    // on that one session. A row whose `line` is in skipLines contributes
+    // nobody (the apply path never writes it); a row whose `line` is in
+    // mergeLines counts its merge target's contactId against the
+    // already-on-roster set instead of the file email's own lookup (the
+    // apply path merges onto that target, never creates from the file
+    // email). Closes the door pushContactsToEvent -> insertActiveParticipants
     // otherwise left open (a 200-row roster CSV writing 199 participants
-    // onto one submission against a cap of 6).
+    // onto one submission against a cap of 6) without refusing a file the
+    // organiser has already trimmed with per-row skip/merge choices.
     if (eventId !== undefined) {
+      const skipLineSet = new Set(skipLines);
+      const mergeLineTargets = new Map(mergeLines.map((m) => [m.line, m.contactId]));
       const fileEmails = new Set<string>();
-      for (const { parsed } of rows) {
+      for (const { line, parsed } of rows) {
+        if (skipLineSet.has(line) || mergeLineTargets.has(line)) continue;
         const email = typeof parsed.email === "string" ? parsed.email : undefined;
         if (!email || email.trim() === "" || !isValidEmail(email)) continue;
         fileEmails.add(normalizeEmail(email));
@@ -251,6 +263,11 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       for (const email of fileEmails) {
         const contactId = existingByEmail.get(email);
         if (contactId && alreadyOnRosterForCap.has(contactId)) continue;
+        toAddCount++;
+      }
+      const mergeTargetContactIds = new Set(mergeLineTargets.values());
+      for (const contactId of mergeTargetContactIds) {
+        if (alreadyOnRosterForCap.has(contactId)) continue;
         toAddCount++;
       }
       if (toAddCount > MAX_PARTICIPANTS_PER_SUBMISSION) {
