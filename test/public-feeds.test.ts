@@ -260,6 +260,9 @@ describe("GET /embed/:eventSlug/:surface.xml (DEC-775, .json twin)", () => {
     const xmlRes = await buildJsonApp().request("/embed/conf/sessions.xml", {}, TEST_ENV);
     expect(xmlRes.status).toBe(200);
     expect(xmlRes.headers.get("Content-Type")).toContain("application/xml");
+    // DEC-551 wave-46: an anonymous, cached, stored-content feed must still
+    // carry nosniff alongside its Content-Type.
+    expect(xmlRes.headers.get("X-Content-Type-Options")).toBe("nosniff");
     const xmlBody = await xmlRes.text();
     const itemCount = (xmlBody.match(/<item>/g) ?? []).length;
     expect(itemCount).toBe(jsonBody.items.length);
@@ -883,6 +886,9 @@ describe("GET /e/:eventSlug/agenda.ics (EMB-15 whole-agenda export)", () => {
     expect(agendaRes.status).toBe(200);
     expect(agendaRes.headers.get("Content-Type")).toContain("text/calendar");
     expect(agendaRes.headers.get("Content-Disposition")).toContain('filename="conf-agenda.ics"');
+    // DEC-551 wave-46: an anonymous, cached, stored-content feed must still
+    // carry nosniff alongside its Content-Type.
+    expect(agendaRes.headers.get("X-Content-Type-Options")).toBe("nosniff");
     const agendaBody = await agendaRes.text();
     expect(agendaBody).toContain("BEGIN:VCALENDAR");
     const agendaUid = agendaBody.match(/UID:([^\r\n]+)/)?.[1];
@@ -890,6 +896,11 @@ describe("GET /e/:eventSlug/agenda.ics (EMB-15 whole-agenda export)", () => {
 
     installFakeCaches();
     const scheduleRes = await buildScheduleIcsApp().request("/e/conf/schedule.ics?ids=sub1", {}, TEST_ENV);
+    expect(scheduleRes.status).toBe(200);
+    expect(scheduleRes.headers.get("Content-Type")).toContain("text/calendar");
+    // DEC-551 wave-46: an anonymous, cached, stored-content feed must still
+    // carry nosniff alongside its Content-Type.
+    expect(scheduleRes.headers.get("X-Content-Type-Options")).toBe("nosniff");
     const scheduleBody = await scheduleRes.text();
     const scheduleUid = scheduleBody.match(/UID:([^\r\n]+)/)?.[1];
 
