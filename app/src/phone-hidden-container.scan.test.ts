@@ -233,28 +233,36 @@ const CONTAINER_OFFENDERS: ContainerOffender[] = UNRECEIPTED_NON_INTERACTIVE_SEL
   return hit ? { sheet: r.sheet, selector: r.selector, markupFile: file as string } : null;
 }).filter((x): x is ContainerOffender => x !== null);
 
-// Held by in-flight v12m-w38-a/v12m-w38-f (the double-Save repair): recorded
-// here as an owned row, not repaired by this task (task instruction: do not
-// touch src/routes/portal/portal.css.ts or src/routes/portal/profile.tsx).
-// See docs/design/audit/phone-hidden-container-v12.md for the full roster.
+// wave-49 (task w49-d): adjudicated the SHELL + SSR half of this roster (10
+// rows: 6 in app/src/styles.css, 1 in src/routes/docs-site.css.ts, 3 in
+// src/routes/portal/portal.css.ts) against their v12 frames -- all ten take
+// disposition (a), a `/* phone-hidden: */` receipt, including
+// .chq-portal-actions-footer: the wave-38 double-Save defect this row's
+// history names (v12m-w38-a/v12m-w38-f, neither branch exists any more) was
+// in fact already repaired on this tree -- profile.tsx's own comment at its
+// .chq-portal-actions-footer usage states "exactly one Save control visible
+// at any width", and portal.css.ts's .chq-portal-profile-dock/.chq-portal-
+// actions-footer pair (phone: dock revealed, in-flow copy hidden) confirms
+// it. The remaining 21 rows live under app/src/pages/** and are NOT this
+// task's population -- see docs/design/audit/phone-hidden-container-v12.md.
 //
 // SEED, measured on this branch's tree at authoring time (2026-08-22):
 // this ceiling may only be LOWERED (receipt lands, rule is deleted, or the
 // container's capability is otherwise restored) -- never raised to
 // accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 31;
+export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 21;
 
 describe('DEC-808 wave-41 phone container capability-removal probe (subtree, not selector)', () => {
   it('finds more than zero non-interactive-selector phone display:none rules (vacuous-population tripwire)', () => {
     expect(NON_INTERACTIVE_SELECTOR_RULES.length).toBeGreaterThan(0);
   });
 
-  it('the known measured example is in the population: src/routes/portal/portal.css.ts .chq-portal-actions-footer', () => {
+  it('wave-49 shell+SSR adjudication: src/routes/portal/portal.css.ts .chq-portal-actions-footer now carries a phone-hidden receipt, not an offender', () => {
     expect(
       CONTAINER_OFFENDERS.some(
         (o) => o.sheet === 'src/routes/portal/portal.css.ts' && o.selector === '.chq-portal-actions-footer',
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('resolves the target token of a compound descendant selector to its rightmost (hidden) compound, not an ancestor segment (unit control)', () => {
