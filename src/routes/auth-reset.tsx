@@ -23,6 +23,7 @@ import { getAnchorEventForOrg } from "../server/repo/events";
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
 import { renderEmailHtml } from "../mail/shell";
+import { passwordResetReason } from "../mail/reasons";
 import {
   ForgotPasswordPage,
   CheckEmailPage,
@@ -166,7 +167,7 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
           const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
           const html = renderEmailHtml(text, {
             eventName: anchorEvent.name,
-            reason: "you requested a password reset for your account.",
+            reason: passwordResetReason(anchorEvent.name),
             cta: { label: "Set a new password", href: resetUrl },
           });
           await mailer.send({

@@ -11,6 +11,7 @@ import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
 import { renderTemplate } from "../../../mail/render";
 import { renderEmailHtml } from "../../../mail/shell";
+import { outstandingTasksReason } from "../../../mail/reasons";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import {
   capReminderGroups,
@@ -610,7 +611,7 @@ async function sendReminderEmails(
       text: reminderText,
       html: renderEmailHtml([parts.greeting, "", parts.nudge].join("\n"), {
         eventName,
-        reason: `you have outstanding tasks for ${eventName}`,
+        reason: outstandingTasksReason(eventName),
         cta: { label: REMINDER_CTA_LABEL, href: portalLink },
         signOff: parts.signature,
         // DEC-441 amendment (wave 38): the frame's fact VALUE

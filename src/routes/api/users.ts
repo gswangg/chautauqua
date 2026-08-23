@@ -8,6 +8,7 @@ import { requireOrganizer, requireCookieSession, csrfJson } from "../../server/m
 import { ApiError, readJsonBody, collectBoundedOptionalText } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { renderEmailHtml } from "../../mail/shell";
+import { accountCreatedReason } from "../../mail/reasons";
 import { hashPassword } from "../../auth/password";
 import { MAX_PASSWORD_LENGTH } from "../../domain/auth-copy";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
@@ -119,7 +120,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
         text,
         html: renderEmailHtml(text, {
           eventName: anchorEventName,
-          reason: "an organizer created a reviewer/organizer account for you",
+          reason: accountCreatedReason(anchorEventName),
         }),
         eventId: anchorEventId,
         // DEC-191: this user is not a contact; per-contact email history

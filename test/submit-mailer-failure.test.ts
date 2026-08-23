@@ -223,7 +223,7 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
     // falls back to it) and the footer's reason clause naming that event.
     const bodyHtml = (emailLogInserts[0] as any).bodyHtml as string;
     expect(bodyHtml).toContain(eventRow.name);
-    expect(bodyHtml).toContain("you submitted a talk to this event.");
+    expect(bodyHtml).toContain(`you submitted a talk to ${eventRow.name}.`);
   });
 });
 

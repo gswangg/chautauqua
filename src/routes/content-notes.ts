@@ -18,6 +18,7 @@ import { overCapFieldMessage, overCapSentence } from "../domain/cap-copy";
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
 import { renderEmailHtml } from "../mail/shell";
+import { submissionNoteReason } from "../mail/reasons";
 import { getEventForOrg } from "../server/repo/events";
 import { newId } from "../domain/ids";
 import type { KVStore } from "../auth/claim";
@@ -191,7 +192,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, requir
         text,
         html: renderEmailHtml(text, {
           eventName: noteEvent?.name ?? null,
-          reason: `an organizer left a note on your submission${requestChanges ? " requesting changes" : ""}`,
+          reason: submissionNoteReason(noteEvent?.name ?? null, requestChanges),
         }),
         eventId: scope.eventId,
         contactId: participant.contactId,

@@ -30,6 +30,7 @@ import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; //
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import { resolveBaseUrl } from "../../server/origin";
 import type { EmailShellOptions } from "../../mail/shell";
+import { participantReason } from "../../mail/reasons";
 
 export interface ComposeBody {
   templateId?: string;
@@ -389,7 +390,7 @@ export async function buildRenderTargets(
 export function composeEmailShellOptions(event: { name: string }): EmailShellOptions {
   return {
     eventName: event.name,
-    reason: `you're a participant in a submission at ${event.name}`,
+    reason: participantReason(event.name),
   };
 }
 
