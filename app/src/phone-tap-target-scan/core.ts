@@ -329,6 +329,11 @@ export interface ClasslessTagSite {
    * the tag stack until one carries at least one. Empty when no ancestor
    * (all the way to the file's top level) carries any chq- token. */
   readonly tokens: readonly string[];
+  /** The site's own opening-tag attribute text (wave v12m-w40, task w40-e):
+   * lets a caller filter on the tag's OWN attributes -- e.g. an
+   * `<input type="hidden">`, which is inert and has no hit box, is not a
+   * tap-target population member at all -- without a second tag walk. */
+  readonly attrs: string;
 }
 
 /** Every opening JSX tag in `src` (self-closing or not), matched in source
@@ -384,7 +389,7 @@ export function classlessTagSites(
         }
       }
       const line = src.slice(0, m.index).split('\n').length;
-      out.push({ line, tag: tagName, tokens });
+      out.push({ line, tag: tagName, tokens, attrs });
     }
     if (!selfClosing) stack.push(chqTokensFromAttrs(attrs, classAttrRe));
   }

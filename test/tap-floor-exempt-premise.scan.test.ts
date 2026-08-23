@@ -420,7 +420,16 @@ const ROSTER: RosterRow[] = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_
 // the two disjoint deltas gives 88 - 11 = 77. FALSE-PREMISE takes w36-f's
 // 1 unchanged (w35-b introduced none; wave 34's replaced-content grammar
 // tier had already resolved the population's only prior instance).
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 77;
+//
+// v12m-w40-e (DEC-393): cfp.css.ts:147 got a new `tap-floor-exempt:
+// composition` receipt on `.chq-cfp-option`, mirroring portal.css.ts:572's
+// pre-existing identical receipt for the SAME shared class (a bare radio/
+// checkbox input wrapped in `label class="chq-cfp-option"`, the label
+// being the real click/tap surface). The new receipt names no distinct
+// companion class (deliberately -- naming one it can't verify would read
+// as a false claim), so it resolves UNVERIFIABLE-PREMISE, same as its
+// portal.css.ts twin. Re-measured on this branch: 77 -> 78.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 78;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 1;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {
