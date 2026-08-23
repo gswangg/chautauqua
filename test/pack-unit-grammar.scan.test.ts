@@ -323,7 +323,7 @@ const RULED_LEFT: readonly RuledLeftRow[] = [
     sheetPath: 'app/src/pages/comms/comms.css',
     selector: '.chq-comms-editor-actions',
     value: '29px',
-    line: 2508,
+    line: 2509,
     ruling:
       "DEC-937 wave-35 amendment (companion-gap: desktop's own 9px + 2*10px cancelled-padding " +
       'compensation, DEC-937 wave-123 "the declared phone gap becomes the frame\'s own rendered gap ' +
