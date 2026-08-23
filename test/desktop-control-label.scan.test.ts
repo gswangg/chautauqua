@@ -110,10 +110,11 @@
 //
 // This file names the app's uninstrumented non-390 control-label gap; it
 // does not close it.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
@@ -165,8 +166,29 @@ export interface DesktopFrame {
   extentEnd: number;
 }
 
-function framesInFile(fileName: string): DesktopFrame[] {
-  const full = join(DESIGN_ROOT, fileName);
+/** 1-based line number of `fileName`'s single `</x-dc>` template close tag.
+ * Ported (never imported -- each of the four desktop-ledger files carries
+ * its own copy) from test/desktop-frame-ledger.scan.test.ts, so every frame
+ * extent clips at the template's own close rather than running into
+ * `<script data-dc-script>` or past EOF (DEC-967 wave-41 amendment). Throws
+ * loudly if the tag is missing or appears more than once. `root` defaults to
+ * DESIGN_ROOT; the non-vacuity control test below is the only caller that
+ * ever passes a tmpdir instead. */
+function templateCloseLine(fileName: string, root: string = DESIGN_ROOT): number {
+  const full = join(root, fileName);
+  const lines = readFileSync(full, 'utf-8').split('\n');
+  const matches: number[] = [];
+  lines.forEach((content, idx) => {
+    if (content.includes('</x-dc>')) matches.push(idx + 1);
+  });
+  if (matches.length !== 1) {
+    throw new Error(`${fileName}: expected exactly one </x-dc>, found ${matches.length}`);
+  }
+  return matches[0]!;
+}
+
+function framesInFile(fileName: string, root: string = DESIGN_ROOT): DesktopFrame[] {
+  const full = join(root, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
 
   const labelLines: { line: number; title: string }[] = [];
@@ -202,6 +224,7 @@ function framesInFile(fileName: string): DesktopFrame[] {
     let extentEnd = Infinity;
     if (nextLabel) extentEnd = nextLabel.line;
     if (nextCard && nextCard.line < extentEnd) extentEnd = nextCard.line;
+    extentEnd = Math.min(extentEnd, templateCloseLine(fileName, root));
     return { fileName, line: frameLine, width, title, extentEnd };
   });
 }
@@ -339,8 +362,8 @@ export function labelsInFrameText(
   return out;
 }
 
-function controlLabelsInFile(fileName: string): ControlLabel[] {
-  const full = join(DESIGN_ROOT, fileName);
+function controlLabelsInFile(fileName: string, root: string = DESIGN_ROOT): ControlLabel[] {
+  const full = join(root, fileName);
   const content = readFileSync(full, 'utf-8');
   const lines = content.split('\n');
   const lineStartIndex: number[] = [0];
@@ -348,7 +371,7 @@ function controlLabelsInFile(fileName: string): ControlLabel[] {
     lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);
   }
 
-  const frames = framesInFile(fileName);
+  const frames = framesInFile(fileName, root);
   const out: ControlLabel[] = [];
   for (const frame of frames) {
     const startOff = lineStartIndex[frame.line - 1]!;
@@ -370,8 +393,8 @@ function controlLabelsInFile(fileName: string): ControlLabel[] {
   return out;
 }
 
-const ALL_FRAMES: DesktopFrame[] = designFiles().flatMap(framesInFile);
-export const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
+const ALL_FRAMES: DesktopFrame[] = designFiles().flatMap((f) => framesInFile(f));
+export const ALL_LABELS: ControlLabel[] = designFiles().flatMap((f) => controlLabelsInFile(f));
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
 
@@ -736,5 +759,40 @@ describe('desktop (non-390) control-label ledger (DEC-919 wave-131, v12 mobile c
       );
     }
     expect(UNMATCHED.length).toBeGreaterThanOrEqual(DESKTOP_CONTROL_LABEL_CEILING);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NON-VACUITY (DEC-967 wave-41): a fabricated control-label-shaped string on
+// either side of a tmpdir copy's own </x-dc>, run through controlLabelsInFile
+// exactly as ALL_LABELS above is built.
+// ---------------------------------------------------------------------------
+
+describe('non-vacuity: a control label past the tmpdir copy own </x-dc> is not swept into the last frame extent', () => {
+  let dir: string;
+  const FIXTURE_NAME = 'Fixture Control Label.dc.html';
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'desktop-control-label-close-fixture-'));
+    const lines = [
+      '<x-dc>',
+      `  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Fixture · last frame</span>`,
+      '  <div style="width:400px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
+      '    <a style="min-height:44px" href="#">Before close</a>',
+      '  </div>',
+      '</x-dc>',
+      '<script type="text/x-dc" data-dc-script">',
+      '  <a style="min-height:44px" href="#">After close</a>',
+      '</script>',
+    ];
+    writeFileSync(join(dir, FIXTURE_NAME), lines.join('\n') + '\n', 'utf8');
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('the anchor label before </x-dc> is captured; the identically-shaped one after it is not', () => {
+    const labels = controlLabelsInFile(FIXTURE_NAME, dir).map((l) => l.label);
+    expect(labels).toContain('Before close');
+    expect(labels).not.toContain('After close');
   });
 });
