@@ -605,10 +605,11 @@ tier (updated in place in the roster table above):
   `.chq-error-summary-link`
 - `src/routes/portal/portal.css.ts` (line 576) -- own class
   `.chq-cfp-option` (not in the 98-row wave-30 snapshot; added by task
-  v12m-w40-e)
+  v12m-w40-e, DEC-393 wave-40)
 - `src/routes/public/cfp.css.ts` (line 158) -- own class `.chq-cfp-option`
-  (not in the 98-row wave-30 snapshot; added by task v12m-w40-e, the
-  `.chq-cfp-option` receipt's own twin of the `portal.css.ts` row above)
+  (not in the 98-row wave-30 snapshot; added by task v12m-w40-e, DEC-393
+  wave-40, the `.chq-cfp-option` receipt's own twin of the `portal.css.ts`
+  row above)
 - `src/routes/public/cfp.css.ts` (line 503) -- own class
   `.chq-cfp-confirm-actions`, the wave-44 audit's own recorded true
   UNVERIFIABLE-PREMISE survivor (the pending-existing-contact
@@ -630,3 +631,79 @@ None. Draining this ceiling turned up no `FALSE-PREMISE` row -- every
 receipt the self-floored tier could resolve this wave was a TRUE premise
 (the control really is already floored by its own class), not a defect the
 instrument had been silently missing.
+
+## Wave 56 (task w56-e, DEC-613): the `inline` family gets the grader it already has a sibling for
+
+Root cause: the audit roster's `inline` family (`inline-in-prose` receipts)
+falls to this instrument's own generic "no companion class named in the
+reason" fallthrough exactly like `composition`/`modifier`, and the wave-30
+predicate has no rung for it -- but a SIBLING instrument
+(`test/inline-prose-exemption-premise.scan.test.ts`, its
+`judgeInlineReceipt`) already resolves the identical `inline-in-prose`
+population to completion, through a self-floored rung, a named-companion
+rung, and a rung-3 DEVIATIONS.md-grounding rung, with BOTH of its own
+ratchets (`INLINE_PROSE_UNGROUNDED_CEILING`, `INLINE_PROSE_UNVERIFIABLE_CEILING`)
+reading 0. Two instruments, one population, opposite verdicts, both green.
+
+Mechanism: `judgeInlineReceipt` and the helpers it needs (`selfFloored`,
+`judgeByDeviation`, `parseDeviationsSections`, the `InlineReceipt`/
+`InlineRosterRow`/`DeviationSection` types, `allInlineReceipts`) moved out of
+`test/inline-prose-exemption-premise.scan.test.ts` into a new sibling module
+directory, `test/inline-prose-exemption-premise/` (`receipts.ts` +
+`judge.ts`) -- the exact decomposition idiom `test/tap-floor-exempt-premise/`
+already uses -- and are re-imported into the original scan test, which is
+byte-equivalent in behavior and still green (verified standalone before
+wiring anything new). A new tier, `judgeInlineTier`
+(`test/tap-floor-exempt-premise/inline-tier.ts`, its own file for the same
+reason every other tier here gets one: direct unit-testability), is wired
+into `test/tap-floor-exempt-premise/judge.ts`'s `judgeReceipt` at the
+existing no-companion fallthrough, scoped to `family === "inline"` ONLY
+(wave-51 already recorded that an UNSCOPED companion tier misread
+`inline`-family reason prose as companion candidates and produced false
+`FALSE-PREMISE` noise -- this tier never widens beyond the family the
+sibling's own population sweep already targets). It calls
+`judgeInlineReceipt` directly (never a second copy of its grammar, DEC-613)
+and maps its four-verdict vocabulary onto this instrument's three:
+`GROUNDED` / `GROUNDED-BY-DEVIATION` -> `VERIFIED` (naming the sibling
+grader and the settling rung); `UNGROUNDED` -> `FALSE-PREMISE` (a real 44px
+defect, never softened); `UNVERIFIABLE` -> `UNVERIFIABLE-PREMISE`,
+unchanged.
+
+Forced to `-1` and re-measured standalone (never as `26 - 7`, the exact trap
+this constant's own comment history already records falling into twice):
+
+| Verdict | Before (26 UNVERIFIABLE) | After (19 UNVERIFIABLE) |
+|---|---|---|
+| UNVERIFIABLE-PREMISE | 26 | 19 |
+| VERIFIED | 77 (approx.) | 84 (approx., population count carries forward unchanged) |
+| FALSE-PREMISE | 0 | 0 |
+
+All 7 `inline`-family rows the wave-56 task named moved from
+UNVERIFIABLE-PREMISE to VERIFIED, all via the sibling's rung-3
+GROUNDED-BY-DEVIATION (updated in place in the roster table above):
+
+- `src/routes/public/cfp.css.ts:51` -- cites DEVIATIONS.md's real §10
+- `src/routes/public/cfp.css.ts:140` -- cites DEVIATIONS.md's real §10
+- `src/routes/public/cfp.css.ts:532` -- cites DEVIATIONS.md's real §10
+- `src/routes/public/submit-views.tsx:626` -- cites DEVIATIONS.md's real §10
+- `src/routes/public/submit-views.tsx:794` -- cites DEVIATIONS.md's real §10
+- `src/routes/tools.css.ts:73` -- cites DEVIATIONS.md's real §10
+- `src/views/theme.ts:638` -- cites DEVIATIONS.md's real §10
+
+(Two other `inline`-family receipts, `cfp.css.ts:503` and `theme.ts:694`,
+were already VERIFIED before this wave via this instrument's own rung 0
+self-floored tier -- that dispatch order is unchanged, so this wave's tier
+never touches them.)
+
+`TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moves 26 -> 19.
+`TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING` stays 0 -- none of the 7 resolved
+UNGROUNDED on the sibling grader; the whole `inline` residue this wave
+drained was a true grounding claim, not a defect this wave discovered.
+
+### Finding for a later wave (not repaired in this lane, per DEC-393 wave-30 clause "do not repair product CSS in that lane")
+
+None. Draining this ceiling turned up no `FALSE-PREMISE` row from the
+`inline` family -- every receipt the new tier could resolve this wave was a
+TRUE grounding claim, not a defect the instrument had been silently
+missing. The remaining 19 UNVERIFIABLE-PREMISE rows are entirely
+`other`/`modifier` family rows this task did not touch.

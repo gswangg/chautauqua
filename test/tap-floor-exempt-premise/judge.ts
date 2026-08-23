@@ -8,6 +8,7 @@ import { judgeSelfScoped } from "./self-scoped";
 import { judgeSelfFloored } from "./self-floored";
 import { judgeRenderGate } from "./render-gate";
 import { isContainerAnchorAbsenceCandidate, judgeContainerAnchorAbsence } from "./anchorless-container";
+import { judgeInlineTier } from "./inline-tier";
 
 // DEC-393 wave-51 clause: the SAME floor-grammar resolution (tokenRe /
 // matchingChunks / merged bodies / flexFloored || widthHeightFloored /
@@ -128,6 +129,8 @@ export function judgeReceipt(receipt: Receipt, allChunks: Array<{ selector: stri
     }
     const bareRow = judgeBareTokenCompanion(receipt, allChunks, allText);
     if (bareRow) return bareRow;
+    const inlineRow = judgeInlineTier(receipt, allChunks, allText);
+    if (inlineRow) return inlineRow;
     return { ...receipt, verdict: "UNVERIFIABLE-PREMISE", detail: "no companion class named in the reason (distinct from the receipted selector itself)" };
   }
   return judgeCompanionFloor(receipt, companion, allChunks, allText);
