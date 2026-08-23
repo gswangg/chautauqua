@@ -14,11 +14,11 @@
 // pure-core rule to src/{auth,domain,forms,mail,lib}), so node: imports are
 // fine here, same as seed.ts.
 
-import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "../src/auth/password";
+import { writeFileAtomic } from "./lib/write-file-atomic";
 import { insertStmt, seedId } from "./seed-lib";
 import {
   PERF_CO_SPEAKERS_PER_ACCEPTED,
@@ -749,7 +749,7 @@ async function main(): Promise<void> {
   }
 
   const sql = statements.join("\n") + "\n";
-  writeFileSync(OUTPUT_PATH, sql, "utf-8");
+  writeFileAtomic(OUTPUT_PATH, sql);
   // eslint-disable-next-line no-console
   console.log(`Wrote ${statements.length} statements to ${OUTPUT_PATH}`);
 }
