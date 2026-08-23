@@ -72,7 +72,7 @@ estimate.
 | `frame-conditional-state-v12.md:187` | sized-but-not-built | no constant named, no closure marker |
 | `frame-control-floor-390-v12.md:129` | not-fixed + future-wave deferral | no constant named, no closure marker |
 | `frame-eyebrow-label-390-v12.md:104` | next-...-sweep-to-log | no constant named, no closure marker |
-| open-divergence-ledger-v12.md near line 355 | still-open | names OPEN_DIVERGENCE_CEILING, which resolves to 0 |
+| `open-divergence-ledger-v12.md` (line 355) | still-open | names `OPEN_DIVERGENCE_CEILING`, which resolves to 0 |
 | `public-390-request-verdicts-v12.md:105` | for-the-planner | no constant named, no closure marker |
 | `public-submitted-390-v12.md:60` | not-fixed | no constant named, no closure marker |
 | `public-submitted-390-v12.md:79` | not-fixed (dup phrasing) | no constant named, no closure marker |

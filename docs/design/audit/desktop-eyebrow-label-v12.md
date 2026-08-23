@@ -76,7 +76,7 @@ ledger territory).
 
 ## Per-file breakdown (population size / DIVERGES count)
 
-| File | Eyebrows | DIVERGES |
+| File | Eyebrows | DIVERGES (graded per DEC-986 wave-41) |
 | --- | --- | --- |
 | Chautauqua Account.dc.html | 4 | 0 |
 | Chautauqua Agenda.dc.html | 3 | 2 |
@@ -111,7 +111,10 @@ ledger territory).
   `DIGIT_COMPOSED` table already verified for its own instance of this row
   (see `docs/design/audit/frame-eyebrow-label-390-v12.md`).
 - **DIVERGES**: 103 — every other unmatched row, graded at face value (see
-  "Scope narrowing" below). No `SETTLED` rows this wave.
+  "Scope narrowing" below), under DEC-986 wave-41's own face-value grading
+  rule for this ledger: DESKTOP IS FROZEN, so this wave measures and
+  adjudicates the bucket without repairing any row in it. No `SETTLED` rows
+  this wave.
 - **SETTLED**: 0.
 
 Row-count accounting (DEC-808, DEC-976): MATCHED + UNRESOLVED + DIVERGES +
@@ -131,9 +134,10 @@ the phone eyebrow ledger already verified for the identical composing
 expression at its own coordinates (DEC-180: a discriminator narrows the
 miss classification, it never hides a real offender after classification).
 
-Every other unmatched row is graded DIVERGES at face value. Sampling the
-103 rows by hand shows at least three distinct shapes inside that single
-bucket, none of them repaired here (DESKTOP IS FROZEN):
+Every other unmatched row is graded DIVERGES at face value, per DEC-986
+wave-41's own scope for this ledger. Sampling the 103 rows by hand shows at
+least three distinct shapes inside that single bucket, none of them repaired
+here (DESKTOP IS FROZEN):
 
 1. **Composed-from-data misses this wave did not individually verify** —
    e.g. `Chautauqua Comms.dc.html:81`, `Recipients · 23`; a live recipient
@@ -186,7 +190,9 @@ and to `DESKTOP_FLOOR_DIVERGENCE_CEILING` /
    ledger performed for its 16 UNRESOLVED rows, applied to this ledger's
    103 DIVERGES rows — likely to promote a meaningful fraction of them to
    UNRESOLVED (shape 1 above) the same way the phone ledger's wave-33 lane
-   did.
+   did. Deferred, not undecided: DEC-986 wave-41 scopes this wave to
+   measurement and adjudication only, and the bucket it leaves behind is
+   already graded at face value above.
 2. **A possible explainer-panel exclusion for shape 3** (documentation/
    style-guide prose painted in the eyebrow idiom, distinct from product
    copy) — whether this belongs in the population at all is an open

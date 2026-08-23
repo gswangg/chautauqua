@@ -135,7 +135,7 @@ export const DEC_547 = "makeMailer selects the dev sink ONLY in dev mode; every 
 export const DEC_548 = "The public agenda is a bounded query like every other public list: ?day= filters in SQL, the scan carries LIMIT + a truthful COUNT, and its ORDER BY totally orders the row";
 export const DEC_549 = "A task upload becomes a session deliverable only when its task declares deliverable_kind; a task with no declared kind produces a file private to its assignee";
 export const DEC_550 = "Every GET route is authz-gated or on a declared public-by-design list, proven by an anonymous probe over the composed app's own route table — not by a markdown inventory";
-export const DEC_551 = "Every route that streams stored user content sets X-Content-Type-Options: nosniff";
+export const DEC_551 = "Wave-46 amendment: nosniff's population is every response that DECLARES a Content-Type and carries stored user content - a literal content type is not an exemption";
 export const DEC_552 = "An upsert over a UNIQUE index is ONE atomic statement — the five surviving SELECT-then-INSERT-or-UPDATE pairs become INSERT ... ON CONFLICT";
 export const DEC_553 = "Public read surfaces send Access-Control-Allow-Origin: * ; the cookie-authenticated /api/v1 never does";
 export const DEC_554 = "A whole-directory contact scan selects only the columns its own pure predicate and sort read, refuses above a declared cap, and re-hydrates only the page it returns";

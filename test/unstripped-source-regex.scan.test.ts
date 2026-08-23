@@ -209,11 +209,20 @@ describe("unstripped-source-regex family (DEC-374 wave-39, task w39-f)", () => {
     expect(files.length).toBeGreaterThan(500);
   });
 
-  it("test/test-tiers.test.ts is honestly counted as an offender (v12m-w38-c owns its repair; this instrument must not hide it)", () => {
+  it("test/test-tiers.test.ts is NO LONGER an offender (v12m-w38-c landed its repair; this row must not silently regress)", () => {
+    // FLIPPED (wave-44 thunderdome), exactly as this file's header and the
+    // ceiling module's seeding note both said it would be: "this instrument
+    // COUNTS that offense honestly (so w38-c's landing flips this row)".
+    // w38-c has landed -- test/test-tiers.test.ts now calls stripTsComments
+    // before applying IMPORT_SPECIFIER_RE, so the DEC-727 tier predicate is
+    // no longer comment-blind. Keeping the old assertion (that it IS an
+    // offender) would have re-broken the gate to protect a stale pin. The
+    // assertion is inverted rather than deleted so the repair cannot silently
+    // regress: instance 3 of this family's own origin story stays pinned.
     const testTiers = files.find((f) => f.rel === "test/test-tiers.test.ts");
     expect(testTiers, "test/test-tiers.test.ts not found by the walk").toBeTruthy();
-    expect(isUnstrippedSourceRegexOffender(testTiers!.content)).toBe(true);
-    expect(offenders.some((o) => o.rel === "test/test-tiers.test.ts")).toBe(true);
+    expect(isUnstrippedSourceRegexOffender(testTiers!.content)).toBe(false);
+    expect(offenders.some((o) => o.rel === "test/test-tiers.test.ts")).toBe(false);
   });
 
   it("no more than UNSTRIPPED_SOURCE_REGEX_CEILING files apply a content match to un-stripped source they read off disk (may only fall)", () => {

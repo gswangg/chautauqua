@@ -205,8 +205,23 @@ export {
 // audit corpus grew by one document (the wave-35/36 lanes each added audit
 // rosters); this is the guard working as designed, raised to the enumerator's
 // own printed count.
-const AUDIT_FILE_FLOOR = 121;
-const TOKEN_ROW_FLOOR = 241;
+// MEGABATCH COMPOSITION (wave-44 thunderdome): 121 -> 129 audit files and
+// 241 -> 256 DIVERGES-token rows. The wave-38..44 lanes each landed new audit
+// rosters (desktop-eyebrow-label, phone-hidden-container, inline-prose-
+// exemption, frame-repeated-row among them); this is the guard working as
+// designed, raised to the enumerator's own printed counts, never computed
+// from arithmetic in this comment.
+//
+// The row count read 257 mid-repair and settled at 256: w44-c had de-
+// backticked audit-handoff-staleness-v12.md's
+// `open-divergence-ledger-v12.md` cell to dodge the citation scans, which
+// exposed the substring "diverg" INSIDE A FILENAME to CLAIM_RE and opened a
+// spurious row -- exactly the false positive CODE_SPAN_RE exists to prevent.
+// Restoring the code span (with the ":line" left outside it, so both
+// citation scans stay green) closes that row again. The single disappearing
+// row is therefore identified, not guessed.
+const AUDIT_FILE_FLOOR = 129;
+const TOKEN_ROW_FLOOR = 256;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,

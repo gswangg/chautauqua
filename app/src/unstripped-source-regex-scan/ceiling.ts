@@ -86,4 +86,38 @@
 // separately-ruled wave work, the same disposition
 // comment-blind-css-assertion-scan's own first landing gave its 39-file
 // population. Ceiling seeded at the measured value: 221.
-export const UNSTRIPPED_SOURCE_REGEX_CEILING = 221;
+//
+// MEGABATCH COMPOSITION (wave-44 thunderdome): 221 -> 227, re-measured live
+// with the constant forced low and the printed offender list read back,
+// never arithmetic. This constant is TWO-SIDED (test/unstripped-source-
+// regex.scan.test.ts's own "the ceiling is not stale" companion), so it
+// tracks the live measurement in both directions rather than standing as a
+// one-way gate. The move is accounted for file by file:
+//
+//   -1  test/test-tiers.test.ts -- v12m-w38-c LANDED the repair this file's
+//       seeding note above said would "flip this row": the DEC-727 tier
+//       predicate now calls stripTsComments before matching. The pin
+//       asserting it is still an offender became a regression guard in the
+//       same commit.
+//   +7  scan-shaped files landed by lanes that branched BEFORE w39-f seeded
+//       this instrument, so no lane could see the family it was joining:
+//         app/src/phone-hidden-drawn-text/frame-blobs.ts
+//         test/audit-ratchet-statement-drift.scan.test.ts
+//         test/campaign-scope-registry-partition.scan.test.ts
+//         test/desktop-eyebrow-label.scan.test.ts
+//         test/deviations-ledger/resolvers.ts
+//         test/frame-control-label/population.ts
+//         test/render-sweep-advisory-gate-promotion.scan.test.ts
+//       Each confirmed absent at the seeding commit 5727fecc7 by
+//       `git log 5727fecc7..HEAD --diff-filter=A -- <path>`.
+//
+// 221 - 1 + 7 = 227, and the live walk prints 227. These seven are NOT
+// repaired here, for the same reason the original 220 were not: adding a
+// stripping step to a ratchet instrument CHANGES WHAT IT MEASURES (three of
+// the seven are ceiling-bearing scans, one of them the desktop eyebrow
+// ledger whose ceiling this same wave just parked), so each repair is its
+// own re-ratcheting wave, not a medic edit. That is the "later, separately-
+// ruled wave work" disposition this header already records, and the reason
+// this ceiling sits in OUT_OF_CAMPAIGN_SCOPE: instrument-coverage backlog,
+// never a v12 conformance fact.
+export const UNSTRIPPED_SOURCE_REGEX_CEILING = 227;

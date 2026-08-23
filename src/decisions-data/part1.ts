@@ -43,7 +43,7 @@ export const DEC_037 = "Email HTML built only via escapeHtml/textToHtml in src/m
 export const DEC_038 = "Scoped KV rate limiter in src/lib/rate-limit.ts; login/claim limits";
 export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans only via getPlanForOrg";
 export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
-export const DEC_041 = "Wave-148 amendment: the portal edit page's Session length is a read-only row sourced from the submission's own format answer, and is omitted when not derivable";
+export const DEC_041 = "Wave-46 amendment: the portal edit screen's deadline sentence is a claim about the CURRENT lock state, never about closeDate alone";
 export const DEC_042 = "Root README.md is the evaluator entrypoint";
 export const DEC_043 = "Org user directory + reviewer provisioning API (/api/v1/users)";
 export const DEC_044 = "Plan-reviewer assignments addressed by plan_reviewer.id";
@@ -182,7 +182,7 @@ export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closur
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
 export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
-export const DEC_180 = "Wave-42 amendment: a ratchet excused because 'a stronger sibling grader already resolves these rows' must RUN that grader, not cite it";
+export const DEC_180 = "Wave-46 amendment: a campaign row the tree has already satisfied is CLOSED with a receipt in the same pass that discovers it, and every planner measurement is recorded with its sha";
 export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
 export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
 export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";

@@ -216,8 +216,8 @@ preview" — the component's own review step (`step === 'preview'` in
   (frame :144) — a control that, per the frame's own script, commits the
   send from THIS step. The tree's step-3 primary instead reads "Next: send
   ›" (`ComposeWizard.tsx`'s `chq-btn-primary`, `onClick={() =>
-  setStep('sent')}`) and never posts to `/compose/send` from here — Ruling
-  B1 (already documented inline in `ComposeWizard.tsx`: "Send moves to step
+  setStep('sent')}`) and never posts to `/compose/send` from here — DEC-976
+  wave-37's Ruling B1 (already documented inline in `ComposeWizard.tsx`: "Send moves to step
   4 -- this primary only advances; the dedicated ConfirmDialog is gone
   because step 4 pre-send IS the confirmation"). No control matching
   `/^Send \d+ emails?$/` exists on this step at all.
@@ -241,7 +241,8 @@ above through to `POST /compose/send`, mocking a response with two
   spelled-out count ("Two", not "2").
 - The footer (frame :533-534, "Compose another" secondary + "Back to Comms"
   primary) MATCHES.
-- **DIVERGES**: the frame's "Sent" grid value names a from-address (frame
+- **DIVERGES** (governed by DEC-238 and DEC-976 wave-37, as this section's
+  own head records): the frame's "Sent" grid value names a from-address (frame
   :509, "Just now, by you · from hello@devflowconf.com"). The tree's
   `.chq-comms-send-report-grid` renders "Just now, by you" alone — the
   composer holds no from-address field to report (already documented
@@ -263,7 +264,8 @@ source: `/* Frame 07-comms--13 ("Check before sending")... */`. This IS the
 app's send-blocked state — no banner component is rendered in isolation
 (DEC-651); the refusal is reached by driving the real toggle.
 
-- **DIVERGES**: the frame draws send-blocked as its own dedicated screen —
+- **DIVERGES** (governed by DEC-976 wave-37 and DEC-051, as this section's
+  own head records): the frame draws send-blocked as its own dedicated screen —
   a fresh `<h1>Check before sending</h1>` (frame :763) replacing the
   ordinary review-step layout entirely. The tree renders no such screen and
   no such heading anywhere in the DOM: the refusal is an inline
@@ -296,9 +298,9 @@ app's send-blocked state — no banner component is rendered in isolation
 | :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3), DEC-902 wave-9 + DEC-967; structurally MATCHES |
 | :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop), DEC-902 wave-8 |
 | :589 Comms · history (1600) | CLOSED-with-receipt (DEC-964 wave-8, task w8-a): MATCHES on page chrome (no page-level Comms H1/tablist at any width) and inside the frame's own shell |
-| :28 Compose · step 3 of 4 (1600) | MATCHES on the review section head; DIVERGES on send commitment (step-3 "Send N emails" vs. the tree's "Next: send ›" deferring to step 4, Ruling B1) |
-| :453 Compose · step 4 of 4 (1600) | MATCHES on report head/skipped section/footer; DIVERGES on the Sent grid's from-address (frame names one, tree has none to report) |
-| :750 Compose · send blocked (1600) | DIVERGES on composition (dedicated screen vs. inline alert banner); MATCHES on the banner's own action labels |
+| :28 Compose · step 3 of 4 (1600) | MATCHES on the review section head; DIVERGES on send commitment (step-3 "Send N emails" vs. the tree's "Next: send ›" deferring to step 4, DEC-976 wave-37 Ruling B1) |
+| :453 Compose · step 4 of 4 (1600) | MATCHES on report head/skipped section/footer; DIVERGES on the Sent grid's from-address (frame names one, tree has none to report), DEC-238 + DEC-976 wave-37 |
+| :750 Compose · send blocked (1600) | DIVERGES on composition (dedicated screen vs. inline alert banner); MATCHES on the banner's own action labels, DEC-976 wave-37 + DEC-051 |
 
 All seven frames render successfully through the real route with no
 fabricated fixture shortcuts; none of the divergences found are new debt —

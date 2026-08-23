@@ -346,4 +346,28 @@
 // 66 - 2, confirmed by reading the offender list (the two migrated files
 // absent, all 64 others present as before). Ceiling lowered to match:
 // 66 -> 64. Discharges DEC-613's wave-36 amendment for this task's slice.
-export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 64;
+//
+// MEGABATCH COMPOSITION (wave-44 thunderdome): 64 -> 66, re-measured live by
+// reading the printed offender list back, never arithmetic. This constant is
+// TWO-SIDED (test/comment-blind-css-assertion.scan.test.ts's own "never falls
+// below ... a stale ceiling licenses stagnation" companion), so it tracks the
+// live measurement in both directions. Both additions are named, and both
+// land in the DELIBERATELY-LEFT-ALONE bucket this header already defines --
+// files whose private stripper also removes `//` LINE comments over .ts/.tsx
+// sources, a real capability the shared helper (CSS `/* */` only) does not
+// have, so migrating them would silently stop stripping line comments rather
+// than merely change offsets:
+//
+//   test/unstripped-source-regex.scan.test.ts (new in w39-f) -- its "THE CORE
+//     PROOF" negative control declares a local stripComments ON PURPOSE, to
+//     demonstrate the same regex flipping verdict on stripped vs. un-stripped
+//     TS source. Routing that fixture through the shared CSS helper would
+//     destroy the very thing it proves.
+//   test/module-reachability.scan.test.ts (gained one in this megabatch) --
+//     strips `//` and `/* */` over TS before extracting import edges, so a
+//     comment quoting an `import ... from '...'` line is not read as a real
+//     module edge. Its own header cites this family by name.
+//
+// 64 + 2 = 66, and the live walk prints 66. Neither is new DEC-613 debt: both
+// are the documented exception, not an un-migrated copy of the shared helper.
+export const LOCAL_CSS_COMMENT_STRIPPER_CEILING = 66;
