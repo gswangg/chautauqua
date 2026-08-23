@@ -85,16 +85,32 @@ different, weaker instrument, not a product defect.
 
 Measured on this branch (forced to -1, offender list read back): of 119 population rows after
 exclusion, this narrower join resolves 6 (rows whose literal digit run and surrounding words appear
-verbatim outside a `${...}`/`{...}` merge expression) and leaves **113 UNMATCHED**. All 103
-COMPOSED/SUPERSEDED/UNBACKED rows (already classified as real, composed-from-live-data product copy
-by the caption ledger's own tables) are UNMATCHED here, plus 10 of the 16 previously-unclassified
-rows above -- exactly the population this narrower, merge-placeholder-blind technique cannot verify.
-None of it is a real copy gap: every row's true conformance status is already settled by the caption
-ledger's own zero ceiling.
+verbatim outside a `${...}`/`{...}` merge expression) and leaves **113 rows the weak grader alone
+cannot verify** -- printed, non-ratcheted, as `WEAK_GRADER_UNMATCHED`.
 
-`FRAME_COUNT_CAPTION_UNMATCHED_CEILING` (`test/frame-count-caption-ledger.scan.test.ts`) is
-registered in `scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE`, the same disposition
-`FRAME_FIELD_LABEL_*` and `FRAME_EYEBROW_*` already carry: a newly measured, previously-uncounted
-population must not move the campaign's exit-gate goalposts mid-convergence.
+**Three verdicts (DEC-180 wave-55 amendment).** The wave-42 amendment ran the caption ledger's own
+stronger, merge-placeholder-aware grader (imported from `test/frame-caption-ledger/match.ts`) over
+those 113 rows and found it resolved all of them -- but recorded that fact as a SECOND ratcheted
+constant, `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING`, over the same 113-row population
+`FRAME_COUNT_CAPTION_UNMATCHED_CEILING` graded: two constants over one fact, a duplicate-vocabulary
+trap that meant the parked 113-row ceiling could never clear DEC-069 promotion clause (a). Wave-55
+resolves this by giving the ledger an explicit third verdict instead of a second ratchet:
+
+1. **CAPTION-LEDGER-RESOLVED** (`CAPTION_LEDGER_RESOLVED`, printed roster, not ratcheted) -- rows
+   the weak grader misses but the caption ledger's stronger grader resolves. Derived structurally
+   from `resolvesUnderCaptionLedger`, never hand-listed. Measured on this branch: **113 rows** --
+   all of `WEAK_GRADER_UNMATCHED`, matching the wave-42 finding that the stronger grader resolves
+   every row the weak one misses.
+2. **UNMATCHED** (`UNMATCHED`, ratcheted by `FRAME_COUNT_CAPTION_UNMATCHED_CEILING`) -- rows
+   NEITHER grader resolves. Byte-identical in meaning to the now-deleted
+   `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING`. Measured on this branch: **0 rows**.
+3. **WEAK_GRADER_UNMATCHED** (printed diagnostic, not ratcheted) -- the original weak-grader-only
+   113-row count, kept so no measurement made by this ledger's own technique is lost. Every row in
+   it is now either CAPTION-LEDGER-RESOLVED or (ratcheted-)UNMATCHED, exactly partitioned.
+
+`FRAME_COUNT_CAPTION_UNMATCHED_CEILING` now reads **0** and is **promoted**: removed from
+`scripts/exit-predicate.ts`'s `OUT_OF_CAMPAIGN_SCOPE` / `PARKED_FIDELITY_PROMISES` and added to
+`CAMPAIGN_CONSTANT_NAMES` / `TIER2_CEILING_NAMES` as a graded, green conformance row -- the same
+promotion `SSR_CLASSLESS_CONTROL_CEILING` received in wave 45.
 
 This lane MEASURES AND RATCHETS ONLY -- it moves no product byte.

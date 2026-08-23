@@ -28,6 +28,25 @@
 // run over the actual 113-row population, forced to -1 and read back: 0.
 // The excuse's premise is now PROVEN for all 113 rows, not merely cited.
 //
+// THIRD VERDICT, PROMOTION (DEC-180 wave-55 amendment): the wave-42
+// design left two exported constants over one fact --
+// FRAME_COUNT_CAPTION_UNMATCHED_CEILING (113, ratcheted, from the weak
+// grader alone) and COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING (0, ratcheted,
+// from both graders) -- a duplicate-vocabulary trap: the parked 113-row
+// ceiling could never clear DEC-069 promotion clause (a) while a second
+// constant already measured its real, resolved-vs-not shape as 0. Wave-55
+// gives the ledger its explicit THIRD verdict, `CAPTION_LEDGER_RESOLVED`
+// (exported as a roster, derived structurally from
+// `resolvesUnderCaptionLedger`, never hand-listed): rows the weak grader
+// misses but the caption ledger's stronger grader resolves. The ratcheted
+// `UNMATCHED` is redefined as rows NEITHER grader resolves -- byte-
+// identical in meaning to the now-deleted `COUNT_CAPTION_UNMATCHED_BY_BOTH
+// _CEILING` -- and the weak-grader-only 113-row count survives as the
+// PRINTED, non-ratcheted diagnostic `WEAK_GRADER_UNMATCHED` so no
+// measurement is lost. FRAME_COUNT_CAPTION_UNMATCHED_CEILING now reads 0
+// and is PROMOTED out of OUT_OF_CAMPAIGN_SCOPE/PARKED_FIDELITY_PROMISES
+// into CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES in the same commit.
+//
 //   1. POPULATION -- derived from docs/design/*.dc.html at test time
 //      (readdirSync, DEC-808), never hand-listed. Ported (not imported,
 //      per this campaign's standing "port, don't cross-import a population
@@ -426,7 +445,13 @@ const DIGIT_COLLAPSED_SOURCE_BLOBS: string[] = SOURCE_FILES.map((f) =>
   digitCollapse(normalizeSource(readFileSync(f, 'utf-8')))
 );
 
-export const UNMATCHED: CountCaption[] = AFTER_EXCLUSION.filter(
+/** Rows this ledger's own weak, digit-collapse-only grader fails to
+ * resolve -- a PRINTED, non-ratcheted diagnostic export (module header
+ * DEC-180 wave-55 amendment): the ratcheted `UNMATCHED` below is narrower
+ * (rows NEITHER grader resolves), so this weak-grader-only count is kept
+ * here in full so no measurement made by this ledger's own technique is
+ * lost. */
+export const WEAK_GRADER_UNMATCHED: CountCaption[] = AFTER_EXCLUSION.filter(
   (c) => !countCaptionIsMatched(c.text, DIGIT_COLLAPSED_SOURCE_BLOBS)
 );
 
@@ -446,32 +471,34 @@ function resolvesUnderCaptionLedger(c: CountCaption): boolean {
   return !CAPTION_LEDGER_UNMATCHED.some((u) => u.fileName === c.fileName && u.line === c.line && u.text === c.text);
 }
 
-/** Rows this ledger's own weak, digit-collapse-only grader leaves
- * unmatched AND that the caption ledger's stronger grader also fails to
- * resolve -- i.e. rows where the OUT_OF_CAMPAIGN_SCOPE excuse's premise is
- * actually false. Exported so the ratchet below is measured, not
- * asserted. */
-export const UNMATCHED_BY_BOTH: CountCaption[] = UNMATCHED.filter((c) => !resolvesUnderCaptionLedger(c));
+/** THIRD VERDICT (DEC-180 wave-55 amendment, CAPTION-LEDGER-RESOLVED, the
+ * TWIN-RESOLVED / rung-0 shape already used by the phone-hidden and
+ * inline-prose ledgers): rows this ledger's own weak, digit-collapse-only
+ * grader leaves unmatched but that the caption ledger's stronger,
+ * merge-placeholder-aware grader DOES resolve. Derived structurally from
+ * `resolvesUnderCaptionLedger` -- never hand-listed. Counted in NEITHER
+ * ratchet below: not the ratcheted `UNMATCHED` (it resolves), and not
+ * `WEAK_GRADER_UNMATCHED` alone (that diagnostic export already contains
+ * it as a subset; this roster names WHICH of those rows resolve under the
+ * stronger grader). */
+export const CAPTION_LEDGER_RESOLVED: CountCaption[] = WEAK_GRADER_UNMATCHED.filter((c) => resolvesUnderCaptionLedger(c));
 
 // -- Ratchet --------------------------------------------------------------
-// Measured on this branch (v12m-w28-h) by forcing to -1 and reading the
-// printed offender list back. See docs/design/audit/frame-count-caption-
-// ledger-v12.md for the full per-row breakdown of the 16 population rows
-// this task found with no pre-existing caption-ledger exclusion citation.
-// DEC-180 wave-42 amendment PROVED (not merely asserted) that none of
-// these 113 rows DIVERGES: `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING` below,
-// measured by forcing to -1 and reading the printed offenders back, is 0 --
-// the caption ledger's own stronger, merge-placeholder-aware grader
-// (imported from test/frame-caption-ledger/match.ts, never re-implemented)
-// resolves every row this ledger's own weaker grader misses.
-export const FRAME_COUNT_CAPTION_UNMATCHED_CEILING = 113;
+// Measured on this branch (v12m-w55-b) by forcing to -1 and reading the
+// printed offender list back. DEC-180 wave-55 amendment: `UNMATCHED` is
+// now redefined as rows NEITHER grader resolves (the same population the
+// former, now-deleted `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING` graded) --
+// resolving the duplicate-vocabulary trap between this constant and that
+// one (they graded the same fact under two names). See docs/design/audit/
+// frame-count-caption-ledger-v12.md for the full per-row breakdown.
+export const UNMATCHED: CountCaption[] = WEAK_GRADER_UNMATCHED.filter((c) => !resolvesUnderCaptionLedger(c));
 
-// Measured on this branch (v12m-w42-e) by forcing to -1 and reading the
-// printed offender list back: 0. See the module header's DEC-180 wave-42
-// amendment note above `resolvesUnderCaptionLedger` for what this
-// computation is. Two-sided, identical shape to every other ledger in this
-// campaign.
-export const COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING = 0;
+// Measured on this branch (v12m-w55-b) by forcing to -1 and reading the
+// printed offender list back: 0. Promoted in this same commit out of
+// OUT_OF_CAMPAIGN_SCOPE / PARKED_FIDELITY_PROMISES into
+// CAMPAIGN_CONSTANT_NAMES / TIER2_CEILING_NAMES (DEC-069 promotion clause
+// (a): the live count is 0).
+export const FRAME_COUNT_CAPTION_UNMATCHED_CEILING = 0;
 
 describe('frame count-caption ledger (DEC-180 wave-28, v12 mobile campaign)', () => {
   it('non-vacuity: population is non-trivial and spans multiple files', () => {
@@ -622,48 +649,29 @@ describe('frame count-caption ledger (DEC-180 wave-28, v12 mobile campaign)', ()
     expect(UNMATCHED.length).toBeGreaterThanOrEqual(FRAME_COUNT_CAPTION_UNMATCHED_CEILING);
   });
 
-  // DEC-180 wave-42 amendment: run the stronger grader the
-  // OUT_OF_CAMPAIGN_SCOPE excuse merely cites, over all
-  // FRAME_COUNT_CAPTION_UNMATCHED_CEILING rows, instead of trusting the
-  // excuse's own unverified claim.
-  it(
-    "every row this ledger's own weak grader misses resolves under the caption ledger's own stronger, " +
-      'merge-placeholder-aware grader (DEC-180 wave-42: the OUT_OF_CAMPAIGN_SCOPE excuse, checked rather than cited)',
-    () => {
-      if (UNMATCHED_BY_BOTH.length > 0) {
-        const offenders = UNMATCHED_BY_BOTH.map((c) => `${c.fileName}:${c.line} -- "${c.text}"`);
-        throw new Error(
-          `${UNMATCHED_BY_BOTH.length} count captions unmatched by BOTH this ledger's own weak grader AND the ` +
-            `caption ledger's stronger grader -- the OUT_OF_CAMPAIGN_SCOPE excuse's premise is false for these rows. ` +
-            `Name each individually in docs/design/audit/frame-count-caption-ledger-v12.md. Offenders:\n${offenders.join('\n')}`
-        );
-      }
-      expect(UNMATCHED_BY_BOTH.length).toBe(0);
-    }
-  );
-
-  it(`never exceeds COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING (${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}) doubly-unmatched count captions`, () => {
-    if (UNMATCHED_BY_BOTH.length > COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING) {
-      const offenders = UNMATCHED_BY_BOTH.map((c) => `${c.fileName}:${c.line} -- "${c.text}"`);
-      throw new Error(
-        `${UNMATCHED_BY_BOTH.length} doubly-unmatched count captions, above the ceiling of ` +
-          `${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}. COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING may only be RAISED ` +
-          `(a merge-train act, never a worker's edit mid-lane), and only once re-measured against the integrated ` +
-          `tree. Offenders:\n${offenders.join('\n')}`
-      );
-    }
-    expect(UNMATCHED_BY_BOTH.length).toBeLessThanOrEqual(COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING);
+  // DEC-180 wave-55 amendment: the third verdict is non-empty (this
+  // ledger's weak grader genuinely misses rows the stronger grader
+  // resolves -- it is not a vacuous roster) and disjoint from the
+  // ratcheted `UNMATCHED` set (a row is either CAPTION-LEDGER-RESOLVED or
+  // truly UNMATCHED, never both -- the TWIN-RESOLVED / rung-0 shape).
+  it('CAPTION_LEDGER_RESOLVED is non-empty and disjoint from the ratcheted UNMATCHED set', () => {
+    expect(CAPTION_LEDGER_RESOLVED.length).toBeGreaterThan(0);
+    const unmatchedKeys = new Set(UNMATCHED.map((c) => `${c.fileName}:${c.line}:${c.text}`));
+    const overlap = CAPTION_LEDGER_RESOLVED.filter((c) => unmatchedKeys.has(`${c.fileName}:${c.line}:${c.text}`));
+    expect(overlap, JSON.stringify(overlap)).toEqual([]);
   });
 
-  it(`never sits BELOW COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING (${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}) without the ceiling being lowered to match`, () => {
-    if (UNMATCHED_BY_BOTH.length < COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING) {
-      throw new Error(
-        `${UNMATCHED_BY_BOTH.length} doubly-unmatched count captions, below the ceiling of ` +
-          `${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}. Lower the ceiling in the same commit by replacing the line:\n` +
-          `  export const COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING = ${UNMATCHED_BY_BOTH.length};`
-      );
-    }
-    expect(UNMATCHED_BY_BOTH.length).toBeGreaterThanOrEqual(COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING);
+  // DEC-180 wave-55 amendment: every row the weak grader misses lands in
+  // EXACTLY one of the two rung-0 verdicts -- CAPTION_LEDGER_RESOLVED or
+  // the ratcheted UNMATCHED -- so no weak-grader-missed row is silently
+  // dropped by the reclassification.
+  it('CAPTION_LEDGER_RESOLVED and UNMATCHED together partition WEAK_GRADER_UNMATCHED exactly', () => {
+    const weakKeys = new Set(WEAK_GRADER_UNMATCHED.map((c) => `${c.fileName}:${c.line}:${c.text}`));
+    const partitionKeys = new Set(
+      [...CAPTION_LEDGER_RESOLVED, ...UNMATCHED].map((c) => `${c.fileName}:${c.line}:${c.text}`)
+    );
+    expect(partitionKeys).toEqual(weakKeys);
+    expect(CAPTION_LEDGER_RESOLVED.length + UNMATCHED.length).toBe(WEAK_GRADER_UNMATCHED.length);
   });
 
   it('synthetic control: the stronger grader resolves a fabricated caption composed with a merge placeholder, and rejects one neither grader reaches', () => {
