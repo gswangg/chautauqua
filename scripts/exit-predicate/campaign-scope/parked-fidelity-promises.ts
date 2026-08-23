@@ -1,0 +1,86 @@
+// DEC-069 wave-116+ campaign exit predicate: constant-name REGISTRIES.
+//
+// Extracted from scripts/exit-predicate/campaign-scope.ts (custodian
+// decomposition, contention-hotspot split -- NO behavior change; see that
+// file's header for the module's overall shape and
+// scripts/exit-predicate.ts's header for the top-level decomposition this
+// nests under). This file holds only the ParkedFidelityPromise interface
+// and PARKED_FIDELITY_PROMISES; its siblings (CAMPAIGN_CONSTANT_NAMES,
+// TIER2_CEILING_NAMES, OUT_OF_CAMPAIGN_SCOPE) live in their own files
+// beside it, all re-exported from campaign-scope.ts so every existing
+// import path keeps working unchanged.
+
+/**
+ * DEC-069 wave-36 promotion rule, executed as CODE (discharged wave-37, task
+ * w37-c): every `OUT_OF_CAMPAIGN_SCOPE` entry whose own prose carries a
+ * promotion promise ("it measures fidelity now and is promoted once/by
+ * ...") must have a row here naming the sibling constant its clause (b)
+ * depends on, and whether that sibling's outstanding rows are individually,
+ * per-row adjudicated in its own audit doc -- a documented FACT about the
+ * audit doc's shape, never a measured *_CEILING VALUE (this lane owns no
+ * ceiling value; `scripts/exit-predicate/campaign.ts`'s
+ * `assertParkedPromisesAreHonestlyParked` reads the real, live counts at
+ * assertion time via `findConstantDeclarations`). `siblingName: null` means
+ * the promise names no completeness-sibling ceiling at all -- its own
+ * single count already carries the whole conformance fact, so clause (b) is
+ * vacuously satisfied and clause (a) alone decides it.
+ *
+ * A promise-bearing `OUT_OF_CAMPAIGN_SCOPE` entry missing from this table,
+ * or a table entry whose real, live evidence now clears both clauses while
+ * its ceiling still sits in `OUT_OF_CAMPAIGN_SCOPE` rather than
+ * `CAMPAIGN_CONSTANT_NAMES`/`TIER2_CEILING_NAMES`, both throw -- a promise
+ * with no rule behind it, and a passing promise left unpaid, are the same
+ * loophole DEC-069 wave-36 was written to close.
+ */
+export interface ParkedFidelityPromise {
+  readonly siblingName: string | null;
+  readonly siblingFullyAdjudicated: boolean;
+}
+
+export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPromise>> = {
+  // Clause (b) fails: DESKTOP_FLOOR_UNRESOLVED_CEILING's 131 unresolved rows
+  // are bucketed by reason category (test/desktop-control-floor.scan.test.ts),
+  // never itemised one row at a time.
+  DESKTOP_FLOOR_DIVERGENCE_CEILING: {
+    siblingName: "DESKTOP_FLOOR_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: false,
+  },
+  // Clause (b) fails: UNRESOLVED_COUNT_TRIPWIRE's unresolved rows are
+  // bucketed by reason category with a cited sample, never itemised one row
+  // at a time (docs/design/audit/frame-control-floor-390-v12.md).
+  FRAME_FLOOR_DIVERGENCE_CEILING: {
+    siblingName: "UNRESOLVED_COUNT_TRIPWIRE",
+    siblingFullyAdjudicated: false,
+  },
+  // No completeness sibling -- the citation-resolvability count is its own
+  // whole conformance fact. Clause (a) alone decides it (currently non-zero).
+  DECISIONS_REGISTRY_CITATION_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/drawn-field-label-v12.md's one
+  // DRAWN_FIELD_LABEL_UNRESOLVED_CEILING row is individually adjudicated in
+  // place), but clause (a) fails: its own count is non-zero.
+  DRAWN_FIELD_LABEL_DIVERGENCE_CEILING: {
+    siblingName: "DRAWN_FIELD_LABEL_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+  // No completeness sibling. Clause (a) alone decides it (currently
+  // non-zero).
+  FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/pack-unit-grammar-v12.md itemises
+  // every one of PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING's `em`-literal rows by
+  // coordinate), but clause (a) fails: its own count is non-zero.
+  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: {
+    siblingName: "PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+  // No completeness sibling. Clause (a) alone decides it (currently
+  // non-zero -- most of the ruling-unit population is still gap-verdict).
+  RULING_UNIT_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
+  // Clause (b) holds (docs/design/audit/phone-hidden-drawn-text-v12.md's
+  // "UNVERIFIABLE roster" itemises every one of
+  // PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING's rows individually), but
+  // clause (a) fails: its own count is non-zero.
+  PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING: {
+    siblingName: "PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING",
+    siblingFullyAdjudicated: true,
+  },
+};
