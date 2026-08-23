@@ -1297,6 +1297,23 @@ ${EMPTY_PHONE_CSS}
     padding-inline: 8px;
   }
 
+  /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-38 amendment (task
+     w38-a): the completed-task detail view's file-download link
+     (tasks/views.tsx, .chq-portal-file-link) is a phrase inside a
+     sentence ("<filename> (version N, uploaded …)"). Grounded per the
+     wave-35 ladder's rung 2 (a same-surface floored twin): its own JSX
+     call-site comment (tasks/views.tsx) already names
+     .chq-portal-version-link as the floored twin -- VersionHistory
+     renders immediately below this paragraph and its
+     .chq-portal-version-link anchor carries the 44px floor
+     (min-height:44px, centred flex, padding-inline:8px, directly above)
+     while resolving the identical chain-latest content this link's own
+     route serves. No new declaration: this empty rule exists only so the
+     exemption is scoped by TOKEN, matching the JSX class token now on the
+     anchor (.chq-portal-file-link). Appended after .chq-portal-version-link
+     per DEC-385 single-direction / append-only. */
+  .chq-portal-file-link {}
+
   /* DEC-367 wave-24 amendment: .chq-portal-preview-banner's row is
      display:flex; flex-wrap:wrap (base scope above), so at 390 the text
      span and this link can already drop to their own line -- but the
