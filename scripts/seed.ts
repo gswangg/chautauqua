@@ -10,11 +10,13 @@
 // This is scripts/ tooling, not src/ pure-core, so node: imports are fine
 // (DEC-002's pure-core rule scopes to src/{auth,domain,forms,mail,lib}).
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { getTableName, isTable } from "drizzle-orm";
+
+import { writeFileAtomic } from "./lib/write-file-atomic";
 
 import { hashPassword } from "../src/auth/password";
 import { newApiToken, hashToken, apiTokenDisplayPrefix } from "../src/auth/tokens";
@@ -330,8 +332,8 @@ async function main(): Promise<void> {
   const PNG_PATH = join(ASSETS_DIR, "sample.png");
   const pdfBytes = minimalPdfBytes();
   const pngBytes = onePixelPngBytes();
-  writeFileSync(PDF_PATH, pdfBytes);
-  writeFileSync(PNG_PATH, pngBytes);
+  writeFileAtomic(PDF_PATH, pdfBytes);
+  writeFileAtomic(PNG_PATH, pngBytes);
   const manifest: Array<{ r2Key: string; path: string; contentType: string }> = [];
   function registerPdfAsset(r2Key: string): number {
     manifest.push({ r2Key, path: PDF_PATH, contentType: "application/pdf" });
@@ -3296,8 +3298,8 @@ async function main(): Promise<void> {
   });
 
   const sql = statements.join("\n") + "\n";
-  writeFileSync(OUTPUT_PATH, sql, "utf-8");
-  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  writeFileAtomic(OUTPUT_PATH, sql);
+  writeFileAtomic(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
   // eslint-disable-next-line no-console
   console.log(`Wrote ${statements.length} statements to ${OUTPUT_PATH}`);
   // eslint-disable-next-line no-console
