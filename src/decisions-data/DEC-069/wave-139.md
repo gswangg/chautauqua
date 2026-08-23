@@ -1,0 +1,4 @@
+### Amendment (wave 139/w14-aa): built
+
+scripts/exit-predicate/campaign.ts`DECLARED ONLY -- NOT MEASURED` — the desktop and phone rows now degrade under the same `v.suiteVerifiedAtSha === null` condition tier-2 already used, printing the bare phrase with no counts. The CAMPAIGN row degrades the same way for the same reason: `campaignDone` is always false whenever `suiteVerifiedAtSha` is null, so its prior "NOT DONE" text was never a lie, but it still carried the bare word DONE inside "NOT DONE" -- so it now prints `DECLARED ONLY -- NOT MEASURED` too, closing that off. Pinned by two unit tests in `test/exit-predicate-campaign.test.ts` over `formatCampaignReport` directly: the null-evidence branch asserts no row prints `DONE`, the verified-evidence branch asserts counts and `DONE` are unchanged.
+
