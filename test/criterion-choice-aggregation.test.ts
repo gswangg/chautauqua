@@ -158,6 +158,46 @@ describe("aggregateDropdownCriterion distribution order (DEC-241)", () => {
   });
 });
 
+describe("aggregateDropdownCriterion membership guard is prototype-safe (DEC-020 wave-55 amendment)", () => {
+  const criterion: DropdownCriterionDef = {
+    id: "fit",
+    label: "Fit",
+    kind: "dropdown",
+    options: ["Excellent", "Good", "Poor"],
+  };
+
+  it('throws for a stored score of "toString" when it is not a declared option', () => {
+    const evals = [{ scores: { fit: "toString" } }];
+    expect(() => aggregateDropdownCriterion(evals, criterion)).toThrow(
+      /is not one of its options/,
+    );
+  });
+
+  it('throws for a stored score of "constructor" when it is not a declared option', () => {
+    const evals = [{ scores: { fit: "constructor" } }];
+    expect(() => aggregateDropdownCriterion(evals, criterion)).toThrow(
+      /is not one of its options/,
+    );
+  });
+
+  it('still counts correctly when an option is literally named "constructor"', () => {
+    const withCtorOption: DropdownCriterionDef = {
+      id: "fit",
+      label: "Fit",
+      kind: "dropdown",
+      options: ["constructor", "Other"],
+    };
+    const evals = [
+      { scores: { fit: "constructor" } },
+      { scores: { fit: "constructor" } },
+      { scores: { fit: "Other" } },
+    ];
+    const { counts, modal } = aggregateDropdownCriterion(evals, withCtorOption);
+    expect(counts).toEqual({ constructor: 2, Other: 1 });
+    expect(modal).toBe("constructor");
+  });
+});
+
 // --- PATCH /api/v1/plans/:id: DEC-123 refuses a criterion TYPE change once
 // evaluations exist. Follows the mocking idiom of
 // test/plan-criteria-guard.test.ts (same repo mocks, same authed-organizer
