@@ -34,6 +34,7 @@ import {
   OUT_OF_CAMPAIGN_SCOPE,
   TIER2_CEILING_NAMES,
 } from "../scripts/exit-predicate/campaign-scope";
+import { stripTsComments } from "./helpers/strip-ts-comments";
 
 void DEC_069; // wave-42: this file is the instrument that reads the DEC-069 wave-42 ruling.
 
@@ -42,6 +43,35 @@ const REPO_ROOT = join(import.meta.dirname, "..");
 /** Matches the campaign's own `[export ]const <NAME> = <int>;` declaration shape. */
 const CONST_DECL_RE =
   /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+)\s*;[ \t]*$/gm;
+
+// resolveLiveValue is called once per (name) lookup, and this file checks
+// many names -- re-running `git ls-files` and re-reading + re-stripping
+// every tracked .ts file on EVERY call (the shape this function had before
+// this cache existed) was already close to this suite's own timeout;
+// adding the comment-stripping pass below without caching pushed it over.
+// Computed once, lazily, and reused for every subsequent name (DEC-613:
+// the file list and its stripped content are each derived exactly once,
+// never re-derived per caller).
+let _strippedTrackedFilesCache: ReadonlyArray<{ path: string; content: string }> | null = null;
+function strippedTrackedFiles(repoRoot: string): ReadonlyArray<{ path: string; content: string }> {
+  if (_strippedTrackedFilesCache !== null) return _strippedTrackedFilesCache;
+  const trackedPaths = execFileSync(
+    "git",
+    ["ls-files", "--", "test", "app/src", "scripts"],
+    { cwd: repoRoot, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter((p) => p.endsWith(".ts"));
+  // Comment-blind guard (DEC-374 wave-44, task w44-i, shared
+  // test/helpers/strip-ts-comments.ts -- DEC-613, never a private copy): a
+  // comment merely QUOTING a `const NAME = N;` declaration shape must
+  // never be read as a constant's live value.
+  _strippedTrackedFilesCache = trackedPaths.map((path) => ({
+    path,
+    content: stripTsComments(readFileSync(join(repoRoot, path), "utf8")),
+  }));
+  return _strippedTrackedFilesCache;
+}
 
 /**
  * Reads a named constant's LIVE value off the git-tracked tree under
@@ -57,7 +87,9 @@ const CONST_DECL_RE =
  * ls-files` and re-read the whole corpus for every constant it was asked
  * about, so a check over N promise-bearing names cost N full-tree walks --
  * ~6s for the real registry, past vitest's 5s default and deterministically
- * red. The index below reads each tracked file exactly once; the resolution
+ * red. The index below reads each tracked file exactly once, off
+ * `strippedTrackedFiles` so the comment-blind guard (DEC-374 wave-44,
+ * task w44-i) applies to every declaration read here too; the resolution
  * rules (zero matches and multiple matches both throw loudly) are unchanged,
  * which is why the locations are retained per name rather than collapsed.
  */
@@ -66,17 +98,8 @@ let declarationIndex: Map<string, { values: number[]; locations: string[] }> | n
 function buildDeclarationIndex(
   repoRoot: string,
 ): Map<string, { values: number[]; locations: string[] }> {
-  const trackedPaths = execFileSync(
-    "git",
-    ["ls-files", "--", "test", "app/src", "scripts"],
-    { cwd: repoRoot, encoding: "utf8" },
-  )
-    .split("\n")
-    .filter((p) => p.endsWith(".ts"));
-
   const index = new Map<string, { values: number[]; locations: string[] }>();
-  for (const path of trackedPaths) {
-    const content = readFileSync(join(repoRoot, path), "utf8");
+  for (const { path, content } of strippedTrackedFiles(repoRoot)) {
     CONST_DECL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = CONST_DECL_RE.exec(content)) !== null) {

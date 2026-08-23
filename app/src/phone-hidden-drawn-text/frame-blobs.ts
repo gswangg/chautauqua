@@ -11,6 +11,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { labelIsMatched, normalizeSource } from '../../../test/frame-source-corpus';
+import { stripHtmlComments } from '../../../test/helpers/strip-html-comments';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src/phone-hidden-drawn-text
 const REPO_ROOT = join(HERE, '..', '..', '..');
@@ -109,7 +110,11 @@ export interface FrameBlob {
 
 function frameBlobsInFile(fileName: string): FrameBlob[] {
   const full = join(DESIGN_ROOT, fileName);
-  const content = readFileSync(full, 'utf-8');
+  // Comment-blind guard (DEC-374 wave-44, task w44-i): an `<!-- -->` frame
+  // comment must never contribute text a phone-hidden-drawn-text match can
+  // see. stripHtmlComments preserves line/offset count (same-count newline
+  // replacement) so frame.line/frame.extentEnd indexing above stays valid.
+  const content = stripHtmlComments(readFileSync(full, 'utf-8'));
   const lines = content.split('\n');
   const lineStartIndex: number[] = [0];
   for (let i = 0; i < lines.length; i++) lineStartIndex.push(lineStartIndex[i]! + lines[i]!.length + 1);

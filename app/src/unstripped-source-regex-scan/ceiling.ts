@@ -120,4 +120,31 @@
 // ruled wave work" disposition this header already records, and the reason
 // this ceiling sits in OUT_OF_CAMPAIGN_SCOPE: instrument-coverage backlog,
 // never a v12 conformance fact.
-export const UNSTRIPPED_SOURCE_REGEX_CEILING = 227;
+//
+// v12m-w44-i (DEC-374 wave-44, task w44-i): re-measured at 227 (a merge
+// train added 7 genuine new offenders since the 221 baseline, plus a
+// same-count rename -- test/frame-control-label.scan.test.ts's population
+// walk moved to test/frame-control-label/population.ts -- and
+// test/test-tiers.test.ts dropped OUT of the roster, already repaired by a
+// prior lane). All 7 new offenders repaired in this same commit by adding
+// a real comment-stripping step before their risky content match:
+// app/src/phone-hidden-drawn-text.scan.test.ts and
+// test/campaign-scope-registry-partition.scan.test.ts and
+// test/render-sweep-advisory-gate-promotion.scan.test.ts (TS source, via
+// the shared test/helpers/strip-ts-comments.ts); test/deviations-ledger/
+// resolvers.ts (TS source tree walk, same shared stripper);
+// app/src/phone-hidden-drawn-text/frame-blobs.ts and
+// test/desktop-eyebrow-label.scan.test.ts (`.dc.html` frame markup, via a
+// new shared test/helpers/strip-html-comments.ts -- a genuinely different
+// comment grammar gets its own shared instrument, DEC-613, never a bent
+// reuse of the TS or CSS one); test/audit-ratchet-statement-drift.scan.
+// test.ts (both: TS source for its live-constant read, `.md` audit docs
+// for its statement-drift read). test/frame-control-label/population.ts
+// (the rename target, `.dc.html`, same new HTML stripper) was also
+// repaired even though its rename was already net-zero against the
+// ceiling, so no offender of this family exists un-repaired on this
+// branch. Forced to -1 and the printed roster read back (never
+// arithmetic): 219 files. No offender named as genuinely un-repairable
+// this wave -- all 7 (plus the rename target) had a real applicable
+// stripper. Ceiling LOWERED to the measured value: 219.
+export const UNSTRIPPED_SOURCE_REGEX_CEILING = 219;
