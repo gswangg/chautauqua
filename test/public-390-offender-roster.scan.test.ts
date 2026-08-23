@@ -69,6 +69,7 @@ import {
   topLevelRulesWithExemption,
 } from "../app/src/phone-tap-target-scan/core";
 import { extractCssTsLiteral } from "../app/src/phone-tap-target-scan/ssr";
+import { FLOORED_BY_ANCESTOR_ROWS } from "../app/src/phone-tap-target-scan/public-390-ancestor-floor";
 
 void DEC_808; // this scan's whole reason to exist: grading the public/portal 390 population for the first time
 void DEC_180; // every route named below is a REAL member of MOBILE_ROUTE_MANIFEST, never hand-listed
@@ -370,14 +371,29 @@ function rowTokens(row: RosterOffenderLine): string[] {
   return [...row.selector.matchAll(/\.[a-zA-Z0-9_-]+/g)].map((m) => m[0].slice(1));
 }
 
+/** DEC-808 wave-50 amendment (task w50-b): true for a roster row that is
+ * bare (no class token at all -- `rowTokens(row).length === 0`) AND whose
+ * `${route}|${tag}` key is in FLOORED_BY_ANCESTOR_ROWS -- the ANCESTOR axis
+ * app/src/phone-tap-target-scan/public-390-ancestor-floor.ts derives (a
+ * wrapping element's class is the real hit box for a classless `input`/`a`,
+ * per native `<label>`/list-row click-delegation, checked live against the
+ * tree's current stylesheets and proven with a synthetic control by
+ * test/public-390-roster-tag-resolution.scan.test.ts). A row's own
+ * `selector` IS its bare tag for these rows (no `.token` to strip), so the
+ * key is built directly from it. */
+function isExemptByComposition(row: RosterOffenderLine): boolean {
+  return rowTokens(row).length === 0 && FLOORED_BY_ANCESTOR_ROWS.has(`${row.route}|${row.selector}`);
+}
+
 function classifyRows(
   rows: readonly RosterOffenderLine[],
   exemptTokens: ReadonlySet<string>,
   stylesheetTexts: readonly string[] = CURRENT_STYLESHEET_TEXTS,
-): { candidateCount: number; candidateRows: string[]; repairedRows: string[] } {
+): { candidateCount: number; candidateRows: string[]; repairedRows: string[]; exemptByCompositionRows: string[] } {
   let candidateCount = 0;
   const candidateRows: string[] = [];
   const repairedRows: string[] = [];
+  const exemptByCompositionRows: string[] = [];
   for (const row of rows) {
     const line = `${row.selector} w=${row.width}px h=${row.height}px`;
     const result = classifyAdminMobileOffender(line, exemptTokens);
@@ -389,10 +405,21 @@ function classifyRows(
       repairedRows.push(`${row.route} ${row.selector}`);
       continue;
     }
+    // DEC-808 wave-50 amendment (task w50-b): a bare `a`/`input` row whose
+    // wrapping element's class already carries a live floor or receipt --
+    // this is a DIFFERENT clause from REPAIRED-SINCE-SNAPSHOT above (which
+    // is keyed on the row's OWN class token, and by construction a bare row
+    // has none) and a DIFFERENT population from the "every roster row with
+    // NO class token can never reclassify REPAIRED-SINCE-SNAPSHOT" pin
+    // below, which stays true unmodified.
+    if (isExemptByComposition(row)) {
+      exemptByCompositionRows.push(`${row.route} ${row.selector}`);
+      continue;
+    }
     candidateCount++;
     candidateRows.push(`${row.route} ${row.selector}`);
   }
-  return { candidateCount, candidateRows, repairedRows };
+  return { candidateCount, candidateRows, repairedRows, exemptByCompositionRows };
 }
 
 describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)", () => {
@@ -449,6 +476,40 @@ describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)"
       classification: "EXEMPT",
       receipt: "chq-wordmark",
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-808 wave-50 amendment (task w50-b): the EXEMPT-BY-COMPOSITION clause.
+// A bare (classless) `a`/`input` CANDIDATE row's real hit box is its
+// wrapping element (native `<label>`/list-row click-delegation) -- see
+// app/src/phone-tap-target-scan/public-390-ancestor-floor.ts for the
+// derivation and test/public-390-roster-tag-resolution.scan.test.ts for the
+// per-row proof. This block checks the wiring into classifyRows/
+// isExemptByComposition, never re-deriving FLOORED_BY_ANCESTOR_ROWS itself.
+// ---------------------------------------------------------------------------
+
+describe("public-390-offender-roster EXEMPT-BY-COMPOSITION (DEC-808 wave-50 amendment, task w50-b)", () => {
+  it("all 20 of the roster's bare CANDIDATE `a`/`input` rows resolve EXEMPT-BY-COMPOSITION -- the ancestor axis leaves ZERO candidate defects", () => {
+    const exemptTokens = deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES));
+    const { candidateCount, candidateRows, exemptByCompositionRows } = classifyRows(OFFENDER_LINES, exemptTokens);
+    expect(candidateRows, `unresolved candidate rows: ${candidateRows.join(", ")}`).toEqual([]);
+    expect(candidateCount).toBe(0);
+    expect(exemptByCompositionRows.length).toBe(20);
+  });
+
+  it("synthetic control: isExemptByComposition-equivalent wiring -- a bare row whose route|tag key IS in FLOORED_BY_ANCESTOR_ROWS resolves EXEMPT-BY-COMPOSITION; the identical row on an unlisted route stays CANDIDATE; a row that DOES carry a class token is never eligible for this clause even if its route|tag key happens to be listed", () => {
+    expect(FLOORED_BY_ANCESTOR_ROWS.has("/submit/devflow-conf-2027|a")).toBe(true);
+    const rows: RosterOffenderLine[] = [
+      { route: "/submit/devflow-conf-2027", selector: "a", width: 20, height: 19 }, // listed route+tag, bare -> resolves
+      { route: "/w50b-unlisted-route", selector: "a", width: 20, height: 19 }, // unlisted route -> stays CANDIDATE
+      { route: "/submit/devflow-conf-2027", selector: "a.chq-w50b-has-a-class", width: 20, height: 19 }, // has a class token -> not eligible for this clause
+    ];
+    const { candidateRows, exemptByCompositionRows } = classifyRows(rows, new Set(), []);
+    expect(exemptByCompositionRows).toEqual(["/submit/devflow-conf-2027 a"]);
+    expect(candidateRows.sort()).toEqual(
+      ["/w50b-unlisted-route a", "/submit/devflow-conf-2027 a.chq-w50b-has-a-class"].sort(),
+    );
   });
 });
 

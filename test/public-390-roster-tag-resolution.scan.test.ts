@@ -39,17 +39,33 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEC_613, DEC_644, DEC_808 } from "../src/decisions";
+import { DEC_613, DEC_644, DEC_808, DEC_996 } from "../src/decisions";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 import {
   extractCssTsLiteral,
 } from "../app/src/phone-tap-target-scan/ssr";
-import { hasMinHeightFloor, narrowMediaRules } from "../app/src/phone-tap-target-scan/core";
+import {
+  classlessTagSites,
+  hasExemptionForToken,
+  hasMinHeightFloor,
+  narrowMediaRules,
+  selectorMentionsToken,
+  stripTsxComments,
+  topLevelRulesWithExemption,
+} from "../app/src/phone-tap-target-scan/core";
+import {
+  classlessSitesIn,
+  FLOORED_BY_ANCESTOR_ROWS,
+  PORTAL_ROUTES_ROOT,
+  PUBLIC_ROUTES_ROOT,
+  tokenFlooredOrExempt,
+} from "../app/src/phone-tap-target-scan/public-390-ancestor-floor";
 
 void DEC_808; // this file's whole reason to exist: resolving the 20 classless CANDIDATE rows by route+tag
 void DEC_613; // the buildApp/app.request harness below is reused verbatim from public-390-frame-verdicts.test.ts / portal-edit-390-frames.test.ts, never a new mock stack
 void DEC_644; // NEVER npm run gate:render-sweep here -- the one-machine heavy-gate lock forbids it inside a code wave
+void DEC_996; // the ancestor axis below reuses w39-e's classlessTagSites walk verbatim (DEC-613), never a second copy
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -374,5 +390,155 @@ describe("public-390 roster tag resolution — honest total (DEC-808 wave-44)", 
 
     const reclassifiedCount = [aReached, radioReached, checkboxReached].filter(Boolean).length;
     expect(reclassifiedCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-808 wave-50 amendment (task w50-b): the ANCESTOR axis.
+//
+// Mechanisms 1/2 above check only whether a BARE tag/type selector (`a`,
+// `input[type=radio]`, ...) reaches a classless roster row -- and correctly
+// find none, because this codebase's floor idiom never writes a bare-tag
+// phone rule. But native `<label>` click-delegation makes a wrapping
+// `<label class="chq-cfp-option">` (or a wrapping `<a>`'s ancestor block,
+// for the SSR list-row idiom DEC-393 wave-142 established) the REAL hit box
+// for a classless child -- a floor scoped to the ANCESTOR's class token
+// reaches the classless child even though no rule ever names the child's
+// bare tag. w44-j never checked this axis at all; w39-e (DEC-996 wave-39,
+// test/public-390-request-verdicts-classless-roster.scan.test.ts) already
+// built and graded it for 15 of these exact sites, restricted to
+// src/routes/public/**, and this section reuses that same walk
+// (classlessTagSites, DEC-613: imported, never re-derived) rather than a
+// second copy.
+//
+// Two shapes below:
+//   (a) still-classless in the current tree: classlessTagSites finds the
+//       tag with an empty own-class-attribute and reports its nearest
+//       ancestor's chq- token(s) -- checked here for a live floor or a
+//       `tap-floor-exempt:` receipt (any flavour: composition for the
+//       input rows, inline-in-prose for some `a` rows).
+//   (b) drifted OUT of the classless population since the wave-30 snapshot
+//       (the roster's frozen text has no token, but the tree today shows
+//       the SAME anchor now carrying its own chq- class -- the identical
+//       drift w39-e's second describe block already documented for two
+//       submit-views.tsx anchors): pinned directly by source substring,
+//       then checked the same way for a receipt on that OWN token.
+//
+// `FLOORED_BY_ANCESTOR_ROWS` is this file's single exported verdict set,
+// keyed `${route}|${tag}` -- test/public-390-offender-roster.scan.test.ts
+// imports it to subtract exactly these rows from its CANDIDATE count under
+// a new EXEMPT-BY-COMPOSITION label (never touching the existing
+// REPAIRED-SINCE-SNAPSHOT clause, which is a different mechanism keyed on
+// the row's OWN class token).
+// The derivation itself (walk + floor/receipt predicate + the resolved
+// route+tag set) lives in ONE non-test module,
+// app/src/phone-tap-target-scan/public-390-ancestor-floor.ts (DEC-613), so
+// this file and test/public-390-offender-roster.scan.test.ts both import
+// the SAME `FLOORED_BY_ANCESTOR_ROWS` rather than each re-deriving it (or,
+// worse, one importing the other's `.test.ts` module).
+const SSR_HAS_CLASS_ATTR_RE = /\bclass(?:Name)?\s*=/;
+const SSR_CLASS_ATTR_RE_LOCAL = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*")/;
+
+describe("public-390 roster tag resolution — ancestor axis, `input` rows (DEC-808 wave-50, task w50-b)", () => {
+  it("submit-views.tsx's three chq-cfp-option input sites (track/format/pill radios) are classless with ancestor token chq-cfp-option, and that token carries a live >=44px floor AND a composition receipt in cfp.css.ts", () => {
+    const sites = classlessSitesIn(join(PUBLIC_ROUTES_ROOT, "submit-views.tsx"), ["input"]);
+    expect(sites.length).toBeGreaterThan(0);
+    const cfpOptionSites = sites.filter((s) => s.tokens.includes("chq-cfp-option"));
+    expect(cfpOptionSites.length).toBe(3);
+    expect(tokenFlooredOrExempt("chq-cfp-option")).toBe(true);
+    const cfpCss = extractCssTsLiteral(readFileSync(join(PUBLIC_ROUTES_ROOT, "cfp.css.ts"), "utf-8"));
+    expect(hasExemptionForToken(cfpCss, "chq-cfp-option")).toBe(true);
+  });
+
+  it("portal/edit.tsx's offered-track checkbox site is classless with ancestor token chq-cfp-option, and that token carries a live >=44px floor AND a composition receipt in portal.css.ts", () => {
+    const sites = classlessSitesIn(join(PORTAL_ROUTES_ROOT, "edit.tsx"), ["input"]);
+    const cfpOptionSites = sites.filter((s) => s.tokens.includes("chq-cfp-option"));
+    expect(cfpOptionSites.length).toBeGreaterThan(0);
+    expect(tokenFlooredOrExempt("chq-cfp-option")).toBe(true);
+    const portalCss = extractCssTsLiteral(readFileSync(join(PORTAL_ROUTES_ROOT, "portal.css.ts"), "utf-8"));
+    expect(hasExemptionForToken(portalCss, "chq-cfp-option")).toBe(true);
+  });
+});
+
+describe("public-390 roster tag resolution — ancestor axis, `a` rows (DEC-808 wave-50, task w50-b)", () => {
+  it("agenda-grid.tsx / agenda-rail.tsx / sessions.tsx's classless anchor sites resolve to chq-pub-agenda-block-title / chq-pub-rail-day-row, both live-floored (>=44px) in rail.css.ts's terminal phone block -- covers the /e/…/agenda and /embed/…/agenda CANDIDATE rows regardless of which component rendered them", () => {
+    const files = [
+      join(PUBLIC_ROUTES_ROOT, "agenda-grid.tsx"),
+      join(PUBLIC_ROUTES_ROOT, "agenda-rail.tsx"),
+      join(PUBLIC_ROUTES_ROOT, "sessions.tsx"),
+    ];
+    const sites = files.flatMap((f) => classlessSitesIn(f, ["a"]));
+    expect(sites.length).toBeGreaterThan(0);
+    const ancestorTokens = new Set(sites.flatMap((s) => s.tokens));
+    for (const expected of ["chq-pub-agenda-block-title", "chq-pub-rail-day-row"]) {
+      expect(ancestorTokens.has(expected), `expected ${expected} among ${[...ancestorTokens].join(", ")}`).toBe(true);
+    }
+    for (const token of ancestorTokens) {
+      expect(tokenFlooredOrExempt(token), `${token} is neither floored nor exempt`).toBe(true);
+    }
+  });
+
+  it("submit-views.tsx's classless anchor sites resolve to chq-cfp-links / chq-cfp-confirm-actions, both live-floored or receipted in cfp.css.ts -- covers the /submit/devflow-conf-2027 CANDIDATE `a` rows regardless of which branch rendered them", () => {
+    const sites = classlessSitesIn(join(PUBLIC_ROUTES_ROOT, "submit-views.tsx"), ["a"]);
+    expect(sites.length).toBeGreaterThan(0);
+    const ancestorTokens = new Set(sites.flatMap((s) => s.tokens));
+    for (const expected of ["chq-cfp-links", "chq-cfp-confirm-actions"]) {
+      expect(ancestorTokens.has(expected), `expected ${expected} among ${[...ancestorTokens].join(", ")}`).toBe(true);
+    }
+    for (const token of ancestorTokens) {
+      expect(tokenFlooredOrExempt(token), `${token} is neither floored nor exempt`).toBe(true);
+    }
+  });
+
+  it("docs.tsx's '/login' reference anchor has DRIFTED out of the classless population since the wave-30 snapshot -- it now carries its own class token chq-docs-auth-link (DEVIATIONS.md §10, rung 3), which carries a live tap-floor-exempt receipt in tools.css.ts", () => {
+    const src = readFileSync(join(REPO_ROOT, "src", "routes", "docs.tsx"), "utf-8");
+    // Negative control: the classless walk over this file finds NO classless
+    // `a` sites at all -- proving the absence of a classless '/login' anchor
+    // here isn't a walk failure, the anchor genuinely carries a class now
+    // (docs.tsx's only other anchor, chq-wordmark, is already EXEMPT in the
+    // roster and also carries its own class).
+    const classless = classlessTagSites(stripTsxComments(src), ["a"], SSR_HAS_CLASS_ATTR_RE, SSR_CLASS_ATTR_RE_LOCAL);
+    expect(classless).toEqual([]);
+    expect(src).toContain('<a class="chq-docs-auth-link" href="/login">');
+    expect(tokenFlooredOrExempt("chq-docs-auth-link")).toBe(true);
+    const toolsCss = extractCssTsLiteral(readFileSync(join(REPO_ROOT, "src", "routes", "tools.css.ts"), "utf-8"));
+    expect(hasExemptionForToken(toolsCss, "chq-docs-auth-link")).toBe(true);
+  });
+
+  it("portal/tasks/views.tsx's completed-file-request download link has DRIFTED out of the classless population since the wave-30 snapshot -- it now carries its own class token chq-portal-file-link (DEC-393 wave-38 amendment), which carries a live tap-floor-exempt receipt in portal.css.ts", () => {
+    const src = readFileSync(join(REPO_ROOT, "src", "routes", "portal", "tasks", "views.tsx"), "utf-8");
+    expect(src).toContain('<a class="chq-portal-file-link" href={`/portal/tasks/${t.id}/file`}>');
+    expect(tokenFlooredOrExempt("chq-portal-file-link")).toBe(true);
+    const portalCss = extractCssTsLiteral(readFileSync(join(PORTAL_ROUTES_ROOT, "portal.css.ts"), "utf-8"));
+    expect(hasExemptionForToken(portalCss, "chq-portal-file-link")).toBe(true);
+  });
+
+  it("synthetic control: tokenFlooredOrExempt is true for a token with a fabricated live floor rule OR a fabricated exemption receipt, false for a token with neither", () => {
+    const flooredCss = `.chq-w50b-floored { min-height: 44px; }`;
+    const exemptRaw = `/* tap-floor-exempt: composition -- synthetic */\n.chq-w50b-exempt {}`;
+    const neitherCss = `.chq-w50b-neither { color: red; }`;
+    // Direct predicate checks (isolated fixtures), mirroring this file's
+    // other synthetic controls -- not routed through the module-level
+    // ANCESTOR_* arrays, which read the real tree.
+    const floorRules = [...topLevelRulesWithExemption(flooredCss)];
+    expect(floorRules.some((r) => selectorMentionsToken(r.selector, "chq-w50b-floored") && hasMinHeightFloor(r.body))).toBe(true);
+    expect(hasExemptionForToken(exemptRaw, "chq-w50b-exempt")).toBe(true);
+    const neitherRules = [...topLevelRulesWithExemption(neitherCss)];
+    expect(neitherRules.some((r) => selectorMentionsToken(r.selector, "chq-w50b-neither") && hasMinHeightFloor(r.body))).toBe(false);
+    expect(hasExemptionForToken(neitherCss, "chq-w50b-neither")).toBe(false);
+  });
+
+  it("FLOORED_BY_ANCESTOR_ROWS (the derivation's single exported output, app/src/phone-tap-target-scan/public-390-ancestor-floor.ts) names exactly the 7 route+tag pairs the describe blocks above proved, covering all 20 CANDIDATE rows (6 `a` + 14 `input`) and none from the roster's already-EXEMPT/REPAIRED-SINCE-SNAPSHOT rows", () => {
+    expect([...FLOORED_BY_ANCESTOR_ROWS].sort()).toEqual(
+      [
+        "/docs/api|a",
+        "/e/devflow-conf-2027/agenda|a",
+        "/embed/devflow-conf-2027/agenda|a",
+        "/portal/tasks|a",
+        "/submit/devflow-conf-2027|a",
+        "/submit/devflow-conf-2027|input",
+        "/portal/submissions/seed_submission_0001/edit|input",
+      ].sort(),
+    );
   });
 });
