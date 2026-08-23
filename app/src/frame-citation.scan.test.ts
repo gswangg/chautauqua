@@ -48,10 +48,12 @@
 // `const <NAME>_CEILING = <integer>;` declarations, so moving a graded
 // ceiling into a non-test module would make it invisible to the campaign
 // scoreboard.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   APP_SRC,
+  designFileNames,
   enumerateFiles,
   enumerateTestFiles,
   findCitations,
@@ -71,6 +73,8 @@ import {
   ALL_FRAME_EXTENTS,
   isInsideADesktopFrame,
   isInsideAPhoneFrame,
+  isPastTemplate,
+  templateCloseLine,
 } from './frame-citation-frames';
 import {
   computeHeaderScopeWithoutReceiptOffenders,
@@ -654,5 +658,154 @@ describe('frame-extent populations imported from ./frame-citation-frames are non
   });
   it('desktop frame extents are non-empty', () => {
     expect(ALL_DESKTOP_FRAME_EXTENTS.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-967 wave-41 amendment (task w41-b, citation side): "a `.dc.html:<line>`
+// landing past `</x-dc>` is not a frame citation." Every frame extent used
+// to run to end-of-file for a design file's last labelled block, so a
+// citation naming a line inside `<script data-dc-script>` (below the
+// template close) still silently "resolved to a real frame" -- the quote
+// verbatim check above never distinguishes drawn-template prose from
+// script-body markup. frame-citation-frames.ts now clips every extent to
+// templateCloseLine, so those citations fall OUTSIDE every extent; this
+// block gives that fact a name (PAST_TEMPLATE) and a measured, ratcheted
+// count, rather than letting the citations simply vanish from every other
+// ceiling's population with no record they ever existed.
+//
+// Population (per the root-fact measurement this task verified): every
+// STRICT_RE/ABBREV_RE citation found in test/, app/src/ (both css/ts/tsx
+// and *.test.ts/*.test.tsx), src/ (ts/tsx, both non-test and test), and
+// src/decisions-data/*.md -- the four roots the wave-41 plan named. Reuses
+// this file's own enumerateFiles/enumerateTestFiles/findCitations/flatten
+// (DEC-613: never a second copy of the enumeration or matching
+// vocabulary); the decisions-data *.md files are the one root none of
+// those helpers already covers, so they are enumerated here directly via
+// readdirSync (DEC-808: never a hand-listed manifest).
+// ---------------------------------------------------------------------------
+
+const DECISIONS_DATA_ROOT = join(SRC_ROOT, 'decisions-data');
+const DECISIONS_DATA_MD_FILES = readdirSync(DECISIONS_DATA_ROOT, { withFileTypes: true })
+  .filter((e) => e.isFile() && e.name.endsWith('.md'))
+  .map((e) => join(DECISIONS_DATA_ROOT, e.name));
+
+const PAST_TEMPLATE_SCAN_FILES = [
+  ...enumerateFiles(APP_SRC, ['.css', '.ts', '.tsx']),
+  ...enumerateTestFiles(APP_SRC),
+  ...enumerateFiles(SRC_ROOT, ['.ts', '.tsx']),
+  ...enumerateTestFiles(SRC_ROOT),
+  ...enumerateTestFiles(TEST_DIR_ROOT),
+  ...DECISIONS_DATA_MD_FILES,
+];
+
+const DESIGN_FILE_NAMES = new Set(designFileNames());
+
+interface PastTemplateOffender {
+  file: string;
+  frameFile: string;
+  firstLine: number;
+  matchText: string;
+}
+
+/** Every citation across PAST_TEMPLATE_SCAN_FILES whose cited line is past
+ * its named design file's template close. Only citations naming a REAL
+ * design file are classified -- a citation naming a nonexistent frame file
+ * is a different defect (caught by the verbatim-quote check above for the
+ * files that check covers), not this one. */
+function computePastTemplateOffenders(): PastTemplateOffender[] {
+  const offenders: PastTemplateOffender[] = [];
+  for (const file of PAST_TEMPLATE_SCAN_FILES) {
+    const relPath = relative(REPO_ROOT, file);
+    const flat = flatten(readFileSync(file, 'utf-8'));
+    for (const c of findCitations(relPath, flat)) {
+      if (!DESIGN_FILE_NAMES.has(c.frameFile)) continue;
+      if (isPastTemplate(c.frameFile, c.firstLine)) {
+        offenders.push({ file: relPath, frameFile: c.frameFile, firstLine: c.firstLine, matchText: c.matchText });
+      }
+    }
+  }
+  return offenders;
+}
+
+/** Ratchet ceiling (DEC-967 wave-41 amendment, task w41-b): the count of
+ * citations across test/, app/src/, src/, and src/decisions-data/*.md whose
+ * cited line lands past their design file's template close. Seeded at 19,
+ * measured on THIS branch by forcing this constant to -1 and reading the
+ * printed roster back (DEC-989 clause a -- never copied from the task
+ * brief's own approximate "24", which the brief itself warned not to
+ * trust). May only be LOWERED as citations get moved back inside their
+ * frame's drawn template or deleted -- this task does not repair any of the
+ * 19 named citations, it only gives their shape a name and a ceiling. */
+const FRAME_CITATION_PAST_TEMPLATE_CEILING = 19;
+
+describe('FRAME_CITATION_PAST_TEMPLATE_CEILING (DEC-967 wave-41 amendment, task w41-b)', () => {
+  it(`no more than FRAME_CITATION_PAST_TEMPLATE_CEILING (${FRAME_CITATION_PAST_TEMPLATE_CEILING}) citations land past their design file's template close (ceiling: may only be lowered)`, () => {
+    const offenders = computePastTemplateOffenders();
+    if (offenders.length > FRAME_CITATION_PAST_TEMPLATE_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} citations landing past their design file's template close, above the ` +
+          `ceiling of ${FRAME_CITATION_PAST_TEMPLATE_CEILING} (FRAME_CITATION_PAST_TEMPLATE_CEILING may only be ` +
+          `LOWERED, never raised):\n` +
+          offenders.map((o) => `  ${o.file} -> ${o.frameFile}:${o.firstLine} ("${o.matchText}")`).join('\n')
+      );
+    }
+    expect(offenders.length).toBeLessThanOrEqual(FRAME_CITATION_PAST_TEMPLATE_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106 requirement, mirroring
+  // UNRECEIPTED_CLAIM_CEILING's own companion above): fails when the
+  // measured count falls BELOW the constant, printing the exact
+  // replacement line, so a stale ceiling never hides fixed debt.
+  it(`never measures FEWER past-template citations than FRAME_CITATION_PAST_TEMPLATE_CEILING (${FRAME_CITATION_PAST_TEMPLATE_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const offenders = computePastTemplateOffenders();
+    if (offenders.length < FRAME_CITATION_PAST_TEMPLATE_CEILING) {
+      throw new Error(
+        `measured ${offenders.length} past-template citations, below the ratchet ceiling of ` +
+          `${FRAME_CITATION_PAST_TEMPLATE_CEILING}. This is the ratchet working -- debt got fixed. Lower the ` +
+          `ceiling by replacing the line:\n  const FRAME_CITATION_PAST_TEMPLATE_CEILING = ${offenders.length};`
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(FRAME_CITATION_PAST_TEMPLATE_CEILING);
+  });
+
+  it('none of these ceilings gained a new offender because of the clip (UNRECEIPTED_CLAIM_CEILING and siblings stay at their declared 0)', () => {
+    expect(UNRECEIPTED_CLAIM_CEILING).toBe(0);
+    expect(DESKTOP_UNRECEIPTED_CLAIM_CEILING).toBe(0);
+    expect(HEADER_SCOPE_WITHOUT_RECEIPT_CEILING).toBe(0);
+    expect(DESKTOP_HEADER_SCOPE_WITHOUT_RECEIPT_CEILING).toBe(0);
+  });
+});
+
+// Synthetic controls (task w41-b item 5): a fabricated citation exactly one
+// line past a real frame's template close must classify PAST_TEMPLATE and
+// must NOT resolve to any frame (neither phone nor desktop extent covers
+// it, because both extents are now clipped to templateCloseLine); a
+// citation one line BEFORE the close (negative control) must still resolve
+// to the frame extent that contains it. Chautauqua Speakers.dc.html is used
+// because its close (728) sits inside a DESKTOP frame's extent (the last
+// labelled block before the close, at line 665, carries no
+// width:390px/height:844 line) -- a real, non-fixture design file, per this
+// suite's own negative-control convention (wave-107/108: a synthetic
+// sentinel must never invent a frame path that does not exist).
+describe('PAST_TEMPLATE synthetic controls (positive/negative, task w41-b)', () => {
+  const SPEAKERS_FRAME = 'Chautauqua Speakers.dc.html';
+  const close = templateCloseLine(SPEAKERS_FRAME);
+
+  it('a citation exactly one line past the template close classifies PAST_TEMPLATE and resolves to no frame (positive control)', () => {
+    expect(isPastTemplate(SPEAKERS_FRAME, close + 1)).toBe(true);
+    expect(isInsideAPhoneFrame(SPEAKERS_FRAME, close + 1)).toBe(false);
+    expect(isInsideADesktopFrame(SPEAKERS_FRAME, close + 1)).toBe(false);
+  });
+
+  it('a citation one line before the template close does not classify PAST_TEMPLATE and still resolves to a frame (negative control)', () => {
+    expect(isPastTemplate(SPEAKERS_FRAME, close - 1)).toBe(false);
+    expect(isInsideAPhoneFrame(SPEAKERS_FRAME, close - 1) || isInsideADesktopFrame(SPEAKERS_FRAME, close - 1)).toBe(
+      true
+    );
+  });
+
+  it('templateCloseLine throws loudly for a design file with zero or more than one </x-dc> (fail-loudly, never a silent pick)', () => {
+    expect(() => templateCloseLine('Chautauqua Nonexistent.dc.html')).toThrow();
   });
 });

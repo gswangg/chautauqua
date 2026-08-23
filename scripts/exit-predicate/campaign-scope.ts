@@ -743,6 +743,14 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "instrument-completeness fact about the audit corpus's own claim-checking coverage, not "
     + "itself a v12 frame or 390-geometry conformance fact "
     + "(test/audit-handoff-paragraph-staleness.scan.test.ts, DEC-903 wave-41 amendment).",
+  FRAME_CITATION_PAST_TEMPLATE_CEILING:
+    "measures how many `.dc.html:<line>` citations land past their design file's own template close "
+    + "(`</x-dc>`) -- inside the `<script data-dc-script>` body a frame extent can never cover, never "
+    + "inside a drawn template. A citation counted here is definitionally outside every frame extent "
+    + "the other citation ceilings grade, so this is a fact about CITATION HYGIENE (a stale line "
+    + "number, or a reference into a design file's non-drawn scaffolding), not a v12 frame or "
+    + "390-geometry conformance fact about any screen the product draws "
+    + "(app/src/frame-citation.scan.test.ts, DEC-967 wave-41 amendment).",
 };
 
 /**
