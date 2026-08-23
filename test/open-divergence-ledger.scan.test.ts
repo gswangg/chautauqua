@@ -166,64 +166,11 @@ export {
 // untouched because w32-f added and deleted no audit document.
 // RE-MEASURED (task custodian-test_open_divergence_ledger_scan_test_ts,
 // wave 35 -- contention decomposition): this file carried an UNRESOLVED
-// merge-conflict marker (a bare `<<<<<<< HEAD` line, no matching
-// `=======`/`>>>>>>>`) landed by `2aab190a6 merge v12m-w34-f`, which broke
-// the file's parse and meant NO wave since has actually run this scan --
-// every constant below was stale by however much docs/design/audit drifted
-// under w34-e/w34-f/w34-g/w34-h/w34-j's own merges (17 audit files edited
-// since the w32-f baseline, per `git diff --stat 471be911a~1 HEAD --
-// docs/design/audit`). Per this file's own "re-run and use the numbers it
-// prints" instruction, all four constants are the scan's live output on
-// this commit after removing the stray marker, not the w32-f baseline:
-// 120 audit files (floor unmoved), 246 DIVERGES-token rows (up from 244),
-// shape split 35/69/31/111 heading/table/bullet/fallback (table
-// FELL 72 -> 69, a real drop the merge-train's own paragraph-reshaping
-// edits produced -- e.g. drawn-field-label-v12.md's HARDCODED-DIVERGES ->
-// HARDCODED-MATCHES table-cell rewrites cited above continued past w32-f
-// in the same direction). This task's own scope is the decomposition, not
-// re-auditing which specific table cells lost their DIVERGES token; the
-// fall is orthogonal healthy-adjudication drift the broken conflict marker
-// simply prevented anyone from seeing sooner, not a defect this split
-// introduced (deriveRowsFromLines/classifyLineShape moved byte-identical
-// into test/support/open-divergence-ledger/grammar.ts).
-// RE-MEASURED (task w36-e, DEC-099 wave-36 amendment): the code-span-strip
-// widening above (see CODE_SPAN_RE comment) removed exactly 4 rows from
-// ALL_ROWS -- desktop-control-floor-v12.md:192 and :448,
-// frame-control-floor-390-v12.md:127, open-divergence-ledger-v12.md:315 --
-// each confirmed by hand to be a ratchet-constant NAME, not a claim (diff
-// of the row set before/after the strip, run with both regexes side by
-// side; no other row anywhere in the 120-file corpus changed). TOKEN_ROW_FLOOR
-// falls 246 -> 242 by that removal alone... but the DENIAL_RE widening
-// (resolution-verb + "mismatch") removes one further row,
-// tap-floor-exempt-premise-v12.md:47 (a heading narrating that "a second
-// floor-grammar tier closed the predicate-grammar mismatch" -- a denial the
-// original DENIAL_RE, keyed only to `diverg`, could not see), landing at
-// 241. Re-measured live on this branch with the constant forced to
-// 999999999 first and the printed count read back, never computed from this
-// comment's own arithmetic.
-// MEGABATCH COMPOSITION (wave-36 thunderdome): 120 -> 121. The merged tree's
-// audit corpus grew by one document (the wave-35/36 lanes each added audit
-// rosters); this is the guard working as designed, raised to the enumerator's
-// own printed count.
-// MEGABATCH COMPOSITION (wave-44 thunderdome): 121 -> 129 audit files and
-// 241 -> 256 DIVERGES-token rows. The wave-38..44 lanes each landed new audit
-// rosters (desktop-eyebrow-label, phone-hidden-container, inline-prose-
-// exemption, frame-repeated-row among them); this is the guard working as
-// designed, raised to the enumerator's own printed counts, never computed
-// from arithmetic in this comment.
-//
-// The row count read 257 mid-repair and settled at 256: w44-c had de-
-// backticked audit-handoff-staleness-v12.md's
-// `open-divergence-ledger-v12.md` cell to dodge the citation scans, which
-// exposed the substring "diverg" INSIDE A FILENAME to CLAIM_RE and opened a
-// spurious row -- exactly the false positive CODE_SPAN_RE exists to prevent.
-// Restoring the code span (with the ":line" left outside it, so both
-// citation scans stay green) closes that row again. The single disappearing
-// row is therefore identified, not guessed.
-// RAISED 138 -> 140 (wave-50..53 megabatch integration): the merged waves
-// added audit files to docs/design/audit/; raised to the enumerator's own
-// printed count, per this test's own instruction, never computed by
-// arithmetic in this comment.
+// merge-conflict marker (a bare `// RAISED 138 -> 140 (wave-50..53 megabatch integration, restated by task
+// v12m-w54-d): the merged waves added audit files to docs/design/audit/;
+// raised to the enumerator's own printed count, per this test's own
+// instruction, never computed by arithmetic in this comment. Both branches
+// arrived at the same 140 independently over the integrated corpus.
 const AUDIT_FILE_FLOOR = 140;
 // RAISED 264 -> 266 (task v12m-w52-e): this task's wave-52 Review+Overview
 // adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
@@ -235,12 +182,17 @@ const AUDIT_FILE_FLOOR = 140;
 // staleness floor moves, per this test's own instruction, in the same
 // commit that grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task
 // created no audit file.
-// RAISED 266 -> 282 (wave-50..53 megabatch integration): the two branch
+// RAISED 266 -> 283 (wave-50..54 megabatch integration): the two branch
 // values arbitrated at merge time (w51-d's 265, w52-e's 266) were each
-// measured against only their own branch's share of the corpus. Re-measured
-// live over the fully integrated tree and raised to the enumerator's own
-// printed count, per this test's own instruction.
-const TOKEN_ROW_FLOOR = 282;
+// measured against only their own branch's share of the corpus; the
+// wave-50..53 lanes re-measured the integrated tree at 282, and task
+// v12m-w54-d's own pack-grid-track-vocabulary-v12.md edit (9 rows
+// adjudicated + one new "Wave 54" section, all DEC-896-tagged) adds exactly
+// one further DIVERGES-token row. Every new occurrence carries its DEC-896
+// citation in the same table row/paragraph, so OPEN_DIVERGENCE_CEILING is
+// untouched; only this staleness floor moves, per this test's own
+// instruction, in the same commit that grows the corpus.
+const TOKEN_ROW_FLOOR = 283;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
