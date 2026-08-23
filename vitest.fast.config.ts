@@ -20,7 +20,22 @@ export default defineConfig({
     // Unlike vitest.config.ts (mandate item 72/73's machine-protection cap
     // for the jsdom/wrangler-heavy full suite), this tier is plain-node
     // unit tests only -- no multi-GB jsdom/miniflare workers -- so it is
-    // left at vitest's default worker count to stay well under 60s.
+    // left at vitest's default (uncapped) worker count. MEASURED at main
+    // `f572ee4cc`: 386.39s wall-clock for 1417 files / 18,633 tests
+    // (wave-47) -- NOT "well under 60s"; that claim was never re-timed
+    // after the tier grew and is false today. An uncapped worker count on
+    // a fixed core machine means every test's 5000ms per-test budget is
+    // shared with however many sibling files vitest schedules onto the
+    // same worker at once -- contention, not test logic, is what makes a
+    // load-sensitive test (fixed sleeps, `beforeAll` module-graph imports
+    // inside a test body) flake under this tier and pass standalone. The
+    // fix for that flakiness is to remove the per-test cost (hoist heavy
+    // imports to `beforeAll`, replace wall-clock sleeps with condition
+    // waits -- see DEC-903 wave-47) so a test doesn't need a wall-clock
+    // guarantee about its neighbors to pass; raising testTimeout only
+    // hides the contention, and capping maxWorkers only trades flakiness
+    // for slower wall-clock time without fixing the root cause. Do not
+    // change worker count or timeout here to chase a flake -- fix the test.
     environment: "node",
     pool: "threads",
     include: [
