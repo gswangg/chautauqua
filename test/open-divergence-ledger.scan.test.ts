@@ -205,8 +205,8 @@ export {
 // audit corpus grew by one document (the wave-35/36 lanes each added audit
 // rosters); this is the guard working as designed, raised to the enumerator's
 // own printed count.
-const AUDIT_FILE_FLOOR = 121;
-const TOKEN_ROW_FLOOR = 241;
+const AUDIT_FILE_FLOOR = 129;
+const TOKEN_ROW_FLOOR = 256;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,

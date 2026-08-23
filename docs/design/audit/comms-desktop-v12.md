@@ -220,7 +220,10 @@ preview" — the component's own review step (`step === 'preview'` in
   B1 (already documented inline in `ComposeWizard.tsx`: "Send moves to step
   4 -- this primary only advances; the dedicated ConfirmDialog is gone
   because step 4 pre-send IS the confirmation"). No control matching
-  `/^Send \d+ emails?$/` exists on this step at all.
+  `/^Send \d+ emails?$/` exists on this step at all. This is a real,
+  deliberate product decision, not new debt — filed here per DEC-651
+  wave-26's measurement-only mandate (record the divergence, move no
+  desktop byte), with the code's own comment above as its authority.
 
 ## Frame `:453` "Compose · step 4 of 4" (1600, the send report)
 
@@ -248,7 +251,9 @@ above through to `POST /compose/send`, mocking a response with two
   inline in `ComposeWizard.tsx`: "The client never invents/hard-codes a
   from-address... A future wave that gives the composer a from-address
   appends ' · from <address>'"). Not new debt — a known, named gap, not a
-  fabrication.
+  fabrication. Recorded rather than repaired per DEC-651 wave-26's
+  measurement-only mandate — desktop is frozen, so this gap is a later
+  wave's product decision, not this lane's edit.
 
 ## Frame `:750` "Compose · send blocked" (1600)
 
@@ -271,9 +276,11 @@ app's send-blocked state — no banner component is rendered in isolation
   ORDINARY review step, with the "Recipients · 3" section and "Attachments
   and merge fields" panel still visible beside it, unchanged. A real,
   structural divergence — the frame's full-screen interstitial vs. the
-  tree's in-place banner — filed here per the mandate, not a defect (the
-  banner names the same blocked submissions, in place, without a navigation
-  round-trip).
+  tree's in-place banner — filed here per DEC-651 wave-26's
+  measurement-only mandate, not a defect (the banner names the same
+  blocked submissions, in place, without a navigation round-trip); desktop
+  is frozen, so the composition choice is recorded, not repaired, in this
+  lane.
   - The frame's own blocking COPY (frame :768, "One merge field will not
     resolve for 3 of the 23") is a *different* refusal than the one this
     drive reaches — that sentence belongs to DEC-660's pre-emptive
@@ -296,9 +303,9 @@ app's send-blocked state — no banner component is rendered in isolation
 | :360 Compose · step 1 of 4 (1600) | DIVERGES on demo state (no pre-selection, 6 pills not 3), DEC-902 wave-9 + DEC-967; structurally MATCHES |
 | :544 Comms · nothing sent yet (1600) | MATCHES inside the frame's own shell; DIVERGES additively (tablist always present at desktop), DEC-902 wave-8 |
 | :589 Comms · history (1600) | CLOSED-with-receipt (DEC-964 wave-8, task w8-a): MATCHES on page chrome (no page-level Comms H1/tablist at any width) and inside the frame's own shell |
-| :28 Compose · step 3 of 4 (1600) | MATCHES on the review section head; DIVERGES on send commitment (step-3 "Send N emails" vs. the tree's "Next: send ›" deferring to step 4, Ruling B1) |
-| :453 Compose · step 4 of 4 (1600) | MATCHES on report head/skipped section/footer; DIVERGES on the Sent grid's from-address (frame names one, tree has none to report) |
-| :750 Compose · send blocked (1600) | DIVERGES on composition (dedicated screen vs. inline alert banner); MATCHES on the banner's own action labels |
+| :28 Compose · step 3 of 4 (1600) | MATCHES on the review section head; DIVERGES on send commitment (step-3 "Send N emails" vs. the tree's "Next: send ›" deferring to step 4, Ruling B1), recorded per DEC-651 wave-26 |
+| :453 Compose · step 4 of 4 (1600) | MATCHES on report head/skipped section/footer; DIVERGES on the Sent grid's from-address (frame names one, tree has none to report), recorded per DEC-651 wave-26 |
+| :750 Compose · send blocked (1600) | DIVERGES on composition (dedicated screen vs. inline alert banner), recorded per DEC-651 wave-26; MATCHES on the banner's own action labels |
 
 All seven frames render successfully through the real route with no
 fabricated fixture shortcuts; none of the divergences found are new debt —
