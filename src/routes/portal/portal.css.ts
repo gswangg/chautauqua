@@ -726,6 +726,16 @@ export const PORTAL_CSS = `
      width. */
   .chq-portal-edit-dock { display: none; }
 
+  /* DEC-576 (wave-38, w38-f): the 390 frame's pinned action band
+     (dc.html:550-552) is a second copy of profile.tsx's in-flow
+     .chq-portal-actions-footer Save primary, reached through PortalLayout's
+     dock slot -- same idiom as .chq-portal-edit-dock immediately above.
+     Hidden at TOP LEVEL so desktop's inline .chq-portal-actions-footer copy
+     stays byte-identical; revealed only inside the phone media block below,
+     which also hides .chq-portal-actions-footer there -- exactly one copy
+     draws at any width. */
+  .chq-portal-profile-dock { display: none; }
+
   /* DEC-576 (wave-128, w3-l): the hotel-stay-form frame's pinned action
      band (dc.html:518-521) is a second copy of the inline Submit, reached
      through PortalLayout's dock slot -- same idiom as .chq-portal-edit-dock
@@ -1029,6 +1039,19 @@ ${EMPTY_PHONE_CSS}
        390 (a phone treatment of a hidden element would be a lie), leaving
        the .chq-portal-edit-dock copy below as the only one revealed. */
     .chq-portal-actions-footer { display: none; }
+
+    /* DEC-576 (wave-38, w38-f): reveals profile.tsx's dock copy hidden at
+       top level -- .chq-portal-dock's own display:flex/gap/48px-primary
+       rules above already apply to this copy by the same selectors
+       (.chq-portal-dock .chq-btn-primary). flex:1 so this single dock
+       child fills the row .chq-portal-dock lays out, matching
+       .chq-portal-taskform-dock's shape below. The in-flow
+       .chq-portal-actions-footer copy is stood down immediately above so
+       exactly one copy is ever visible. */
+    .chq-portal-profile-dock {
+      display: flex;
+      flex: 1;
+    }
 
   /* Resources (dc.html:1564): a back-linked drill page (DEC-643 amendment
      -- 25px --chq-type-page-title-phone-drill, not the 27px cluster-

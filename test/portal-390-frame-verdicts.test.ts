@@ -27,6 +27,9 @@ import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 import type { FormFieldDef } from "../src/forms/types";
 import type { ContactProfile } from "../src/server/repo/profile";
 import { getContactProfile } from "../src/server/repo/profile";
+import { PORTAL_CSS as RAW_PORTAL_CSS } from "../src/routes/portal/portal.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
+import { splitMediaBlocks, phoneMediaBlocks } from "./helpers/css-media-blocks";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -398,7 +401,7 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
       '<section aria-label="Profile details" class="chq-section">',
       '<footer class="chq-portal-footer">',
       '<div class="chq-portal-dock">',
-      '<button type="submit" form="chq-portal-profile-form" class="chq-btn chq-btn-primary">Save profile</button>',
+      '<button type="submit" form="chq-portal-profile-form" class="chq-portal-profile-dock chq-btn chq-btn-primary">Save profile</button>',
     ]);
     // The frame's literal now renders, and the old 'My Profile' string is gone.
     expect(html).toContain(">Your profile<");
@@ -601,5 +604,69 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
     expect(html).not.toContain(">Their notes<");
     expect(html).not.toContain('chq-portal-not-shown-chip">Their files</li>');
     expect((html.match(/<li class="chq-portal-not-shown-chip">/g) ?? []).length).toBe(3);
+  });
+});
+
+// w38-f (DEC-576): profile.tsx renders a Save primary TWICE -- once inline
+// inside .chq-portal-actions-footer, once through PortalLayout's dock slot
+// (profileDock, now carrying its own .chq-portal-profile-dock token).
+// portal.css.ts must stand exactly one of the two down at any width. Keyed
+// on the CSS RULES (not the prose comment beside them, which can rot
+// independently of the rule it describes) using the same
+// splitMediaBlocks/resolvePhoneDeclaration helpers the sheet's other CSS
+// pins already share (DEC-613), plus the real SSR response to prove both
+// buttons still exist in the markup for the CSS toggle to act on.
+describe("portal profile dock -- exactly one visible Save control at any width (DEC-576 w38-f)", () => {
+  const PORTAL_CSS = stripCssComments(RAW_PORTAL_CSS);
+
+  /** Top-level (outside every @media block) declared value of `property` on
+   * the rule naming `selector` -- mirrors portal-desktop-measure.test.ts's
+   * own `topLevelRuleBody`, built on top of the shared splitMediaBlocks
+   * helper rather than re-deriving brace matching a third time. */
+  function topLevelDeclaration(css: string, selector: string, property: string): string | undefined {
+    const { outside } = splitMediaBlocks(css);
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = outside.match(new RegExp(`${escaped}(?![\\w-])\\s*\\{([^}]*)\\}`));
+    if (!match) return undefined;
+    const declMatch = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+);`).exec(match[1] ?? "");
+    return declMatch?.[1]?.trim();
+  }
+
+  it("desktop (top level): the dock copy is hidden, the in-flow footer copy is not", () => {
+    expect(topLevelDeclaration(PORTAL_CSS, ".chq-portal-profile-dock", "display")).toBe("none");
+    expect(topLevelDeclaration(PORTAL_CSS, ".chq-portal-actions-footer", "display")).not.toBe("none");
+  });
+
+  // portal.css.ts's tail composes THREE separate `@media (max-width: 700px)`
+  // blocks (EMPTY_PHONE_CSS's own, this sheet's own, ERROR_STATES_PHONE_CSS's
+  // own -- see the DEC-385 wave-143 comment above the sheet's own opener), so
+  // `resolvePhoneDeclaration`'s "the sheet's SINGLE terminal phone block"
+  // premise does not hold here; phoneMediaBlocks() (which returns every
+  // block, not just the first) is the correct helper for this sheet.
+  function phoneDeclaration(css: string, selector: string, property: string): string | undefined {
+    const blocks = phoneMediaBlocks(css).join("\n");
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = blocks.match(new RegExp(`${escaped}(?![\\w-])\\s*\\{([^}]*)\\}`));
+    if (!match) return undefined;
+    const declMatch = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+);`).exec(match[1] ?? "");
+    return declMatch?.[1]?.trim();
+  }
+
+  it("390 (the sheet's own phone block): the dock copy is revealed, the in-flow footer copy is hidden", () => {
+    expect(phoneDeclaration(PORTAL_CSS, ".chq-portal-profile-dock", "display")).toBe("flex");
+    expect(phoneDeclaration(PORTAL_CSS, ".chq-portal-actions-footer", "display")).toBe("none");
+  });
+
+  it("GET /portal/profile still renders both Save buttons in markup, distinguished only by the class the CSS above toggles", async () => {
+    const app = await buildApp();
+    const res = await app.request("/portal/profile");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect((html.match(/<button[^>]*class="chq-portal-profile-dock chq-btn chq-btn-primary"[^>]*>Save profile<\/button>/g) ?? []).length).toBe(1);
+    const footerOpen = html.indexOf('<div class="chq-portal-actions-footer">');
+    const footerClose = html.indexOf("</div>", html.indexOf("</div>", footerOpen) + 1);
+    const footerBody = html.slice(footerOpen, footerClose);
+    expect((footerBody.match(/<button type="submit" class="chq-btn chq-btn-primary">Save profile<\/button>/g) ?? []).length).toBe(1);
+    expect(footerBody).not.toContain("chq-portal-profile-dock");
   });
 });

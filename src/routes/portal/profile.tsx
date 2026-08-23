@@ -164,7 +164,7 @@ function ProfilePage(props: {
   // omission per DEC-576's own "never manufactured just to fill the band"
   // rule (shared.tsx:163).
   const profileDock = (
-    <button type="submit" form="chq-portal-profile-form" class="chq-btn chq-btn-primary">Save profile</button>
+    <button type="submit" form="chq-portal-profile-form" class="chq-portal-profile-dock chq-btn chq-btn-primary">Save profile</button>
   );
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName} dock={profileDock}>
