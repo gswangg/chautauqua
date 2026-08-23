@@ -735,6 +735,14 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "enough to distinguish that subset from the ordinary render-test population, the same "
     + "disposition already given to COMMENT_BLIND_CSS_ASSERTION_CEILING "
     + "(test/unstripped-source-regex.scan.test.ts, DEC-374 amendment).",
+  AUDIT_HANDOFF_STALE_CEILING:
+    "measures how many docs/design/audit/**/*.md paragraphs carry deferral-shaped handoff prose "
+    + "(a work-remains claim, an open-status claim, a claim addressed to the planner, a "
+    + "sized-versus-built claim, or a clause deferring to a future wave or a later lane) that "
+    + "names neither a live non-zero measuring constant nor a closure marker -- an "
+    + "instrument-completeness fact about the audit corpus's own claim-checking coverage, not "
+    + "itself a v12 frame or 390-geometry conformance fact "
+    + "(test/audit-handoff-paragraph-staleness.scan.test.ts, DEC-903 wave-41 amendment).",
 };
 
 /**
