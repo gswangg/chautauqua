@@ -736,7 +736,20 @@ function computePastTemplateOffenders(): PastTemplateOffender[] {
  * brief's own approximate "24", which the brief itself warned not to
  * trust). May only be LOWERED as citations get moved back inside their
  * frame's drawn template or deleted -- this task does not repair any of the
- * 19 named citations, it only gives their shape a name and a ceiling. */
+ * 19 named citations, it only gives their shape a name and a ceiling.
+ *
+ * WAVE 57 (merge train, thunderdome medic): stays 19, measured 19 on
+ * integrated main. It measured 21 here -- two rows over, and over at the
+ * pre-train baseline too, since neither the frames, this instrument, nor
+ * any of the offender files moved in the train; the seed was taken on a
+ * branch that did not yet carry two of them. Repaired, not raised, by
+ * spending the two youngest rows: PhoneAgenda.frame390.render.test.tsx's
+ * `Agenda.dc.html:308` and TaskView.render.test.tsx's
+ * `Speakers.dc.html:826` both named a row of the frame's own seed-data
+ * array inside `<script data-dc-script>`, which this amendment's own first
+ * sentence says is not a frame citation at all. Both rewritten to name the
+ * seed array in prose with no `:<line>`, keeping the claim and dropping the
+ * coordinate the frame does not draw. */
 const FRAME_CITATION_PAST_TEMPLATE_CEILING = 19;
 
 describe('FRAME_CITATION_PAST_TEMPLATE_CEILING (DEC-967 wave-41 amendment, task w41-b)', () => {

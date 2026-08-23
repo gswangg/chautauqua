@@ -381,8 +381,13 @@ describe('the answered row action follows the task kind, never the row', () => {
     await mountKind('form', ANSWERED);
 
     const table = screen.getByRole('table', { name: 'Answers' });
-    // Frame: docs/design/Chautauqua Speakers.dc.html:826 --
-    // `action: 'Open'` (the seeded FORM task's answered-row action).
+    // Frame: the seeded FORM task's answered-row action, `action: 'Open'`,
+    // in docs/design/Chautauqua Speakers.dc.html's <script data-dc-script>
+    // seed data. Named without a line number deliberately: that seed array
+    // sits PAST the file's `</x-dc>` template close, and per DEC-967
+    // wave-41 a `.dc.html:<line>` landing past the close is not a frame
+    // citation -- writing one asserts a drawn coordinate the frame does
+    // not have.
     expect(within(table).getAllByRole('button', { name: 'Open' })).toHaveLength(2);
     expect(within(table).queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
   });

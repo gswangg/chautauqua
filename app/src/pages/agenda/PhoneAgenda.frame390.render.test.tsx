@@ -315,9 +315,13 @@ describe('Agenda 390 frame :182-183 -- blocked slot (a scheduled break), the fou
     const breaks = [breakRow(DAY, 'Lunch', 720, 60)];
     render(<PhoneAgenda {...baseProps({ dayStartMin: 660, dayEndMin: 840, breaks })} />);
 
-    // frame :183 draws `{{ slot.note }}` -- the frame's own demo data
-    // (docs/design/Chautauqua Agenda.dc.html:308) composes this as
-    // `Lunch · 60 min`.
+    // frame :183 draws `{{ slot.note }}` -- the frame's own demo `slots`
+    // array, in docs/design/Chautauqua Agenda.dc.html's
+    // <script data-dc-script> body, composes this as `Lunch · 60 min`.
+    // Named without a line number deliberately: that array sits PAST the
+    // file's `</x-dc>` template close, and per DEC-967 wave-41 a
+    // `.dc.html:<line>` landing past the close is not a frame citation --
+    // writing one asserts a drawn coordinate the frame does not have.
     const blocked = document.querySelector('.chq-phone-slot-blocked');
     expect(blocked).not.toBeNull();
     expect(blocked!.textContent).toBe('Lunch · 60 min');
