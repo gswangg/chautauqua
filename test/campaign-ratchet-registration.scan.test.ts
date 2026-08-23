@@ -35,43 +35,39 @@
 // TIER2_CEILING_NAMES / OUT_OF_CAMPAIGN_SCOPE themselves) and is asserted
 // NOT reported.
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CAMPAIGN_CONSTANT_NAMES,
+  loadCampaignFiles,
   OUT_OF_CAMPAIGN_SCOPE,
   TIER2_CEILING_NAMES,
 } from '../scripts/exit-predicate';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..');
-const TEST_DIR = join(REPO_ROOT, 'test');
-const APP_SRC_DIR = join(REPO_ROOT, 'app', 'src');
-const SCRIPTS_DIR = join(REPO_ROOT, 'scripts');
 
 // ---------------------------------------------------------------------------
-// File walk (readdirSync recursive, DEC-808 idiom -- no manifest, no
-// extension filter beyond .ts/.tsx so plain ceiling modules are seen).
+// File walk. DEC-069 wave-43 amendment (task w43-e, HOLE 2): this file used
+// to run its OWN readdirSync-recursive walk over test/, app/src/ and
+// scripts/ -- a second copy of exactly the corpus-enumeration
+// scripts/exit-predicate/campaign.ts's `loadCampaignFiles` already owns
+// (DEC-613: one walk, one owner -- a second copy of a vocabulary is a trap
+// with a delay fuse). Consuming the exported walk means this gate and the
+// real exit predicate now agree, by construction, on what the campaign
+// corpus IS: a git-tracked `.ts` file under test/, app/src/ or scripts/.
 // ---------------------------------------------------------------------------
 
 interface SourceFile {
-  readonly abs: string;
   readonly rel: string;
   readonly content: string;
 }
 
-function walkTsFiles(root: string): SourceFile[] {
-  const out: SourceFile[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile()) continue;
-    if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue;
-    const abs = join(entry.parentPath, entry.name);
-    out.push({ abs, rel: relative(REPO_ROOT, abs), content: readFileSync(abs, 'utf8') });
-  }
-  return out;
+function walkTsFiles(): SourceFile[] {
+  return loadCampaignFiles(REPO_ROOT).map((f) => ({ rel: f.path, content: f.content }));
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +130,7 @@ describe('every campaign ratchet constant is registered somewhere (DEC-808 wave-
   let offenders: Offender[];
 
   beforeAll(() => {
-    files = [...walkTsFiles(TEST_DIR), ...walkTsFiles(APP_SRC_DIR), ...walkTsFiles(SCRIPTS_DIR)];
+    files = walkTsFiles();
     declarations = findDeclarations(files);
     const registered = new Set<string>([
       ...CAMPAIGN_CONSTANT_NAMES,
@@ -196,7 +192,7 @@ describe('non-vacuity: the detector discriminates unregistered from registered f
     ].join('\n');
     const abs = join(dir, 'unregistered.fixture.test.ts');
     writeFileSync(abs, content, 'utf8');
-    const fixtureFiles: SourceFile[] = [{ abs, rel: 'unregistered.fixture.test.ts', content }];
+    const fixtureFiles: SourceFile[] = [{ rel: 'unregistered.fixture.test.ts', content }];
     const declarations = findDeclarations(fixtureFiles);
     expect(declarations.some((d) => d.name === 'FIXTURE_UNREGISTERED_CEILING')).toBe(true);
     const offenders = findUnregistered(declarations, new Set<string>());
@@ -216,7 +212,7 @@ describe('non-vacuity: the detector discriminates unregistered from registered f
     ].join('\n');
     const abs = join(dir, 'registered.fixture.test.ts');
     writeFileSync(abs, content, 'utf8');
-    const fixtureFiles: SourceFile[] = [{ abs, rel: 'registered.fixture.test.ts', content }];
+    const fixtureFiles: SourceFile[] = [{ rel: 'registered.fixture.test.ts', content }];
     const declarations = findDeclarations(fixtureFiles);
     expect(declarations.some((d) => d.name === 'FIXTURE_REGISTERED_FLOOR')).toBe(true);
     const offenders = findUnregistered(declarations, new Set<string>(['FIXTURE_REGISTERED_FLOOR']));
@@ -227,7 +223,7 @@ describe('non-vacuity: the detector discriminates unregistered from registered f
     const content = 'export const FIXTURE_PLAIN_MODULE_TRIPWIRE = 7;\n';
     const abs = join(dir, 'fixture-plain-ceiling-module.ts');
     writeFileSync(abs, content, 'utf8');
-    const fixtureFiles: SourceFile[] = [{ abs, rel: 'fixture-plain-ceiling-module.ts', content }];
+    const fixtureFiles: SourceFile[] = [{ rel: 'fixture-plain-ceiling-module.ts', content }];
     const declarations = findDeclarations(fixtureFiles);
     expect(declarations).toHaveLength(1);
     expect(declarations[0]!.name).toBe('FIXTURE_PLAIN_MODULE_TRIPWIRE');

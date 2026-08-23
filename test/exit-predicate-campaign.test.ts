@@ -34,9 +34,13 @@ import {
 // function itself). Tests that don't care about the suite-verification
 // behaviour use this fixed "always verified" evidence so their pre-existing
 // assertions about desktop/phone/tier2 stay unaffected.
+// DEC-069 wave-43 amendment (task w43-e, HOLE 1): now carries frame-tier
+// evidence too -- `campaignDone` requires BOTH tiers verified, so a fixture
+// meant to represent "fully verified" must supply both.
 const VERIFIED_EVIDENCE: SuiteEvidence = {
   productSha: "product-sha",
   suiteVerifiedAtSha: "suite-sha",
+  framesVerifiedAtSha: "frames-sha",
   isAncestor: () => true,
 };
 
@@ -413,12 +417,14 @@ describe("buildCampaignReport", () => {
     expect(report.verdict.campaignDone).toBe(false);
   });
 
-  it("with every ceiling 0 and every floor met and a suite sha the product sha is an ancestor of, campaignDone is true", () => {
+  it("with every ceiling 0 and every floor met and BOTH a suite sha and a frames sha the product sha is an ancestor of, campaignDone is true", () => {
     const files = allGreenFixture();
     const report = buildCampaignReport(files, {
       productSha: "product-sha",
       suiteVerifiedAtSha: "suite-sha",
-      isAncestor: (ancestor, descendant) => ancestor === "product-sha" && descendant === "suite-sha",
+      framesVerifiedAtSha: "frames-sha",
+      isAncestor: (ancestor, descendant) =>
+        ancestor === "product-sha" && (descendant === "suite-sha" || descendant === "frames-sha"),
     });
     expect(report.verdict.campaignDone).toBe(true);
   });
@@ -428,8 +434,53 @@ describe("buildCampaignReport", () => {
     const report = buildCampaignReport(files, {
       productSha: "product-sha",
       suiteVerifiedAtSha: "stale-suite-sha",
-      isAncestor: () => false, // the suite-verified sha does not contain the product sha's changes
+      framesVerifiedAtSha: "frames-sha",
+      isAncestor: (ancestor, descendant) => descendant === "frames-sha", // suite-verified sha does not contain the product sha's changes
     });
+    expect(report.verdict.campaignDone).toBe(false);
+  });
+
+  // DEC-069 wave-43 (task w43-e, HOLE 1): the wave's own counterexample --
+  // the fast-tier suite verified green is NOT proof the campaign is done,
+  // because it says nothing about the slow-tier v12 frame-verdict render
+  // suite. This is the exact shape that let `npm run test:fast` read 0 red
+  // the same wave `npx vitest run frame-verdicts.render frame390.render`
+  // read 1 red at the same sha.
+  it("with every ceiling 0 and every floor met and the SUITE sha verified but NO frames sha supplied, campaignDone is false (DEC-069 w43-e, tier-blind suite evidence)", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "suite-sha",
+      isAncestor: (ancestor, descendant) => ancestor === "product-sha" && descendant === "suite-sha",
+    });
+    expect(report.verdict.suiteVerified).toBe(true);
+    expect(report.verdict.framesVerified).toBe(false);
+    expect(report.verdict.campaignDone).toBe(false);
+  });
+
+  it("with every ceiling 0 and every floor met and the FRAMES sha verified but NO suite sha supplied, campaignDone is false (the same hole, other tier)", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      framesVerifiedAtSha: "frames-sha",
+      isAncestor: (ancestor, descendant) => ancestor === "product-sha" && descendant === "frames-sha",
+    });
+    expect(report.verdict.suiteVerified).toBe(false);
+    expect(report.verdict.framesVerified).toBe(true);
+    expect(report.verdict.campaignDone).toBe(false);
+  });
+
+  it("with every ceiling 0 and every floor met and a suite sha verified but the frames sha is NOT an ancestor (stale frame evidence), campaignDone is false", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "suite-sha",
+      framesVerifiedAtSha: "stale-frames-sha",
+      isAncestor: (ancestor, descendant) => ancestor === "product-sha" && descendant === "suite-sha",
+    });
+    expect(report.verdict.suiteVerified).toBe(true);
+    expect(report.verdict.framesVerified).toBe(false);
     expect(report.verdict.campaignDone).toBe(false);
   });
 
@@ -489,12 +540,29 @@ describe("findCampaignCeilingCandidates", () => {
     expect(findCampaignCeilingCandidates(files)).toEqual(["A_FLOOR", "B_CEILING", "CEILING"]);
   });
 
-  it("ignores names that don't end in _CEILING/_FLOOR and files that aren't *.test.ts(x)", () => {
+  it("ignores names that don't end in _CEILING/_FLOOR even in a non-test file", () => {
     const files: CampaignFile[] = [
       { path: "app/src/a.scan.test.ts", content: "export const EXPECTED_TOTAL = 40;" },
-      { path: "app/src/not-a-test.ts", content: "export const REAL_CEILING = 1;" },
+      { path: "app/src/not-a-test.ts", content: "export const NOT_A_RATCHET = 1;" },
     ];
     expect(findCampaignCeilingCandidates(files)).toEqual([]);
+  });
+
+  // DEC-069 wave-43 amendment (task w43-e, HOLE 2): the population used to
+  // be filtered to `/\.test\.tsx?$/` before scanning, which made a ceiling
+  // declared ONLY in a plain, non-test `.ts` helper module (exactly the
+  // shape the campaign's own custodian decompositions keep producing --
+  // e.g. app/src/phone-tap-target-scan/ceilings.ts,
+  // test/frame-caption-ledger/ceiling.ts) invisible to
+  // `assertCampaignPopulationTotal`. This is the positive control proving
+  // that hole is closed: a ceiling declared in a synthetic non-`.test.ts`
+  // helper module IS discovered.
+  it("finds a _CEILING declared in a plain, non-test .ts helper module -- not only in *.test.ts(x) files (DEC-069 w43-e)", () => {
+    const files: CampaignFile[] = [
+      { path: "app/src/some-lane-scan/ceiling.ts", content: "export const SOME_LANE_OFFENDERS_CEILING = 4;" },
+      { path: "app/src/some-lane-scan.scan.test.ts", content: "import { SOME_LANE_OFFENDERS_CEILING } from './ceiling';\nexpect(1).toBe(1);" },
+    ];
+    expect(findCampaignCeilingCandidates(files)).toEqual(["SOME_LANE_OFFENDERS_CEILING"]);
   });
 
   it("matches *.test.tsx paths too", () => {
@@ -685,7 +753,7 @@ describe("formatCampaignReport", () => {
     expect(phoneLine).not.toMatch(/\bDONE\b/);
   });
 
-  it("with suiteVerifiedAtSha an ancestor of productSha, desktop and phone rows print their real verdicts", () => {
+  it("with suiteVerifiedAtSha an ancestor of productSha, desktop and phone rows print their real verdicts (fast-tier-gated, independent of frame-tier evidence)", () => {
     const report = buildCampaignReport(allGreenFixture(), {
       productSha: "product-sha",
       suiteVerifiedAtSha: "suite-sha",
@@ -700,6 +768,14 @@ describe("formatCampaignReport", () => {
     expect(phoneLine).not.toContain("DECLARED ONLY");
     expect(desktopLine).toMatch(/\bDONE\b/);
     expect(phoneLine).toMatch(/\bDONE\b/);
+    // no framesVerifiedAtSha supplied above -- CAMPAIGN cannot read DONE
+    // even though every fast-tier row does (DEC-069 w43-e HOLE 1).
+    expect(formatted).toMatch(/CAMPAIGN: DECLARED ONLY -- NOT MEASURED/);
+  });
+
+  it("with BOTH suiteVerifiedAtSha and framesVerifiedAtSha ancestors of productSha, CAMPAIGN itself reads DONE", () => {
+    const report = buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE);
+    const formatted = formatCampaignReport(report);
     expect(formatted).toMatch(/CAMPAIGN: DONE/);
   });
 
@@ -738,6 +814,27 @@ describe("formatCampaignReport", () => {
 
     const verified = formatCampaignReport(buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE));
     expect(verified).toMatch(/\bDONE\b/);
+  });
+
+  // DEC-069 wave-43 (task w43-e, HOLE 1): the frames row is the whole point
+  // of this amendment -- it must be visibly present and visibly degrade,
+  // the same way the tier-2/desktop/phone rows already do for the fast tier.
+  it("prints a frames row, NOT VERIFIED when no --frames-verified-sha ancestor was supplied, verified when one was", () => {
+    const unverified = formatCampaignReport(
+      buildCampaignReport(allGreenFixture(), {
+        productSha: "product-sha",
+        suiteVerifiedAtSha: "suite-sha",
+        isAncestor: () => true,
+      }),
+    );
+    const unverifiedFramesLine = unverified.split("\n").find((line) => line.startsWith("frames:"));
+    expect(unverifiedFramesLine).toBeDefined();
+    expect(unverifiedFramesLine).toMatch(/NOT VERIFIED/);
+
+    const verified = formatCampaignReport(buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE));
+    const verifiedFramesLine = verified.split("\n").find((line) => line.startsWith("frames:"));
+    expect(verifiedFramesLine).toBeDefined();
+    expect(verifiedFramesLine).not.toMatch(/NOT VERIFIED/);
   });
 });
 
