@@ -214,7 +214,17 @@ describe('v12 Comms 390 frames: per-frame render verdict receipts (w14-sa, DEC-9
     // amendment-4 effect), matching the frame's own assumption that the
     // editor is already open on the row list's first entry.
     expect(screen.getByRole('button', { name: 'Acceptance' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Subject' })).toHaveValue('Your talk has been accepted to {event_name}');
+    // AWAITED, not synchronous: the preselect is an effect that runs on the
+    // commit AFTER the loaded list first renders (TemplatesTab.tsx's
+    // `useEffect` on [loaded, templates, editingId]), so the row list being
+    // on screen does not yet mean the right pane is populated. The assertion
+    // itself is unchanged -- same role, same accessible name, same exact
+    // value; only the wait for the effect's own commit is added.
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Subject' })).toHaveValue(
+        'Your talk has been accepted to {event_name}',
+      ),
+    );
     // Frame :311-315 draws "Insert a field · open" -- a permanently-open
     // merge-field panel with every field row visible. SETTLED (DEC-993,
     // src/decisions-data/part4.ts's DEC_993): "the closed 'Insert a field
