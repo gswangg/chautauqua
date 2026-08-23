@@ -89,17 +89,25 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
         </select>
       );
     case "checkbox":
+      // DEC-393 wave-53 amendment: wrapped in a SPAN (not the SPA's own
+      // <label>) -- FormField already supplies a <label> ancestor around
+      // every control, and a nested label is invalid HTML. .chq-check-hit
+      // is layout-neutral at top level (theme.ts, twin of app/src/
+      // styles.css's rule) so this changes nothing about the input itself:
+      // no width, no min-height, no class that alters its box.
       return (
-        <input
-          type="checkbox"
-          class={error ? "chq-field-invalid" : undefined}
-          id={name}
-          name={name}
-          data-field-id={field.id}
-          value="true"
-          checked={Boolean(value)}
-          aria-invalid={ariaInvalid}
-        />
+        <span class="chq-check-hit">
+          <input
+            type="checkbox"
+            class={error ? "chq-field-invalid" : undefined}
+            id={name}
+            name={name}
+            data-field-id={field.id}
+            value="true"
+            checked={Boolean(value)}
+            aria-invalid={ariaInvalid}
+          />
+        </span>
       );
     case "number":
       return (

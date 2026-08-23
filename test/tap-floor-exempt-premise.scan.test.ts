@@ -218,6 +218,12 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // the 37 real containers this tier can now check -- the whole population
 // it resolves was already a true premise, not a defect this wave
 // discovered.
+//
+// Wave-53 megabatch note: task w53-a independently re-measured this
+// population at 37 on a sha that predated task w51-b's bare-token
+// companion tier, which actively drained it 40 -> 34. 34 is the value
+// carried forward here; it is re-derived from the tree, never inherited
+// (DEC-808).
 export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 34;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
