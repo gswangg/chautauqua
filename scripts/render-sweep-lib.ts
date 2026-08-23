@@ -674,18 +674,63 @@ export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
  * rows through classifyAdminMobileOffender (the SAME predicate the admin
  * roster scan uses, DEC-613) with the exempt-token set derived from this
  * tree's receipts, never from the roster's own printed
- * "candidate defects: N" prose line -- 22. */
-export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 22;
+ * "candidate defects: N" prose line -- 22.
+ *
+ * DEC-808 wave-42 amendment: the wave-30 roster is FROZEN snapshot prose
+ * (machine-written at sha b9c5a45d8) -- re-classifying its geometries
+ * against the tree's CURRENT receipts can never see a control repaired to
+ * a real 44px floor since wave 30, because the roster's own printed
+ * `h=NNpx` never changes. RE-MEASURED, statically, by forcing this
+ * constant to -1 and reading test/public-390-offender-roster.scan.test.ts's
+ * printed candidate rows back: of the roster's 22 CANDIDATE lines, exactly
+ * two carry a class token at all (`a.chq-docs-phone-back`,
+ * `a.chq-pub-activefilters-clear`) and BOTH now declare
+ * `min-height: 44px` under an `@media (max-width: 700px)` block reachable
+ * at 390 (docs-site.css.ts, chrome.css.ts -- DEC-393 wave-33/wave-139
+ * padding repairs), so both reclassify REPAIRED-SINCE-SNAPSHOT and are
+ * excluded from the CANDIDATE count; the remaining 20 rows are bare
+ * `a`/`input` tags with no class token the tree can be asked about.
+ * Ceiling LOWERED 22 -> 20 with this re-derivation as its receipt
+ * (DEC-967: measured, never invented). */
+export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 20;
 
 /** DEC-808 wave-30 amendment clause (d), the vacuity clause: a route whose
- * NARROW MOBILE_CONTROL_SELECTOR population produced zero matched elements
- * (minControlHeight === null) has been passing the BLOCKING public mobile
- * gate's height/width check vacuously — there was nothing to measure, so
- * nothing could ever fail. Two-sided floor on that count, same MEASURED
- * discipline as the ceiling above: task v12m-w30-a's own live gate run
- * (sha b9c5a45d8) counted 4 such routes out of MOBILE_ROUTE_MANIFEST's 28
- * members (`/`, `/e/devflow-conf-2027/programme`,
- * `/embed/devflow-conf-2027/schedule`, `/docs/api`). */
+ * population produced zero matched elements (minControlHeight === null)
+ * has been passing the BLOCKING public mobile gate's height/width check
+ * vacuously — there was nothing to measure, so nothing could ever fail.
+ * Two-sided floor on that count, same MEASURED discipline as the ceiling
+ * above: task v12m-w30-a's own live gate run (sha b9c5a45d8) counted 4
+ * such routes out of MOBILE_ROUTE_MANIFEST's 28 members (`/`,
+ * `/e/devflow-conf-2027/programme`, `/embed/devflow-conf-2027/schedule`,
+ * `/docs/api`).
+ *
+ * DEC-808 wave-42 amendment: re-grounded on the LIVE predicate.
+ * MOBILE_CONTROL_SELECTOR (the hand-listed six-selector list this clause
+ * used to name) was RETIRED at wave 35 (scripts/render-sweep.ts:196) — the
+ * BLOCKING public mobile gate's minControlHeight/minControlWidth
+ * measurement (visitMobileRoute's `controlSelector` parameter,
+ * scripts/render-sweep.ts) now defaults to the exported
+ * INTERACTIVE_CONTROL_SELECTOR above, the SAME population the admin pass
+ * uses (DEC-613: one predicate, never a second copy). The vacuity clause
+ * this floor grades is therefore a fact about INTERACTIVE_CONTROL_SELECTOR,
+ * never MOBILE_CONTROL_SELECTOR — the retired name is a fossil and must
+ * not be reintroduced by a future repair prescription.
+ *
+ * This amendment re-grounds the NAME only, statically, per this wave's own
+ * restriction (no live `gate:render-sweep` run -- DEC-644 one-machine
+ * lock, forbidden inside a code wave). Since INTERACTIVE_CONTROL_SELECTOR
+ * is a strictly WIDER population than the retired MOBILE_CONTROL_SELECTOR
+ * six-selector list, a route vacuous under the wide population is also
+ * vacuous under the narrow one, but not the reverse -- `/docs/api`'s own
+ * roster row lists non-EXEMPT wide-population offenders, so it is
+ * provably NOT vacuous under INTERACTIVE_CONTROL_SELECTOR even though the
+ * wave-30 narrow measurement recorded it as one of the 4. The true current
+ * count is therefore <= 4 and possibly lower, but re-deriving the exact
+ * number requires the live gate this wave cannot run; per DEC-808 wave-38
+ * clause (d), a ceiling is never moved on an unfinished measurement, so
+ * this constant stays at its last live-measured value (4) as a stale-but-
+ * honest upper bound until a wave with gate access re-runs it, rather than
+ * being silently arithmetic-adjusted here. */
 export const PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR = 4;
 
 /** DEC-808 wave-30 amendment: one row of the public/portal roster's vacuity
@@ -722,10 +767,12 @@ export function formatPublicMobileOffenderRoster(
   lines.push("## Vacuity clause (DEC-808 wave-30 amendment, clause d)");
   lines.push("");
   lines.push(
-    "Routes below matched zero elements under the narrow MOBILE_CONTROL_SELECTOR " +
+    "Routes below matched zero elements under the INTERACTIVE_CONTROL_SELECTOR " +
       "population (minControlHeight === null) — the BLOCKING public mobile gate's " +
       "height/width check has been passing on these routes vacuously, since there was " +
-      "nothing for it to measure.",
+      "nothing for it to measure. (DEC-808 wave-42 amendment: this clause used to name " +
+      "a six-selector hand list that has since been retired -- " +
+      "visitMobileRoute's controlSelector default is INTERACTIVE_CONTROL_SELECTOR now.)",
   );
   lines.push("");
   if (vacuous.length === 0) {
