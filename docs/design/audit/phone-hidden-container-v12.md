@@ -48,23 +48,24 @@ as OWNED by `v12m-w38-a`/`v12m-w38-f` — neither branch exists any more.
 Checking the live tree rather than trusting that history: the double-Save
 repair is in fact already built.
 
-- `src/routes/portal/portal.css.ts:731` (`.chq-portal-edit-dock { display:
-  none; }`, top level) / `:1041` (`.chq-portal-actions-footer { display:
-  none; }`, phone media block) / `:1051` (`.chq-portal-edit-dock { display:
-  flex; flex: 1; }`, phone media block) — edit.tsx's in-flow Save is hidden
+- src/routes/portal/portal.css.ts`.chq-portal-edit-dock { display: none; }`
+  at top level, with the phone media block's own `:1041` hide of
+  `.chq-portal-actions-footer` and its `:1051` reveal `.chq-portal-edit-dock
+  { display: flex; flex: 1; }` — edit.tsx's in-flow Save is hidden
   on phone and its PortalLayout dock-slot twin is revealed; desktop is the
   mirror image. Exactly one copy draws at any width.
-- `src/routes/portal/portal.css.ts:741` (`.chq-portal-profile-dock {
-  display: none; }`, top level) / same `:1041` phone-block hide of
-  `.chq-portal-actions-footer` / `:1051` `.chq-portal-profile-dock { display:
-  flex; flex: 1; }` (phone media block) — profile.tsx's own comment at its
+- src/routes/portal/portal.css.ts`.chq-portal-profile-dock { display: none; }`
+  at top level, with the same `:1041` phone-block hide of
+  `.chq-portal-actions-footer` and the `:1051` reveal
+  `.chq-portal-profile-dock { display: flex; flex: 1; }` — profile.tsx's own comment at its
   usage (`src/routes/portal/profile.tsx`, the div wrapping the inline Save
   button) states directly: "exactly one Save control visible at any width".
-- `src/routes/portal/portal.css.ts:751` (`.chq-portal-taskform-dock {
-  display: none; }`, top level) — the same pattern a third time; the phone
-  media block further down hides `.chq-portal-taskform-submit` and reveals
-  the dock copy that `src/routes/portal/tasks/views.tsx` draws. Written as
-  one citation carrying its own receipt rather than two adjacent code spans,
+- src/routes/portal/portal.css.ts`.chq-portal-taskform-dock { display: none; }`
+  at top level — the same pattern a third time; the phone media block
+  further down hides `.chq-portal-taskform-submit` and reveals the dock copy
+  that `src/routes/portal/tasks/views.tsx` draws. All three rows are written
+  in the DEC-518 drift-proof shape -- repo-relative path immediately followed
+  by its verbatim receipt, no `:line` -- rather than as adjacent code spans,
   which read as each other's quote (DEC-008 wave-10 precedent).
 
 So `.chq-portal-actions-footer` is disposition (a), not (b): its phone-hidden

@@ -454,25 +454,25 @@ describe('check-hit receipt: every in-cell .chq-check is wrapped in .chq-check-h
     // non-zero, so a future site silently falling OUT of this bucket (e.g. reverting to a `<td>`)
     // is caught here.
     const taskViewSites = allSites.filter((s) => s.file === 'app/src/pages/speakers/TaskView.tsx');
-    expect(taskViewSites.map((s) => s.line)).toEqual([568, 571, 591, 594]);
+    expect(taskViewSites.map((s) => s.line)).toEqual([601, 604, 624, 627]);
 
-    // The two real input sites (571, 594): nearest ancestor is the `.chq-check-hit` label itself
+    // The two real input sites (604, 627): nearest ancestor is the `.chq-check-hit` label itself
     // (DEC-393 wave-124 shape) -- the widened `ariaCell` ancestor one level further out is what
     // proves the label is genuinely wrapping a table-cell site in the first place (proved directly
     // against the file's raw, unwrapped ARIA markup in the `nearestOpenAncestor` unit block below).
-    const inputSites = taskViewSites.filter((s) => s.line === 571 || s.line === 594);
+    const inputSites = taskViewSites.filter((s) => s.line === 604 || s.line === 627);
     for (const s of inputSites) {
       expect(s.nearestOpenTag).toBe('label');
       expect(s.nearestLabelIsCheckHit).toBe(true);
       expect(population.some((p) => p.file === s.file && p.line === s.line)).toBe(true);
     }
 
-    // The two label-open-tag "sites" (568, 591): scanned mid-tag, before their own `<label ...>`
+    // The two label-open-tag "sites" (601, 624): scanned mid-tag, before their own `<label ...>`
     // closes, so their nearest ancestor is the enclosing `<span role="columnheader"|"cell">` --
     // this IS the DEC-991 widened ariaCell ancestor, proving the widened walk is what admits the
     // label wrap to population membership at all (it is not itself unwrapped, so it is excluded
     // from `unwrapped in-cell .chq-check site` by `isWrappedInCheckHit` finding its own text).
-    const labelTagSites = taskViewSites.filter((s) => s.line === 568 || s.line === 591);
+    const labelTagSites = taskViewSites.filter((s) => s.line === 601 || s.line === 624);
     for (const s of labelTagSites) {
       expect(s.nearestOpenTag).toBe('ariaCell');
     }

@@ -463,7 +463,7 @@ raw TypeScript source, not just change offsets. Left unconverted, DEC-613
 wave-45 carve-out. With neither of the two newly-arrived offenders
 eligible, 2 other files were picked from the same 64-file wake instead,
 following the same CSS-only-content pattern this ratchet's history has
-used since v12m-w8-ef: test/public-when-gutter.test.ts (its private
+used since v12m-w8-ef (DEC-613 wave-45 carve-out): test/public-when-gutter.test.ts (its private
 `stripComments` strips only already-evaluated CARDS_CSS/RAIL_CSS string
 constants, never raw TypeScript prose) and test/ssr-page-clamp.scan.
 test.ts (its private `stripComments` is called only on the output of its

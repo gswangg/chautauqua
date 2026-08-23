@@ -404,3 +404,12 @@ re-ratcheting wave -- the same disposition recorded above.
 (`app/src/unstripped-source-regex-scan/ceiling.ts`) at this sha — the
 population drained further since the paragraph above was written. This is
 a measurement at the current sha, not a new arithmetic claim.
+
+**Wave-57 measurement (merge train, thunderdome medic)**: the population
+drained one row further across the wave-55/56/57 train, so the two-sided
+companion in `test/unstripped-source-regex.scan.test.ts` went red from BELOW
+-- measured 218 against a declared 219 -- and the constant was lowered to
+match in the same commit. Live value at this sha:
+`UNSTRIPPED_SOURCE_REGEX_CEILING = 218`
+(`app/src/unstripped-source-regex-scan/ceiling.ts`). A measurement at the
+current sha, not a new arithmetic claim.

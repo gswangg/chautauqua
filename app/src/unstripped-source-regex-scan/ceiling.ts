@@ -232,4 +232,9 @@
 // deviations-ledger/resolvers.ts repair via a different function = 220; the
 // three reverted HTML-frame edits contribute nothing to the delta). Ceiling
 // lowered to the re-measured value: 220.
-export const UNSTRIPPED_SOURCE_REGEX_CEILING = 219;
+// Lowered 219 -> 218 (wave-57 merge train, thunderdome medic): the
+// two-sided companion in test/unstripped-source-regex.scan.test.ts measured
+// 218 on integrated main and printed this exact replacement line. A ratchet
+// sitting one row above its own measurement is a ledger that stopped
+// measuring (DEC-808 two-sided rule); this is a lowering, never a raise.
+export const UNSTRIPPED_SOURCE_REGEX_CEILING = 218;

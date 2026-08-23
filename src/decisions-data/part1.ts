@@ -71,7 +71,7 @@ export const DEC_065 = "Amendment: the destructive file path inherits the read p
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
-export const DEC_069 = "A dead exit predicate is a suite failure, not a planner discovery — the live registries get a real-tree self-test";
+export const DEC_069 = "Wave-59 amendment: a lane adjudicating a SLICE of a parked, frozen-desktop-undrainable population pins its slice with an INLINE literal tripwire and a dated closure marker — never a new *_CEILING name, never a promotion";
 export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
 export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
 export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";

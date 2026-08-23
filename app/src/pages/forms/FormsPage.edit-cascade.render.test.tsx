@@ -110,7 +110,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     const saveButton = within(dialog).getByRole('button', { name: 'Save the question' });
     fireEvent.click(saveButton);
 
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Confirm field change' });
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Confirm change to "Talk length"?' });
     expect(confirmDialog).toBeInTheDocument();
     const changeAnywayButton = await screen.findByRole('button', { name: 'Change field anyway' });
     expect(
