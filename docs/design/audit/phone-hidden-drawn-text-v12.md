@@ -551,3 +551,188 @@ own roster forced to `-1` (read back, never trusted from a prior wave): the
 PREMISE-FALSE population is still 20 rows, byte-identical to the roster
 below -- none of these four verdicts removes a row, so the ceiling is left
 at `20`, unmoved, correctly.
+
+## Wave-55 amendment (DEC-725, task w55-e): Slice B -- the eight Settings +
+public-CFP `PREMISE-FALSE` rows individually opened
+
+This ledger's own closing sentence under the PREMISE-FALSE roster called each
+of its 20 rows "a candidate for a future repair lane naming its own
+sheet/selector/frame line above" -- the four `app/src/styles.css` shell rows
+were opened wave-51; these eight (the Settings cluster's four rows plus the
+SSR public CFP sheet's four rows) are Slice B (Slice A, opened the same wave,
+owns the remaining eight page-sheet rows). Each verdict below was reached by
+opening the cited `.dc.html` file from its `font-size:19px` label line
+through to the NEXT label (never stopping at the roster's cited line alone),
+reading the live component tree that mounts the selector's opposite side, and
+reading the standing provenance comment already sitting above each rule.
+This section moves no CSS byte and touches no ceiling.
+
+### Row 1 -- `app/src/pages/settings/settings-drill-rows.css` ::
+`.chq-settings-drillrow-head-hide` ("Add a track")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Settings.dc.html's
+"Settings · Tracks and rooms" extent (label line 344, extent 344-390) draws
+no head-level "Add a track" link at all -- the desktop head action this rule
+hides has no counterpart in the 390 body band. Instead, the frame draws a
+dashed, centred, `min-height:44px` pill reading "Add a track" (line 365)
+directly below the Tracks list, and a second one reading "Add a room" (line
+389) below the Rooms list. The rule's own standing comment (settings-drill-
+rows.css:225-245, DEC-919 wave-99) already names this: `TracksRoomsPanel.tsx`
+renders BOTH the head link (hidden here) and the dashed sibling
+(`.chq-settings-drillrow-add`, turned on by the adjacent `display:flex`
+rule two rules above) wired to the identical `setShowAddTrack`/
+`setShowAddRoom` handler -- so the capability moves position, not away. The
+frame's "Add a track" requirement is met by that always-present dashed pill,
+not by the hidden head link.
+
+### Row 2 -- `app/src/pages/settings/settings-lists.css` ::
+`.chq-settings-token-create .chq-btn-primary, .chq-settings-people-invite-action`
+("Invite someone")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Settings.dc.html's
+"Settings · People and roles" extent (label line 549, extent 549-575) draws
+"Invite someone" once, as a filled, edge-to-edge 46px primary (line 568,
+`background:#4E5C31; ... min-height:46px`) sitting BELOW the people list --
+not as a small head-band link. The rule under review hides the desktop head
+link (`.chq-settings-people-invite-action`); the frame's own 46px primary is
+rendered by the sibling `.chq-settings-phone-action` element, which this
+same file's terminal `@media (max-width:700px)` block turns on with the
+exact quoted receipt for both this frame line and the sibling "New token"
+frame line (settings-lists.css:147-166) and whose un-hide rule's own
+standing comment (settings-lists.css:125-135, DEC-919 wave-99) states the
+invariant directly: "the capability renders TWICE in the DOM, exactly ONCE
+on screen." The frame's requirement is met by that phone-only primary, not
+by the hidden desktop head link.
+
+### Row 3 -- `app/src/pages/settings/settings.css` ::
+`[data-screen='true'] .chq-settings-saved-embed-heading` ("Saved embeds")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Settings.dc.html's
+"Settings · Saved embeds" extent (label line 575, extent 575-607) draws
+"Saved embeds" once, as the drilled screen's own `<h1>` (line 581) in the
+head band above the embed list -- there is no second "Saved embeds" text
+anywhere else in this extent. The rule under review hides the in-panel
+`<h2>Saved embeds</h2>` only while `data-screen='true'` (`SavedEmbedsPanel`'s
+own nested-screen state, `?section=public-pages&view=embeds`); the standing
+comment immediately above it (settings.css:2262-2277, DEC-728 wave-156)
+names the replacement directly: "the redundant in-panel `<h2>` steps aside
+for the page-level H1 the screen already carries (Settings.tsx's
+`phoneDrillTitle`)." `Settings.tsx`'s `pageTitle` computation (:198-205) sets
+that H1 to the literal string `'Saved embeds'` exactly while `viewingEmbeds`
+is true -- the same state that fires this hide rule. The frame's H1
+requirement is met by that page-level twin, not by the hidden in-panel
+heading.
+
+### Row 4 -- `app/src/pages/settings/settings.css` ::
+`.chq-settings-public-pages-own-hidden` ("Public pages")
+
+Verdict: **INSTRUMENT ARTEFACT**. Chautauqua Settings.dc.html's "Settings ·
+Public pages" extent (label line 478, extent 478-505) draws "Public pages"
+once, as the drilled screen's own `<h1>` (line 484) -- a *different* app
+state (`active === 'public-pages'`, `viewingEmbeds === false`,
+`PublicPagesPanel.tsx`:174-176's className branch takes the PLAIN
+`chq-settings-panel chq-settings-numbered` class, never
+`-own-hidden`) than the one the rule under review fires in. The rule under
+review (`PublicPagesPanel.tsx`:175, gated on `viewingEmbeds === true`) only
+applies while the reader has drilled one level further, into the nested
+Saved-embeds screen this ledger's Row 3 above already covers (cited
+separately at Settings.dc.html:578) -- a state the frame :478 extent does
+not describe at all. In the state the frame :478 extent DOES describe, the
+section's own `<h2>Public pages</h2>` is already unconditionally hidden by a
+*different*, generic rule (`.chq-settings-panel > .chq-settings-section-head
+> h2`, settings.css:2880, the same w17-d/DEC-919 de-duplication rule this
+ledger's own TWIN-RESOLVED roster already credits for the sibling
+"Open"/"Revoke" rows in this file), and the frame's H1 requirement is met by
+`Settings.tsx`'s page-level `.chq-settings-drill-title` twin instead. The
+join credited a coincidental cross-state text match -- the "Public pages"
+literal this rule's own screen (the embeds-nested state) would need is
+"Saved embeds," never "Public pages" -- not a defect on the screen the frame
+actually names.
+
+### Row 5 -- `src/routes/public/cfp.css.ts` ::
+`[data-chq-cfp-step="1"] .chq-cfp-step-you` ("You")
+
+Verdict: **INSTRUMENT ARTEFACT**. Chautauqua Public and Portal.dc.html's
+"Portal · Edit your session" extent (label line 597, extent 597-680) is the
+authenticated speaker PORTAL's edit-session screen (`src/routes/portal`), an
+unrelated surface from the public CFP submission wizard
+(`src/routes/public/submit-views.tsx`) the rule under review actually
+belongs to; it draws no standalone "You" label at all -- the only
+occurrences of the substring in this extent are "‹ Your session" and "You
+can change this until the form closes on 16 Aug" (line 604), neither a drawn
+label. The rule's own literal ("You", `submit-views.tsx`:730's
+`.chq-cfp-section-label`) belongs to the public CFP wizard's step-2 "about
+you" field group, which this pack never draws a dedicated 390 frame for (the
+pack's only phone CFP frame, Public and Portal.dc.html:1014-1071, is
+labelled "Step 1 of 2 · your talk" and shows only talk fields, consistent
+with hiding the You section on step 1). The join matched an unrelated
+surface's coincidental substring, not any label the rule's own screen draws.
+
+### Row 6 -- `src/routes/public/cfp.css.ts` ::
+`[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)`
+("Save draft")
+
+Verdict: **INSTRUMENT ARTEFACT**, doubly coincidental. First, the rule's own
+target element is `submit-views.tsx`:748-750's primary submit button, whose
+text is "Submit this talk" -- never "Save draft" -- so the roster's cited
+literal was never inside the element this rule hides; "Save draft" is drawn
+by the immediately adjacent, always-visible SIBLING button
+(`.chq-cfp-save-draft`, :752-759), which this rule's own `:not(...)` clause
+explicitly excludes from ever being hidden. Second, the cited frame extent,
+"Portal · Hotel stay form" (label line 502, extent 502-528), is an unrelated
+form (Chautauqua Public and Portal.dc.html:520, a hotel-stay dock action) --
+its own "Save draft" pill has no relationship to the CFP wizard at all. The
+standing comment already above this rule (cfp.css.ts:365-372) confirms the
+element it actually hides is reachable one tap away via `.chq-cfp-step-next`
+and never hidden without a same-surface path (DEC-919) -- the correct
+verdict for the SUBMIT control this rule targets, just misattributed to a
+"Save draft" literal it never carries.
+
+### Row 7 -- `src/routes/public/cfp.css.ts` ::
+`[data-chq-cfp-step="2"] .chq-cfp-step-next` ("Next: about you")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. Chautauqua Public and Portal.dc.html's
+phone "Submit a talk" step-1 extent (label line 1014, extent 1014-1071)
+draws "Next: about you" (line 1062) only inside the step-1 dock, alongside a
+"Draft" secondary -- the pack draws no dedicated step-2 phone frame to
+compare against directly, but the file's own sibling rules supply the
+replacement band the frame's step-driven design implies: on step 2 the
+primary submit control (`button[type="submit"]:not(.chq-cfp-save-draft)`,
+Row 6 above) is no longer excluded and the back control un-hides
+(`[data-chq-cfp-step="1"] .chq-cfp-step-back` is the ONLY hide for
+`.chq-cfp-step-back`, so it renders at step 2), so the step-2 dock reads
+Back + Submit this talk in place of Next. The standing comment directly
+above this rule (cfp.css.ts:395-397, DEC-919) already names it: "navigation
+control with nothing to reach -- step 2 is the last step of the wizard,
+there is no next step." No CSS byte changes.
+
+### Row 8 -- `src/routes/public/cfp.css.ts` ::
+`[data-chq-cfp-step="all"] .chq-cfp-steps, [data-chq-cfp-step="all"] .chq-cfp-step-next, [data-chq-cfp-step="all"] .chq-cfp-step-back`
+("Next: about you")
+
+Verdict: **CORRECTLY DRAWN OPT-OUT**. This rule fires only when
+`data-chq-cfp-step` sits at its markup default `"all"` -- the standing
+comment directly above it (cfp.css.ts:399-407, DEC-986 wave-117) names the
+one live mechanism that produces that state: `CfpStepsScript` returns before
+wiring a step at all when the server re-renders the form carrying a
+validation error, so every field (both "Your talk" and "You" groups) renders
+at once with no wizard chrome to navigate between -- the same
+all-fields-at-once shape Chautauqua Public and Portal.dc.html's 1600 "Submit
+a talk · /submit/:slug" extent (label line 894, extent 894-1014) draws for
+its single desktop layout, which never carries step chrome either. The
+wizard's step label/progress bar and Next/Back controls correctly stand
+down in this state because there is no step boundary left for them to
+describe; the always-visible `.chq-cfp-actions` submit/save-draft pair
+(unaffected by this rule) remains the way forward. No CSS byte changes.
+
+### Outcome for `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING`
+
+All eight Slice B rows resolve without a CSS change: four INSTRUMENT
+ARTEFACTs (the join credited an unrelated surface's, or an unrelated
+sibling element's, coincidental text) and four CORRECTLY DRAWN OPT-OUTs (the
+frame's requirement is met by a page-level twin, a relocated dashed pill, a
+phone-only primary, or a step-driven replacement band already documented in
+each rule's own standing comment). None of these eight verdicts is a REAL
+DEFECT, so no CSS byte moved and no row left the population.
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` (`app/src/phone-hidden-
+drawn-text.scan.test.ts`) stays at `20`, re-measured, unchanged.
