@@ -244,6 +244,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // fact in its own right. Reads live 0; removed from OUT_OF_CAMPAIGN_SCOPE
   // in this same commit.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-49 (DEC-937/DEC-069 wave-49, task w49-b): the six PACK_UNIT_GRAMMAR_
+  // OFFENDERS_CEILING gap sites are all RULED_LEFT by DEC-937's own wave-35/
+  // wave-123 amendments -- classified out of the offender count, never
+  // repaired (repair would redden the ruling that requires them). Ceiling
+  // reads live 0 by classification; promoted out of OUT_OF_CAMPAIGN_SCOPE in
+  // this same commit.
+  "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
 ];
 
 /**
@@ -402,6 +409,11 @@ export const TIER2_CEILING_NAMES: readonly string[] = [
   // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
   // (DEC-851/DEC-988). Reads live 0: a graded green conformance row.
   "COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING",
+  // wave-49 (DEC-937/DEC-069 wave-49, task w49-b): wired into TIER2 in the
+  // same commit that moved it out of OUT_OF_CAMPAIGN_SCOPE into
+  // CAMPAIGN_CONSTANT_NAMES above. Reads live 0 by RULED_LEFT
+  // classification: a graded green conformance row.
+  "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING",
 ];
 
 /**
@@ -645,17 +657,6 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "(test/frame-count-caption-ledger.scan.test.ts, DEC-180 wave-28 amendment). "
     + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
     + "rule does not apply yet.",
-  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING:
-    "measures a newly-derived size-unit population (every product font-size/gap declaration whose "
-    + "COMPUTED px value at the 16px root sits outside the pack's own drawn px vocabulary for that "
-    + "property) that no instrument previously graded -- a real conformance fact about this "
-    + "population, but a freshly measured, previously-uncounted population must not move the "
-    + "campaign's goalposts mid-convergence; it is promoted once a later lane drains it, the same "
-    + "disposition already given to DESKTOP_FLOOR_DIVERGENCE_CEILING "
-    + "(test/pack-unit-grammar.scan.test.ts, DEC-937 wave-29 amendment). "
-    + "DEC-069 promotion clause (a) refusal: its own measured count is non-zero, so the promotion "
-    + "rule does not apply yet regardless of its PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING sibling's own "
-    + "adjudication state.",
   PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING:
     "measures how many of that same population are `em` literals, whose computed px depends on an "
     + "inherited size this scan cannot resolve -- an instrument-completeness fact about the ratchet's "
@@ -910,13 +911,6 @@ export const PARKED_FIDELITY_PROMISES: Readonly<Record<string, ParkedFidelityPro
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero).
   FRAME_COUNT_CAPTION_UNMATCHED_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
-  // Clause (b) holds (docs/design/audit/pack-unit-grammar-v12.md itemises
-  // every one of PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING's `em`-literal rows by
-  // coordinate), but clause (a) fails: its own count is non-zero.
-  PACK_UNIT_GRAMMAR_OFFENDERS_CEILING: {
-    siblingName: "PACK_UNIT_GRAMMAR_UNRESOLVED_CEILING",
-    siblingFullyAdjudicated: true,
-  },
   // No completeness sibling. Clause (a) alone decides it (currently
   // non-zero -- most of the ruling-unit population is still gap-verdict).
   RULING_UNIT_GAP_CEILING: { siblingName: null, siblingFullyAdjudicated: true },
