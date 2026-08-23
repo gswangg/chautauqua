@@ -23,7 +23,7 @@ export const DEC_017 = "Wave-3 schema additions in one migration; legacy track c
 export const DEC_018 = "Amendment (wave 102): the per-criterion TYPE control is a real select, and the editable criterion row grows to the frame's SIXTH track — the desktop frames demand it, so this is not a frozen-desktop violation";
 export const DEC_019 = "Deliberate-notify compose pipeline: recipients, atomic preview, 100-cap, feedback attach";
 export const DEC_020 = "File pipeline: upload validation, version chains, authenticated serving, comments, approval";
-export const DEC_021 = "Wave-36 amendment: the Agenda frame's break-hint caption is SUPERSEDED by DEC-021 wave-34, excluded by citation — never by a ceiling raise";
+export const DEC_021 = "DEC-021 wave-38: the phone agenda folds breaks through the SAME clampBreakToWindow the desktop grid uses, and a run list never emits backwards time — 'kept but flagged' is a fact about the break RECORD, not a licence to paint outside the drawn day";
 export const DEC_022 = "Public surfaces: single query gate, SSR + embeds, itinerary .ics, stage-1 cache headers";
 export const DEC_023 = "Onboarding grid API, task CRUD, and due-date reminder cron";
 export const DEC_024 = "Amendment (wave 22): a route is NEVER_PUBLIC only if NO cached public surface reads what it writes — /forms/* and /fields/* fail that test, and the classification scan must grade WHICH list, not merely that a route is in one";
@@ -101,7 +101,7 @@ export const DEC_095 = "The w3-c scale step-6 400 is a walkthrough-script defect
 export const DEC_096 = "Wave-5 gate protocol: task-w5-a is the single DEC-076 closeout barrier landing both scripts-only fixes; all four gates re-run chained behind it (code-frozen per DEC-077), triage-closure behind the walkthrough gate, and it must close the w3-c/w3-d OPEN ITEMS";
 export const DEC_097 = "Wave-5's plan is void (never executed); wave 6 is a parallel code-bearing fix wave and the DEC-076 closeout barrier plus all DEC-069 gates defer to wave 7";
 export const DEC_098 = "On-screen claim links only for contacts created in the same submit request; pre-existing contacts get the claim link by email only (amends DEC-014)";
-export const DEC_099 = "Wave-36 amendment: the open-divergence ledger's ceiling and both monotone floors are one atomic measurement, re-measured together or not at all";
+export const DEC_099 = "DEC-099 wave-38: one owner re-measures EVERY floor in a ledger scan in one commit, and a two-sided floor is set to the measured number, never to a guess or an anticipated one";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
 export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";

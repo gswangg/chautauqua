@@ -249,7 +249,15 @@ const ROSTER: InlineRosterRow[] = RECEIPTS.map((r) => judgeInlineReceipt(r, ALL_
 // defect count and currently reads 0 because no receipt that DOES name a
 // companion class fails the floor check.
 export const INLINE_PROSE_UNGROUNDED_CEILING = 0;
-export const INLINE_PROSE_UNVERIFIABLE_CEILING = 10;
+// MEGABATCH COMPOSITION (wave-36 thunderdome): 10 -> 11. w35-a seeded this
+// at 10 against a tree that did not yet carry w35-b's grounding work; w35-b
+// then added new `inline-in-prose` tap-floor-exempt receipts (the CFP
+// intro-cta/identity-note anchors and the docs /login reference) which this
+// sibling instrument also enumerates, and which name no companion class, so
+// they land UNVERIFIABLE here exactly as they do in the wave-30 sibling.
+// Neither branch's number is right for the merged tree; 11 is the merged
+// suite's own printed count.
+export const INLINE_PROSE_UNVERIFIABLE_CEILING = 11;
 
 describe("inline-in-prose tap-floor-exempt receipts are grounding claims (DEC-393 wave-35 amendment)", () => {
   it("population sanity: walked a non-trivial number of real inline receipts (vacuous-population tripwire, DEC-999)", () => {

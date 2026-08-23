@@ -25,7 +25,7 @@ export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not
 export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
 export const DEC_439 = "The three measured SPEC §7 budget misses are stage-1 product defects, and each is fixed by shrinking what one request loads";
 export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmission's fail-loudly throws must not be laundered into SQL";
-export const DEC_441 = "Amendment (wave 32): the email shell's highlighted-fact block is drawn on every email the pack depicts, and the product ships none of them";
+export const DEC_441 = "DEC-441 wave-38: the mail shell's fact VALUE is one run — a caller composing a multi-item fact joins it in the frame's own sentence register, never with a newline HTML collapses";
 export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
 export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
 export const DEC_444 = "The last WCAG AA offender is remedied by re-pointing the rule to --chq-muted; --chq-disabled's value and the contrast checker are both untouchable";
@@ -160,7 +160,7 @@ export const DEC_572 = "A reviewer track assignment is previewed and confirmed, 
 export const DEC_573 = "A file comment thread belongs to the version CHAIN, not to one file row; the comment list carries an envelope";
 export const DEC_574 = "An upload control never discards the unsaved fields around it";
 export const DEC_575 = "Amendment (wave 8): A file-level import refusal owns the dialog's identity; the denominator in its heading stays";
-export const DEC_576 = "Amendment (wave 22): the 390 shell header band is the SHELL's frame to satisfy — a page-scoped real mount can never verdict it, so the band gets one shell-level receipt covering every phone frame that draws it";
+export const DEC_576 = "DEC-576 wave-38: a PortalLayout dock child that is a SECOND COPY of an in-flow control carries its own class, hidden at top level and revealed only in the terminal phone block — the desktop reflow never manufactures a duplicate primary";
 export const DEC_577 = "Amendment (wave 116): every control-class rule that sets a type register declares its family — CEILING goes 28 to 0";
 export const DEC_578 = "The seed's wipe list is derived from the schema, with a source-scanning tripwire that fails when a table is missing";
 export const DEC_579 = "CFP track selection stays multi-select; the defect is the label, not the control";

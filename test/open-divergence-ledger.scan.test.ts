@@ -201,7 +201,11 @@ export {
 // 241. Re-measured live on this branch with the constant forced to
 // 999999999 first and the printed count read back, never computed from this
 // comment's own arithmetic.
-const AUDIT_FILE_FLOOR = 120;
+// MEGABATCH COMPOSITION (wave-36 thunderdome): 120 -> 121. The merged tree's
+// audit corpus grew by one document (the wave-35/36 lanes each added audit
+// rosters); this is the guard working as designed, raised to the enumerator's
+// own printed count.
+const AUDIT_FILE_FLOOR = 121;
 const TOKEN_ROW_FLOOR = 241;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
@@ -219,7 +223,16 @@ const SHAPE_FLOORS: Record<RowShape, number> = {
   // table-shape rows. No row was deleted; each was resolved.
   table: 69,
   bullet: 31,
-  fallback: 111,
+  // MEGABATCH COMPOSITION (wave-36 thunderdome): 111 -> 108. The custodian
+  // decomposition (w35-6) measured 111 on a tree that did not yet carry
+  // w36-e's code-span strip; that strip removes bold-led (fallback-shape)
+  // rows whose only "divergence"/"mismatch" occurrence sits inside a
+  // backtick span naming another instrument's ratchet CONSTANT -- w36-e's
+  // own comment names desktop-control-floor-v12.md:448 as exactly such a
+  // bold-led row. The rows did not disappear from the corpus; they stopped
+  // being counted as claims, which is the widening's whole point. 108 is
+  // the merged suite's own printed count.
+  fallback: 108,
 };
 
 // -- Ratchet -------------------------------------------------------------
