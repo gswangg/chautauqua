@@ -67,10 +67,29 @@ DEC-919 wave-156 already renders in the read drill and which opens the
 identical `?section=event&edit=1` drill. No other section's head action is
 touched.
 
+**Amendment (wave 45, DEC-919): "Cancel" CLOSED, ruled permanently
+unbuilt.** The `:316` row's `**Still unbuilt:**` clause below was the last
+open clause in this nested audit directory and read as scheduled work
+rather than as an adjudication. `src/decisions-data/DEC-919.md`'s
+"Amendment (wave 45)" rules it CLOSED: the frame's footer pair
+(`:335`/`:336`) is the EDIT view's footer drawn in the read drill's slot;
+"Save" re-lines onto the edit surface (wave-156, above) and "Cancel" has
+neither state to discard (a read view holds no form) nor a destination of
+its own -- its only possible destination, the section index, is already
+reached by the drill header's own `‹ Settings` back link the same frame
+draws at `:318`. DESIGN-RULINGS item 6 rules two affordances for one
+destination out, so building it would trade one recorded omission for one
+ruled-against duplication. This is a RULING, not a DEVIATIONS entry -- no
+override of the pack is sought, the drawn control is satisfied at the
+composition level. Pinned by
+`app/src/pages/settings/EventSettingsPanel.readDrill.render.test.tsx`,
+which asserts the read drill's footer band draws exactly one control and
+the screen carries exactly one back-affordance to the section index.
+
 | Frame | Verdict | What diverges |
 | --- | --- | --- |
 | `:275` Settings (landing) | MATCHES | Index row order (label + "Open" + detail) equals the frame's `mobileGroups` order; DEC-691/DEC-747 rail order. |
-| `:316` Settings · Event | DIVERGES (narrowed, DEC-919 wave-17) | CLOSED wave 17 (task w17-d, DEC-919): the head band now shows the frame's ONE title — `SummarySection`'s own duplicate `<h2>` is hidden at 390 (`.chq-settings-panel > .chq-settings-section-head > h2`, settings.css terminal block), leaving `Settings.tsx`'s `.chq-settings-drill-title` H1 as the sole visible label. The head's "Change" action also stands down at 390 (`.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action`) — a RE-LINE, not a removal: the frame's own footer "Save" (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`) already renders in read mode and opens the identical `?section=event&edit=1` drill the head action opened. **Still unbuilt:** "Cancel" has nothing to cancel in a read view (no form is open to discard) and stays unbuilt, same disposition as wave 156. |
+| `:316` Settings · Event | DIVERGES (narrowed, DEC-919 wave-17) | CLOSED wave 17 (task w17-d, DEC-919): the head band now shows the frame's ONE title — `SummarySection`'s own duplicate `<h2>` is hidden at 390 (`.chq-settings-panel > .chq-settings-section-head > h2`, settings.css terminal block), leaving `Settings.tsx`'s `.chq-settings-drill-title` H1 as the sole visible label. The head's "Change" action also stands down at 390 (`.chq-settings-panel[data-chq-section='event'] > .chq-settings-section-head > .chq-settings-section-action`) — a RE-LINE, not a removal: the frame's own footer "Save" (`.chq-settings-drillrow-footer-primary`, `settings-drill-rows.css`) already renders in read mode and opens the identical `?section=event&edit=1` drill the head action opened. **CLOSED-with-receipt (wave 45, DEC-919):** "Cancel" has nothing to cancel in a read view (no form is open to discard) and no destination of its own -- its only possible destination, the section index, is already reached by the drill header's own back link. Ruled permanently unbuilt, not deferred, by `src/decisions-data/DEC-919.md`'s "Amendment (wave 45)"; pinned by `app/src/pages/settings/EventSettingsPanel.readDrill.render.test.tsx` `describe('Settings · Event 390 read drill (DEC-919 wave-45)'`. |
 | `:347` Settings · Tracks and rooms | MATCHES | CLOSED wave 156 (task qe-tracks-rooms-read-drill): the read view now renders a boxed 44px "Edit" per row plus a dashed "Add a track"/"Add a room" row closing each list (frame `:364,367,379,382`), phone-only via `settings-lists.css`'s terminal `@media (max-width: 700px)` block; both drill into the section's existing edit surface (`?section=tracks-rooms&edit=1`), reusing `useTracksRoomsPanel`'s existing `toggleAddTrack`/`toggleAddRoom` state rather than minting a second one. Your-data's own per-row Download/Revoke gap (`:409,423`) is closed separately by task qb-settings-yourdata-read-drill, same wave. |
 | `:393` Settings · Your data | MATCHES | Per-row boxed "Download" (Exports) and "Revoke" (API tokens) actions, plus the filled 46px full-width "New token" primary, all render in the read drill (task qb-settings-yourdata-read-drill, wave 156). Download performs in place against the existing export hrefs; Revoke opens `ApiTokensPanel`'s existing `ConfirmDialog`; New token enters `?section=your-data&edit=1`, landing on the already-open create form. Closes the still-open remainder of the masked-tokens/Revoke/New-token finding (wave 118). |
 | `:444` Settings · Call for papers | MATCHES | Per-question list (`:467-475`, one row + boxed "Edit" per question) now renders in the read drill (task re, wave 157, DEC-919 clause (b)); each row's boxed "Edit" carries that question's own `id` to `/submissions/forms?fieldId=…` so the tap lands on the field that was tapped, not the builder's index. Field editing itself still stays in the form builder — delegation decides the destination, never whether the control exists. |
