@@ -65,6 +65,7 @@ import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
 import { emailBudgetOk, refundEmailBudget, isSameOriginSubmitPost } from "./submit-guards";
 import { trackChoiceMessage } from "./submit-messages";
 import { sessionFormatLabel, audienceLevelLabel } from "../../lib/session-vocabulary";
+import { buildSubmissionConfirmationEmail } from "../../domain/submission-confirmation";
 
 export const publicSubmitPostRoutes = new Hono<AppEnv>();
 
@@ -516,6 +517,28 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   }
   const claimUrl = `${origin}${claimPath}`;
 
+  // DEC-441 wave-49: track names are needed by the confirmation email's
+  // fact block, so this filter (otherwise computed only for the on-screen
+  // confirmation card meta below) is pulled up here and shared, rather than
+  // growing a second derivation of the same selectedTrackIds/tracks pair.
+  const selectedTrackNames = tracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name);
+
+  const confirmation = buildSubmissionConfirmationEmail({
+    eventName: event.name,
+    speakerName: `${firstName} ${lastName}`.trim(),
+    talkTitle: title,
+    ref,
+    trackNames: selectedTrackNames,
+    claimUrl,
+    hasExistingAccount: !!existingUser,
+  });
+  // DEC-441 wave-49 clause (e)/wave-135: the HTML body (confirmation.text)
+  // is the frame's own composition -- greeting + reassurance only, no
+  // claim URL -- and reaches the reader through the shell's `cta` block
+  // alone. The plain-text `text` sent to mailer.send stays a DELIBERATELY
+  // different register that still carries the URL in its own body, so a
+  // text-only mail client (no HTML, no rendered button) can still reach
+  // the portal.
   const text = renderTemplate(
     "Hi {speaker_name},\n\nWe received your submission \"{talk_title}\" ({ref}) for {event_name}.\n\n{portal_link}\n",
     {
@@ -526,14 +549,15 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       portal_link: claimUrl,
     },
   );
-  const html = renderEmailHtml(text, {
+  const html = renderEmailHtml(confirmation.text, {
     eventName: event.name,
     reason: submissionConfirmedReason(event.name),
     eventMeta: eventDatesLine(event),
     cta: {
-      label: existingUser ? "Sign in to view your submission" : "Claim your account to view your submission",
+      label: confirmation.ctaLabel,
       href: claimUrl,
     },
+    fact: { label: confirmation.factLabel, value: confirmation.factValue },
   });
   // The submission is already persisted; the confirmation email is a
   // best-effort side effect at an IO boundary (a real provider can reject a
@@ -550,7 +574,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     const mailer = makeMailer(db, c.env);
     await mailer.send({
       to: { email, name: `${firstName} ${lastName}`.trim() },
-      subject: `We received your submission: ${title}`,
+      subject: confirmation.subject,
       text,
       html,
       eventId: event.id,
@@ -583,7 +607,6 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   // scope (joined in that list's own order, ' · '-separated, for the rare
   // multi-select case). Each clause drops individually when its answer is
   // absent or blank.
-  const selectedTrackNames = tracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name);
   const formatField = fields.find((f) => f.role === "session_format");
   const formatAnswer = formatField ? cleaned[formatField.id] : undefined;
   const formatLabel =
