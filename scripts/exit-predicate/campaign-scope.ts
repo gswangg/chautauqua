@@ -786,6 +786,26 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "technique, not itself a v12 frame or 390-geometry conformance fact, the same disposition "
     + "already given to FRAME_EYEBROW_UNRESOLVED_CEILING and DESKTOP_FLOOR_UNRESOLVED_CEILING "
     + "(test/desktop-eyebrow-label.scan.test.ts, DEC-986 wave-41 amendment).",
+  PACK_COLOUR_VOCABULARY_HEX_OFFENDERS_CEILING:
+    "measures a newly-derived population -- the two token files' hex colour literals graded against "
+    + "the pack's own drawn hex vocabulary, a palette CONFORMANCE fact distinct from the palette "
+    + "CLOSURE test/palette-conformance.test.ts already gates (closure proves colour literals are "
+    + "confined to the two token files; this proves those files' VALUES match what the pack draws) "
+    + "-- that no instrument previously graded. A real colour-fidelity fact about this specific "
+    + "population, but a newly measured, previously-uncounted population must not move the "
+    + "campaign's goalposts mid-convergence; both offenders (--chq-disabled #7d7869, "
+    + "--chq-on-ink-muted #b5afa2) are individually adjudicated LEFT rather than repaired -- each "
+    + "moves a WCAG-contrast-pinned byte (DEC-436 wave-25, DEC-367 original handoff) with no v12 "
+    + "frame demanding the move, and DESKTOP IS FROZEN -- the same disposition already given to "
+    + "PACK_UNIT_GRAMMAR_OFFENDERS_CEILING and PACK_VOCABULARY_OFFENDERS_CEILING "
+    + "(test/pack-colour-vocabulary.scan.test.ts, DEC-383 wave-43 amendment, task w43-d).",
+  PACK_COLOUR_VOCABULARY_FUNCTION_OFFENDERS_CEILING:
+    "measures the same newly-derived population's colour-FUNCTION grammar (rgb()/rgba()/hsl()/hsla(), "
+    + "graded by channel triple with alpha ignored) alongside "
+    + "PACK_COLOUR_VOCABULARY_HEX_OFFENDERS_CEILING immediately above -- currently 0 (the product's "
+    + "one rgba() declaration matches the pack's drawn triple), kept beside its sibling so the pair "
+    + "is promoted or re-measured together rather than one ceiling silently outliving the other "
+    + "(test/pack-colour-vocabulary.scan.test.ts, DEC-383 wave-43 amendment, task w43-d).",
 };
 
 /**
