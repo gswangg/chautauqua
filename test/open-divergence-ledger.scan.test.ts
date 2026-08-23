@@ -220,7 +220,11 @@ export {
 // Restoring the code span (with the ":line" left outside it, so both
 // citation scans stay green) closes that row again. The single disappearing
 // row is therefore identified, not guessed.
-const AUDIT_FILE_FLOOR = 138;
+// RAISED 138 -> 140 (wave-50..53 megabatch integration): the merged waves
+// added audit files to docs/design/audit/; raised to the enumerator's own
+// printed count, per this test's own instruction, never computed by
+// arithmetic in this comment.
+const AUDIT_FILE_FLOOR = 140;
 // RAISED 264 -> 266 (task v12m-w52-e): this task's wave-52 Review+Overview
 // adjudication of test/pack-grid-track-vocabulary.scan.test.ts's offender
 // table added two DESKTOP DIVERGENCE verdicts (docs/design/audit/pack-grid
@@ -231,7 +235,12 @@ const AUDIT_FILE_FLOOR = 138;
 // staleness floor moves, per this test's own instruction, in the same
 // commit that grows the corpus. AUDIT_FILE_FLOOR is untouched -- this task
 // created no audit file.
-const TOKEN_ROW_FLOOR = 266;
+// RAISED 266 -> 282 (wave-50..53 megabatch integration): the two branch
+// values arbitrated at merge time (w51-d's 265, w52-e's 266) were each
+// measured against only their own branch's share of the corpus. Re-measured
+// live over the fully integrated tree and raised to the enumerator's own
+// printed count, per this test's own instruction.
+const TOKEN_ROW_FLOOR = 282;
 const SHAPE_FLOORS: Record<RowShape, number> = {
   // RE-MEASURED (task w36-e): 34 -> 32. Three of the four code-span/denial
   // removals above were heading-shape (desktop-control-floor-v12.md:192,
