@@ -284,4 +284,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // clause (a) alone decided and promotion moves no goalpost: it enters this
   // registry AT 0 (test/pack-prose-measure.scan.test.ts).
   "PACK_PROSE_MEASURE_DIVERGENCE_CEILING",
+  // wave-56 (task w56-b, DEC-180 wave-56 amendment): promoted out of
+  // OUT_OF_CAMPAIGN_SCOPE -- the checkbox family offender it was seeded on
+  // (src/views/theme.ts's phone-scoped .chq-check-hit floor) landed on main
+  // and the ceiling was dropped to 0 in the same commit as this promotion,
+  // so the entry enters the gating table AT 0 and moves no goalpost
+  // (test/phone-floor-root-parity.scan.test.ts).
+  "PHONE_FLOOR_ROOT_PARITY_CEILING",
 ];

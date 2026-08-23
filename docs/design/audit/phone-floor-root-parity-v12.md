@@ -32,7 +32,7 @@ For each root, a rule is "floored" for a control family when it declares
 (DEC-385 single-direction: an unconditional floor holds at every width,
 including phone, and nothing narrower removes it -- this is what makes
 `app/src/styles.css`'s `.chq-file`/`.chq-file::file-selector-button`
-(floored unconditionally, styles.css:2065-2081) agree with
+(floored unconditionally, app/src/styles.css`.chq-file {`) agree with
 `src/views/theme.ts`'s phone-scoped `input[type=file]` floor rather than
 read as a false offender).
 
@@ -46,27 +46,33 @@ DEC-367/DEC-585 base rules). A family is only compared across roots when it
 is present (as a selector, floored or not) on BOTH roots -- see EXISTENCE
 GUARD below.
 
-## Measured result (this branch)
+## Measured result (wave 56, this branch)
 
-**1 offender**, `PHONE_FLOOR_ROOT_PARITY_CEILING = 1`:
+**0 offenders**, `PHONE_FLOOR_ROOT_PARITY_CEILING = 0` (CLOSED wave 56):
 
 | family | floored in `app/src/styles.css` | floored in `src/views/theme.ts` |
 | --- | --- | --- |
-| `checkbox` | **yes** -- `.chq-check-hit { min-height: 44px; min-width: 44px; ... }` inside the terminal phone block (`app/src/styles.css:2859-2864`) | **no** -- `input[type=checkbox], input[type=radio]` (`src/views/theme.ts:313-326`) is an explicit `width:18px; height:18px` box with no phone-floor rule anywhere in the sheet; the sheet's own comment at `:298-301` states the floor is "met by padding on the surrounding label, not by inflating the box itself (that lives in the page/surface markup, not this shared sheet)" |
+| `checkbox` | **yes** -- `.chq-check-hit { min-height: 44px; min-width: 44px; ... }` inside the terminal phone block (app/src/styles.css`.chq-check-hit {`) | **yes** -- a twin `.chq-check-hit { min-height: 44px; min-width: 44px; ... }` rule inside `src/views/theme.ts`'s own terminal phone block (src/views/theme.ts`min-width: 44px;`), wrapping the bare `input[type=checkbox]`/`input[type=radio]` (18x18, unchanged) `form-render.tsx` renders via `<span class="chq-check-hit">` |
 
-This is the live checkbox/radio hole the field guide's wave-53 entry names
-(the unauthenticated CFP renders `input[type=checkbox]` through
-`src/views/theme.ts` and `src/views/form-render.tsx`, and gets none of the
-label-wrapper floor rule the SPA table-cell checkbox gets from
-`.chq-check-hit`). **Repair is out of this task's scope** (this lane may
-not edit `src/views/theme.ts`, `app/src/styles.css` or
-`src/views/form-render.tsx`) and belongs to whichever concurrent branch owns
-the SSR checkbox/radio phone-floor fix. Once that lane lands and this scan
-re-measures 0, `PHONE_FLOOR_ROOT_PARITY_CEILING` drops to 0 in the same
-commit and the constant is promoted out of `OUT_OF_CAMPAIGN_SCOPE` into
-`TIER2_CEILING_NAMES` (the disposition
-`scripts/exit-predicate/campaign-scope/out-of-campaign-scope.ts`'s entry
-for this constant names).
+**History (wave 53 through wave 55):** this ceiling was seeded at 1 --
+`checkbox` floored on `app/src/styles.css` (via `.chq-check-hit`'s terminal
+phone block) and unfloored on `src/views/theme.ts` (the bare
+`input[type=checkbox], input[type=radio]` rule carried no phone floor, and
+`src/views/form-render.tsx` rendered the input with no reaching wrapper).
+The DEC-393 wave-53 amendment SSR repair -- landed by a concurrent branch,
+not this lane -- added `src/views/theme.ts`'s own `.chq-check-hit` (base
+rule layout-neutral at top level, floored inside the terminal
+`@media (max-width: 700px)` block: `min-height: 44px; min-width: 44px;
+padding: 13px; margin: -13px;`) and changed `src/views/form-render.tsx`'s
+`FieldControl` "checkbox" case to wrap the bare input in
+`<span class="chq-check-hit">`. The two roots now agree, and this lane
+(**instrument only, no repair**: it does not edit `src/views/theme.ts`,
+`app/src/styles.css` or `src/views/form-render.tsx`) pays the promotion the
+wave-53 disposition promised -- `PHONE_FLOOR_ROOT_PARITY_CEILING` drops to
+0 and the constant moves out of `OUT_OF_CAMPAIGN_SCOPE` into
+`CAMPAIGN_CONSTANT_NAMES` + `TIER2_CEILING_NAMES` in the same commit (the
+disposition `scripts/exit-predicate/campaign-scope/out-of-campaign-scope.ts`
+carried named).
 
 ## EXISTENCE GUARD exclusions (not offenders -- naming-convention only)
 
@@ -86,19 +92,61 @@ an offender:
   selector. This is a naming-convention difference, not a geometry gap, and
   is excluded per the scan's own EXISTENCE GUARD rather than asserted away.
 
-## Known instrument limitation (documented, not silently assumed)
+## Known instrument limitation (unchanged, documented not silently assumed)
 
 `.chq-check-hit`'s selector text does not distinguish checkbox from radio
 inputs (the wrapper is applied at the markup layer to either, per its own
-`app/src/styles.css:2846-2858` comment: "wraps a table-cell `.chq-check`").
-This scan's classifier keys purely on selector TEXT, so `radio` and
-`checkbox` are graded as separate families and the `radio` family reads
-"not floored on either root" (consistent, not reported) rather than
-"floored on the SPA root via markup-level `.chq-check-hit` reuse, unfloored
-on SSR" -- a real coverage gap this instrument cannot see because CSS
-selector text alone cannot express "the class this rule floors is also
-applied, at runtime, to a `type=radio` element." The `checkbox` offender
-above already gives `PHONE_FLOOR_ROOT_PARITY_CEILING` a non-zero, live
-seed, so this limitation does not make the scan vacuous; it is recorded
-here as a known blind spot for whichever lane repairs the checkbox family
-to re-check by hand whether the radio family needs the same fix.
+app/src/styles.css`wraps a table-cell` comment). This scan's classifier
+keys purely on selector TEXT, so `radio` and `checkbox` are graded as
+separate families and the `radio` family reads "not floored on either
+root" (consistent, not reported) rather than "floored on the SPA root via
+markup-level `.chq-check-hit` reuse, unfloored on SSR" -- a real coverage
+gap this instrument cannot see because CSS selector text alone cannot
+express "the class this rule floors is also applied, at runtime, to a
+`type=radio` element." This limitation still holds after the wave-56
+promotion (it is a property of the classifier, not of the checkbox
+population that closed) -- it is recorded here as a known blind spot, and
+discharged by hand below, as the wave-53 note asked.
+
+## Radio family hand-check (DEC-180 wave-56, discharging the blind spot above)
+
+The classifier above cannot see radio through `.chq-check-hit`'s selector
+text, so this checks, by hand, every radio input site in both roots'
+rendered surfaces against the 44px floor requirement, the same way DEC-393
+wave-26's `labelHasRealContent` disposition already excludes a
+non-decorative, real-text label from the classless-roster ratchets.
+
+**SSR (`src/routes/public/submit-views.tsx`, floored by
+`src/routes/public/cfp.css.ts` / `src/routes/portal/portal.css.ts`'s shared
+`.chq-cfp-option` vocabulary, DEC-696 parity):** all three SSR
+`<input type="radio">` sites (`TrackChoices`, `FormatChoices`,
+`AudienceChoices`) render as the sole child of `label.chq-cfp-option`
+(src/routes/public/submit-views.tsx`<label class="chq-cfp-option">`).
+`.chq-cfp-option` is floored to `min-height: 46px` unconditionally, at
+every width, not gated by any media query
+(src/routes/public/cfp.css.ts`min-height: 46px;`, twinned in
+src/routes/portal/portal.css.ts`min-height: 46px;`), and each root's own
+comment states no radio of this shape renders outside the wrapper. **Not a
+defect** -- the floor is the label's, by construction, the same
+composition-receipt idiom `.chq-check-hit` uses.
+
+**SPA (`app/src/pages/speakers/TaskModal.tsx`, `app/src/pages/contacts/
+MergePage.tsx`, `app/src/pages/contacts/ImportWizard.tsx`, `app/src/pages/
+review/Scorecard.tsx`):** every SPA `<input type="radio">` site renders
+inside a `<label>` carrying real, non-whitespace visible text beside the
+input, not a decorative wrapper with an empty accessible name:
+`TaskModal.tsx` -- `` `Everyone accepted (${acceptedCount})` `` /
+`Only the people I choose`; `MergePage.tsx` -- `{c.firstName} {c.lastName}
+— {c.email}`; `ImportWizard.tsx` -- `{opt.label}` (phone-target rows) and
+`Import as new` / `` Merge into {dup.name} ({dup.email}) `` (dedupe-group
+rows); `Scorecard.tsx` -- `{opt}`. DEC-393 wave-26's `labelHasRealContent`
+disposition already excludes exactly this shape (a real-content label,
+not a classless bare control) from the classless-roster ratchets that
+would otherwise flag a bare `<input>`. **Not a defect** -- each site is
+excluded under the same disposition the checkbox/text-input families
+already rely on.
+
+**Verdict: no genuinely unfloored bare radio found on either root.** The
+radio family needs no repair; `PHONE_FLOOR_ROOT_PARITY_CEILING` stays at 0
+for this family for the same reason the classifier never counted it as an
+offender in the first place -- confirmed by hand, not merely assumed.

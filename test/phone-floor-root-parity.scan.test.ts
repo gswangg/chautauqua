@@ -77,15 +77,20 @@
 // the real-root scan uses) and one pair that agrees (must not be) -- plus
 // a tripwire that the REAL population (both roots) is non-empty.
 //
-// REGISTRATION (DEC-180 wave-53 amendment): this ceiling ships PARKED --
-// registered in OUT_OF_CAMPAIGN_SCOPE, not CAMPAIGN_CONSTANT_NAMES or
-// TIER2_CEILING_NAMES -- because its one measured offender (the checkbox
-// family) is the same live 44px-conformance defect a concurrent branch
-// owns the repair for; this instrument is promoted to TIER2 once it reads
-// 0 (the LINE_KEYED_CITATION_CEILING/PACK_UNIT_GRAMMAR disposition
-// already used elsewhere in this file's sibling registry). This lane does
-// not touch src/views/theme.ts, app/src/styles.css or
-// src/views/form-render.tsx -- instrument only, no repair.
+// REGISTRATION (DEC-180 wave-56 amendment): this ceiling shipped PARKED
+// from wave 53 through wave 55 -- registered in OUT_OF_CAMPAIGN_SCOPE, not
+// CAMPAIGN_CONSTANT_NAMES or TIER2_CEILING_NAMES -- because its one
+// measured offender (the checkbox family) was the same live 44px-
+// conformance defect a concurrent branch owned the repair for. That repair
+// landed on main (src/views/theme.ts's phone-scoped `.chq-check-hit` rule),
+// the population re-measures 0, and wave 56 promotes this ceiling into
+// CAMPAIGN_CONSTANT_NAMES + TIER2_CEILING_NAMES in the same commit that
+// drops the constant below to 0 (the LINE_KEYED_CITATION_CEILING/
+// PACK_UNIT_GRAMMAR disposition already used elsewhere in this file's
+// sibling registry) -- promotion moves no goalpost, the gating table's
+// value is unchanged at 0. This lane does not touch src/views/theme.ts,
+// app/src/styles.css or src/views/form-render.tsx -- instrument only, no
+// repair.
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -250,12 +255,13 @@ const THEME_TS_RAW = THEME_SOURCE.text;
 
 const REAL_DIVERGENCES = findDivergentFamilies(STYLES_CSS_RAW, THEME_TS_RAW);
 
-// wave-53 (task w53-f, DEC-180 amendment): measured live against this
-// branch. May only be LOWERED, and only in the same commit that closes the
-// underlying 44px gap (this lane does not do that repair -- see the file
-// header). Parked in OUT_OF_CAMPAIGN_SCOPE, not graded by the campaign exit
-// predicate, per the same wave-53 amendment.
-export const PHONE_FLOOR_ROOT_PARITY_CEILING = 1;
+// wave-56 (task w56-b, DEC-180 amendment): measured live against this
+// branch at 0 -- the SSR checkbox repair (src/views/theme.ts's
+// `.chq-check-hit` phone floor) landed on main. May only be LOWERED, and
+// only in the same commit that closes an underlying 44px gap. Promoted out
+// of OUT_OF_CAMPAIGN_SCOPE into CAMPAIGN_CONSTANT_NAMES + TIER2_CEILING_
+// NAMES in this same commit, per the wave-56 amendment.
+export const PHONE_FLOOR_ROOT_PARITY_CEILING = 0;
 
 describe('twin-root native-control 44px floor parity (DEC-180 wave-53 amendment)', () => {
   it('the real population is non-empty on both sides (vacuity tripwire): at least one control family is graded, and each root independently floors at least one control family somewhere in its own text', () => {
