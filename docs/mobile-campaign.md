@@ -20,6 +20,41 @@ A future planner should re-run these two named commands (minutes, not hours) rat
 
 Superseded chain, oldest to newest: docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) were round 1. ROUND 2 SUPERSEDED their open rows: docs/probes/metafid-round2-2026-08-20.md — its WAVE A (docks) then WAVE B (tokens+layouts). ROUND 3 SUPERSEDED round 2's own backlog in turn: docs/probes/metafid-round3-2026-08-20.md recorded Wave B CLOSED and Content DONE, and this file's own "Meta-fidelity round 3 ... SUPERSEDED, SEE ROUND 4" section below records round 3's three-item red set as CLOSED; no META lane was in flight against WAVE B by round 3. The two disproportionate root fixes plus the S1 breaks and S2 structure rows live in docs/probes/metafid-phoneA-2026-08-19.md, NOT the desktop file (docs/probes/metafid-desktop-2026-08-19.md`Meta-fidelity probe: desktop (speakers cluster + admin spot-checks).` contains no S1/S2/negative-margin/section-action rows at all — verified by grep, DEC-967 wave-154 amendment). Both root fixes there are already CLOSED: app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {` (bordered-control cancelled-padding removed) and app/src/pages/settings/settings.css`.chq-settings-section-action {` (44px phone floor added). SUPERSEDED (wave 21, DEC-069 amendment — re-derived against the tree, DEC-903 clause a): docs/probes/metafid-phoneA-2026-08-19.md's every S1 bullet (:38, :56, :66, :68) and every S2 bullet (:82, :94, :99, :109, :126, :141, :144, :167, :183, :195) now carries its own CLOSED/RESOLVED marker with a drift-proof citation, including the per-frame Settings table's last two rows that had read OPEN-2026-08-21 — docs/probes/metafid-phoneA-2026-08-19.md`CLOSED-with-receipt (wave-22, was OPEN-2026-08-21) — (a) the head+Change-first read view IS the frame's content+Save/Cancel-footer anatomy at 390` and docs/probes/metafid-phoneA-2026-08-19.md`CLOSED-with-receipt (wave-22, was OPEN-2026-08-21) — no per-row boxed Change action in read mode is DEVIATIONS §6-blessed`. No S1/S2 row in that file remains open, so a planner must not schedule that backlog.
 
+### MEASURED GREEN (wave 46) — supersedes wave 27's figure for the same population
+
+At main b4676593e (task w46-e), the same targeted phone-side subset was
+re-measured directly as ONE combined command, not inherited from wave 27's
+claim: `npx vitest run 390 phone Phone frame-verdicts.render frame390.render`
+measured 217 files / 2442 tests, 1 file and 1 test RED. The one failure is
+app/src/phone-twin-visibility.scan.test.ts`TWIN_VISIBILITY_CLASSLESS_CEILING does not sit stale above the measured count` — an instrument grading its own
+ceiling against the tree, not a phone-product defect. This SUPERSEDES the
+wave-27 MEASURED GREEN subsection above's separate two-command, 3-failure
+figure for the same population (the wave-27 rows stay recorded above,
+CLOSED, never deleted, per this file's own convention). A future planner
+should re-run this ONE named command (minutes, not hours) rather than
+re-deriving the phone-cluster or frame-verdict population from scratch, and
+should re-run it again fresh rather than trusting this wave's number at any
+later sha.
+
+SUPERSEDED-IN-PLACE (wave 46, DEC-903 amendment, task w46-e — kept per this
+file's own append-only convention, never deleted): `npm run test:fast` at
+main f91d8a863 measured 1417 files / 18,633 tests with 14 files and 38 tests
+RED: app/src/frame-citation.scan.test.ts, app/src/phone-twin-visibility.scan.test.ts,
+app/src/tautological-assertion.scan.test.ts,
+test/audit-ratchet-statement-drift.scan.test.ts,
+test/campaign-scope-registry-partition.scan.test.ts,
+test/citation-form-drift.scan.test.ts,
+test/comment-blind-css-assertion.scan.test.ts, test/count-grammar.test.ts,
+test/decision-doc-citation.scan.test.ts, test/decision-path-references.scan.test.ts,
+test/exit-predicate-campaign.test.ts, test/open-divergence-ledger.scan.test.ts,
+test/test-tiers.test.ts, test/unstripped-source-regex.scan.test.ts. This
+figure is a PLANNER MEASUREMENT dated to sha f91d8a863, not an undated fact,
+and is unverified at any later sha until a planner re-runs `npm run
+test:fast` there and records a fresh sha. All fourteen were instrument rows
+(campaign ledgers/scans, not screens) owned by named in-flight lanes at the
+time this measurement was taken — this file does not name the branches, an
+unmerged branch is not a fact about main.
+
 ## Tier 0 — fidelity on landed work (verify first, then fix)
 
 The v12 speakers redesign and the wave-1 phone clusters (Contacts, Comms,
@@ -474,3 +509,10 @@ concurrent write/reload, dropping the mutation. Task: make the itinerary
 change-handler atomic against its own reads (single serialized write path),
 and add a test covering remove-then-reload persistence plus rapid
 toggle-toggle-reload. No UI change.
+
+CLOSED-with-receipt (wave 46, DEC-180 amendment — append-in-place, the row
+above stays as written): the ONE REAL item above is BUILT. The fix lives in
+src/routes/public/agenda-itinerary-script.tsx`the ONE serialized write path (root cause`, citing the DEC-555 wave-29 amendment it
+implements, and the persistence coverage (remove-then-reload, rapid
+toggle-toggle-reload) lives in test/itinerary-script-persistence.test.ts. No
+open row remains under Cut-4 eval triage.
