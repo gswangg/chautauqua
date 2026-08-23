@@ -76,7 +76,12 @@ ledger territory).
 
 ## Per-file breakdown (population size / DIVERGES count)
 
-| File | Eyebrows | DIVERGES |
+Every count below is a desktop divergence DESKTOP IS FROZEN forbids
+repairing here (DEC-385 single-direction: desktop CSS moves only under a
+narrow-overrides-wide media query, never in a measure-only ledger like
+this one) — adjudicated at the ledger level, per DEC-099 wave-44.
+
+| File | Eyebrows | DIVERGES (DEC-385: desktop-frozen, not repaired here) |
 | --- | --- | --- |
 | Chautauqua Account.dc.html | 4 | 0 |
 | Chautauqua Agenda.dc.html | 3 | 2 |
@@ -111,7 +116,8 @@ ledger territory).
   `DIGIT_COMPOSED` table already verified for its own instance of this row
   (see `docs/design/audit/frame-eyebrow-label-390-v12.md`).
 - **DIVERGES**: 103 — every other unmatched row, graded at face value (see
-  "Scope narrowing" below). No `SETTLED` rows this wave.
+  "Scope narrowing" below); a desktop divergence DESKTOP IS FROZEN forbids
+  repairing here (DEC-385, DEC-099 wave-44). No `SETTLED` rows this wave.
 - **SETTLED**: 0.
 
 Row-count accounting (DEC-808, DEC-976): MATCHED + UNRESOLVED + DIVERGES +
@@ -133,7 +139,8 @@ miss classification, it never hides a real offender after classification).
 
 Every other unmatched row is graded DIVERGES at face value. Sampling the
 103 rows by hand shows at least three distinct shapes inside that single
-bucket, none of them repaired here (DESKTOP IS FROZEN):
+bucket, none of them repaired here (DESKTOP IS FROZEN, DEC-385, DEC-099
+wave-44: a desktop divergence the freeze forbids repairing):
 
 1. **Composed-from-data misses this wave did not individually verify** —
    e.g. `Chautauqua Comms.dc.html:81`, `Recipients · 23`; a live recipient
@@ -142,8 +149,10 @@ bucket, none of them repaired here (DESKTOP IS FROZEN):
 2. **A repeated placeholder identity** — `Jordan A.` (and `Jordan A. ·
    Sign out`), the pack's own stand-in for "the signed-in organiser's
    name", drawn in nav/footer chrome across roughly a dozen frames; the
-   live app renders the actual signed-in user's name, never this literal
-   string, in `app/src/routes/AppShell.tsx`'s nav header. One real
+   live app renders the actual signed-in user's name via
+   `identityLabel(me.name, me.email, me.role)` inside `.chq-user-identity`,
+   never this literal string, in `app/src/App.tsx`'s header identity block
+   (the `chq-header-identity` nav header every route shares). One real
    composing fact, counted once per frame it recurs in.
 3. **Style-guide / documentation prose painted in the pack's eyebrow
    idiom** — e.g. `Chautauqua Docs.dc.html:249`, `01 · Prose`, one of nine
@@ -185,7 +194,9 @@ and to `DESKTOP_FLOOR_DIVERGENCE_CEILING` /
 1. **The individual composed-expression verification pass** the phone
    ledger performed for its 16 UNRESOLVED rows, applied to this ledger's
    103 DIVERGES rows — likely to promote a meaningful fraction of them to
-   UNRESOLVED (shape 1 above) the same way the phone ledger's wave-33 lane
+   UNRESOLVED (shape 1 above, a composed-from-data eyebrow whose live
+   composing expression the phone ledger already verified — DEC-613/
+   DEC-745, DEC-099 wave-44) the same way the phone ledger's wave-33 lane
    did.
 2. **A possible explainer-panel exclusion for shape 3** (documentation/
    style-guide prose painted in the eyebrow idiom, distinct from product

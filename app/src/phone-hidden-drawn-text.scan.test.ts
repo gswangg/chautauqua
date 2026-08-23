@@ -287,17 +287,19 @@ const UNCLIPPED_EXTENT_DERIVATION_FILES: string[] = EXTENT_SCAN_ROOTS.flatMap((r
   enumerateTsFiles(root).filter(isUnclippedExtentDerivation)
 ).sort();
 
-// Measured over the MERGED tree (wave-40/41/42 thunderdome megabatch) by
-// re-running this file's own predicate and reading the offender list back
-// (never an expression naming the measured set). v12m-w42-d measured 10 on
-// its own branch; the sibling clip lanes it names (w41-b/c/d, w42-f) landed
-// in the same batch, so the merged population is far smaller. This file's
-// own derivation moved to ./phone-hidden-drawn-text/frame-blobs.ts (wave-40
-// contention decomposition) and is clipped there, so neither appears. May only be RAISED if the ratchet is proved stale by
-// a re-measurement; a merge-train commit that lands one of the in-flight
-// w41 clip lanes must TIGHTEN it in the same commit (mirrors every other
-// ratchet in this campaign).
-export const UNCLIPPED_EXTENT_DERIVATION_CEILING = 1;
+// Measured on THIS branch (v12m-w44-b) by forcing this constant to -1,
+// running this file alone, and reading the printed offender list back
+// (never an expression naming the measured set, DEC-808). The wave-42/43
+// single offender, test/desktop-eyebrow-label.scan.test.ts, derived its own
+// extentEnd from a private `xdcCloseLine(lines: string[])` port that was
+// functionally identical to templateCloseLine but invisible to this scan's
+// literal-substring predicate; w44-b renamed it to templateCloseLine
+// (fullPath: string) -- the same name and shape every other sibling ledger
+// already carries -- closing the population to zero. May only be RAISED if
+// the ratchet is proved stale by a re-measurement; a future ledger that
+// copies the OLD unclipped shape must TIGHTEN it back down in the same
+// commit (mirrors every other ratchet in this campaign).
+export const UNCLIPPED_EXTENT_DERIVATION_CEILING = 0;
 
 describe('DEC-725 phone hidden-drawn-text probe', () => {
   it('finds more than one phone display:none rule (vacuous-population tripwire, CSS side)', () => {
