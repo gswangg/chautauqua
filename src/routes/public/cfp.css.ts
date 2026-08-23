@@ -518,8 +518,15 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        centred-flex in any of its own rules anywhere in the tree -- so
        rung 2 genuinely fails here too, and DEVIATIONS.md carries no entry
        for this specific link (its §10 covers only the CFP intro-cta,
-       identity-note, and docs auth-link anchors). Stays UNVERIFIABLE, a
-       roster row rather than a silent pass. */
+       identity-note, and docs auth-link anchors). GROUNDED, self-floored
+       (wave-52, task w52-b): rung 2/3 both still fail as above, but this
+       exact selector, .chq-cfp-confirm-actions a:not(.chq-btn), is ALSO
+       the selector this file's own max-width:700px phone block floors
+       directly two rules below (min-height:44px + display:inline-flex +
+       align-items:center + padding:0 2px) -- the receipt needs no other
+       control's testimony at all, it floors itself, merged across its
+       own desktop (colour) rule and its own phone-media rule. Resolves
+       GROUNDED, rung 0 (self-floored), never a silent pass. */
     .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); }
 
     /* tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task
