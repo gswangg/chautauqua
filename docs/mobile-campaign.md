@@ -54,6 +54,30 @@ tasks must not touch shell files and instead record shell needs as findings.
 - Horizontal-overflow probe at 390 on every page.
 - Disabled-token compliance (two legal uses) at phone sizes.
 
+- w38-e (DEC-808 wave-38 clause (d)): re-measure of the public/portal 390
+  tap-floor population via `npm run gate:render-sweep` (wrapped in
+  `sh scripts/with-test-lock.sh`) did NOT complete inside this task's
+  budget — the heavy-gate lock (`/tmp/chq-test.lock`, DEC-644) was held by
+  a concurrent worker for this task's entire session (first observed held
+  at 2026-08-22 20:10, still held at every check through the task's end);
+  the wrapped `npm run gate:render-sweep` never acquired the lock, so
+  `vite build`/`wrangler d1 migrations apply --local`/seed/`wrangler dev`/
+  playwright never ran and no live measurement was taken. Command run:
+  `sh scripts/with-test-lock.sh npm run gate:render-sweep` at sha
+  `5f0e95f4b6089f9e1fa6af8f9a28855eb807bf3a` (branch `v12m-w38-e`, off
+  `main`). Per clause (d): NO constant in scripts/render-sweep-lib.ts
+  (`PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING`,
+  `PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING`,
+  `PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR`,
+  `ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING`) was changed and neither
+  machine-written roster
+  (docs/design/audit/public-390-interactive-offenders-v12.md,
+  docs/design/audit/admin-mobile-tap-floor-390-v12.md) was hand-edited.
+  Re-plan this lane once the lock is free — the wave-38 investigation
+  (see task w38-e's own WHY) already shows ≥8 of the current 22
+  PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING rows provably repaired, so the
+  next attempt should land a real ceiling drop, not just a re-confirm.
+
 ## Hard rules (every role, non-negotiable)
 
 - NEVER `git push`. NEVER deploy. NEVER `wrangler` with `--remote`. Local
