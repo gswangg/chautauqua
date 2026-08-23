@@ -300,6 +300,29 @@ export const MIN_TAP_TARGET_PX = 44;
 // 1px slack for sub-pixel layout rounding across engines.
 const OVERFLOW_TOLERANCE_PX = 1;
 
+/** Extracts every class token from a selector-shaped string — either a bare
+ * `InteractiveMeasurement.selector` (`tag.class.class` or
+ * `ancestor.class > tag`) or an offender line's selector prefix (the same
+ * shape, before its trailing ` w=Npx h=Npx`) — and reports whether ANY of
+ * them is in `exemptSelectors`. The ONE class-token-match predicate behind
+ * both classifyAdminMobileOffender (below, offender-line strings) and the
+ * BLOCKING exempt filter evaluateMobileRoute applies before computing
+ * minControlHeight/minControlWidth and the offender-count reason (DEC-613:
+ * one predicate, never a second copy — the roster's EXEMPT/CANDIDATE
+ * classification and the gate's own pass/fail decision must agree on what
+ * "exempt" means, or the gate is grading a population the roster doesn't
+ * recognize). */
+function selectorCarriesExemptToken(
+  selectorText: string,
+  exemptSelectors: ReadonlySet<string>,
+): { exempt: boolean; receipt?: string } {
+  const classTokens = (selectorText.match(/\.[a-zA-Z0-9_-]+/g) ?? []).map((t) => t.slice(1));
+  for (const token of classTokens) {
+    if (exemptSelectors.has(token)) return { exempt: true, receipt: token };
+  }
+  return { exempt: false };
+}
+
 /** Evaluates one route's mobile-viewport observation: HTTP 200, no
  * page-level horizontal overflow, and every measured primary control
  * meets the >= 44px tap-target height (DEC-393). */
@@ -316,6 +339,23 @@ export function evaluateMobileRoute(
   // BLOCKING public-pass contract DEC-253 already relies on (minControlHeight/
   // minControlWidth over the narrow population, untouched, still gate it).
   offendersBlocking = true,
+  // Instrument-honesty fix: controlSelector widened to INTERACTIVE_CONTROL_
+  // SELECTOR (DEC-180/DEC-996 wave-35) folded EVERY visible interactive
+  // element into the raw population minControlHeight/minControlWidth take
+  // their min over — including elements the tree already carries a live
+  // `tap-floor-exempt:` receipt for (`.chq-visually-hidden`'s off-screen
+  // skip controls, `.chq-check`'s `.chq-check-hit` wrapper idiom, a file
+  // `<input>` whose real hit area is its styled `<label>`). Those controls
+  // were ALWAYS meant to be exempt — deriveAdminMobileExemptSelectors
+  // already classifies them EXEMPT for the roster/ceiling — but nothing
+  // upstream of this function ever consulted that classification before
+  // deciding minControlHeight/minControlWidth or the interactiveOffenders
+  // reason, so a route with nothing WRONG on it but one legitimately-1px
+  // exempt control still failed the BLOCKING gate. exemptSelectors (default
+  // empty, every existing caller/test byte-identical) is that same derived
+  // set, threaded in so the population this function grades on IS the
+  // population the roster already reports on (DEC-613).
+  exemptSelectors: ReadonlySet<string> = new Set(),
 ): MobileRouteResult {
   // DEC-401: also consider maxElementRight — an element clipped by an
   // ancestor's overflow:hidden can widen the visible page without moving
@@ -331,15 +371,47 @@ export function evaluateMobileRoute(
     }
     reasons.push(reason);
   }
-  const heightFails = observed.minControlHeight !== null && observed.minControlHeight < MIN_TAP_TARGET_PX;
-  const widthFails = observed.minControlWidth !== null && observed.minControlWidth < MIN_TAP_TARGET_PX;
+  // Instrument-honesty fix (see exemptSelectors' own comment above): when
+  // this route measured a non-empty interactiveMeasurements population, the
+  // BLOCKING minControlHeight/minControlWidth/minControlSelector are
+  // RECOMPUTED here from that population with every EXEMPT control (the
+  // same class-token predicate the offender roster already classifies with)
+  // excluded first — never trusting observed.minControlHeight/
+  // minControlWidth/minControlSelector directly, since those are a raw,
+  // exemption-blind population min computed in-browser before this
+  // function (or its caller) knows which classes carry a receipt. A route
+  // whose only measured controls are ALL exempt is genuinely vacuous for
+  // the blocking check, the same as a route with no controls at all — both
+  // read null and pass this check vacuously. Falls back to the raw
+  // observed.* fields untouched when interactiveMeasurements is empty (a
+  // caller/test that never populated it), so every existing call site stays
+  // byte-identical.
+  let blockingMinHeight = observed.minControlHeight;
+  let blockingMinWidth = observed.minControlWidth;
+  let blockingMinSelector = observed.minControlSelector;
+  const visibleMeasurements = observed.interactiveMeasurements.filter((m) => m.visible);
+  if (visibleMeasurements.length > 0) {
+    blockingMinHeight = null;
+    blockingMinWidth = null;
+    blockingMinSelector = null;
+    for (const m of visibleMeasurements) {
+      if (selectorCarriesExemptToken(m.selector, exemptSelectors).exempt) continue;
+      if (blockingMinWidth === null || m.width < blockingMinWidth) blockingMinWidth = m.width;
+      if (blockingMinHeight === null || m.height < blockingMinHeight) {
+        blockingMinHeight = m.height;
+        blockingMinSelector = m.selector;
+      }
+    }
+  }
+  const heightFails = blockingMinHeight !== null && blockingMinHeight < MIN_TAP_TARGET_PX;
+  const widthFails = blockingMinWidth !== null && blockingMinWidth < MIN_TAP_TARGET_PX;
   if (heightFails || widthFails) {
     const dims: string[] = [];
-    if (heightFails) dims.push(`control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`);
-    if (widthFails) dims.push(`control width ${observed.minControlWidth}px < ${MIN_TAP_TARGET_PX}px`);
+    if (heightFails) dims.push(`control height ${blockingMinHeight}px < ${MIN_TAP_TARGET_PX}px`);
+    if (widthFails) dims.push(`control width ${blockingMinWidth}px < ${MIN_TAP_TARGET_PX}px`);
     let reason = dims.join(", ");
-    if (observed.minControlSelector) {
-      reason += ` (${observed.minControlSelector})`;
+    if (blockingMinSelector) {
+      reason += ` (${blockingMinSelector})`;
     }
     reasons.push(reason);
   }
@@ -351,13 +423,26 @@ export function evaluateMobileRoute(
   // minControlHeight/minControlWidth above — reports every offending
   // control, not just the shortest one (this task's whole point). Additive
   // to the heightFails/widthFails reason above, which stays untouched (the
-  // public-pass contract DEC-253 already relies on).
+  // public-pass contract DEC-253 already relies on). `interactiveOffenders`
+  // itself stays the FULL unfiltered population (EXEMPT + CANDIDATE) — the
+  // roster/ceiling machinery downstream (deriveAdminMobileExemptSelectors,
+  // classifyAdminMobileOffender, the *_INTERACTIVE_OFFENDERS_CEILING two-
+  // sided ratchets) already classifies and counts EXEMPT vs CANDIDATE from
+  // this exact list and must keep seeing every sighting, not a pre-filtered
+  // one. Only the BLOCKING reason below — the thing that actually flips
+  // `ok` — is restricted to the non-EXEMPT (CANDIDATE) subset.
   const interactiveOffenderMeasurements = deriveInteractiveOffenders(observed.interactiveMeasurements, MIN_TAP_TARGET_PX);
   const interactiveOffenders = interactiveOffenderMeasurements.map(
     (m) => `${m.selector} w=${Math.round(m.width)}px h=${Math.round(m.height)}px`,
   );
-  if (offendersBlocking && interactiveOffenders.length > 0) {
-    reasons.push(`${interactiveOffenders.length} interactive offender(s) under ${MIN_TAP_TARGET_PX}px: ${interactiveOffenders.join(" | ")}`);
+  const blockingOffenders = interactiveOffenderMeasurements.filter(
+    (m) => !selectorCarriesExemptToken(m.selector, exemptSelectors).exempt,
+  );
+  if (offendersBlocking && blockingOffenders.length > 0) {
+    const blockingOffenderLines = blockingOffenders.map(
+      (m) => `${m.selector} w=${Math.round(m.width)}px h=${Math.round(m.height)}px`,
+    );
+    reasons.push(`${blockingOffenders.length} interactive offender(s) under ${MIN_TAP_TARGET_PX}px: ${blockingOffenderLines.join(" | ")}`);
   }
   // DEC-253 wave-30 amendment: same expected-status noise filter as the
   // desktop pass — a mobile row with a deliberate non-200 expectedStatus
@@ -663,8 +748,24 @@ export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = true;
  * by an already-adjudicated receipt — mostly the `.chq-visually-hidden`
  * skip-link idiom and `.chq-wordmark` — 22 CANDIDATE; see the gate's
  * console output and the roster this task wrote,
- * docs/design/audit/public-390-interactive-offenders-v12.md). */
-export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 41;
+ * docs/design/audit/public-390-interactive-offenders-v12.md).
+ *
+ * RE-MEASURED (instrument-honesty fix): the BLOCKING minControlHeight/
+ * minControlWidth/interactiveOffenders check (evaluateMobileRoute,
+ * render-sweep-lib.ts) never consulted this same exempt-token set before —
+ * it graded the raw, exemption-blind population, so a route with nothing
+ * wrong on it but one legitimately-EXEMPT control (a `.chq-visually-hidden`
+ * skip link, a `.chq-cfp-option`-wrapped radio, `.chq-pub-activefilters-
+ * clear`'s live 43.6875px sub-pixel width shortfall) still failed the
+ * public mobile pass. Fixing that (evaluateMobileRoute now takes
+ * exemptSelectors, scripts/render-sweep.ts's evaluateMobilePass derives it
+ * once per pass before evaluating) and floor-fixing
+ * `.chq-pub-activefilters-clear` (min-width:44px, chrome.css.ts) together
+ * dropped the printed total from 41 to 39 (`npm run gate:render-sweep`, this
+ * task's own worktree, public mobile pass now reads 28/28 routes passed).
+ * Ceiling LOWERED 41 -> 39 with this re-derivation as its receipt, same
+ * roster the gate just wrote. */
+export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 39;
 
 /** DEC-808 wave-35 amendment: two-sided ratchet on the public/portal 390
  * roster's CANDIDATE (non-exempt) half -- PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING
@@ -799,8 +900,20 @@ export const PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING = 0;
  * clause (d), a ceiling is never moved on an unfinished measurement, so
  * this constant stays at its last live-measured value (4) as a stale-but-
  * honest upper bound until a wave with gate access re-runs it, rather than
- * being silently arithmetic-adjusted here. */
-export const PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR = 4;
+ * being silently arithmetic-adjusted here.
+ *
+ * RE-MEASURED (instrument-honesty fix, same task/commit as
+ * PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING's own re-measurement above):
+ * `npm run gate:render-sweep` end-to-end against this task's own worktree
+ * HEAD. The public mobile roster's own printed vacuity clause now reads
+ * "Vacuous-narrow count: 1 (of 28 routes measured)" — only
+ * `/e/devflow-conf-2027/programme` remains genuinely controlless at 390px;
+ * every other route the wave-42 amendment could not resolve without a live
+ * gate run turned out (per that amendment's own "<= 4 and possibly lower"
+ * hedge) to draw a real, non-vacuous INTERACTIVE_CONTROL_SELECTOR
+ * population once actually measured. Floor LOWERED 4 -> 1 with this
+ * re-derivation as its receipt (DEC-967: measured, never invented). */
+export const PUBLIC_MOBILE_VACUOUS_NARROW_FLOOR = 1;
 
 /** DEC-808 wave-30 amendment: one row of the public/portal roster's vacuity
  * section — whether THIS route's narrow-population (MOBILE_CONTROL_SELECTOR)
@@ -881,13 +994,8 @@ export function classifyAdminMobileOffender(
   exemptSelectors: ReadonlySet<string>,
 ): AdminMobileOffenderClassification {
   const selectorPart = offenderLine.split(/\s+w=/)[0] ?? offenderLine;
-  const classTokens = (selectorPart.match(/\.[a-zA-Z0-9_-]+/g) ?? []).map((t) => t.slice(1));
-  for (const token of classTokens) {
-    if (exemptSelectors.has(token)) {
-      return { classification: "EXEMPT", receipt: token };
-    }
-  }
-  return { classification: "CANDIDATE" };
+  const { exempt, receipt } = selectorCarriesExemptToken(selectorPart, exemptSelectors);
+  return exempt ? { classification: "EXEMPT", receipt } : { classification: "CANDIDATE" };
 }
 
 /** Shape formatAdminMobileOffenderLedger needs from a MobileRouteResult —

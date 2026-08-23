@@ -50,6 +50,7 @@ import {
   allMobilePassed,
   allPassed,
   allTypeRolePassed,
+  deriveInteractiveOffenders,
   evaluateDeadlineNearestWeights,
   evaluateFontFloor,
   evaluateInteractionState,
@@ -75,6 +76,7 @@ import {
   INTERACTIVE_CONTROL_SELECTOR,
   interactionStateErrorResult,
   interactionStateSummaryLine,
+  MIN_TAP_TARGET_PX,
   mobileErrorResult,
   OVERVIEW_TYPE_ROLES,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
@@ -87,6 +89,7 @@ import {
   type InteractionStateEntry,
   type InteractionStateResult,
   type InteractiveMeasurement,
+  type MobileObservation,
   type MobileRouteEntry,
   type MobileRouteResult,
   type PublicMobileVacuityRow,
@@ -249,6 +252,43 @@ export const KNOWN_CLIP_EXCEPTIONS: Readonly<Record<string, string>> = {
   // designed truncation, not lost content.
   "/admin/agenda::div.chq-session-card-title": "intentional 3-line -webkit-line-clamp truncation",
 };
+
+/** Instrument-honesty fix: a clip candidate whose own selector already
+ * carries a live `tap-floor-exempt:` receipt (the SAME predicate
+ * deriveAdminMobileExemptSelectors/hasExemptionForToken already trust for
+ * the tap-floor gate, DEC-613: one predicate, never a second copy) is not a
+ * genuine clip either — the receipt's own fact ("deliberately visually
+ * hidden, off-screen, never a real design element") is exactly the fact
+ * that makes a scrollHeight/clientHeight mismatch on it meaningless.
+ * Concretely caught live: src/routes/portal/portal.css.ts's
+ * .chq-portal-headshot-pick-input (a native `<input type="file">` under the
+ * standard visually-hidden recipe — position:absolute, width/height:1px,
+ * overflow:hidden, clip:rect(0,0,0,0) — whose own `tap-floor-exempt:`
+ * comment already names it "a visually-hidden input whose operable target
+ * is its own <label>"). Its platform-rendered file-picker chrome does not
+ * fully respect CSS height in this rendering engine: overflow:hidden
+ * genuinely establishes a clipping context, but the rendered clientHeight
+ * settles above CLIP_VISUALLY_HIDDEN_MAX_PX (13px desktop, 44px mobile
+ * observed) instead of the declared 1px, so isGenuineClipOffender's own
+ * "clientHeight <= 1px" visually-hidden guard never trips for it — this is
+ * the SAME shape that guard exists for, just failing to reach it on this
+ * one element type. KNOWN_CLIP_EXCEPTIONS (DEC-991) stays reserved for
+ * genuine designed truncation (-webkit-line-clamp or equivalent, checked by
+ * test/horizontal-scroller-premise.scan.test.ts) — never a second, looser
+ * bucket for "not really a bug" facts a derived predicate can already
+ * reach. */
+function filterTapFloorExemptClipOffenders(offenders: readonly string[]): string[] {
+  if (offenders.length === 0) return [];
+  const sourceTexts = [
+    ...allCssFiles(join(REPO_ROOT, "app", "src")),
+    ...allSrcTsSourceFiles(join(REPO_ROOT, "src")),
+  ].map((f) => readFileSync(f, "utf-8"));
+  return offenders.filter((offender) => {
+    const selectorPart = offender.split(" clip=")[0] ?? offender;
+    const classTokens = (selectorPart.match(/\.[a-zA-Z0-9_-]+/g) ?? []).map((t) => t.slice(1));
+    return !classTokens.some((token) => sourceTexts.some((text) => hasExemptionForToken(text, token)));
+  });
+}
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -861,16 +901,44 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
       return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
     };
 
-    // DEC-620 wave-25 amendment (i): a real clipping context is overflow-x/y
-    // hidden|scroll|auto, or a clipping clip/clip-path — walking self up
-    // through every ancestor (an element clipped by a grandparent container
-    // is still clipped).
+    // DEC-620 wave-25 amendment (i): overflow-x/y hidden, or a clipping
+    // clip/clip-path, is an UNCONDITIONAL clipping context — that content is
+    // NEVER visible, no matter where the offending element sits. auto|scroll
+    // stays a clipping context too (a small, purpose-built scrollable widget
+    // — a dropdown, a modal body with a max-height — genuinely hides content
+    // below its own fold until the user scrolls THAT widget), with ONE
+    // instrument-honesty carve-out: `.chq-main`, app/src/styles.css's
+    // `flex:1; min-height:0; overflow-y:auto` page shell — the ONE ancestor
+    // present in the chain of literally every element on every /admin route,
+    // by design always shorter than a page whose content exceeds the
+    // viewport (that's what makes the app's OWN page scroll at all, not a
+    // bug). Treating it as clipping made ANY element anywhere on a
+    // longer-than-viewport page — however far from .chq-main's own
+    // bottom/right edge, however core or peripheral to what's on-screen at
+    // rest — register as "clipped" the instant its own scrollHeight/
+    // clientHeight differed by even a rounding px, which is a fact about the
+    // PAGE'S LENGTH, not about anything actually being invisible: every
+    // offender this carve-out was written against (h1.chq-page-title /
+    // h1.chq-settings-drill-title's design-pack-mandated, dozens-of-tests-
+    // pinned `line-height:1.05` tight display-type register —
+    // docs/design/Chautauqua *.dc.html — never a bug to loosen;
+    // div.chq-detail-participant-actions-cell; a bare task-view <span>)
+    // computes `overflow: visible` on itself, so nothing ever crops its own
+    // content — it simply paints a few px past its own tight box, or sits
+    // further down a page that is, like every admin page, naturally taller
+    // than 844px. A real bounded widget nested INSIDE `.chq-main` (its own,
+    // smaller overflow-y:auto/hidden) is untouched by this carve-out and
+    // still counts.
+    const isPageShellScrollWrapper = (el: Element): boolean => el.classList.contains("chq-main");
     const establishesClippingContext = (el: Element): boolean => {
       const style = getComputedStyle(el);
-      if (["hidden", "scroll", "auto"].includes(style.overflowX)) return true;
-      if (["hidden", "scroll", "auto"].includes(style.overflowY)) return true;
+      if (style.overflowX === "hidden") return true;
+      if (style.overflowY === "hidden") return true;
       if (style.clipPath && style.clipPath !== "none") return true;
       if (style.clip && style.clip !== "auto") return true;
+      if (isPageShellScrollWrapper(el)) return false;
+      if (["scroll", "auto"].includes(style.overflowX)) return true;
+      if (["scroll", "auto"].includes(style.overflowY)) return true;
       return false;
     };
     const hasClippingContext = (el: Element): boolean => {
@@ -1227,7 +1295,9 @@ async function visitRoute(
   // exception never fails the gate.
   let clipOffenders: string[] = [];
   try {
-    clipOffenders = filterKnownClipExceptions(entry.path, await measureClipOffenders(page), KNOWN_CLIP_EXCEPTIONS);
+    clipOffenders = filterTapFloorExemptClipOffenders(
+      filterKnownClipExceptions(entry.path, await measureClipOffenders(page), KNOWN_CLIP_EXCEPTIONS),
+    );
   } catch {
     clipOffenders = [];
   }
@@ -1301,8 +1371,33 @@ async function visitRoute(
   return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors, clipOffenders, landedPath });
 }
 
+/** Instrument-honesty fix: one route's raw measurement PLUS the
+ * offendersBlocking flag its eventual evaluateMobileRoute call needs —
+ * evaluation itself no longer happens inside visitMobileRoute (see that
+ * function's own comment). `kind: "error"` mirrors what used to become an
+ * immediate mobileErrorResult; the caller now builds that result later,
+ * once every route in the pass has been measured. */
+type MobileRouteMeasurement =
+  | { entry: MobileRouteEntry; kind: "ok"; observed: MobileObservation; offendersBlocking: boolean }
+  | { entry: MobileRouteEntry; kind: "error"; message: string };
+
 /** DEC-253: visits one mobile-manifest route in a 390x844 context and
- * measures page-level horizontal overflow + the shortest primary control. */
+ * measures page-level horizontal overflow + the shortest primary control.
+ *
+ * Instrument-honesty fix: this used to end by calling evaluateMobileRoute
+ * itself, deciding this route's PASS/FAIL in isolation. That meant the
+ * BLOCKING minControlHeight/minControlWidth/interactiveOffenders check had
+ * no way to know which of this route's controls carry a `tap-floor-exempt:`
+ * receipt (`deriveAdminMobileExemptSelectors`, this file) — that set is
+ * derived from an entire PASS's worth of offender lines, which does not
+ * exist until every route in the pass has been visited. So this function
+ * now stops at raw measurement and hands its caller a MobileRouteMeasurement
+ * instead of an already-evaluated MobileRouteResult; the caller (the public
+ * and admin mobile pass loops in main() below) derives the exempt set from
+ * every route's measurement FIRST, then calls evaluateMobileRoute once per
+ * route with that set applied. The call SHAPE at every existing call site
+ * (selector arguments, fontFloorResults, the trailing offendersBlocking
+ * flag) is unchanged. */
 async function visitMobileRoute(
   context: BrowserContext,
   baseUrl: string,
@@ -1323,13 +1418,14 @@ async function visitMobileRoute(
   // parameter is kept only so a future caller could still split the two
   // populations without a signature change.
   offenderSelector: string = controlSelector,
-  // DEC-808 wave-30 amendment: threaded straight to evaluateMobileRoute.
-  // Defaults true (byte-identical for the admin pass and every existing
-  // caller); the public pass passes PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING
-  // (false on landing) so the widened offenderSelector population never
-  // flips the BLOCKING public gate.
+  // DEC-808 wave-30 amendment: carried through to the caller's later
+  // evaluateMobileRoute call (see this function's own comment above) rather
+  // than applied here directly. Defaults true (byte-identical for the admin
+  // pass and every existing caller); the public pass passes
+  // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING (false on landing) so the widened
+  // offenderSelector population never flips the BLOCKING public gate.
   offendersBlocking = true,
-): Promise<MobileRouteResult> {
+): Promise<MobileRouteMeasurement> {
   const page = await context.newPage();
   // DEC-411: must run before the in-page evaluation below.
   await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
@@ -1507,13 +1603,59 @@ async function visitMobileRoute(
   // named exception never fails the gate.
   let clipOffenders: string[] = [];
   try {
-    clipOffenders = filterKnownClipExceptions(entry.path, await measureClipOffenders(page), KNOWN_CLIP_EXCEPTIONS);
+    clipOffenders = filterTapFloorExemptClipOffenders(
+      filterKnownClipExceptions(entry.path, await measureClipOffenders(page), KNOWN_CLIP_EXCEPTIONS),
+    );
   } catch {
     clipOffenders = [];
   }
 
   await page.close();
-  return evaluateMobileRoute(entry, { status, ...measured, clipOffenders, consoleErrors, pageErrors }, offendersBlocking);
+  return {
+    entry,
+    kind: "ok",
+    observed: { status, ...measured, clipOffenders, consoleErrors, pageErrors },
+    offendersBlocking,
+  };
+}
+
+/** Instrument-honesty fix (see visitMobileRoute's own comment): formats one
+ * route's raw measurement into the offender-line shape
+ * deriveAdminMobileExemptSelectors/classifyAdminMobileOffender already
+ * expect (`${selector} w=Npx h=Npx`), so the exempt-token set for a whole
+ * pass can be derived BEFORE evaluateMobileRoute runs instead of after —
+ * the SAME deriveInteractiveOffenders/MIN_TAP_TARGET_PX predicate
+ * evaluateMobileRoute itself applies to the identical
+ * observed.interactiveMeasurements population (DEC-613: one predicate). */
+function rawOffenderLines(observed: MobileObservation): string[] {
+  return deriveInteractiveOffenders(observed.interactiveMeasurements, MIN_TAP_TARGET_PX).map(
+    (m) => `${m.selector} w=${Math.round(m.width)}px h=${Math.round(m.height)}px`,
+  );
+}
+
+/** Instrument-honesty fix (see visitMobileRoute's own comment): turns one
+ * mobile pass's measurements into evaluated MobileRouteResults, deriving the
+ * exempt-token set ONCE from every route's own raw offenders first so
+ * evaluateMobileRoute's BLOCKING minControlHeight/minControlWidth/
+ * interactiveOffenders check can honor a `tap-floor-exempt:` receipt (or
+ * the `.chq-check-hit`/ancestor-wrapper idioms) the same way the roster
+ * already does. Returns both the evaluated results and the exempt set,
+ * since the caller's roster-writing code below needs the same set again
+ * (DEC-613: derived once, never recomputed a second way from the same
+ * inputs).
+ */
+function evaluateMobilePass(
+  measurements: readonly MobileRouteMeasurement[],
+): { results: MobileRouteResult[]; exemptSelectors: Set<string> } {
+  const exemptSelectors = deriveAdminMobileExemptSelectors(
+    measurements.flatMap((m) => (m.kind === "ok" ? rawOffenderLines(m.observed) : [])),
+  );
+  const results = measurements.map((m) =>
+    m.kind === "ok"
+      ? evaluateMobileRoute(m.entry, m.observed, m.offendersBlocking, exemptSelectors)
+      : mobileErrorResult(m.entry, m.message),
+  );
+  return { results, exemptSelectors };
 }
 
 async function main(): Promise<void> {
@@ -1644,18 +1786,18 @@ async function main(): Promise<void> {
       speakerLoginError = err instanceof Error ? err.message : String(err);
     }
 
-    const mobileResults: MobileRouteResult[] = [];
+    const mobileMeasurements: MobileRouteMeasurement[] = [];
     for (const entry of MOBILE_ROUTE_MANIFEST) {
       const context = mobileContextByRole.get(entry.role);
       if (!context) {
-        mobileResults.push(
-          mobileErrorResult(
-            entry,
+        mobileMeasurements.push({
+          entry,
+          kind: "error",
+          message:
             speakerLoginError !== undefined
               ? `login failed for role '${entry.role}': ${speakerLoginError}`
               : `no mobile browser context for role '${entry.role}'`,
-          ),
-        );
+        });
         continue;
       }
       try {
@@ -1671,7 +1813,7 @@ async function main(): Promise<void> {
         // PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING (false on landing) so the
         // per-offender ceiling (a different, advisory check) never flips
         // this pass's exit code on its own.
-        mobileResults.push(
+        mobileMeasurements.push(
           await visitMobileRoute(
             context,
             baseUrl,
@@ -1683,10 +1825,17 @@ async function main(): Promise<void> {
           ),
         );
       } catch (err) {
-        mobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
+        mobileMeasurements.push({ entry, kind: "error", message: err instanceof Error ? err.message : String(err) });
       }
     }
     for (const ctx of mobileContextByRole.values()) await ctx.close();
+
+    // Instrument-honesty fix: evaluate every route AFTER every route in this
+    // pass has been measured, so the exempt-token set evaluateMobileRoute
+    // applies is derived from the pass's OWN full offender population, not
+    // an empty set (see visitMobileRoute's/evaluateMobilePass's own
+    // comments above).
+    const { results: mobileResults, exemptSelectors: publicMobileExemptTokens } = evaluateMobilePass(mobileMeasurements);
 
     console.log("");
     console.log(formatMobileResultsTable(mobileResults));
@@ -1717,15 +1866,11 @@ async function main(): Promise<void> {
 
     // DEC-996 idiom, DEC-808 wave-30 amendment: write the roster this pass
     // just measured unconditionally, same as the admin roster below —
-    // never discarded to scrollback. Exempt tokens are DERIVED from this
-    // run's own offenders against the tree's own receipts (never
-    // hand-listed), reusing deriveAdminMobileExemptSelectors verbatim
-    // (DEC-613: never a second predicate) — it is generic over any
-    // offender-line population, not admin-specific.
+    // never discarded to scrollback. publicMobileExemptTokens is the SAME
+    // set evaluateMobilePass already derived above to grade the BLOCKING
+    // check (DEC-613: derived once, never a second computation from the
+    // same offender-line population).
     const publicMobileLedgerPath = join(REPO_ROOT, "docs", "design", "audit", "public-390-interactive-offenders-v12.md");
-    const publicMobileExemptTokens = deriveAdminMobileExemptSelectors(
-      mobileResults.flatMap((r) => r.interactiveOffenders),
-    );
     // DEC-180 wave-35 amendment: `r.minControlHeight` is now measured over
     // INTERACTIVE_CONTROL_SELECTOR (the narrow MOBILE_CONTROL_SELECTOR
     // population this vacuity clause originally named is retired above), so
@@ -1781,31 +1926,37 @@ async function main(): Promise<void> {
       }
     }
 
-    const adminMobileResults: MobileRouteResult[] = [];
+    const adminMobileMeasurements: MobileRouteMeasurement[] = [];
     for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
       const role = entry.role as "organizer" | "reviewer";
       const context = adminMobileContextByRole.get(role);
       if (!context) {
         const loginError = adminLoginErrorByRole.get(role);
-        adminMobileResults.push(
-          mobileErrorResult(
-            entry,
+        adminMobileMeasurements.push({
+          entry,
+          kind: "error",
+          message:
             loginError !== undefined
               ? `login failed for role '${entry.role}': ${loginError}`
               : `no admin mobile browser context for role '${entry.role}'`,
-          ),
-        );
+        });
         continue;
       }
       try {
-        adminMobileResults.push(
+        adminMobileMeasurements.push(
           await visitMobileRoute(context, baseUrl, entry, INTERACTIVE_CONTROL_SELECTOR, fontFloorResults),
         );
       } catch (err) {
-        adminMobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
+        adminMobileMeasurements.push({ entry, kind: "error", message: err instanceof Error ? err.message : String(err) });
       }
     }
     for (const ctx of adminMobileContextByRole.values()) await ctx.close();
+
+    // Instrument-honesty fix: same two-phase measure-then-evaluate flow as
+    // the public mobile pass above.
+    const { results: adminMobileResults, exemptSelectors: adminMobileExemptTokens } = evaluateMobilePass(
+      adminMobileMeasurements,
+    );
 
     console.log("");
     console.log(formatMobileResultsTable(adminMobileResults));
@@ -1834,14 +1985,10 @@ async function main(): Promise<void> {
     // a gate that measures and discards to scrollback is DEC-851's
     // declared-knob-with-no-reader shape, inverted (a measured value with no
     // reader). Unconditional on every gate run, whether or not this pass
-    // fails, so the tree always reflects the last measurement. The exempt
-    // set is DERIVED from THIS run's own offenders against the tree's own
-    // receipts (never hand-listed) — same idiom
-    // test/admin-390-offender-roster.scan.test.ts derives independently.
+    // fails, so the tree always reflects the last measurement.
+    // adminMobileExemptTokens is the SAME set evaluateMobilePass already
+    // derived above to grade the BLOCKING check (DEC-613: derived once).
     const adminMobileLedgerPath = join(REPO_ROOT, "docs", "design", "audit", "admin-mobile-tap-floor-390-v12.md");
-    const adminMobileExemptTokens = deriveAdminMobileExemptSelectors(
-      adminMobileResults.flatMap((r) => r.interactiveOffenders),
-    );
     writeFileSync(
       adminMobileLedgerPath,
       formatAdminMobileOffenderLedger(

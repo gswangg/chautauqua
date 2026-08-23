@@ -490,12 +490,12 @@ describe("public-390-offender-roster classification (DEC-808 wave-35 amendment)"
 // ---------------------------------------------------------------------------
 
 describe("public-390-offender-roster EXEMPT-BY-COMPOSITION (DEC-808 wave-50 amendment, task w50-b)", () => {
-  it("all 20 of the roster's bare CANDIDATE `a`/`input` rows resolve EXEMPT-BY-COMPOSITION -- the ancestor axis leaves ZERO candidate defects", () => {
+  it("the live roster's candidate defects stay at ZERO -- its former 20 bare CANDIDATE `a`/`input` rows have since drifted into their own directly-receipted class tokens (this describe block's own header comment), so EXEMPT-BY-COMPOSITION now resolves none of them, not because the ancestor axis stopped working (still proven by the synthetic control below) but because there is nothing bare left for it to reach", () => {
     const exemptTokens = deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES));
     const { candidateCount, candidateRows, exemptByCompositionRows } = classifyRows(OFFENDER_LINES, exemptTokens);
     expect(candidateRows, `unresolved candidate rows: ${candidateRows.join(", ")}`).toEqual([]);
     expect(candidateCount).toBe(0);
-    expect(exemptByCompositionRows.length).toBe(20);
+    expect(exemptByCompositionRows).toEqual([]);
   });
 
   it("synthetic control: isExemptByComposition-equivalent wiring -- a bare row whose route|tag key IS in FLOORED_BY_ANCESTOR_ROWS resolves EXEMPT-BY-COMPOSITION; the identical row on an unlisted route stays CANDIDATE; a row that DOES carry a class token is never eligible for this clause even if its route|tag key happens to be listed", () => {
@@ -524,24 +524,44 @@ describe("public-390-offender-roster REPAIRED-SINCE-SNAPSHOT re-grounding (DEC-8
     expect(MIN_TAP_TARGET_PX).toBe(44);
   });
 
-  it("of the roster's CANDIDATE-labelled rows, exactly the two class-bearing ones (chq-docs-phone-back, chq-pub-activefilters-clear) reclassify REPAIRED-SINCE-SNAPSHOT against the tree's current stylesheets", () => {
+  it("the live roster no longer carries a stale CANDIDATE row for either of the two REPAIRED-SINCE-SNAPSHOT class tokens this amendment was written against (chq-docs-phone-back, chq-pub-activefilters-clear) -- both were regenerated straight out of the roster once their underlying controls were actually floored, rather than lingering as a row this clause has to reclassify", () => {
+    // Instrument-honesty fix (render-sweep.ts/render-sweep-lib.ts,
+    // scripts/render-sweep.ts's chq-pub-activefilters-clear min-width fix,
+    // chrome.css.ts): the roster this task's own `npm run gate:render-sweep`
+    // run wrote no longer lists either token at all -- .chq-pub-
+    // activefilters-clear now measures a real 44px (min-width:44px added)
+    // and .chq-docs-phone-back was already floored before this task. A
+    // control that is genuinely fixed disappears from the roster on the
+    // next regeneration; it never sits there waiting for this clause to
+    // reclassify it out of CANDIDATE. REPAIRED-SINCE-SNAPSHOT stays a real,
+    // needed mechanism for the gap BETWEEN a CSS repair landing and the next
+    // `gate:render-sweep` regenerating the roster -- proven by the synthetic
+    // control below, never by a live row this task's own fix just erased.
     const stylesheetTexts = CURRENT_STYLESHEET_TEXTS;
     const { repairedRows } = classifyRows(
       OFFENDER_LINES,
       deriveExemptSelectors(candidateTokensOf(OFFENDER_LINES)),
       stylesheetTexts,
     );
-    expect(repairedRows.sort()).toEqual(
-      [
-        "/docs/start-here a.chq-docs-phone-back",
-        "/embed/e/seed_embed_0001 a.chq-pub-activefilters-clear",
-      ].sort(),
-    );
+    expect(repairedRows).toEqual([]);
+    expect(ROSTER_TEXT).not.toContain("chq-docs-phone-back");
+    expect(ROSTER_TEXT).not.toContain("chq-pub-activefilters-clear");
   });
 
-  it("every roster row with NO class token (a bare a/input tag) can never reclassify REPAIRED-SINCE-SNAPSHOT (no token to look up)", () => {
+  it("the live roster currently carries NO bare a/input row at all (every offender line already carries its own class token with a direct receipt) -- the classless-row invariant this clause protects is proven by the synthetic control below instead", () => {
+    // Instrument-honesty fix: DEVIATIONS.md §10's rung-3 drift (already
+    // documented above this describe block, wave-50's own w50-b comment)
+    // -- every anchor this roster's population once reached as a bare tag
+    // has since gained its own class token and a live `tap-floor-exempt:`
+    // receipt (chq-cfp-intro-cta-link, chq-cfp-identity-note-link,
+    // chq-portal-file-link, chq-pub-detail-speaker-link,
+    // chq-pub-agenda-day-footer-next, chq-docs-auth-link). A live roster
+    // with zero bare rows is not a broken measurement -- it is the
+    // population this test's own history predicted resolving to. The
+    // for-loop below still runs (vacuously, over an empty array) rather
+    // than being deleted, so a FUTURE bare row would still be checked.
     const bareTokenRows = OFFENDER_LINES.filter((r) => rowTokens(r).length === 0);
-    expect(bareTokenRows.length).toBeGreaterThan(0);
+    expect(bareTokenRows).toEqual([]);
     const stylesheetTexts = CURRENT_STYLESHEET_TEXTS;
     for (const row of bareTokenRows) {
       expect(rowTokens(row).some((t) => tokenRepairedSinceSnapshot(stylesheetTexts, t))).toBe(false);
