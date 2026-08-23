@@ -1000,6 +1000,43 @@ const LEDGER: LedgerEntry[] = [
       testFile: "app/src/pages/agenda/BreaksPanel.render.test.tsx",
     },
   },
+  // ---- ## 10. Wave 35 rulings (DEC-393 wave-35 amendment) ---------------
+  {
+    key: "cfp-new-speaker-create-an-account-src-routes-public-submit-views-tsx-chq-cfp-intro-cta-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 amendment: neither the desktop nor the 390 Submit-a-talk frame extent draws a 'Create an account' control and there is no same-surface floored twin reaching #chq-cfp-submit-form, so rung 1 and rung 2 both fail. The link stays inline prose at its line-box height, scoped exempt by its own chq- class token on the empty tap-floor-exempt rule.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/cfp.css.ts",
+      literal: "tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142",
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
+  {
+    key: "cfp-already-have-an-account-sign-in-to-the-speaker-portal-src-routes-public-submit-views-tsx-chq-cfp-identity-note-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 amendment: same two frame extents draw no 'Sign in' control and the page carries no other floored control reaching /login, so rung 1 and rung 2 fail for the identical reason as the intro-cta entry above. The link stays inline prose, scoped exempt by its own chq- class token.",
+    honored: {
+      kind: "present",
+      file: "src/routes/public/cfp.css.ts",
+      literal: "DEC-393 wave-35 amendment (task",
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
+  {
+    key: "docs-login-reference-src-routes-docs-tsx-chq-docs-auth-link",
+    status: "honored",
+    reason:
+      "DEC-393 wave-35 amendment: /docs/api has no v12 frame of any kind (DEC-382: operator chrome, not a designed screen), so rung 1 and rung 2 both fail by construction and the reference-page prose link stays unfloored, scoped exempt by its own chq- class token on the empty tap-floor-exempt rule.",
+    honored: {
+      kind: "present",
+      file: "src/routes/tools.css.ts",
+      literal: "tap-floor-exempt: inline-in-prose -- DEC-393 wave-35 amendment (task",
+      testFile: "test/public-390-inline-link-grounding.test.ts",
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1197,8 +1234,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     }
   });
 
-  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all ten real headings", () => {
-    expect(LEDGER_SECTIONS.length).toBe(10);
+  it("LEDGER_SECTIONS is derived from the live file, not a literal array, and finds all eleven real headings", () => {
+    expect(LEDGER_SECTIONS.length).toBe(11);
     for (const heading of LEDGER_SECTIONS) {
       expect(DEVIATIONS_TEXT.includes(heading), `expected DEVIATIONS.md to contain "${heading}"`).toBe(true);
     }
@@ -1217,7 +1254,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment, wave-31 population
     expect(bySection.get("## 7. Settled frame divergences (wave 16 amendment, DEC-663)")).toBe(18);
     expect(bySection.get("## 8. Wave 9 rulings (DEC-976 / DEC-781 wave-9 amendments)")).toBe(4);
     expect(bySection.get("## 9. Wave 34 rulings (DEC-021 wave-34 amendment)")).toBe(1);
-    expect(derived.length).toBe(82);
+    expect(bySection.get("## 10. Wave 35 rulings (DEC-393 wave-35 amendment): ungrounded inline-prose tap-floor links")).toBe(3);
+    expect(derived.length).toBe(85);
   });
 
   it("'## 5. Pending adjudication' derives exactly one DIVIDER row (its own heading), never re-deriving ## 6's 'tracks-and-rooms-save-model' bullet -- no key collision between the two sections", () => {
