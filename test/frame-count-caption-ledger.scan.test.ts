@@ -6,25 +6,27 @@
 // render, graded by a different instrument were one to exist" -- and none
 // existed. This is that instrument.
 //
-// STALENESS NOTE (read before trusting the ruling's own disjointness
-// clause): test/frame-caption-ledger/population.ts's own wave-142/w17-f
-// comment records that the caption ledger's digit discriminator was
-// RETIRED before this DEC-180 wave-28 amendment was authored -- the
-// amendment's header text ("that ledger's population excludes digits, this
-// one requires one") quotes the caption ledger's *header prose*, which was
-// never updated after the retirement, not its *live grammar*. Measured
-// directly on this branch: docs/design/*.dc.html yields 378 rows under the
-// caption ledger's colour/length/no-`@` grammar with NO digit filter
-// (identical to ./frame-caption-ledger/population.ts's live ALL_CAPTIONS),
-// of which 145 carry a digit -- so this ledger's population is a SUBSET of
-// the caption ledger's live population, not disjoint from it. The
-// "disjointness" test below proves and documents that true relationship
-// (full containment) rather than asserting the ruling's stale premise,
-// per this repo's fail-loudly rule: a false assertion is not a substitute
-// for a true one. Flagged for the scribe to reconcile in a future
-// amendment; DEC-180's actual DIRECTIVE (build this ledger, use a grader
-// that differs from the caption ledger's by construction) is honoured
-// regardless of which way this one factual aside points.
+// STALENESS NOTE, RECONCILED (DEC-180 wave-42 amendment; was: "flagged for
+// the scribe to reconcile in a future amendment" -- now reconciled):
+// test/frame-caption-ledger/population.ts's own wave-142/w17-f comment
+// records that the caption ledger's digit discriminator was RETIRED before
+// this DEC-180 wave-28 amendment was authored -- the amendment's header
+// text ("that ledger's population excludes digits, this one requires one")
+// quotes the caption ledger's *header prose*, which was never updated
+// after the retirement, not its *live grammar*. Measured directly on this
+// branch: docs/design/*.dc.html yields 378 rows under the caption ledger's
+// colour/length/no-`@` grammar with NO digit filter (identical to
+// ./frame-caption-ledger/population.ts's live ALL_CAPTIONS), of which 145
+// carry a digit -- so this ledger's population is a SUBSET of the caption
+// ledger's live population, in full containment, not disjoint from it (the
+// "containment" test below proves and documents that true relationship).
+// The wave-42 amendment closes the loop this staleness note opened: the
+// OUT_OF_CAMPAIGN_SCOPE excuse's claim that every row here "resolves under
+// [the caption ledger's] stronger grader" was, until this amendment,
+// asserted on the strength of containment plus a 16-row hand sample, never
+// run. `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING` (below) is that grader
+// run over the actual 113-row population, forced to -1 and read back: 0.
+// The excuse's premise is now PROVEN for all 113 rows, not merely cited.
 //
 //   1. POPULATION -- derived from docs/design/*.dc.html at test time
 //      (readdirSync, DEC-808), never hand-listed. Ported (not imported,
@@ -89,7 +91,12 @@
 //      Two-sided, identical shape to every prior ledger in this campaign:
 //      one `it` fails when the count rises above the ceiling (printing the
 //      offender list), a companion `it` fails when it falls below (printing
-//      the exact replacement line).
+//      the exact replacement line). DEC-180 wave-42 amendment adds a
+//      second, identically-shaped two-sided ratchet,
+//      COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING, over `UNMATCHED_BY_BOTH` --
+//      the subset of `UNMATCHED` that ALSO fails the caption ledger's own
+//      stronger grader. Measured 0: the OUT_OF_CAMPAIGN_SCOPE excuse's
+//      premise holds for every row, proven rather than cited.
 //
 // This is a newly measured, previously-uncounted population -- registered
 // in scripts/exit-predicate.ts's OUT_OF_CAMPAIGN_SCOPE with the same
@@ -99,16 +106,22 @@
 // ONLY -- this file moves no product byte; every one of the 16
 // population rows this task found with no pre-existing caption-ledger
 // exclusion citation is named in docs/design/audit/frame-count-caption-
-// ledger-v12.md, none of them DIVERGES (the caption ledger's own
-// FRAME_CAPTION_UNMATCHED_CEILING = 0 means every one of them already
-// resolves under that ledger's stronger, merge-placeholder-aware grader --
-// this ledger's own UNMATCHED count is an instrument-completeness fact
-// about ITS narrower technique, not a copy-fidelity claim about the app).
+// ledger-v12.md, none of them DIVERGES. DEC-180 wave-42 amendment: this is
+// no longer an unverified claim -- `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING`
+// runs the caption ledger's own stronger, merge-placeholder-aware grader
+// (imported from test/frame-caption-ledger/match.ts, never re-implemented)
+// over all FRAME_COUNT_CAPTION_UNMATCHED_CEILING rows and measures 0: every
+// one of them resolves under that ledger's own final UNMATCHED computation
+// (the same one that produces its FRAME_CAPTION_UNMATCHED_CEILING = 0) --
+// this ledger's own UNMATCHED count remains an instrument-completeness fact
+// about ITS narrower technique, not a copy-fidelity claim about the app,
+// and that fact is now checked rather than merely cited.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_099, DEC_180, DEC_613, DEC_808 } from '../src/decisions';
+import { captionIsMatched, normalizeCaption, UNMATCHED as CAPTION_LEDGER_UNMATCHED } from './frame-caption-ledger/match';
 import { ALL_CAPTIONS } from './frame-caption-ledger/population';
 import { enumerateSourceFiles, normalizeSource, stripComments } from './frame-source-corpus';
 
@@ -417,15 +430,48 @@ export const UNMATCHED: CountCaption[] = AFTER_EXCLUSION.filter(
   (c) => !countCaptionIsMatched(c.text, DIGIT_COLLAPSED_SOURCE_BLOBS)
 );
 
+// -- Cross-check against the caption ledger's own stronger grader --------
+// DEC-180 wave-42 amendment: the OUT_OF_CAMPAIGN_SCOPE excuse for
+// FRAME_COUNT_CAPTION_UNMATCHED_CEILING claims every row below "already
+// resolves under [the caption ledger's] stronger, merge-placeholder-aware
+// grader" -- but nothing ran that grader over these 113 rows until now.
+// `CAPTION_LEDGER_UNMATCHED` (imported, not re-derived, per DEC-613) IS
+// that ledger's own final unmatched set: population -> its six exclusion
+// tables (verbatim-cited hand classifications, not a second copy of them)
+// -> `captionIsMatched`'s verbatim + digit-skeleton/merge-placeholder pass
+// -- exactly the computation that produces that ledger's own
+// FRAME_CAPTION_UNMATCHED_CEILING = 0. A row "resolves under ITS stronger
+// grader" precisely when it is NOT a member of that set.
+function resolvesUnderCaptionLedger(c: CountCaption): boolean {
+  return !CAPTION_LEDGER_UNMATCHED.some((u) => u.fileName === c.fileName && u.line === c.line && u.text === c.text);
+}
+
+/** Rows this ledger's own weak, digit-collapse-only grader leaves
+ * unmatched AND that the caption ledger's stronger grader also fails to
+ * resolve -- i.e. rows where the OUT_OF_CAMPAIGN_SCOPE excuse's premise is
+ * actually false. Exported so the ratchet below is measured, not
+ * asserted. */
+export const UNMATCHED_BY_BOTH: CountCaption[] = UNMATCHED.filter((c) => !resolvesUnderCaptionLedger(c));
+
 // -- Ratchet --------------------------------------------------------------
 // Measured on this branch (v12m-w28-h) by forcing to -1 and reading the
 // printed offender list back. See docs/design/audit/frame-count-caption-
 // ledger-v12.md for the full per-row breakdown of the 16 population rows
-// this task found with no pre-existing caption-ledger exclusion citation
-// (none DIVERGES -- every one already resolves under the caption ledger's
-// own stronger, merge-placeholder-aware grader, per that ledger's own
-// FRAME_CAPTION_UNMATCHED_CEILING = 0).
+// this task found with no pre-existing caption-ledger exclusion citation.
+// DEC-180 wave-42 amendment PROVED (not merely asserted) that none of
+// these 113 rows DIVERGES: `COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING` below,
+// measured by forcing to -1 and reading the printed offenders back, is 0 --
+// the caption ledger's own stronger, merge-placeholder-aware grader
+// (imported from test/frame-caption-ledger/match.ts, never re-implemented)
+// resolves every row this ledger's own weaker grader misses.
 export const FRAME_COUNT_CAPTION_UNMATCHED_CEILING = 113;
+
+// Measured on this branch (v12m-w42-e) by forcing to -1 and reading the
+// printed offender list back: 0. See the module header's DEC-180 wave-42
+// amendment note above `resolvesUnderCaptionLedger` for what this
+// computation is. Two-sided, identical shape to every other ledger in this
+// campaign.
+export const COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING = 0;
 
 describe('frame count-caption ledger (DEC-180 wave-28, v12 mobile campaign)', () => {
   it('non-vacuity: population is non-trivial and spans multiple files', () => {
@@ -574,6 +620,65 @@ describe('frame count-caption ledger (DEC-180 wave-28, v12 mobile campaign)', ()
       );
     }
     expect(UNMATCHED.length).toBeGreaterThanOrEqual(FRAME_COUNT_CAPTION_UNMATCHED_CEILING);
+  });
+
+  // DEC-180 wave-42 amendment: run the stronger grader the
+  // OUT_OF_CAMPAIGN_SCOPE excuse merely cites, over all
+  // FRAME_COUNT_CAPTION_UNMATCHED_CEILING rows, instead of trusting the
+  // excuse's own unverified claim.
+  it(
+    "every row this ledger's own weak grader misses resolves under the caption ledger's own stronger, " +
+      'merge-placeholder-aware grader (DEC-180 wave-42: the OUT_OF_CAMPAIGN_SCOPE excuse, checked rather than cited)',
+    () => {
+      if (UNMATCHED_BY_BOTH.length > 0) {
+        const offenders = UNMATCHED_BY_BOTH.map((c) => `${c.fileName}:${c.line} -- "${c.text}"`);
+        throw new Error(
+          `${UNMATCHED_BY_BOTH.length} count captions unmatched by BOTH this ledger's own weak grader AND the ` +
+            `caption ledger's stronger grader -- the OUT_OF_CAMPAIGN_SCOPE excuse's premise is false for these rows. ` +
+            `Name each individually in docs/design/audit/frame-count-caption-ledger-v12.md. Offenders:\n${offenders.join('\n')}`
+        );
+      }
+      expect(UNMATCHED_BY_BOTH.length).toBe(0);
+    }
+  );
+
+  it(`never exceeds COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING (${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}) doubly-unmatched count captions`, () => {
+    if (UNMATCHED_BY_BOTH.length > COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING) {
+      const offenders = UNMATCHED_BY_BOTH.map((c) => `${c.fileName}:${c.line} -- "${c.text}"`);
+      throw new Error(
+        `${UNMATCHED_BY_BOTH.length} doubly-unmatched count captions, above the ceiling of ` +
+          `${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}. COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING may only be RAISED ` +
+          `(a merge-train act, never a worker's edit mid-lane), and only once re-measured against the integrated ` +
+          `tree. Offenders:\n${offenders.join('\n')}`
+      );
+    }
+    expect(UNMATCHED_BY_BOTH.length).toBeLessThanOrEqual(COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING);
+  });
+
+  it(`never sits BELOW COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING (${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}) without the ceiling being lowered to match`, () => {
+    if (UNMATCHED_BY_BOTH.length < COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING) {
+      throw new Error(
+        `${UNMATCHED_BY_BOTH.length} doubly-unmatched count captions, below the ceiling of ` +
+          `${COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING}. Lower the ceiling in the same commit by replacing the line:\n` +
+          `  export const COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING = ${UNMATCHED_BY_BOTH.length};`
+      );
+    }
+    expect(UNMATCHED_BY_BOTH.length).toBeGreaterThanOrEqual(COUNT_CAPTION_UNMATCHED_BY_BOTH_CEILING);
+  });
+
+  it('synthetic control: the stronger grader resolves a fabricated caption composed with a merge placeholder, and rejects one neither grader reaches', () => {
+    const fabricatedSourceRaw =
+      'const msg = `Zzy Synthetic Stronger Grader ${count} present in the corpus below.`;';
+    const fabricatedNormalizedBlob = normalizeCaption(fabricatedSourceRaw);
+    const resolvedCaption = 'Zzy Synthetic Stronger Grader 7 present in the corpus below.';
+    const unresolvedCaption = 'Zzy Synthetic Stronger Grader Absent From Any Corpus At All.';
+    // Resolves: the digit-skeleton + merge-placeholder collapse this
+    // ledger's own weak grader deliberately omits is exactly what the
+    // caption ledger's captionIsMatched supplies.
+    expect(captionIsMatched(resolvedCaption, [fabricatedNormalizedBlob])).toBe(true);
+    // Rejects: no digit-collapse or placeholder-collapse trick papers over
+    // an actual absence.
+    expect(captionIsMatched(unresolvedCaption, [fabricatedNormalizedBlob])).toBe(false);
   });
 
   it('a decision-registry file quoting a count caption does NOT satisfy the ledger (DEC-967 sighting shape, DEC-613)', () => {
