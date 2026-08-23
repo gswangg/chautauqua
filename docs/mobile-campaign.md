@@ -54,6 +54,7 @@ test:fast` there and records a fresh sha. All fourteen were instrument rows
 (campaign ledgers/scans, not screens) owned by named in-flight lanes at the
 time this measurement was taken — this file does not name the branches, an
 unmerged branch is not a fact about main.
+RE-MEASURED (wave 48, task w48-c): `npm run test:fast` at main 3d8e4b8bb measured 1417 files / 18,633 tests, 5 files / 5 tests RED (361s), of which four (`app/src/frame-citation.scan.test.ts`, `app/src/phone-twin-visibility.scan.test.ts`, `test/audit-ratchet-statement-drift.scan.test.ts`, `test/count-grammar.test.ts`) read GREEN at main 01e1d12e2 after two medic commits landed in between, leaving only `test/citation-form-drift.scan.test.ts` red. `npx vitest run 390 phone Phone frame-verdicts.render frame390.render` at main 01e1d12e2 measured 217 files / 2442 tests, 0 RED — the phone AND frame tiers are both fully green. `npx tsx scripts/exit-predicate.ts --product-sha 01e1d12e2` prints its whole table with exactly three non-zero rows — `PUBLIC_MOBILE_CANDIDATE_DEFECT_CEILING` = 20, `INLINE_PROSE_UNVERIFIABLE_CEILING` = 8, `TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` = 77 — all owned by in-flight lanes w44-j / w44-g / w44-e; both frame floors are saturated (desktop 100/100, phone 53/53). This paragraph is self-contained; it does not restate or supersede any other Tier-0 row.
 
 ## Tier 0 — fidelity on landed work (verify first, then fix)
 
