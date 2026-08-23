@@ -695,6 +695,34 @@ export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
     + "draws. The fast tier is the only instrument that can ever supply the exit predicate's "
     + "--suite-verified-sha, so this measures the gate's integrity, never product convergence "
     + "(test/gate-timeout-margin.scan.test.ts, DEC-069 wave-35 amendment).",
+  // wave-39 (task w39-b, DEC-576 wave-39 amendment): the TWIN VISIBILITY LEDGER --
+  // a newly-derived population (every `dock={...}` call site under src/routes/portal/**,
+  // graded against the DEC-576 top-level-display:none / phone-media-reveal / same-page
+  // unconditionally-rendered inline twin idiom `.chq-portal-edit-dock` /
+  // `.chq-portal-taskform-dock` already carry) that no prior instrument graded --
+  // MARKUP_PHONE_UNHIDDEN_CEILING's population is keyed on a literal `phone` substring in
+  // the class token, which neither of these dock/twin class families carries at all, so
+  // the live /portal/profile desktop double-Save sat under a green ceiling. A newly
+  // measured, previously-uncounted population must not move the campaign's goalposts
+  // mid-convergence; it is promoted once the CLASSLESS-TWIN sibling below is drained to 0
+  // (app/src/phone-twin-visibility.scan.test.ts).
+  TWIN_VISIBILITY_OFFENDER_CEILING:
+    "measures dock={...} call sites whose class token IS reachable by a selector but whose "
+    + "CSS half of the DEC-576 idiom is incomplete (no top-level display:none, never revived "
+    + "at phone, or no same-page inline twin found) -- a real twin-visibility defect count over "
+    + "a newly-derived population, per DEC-069's own promotion clause: not itself yet promoted "
+    + "into the exit gate, the same disposition already given to "
+    + "PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING (app/src/phone-twin-visibility.scan.test.ts).",
+  TWIN_VISIBILITY_CLASSLESS_CEILING:
+    "measures dock={...} call sites whose markup carries NO chq- class token besides the "
+    + "app's generic chq-btn* button-utility classes -- no selector can ever reach that copy "
+    + "to hide it at any width, so it is not itself a graded defect COUNT so much as a roster "
+    + "of sites structurally incapable of the DEC-576 idiom until given a dock-specific class "
+    + "(the same 'row in the roster, not a silent pass' disposition TAP_FLOOR_EXEMPT_UNVERIFIABLE_"
+    + "PREMISE_CEILING already carries); one named row (src/routes/portal/profile.tsx's "
+    + "profileDock) is the live /portal/profile desktop double-Save's root cause, a product "
+    + "fix this measurement-only instrument does not itself make "
+    + "(app/src/phone-twin-visibility.scan.test.ts, docs/design/audit/phone-twin-visibility-v12.md).",
 };
 
 /**
