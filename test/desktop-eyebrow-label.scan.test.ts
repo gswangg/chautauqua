@@ -139,7 +139,8 @@
 //
 // This file MEASURES AND ADJUDICATES ONLY -- it moves no product byte and
 // no CSS (DESKTOP IS FROZEN).
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -200,17 +201,27 @@ export function designFiles(): string[] {
     .sort();
 }
 
-/** The 1-based line number of `fileName`'s own single `</x-dc>` close, or
- * Infinity if none exists. Throws loudly if more than one is found -- the
- * task's own premise ("the file's single </x-dc> line") is an assumption
- * this function verifies rather than trusts. */
-function xdcCloseLine(lines: string[]): number {
+/** DEC-967 wave-44 (third derivation): the 1-based line of the single
+ * `</x-dc>` template close in `fullPath`, throwing loudly on zero or
+ * multiple matches. A frame's extent is never allowed to reach past this
+ * line -- without the clip, the last labelled block of a file swallows the
+ * template's own closing tag and everything after it (fixture
+ * `data-dc-script` bodies, trailing markup). Ported (not imported), the
+ * same shape v12m-w41-c landed in test/phone-frame-ledger.scan.test.ts and
+ * test/frame-eyebrow-label.scan.test.ts already carry, per this file's own
+ * module-header "port, don't cross-import a population walk" convention --
+ * this file's own prior local copy (`xdcCloseLine`, lines-array signature)
+ * was functionally identical but was invisible to the campaign's
+ * `UNCLIPPED_EXTENT_DERIVATION_CEILING` ratchet, which keys on the literal
+ * ported name (app/src/phone-hidden-drawn-text.scan.test.ts). */
+function templateCloseLine(fullPath: string): number {
+  const lines = readFileSync(fullPath, 'utf-8').split('\n');
   const hits: number[] = [];
   lines.forEach((content, idx) => {
     if (XDC_CLOSE_RE.test(content)) hits.push(idx + 1);
   });
   if (hits.length > 1) {
-    throw new Error(`expected at most one </x-dc> line, found ${hits.length}: ${hits.join(', ')}`);
+    throw new Error(`${fullPath}: expected at most one </x-dc> line, found ${hits.length}: ${hits.join(', ')}`);
   }
   return hits.length === 1 ? hits[0]! : Infinity;
 }
@@ -222,7 +233,7 @@ function xdcCloseLine(lines: string[]): number {
 function allFramesInFile(fileName: string): { frame: Frame; isPhone: boolean }[] {
   const full = join(DESIGN_ROOT, fileName);
   const lines = readFileSync(full, 'utf-8').split('\n');
-  const xdcLine = xdcCloseLine(lines);
+  const xdcLine = templateCloseLine(full);
 
   const labelLines: { line: number; title: string }[] = [];
   lines.forEach((content, idx) => {
@@ -538,28 +549,41 @@ describe('desktop drawn-eyebrow ledger (DEC-986 wave-41, v12 mobile campaign)', 
     expect(labelIsMatched('zzy synthetic desktop eyebrow absent', [fabricatedSource])).toBe(false);
   });
 
-  it('clip fixture: a synthetic file whose last labelled block runs past a </x-dc> close is clipped there, never to EOF', () => {
-    // Fabricated, never a real product file -- proves xdcCloseLine/the
-    // extentEnd clip directly, the same discipline every other synthetic
-    // control in this file follows (never validate a detector by reading
-    // the same array it grades as its own evidence, DEC-967).
-    const lines = [
-      '<div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px">',
-      '<span style="font-size:19px">Zzy Synthetic Desktop Frame</span>',
-      '<span style="text-transform:uppercase">Zzy Synthetic Clipped Eyebrow</span>',
-      '</x-dc>',
-      '<script data-dc-script>',
-      '<span style="text-transform:uppercase">Zzy Synthetic Fixture Body Eyebrow Not A Screen</span>',
-      '</script>',
-    ];
-    const xdcLine = xdcCloseLine(lines);
-    expect(xdcLine).toBe(4);
-    const labelLine = 2;
-    const extentEnd = Math.min(Infinity, xdcLine);
-    expect(extentEnd).toBe(4);
-    const extentText = lines.slice(labelLine - 1, extentEnd - 1).join('\n');
-    expect(extentText).toContain('Zzy Synthetic Clipped Eyebrow');
-    expect(extentText).not.toContain('Zzy Synthetic Fixture Body Eyebrow Not A Screen');
+  it('control (DEC-967 wave-44 third derivation): a fabricated uppercase-eyebrow-shaped span after the template close is excluded from a frame\'s extent, and the same shape before the close is included', () => {
+    // Fabricated, never a real product file -- proves templateCloseLine/the
+    // extentEnd clip directly against a real file on disk (the ported
+    // shape now takes a path, not a lines array), the same discipline
+    // every other synthetic control in this file follows (never validate a
+    // detector by reading the same array it grades as its own evidence,
+    // DEC-967). Ported verbatim from
+    // test/frame-eyebrow-label.scan.test.ts's own identically-named
+    // control.
+    const dir = mkdtempSync(join(tmpdir(), 'desktop-eyebrow-template-close-synth-'));
+    try {
+      const fixturePath = join(dir, 'Zzy Fixture.dc.html');
+      const lines = [
+        '<div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px">', // line 1
+        '<span style="font-size:19px">Zzy Synthetic Desktop Frame</span>', // line 2: label
+        '<span style="text-transform:uppercase">Zzy Synthetic Clipped Eyebrow</span>', // line 3: before close
+        '</x-dc>', // line 4: template close
+        '<script data-dc-script>', // line 5: fixture body after close
+        '<span style="text-transform:uppercase">Zzy Synthetic Fixture Body Eyebrow Not A Screen</span>', // line 6
+        '</script>', // line 7
+      ];
+      writeFileSync(fixturePath, lines.join('\n'));
+
+      const closeLine = templateCloseLine(fixturePath);
+      expect(closeLine).toBe(4);
+
+      const labelLine = 2;
+      const extentEnd = Math.min(Infinity, closeLine);
+      expect(extentEnd).toBe(4);
+      const extentText = lines.slice(labelLine - 1, extentEnd - 1).join('\n');
+      expect(extentText).toContain('Zzy Synthetic Clipped Eyebrow');
+      expect(extentText).not.toContain('Zzy Synthetic Fixture Body Eyebrow Not A Screen');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('disjointness: the population shares no (fileName, line) with the caption ledger population (by construction: that ledger excludes uppercase, this one requires it)', () => {

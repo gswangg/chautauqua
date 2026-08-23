@@ -230,23 +230,30 @@ genuine phone conformance divergence (or an unresolvable composed-text
 claim), not an instrument artefact of the unclipped extent. Nothing in
 this file's rosters needs re-attribution as a result of the clip.
 
-**Completeness ratchet**: a new two-sided `UNCLIPPED_EXTENT_DERIVATION_CEILING`
-(seeded at 10, measured by forcing to `-1`) counts every `.ts`/`.tsx` file
-under `app/src`, `src`, `test` and `scripts` that derives an `extentEnd`
-from a `.dc.html` label scan (matched by the same `font-size:19px` marker
-every frame walk in this campaign keys on) without also containing
-`templateCloseLine`. This file itself no longer counts (it is now
-clipped). The 10 remaining offenders: `app/src/frame-citation-frames.ts`
-and nine `test/*.scan.test.ts` siblings —
+**Completeness ratchet**: a two-sided `UNCLIPPED_EXTENT_DERIVATION_CEILING`
+counts every `.ts`/`.tsx` file under `app/src`, `src`, `test` and `scripts`
+that derives an `extentEnd` from a `.dc.html` label scan (matched by the
+same `font-size:19px` marker every frame walk in this campaign keys on)
+without also containing `templateCloseLine`. Seeded at 10 at wave-42; the
+w41 clip lanes it named (`app/src/frame-citation-frames.ts`,
 `desktop-control-floor.scan.test.ts`, `frame-control-floor.scan.test.ts`,
-`phone-frame-ledger.scan.test.ts` (the v12m-w41-c fix has not yet merged
-to main as measured on this branch), `frame-eyebrow-label.scan.test.ts`,
+`phone-frame-ledger.scan.test.ts`, `frame-eyebrow-label.scan.test.ts`,
 `phone-dock-ledger.scan.test.ts`, `frame-control-label.scan.test.ts`,
-`desktop-frame-ledger.scan.test.ts`, `desktop-control-label.scan.test.ts`
-and `desktop-field-width.scan.test.ts`. As each in-flight w41 clip lane (or
-a future lane covering the rest) lands on main, this ceiling must be
-tightened in the same merge-train commit, per every other ratchet in this
-campaign.
+`desktop-frame-ledger.scan.test.ts`, `desktop-control-label.scan.test.ts`,
+`desktop-field-width.scan.test.ts`) landed on main via the wave-44 merge
+train, dropping the measured count to 1: the sole remaining offender was
+`test/desktop-eyebrow-label.scan.test.ts`, whose own extent derivation
+already clipped correctly at its file's single `</x-dc>` close but did so
+through a private `xdcCloseLine(lines: string[])` port rather than the
+literally-named `templateCloseLine` this scan's predicate greps for — a
+naming gap, not a real unclipped extent. w44-b renamed that port to
+`templateCloseLine(fullPath: string)`, the exact name and signature every
+sibling ledger (`test/frame-eyebrow-label.scan.test.ts`,
+`app/src/phone-hidden-drawn-text/frame-blobs.ts`) already carries, closing
+the measured population to 0. `UNCLIPPED_EXTENT_DERIVATION_CEILING` now
+reads 0. As with every other ratchet in this campaign, it may only be
+RAISED by a future re-measurement; a future ledger that copies the OLD
+unclipped shape must TIGHTEN it back down in the same commit.
 
 ## Both worked-example rows, re-measured under scoping + twin detection
 
