@@ -227,7 +227,11 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
     expect(idleBar).not.toBeNull();
     expect(idleBar!.className).toContain('chq-bulkbar-idle');
     expect(idleBar!.querySelectorAll('.chq-bulkbar-hint')).toHaveLength(1);
-    expect(idleBar!.querySelectorAll('button')).toHaveLength(0);
+    // DEC-989 wave-54 (task w54-c): the phone-only `All {n}` select-all
+    // control is now present even in the idle bar (sizeless / display:none
+    // outside the terminal phone block) -- one button, not zero.
+    expect(idleBar!.querySelectorAll('button')).toHaveLength(1);
+    expect(idleBar!.querySelector('button')).toHaveClass('chq-taskview-bulk-selectall');
     expect(screen.getByText('Tick rows to mark complete, reopen, or export.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Priya Raman' }));

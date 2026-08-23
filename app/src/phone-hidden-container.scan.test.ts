@@ -255,20 +255,28 @@ const CONTAINER_OFFENDERS: ContainerOffender[] = UNRECEIPTED_NON_INTERACTIVE_SEL
 // a phone-rendered component, so the subtree's own buttons can never
 // paint). One row -- speakers/task-view.css's
 // `.chq-taskview-answers .chq-taskview-head-row, .chq-taskview-waiting
-// .chq-taskview-head-row` -- is disposition (c), a REAL DEFECT: no v12
+// .chq-taskview-head-row` -- was disposition (c), a REAL DEFECT: no v12
 // frame at 390 exists for this screen at all, and hiding the head row
-// removes the only "select all" control (toggleAll) with no phone-side
-// replacement (per-row checkboxes remain, but there is no bulk-select-all
-// affordance on phone). Left unreceipted; see the audit doc's Disposition
-// section. Ceiling lowered from 21 to 13 (21 - 8 receipted), measured
-// (not assumed) by re-running the scan with the receipts in place. Rows
-// 3-8 and 13-18 remain unadjudicated.
+// removed the only "select all" control (toggleAll) with no phone-side
+// replacement (per-row checkboxes remain, but there was no bulk-select-all
+// affordance on phone). Ceiling lowered from 21 to 13 (21 - 8 receipted),
+// measured (not assumed) by re-running the scan with the receipts in
+// place. Rows 3-8 and 13-18 remain unadjudicated.
+//
+// wave-54 (task w54-c): built and receipted the disposition-(c) row above.
+// TaskView.tsx's always-mounted bulk bar now renders an `All {n}` control
+// (`.chq-taskview-bulk-selectall`, task-view.css) in both its idle and
+// armed branches, calling the same `toggleAll` the head-row checkbox
+// calls (DEC-989/DEC-825), and the head-row hide rule carries a
+// `/* phone-hidden: */` receipt naming it. Ceiling lowered from 13 to 12,
+// measured (not assumed) by re-running the scan with the receipt in
+// place.
 //
 // SEED, measured on this branch's tree at authoring time (2026-08-23):
 // this ceiling may only be LOWERED (receipt lands, rule is deleted, or the
 // container's capability is otherwise restored) -- never raised to
 // accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 13;
+export const PHONE_HIDDEN_CONTAINER_UNRECEIPTED_CEILING = 12;
 
 describe('DEC-808 wave-41 phone container capability-removal probe (subtree, not selector)', () => {
   it('finds more than zero non-interactive-selector phone display:none rules (vacuous-population tripwire)', () => {
