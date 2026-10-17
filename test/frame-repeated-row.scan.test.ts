@@ -71,7 +71,7 @@
 // 4. Positive and negative controls (DEC-099) prove the join over
 //    SYNTHETIC fixtures, never a live row's own identity.
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { enumerateSourceFiles, labelIsMatched, normalizeSource, stripComments } from "./frame-source-corpus";
@@ -91,6 +91,9 @@ function allDcHtmlFiles(): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(DESIGN_DIR, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !entry.name.endsWith(".dc.html")) continue;
+    // This ledger audits the 13-file v12 pack. docs/design/multi-portal is a
+    // separate pack with its own browser-probe verification.
+    if (entry.parentPath.includes(`${sep}multi-portal`)) continue;
     out.push(join(entry.parentPath, entry.name));
   }
   return out.sort();

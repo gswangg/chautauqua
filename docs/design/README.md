@@ -143,6 +143,7 @@ All 33 routes in `app/src/routeManifest.ts` are covered. File → routes:
 | `Chautauqua Settings.dc.html` | `/admin/settings` all 7 sections, 7 phone subscreens |
 | `Chautauqua Public and Portal.dc.html` | `/e/:slug/{sessions,speakers,gallery,agenda,schedule}`, `/submit/:slug` + confirmation + closed, `/portal` and its 5 sub-routes |
 | `Chautauqua Account.dc.html` | `/login`, `/account/password`, `/admin/*` not-found (+ phone) |
+| `multi-portal/Chautauqua Portals.dc.html` | Multi-portal: `/admin/settings#portals`, `/admin/settings/portals`, `/admin/settings/portals/:id`, `/admin/settings/sponsorships`, `/admin/speakers?portal=none`, `/admin/speakers/sponsor-sessions(/:id)`, `/admin/contacts/:id` (what a person gets) + preview, `/portal` homes, `/portal/sponsors/:id/sessions/*`, `/portal/sponsors/:id/team`, `/portal/invitations/:token` — desktop + phone, 8 modals |
 
 ### Layout pattern (applies to every admin screen)
 
@@ -494,6 +495,36 @@ The masthead carries the **org's** name, not the product's — matching the publ
 
 The screens are correct as *design*; the numbers on them are illustrative until that one decision is made.
 
+## Multi-portal
+
+Built from `docs/design/briefs/multi-portal-brief.md`. The model is fixed by the brief; this section records what the design decided on top of it. Frames are drawn at **1600** like the rest of the set, not the brief's 1440.
+
+**Portals stack.** A participation gets the items of every portal whose rule it matches — no ranking, no primary portal. Two conflict rules only: the same library item from two portals shows once with the **earliest deadline** and is **required if either requires it**; a shared profile field takes the **strictest** visibility, and the participant sees which session caused it ("Locked for your invited panel"). Portals can only add — to give a group less, narrow the rule of the portal giving it.
+
+**Where it lives.**
+- Settings stays one long page. *Speaker portal* is replaced by a **Portals** summary section (count, coverage, libraries, access) and a **Sponsorships** section, in the same 170px label/value rows. Each has a *Manage* link to a sub-page with the breadcrumb header and sticky 196px sub-nav — the "editing the call for papers" pattern. Portal sub-pages use a **1180** main column (tables + the 820/300 editor pair), not 820. The Settings mock still shows the old nav; update it when this ships.
+- Migration: an existing event's Speaker portal becomes one portal, **Profile basics**, with the same welcome note, field permissions and resources. Nothing is announced to organizers.
+- **Not in any portal** is a Speakers filter value (`?portal=none`, in the *Any participation* dropdown), not a Settings list. Settings shows only the count, linking there. Contact records flag the participation itself.
+- Sponsor approval lives in **Speakers · Sponsor sessions**.
+
+**Portal editor — one page, one save.** Sections in order: *Match participations where* (rule), *Items*, *Permissions · fields*, *Permissions · actions*, *Note to participants*. The live match panel is sticky beside the rule. **Review and save** opens the change preview (gain/lose counts, items gained/lost, who keeps an item through another portal) when rule, items or permissions changed; a note-only change saves directly. Losing a portal never deletes finished work — the item leaves the home, the answer stays on the record. A rule may be saved matching nobody; the overview keeps it flagged.
+
+**Rule builder.** Extends the Contacts filter-rules row: stacked *All of* blocks separated by a dashed **or** rule — no brackets. Fields: role, how the session arrived, session format, track, status, sponsor tier, custom fields. Count reads *saved · +gain · −lose*.
+
+**Libraries.** Items are created once and picked into portals ("Add from the library" → checklist; items already in the portal stay checked; button counts new ones only; *New item* at the foot). A library item holds type, name, about (person / session-or-company), instructions, and for file requests **file types** (chips), **max size** and **file count** — enforced on upload: the picker offers only those types, and a failing file is refused with the reason. **Deadline, required and grace are per portal**, not per item. Forms continue into the existing CFP form builder.
+
+**Sponsorships.** A tier is a list of rows *count · format · length* (formats from Call for papers settings); each row becomes a slot in every sponsor of that tier, and those slots are what a sponsor contact picks from. Lowering a count previews who'd be over; approved sessions are never removed. Per-sponsor extras sit on the sponsor's row (not yet framed).
+
+**Sponsor session lifecycle.** One editor throughout; state is a single status line, not a step strip: **Draft** · only your team can see it → **With the organizers** · locked (Withdraw returns to Draft, keeps the slot) → **Changes requested** (the draft reopened, organizer's note pinned above) → **Approved** · in the program (session becomes a normal Accepted submission; its speakers then match portals) — or **Declined** (reason required; slot returned). Organizer review page pins the last note sent ("You asked · date") above the submission; no diffing. A speaker added who isn't in the system gets a person record now and an invitation **on approval**.
+
+**Participant home.** Profile first (person items once), then one section per session or company, each with the portal's note in italic. No portal names, no switcher, no empty sections. Overdue with grace reads "Due 1 Apr · open until 8 Apr"; without grace, "Closed · ask the organizers". Invited-but-not-accepted shows what acceptance brings by name, nothing due; relative deadlines start at acceptance.
+
+**Preview as participant.** Fixed ink bar: "Viewing Priya Raman’s portal. Personal data — this view is logged." Read-only; every open is audit-logged.
+
+**New components** (everything else reuses existing rows, sections, tags, controls): *or* group in the rule builder · provenance tag (pill naming the portal(s); ink-outlined when merged) · lock line · change-impact modal · preview bar · package panel.
+
+**Open questions** are listed on the last panel of the canvas; the ones that matter for the build are: keep finished work on portal loss (vs. read-only display); grace from two portals takes the longer; sponsor-added speakers invited on approval.
+
 ## Screenshots
 
 `screens/` holds one full-canvas capture per file, showing every frame in that file side by side:
@@ -514,6 +545,7 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 | `09-settings.png` | All 7 desktop sections, 7 phone subscreens |
 | `10-public-and-portal.png` | 5 public surfaces, CFP form + confirmation + closed, portal home and 5 sub-routes |
 | `11-account.png` | Login, change password, not-found (desktop + phone) |
+| `15-portals-1-overview.png` … `15-portals-9-team.png` | Multi-portal, one capture per flow: overview + Settings section + Speakers filter · editor + change preview + library modals + matches-nobody · person record · preview · sponsorships + tier editor + review + approval queue · participant homes · sponsor session states · invitation · sponsor team |
 
 **Phone frames are captured at full content height, not at 844px.** The design files render each phone frame as a fixed 390 × 844 device with an internally scrolling body; for these exports that body is expanded so nothing is cut off. A capture taller than 844px is therefore showing scrolled content, not a screen that fits — treat 844 as the fold line.
 
