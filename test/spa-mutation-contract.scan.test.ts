@@ -1231,6 +1231,10 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
     "app/src/pages/contacts/ImportWizard.tsx spread: ...plannedRequest",
     "app/src/pages/contacts/ImportWizard.tsx spread: ...request",
     "app/src/pages/settings/CallForPapersPanel.tsx computed-key: [which]: today",
+    // multi-portal decision 73: the reminder bodies' optional scope (both
+    // keys are read by POST .../onboarding/remind and .../remind/preview)
+    "app/src/pages/speakers/OnboardingGrid.tsx spread: ...(contactIds ? { contactIds } : {})",
+    "app/src/pages/speakers/OnboardingGrid.tsx spread: ...(portalId ? { portalId } : {})",
     "app/src/pages/submissions/SubmissionsTable.tsx spread: ...(input.format ? { format: input.format } : {})",
   ];
 

@@ -1,7 +1,8 @@
 // Speakers · Not in any portal (multi-portal flow 1): ?portal=none swaps the
 // onboarding grid for the participations no portal covers, with the reason
 // and a link to each person's record; the toolbar's portal filter moves
-// between the two views.
+// between the two views, and (multi-portal decision 73) narrows the grid to
+// one portal.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -142,5 +143,90 @@ describe('Speakers · Not in any portal', () => {
     fireEvent.change(select, { target: { value: 'none' } });
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/speakers?portal=none'));
     expect(await screen.findByText('2 not in any portal')).toBeInTheDocument();
+  });
+
+  describe('one portal (multi-portal decision 73)', () => {
+    const PORTALS = {
+      portals: [
+        { id: 'pt-cfp', name: 'CFP speakers', template: null, who: 'Speakers', participations: 12, items: 4, matchesNobody: false, createdAt: 0 },
+        { id: 'pt-mods', name: 'Moderators', template: null, who: 'Moderators', participations: 3, items: 2, matchesNobody: false, createdAt: 0 },
+      ],
+      covered: 15,
+      total: 17,
+      notInAny: 2,
+      overlap: 0,
+      templates: [],
+    };
+    const PORTAL_GRID = {
+      ...GRID,
+      tasks: [{ id: 'task-prep', kind: 'general', title: 'Panel prep', dueDate: null, required: true, assigned: 1, complete: 0 }],
+      rows: [
+        {
+          contact: {
+            id: 'ct-bo',
+            name: 'Bo Diaz',
+            email: 'bo@example.com',
+            company: null,
+            hasAccount: true,
+            participations: [{ participantId: 'p-bo', submissionId: 'sub-panel', ref: 'SES-033', title: 'Lunch panel', inviteStatus: 'accepted' }],
+          },
+          cells: [{ taskId: 'task-prep', assignmentId: 'as-bo', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 }],
+        },
+      ],
+      total: 1,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    it('lists every portal, and choosing one puts it in the URL', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS,
+        [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      });
+      renderAt('/speakers');
+      const select = await screen.findByRole('combobox', { name: 'Filter by portal' });
+      await waitFor(() => expect(within(select).getByRole('option', { name: 'Moderators' })).toBeInTheDocument());
+      expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+        'Any portal',
+        'CFP speakers',
+        'Moderators',
+        'Not in any portal',
+      ]);
+      fireEvent.change(select, { target: { value: 'pt-mods' } });
+      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/speakers?portal=pt-mods'));
+    });
+
+    it('says a portal with no speakers is a narrowed view, with a way back', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS,
+        [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      });
+      renderAt('/speakers?portal=pt-cfp');
+      expect(await screen.findByText('No speakers in this portal.')).toBeInTheDocument();
+      expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Show every portal' }));
+      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/speakers$/));
+    });
+
+    it("reads that portal's grid, and reminds that portal's people", async () => {
+      const fetchMock = mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS,
+        [`GET /api/v1/events/${EVENT_ID}/onboarding`]: PORTAL_GRID,
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+        [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: { drafts: [], skipped: 0, remaining: 0 },
+      });
+      renderAt('/speakers?portal=pt-mods');
+      expect((await screen.findAllByText('Bo Diaz')).length).toBeGreaterThan(0);
+      expect(screen.getByRole('combobox', { name: 'Filter by portal' })).toHaveValue('pt-mods');
+      const gridCalls = fetchMock.mock.calls.map(([url]) => String(url)).filter((u) => u.includes('/onboarding?'));
+      expect(gridCalls.length).toBeGreaterThan(0);
+      expect(gridCalls.every((u) => new URL(u, 'http://x').searchParams.get('portalId') === 'pt-mods')).toBe(true);
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Remind all outstanding' })[0]!);
+      await waitFor(() => {
+        const preview = fetchMock.mock.calls.find(([url, init]) => String(url).includes('/onboarding/remind/preview') && init?.method === 'POST');
+        expect(preview).toBeTruthy();
+        expect(JSON.parse(String(preview![1]!.body))).toEqual({ portalId: 'pt-mods' });
+      });
+    });
   });
 });

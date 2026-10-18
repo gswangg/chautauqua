@@ -14,7 +14,7 @@ import type { UnmatchedRow } from '../portals/types';
 import { PortalFilterSelect } from './PortalFilterSelect';
 import './not-in-portal.css';
 
-export function NotInPortalView({ onShowAll, onAddSpeaker }: { onShowAll: () => void; onAddSpeaker: () => void }) {
+export function NotInPortalView({ onPortalChange, onAddSpeaker }: { onPortalChange: (value: string) => void; onAddSpeaker: () => void }) {
   const { eventId, error: eventError } = useCurrentEvent();
   const unmatchedPath = useMemo(() => (eventId ? `/events/${eventId}/portals/unmatched` : null), [eventId]);
   const read = useCachedGet<{ rows: UnmatchedRow[]; total: number }>(unmatchedPath, 'Failed to load the participations no portal covers');
@@ -51,7 +51,7 @@ export function NotInPortalView({ onShowAll, onAddSpeaker }: { onShowAll: () => 
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <PortalFilterSelect value="none" onChange={(v) => (v === 'any' ? onShowAll() : undefined)} />
+          <PortalFilterSelect value="none" onChange={onPortalChange} />
         </div>
       </div>
 

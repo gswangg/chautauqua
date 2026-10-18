@@ -20,9 +20,12 @@ export function SpeakersPage() {
   // page now (RosterPanel's own 'import' mode is unreachable from here).
   const [rosterMode, setRosterMode] = useState<RosterPanelMode>('none');
   // Multi-portal: ?portal=none swaps the grid for the participations no
-  // portal covers (Settings · Portals' coverage count links here).
+  // portal covers (Settings · Portals' coverage count links here), and
+  // ?portal=<id> narrows the grid to one portal (decision 73).
   const [searchParams, setSearchParams] = useSearchParams();
-  const notInPortal = searchParams.get('portal') === 'none';
+  const portalParam = searchParams.get('portal');
+  const notInPortal = portalParam === 'none';
+  const portalId = portalParam && portalParam !== 'none' ? portalParam : null;
   // Multi-portal: sponsor-designed sessions waiting for approval are reached
   // from here (the queue lives under Speakers); the link shows only when
   // some are waiting.
@@ -37,11 +40,12 @@ export function SpeakersPage() {
       </Link>
     ) : null;
 
-  function setPortalFilter(none: boolean) {
+  // 'any', 'none' or a portal id, from the toolbar's portal filter
+  function setPortalFilter(value: string) {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
-      if (none) params.set('portal', 'none');
-      else params.delete('portal');
+      if (value === 'any') params.delete('portal');
+      else params.set('portal', value);
       return params;
     });
   }
@@ -55,12 +59,15 @@ export function SpeakersPage() {
     <>
       <RosterPanel mode={rosterMode} onClose={() => setRosterMode('none')} onChanged={handleRosterChanged} />
       {notInPortal ? (
-        <NotInPortalView onShowAll={() => setPortalFilter(false)} onAddSpeaker={() => setRosterMode('add')} />
+        <NotInPortalView onPortalChange={setPortalFilter} onAddSpeaker={() => setRosterMode('add')} />
       ) : (
+        // a portal switch remounts the grid: its page and task filter belong
+        // to the columns it had
         <OnboardingGrid
-          key={refreshKey}
+          key={`${refreshKey}:${portalId ?? 'any'}`}
+          portalId={portalId}
           onAddSpeaker={() => setRosterMode('add')}
-          onShowNotInPortal={() => setPortalFilter(true)}
+          onPortalChange={setPortalFilter}
           headExtra={queueLink}
         />
       )}

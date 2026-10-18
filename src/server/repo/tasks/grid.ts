@@ -6,6 +6,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
+import { contactInPortal, participantInPortal, taskInPortal } from "./portal-scope";
 import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
@@ -105,6 +106,11 @@ export interface OnboardingGridParams {
   // pre-existing callers that construct this params object without the
   // field keep compiling.
   inviteStatus?: GridInviteStatus | null;
+  // multi-portal decision 73: one portal's view -- the session
+  // participations it covers as rows, the tasks its items bring as columns,
+  // and every count over just those. The route checks the portal belongs to
+  // the event. Optional/undefined == the whole event.
+  portalId?: string | null;
   now: number;
 }
 
@@ -145,8 +151,11 @@ function onboardingMatchExists(
   overdueOnly: boolean,
   now: number,
   timeZone: string,
+  portalId: string | null,
 ) {
   const inner = [sql`${schema.task.eventId} = ${eventId}`];
+  // a portal view matches cells in its own columns only
+  if (portalId) inner.push(taskInPortal(portalId));
   if (taskId) inner.push(sql`${schema.taskAssignment.taskId} = ${taskId}`);
   if (status) inner.push(sql`${schema.taskAssignment.status} = ${status}`);
   inner.push(attachedAssignment());
@@ -168,6 +177,12 @@ function onboardingMatchExists(
  * for exactly those page contacts, unfiltered (every task column still
  * renders); (iv) one event-wide filter-independent aggregate for `counts`. */
 export async function getOnboardingGrid(db: Db, eventId: string, params: OnboardingGridParams): Promise<OnboardingGrid> {
+  const portalId = params.portalId ?? null;
+  // multi-portal decision 73: undefined (dropped by and()) for the whole
+  // event, so every query below is unchanged without a portal
+  const portalTasks = portalId ? taskInPortal(portalId) : undefined;
+  const portalParticipants = portalId ? participantInPortal(portalId) : undefined;
+  const portalAssignees = portalId ? contactInPortal(portalId, schema.taskAssignment.contactId) : undefined;
   // DEC-370 (wave-62 amendment): WAVE 1 — the four reads below share no
   // dependency on each other (none needs whereExpr/timezone), so they issue
   // concurrently rather than as four sequential round trips. Array order is
@@ -184,7 +199,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
         instructions: schema.task.instructions,
       })
       .from(schema.task)
-      .where(eq(schema.task.eventId, eventId))
+      .where(and(eq(schema.task.eventId, eventId), portalTasks))
       .orderBy(sql`${schema.task.dueDate} is null`, sql`${schema.task.dueDate} asc`, sql`${schema.task.title} asc`, sql`${schema.task.id} asc`),
     // DEC-801 (wave 58 amendment): the event row is resolved ONCE here (never
     // a second query, never per row) — this file's own comment at the old
@@ -206,7 +221,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       .from(schema.participant)
       .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
       .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-      .where(rosterParticipantConditions(eventId)),
+      .where(and(rosterParticipantConditions(eventId), portalParticipants)),
     // chaseableContactExistsForTaskEvent composes no timezone either, so
     // outstandingRequired/outstandingContacts join wave 1 too.
     db
@@ -216,7 +231,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-      .where(and(eq(schema.task.eventId, eventId), attachedAssignment(), chaseableContactExistsForTaskEvent())),
+      .where(and(eq(schema.task.eventId, eventId), attachedAssignment(), chaseableContactExistsForTaskEvent(), portalTasks, portalAssignees)),
     // Design pack v12: one GROUP BY over this event's assignments gives every
     // column head its "N of M done" in a single round trip -- never one query
     // per column, and never derived from `rows` (which is the current
@@ -230,7 +245,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-      .where(and(eq(schema.task.eventId, eventId), attachedAssignment()))
+      .where(and(eq(schema.task.eventId, eventId), attachedAssignment(), portalTasks, portalAssignees))
       .groupBy(schema.taskAssignment.taskId),
   ]);
 
@@ -283,8 +298,9 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   // narrows to those with a matching cell.
   const filterActive = params.taskId !== null || params.status !== null || params.overdueOnly;
   const conditions = [rosterParticipantConditions(eventId)];
+  if (portalParticipants) conditions.push(portalParticipants);
   if (filterActive) {
-    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone));
+    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone, portalId));
   }
   // DEC-789/DEC-829: the invite-status filter is a SEPARATE predicate from
   // the base rosterParticipantConditions condition above (which now
@@ -361,7 +377,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
       .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-      .where(overdueAssignmentConditions(eventId, params.now, timezone)),
+      .where(and(overdueAssignmentConditions(eventId, params.now, timezone), portalTasks, portalAssignees)),
   ]);
   const total = Number(totalRows[0]?.count ?? 0);
   const overdueCount = Number(overdueCountRows[0]?.count ?? 0);
@@ -424,7 +440,8 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       })
       .from(schema.participant)
       .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-      .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId)))
+      // a portal view lists only the sessions that portal covers
+      .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId), portalParticipants))
       .orderBy(sql`${schema.submission.seq} asc`, sql`${schema.participant.id} asc`),
   );
   const cellPromises =

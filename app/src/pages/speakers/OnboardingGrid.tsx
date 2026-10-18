@@ -153,8 +153,9 @@ function EditTasksMenu({
 
 /** Builds the DEC-340 query string from the current filters + page — every
  * active predicate is server-side, so the SPA never filters rows itself. */
-function buildGridQuery(filters: GridFilterState, page: number): string {
+function buildGridQuery(filters: GridFilterState, page: number, portalId: string | null): string {
   const params = new URLSearchParams();
+  if (portalId) params.set('portalId', portalId);
   params.set('page', String(page));
   params.set('perPage', String(PER_PAGE));
   if (filters.q.trim()) params.set('q', filters.q.trim());
@@ -401,14 +402,16 @@ function alreadyInvited(contact: { participations: readonly { inviteStatus: Invi
 // with this event preselected instead of making the organizer re-pick it.
 interface OnboardingGridProps {
   onAddSpeaker: () => void;
-  // multi-portal: the toolbar's portal filter opens the "Not in any portal"
-  // list (Speakers.tsx owns the ?portal= URL state)
-  onShowNotInPortal?: () => void;
+  // multi-portal: the toolbar's portal filter (Speakers.tsx owns the
+  // ?portal= URL state): 'any', 'none' for the "Not in any portal" list, or
+  // a portal id. portalId narrows this grid to that portal (decision 73).
+  portalId?: string | null;
+  onPortalChange?: (value: string) => void;
   // multi-portal: a line beside the summary (the sponsor-session queue link)
   headExtra?: ReactNode;
 }
 
-export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: OnboardingGridProps) {
+export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, headExtra }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
   const [error, setError] = useState<string | null>(null);
@@ -420,8 +423,8 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
   // path is null while there is no event yet -- the hook then holds no data
   // and issues no request.
   const gridPath = useMemo(
-    () => (eventId ? `/events/${eventId}/onboarding?${buildGridQuery(filters, page)}` : null),
-    [eventId, filters, page],
+    () => (eventId ? `/events/${eventId}/onboarding?${buildGridQuery(filters, page, portalId)}` : null),
+    [eventId, filters, page, portalId],
   );
   const gridRead = useCachedGet<OnboardingGridResponse>(gridPath, 'Failed to load onboarding grid');
   // Optimistic overlay for the two in-place cell writes below (toggleCell /
@@ -904,6 +907,12 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
   // SPEC §10 #3 (DEC-441): "Remind all outstanding" no longer sends
   // directly — it opens a review dialog fed by the read-only preview
   // endpoint, rendered from the identical builder the real send uses.
+  // a portal view reminds that portal's people about its own items only
+  // (decision 73); the server resolves both from the portal
+  function remindBody(contactIds: string[] | undefined): Record<string, unknown> {
+    return { ...(contactIds ? { contactIds } : {}), ...(portalId ? { portalId } : {}) };
+  }
+
   async function openRemindReview(contactIds?: string[]) {
     if (!eventId) return;
     setRemindContactIds(contactIds);
@@ -916,7 +925,7 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
     try {
       const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
         `/events/${eventId}/onboarding/remind/preview`,
-        contactIds ? { contactIds } : {},
+        remindBody(contactIds),
       );
       setRemindDrafts(res.drafts);
       setRemindSkipped(res.skipped);
@@ -944,7 +953,7 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
     try {
       const res = await apiPost<SendResult>(
         `/events/${eventId}/onboarding/remind`,
-        remindContactIds ? { contactIds: remindContactIds } : {},
+        remindBody(remindContactIds),
       );
       setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
       closeRemindReview();
@@ -1210,7 +1219,13 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
       )}
 
       <div className={phoneFiltersOpen ? 'chq-speakers-toolbar is-phone-open' : 'chq-speakers-toolbar'}>
-        <GridFilters tasks={toolbarTasks} filters={filters} onChange={handleFiltersChange} onShowNotInPortal={onShowNotInPortal} />
+        <GridFilters
+          tasks={toolbarTasks}
+          filters={filters}
+          onChange={handleFiltersChange}
+          portalValue={portalId ?? 'any'}
+          onPortalChange={onPortalChange}
+        />
         {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
             planManualReminders, which drops any assignment whose
             lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of now --
@@ -1250,6 +1265,20 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
         // keep the prior multi-facet sentence and clear-all escape,
         // unchanged.
         const facet = activeFacet(filters);
+        // multi-portal decision 73: a portal whose people aren't on the
+        // speaker roster (sponsor contacts, event roles) is a narrowed view,
+        // never an empty roster
+        if (portalId && !hasActiveNarrowing(filters)) {
+          return (
+            <EmptyState
+              variant="filtered"
+              what="No speakers in this portal."
+              reason="The people it covers aren't on any accepted session: sponsor contacts and event roles have no row here."
+              action={null}
+              escape={onPortalChange ? { label: 'Show every portal', onClick: () => onPortalChange('any') } : null}
+            />
+          );
+        }
         return (
           <EmptyState
             variant={hasActiveNarrowing(filters) ? 'filtered' : 'fresh'}

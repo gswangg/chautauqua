@@ -58,9 +58,10 @@ describe("getOnboardingGrid driving relation (DEC-829 wave-29)", () => {
     expect(contactRowsBlock).toContain("schema.submission.id");
     expect(contactRowsBlock).toContain("schema.contact.id");
 
-    // speakersCountRows: the only query gated by the bare roster predicate
-    // (the participation query below ANDs it inside `and(inArray(...), ...)`).
-    const speakersBlock = queryBlockEndingAt(".where(rosterParticipantConditions(eventId))");
+    // speakersCountRows: the only query gated by the roster predicate plus
+    // the optional portal scope alone (multi-portal decision 73; the
+    // participation query below ANDs it inside `and(inArray(...), ...)`).
+    const speakersBlock = queryBlockEndingAt(".where(and(rosterParticipantConditions(eventId), portalParticipants))");
     expect(speakersBlock).toContain(".from(schema.participant)");
     expect(speakersBlock).toContain("schema.submission.id");
     expect(speakersBlock).toContain("schema.contact.id");

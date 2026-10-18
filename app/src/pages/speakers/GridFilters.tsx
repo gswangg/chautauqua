@@ -12,13 +12,15 @@ interface GridFiltersProps {
   tasks: OnboardingTask[];
   filters: GridFilterState;
   onChange: (next: GridFilterState) => void;
-  // multi-portal: switches the page to the "Not in any portal" list
-  onShowNotInPortal?: () => void;
+  // multi-portal: the portal filter -- 'any', 'none' (the "Not in any
+  // portal" list) or a portal id (decision 73)
+  portalValue?: string;
+  onPortalChange?: (value: string) => void;
 }
 
 const STATUS_OPTIONS: AssignmentStatus[] = ['pending', 'complete'];
 
-export function GridFilters({ tasks, filters, onChange, onShowNotInPortal }: GridFiltersProps) {
+export function GridFilters({ tasks, filters, onChange, portalValue, onPortalChange }: GridFiltersProps) {
   return (
     <div className="chq-speakers-filters">
       <input
@@ -83,9 +85,7 @@ export function GridFilters({ tasks, filters, onChange, onShowNotInPortal }: Gri
         ))}
       </select>
 
-      {onShowNotInPortal ? (
-        <PortalFilterSelect value="any" onChange={(v) => (v === 'none' ? onShowNotInPortal() : undefined)} />
-      ) : null}
+      {onPortalChange ? <PortalFilterSelect value={portalValue ?? 'any'} onChange={onPortalChange} /> : null}
 
       <button
         type="button"

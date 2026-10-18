@@ -12,7 +12,7 @@ import type { AppEnv, AuthInfo, Bindings } from "../server/env";
 import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, requireCookieSession, csrfJson } from "../server/middleware";
-import { ApiError, parseBoundedIdArray, readOptionalJsonBody, requireAtLeastOneField } from "../server/http";
+import { ApiError, BOUNDED_ID_ARRAY_ITEM_MAX_LENGTH, parseBoundedIdArray, readOptionalJsonBody, requireAtLeastOneField } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
@@ -48,6 +48,7 @@ import {
   type UpdateTaskInput,
 } from "../server/repo/tasks";
 import { findContactsForOrg } from "../server/repo/contacts";
+import { findEventPortal, portalReminderScope } from "../server/repo/tasks/portal-scope";
 import { clampPage, clampPerPage } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
@@ -174,6 +175,9 @@ export function parseOnboardingGridQuery(raw: Record<string, string | undefined>
 
   const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
   const taskId = raw.taskId && raw.taskId.trim().length > 0 ? raw.taskId.trim() : null;
+  // multi-portal decision 73: one portal's view (the route checks the
+  // portal belongs to the event)
+  const portalId = raw.portalId && raw.portalId.trim().length > 0 ? raw.portalId.trim() : null;
 
   let status: "pending" | "complete" | null = null;
   if (raw.status !== undefined && raw.status !== "") {
@@ -210,7 +214,33 @@ export function parseOnboardingGridQuery(raw: Record<string, string | undefined>
     throw new ApiError("invalid", "Invalid onboarding grid filter", fields);
   }
 
-  return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, now };
+  return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, portalId, now };
+}
+
+// a portal id is an ordinary bounded id (DEC-417)
+const MAX_PORTAL_ID_LENGTH = BOUNDED_ID_ARRAY_ITEM_MAX_LENGTH;
+
+/** A portal named by a grid read or a reminder must be this event's; any
+ * other id is not found, never a silently unscoped result. */
+async function eventPortalOrNotFound(db: Db, eventId: string, portalId: string) {
+  const portal = await findEventPortal(db, eventId, portalId);
+  if (!portal) throw new ApiError("not_found", "Portal not found in this event");
+  return portal;
+}
+
+/** The reminder routes' optional portalId: the portal's members and task
+ * items, narrowed by any ids the caller named. `null` when the portal
+ * leaves nobody or nothing to remind -- the routes answer with an empty
+ * result then, because an empty id list means "no filter" to remindNow. */
+async function reminderIdsForBody(db: Db, eventId: string, body: Record<string, unknown>, taskIds: string[] | undefined, contactIds: string[] | undefined) {
+  if (body.portalId === undefined) return { taskIds, contactIds };
+  if (typeof body.portalId !== "string" || body.portalId.length === 0 || body.portalId.length > MAX_PORTAL_ID_LENGTH) {
+    throw new ApiError("invalid", "Invalid reminder scope", { portalId: "Must be a portal id" });
+  }
+  const portal = await eventPortalOrNotFound(db, eventId, body.portalId);
+  const scope = await portalReminderScope(db, eventId, portal, taskIds, contactIds);
+  if (scope.taskIds.length === 0 || scope.contactIds.length === 0) return null;
+  return scope;
 }
 
 // GET /api/v1/events/:eventId/onboarding
@@ -219,6 +249,7 @@ taskRoutes.get("/events/:eventId/onboarding", requireOrganizer, async (c) => {
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
   const params = parseOnboardingGridQuery(c.req.query(), Date.now());
+  if (params.portalId) await eventPortalOrNotFound(c.var.db, eventId, params.portalId);
   const grid = await getOnboardingGrid(c.var.db, eventId, params);
   return c.json(grid);
 });
@@ -555,6 +586,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   // DEC-340 (wave 46 amendment): echo the CALLER's grid query back, not a
   // hand-written literal -- see GET .../onboarding above for the same parse.
   const params = parseOnboardingGridQuery(c.req.query(), Date.now());
+  if (params.portalId) await eventPortalOrNotFound(c.var.db, ownership.eventId, params.portalId);
   const grid = await getOnboardingGrid(c.var.db, ownership.eventId, params);
   return c.json(grid);
 });
@@ -764,6 +796,10 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, requireC
   // outstanding contact); when present it scopes the send to exactly those
   // contacts, identically to the preview endpoint below.
   const contactIds = body.contactIds === undefined ? undefined : parseBoundedIdArray(body.contactIds, "contactIds");
+  // multi-portal decision 73: a portal view reminds that portal's people
+  // about that portal's items
+  const scope = await reminderIdsForBody(c.var.db, eventId, body, taskIds, contactIds);
+  if (scope === null) return c.json({ sent: 0, failed: [], skipped: 0, remaining: 0 });
 
   const kv = c.env.KV as unknown as KVStore;
   // DEC-547 (wave 18 amendment): makeMailer NEVER throws — a misconfigured
@@ -777,11 +813,11 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, requireC
     c.var.db,
     mailer,
     eventId,
-    taskIds,
+    scope.taskIds,
     new Date(),
     kv,
     resolveBaseUrl(c),
-    contactIds,
+    scope.contactIds,
   );
   return c.json(result);
 });
@@ -803,16 +839,19 @@ taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, 
   // DEC-694: same optional contactIds scope as the send endpoint, so a
   // preview and the send it previewed always address the same recipients.
   const contactIds = body.contactIds === undefined ? undefined : parseBoundedIdArray(body.contactIds, "contactIds");
+  // multi-portal decision 73: the same portal scope as the send
+  const scope = await reminderIdsForBody(c.var.db, eventId, body, taskIds, contactIds);
+  if (scope === null) return c.json({ drafts: [], skipped: 0, remaining: 0 });
 
   const kv = c.env.KV as unknown as KVStore;
   const result = await previewRemindNow(
     c.var.db,
     eventId,
-    taskIds,
+    scope.taskIds,
     new Date(),
     kv,
     resolveBaseUrl(c),
-    contactIds,
+    scope.contactIds,
   );
   return c.json(result);
 });
