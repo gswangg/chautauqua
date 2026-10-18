@@ -87,6 +87,29 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 - input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 
+## /admin/settings/portals/demo_mp_portal_invited
+
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+
+## /admin/settings/portals/library
+
+- a.chq-library-portal w=74px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=90px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=74px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=87px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=90px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=60px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=74px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=90px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=51px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=87px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=74px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=90px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=51px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=73px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=90px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+- a.chq-library-portal w=73px h=14px — **EXEMPT** (receipt: `chq-library-portal`)
+
 ## /admin/speakers/tasks/seed_task_0001
 
 - input.chq-check.chq-taskview-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
@@ -101,6 +124,12 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 ## /admin/submissions
 
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
+- input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 - input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 - input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
 - input.chq-check w=18px h=18px — **EXEMPT** (receipt: `chq-check`)
@@ -152,4 +181,4 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 
 - a.chq-wordmark w=113px h=28px — **EXEMPT** (receipt: `chq-wordmark`)
 
-Measured total: 103 (exempt: 103, candidate defects: 0)
+Measured total: 126 (exempt: 126, candidate defects: 0)

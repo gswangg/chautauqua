@@ -212,16 +212,12 @@ export interface BuildViewInput {
 
 export async function buildPersonView(db: Db, input: BuildViewInput): Promise<PersonView> {
   const { eventId, contactId, now } = input;
-  const eventRows = await db
-    .select({ name: schema.event.name, timezone: schema.event.timezone })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
-  const event = eventRows[0];
-  if (!event) throw new Error(`event ${eventId} not found`);
-  const tz = event.timezone;
-
-  const [participations, portals, tasks, memberships] = await Promise.all([
+  const [eventRows, participations, portals, tasks, memberships] = await Promise.all([
+    db
+      .select({ name: schema.event.name, timezone: schema.event.timezone })
+      .from(schema.event)
+      .where(eq(schema.event.id, eventId))
+      .limit(1),
     loadParticipations(db, { eventId, contactId }),
     loadEventPortals(db, eventId),
     loadEventLibraryTasks(db, eventId),
@@ -234,6 +230,9 @@ export async function buildPersonView(db: Db, input: BuildViewInput): Promise<Pe
       .from(schema.portalMembership)
       .where(and(eq(schema.portalMembership.eventId, eventId), eq(schema.portalMembership.contactId, contactId))),
   ]);
+  const event = eventRows[0];
+  if (!event) throw new Error(`event ${eventId} not found`);
+  const tz = event.timezone;
   const activatedAt = new Map(memberships.map((m) => [`${m.portalId}|${m.participationKey}`, m.activatedAt?.getTime() ?? null]));
   const assignments = await loadAssignments(db, contactId, [...tasks.keys()]);
   const assignmentByKey = new Map(assignments.map((a) => [`${a.taskId}|${a.scopeKey}`, a]));

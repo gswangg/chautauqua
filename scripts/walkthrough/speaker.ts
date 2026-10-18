@@ -1032,7 +1032,12 @@ async function main(): Promise<void> {
 
   await check("speaker accepts invitation A (own participant row)", async () => {
     const before = await speaker1.getText("/portal");
-    assert(before.body.includes("Invited to co-present"), "portal dashboard is missing the pending invitation");
+    // the multi-portal home draws a pending invitation as its session's
+    // section with an accept/decline form posting to this participant row
+    assert(
+      before.body.includes(`action="/portal/invitations/${inviteParticipantIdA}"`),
+      "portal dashboard is missing the pending invitation",
+    );
 
     const res = await speaker1.postForm(`/portal/invitations/${inviteParticipantIdA}`, { action: "accept" });
     assert(res.status === 302, `expected 302 on invitation accept, got ${res.status}`);

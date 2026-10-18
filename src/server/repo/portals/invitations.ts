@@ -4,8 +4,9 @@
 // them accept or decline. Declining ends the participation (it leaves every
 // portal); accepting activates it.
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
+import { chunkIds } from "../../../lib/chunk";
 import * as schema from "../../../db/schema";
 import { ApiError } from "../../http";
 import { hashClaimToken, newClaimToken } from "../../../auth/claim";
@@ -233,26 +234,53 @@ export async function saveDeclineNote(db: Db, invitation: InvitationRecord, note
  * when it's on the agenda, and its length from the format answer. Null when
  * there's nothing to say yet. */
 export async function sessionPlacementLine(db: Db, submissionId: string): Promise<string | null> {
-  const [slots, formats] = await Promise.all([
-    db
-      .select({ day: schema.scheduleSlot.day, startMin: schema.scheduleSlot.startMin, roomName: schema.room.name })
-      .from(schema.scheduleSlot)
-      .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
-      .where(eq(schema.scheduleSlot.submissionId, submissionId))
-      .orderBy(asc(schema.scheduleSlot.id))
-      .limit(1),
-    db
-      .select({ valueJson: schema.submissionAnswer.valueJson })
-      .from(schema.submissionAnswer)
-      .where(and(eq(schema.submissionAnswer.submissionId, submissionId), answerFieldRoleCondition("session_format")))
-      .orderBy(asc(schema.submissionAnswer.id))
-      .limit(1),
-  ]);
-  const parts: string[] = [];
-  const slot = slots[0];
-  if (slot) parts.push(formatDayMedium(slot.day), clockHHMM(slot.startMin), publicRoomLabel(slot.roomName));
-  const format = formats[0] ? roleAnswerLabel(formats[0].valueJson) : null;
-  const minutes = format ? formatMinutes(format) : null;
-  if (minutes) parts.push(`${minutes} min`);
-  return parts.length > 0 ? parts.join(" · ") : null;
+  return (await sessionPlacementLines(db, [submissionId])).get(submissionId) ?? null;
+}
+
+/** sessionPlacementLine for many sessions in two reads per chunk (the
+ * participant home draws one per session). */
+export async function sessionPlacementLines(db: Db, submissionIds: string[]): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+  const unique = [...new Set(submissionIds)];
+  const chunks = await Promise.all(
+    chunkIds(unique).map((ids) =>
+      Promise.all([
+        db
+          .select({
+            submissionId: schema.scheduleSlot.submissionId,
+            day: schema.scheduleSlot.day,
+            startMin: schema.scheduleSlot.startMin,
+            roomName: schema.room.name,
+          })
+          .from(schema.scheduleSlot)
+          .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
+          .where(inArray(schema.scheduleSlot.submissionId, ids))
+          .orderBy(asc(schema.scheduleSlot.id)),
+        db
+          .select({ submissionId: schema.submissionAnswer.submissionId, valueJson: schema.submissionAnswer.valueJson })
+          .from(schema.submissionAnswer)
+          .where(and(inArray(schema.submissionAnswer.submissionId, ids), answerFieldRoleCondition("session_format")))
+          .orderBy(asc(schema.submissionAnswer.id)),
+      ]),
+    ),
+  );
+  // the first slot and the first format answer per session, as the
+  // one-session read took them
+  const slotBy = new Map<string, { day: string; startMin: number; roomName: string | null }>();
+  const formatBy = new Map<string, string>();
+  for (const [slots, formats] of chunks) {
+    for (const slot of slots) if (!slotBy.has(slot.submissionId)) slotBy.set(slot.submissionId, slot);
+    for (const answer of formats) if (!formatBy.has(answer.submissionId)) formatBy.set(answer.submissionId, answer.valueJson);
+  }
+  for (const id of unique) {
+    const parts: string[] = [];
+    const slot = slotBy.get(id);
+    if (slot) parts.push(formatDayMedium(slot.day), clockHHMM(slot.startMin), publicRoomLabel(slot.roomName));
+    const valueJson = formatBy.get(id);
+    const format = valueJson !== undefined ? roleAnswerLabel(valueJson) : null;
+    const minutes = format ? formatMinutes(format) : null;
+    if (minutes) parts.push(`${minutes} min`);
+    out.set(id, parts.length > 0 ? parts.join(" · ") : null);
+  }
+  return out;
 }

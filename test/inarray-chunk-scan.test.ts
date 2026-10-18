@@ -43,6 +43,11 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
     "one event's sponsor tier ids -- bounded by MAX_TIERS_PER_EVENT (src/domain/portals/limits.ts), enforced by saveTier.",
   ],
   [
+    "src/server/repo/portals/invitations.ts",
+    "ids",
+    "sessionPlacementLines binds `ids` from `chunkIds(unique).map((ids) => ...)` -- chunk-bound one indirection away, the same concurrent-wave shape as the grid.ts `batch` entry.",
+  ],
+  [
     "src/server/repo/sponsors/sessions.ts",
     "detail",
     "detail.speakers is one sponsor session's speakers -- bounded by MAX_SPONSOR_SESSION_SPEAKERS (src/domain/sponsors.ts), enforced by addSponsorSpeaker.",
@@ -256,14 +261,6 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "local DEC-078/DEC-528 helper that halves ID_CHUNK_SIZE because both " +
       "taskChunk and contactChunk are bound in the SAME query (see the " +
       "adjacent code comment).",
-  ],
-  [
-    "src/server/repo/tasks/grid.ts",
-    "taskIds",
-    "taskIds is `tasks.map((t) => t.id)` -- the event's own onboarding " +
-      "task definitions (organizer-authored, a handful per event), not a " +
-      "request-scale id list. Only the page's contactIds are chunked here " +
-      "per the adjacent DEC-104 comment.",
   ],
   [
     "src/server/repo/tasks/grid.ts",

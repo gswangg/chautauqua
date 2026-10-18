@@ -75,6 +75,13 @@ function baseParams(overrides: Partial<OnboardingGridParams> = {}): OnboardingGr
 }
 
 const TASK_ROWS = [{ id: "task-1", kind: "general", title: "Sign W9", dueDate: null, required: true }];
+// a grid column for every task the cell fixtures below return rows for:
+// the cell query reads the event's assignments and keeps only the columns'
+const THREE_TASK_ROWS = [
+  ...TASK_ROWS,
+  { id: "task-2", kind: "general", title: "Upload slides", dueDate: null, required: false },
+  { id: "task-3", kind: "general", title: "Confirm travel", dueDate: null, required: false },
+];
 
 function contactRow(id: string, first: string, last: string) {
   return {
@@ -235,7 +242,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
       { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
       { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, PER_TASK_DONE_ROWS, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
+    const { db } = fakeDb([THREE_TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, PER_TASK_DONE_ROWS, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result.total).toBe(1);
     expect(result.rows[0]?.cells.length).toBe(3);
@@ -347,7 +354,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
         createdAt: new Date(500_000),
       },
     ];
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, PER_TASK_DONE_ROWS, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
+    const { db } = fakeDb([THREE_TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, PER_TASK_DONE_ROWS, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     const cellWithFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a1");
     const cellWithoutFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a2");

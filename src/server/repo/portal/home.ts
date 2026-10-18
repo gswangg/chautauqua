@@ -8,7 +8,7 @@ import type { Db } from "../../context";
 import { buildPersonView, type PersonView } from "../portals/view";
 import { reconcileEventPortals } from "../portals/reconcile";
 import { listParticipationEventIds } from "../portals/participations";
-import { sessionPlacementLine } from "../portals/invitations";
+import { sessionPlacementLines } from "../portals/invitations";
 import { markSponsorContactsJoined } from "../sponsors/organizer";
 
 export interface PortalHome {
@@ -29,13 +29,15 @@ export async function getPortalHome(
   now: number,
   opts: { heal: boolean } = { heal: true },
 ): Promise<PortalHome> {
-  if (opts.heal) {
-    // a sponsor teammate joins their team the first time they open the
-    // portal: their company section appears now, not at the next cron
-    const joined = await markSponsorContactsJoined(db, contactId, new Date(now));
-    for (const eventId of joined) await reconcileEventPortals(db, eventId, new Date(now), { notify: "auto" });
-  }
-  const eventIds = await listParticipationEventIds(db, contactId, orgId);
+  // a sponsor teammate joins their team the first time they open the
+  // portal: their company section appears now, not at the next cron.
+  // Joining changes a contact row's status, never which events the person
+  // is in, so the event list is read alongside it.
+  const [joined, eventIds] = await Promise.all([
+    opts.heal ? markSponsorContactsJoined(db, contactId, new Date(now)) : Promise.resolve([]),
+    listParticipationEventIds(db, contactId, orgId),
+  ]);
+  for (const eventId of joined) await reconcileEventPortals(db, eventId, new Date(now), { notify: "auto" });
   // each event's view is independent: build them side by side
   const built = await Promise.all(
     eventIds.map(async (eventId) => {
@@ -48,13 +50,11 @@ export async function getPortalHome(
     }),
   );
   const views: PersonView[] = built.filter((view) => view.participations.length > 0);
-  const placements = new Map<string, string | null>();
-  if (opts.heal) {
-    const submissionIds = [
-      ...new Set(views.flatMap((v) => v.sections.map((s) => s.participation.session?.submissionId).filter((sid): sid is string => !!sid))),
-    ];
-    const lines = await Promise.all(submissionIds.map((sid) => sessionPlacementLine(db, sid)));
-    submissionIds.forEach((sid, i) => placements.set(sid, lines[i] ?? null));
-  }
+  const placements = opts.heal
+    ? await sessionPlacementLines(
+        db,
+        views.flatMap((v) => v.sections.map((s) => s.participation.session?.submissionId).filter((sid): sid is string => !!sid)),
+      )
+    : new Map<string, string | null>();
   return { views, placements };
 }

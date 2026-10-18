@@ -496,18 +496,23 @@ portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const showAdminBounceNotice = c.req.query("from") === ADMIN_BOUNCE;
-  const [data, submissions, home, sessions] = await Promise.all([
+  // the deliverables read needs only the sessions, so it starts as soon as
+  // they arrive rather than after the slower home view
+  const sessionsRead = getMySessions(c.var.db, contactId, auth.orgId);
+  const [data, submissions, home, sessions, deliverables] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
     getMySubmissions(c.var.db, contactId, auth.orgId),
     getPortalHome(c.var.db, contactId, auth.orgId, Date.now()),
-    getMySessions(c.var.db, contactId, auth.orgId),
+    sessionsRead,
+    sessionsRead.then((rows) =>
+      listLatestDeliverables(
+        c.var.db,
+        contactId,
+        auth.orgId,
+        rows.map((s) => s.submissionId),
+      ),
+    ),
   ]);
-  const deliverables = await listLatestDeliverables(
-    c.var.db,
-    contactId,
-    auth.orgId,
-    sessions.map((s) => s.submissionId),
-  );
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   // DEC-988 (wave-74 amendment): the footer link is reachable when ANY of

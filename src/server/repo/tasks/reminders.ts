@@ -6,7 +6,7 @@
 import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { d1EmailLogWriter, type Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { chunkIds } from "../../../lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
 import { renderTemplate } from "../../../mail/render";
@@ -75,8 +75,17 @@ interface OutstandingRow {
 // contactId chunk) pair instead of binding the raw lists directly. When a
 // filter is absent/empty the pair loop degenerates to a single undefined
 // chunk, matching the original unfiltered query.
-function idChunksOrUndefined(ids: string[] | undefined): (string[] | undefined)[] {
-  return ids && ids.length > 0 ? chunkIds(ids) : [undefined];
+function idChunksOrUndefined(ids: string[] | undefined, paired = false): (string[] | undefined)[] {
+  if (!ids || ids.length === 0) return [undefined];
+  // bound beside a second id list in the same statement: half the budget
+  // each, as submissions/status.ts pairs them (a portal library's task ids
+  // plus a 90-contact chunk passed D1's ~100-variable limit)
+  const half = Math.ceil(ID_CHUNK_SIZE / 2);
+  return paired ? chunkIds(ids).flatMap((c) => [c.slice(0, half), c.slice(half)].filter((h) => h.length > 0)) : chunkIds(ids);
+}
+
+function bothPresent(a: string[] | undefined, b: string[] | undefined): boolean {
+  return (a?.length ?? 0) > 0 && (b?.length ?? 0) > 0;
 }
 
 /** One joined query for every non-complete assignment in the event (or
@@ -107,8 +116,9 @@ export async function listOutstandingForEvent(
     source: string;
     assignmentDueDate: Date | null;
   }[] = [];
-  outer: for (const taskIdChunk of idChunksOrUndefined(taskIds)) {
-    for (const contactIdChunk of idChunksOrUndefined(contactIds)) {
+  const pairedLists = bothPresent(taskIds, contactIds);
+  outer: for (const taskIdChunk of idChunksOrUndefined(taskIds, pairedLists)) {
+    for (const contactIdChunk of idChunksOrUndefined(contactIds, pairedLists)) {
       const conditions = [
         eq(schema.task.eventId, eventId),
         eq(schema.taskAssignment.status, "pending"),
@@ -279,8 +289,9 @@ async function listRemindableContactIdsFiltered(
   opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
 ): Promise<{ contactIds: string[]; skippedContactIds: string[]; skipped: number; remaining: number }> {
   const rows: { contactId: string; lastRemindedAt: Date | null }[] = [];
-  outer: for (const taskIdChunk of idChunksOrUndefined(opts.taskIds)) {
-    for (const contactIdChunk of idChunksOrUndefined(opts.contactIds)) {
+  const pairedLists = bothPresent(opts.taskIds, opts.contactIds);
+  outer: for (const taskIdChunk of idChunksOrUndefined(opts.taskIds, pairedLists)) {
+    for (const contactIdChunk of idChunksOrUndefined(opts.contactIds, pairedLists)) {
       const conditions = [
         eq(schema.task.eventId, eventId),
         eq(schema.taskAssignment.status, "pending"),

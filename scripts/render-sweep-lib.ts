@@ -696,8 +696,17 @@ export function deriveInteractiveOffenders(
  * never a second independently-typed source (DEC-613) -- see
  * test/admin-390-offender-roster.scan.test.ts, which reads this constant
  * directly rather than parsing a separate "Measured total" literal out of
- * the roster's prose. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 103;
+ * the roster's prose.
+ *
+ * Multi-portal re-derivation (2026-10-17): `npm run gate:render-sweep` on
+ * the multi-portal tree printed 126, all EXEMPT, 0 candidate defects. The
+ * +23: the DevFlow demo seed puts 6 more row-select checkboxes on
+ * /admin/submissions, the portal editor's permissions table adds 1, and the
+ * library's "Used by" inline links add 16 (`.chq-library-portal`'s
+ * tap-floor-exempt receipt). The library's real defect, 38px Edit buttons,
+ * was fixed before measuring. Ceiling RAISED 103 -> 126 with that run as
+ * its receipt. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 126;
 
 // ---------------------------------------------------------------------------
 // DEC-808 wave-30 amendment: the public/portal 390 tap-floor population has
@@ -764,8 +773,13 @@ export const PUBLIC_MOBILE_OFFENDER_GATE_BLOCKING = true;
  * dropped the printed total from 41 to 39 (`npm run gate:render-sweep`, this
  * task's own worktree, public mobile pass now reads 28/28 routes passed).
  * Ceiling LOWERED 41 -> 39 with this re-derivation as its receipt, same
- * roster the gate just wrote. */
-export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 39;
+ * roster the gate just wrote.
+ *
+ * Multi-portal re-derivation (2026-10-17): 38. The seed speaker is now the
+ * DevFlow demo's Priya Raman, whose invited panel locks her headshot, so
+ * /portal/profile draws no picker input. Ceiling LOWERED 39 -> 38 with that
+ * run as its receipt. */
+export const PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 38;
 
 /** DEC-808 wave-35 amendment: two-sided ratchet on the public/portal 390
  * roster's CANDIDATE (non-exempt) half -- PUBLIC_MOBILE_INTERACTIVE_OFFENDERS_CEILING

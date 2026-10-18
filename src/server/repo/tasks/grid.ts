@@ -444,11 +444,16 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
               dueDate: schema.taskAssignment.dueDate,
             })
             .from(schema.taskAssignment)
+            .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
             .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
+            // the event's tasks by join, not by binding every column's id:
+            // a contact batch (90) plus a portal library's task ids passed
+            // D1's ~100-variable limit. Rows for tasks outside the grid's
+            // columns are skipped below.
             .where(
               and(
                 inArray(schema.taskAssignment.contactId, batch),
-                inArray(schema.taskAssignment.taskId, taskIds),
+                eq(schema.task.eventId, eventId),
                 attachedAssignment(),
               ),
             ),
@@ -484,8 +489,10 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     }
   }
 
+  const columnTaskIds = new Set(taskIds);
   for (const cellRows of cellBatches) {
     for (const r of cellRows) {
+      if (!columnTaskIds.has(r.taskId)) continue;
       const row = rowsByContact.get(r.contactId);
       if (!row) continue;
       // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a

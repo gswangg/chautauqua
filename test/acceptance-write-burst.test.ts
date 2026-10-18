@@ -10,11 +10,14 @@ import { MAX_ACCEPTANCE_TASK_ASSIGNMENTS } from "../src/server/repo/submissions/
 import { ApiError } from "../src/server/http";
 import { MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
 
-// DEC-528: task_assignment inserts are chunked by bound-parameter budget
-// (columns-per-row derived from the row shape: id, taskId, contactId,
-// status, createdAt, updatedAt = 6 columns), not by ID_CHUNK_SIZE (which is
-// sized for one-bind-per-id inArray lists, not multi-row inserts).
-const TASK_ASSIGNMENT_COLUMNS = 6;
+import { insertColumnCount } from "../src/db/insert-columns";
+
+// DEC-528: task_assignment inserts are chunked by bound-parameter budget,
+// not by ID_CHUNK_SIZE (which is sized for one-bind-per-id inArray lists,
+// not multi-row inserts). The budget is the table's whole column count: a
+// multi-row INSERT binds every column, including the defaulted ones a row
+// leaves out (multi-portal's scope_key/source/due_date/...).
+const TASK_ASSIGNMENT_COLUMNS = insertColumnCount(schema.taskAssignment);
 const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / TASK_ASSIGNMENT_COLUMNS);
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";

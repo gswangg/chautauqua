@@ -58,10 +58,6 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 - button.chq-visually-hidden w=1px h=44px — **EXEMPT** (receipt: `chq-visually-hidden`)
 - button.chq-visually-hidden w=1px h=44px — **EXEMPT** (receipt: `chq-visually-hidden`)
 
-## /portal/profile
-
-- input.chq-portal-headshot-pick-input w=1px h=44px — **EXEMPT** (receipt: `chq-portal-headshot-pick-input`)
-
 ## /portal/submissions/seed_submission_0001/edit
 
 - label.chq-cfp-option > input w=18px h=18px — **EXEMPT** (receipt: `chq-cfp-option`)
@@ -88,7 +84,7 @@ Lists every visible interactive control under the 44px tap-target floor (`MIN_TA
 - label.chq-cfp-option.chq-cfp-pill > input w=18px h=18px — **EXEMPT** (receipt: `chq-cfp-option`)
 - a.chq-cfp-identity-note-link w=163px h=15px — **EXEMPT** (receipt: `chq-cfp-identity-note-link`)
 
-Measured total: 39 (exempt: 39, candidate defects: 0)
+Measured total: 38 (exempt: 38, candidate defects: 0)
 
 ## Vacuity clause (DEC-808 wave-30 amendment, clause d)
 

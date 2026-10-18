@@ -12,10 +12,13 @@ import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
 import { chunkIds, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
 
-// DEC-528: task_assignment inserts are chunked by bound-parameter budget
-// (columns-per-row derived from the row shape: id, taskId, contactId,
-// status, createdAt, updatedAt = 6 columns), not by ID_CHUNK_SIZE.
-const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / 6);
+import { insertColumnCount } from "../src/db/insert-columns";
+
+// DEC-528: task_assignment inserts are chunked by bound-parameter budget,
+// not by ID_CHUNK_SIZE. The budget is the table's whole column count: a
+// multi-row INSERT binds every column, including the defaulted ones a row
+// leaves out (multi-portal's scope_key/source/due_date/...).
+const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / insertColumnCount(schema.taskAssignment));
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
