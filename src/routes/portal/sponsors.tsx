@@ -170,7 +170,10 @@ portalSponsorRoutes.get("/sponsors/:sponsorshipId", async (c) => {
                   {s.title || "Untitled draft"}
                 </a>
                 <span class="chq-home-row-line">
-                  {s.slotLabel} · {SPONSOR_SESSION_STATUS_LINES[s.status]}
+                  {s.slotLabel} ·{" "}
+                  {s.status === "declined" && !ctx.slots.some((slot) => slot.entitlementId === s.entitlementId)
+                    ? "No longer in your package"
+                    : SPONSOR_SESSION_STATUS_LINES[s.status]}
                 </span>
               </div>
               <span class={s.status === "changes_requested" ? "chq-home-pill" : "chq-home-state"}>{SPONSOR_SESSION_STATUS_LABELS[s.status]}</span>
@@ -285,7 +288,10 @@ function SessionPage(props: { ctx: SponsorPageContext; s: SponsorSessionDetail; 
       <div class="chq-home-label">{companyLine(ctx)}</div>
       <h1 class="chq-portal-hero chq-portal-hero-drill">Your {noun}</h1>
       <p class="chq-portal-sub">
-        {SPONSOR_SESSION_STATUS_LABELS[s.status]} · {SPONSOR_SESSION_STATUS_LINES[s.status]}
+        {SPONSOR_SESSION_STATUS_LABELS[s.status]} ·{" "}
+        {s.status === "declined" && !ctx.slots.some((slot) => slot.entitlementId === s.entitlementId)
+          ? "No longer in your package"
+          : SPONSOR_SESSION_STATUS_LINES[s.status]}
       </p>
       {props.error ? <p role="alert" class="chq-field-error">{props.error}</p> : null}
 
@@ -355,9 +361,20 @@ function SessionPage(props: { ctx: SponsorPageContext; s: SponsorSessionDetail; 
               </span>
             ) : null}
           </div>
-          <h2 class="chq-home-title">Your {noun} slot is free again</h2>
-          <p class="chq-portal-sub">You can use it for a different session.</p>
-          {ctx.canDesign ? (
+          {/* the slot comes back only while the package still has it: an
+              organizer can take the session type out of the tier */}
+          {ctx.slots.some((slot) => slot.entitlementId === s.entitlementId) ? (
+            <>
+              <h2 class="chq-home-title">Your {noun} slot is free again</h2>
+              <p class="chq-portal-sub">You can use it for a different session.</p>
+            </>
+          ) : (
+            <>
+              <h2 class="chq-home-title">This session type is no longer in your package</h2>
+              <p class="chq-portal-sub">Ask the organizers if you'd like another.</p>
+            </>
+          )}
+          {ctx.canDesign && freeSlots(ctx.slots).length > 0 ? (
             <p>
               <a class="chq-btn chq-btn-primary" href={`/portal/sponsors/${ctx.access.sponsorshipId}/sessions/new`}>
                 Design a new session

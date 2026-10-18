@@ -353,6 +353,29 @@ describe("sponsor isolation: a sponsor contact never reaches another sponsor's s
     f.sqlite.close();
   });
 
+  it("a declined session whose session type left the package doesn't promise a free slot", async () => {
+    const f = makePortalsFixture();
+    seed(f);
+    f.run(
+      `insert into sponsor_session (id, sponsorship_id, event_id, entitlement_id, title, status, created_by_contact_id, decline_reason, created_at, updated_at)
+       values ('iso-ss-birch-gone', ?, ?, 'iso-ent-removed', 'Lightning tour', 'declined', ?, 'No lightning slots this year.', ?, ?)`,
+      BIRCH.sponsorship,
+      EVENT,
+      BIRCH.contact,
+      f.now,
+      f.now,
+    );
+    const app = await buildApp(f);
+    const list = await send(app, "GET", `/portal/sponsors/${BIRCH.sponsorship}`);
+    expect(list.status).toBe(200);
+    expect(list.text).toContain("No longer in your package");
+    const page = await send(app, "GET", `/portal/sponsors/${BIRCH.sponsorship}/sessions/iso-ss-birch-gone`);
+    expect(page.status).toBe(200);
+    expect(page.text).toContain("This session type is no longer in your package");
+    expect(page.text).not.toContain("slot is free again");
+    f.sqlite.close();
+  });
+
   it("Birch's own pages render, and carry nothing of Acme's (non-vacuity control)", async () => {
     const f = makePortalsFixture();
     seed(f);
