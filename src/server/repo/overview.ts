@@ -55,20 +55,44 @@ import { buildConflictResolutionFor, buildConflictRows, buildPlacementSuggestion
 
 const ROW_CAP = 5;
 
+/** Runs independent reads in ONE database round trip (D1's batch) when the
+ * database offers it, else side by side; results come back in query order.
+ * Each D1 query costs a round trip whatever its size, so batching is what
+ * makes a many-section read cheap. The overview tests' fake databases have
+ * no batch and take the Promise.all path, in the same order. */
+async function readTogether<T extends readonly unknown[]>(db: Db, queries: T): Promise<{ -readonly [K in keyof T]: Awaited<T[K]> }> {
+  const batch = (db as unknown as { batch?: (queries: readonly unknown[]) => Promise<unknown[]> }).batch;
+  if (typeof batch === "function") return (await batch.call(db, queries)) as never;
+  return (await Promise.all(queries)) as never;
+}
+
 // ---------------------------------------------------------------------------
 // I/O: builds the full payload from joined/grouped queries.
 // ---------------------------------------------------------------------------
 
 export async function getOverviewPayload(db: Db, eventId: string, now: number, timeZone: string): Promise<OverviewPayloadV2> {
-  // --- Phase 1 (w49-d, DEC-589 amendment): every query below takes ONLY
-  // eventId/now as input — none reads another query's result — so they
-  // fire as ONE Promise.all wave instead of ~10 sequential round trips.
-  // The array order below is the exact original sequential-await order:
-  // Promise.all evaluates its array literal left-to-right, synchronously,
-  // so db.select() calls (and the fake-db test harnesses' response-queue
-  // cursors in test/overview*.test.ts) fire/consume in this same order —
-  // phasing the AWAITs changes nothing about call order or a single output
-  // value, only when the round trips are in flight together.
+  // Three waves (perf): the payload's queries used to run in eight
+  // sequential waves, each a database round trip. Now:
+  //   1. every query that needs only eventId/now, together;
+  //   2. every read that needs only wave 1's rows, together (chunked reads
+  //      run their chunks side by side);
+  //   3. the lead-speaker lookup, which needs the conflicts computed from
+  //      wave 2's participants.
+  // Wave 1 is one D1 batch (one round trip); its elements are plain query
+  // chains, resolved in array order where there is no batch;
+  // waves 2 and 3 are async calls, each issuing its first query in array
+  // order. That order is the response order the fake-db tests in
+  // test/overview*.test.ts queue.
+  const UNPLACED_ACCEPTED_CONDITIONS = and(
+    eq(schema.submission.eventId, eventId),
+    eq(schema.submission.status, "accepted"),
+    sql`not exists (select 1 from ${schema.scheduleSlot} where ${schema.scheduleSlot.submissionId} = ${schema.submission.id})`,
+  );
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS_MS = 7 * DAY_MS;
+  const cutoffMs = now - SEVEN_DAYS_MS;
+
+  // --- Wave 1.
   const [
     eventRows,
     statusRows,
@@ -80,7 +104,14 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
     overdueAssignmentCountRows,
     overdueDetailRows,
     triageDetailRows,
-  ] = await Promise.all([
+    contentAggRows,
+    contentDetailRows,
+    unplacedCountRows,
+    unplacedDetailRows,
+    slotRows,
+    commsRows,
+    publishedSessionCountRows,
+  ] = await readTogether(db, [
     // --- Event: record ref prefix + start date (DEC-370 deadlines strip).
     db
       .select({ recordPrefix: schema.event.recordPrefix, startDate: schema.event.startDate })
@@ -193,70 +224,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "pending")))
       .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id))
       .limit(ROW_CAP),
-  ]);
 
-  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-  const eventStartDate = eventRows[0]?.startDate ? new Date(`${eventRows[0].startDate}T00:00:00Z`).getTime() : null;
-  const triage = aggregateTriageCounts(statusRows.map((r) => ({ status: r.status, n: Number(r.n) })));
-  const plans = Number(planCountRows[0]?.count ?? 0);
-  const evaluationsStarted = Number(evaluationsAggRows[0]?.started ?? 0);
-  const evaluationsSubmitted = Number(evaluationsAggRows[0]?.submitted ?? 0);
-  const planCloseDate = planCloseRows[0]?.closeDate == null ? null : planCloseRows[0].closeDate.getTime();
-  const planRound = planCloseRows[0]?.currentRound ?? null;
-  const formCloseDate = formRows[0]?.closeDate ? formRows[0].closeDate.getTime() : null;
-  const overdueAssignmentCount = Number(overdueAssignmentCountRows[0]?.count ?? 0);
-
-  const speakers: OverviewPayload["speakers"] = {
-    contactsOwing: Number(speakerAggRows[0]?.outstandingContacts ?? 0),
-    overdueAssignments: overdueAssignmentCount,
-  };
-  const nextTaskDueDate =
-    speakerAggRows[0]?.nextDue == null ? null : Number(speakerAggRows[0].nextDue);
-
-  // --- Overdue task rows (DEC-370 section 01): capped detail rows for the
-  // same overdue set the speakers aggregate above already counted
-  // (overdueTasks.total reuses speakers.overdueAssignments — no second
-  // count query); overdueDetailRows came back in Phase 1 above.
-  const overdueTasks = {
-    total: speakers.overdueAssignments,
-    rows: buildOverdueTaskRows(
-      overdueDetailRows.map((r) => ({
-        assignmentId: r.assignmentId,
-        contactId: r.contactId,
-        contactName: `${r.firstName} ${r.lastName}`.trim(),
-        company: r.company,
-        taskId: r.taskId,
-        taskTitle: r.taskTitle,
-        // multi-portal: a portal row's own merged deadline; passing it as the
-        // assignment time too keeps DEC-801's late-assignment grace (which
-        // only applies to direct rows) out of the computation
-        taskDueDate: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.dueDate!.getTime(),
-        assignedAt: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.assignedAt!.getTime(),
-      })),
-      now,
-      timeZone,
-    ),
-  };
-
-  // --- Triage queue rows (DEC-370 section 02): oldest-first, capped;
-  // oldestSubmittedAt is the first row's createdAt (ordering is ascending
-  // over the whole pending set, so the first of up to ROW_CAP rows is the
-  // global oldest — no separate min() query needed). triageDetailRows came
-  // back in Phase 1 above.
-  const oldestSubmittedAt = triageDetailRows[0] ? triageDetailRows[0].createdAt.getTime() : null;
-
-  // --- Phase 2 (w49-d, DEC-589 amendment): triageTrackNames needs
-  // triageDetailRows' ids (Phase 1's output) so it can't join Phase 1's
-  // wave, but it's independent of contentAggRows/contentDetailRows (which
-  // only need eventId) — same array-order-preserves-call-order reasoning
-  // as Phase 1. loadTrackNamesBySubmission itself skips the query entirely
-  // when given no ids, so this array element never desyncs the fake-db
-  // response-queue cursor tests when triage is empty.
-  const [triageTrackNames, contentAggRows, contentDetailRows] = await Promise.all([
-    loadTrackNamesBySubmission(
-      db,
-      triageDetailRows.map((r) => r.id),
-    ),
     // --- Content approval (DEC-370 section 03): accepted + content_status
     // pending. One conditional-aggregate query gives both the total (also
     // v1's content.awaitingApproval) and reuploadedCount (a correlated-EXISTS
@@ -296,39 +264,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       )
       .orderBy(desc(schema.submission.updatedAt), asc(schema.submission.id))
       .limit(ROW_CAP),
-  ]);
-  const content = { awaitingApproval: Number(contentAggRows[0]?.total ?? 0) };
-  const reuploadedCount = Number(contentAggRows[0]?.reuploaded ?? 0);
 
-  // --- Phase 2b (w49-d, DEC-589 amendment; w56-b/DEC-370 amendment): fileRows
-  // needs contentDetailRows' ids (this Phase's own contentDetailRows above);
-  // unplacedCountRows/unplacedDetailRows need only eventId — independent of
-  // each other and of fileRows, contiguous with it in the original
-  // sequential order, so one more Promise.all wave. w56-b/DEC-370: the old
-  // "every accepted submission id/seq/title, no LIMIT" query is gone —
-  // agenda.unplaced is now a NOT EXISTS(schedule_slot) COUNT, and the
-  // unplaced detail rows are their own LIMIT ROW_CAP query ordered by seq
-  // (the placed set below already carries its own seq/title off the
-  // schedule_slot join, so the accepted-id array has no remaining reader).
-  const UNPLACED_ACCEPTED_CONDITIONS = and(
-    eq(schema.submission.eventId, eventId),
-    eq(schema.submission.status, "accepted"),
-    sql`not exists (select 1 from ${schema.scheduleSlot} where ${schema.scheduleSlot.submissionId} = ${schema.submission.id})`,
-  );
-  const contentSubmissionIds = contentDetailRows.map((r) => r.id);
-  const [fileRows, unplacedCountRows, unplacedDetailRows] = await Promise.all([
-    contentSubmissionIds.length > 0
-      ? db
-          .select({
-            id: schema.file.id,
-            submissionId: schema.file.submissionId,
-            filename: schema.file.filename,
-            previousFileId: schema.file.previousFileId,
-            createdAt: schema.file.createdAt,
-          })
-          .from(schema.file)
-          .where(inArray(schema.file.submissionId, contentSubmissionIds))
-      : Promise.resolve([] as { id: string; submissionId: string | null; filename: string; previousFileId: string | null; createdAt: Date }[]),
     // --- Agenda unplaced count (DEC-370 wave-56 amendment): a SQL count,
     // never a filter over a materialized accepted-submission array.
     db
@@ -344,183 +280,179 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       .where(UNPLACED_ACCEPTED_CONDITIONS)
       .orderBy(asc(schema.submission.seq))
       .limit(ROW_CAP),
-  ]);
+
+    // --- Placed sessions (DEC-370 wave-56 amendment): the schedule_slot
+    // query is event- and status-scoped by its join to `submission`, and
+    // selects submission.seq/title off that SAME join so every placed row
+    // carries its own ref/title.
+    db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        roomId: schema.scheduleSlot.roomId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+      })
+      .from(schema.scheduleSlot)
+      .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+      .limit(MAX_AGENDA_SCAN + 1),
+    // --- Comms: one aggregate query, never the whole email_log table
+    // (DEC-333/DEC-334: card numbers are SQL aggregates, not materialized
+    // rows spread into Math.max).
+    db
+      .select({
+        sentLast7Days: sql<number>`count(case when ${schema.emailLog.sentAt} >= ${cutoffMs} then 1 end)`,
+        lastSentAt: sql<number | null>`max(${schema.emailLog.sentAt})`,
+      })
+      .from(schema.emailLog)
+      .where(eq(schema.emailLog.eventId, eventId)),
+    // DEC-370 amendment (wave 5): "Public pages" quiet-row count -- reuses
+    // visibleSessionConditions(), the same gate the public sessions list
+    // itself applies, scoped to this event. One count query, never a
+    // materialized row list.
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), visibleSessionConditions())),
+  ] as const);
+
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+  const eventStartDate = eventRows[0]?.startDate ? new Date(`${eventRows[0].startDate}T00:00:00Z`).getTime() : null;
+  const triage = aggregateTriageCounts(statusRows.map((r) => ({ status: r.status, n: Number(r.n) })));
+  const plans = Number(planCountRows[0]?.count ?? 0);
+  const evaluationsStarted = Number(evaluationsAggRows[0]?.started ?? 0);
+  const evaluationsSubmitted = Number(evaluationsAggRows[0]?.submitted ?? 0);
+  const planCloseDate = planCloseRows[0]?.closeDate == null ? null : planCloseRows[0].closeDate.getTime();
+  const planRound = planCloseRows[0]?.currentRound ?? null;
+  const formCloseDate = formRows[0]?.closeDate ? formRows[0].closeDate.getTime() : null;
+  const overdueAssignmentCount = Number(overdueAssignmentCountRows[0]?.count ?? 0);
+
+  const speakers: OverviewPayload["speakers"] = {
+    contactsOwing: Number(speakerAggRows[0]?.outstandingContacts ?? 0),
+    overdueAssignments: overdueAssignmentCount,
+  };
+  const nextTaskDueDate =
+    speakerAggRows[0]?.nextDue == null ? null : Number(speakerAggRows[0].nextDue);
+
+  // --- Overdue task rows (DEC-370 section 01): capped detail rows for the
+  // same overdue set the speakers aggregate above already counted
+  // (overdueTasks.total reuses speakers.overdueAssignments — no second
+  // count query); overdueDetailRows came back in wave 1 above.
+  const overdueTasks = {
+    total: speakers.overdueAssignments,
+    rows: buildOverdueTaskRows(
+      overdueDetailRows.map((r) => ({
+        assignmentId: r.assignmentId,
+        contactId: r.contactId,
+        contactName: `${r.firstName} ${r.lastName}`.trim(),
+        company: r.company,
+        taskId: r.taskId,
+        taskTitle: r.taskTitle,
+        // multi-portal: a portal row's own merged deadline; passing it as the
+        // assignment time too keeps DEC-801's late-assignment grace (which
+        // only applies to direct rows) out of the computation
+        taskDueDate: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.dueDate!.getTime(),
+        assignedAt: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.assignedAt!.getTime(),
+      })),
+      now,
+      timeZone,
+    ),
+  };
+
+  // --- Triage queue rows (DEC-370 section 02): oldest-first, capped;
+  // oldestSubmittedAt is the first row's createdAt (ordering is ascending
+  // over the whole pending set, so the first of up to ROW_CAP rows is the
+  // global oldest — no separate min() query needed). triageDetailRows came
+  // back in wave 1 above.
+  const oldestSubmittedAt = triageDetailRows[0] ? triageDetailRows[0].createdAt.getTime() : null;
+
+  const content = { awaitingApproval: Number(contentAggRows[0]?.total ?? 0) };
+  const reuploadedCount = Number(contentAggRows[0]?.reuploaded ?? 0);
   const unplacedCount = Number(unplacedCountRows[0]?.count ?? 0);
+  const comms = {
+    sentLast7Days: Number(commsRows[0]?.sentLast7Days ?? 0),
+    lastSentAt: commsRows[0]?.lastSentAt == null ? null : Number(commsRows[0].lastSentAt),
+  };
+  const publishedSessionCount = Number(publishedSessionCountRows[0]?.count ?? 0);
 
-  const latestFileBySubmission = new Map<string, { filename: string; uploadedAt: number; reuploaded: boolean }>();
-  {
-    const fileRowsBySubmission = new Map<string, FileRowForPick[]>();
-    for (const f of fileRows) {
-      if (!f.submissionId) continue;
-      const arr = fileRowsBySubmission.get(f.submissionId) ?? [];
-      arr.push({ id: f.id, submissionId: f.submissionId, filename: f.filename, previousFileId: f.previousFileId, createdAt: f.createdAt.getTime() });
-      fileRowsBySubmission.set(f.submissionId, arr);
-    }
-    for (const [submissionId, rows] of fileRowsBySubmission) {
-      const picked = pickLatestFilePerSubmission(rows);
-      if (picked) {
-        latestFileBySubmission.set(submissionId, {
-          filename: picked.filename,
-          uploadedAt: picked.createdAt,
-          reuploaded: picked.previousFileId !== null,
-        });
-      }
-    }
+  if (slotRows.length > MAX_AGENDA_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This overview read would scan more than ${MAX_AGENDA_SCAN} placed sessions`,
+    );
   }
-
-  // --- Placed sessions (DEC-370 wave-56 amendment): the schedule_slot query
-  // is already event- and status-scoped by its join to `submission`, so it
-  // runs unconditionally (no more gate on a materialized accepted-id list)
-  // — and now selects submission.seq/title off that SAME join so every
-  // placed row carries its own ref/title (sessionById below no longer needs
-  // a second accepted-submission lookup).
   const placedSeqTitleById = new Map<string, { seq: number; title: string }>();
-  let placed: PlacedSession[] = [];
-  // --- Placement-suggestion co-presenter fix (DEC-895 amendment, w2-f): the
-  // ONE speakersBySubmission map below (placed ids AND capped unplaced ids)
-  // is also the source for `speakerContactIds` on each unplaced row's own
-  // buildPlacementSuggestion call further down this function — never a
-  // second lead-only lookup.
-  let speakersBySubmission: Map<string, string[]> = new Map();
-  // DEC-370 (wave-71 amendment): the event's breaks are read here, joined
-  // into the same wave as the placed-session slot read (both need only
-  // eventId, and this is the earliest point conflicts get computed) — ONE
-  // breaks read for the whole function, reused below by both the
-  // conflicts wave and the §04 nextFreeSlot suggestion code, which no
-  // longer re-reads it in the Phase 3 wave further down.
-  let breaks: Awaited<ReturnType<typeof listBreaksForEvent>> = [];
-  {
-    // Both elements are wrapped as their own async calls (never a bare
-    // `db.select()` chain alongside an async-function element) so BOTH
-    // resolve via the native-Promise fast path Promise.all uses — a raw
-    // thenable chain mixed with a wrapped async call resolves out of
-    // array-literal order (the thenable's own PromiseResolveThenableJob
-    // gets queued a tick later than an already-native Promise's direct
-    // .then()), which silently reverses the fake-db test harnesses'
-    // response-queue cursor. See test/overview*.test.ts's response arrays,
-    // which assume array-literal order.
-    const [slotRows, breaksRows] = await Promise.all([
-      (async () =>
-        db
-          .select({
-            submissionId: schema.scheduleSlot.submissionId,
-            roomId: schema.scheduleSlot.roomId,
-            day: schema.scheduleSlot.day,
-            startMin: schema.scheduleSlot.startMin,
-            endMin: schema.scheduleSlot.endMin,
-            seq: schema.submission.seq,
-            title: schema.submission.title,
-          })
-          .from(schema.scheduleSlot)
-          .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-          .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-          .limit(MAX_AGENDA_SCAN + 1))(),
-      listBreaksForEvent(db, eventId),
-    ]);
-    breaks = breaksRows;
-
-    if (slotRows.length > MAX_AGENDA_SCAN) {
-      throw new ApiError(
-        "invalid",
-        `This overview read would scan more than ${MAX_AGENDA_SCAN} placed sessions`,
-      );
-    }
-
-    for (const s of slotRows) placedSeqTitleById.set(s.submissionId, { seq: s.seq, title: s.title });
-
-    const placedIds = [...new Set(slotRows.map((s) => s.submissionId))];
-    // --- Placement-suggestion co-presenter fix (DEC-895 amendment, w2-f): a
-    // "Place at HH:MM" suggestion must avoid double-booking EVERY active
-    // participant on the unplaced submission, not just its lead speaker —
-    // so this same chunked participant query also covers the capped
-    // unplaced ids below, and both `placed` and the unplaced-row suggestion
-    // loop read off the ONE resulting speakersBySubmission map.
-    const participantSubmissionIds = [...new Set([...placedIds, ...unplacedDetailRows.map((r) => r.id)])];
-    const participantRows: { submissionId: string; contactId: string }[] = [];
-    for (const batch of chunkIds(participantSubmissionIds)) {
-      const batchRows = await db
-        .select({
-          submissionId: schema.participant.submissionId,
-          contactId: schema.participant.contactId,
-        })
-        .from(schema.participant)
-        .where(
-          and(
-            inArray(schema.participant.submissionId, batch),
-            inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
-          ),
-        );
-      participantRows.push(...batchRows);
-    }
-    for (const p of participantRows) {
-      const arr = speakersBySubmission.get(p.submissionId) ?? [];
-      arr.push(p.contactId);
-      speakersBySubmission.set(p.submissionId, arr);
-    }
-
-    placed = slotRows.map((s) => ({
-      submissionId: s.submissionId,
-      roomId: s.roomId,
-      day: s.day,
-      startMin: s.startMin,
-      endMin: s.endMin,
-      speakerContactIds: speakersBySubmission.get(s.submissionId) ?? [],
-    }));
-  }
-  // DEC-370 (wave-71 amendment): the event's breaks feed conflict detection
-  // here too, matching agenda/payload.ts's findConflicts(placedSessions,
-  // blocks) — computed exactly ONCE and shared by both the summary count
-  // (agenda.conflicts) and the agendaWork rows below, never recomputed
-  // blind to breaks a second time.
-  const blocks = toScheduleBlocks(breaks);
-  const blocked: BlockedInterval[] = breaks.map((b) => ({
-    day: b.day,
-    startMin: b.startMin,
-    endMin: b.startMin + b.durationMin,
-  }));
-  const conflicts = findConflicts(placed, blocks);
-  const agenda = computeAgendaSummary(unplacedCount, conflicts.length);
-  const placedById = new Map(placed.map((p) => [p.submissionId, p]));
-
-  // --- Unplaced rows (DEC-370 wave-56 amendment): unplacedDetailRows is
-  // already the <=ROW_CAP, seq-ordered set from the NOT EXISTS query above —
-  // no further slicing/filtering against a materialized accepted-id list.
+  for (const s of slotRows) placedSeqTitleById.set(s.submissionId, { seq: s.seq, title: s.title });
+  const placedIds = [...new Set(slotRows.map((s) => s.submissionId))];
+  const placedRoomIds = [...new Set(slotRows.map((s) => s.roomId).filter((id): id is string => id !== null))];
+  const placedDays = [...new Set(slotRows.map((s) => s.day))].sort();
   const unplacedById = new Map(unplacedDetailRows.map((r) => [r.id, r]));
   const unplacedCappedIds = unplacedDetailRows.map((r) => r.id);
-
-  // --- One combined lead-speaker lookup for every submission id any DEC-370
-  // row section below needs a display name for (triage queue rows, content
-  // approval rows, unplaced rows, conflict entries) — a single chunked
-  // query set rather than one per section.
-  const leadSpeakerIds = new Set<string>();
-  for (const r of triageDetailRows) leadSpeakerIds.add(r.id);
-  for (const r of contentDetailRows) leadSpeakerIds.add(r.id);
-  for (const id of unplacedCappedIds) leadSpeakerIds.add(id);
-  for (const c of conflicts.slice(0, ROW_CAP)) {
-    for (const id of c.submissionIds) leadSpeakerIds.add(id);
-  }
-
-  // --- Room names for every room already in use on the event's placed
-  // sessions (DEC-652: this same bounded set doubles as the room-name
-  // lookup for both the conflict rows' rooms and the nextFreeSlot
-  // suggestion/resolution rooms below — no extra query).
-  const placedRoomIds = [...new Set(placed.map((p) => p.roomId).filter((id): id is string => id !== null))];
-  const placedDays = [...new Set(placed.map((p) => p.day))].sort();
-
-  // --- Phase 3 (w49-d, DEC-589 amendment): leadSpeakerIds, placedRoomIds
-  // and unplacedCappedIds are all sync-derived from `placed`/earlier phases
-  // above (no await between them), and the three lookups they feed are
-  // mutually independent of each other's results — one more Promise.all
-  // wave, in the original leadSpeaker -> room -> format-answer call order.
   // --- DEC-895 amendment (wave 148, w4-ak): the count of unplaced rows the
   // client never receives (the detail query's own ROW_CAP truncation) --
-  // computed here (before the Promise.all wave below) so the remainder read
+  // computed here (before wave 2 below) so the remainder read
   // can be skipped outright when there is no remainder.
-  const unplacedRemainderCount = agenda.unplaced - unplacedCappedIds.length;
+  const unplacedRemainderCount = unplacedCount - unplacedCappedIds.length;
 
-  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows, remainderFormatAnswerRows] =
+  const contentSubmissionIds = contentDetailRows.map((r) => r.id);
+  // --- Placement-suggestion co-presenter fix (DEC-895 amendment, w2-f): a
+  // "Place at HH:MM" suggestion must avoid double-booking EVERY active
+  // participant on the unplaced submission, not just its lead speaker --
+  // so the participant read covers the placed ids AND the capped unplaced
+  // ids, and both `placed` and the unplaced-row suggestions below read off
+  // the ONE resulting speakersBySubmission map.
+  const participantSubmissionIds = [...new Set([...placedIds, ...unplacedCappedIds])];
+
+  // --- Wave 2.
+  const [breaks, triageTrackNames, fileRows, participantRows, roomNameById, formatAnswerRows, remainderFormatAnswerRows] =
     await Promise.all([
-      fetchLeadSpeakers(db, [...leadSpeakerIds]),
+      // DEC-370 (wave-71 amendment): ONE breaks read for the whole function,
+      // shared by conflict detection and the nextFreeSlot suggestions.
+      listBreaksForEvent(db, eventId),
+      // DEC-855: skips its query entirely when triage has no rows.
+      loadTrackNamesBySubmission(
+        db,
+        triageDetailRows.map((r) => r.id),
+      ),
+      (async () =>
+        contentSubmissionIds.length > 0
+          ? db
+              .select({
+                id: schema.file.id,
+                submissionId: schema.file.submissionId,
+                filename: schema.file.filename,
+                previousFileId: schema.file.previousFileId,
+                createdAt: schema.file.createdAt,
+              })
+              .from(schema.file)
+              .where(inArray(schema.file.submissionId, contentSubmissionIds))
+          : ([] as { id: string; submissionId: string | null; filename: string; previousFileId: string | null; createdAt: Date }[]))(),
+      (async () => {
+        const batches = await Promise.all(
+          chunkIds(participantSubmissionIds).map((batch) =>
+            db
+              .select({
+                submissionId: schema.participant.submissionId,
+                contactId: schema.participant.contactId,
+              })
+              .from(schema.participant)
+              .where(
+                and(
+                  inArray(schema.participant.submissionId, batch),
+                  inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+                ),
+              ),
+          ),
+        );
+        return batches.flat();
+      })(),
+      // --- Room names for every room already in use on the event's placed
+      // sessions (DEC-652: this same bounded set doubles as the room-name
+      // lookup for both the conflict rows' rooms and the nextFreeSlot
+      // suggestion/resolution rooms below -- no extra query).
       (async () => {
         const map = new Map<string, string>();
         if (placedRoomIds.length > 0) {
@@ -538,10 +470,9 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       // row whose format is absent or unparseable can say so (durationMin:
       // null) rather than silently borrowing the event's default.
       (async () => {
-        const rows: { submissionId: string; valueJson: string }[] = [];
-        if (unplacedCappedIds.length > 0) {
-          for (const batch of chunkIds(unplacedCappedIds)) {
-            const batchRows = await db
+        const batches = await Promise.all(
+          chunkIds(unplacedCappedIds).map((batch) =>
+            db
               .select({
                 submissionId: schema.submissionAnswer.submissionId,
                 valueJson: schema.submissionAnswer.valueJson,
@@ -552,11 +483,10 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
                   inArray(schema.submissionAnswer.submissionId, batch),
                   answerFieldRoleCondition("session_format"),
                 ),
-              );
-            rows.push(...batchRows);
-          }
-        }
-        return rows;
+              ),
+          ),
+        );
+        return batches.flat();
       })(),
       // --- DEC-895 amendment (wave 148, w4-ak): the unplaced REMAINDER's
       // (unplacedTotal minus the capped rows just above) own
@@ -585,6 +515,71 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
           );
       })(),
     ]);
+
+  const latestFileBySubmission = new Map<string, { filename: string; uploadedAt: number; reuploaded: boolean }>();
+  {
+    const fileRowsBySubmission = new Map<string, FileRowForPick[]>();
+    for (const f of fileRows) {
+      if (!f.submissionId) continue;
+      const arr = fileRowsBySubmission.get(f.submissionId) ?? [];
+      arr.push({ id: f.id, submissionId: f.submissionId, filename: f.filename, previousFileId: f.previousFileId, createdAt: f.createdAt.getTime() });
+      fileRowsBySubmission.set(f.submissionId, arr);
+    }
+    for (const [submissionId, rows] of fileRowsBySubmission) {
+      const picked = pickLatestFilePerSubmission(rows);
+      if (picked) {
+        latestFileBySubmission.set(submissionId, {
+          filename: picked.filename,
+          uploadedAt: picked.createdAt,
+          reuploaded: picked.previousFileId !== null,
+        });
+      }
+    }
+  }
+
+  const speakersBySubmission = new Map<string, string[]>();
+  for (const p of participantRows) {
+    const arr = speakersBySubmission.get(p.submissionId) ?? [];
+    arr.push(p.contactId);
+    speakersBySubmission.set(p.submissionId, arr);
+  }
+  const placed: PlacedSession[] = slotRows.map((s) => ({
+    submissionId: s.submissionId,
+    roomId: s.roomId,
+    day: s.day,
+    startMin: s.startMin,
+    endMin: s.endMin,
+    speakerContactIds: speakersBySubmission.get(s.submissionId) ?? [],
+  }));
+  // DEC-370 (wave-71 amendment): the event's breaks feed conflict detection
+  // here too, matching agenda/payload.ts's findConflicts(placedSessions,
+  // blocks) — computed exactly ONCE and shared by both the summary count
+  // (agenda.conflicts) and the agendaWork rows below, never recomputed
+  // blind to breaks a second time.
+  const blocks = toScheduleBlocks(breaks);
+  const blocked: BlockedInterval[] = breaks.map((b) => ({
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+  }));
+  const conflicts = findConflicts(placed, blocks);
+  const agenda = computeAgendaSummary(unplacedCount, conflicts.length);
+  const placedById = new Map(placed.map((p) => [p.submissionId, p]));
+
+  // --- One combined lead-speaker lookup for every submission id any DEC-370
+  // row section below needs a display name for (triage queue rows, content
+  // approval rows, unplaced rows, conflict entries) — a single chunked
+  // query set rather than one per section.
+  const leadSpeakerIds = new Set<string>();
+  for (const r of triageDetailRows) leadSpeakerIds.add(r.id);
+  for (const r of contentDetailRows) leadSpeakerIds.add(r.id);
+  for (const id of unplacedCappedIds) leadSpeakerIds.add(id);
+  for (const c of conflicts.slice(0, ROW_CAP)) {
+    for (const id of c.submissionIds) leadSpeakerIds.add(id);
+  }
+
+  // --- Wave 3.
+  const { nameById: leadSpeakerNameById } = await fetchLeadSpeakers(db, [...leadSpeakerIds]);
 
   // --- DEC-895 amendment (wave 148, w4-ak): non-null ONLY when every
   // remainder row answered (row count matches the remainder count exactly)
@@ -738,34 +733,6 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
     unplaced: unplacedRows,
     unplacedRemainderDurationMin,
   };
-
-  // --- Comms: one aggregate query, never the whole email_log table
-  // (DEC-333/DEC-334: card numbers are SQL aggregates, not materialized
-  // rows spread into Math.max).
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const SEVEN_DAYS_MS = 7 * DAY_MS;
-  const cutoffMs = now - SEVEN_DAYS_MS;
-  const commsRows = await db
-    .select({
-      sentLast7Days: sql<number>`count(case when ${schema.emailLog.sentAt} >= ${cutoffMs} then 1 end)`,
-      lastSentAt: sql<number | null>`max(${schema.emailLog.sentAt})`,
-    })
-    .from(schema.emailLog)
-    .where(eq(schema.emailLog.eventId, eventId));
-  const comms = {
-    sentLast7Days: Number(commsRows[0]?.sentLast7Days ?? 0),
-    lastSentAt: commsRows[0]?.lastSentAt == null ? null : Number(commsRows[0].lastSentAt),
-  };
-
-  // DEC-370 amendment (wave 5): "Public pages" quiet-row count -- reuses
-  // visibleSessionConditions(), the same gate the public sessions list
-  // itself applies, scoped to this event. One count query, never a
-  // materialized row list.
-  const publishedSessionCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), visibleSessionConditions()));
-  const publishedSessionCount = Number(publishedSessionCountRows[0]?.count ?? 0);
 
   return {
     "triage-counts": triage,

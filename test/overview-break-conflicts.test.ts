@@ -32,8 +32,7 @@ const BREAK_ROW = {
   updatedAt: new Date(1_700_000_000_000),
 };
 
-// Minimal fake db mirroring getOverviewPayload's sequential (Promise.all
-// wave) select() calls -- see test/overview.test.ts's emptyResponses and
+// Minimal fake db mirroring getOverviewPayload's three-wave select() calls -- see test/overview.test.ts's emptyResponses and
 // test/overview-invite-audience.test.ts for the same response-queue style.
 function makeOverviewDb(): Db {
   const responses: unknown[] = [
@@ -52,12 +51,14 @@ function makeOverviewDb(): Db {
     [{ count: 0 }], // 12 unplacedCount
     [], // 13 unplacedDetail
     [{ submissionId: "sub-1", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 1, title: "Talk One" }], // 14 slotRows
-    [BREAK_ROW], // 15 breaks (DEC-370 wave-71 amendment: joined into the slotRows wave)
-    [{ submissionId: "sub-1", contactId: "c1" }], // 16 placed-participant fan-out
-    [{ submissionId: "sub-1", order: 0, contactId: "c1", firstName: "Casey", lastName: "Speaker" }], // 17 combined lead-speaker lookup
-    [{ id: "room-a", name: "Room A" }], // 18 room-name rows
-    [{ sentLast7Days: 0, lastSentAt: null }], // 19 comms
-    [{ count: 0 }], // 20 publishedSessionCount
+    [{ sentLast7Days: 0, lastSentAt: null }], // 15 comms
+    [{ count: 0 }], // 16 publishedSessionCount
+    // wave 2
+    [BREAK_ROW], // 17 breaks (DEC-370 wave-71 amendment)
+    [{ submissionId: "sub-1", contactId: "c1" }], // 18 placed-participant fan-out
+    [{ id: "room-a", name: "Room A" }], // 19 room-name rows
+    // wave 3
+    [{ submissionId: "sub-1", order: 0, contactId: "c1", firstName: "Casey", lastName: "Speaker" }], // 20 combined lead-speaker lookup
   ];
   let cursor = 0;
   function chain(): any {

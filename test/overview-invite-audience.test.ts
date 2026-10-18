@@ -45,13 +45,15 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
       [{ count: 1 }], // 12 unplacedCount (DEC-370 wave-56 amendment)
       [{ id: "s1", seq: 2, title: "Unplaced Talk" }], // 13 unplacedDetail
       [{ submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 1, title: "Placed Talk" }], // 14 slotRows
-      [], // 15 DEC-370 wave-71 amendment: breaks for the event, joined into the slotRows wave
-      [{ submissionId: "s0", contactId: "c-active" }], // 16 placed-participant rows
-      [{ submissionId: "s1", order: 1, contactId: "c-active", firstName: "Ada", lastName: "Lovelace" }], // 17 lead-speaker rows
-      [{ id: "room-a", name: "Room A" }], // 18 room-name rows
-      [], // 19 format-answer rows for unplaced {s1}
-      [{ sentLast7Days: 0, lastSentAt: null }], // 20 comms
-      [{ count: 0 }], // 21 DEC-370 amendment (wave 5): publishedSessionCount
+      [{ sentLast7Days: 0, lastSentAt: null }], // 15 comms
+      [{ count: 0 }], // 16 DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 2
+      [], // 17 DEC-370 wave-71 amendment: breaks for the event
+      [{ submissionId: "s0", contactId: "c-active" }], // 18 placed-participant rows
+      [{ id: "room-a", name: "Room A" }], // 19 room-name rows
+      [], // 20 format-answer rows for unplaced {s1}
+      // wave 3
+      [{ submissionId: "s1", order: 1, contactId: "c-active", firstName: "Ada", lastName: "Lovelace" }], // 21 lead-speaker rows
     ];
 
     function chain(): any {
@@ -86,7 +88,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
     expect(payload.agendaWork.unplaced).toHaveLength(1);
     expect(payload.agendaWork.unplaced[0]).toMatchObject({ submissionId: "s1", speakerName: "Ada Lovelace" });
 
-    // 16: the placed+unplaced participant fan-out (DEC-895 amendment, w2-f:
+    // 18: the placed+unplaced participant fan-out (DEC-895 amendment, w2-f:
     // batch of {s0, s1} -- placed ids then the capped unplaced ids, so a
     // placement suggestion's own occupancy check sees every active
     // participant, not just leads) must AND in the same
@@ -99,11 +101,11 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     );
-    const actualParticipantWhere = sqlTextOf(whereBySelectIndex[16]);
+    const actualParticipantWhere = sqlTextOf(whereBySelectIndex[18]);
     expect(actualParticipantWhere.sql).toBe(expectedParticipantWhere.sql);
     expect(actualParticipantWhere.params).toEqual(expectedParticipantWhere.params);
 
-    // 17: combined lead-speaker lookup (batch of the unplaced id set {s1})
+    // 21: combined lead-speaker lookup (batch of the unplaced id set {s1})
     // must AND in the identical invite-status predicate alongside role=
     // 'speaker' -- a declined co-presenter must never be rendered as the
     // owning lead speaker.
@@ -114,7 +116,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     );
-    const actualLeadWhere = sqlTextOf(whereBySelectIndex[17]);
+    const actualLeadWhere = sqlTextOf(whereBySelectIndex[21]);
     expect(actualLeadWhere.sql).toBe(expectedLeadWhere.sql);
     expect(actualLeadWhere.params).toEqual(expectedLeadWhere.params);
   });

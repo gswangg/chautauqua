@@ -75,9 +75,9 @@ function emptyResponses() {
     [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
     [], // unplacedDetail
     [], // slotRows (always fires now)
-    [], // DEC-010 amendment: breaks for the event
     [{ sentLast7Days: 0, lastSentAt: null }], // comms
     [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+    [], // wave 2: DEC-010 amendment: breaks for the event
   ];
 }
 
@@ -106,15 +106,17 @@ describe("DEC-400: overview payload wire keys pinned against the client contract
   });
 });
 
-// DEC-589 amendment (wave 49): getOverviewPayload's Phase 1 queries (the ten
-// that take only eventId/now as input) must be in flight TOGETHER, not one
+// DEC-589 amendment (wave 49): getOverviewPayload's first-wave queries (the
+// seventeen that take only eventId/now as input -- Phase 1's ten, plus the
+// content, unplaced, placed-slot, comms and published-count reads that
+// multi-portal's perf work folded in) must be in flight TOGETHER, not one
 // round trip at a time. A db harness that records each query's start order
 // separately from its resolve order proves this: if Phase 1 were still
 // sequential, query #2 wouldn't START until query #1 RESOLVED, so "started"
 // and "resolved" would interleave 1-1. Under Promise.all, every Phase-1
 // query starts (its `.then()` is attached) before any of them resolves.
-describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, not sequential", () => {
-  it("every Phase 1 query starts before the first one resolves", async () => {
+describe("DEC-589 amendment (wave 49): overview first-wave queries are concurrent, not sequential", () => {
+  it("every first-wave query starts before the first one resolves", async () => {
     const now = 1_735_999_999_999;
     const responses = [
       [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
@@ -132,9 +134,9 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
       [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
       [], // unplacedDetail
       [], // slotRows (always fires now)
-      [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
       [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      [], // wave 2: DEC-010 amendment: breaks for the event
     ];
     let cursor = 0;
     let seq = 0;
@@ -166,18 +168,16 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
 
     await getOverviewPayload(db, "event-1", now, "America/New_York");
 
-    // The first 10 responses queued above are exactly Phase 1's queries
-    // (event, statusRows, planCount, evaluationsAgg, planClose, formClose,
-    // speakerAgg, overdueAssignmentCount, overdueDetail, triageDetail).
+    // The first 17 responses queued above are exactly wave 1's queries.
     // Under Promise.all, every one of them STARTS (calls .then()) before
     // ANY of them RESOLVES: the max "started" sequence number among the
-    // first 10 queries must be smaller than the min "resolved" sequence
-    // number among that same set. A still-sequential Phase 1 would instead
-    // interleave start/resolve pairs one at a time (query 2 wouldn't start
-    // until query 1 resolved), failing this.
-    expect(startedAt.length).toBeGreaterThanOrEqual(10);
-    const phase1Started = startedAt.slice(0, 10);
-    const phase1Resolved = resolvedAt.slice(0, 10);
-    expect(Math.max(...phase1Started)).toBeLessThan(Math.min(...phase1Resolved));
+    // first 17 must be smaller than the min "resolved" sequence number
+    // among that same set. A sequential read would instead interleave
+    // start/resolve pairs one at a time (query 2 wouldn't start until query
+    // 1 resolved), failing this.
+    expect(startedAt.length).toBeGreaterThanOrEqual(17);
+    const wave1Started = startedAt.slice(0, 17);
+    const wave1Resolved = resolvedAt.slice(0, 17);
+    expect(Math.max(...wave1Started)).toBeLessThan(Math.min(...wave1Resolved));
   });
 });

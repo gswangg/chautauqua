@@ -354,21 +354,19 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     return { select: () => chain() } as any;
   }
 
-  // Call order inside getOverviewPayload: event lookup, triage status rows,
-  // plan count, evaluations-submitted count, plan close-date min, default
-  // form close date, speakers conditional-aggregate row, (DEC-776) overdue
-  // assignment count row, overdue detail rows, triage detail rows, (DEC-855
-  // loadTrackNamesBySubmission — skipped only when triageDetail is itself
-  // empty, never based on whether any row turns out to have a track), content
-  // agg (total+reuploaded), content detail rows, (file rows — skipped when no
-  // content rows), (DEC-370 wave-56 amendment) the unplaced-count SQL count
-  // and the unplaced-detail LIMIT ROW_CAP rows (both always fire — no more
-  // materialized accepted-submission array), the schedule_slot query (also
-  // always fires now — it's already event/status-scoped by its join), then —
-  // only when the inputs actually trigger them — participant queries, the
-  // combined lead-speaker query and the conflict-room-name query (each test
-  // passes `extra` for exactly the branches its own fixture data trips), and
-  // finally the comms aggregate row.
+  // Call order inside getOverviewPayload (three waves). Wave 1, always:
+  // event lookup, triage status rows, plan count, evaluations aggregate,
+  // plan close date, default form close date, speakers aggregate, (DEC-776)
+  // overdue assignment count, overdue detail rows, triage detail rows,
+  // content aggregate, content detail rows, unplaced count, unplaced detail
+  // rows, the schedule_slot rows, the comms aggregate and the published
+  // session count. Wave 2: the breaks read (always), then only when their
+  // inputs trigger them -- track names (triage rows), file rows (content
+  // rows), participants (placed or unplaced ids), room names (placed
+  // rooms), format answers (unplaced ids), the remainder's format answers
+  // (more unplaced than shown). Wave 3: the lead-speaker lookup (any triage,
+  // content, unplaced or conflict id). Each test passes `extra` for exactly
+  // the conditional reads its fixture trips, in that order.
   function emptyResponses(overrides: Partial<Record<string, unknown>> = {}, extra: unknown[] = []) {
     return [
       overrides.event ?? [{ recordPrefix: "DFC", startDate: "2027-03-10" }],
@@ -386,17 +384,13 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.unplacedCount ?? [{ count: 0 }],
       overrides.unplacedDetail ?? [],
       overrides.slotRows ?? [],
-      // DEC-370 (wave-71 amendment): listBreaksForEvent is now joined into
-      // the SAME Promise.all wave as slotRows (both need only eventId) —
-      // fires unconditionally, immediately after slotRows, and its result
-      // feeds the break-aware findConflicts call this function makes right
-      // after `placed` is built.
+      overrides.comms ?? [{ sentLast7Days: 0, lastSentAt: null }],
+      // DEC-370 amendment (wave 5): the "Public pages" quiet-row summary count.
+      overrides.publishedSessionCount ?? [{ count: 0 }],
+      // DEC-370 (wave-71 amendment): the one breaks read, first in wave 2;
+      // it feeds the break-aware findConflicts call.
       overrides.breaks ?? [],
       ...extra,
-      overrides.comms ?? [{ sentLast7Days: 0, lastSentAt: null }],
-      // DEC-370 amendment (wave 5): the "Public pages" quiet-row summary
-      // count, one final SQL count query.
-      overrides.publishedSessionCount ?? [{ count: 0 }],
     ];
   }
 
@@ -555,15 +549,11 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         statusRows: [{ status: "pending", n: 12 }],
         triageDetail: rows,
       },
-      // No accepted submissions exist, but the 5 triage rows DO feed the
-      // combined lead-speaker lookup (non-empty leadSpeakerIds) -> one query.
-      [[]],
+      // DEC-855: the 5 triage rows trip loadTrackNamesBySubmission in wave 2
+      // whether or not any of them has a track (none do), and feed the
+      // wave-3 lead-speaker lookup.
+      [[], []],
     );
-    // DEC-855: loadTrackNamesBySubmission is queried once per non-empty
-    // batch of submission ids -- right after triageDetail (index 9), before
-    // contentAgg -- regardless of whether any of them turn out to have a
-    // track (none do here, so the response is empty).
-    responses.splice(10, 0, []);
     const db = makeFakeDb(responses);
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload["triage-counts"].pending).toBe(12);
@@ -594,16 +584,18 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [], // triageDetail
       [{ total: 9, reuploaded: 4 }], // contentAgg
       [{ id: "s1", seq: 1, title: "Talk", updatedAt: new Date(1_700_000_000_000) }], // contentDetail
-      [], // fileRows (s1's file rows -- empty is fine, not asserted)
       [{ count: 1 }], // unplacedCount
       [{ id: "s1", seq: 1, title: "Talk" }], // unplacedDetail
       [], // slotRows (s1 has no schedule_slot -> unplaced)
-      [], // DEC-370 (wave-71 amendment): breaks for the event, joined into the slotRows wave
-      [], // DEC-895 amendment (w2-f): participant rows for the capped unplaced set {s1}
-      [], // lead-speaker rows for {s1}
-      [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
       [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 2
+      [], // DEC-370 (wave-71 amendment): breaks for the event
+      [], // fileRows (s1's file rows -- empty is fine, not asserted)
+      [], // DEC-895 amendment (w2-f): participant rows for the capped unplaced set {s1}
+      [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
+      // wave 3
+      [], // lead-speaker rows for {s1}
     ]);
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.contentApproval.total).toBe(9);
@@ -644,16 +636,18 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         // so both unplaced rows are searched against a non-empty grid.
         { submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 99, title: "Placed Session" },
       ],
-      [], // DEC-370 (wave-71 amendment): breaks for the event, joined into the slotRows wave
+      [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 2
+      [], // DEC-370 (wave-71 amendment): breaks for the event
       [{ submissionId: "s0", contactId: "c0" }], // participant rows for placed {s0}
-      [], // lead-speaker rows for the unplaced set {s1, s2}
       [{ id: "room-a", name: "Room A" }], // room-name rows for {room-a}
       [
         { submissionId: "s1", valueJson: JSON.stringify("Talk (30 min)") },
         { submissionId: "s2", valueJson: JSON.stringify("Workshop (120 min)") },
       ], // DEC-895: format-answer rows for the unplaced set {s1, s2}
-      [{ sentLast7Days: 0, lastSentAt: null }], // comms
-      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 3
+      [], // lead-speaker rows for the unplaced set {s1, s2}
     ]);
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
@@ -718,7 +712,10 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         { submissionId: "p0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 630, seq: 1, title: "Placed A" },
         { submissionId: "p1", roomId: "room-b", day: "2026-08-10", startMin: 540, endMin: 570, seq: 2, title: "Placed B" },
       ], // slotRows
-      [], // DEC-370 (wave-71 amendment): breaks for the event, joined into the slotRows wave
+      [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 2
+      [], // DEC-370 (wave-71 amendment): breaks for the event
       [
         // participant rows for the combined {p0, p1, u1, u2} batch -- p0 and
         // u1 share the co-presenter c-shared (neither as lead), and u2
@@ -731,7 +728,6 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         { submissionId: "u2", contactId: "c-lead2" },
         { submissionId: "u2", contactId: "c-shared" },
       ],
-      [], // lead-speaker rows for the unplaced set {u1, u2}
       [
         { id: "room-a", name: "Room A" },
         { id: "room-b", name: "Room B" },
@@ -740,8 +736,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         { submissionId: "u1", valueJson: JSON.stringify("Talk (30 min)") },
         { submissionId: "u2", valueJson: JSON.stringify("Talk (30 min)") },
       ], // DEC-895: format-answer rows for {u1, u2}
-      [{ sentLast7Days: 0, lastSentAt: null }], // comms
-      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
+      // wave 3
+      [], // lead-speaker rows for the unplaced set {u1, u2}
     ]);
     const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
@@ -795,14 +791,14 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedCount: [{ count: 9 }],
           unplacedDetail: unplacedDetailRows,
         },
-        // A non-empty unplacedDetail feeds four more queries: the DEC-895
-        // amendment (w2-f) participant lookup for the capped unplaced ids,
-        // the combined lead-speaker lookup, the DEC-895 format-answer batch
-        // (all keyed on unplacedCappedIds), and the DEC-895 amendment (wave
-        // 148, w4-ak) remainder format-answer read (9 unplaced - 5 capped =
-        // 4-row remainder, fed empty here -> unplacedRemainderDurationMin
-        // stays null since the row count (0) doesn't match the remainder
-        // count (4)).
+        // A non-empty unplacedDetail feeds four more queries: in wave 2 the
+        // DEC-895 amendment (w2-f) participant lookup for the capped unplaced
+        // ids, the DEC-895 format-answer batch (both keyed on
+        // unplacedCappedIds) and the DEC-895 amendment (wave 148, w4-ak)
+        // remainder format-answer read (9 unplaced - 5 capped = 4-row
+        // remainder, fed empty here -> unplacedRemainderDurationMin stays
+        // null since the row count (0) doesn't match the remainder count
+        // (4)); in wave 3 the combined lead-speaker lookup.
         [[], [], [], []],
       ),
     );
@@ -863,13 +859,13 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         },
         [
           [], // participant rows for the capped unplaced set
-          [], // lead-speaker rows for the capped unplaced set
           [], // DEC-895: format-answer rows for the capped set (none -> durationMin null on all 5 visible rows)
           [
             { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
             { submissionId: "u6", valueJson: JSON.stringify("Workshop (120 min)") },
             { submissionId: "u7", valueJson: JSON.stringify("Workshop (120 min)") },
           ], // DEC-895 amendment (w4-ak): remainder format-answer rows, all three the same 120-min format
+          [], // wave 3: lead-speaker rows for the capped unplaced set
         ],
       ),
     );
@@ -895,14 +891,14 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedDetail: unplacedDetailRows,
         },
         [
-          [],
-          [],
-          [],
+          [], // participants
+          [], // format answers for the capped rows
           [
             { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
             { submissionId: "u6", valueJson: JSON.stringify("Talk (30 min)") },
             { submissionId: "u7", valueJson: JSON.stringify("Workshop (120 min)") },
-          ],
+          ], // the remainder's format answers
+          [], // wave 3: lead speakers
         ],
       ),
     );
@@ -927,13 +923,13 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedDetail: unplacedDetailRows,
         },
         [
-          [],
-          [],
-          [],
+          [], // participants
+          [], // format answers for the capped rows
           [
             { submissionId: "u5", valueJson: JSON.stringify("Workshop (120 min)") },
             { submissionId: "u6", valueJson: JSON.stringify("Workshop (120 min)") },
-          ],
+          ], // the remainder's format answers
+          [], // wave 3: lead speakers
         ],
       ),
     );
