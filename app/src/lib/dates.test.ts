@@ -361,3 +361,11 @@ describe('isoToMs', () => {
     expect(formatDateTime(isoToMs('not a date'))).toBe('—');
   });
 });
+
+// en-GB writes September "Sept"; the design writes three letters
+describe('formatDateTimeInZone month spelling', () => {
+  it('writes September as Sep', async () => {
+    const { formatDateTimeInZone } = await import('./dates');
+    expect(formatDateTimeInZone(Date.UTC(2026, 8, 8, 9, 14), 'UTC')).toBe('8 Sep 2026, 09:14');
+  });
+});

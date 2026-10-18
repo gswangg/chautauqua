@@ -7,6 +7,13 @@
 
 import { zonedMinutesToUtc, dayLabelEndInstant } from "./timezone";
 
+/** en-GB's short September is "Sept"; the design's date grammar is three
+ * letters for every month ("8 Sep 2026", Chautauqua Review.dc.html). Every
+ * short-month formatter below passes its output through this. */
+export function threeLetterMonths(text: string): string {
+  return text.replace(/\bSept\b/g, "Sep");
+}
+
 /** Builds "Weekday D Mon YYYY" (en-GB day-before-month order, no comma
  * between the parts, DEC-918: one customer-facing date grammar) from a
  * date-parts-only Intl.DateTimeFormat's formatToParts output. Internal to
@@ -14,7 +21,7 @@ import { zonedMinutesToUtc, dayLabelEndInstant } from "./timezone";
 function joinDateParts(parts: Intl.DateTimeFormatPart[]): string {
   const byType: Record<string, string> = {};
   for (const part of parts) if (part.type !== "literal") byType[part.type] = part.value;
-  return `${byType.weekday} ${byType.day} ${byType.month} ${byType.year}`;
+  return threeLetterMonths(`${byType.weekday} ${byType.day} ${byType.month} ${byType.year}`);
 }
 
 /** Formats a UTC instant (epoch ms) as a human-readable string in the given
@@ -197,12 +204,14 @@ export function formatDayLong(day: string): string {
 export function formatDayMedium(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
   if (!year || !month || !date) return day;
-  return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
-    timeZone: "UTC",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return threeLetterMonths(
+    new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
+      timeZone: "UTC",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    }),
+  );
 }
 
 /** Day-of-month + month label (UTC calendar fields, DEC-522: startDate/
@@ -210,12 +219,14 @@ export function formatDayMedium(day: string): string {
  * UTC). en-GB gives British day-before-month order with no comma, e.g.
  * "12 May" / "12 May 2027". Internal to formatEventDayRange below. */
 function dayMonthLabel(ms: number, withYear: boolean): string {
-  return new Date(ms).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: withYear ? "numeric" : undefined,
-    timeZone: "UTC",
-  });
+  return threeLetterMonths(
+    new Date(ms).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: withYear ? "numeric" : undefined,
+      timeZone: "UTC",
+    }),
+  );
 }
 
 /** Day-of-month only, no month/year (for the "12" in "12-14 May 2027" when
@@ -263,12 +274,14 @@ export function formatEventCloseDateLabel(closeDayLabelMs: number, timeZone: str
     throw new Error("formatEventCloseDateLabel: timeZone must not be empty");
   }
   const endInstant = dayLabelEndInstant(closeDayLabelMs, timeZone);
-  return new Date(endInstant).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone,
-  });
+  return threeLetterMonths(
+    new Date(endInstant).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      timeZone,
+    }),
+  );
 }
 
 /** DEC-918 amendment (wave 69): the server-side twin of the SPA's ONE
@@ -335,5 +348,5 @@ export function formatScheduleSlotLabel(day: string, startMin: number, timeZone:
  * calendar-day contract as formatCalendarDate: UTC fields, never re-zoned. */
 export function formatDueDay(ms: number): string {
   if (!Number.isFinite(ms)) throw new Error("formatDueDay: ms must be a finite number");
-  return new Date(ms).toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short" });
+  return threeLetterMonths(new Date(ms).toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short" }));
 }

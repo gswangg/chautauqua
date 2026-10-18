@@ -173,7 +173,7 @@ export function LoginPage(props: {
   );
 }
 
-export function ClaimPage(props: { csrfToken: string; error?: AuthBandCopy }) {
+export function ClaimPage(props: { csrfToken: string; error?: AuthBandCopy; purpose?: "invitation" }) {
   return (
     <html lang="en">
       <AuthHead title="Create your password - Chautauqua" />
@@ -181,7 +181,11 @@ export function ClaimPage(props: { csrfToken: string; error?: AuthBandCopy }) {
         <main className="chq-auth-card">
           <div>
             <h1 className="chq-auth-wordmark">chautauqua</h1>
-            <div className="chq-auth-subtitle">Create a password to track your submission</div>
+            <div className="chq-auth-subtitle">
+              {props.purpose === "invitation"
+                ? "You've accepted. Create a password to open your speaker portal"
+                : "Create a password to track your submission"}
+            </div>
           </div>
           {props.error ? (
             <div className="chq-error-summary" role="alert">

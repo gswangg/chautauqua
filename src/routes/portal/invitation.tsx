@@ -200,7 +200,11 @@ portalInvitationRoutes.post("/invitations/:token/accept", csrfForm, async (c) =>
   const accounts = await findAccountUserIds(c.var.db, [{ contactId: resolved.contactId, email: resolved.email }]);
   if (accounts.get(resolved.contactId)) return c.redirect("/portal?confirmed=1", 302);
   // no account yet: set a password, then land in the portal
-  const claim = await createClaimToken(c.env.KV as unknown as KVStore, { contactId: resolved.contactId, eventId: resolved.eventId });
+  const claim = await createClaimToken(c.env.KV as unknown as KVStore, {
+    contactId: resolved.contactId,
+    eventId: resolved.eventId,
+    purpose: "invitation",
+  });
   return c.redirect(`/claim/${claim}`, 302);
 });
 

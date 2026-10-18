@@ -304,3 +304,20 @@ describe("formatEventCloseDateLabel (DEC-408, DEC-918, DEC-522)", () => {
     expect(formatEventCloseDateLabel(dayLabel, "America/Los_Angeles")).toBe("Mon 1 Mar");
   });
 });
+
+// en-GB writes September "Sept"; the design's grammar is three letters for
+// every month (multi-portal decision 61).
+describe("three-letter months", () => {
+  it("writes September as Sep in every short-month formatter", async () => {
+    const t = await import("../src/lib/event-time");
+    const day = Date.UTC(2026, 8, 8);
+    expect(t.formatEventDate(Date.UTC(2026, 8, 8, 12), "Europe/London")).toBe("Tue 8 Sep 2026");
+    expect(t.formatEventDateTime(Date.UTC(2026, 8, 8, 12), "UTC")).toMatch(/^Tue 8 Sep 2026, 12:00 /);
+    expect(t.formatCalendarDate(day)).toBe("Tue 8 Sep 2026");
+    expect(t.formatDayMedium("2026-09-08")).toBe("Tue 8 Sep");
+    expect(t.formatDueDay(day)).toBe("8 Sep");
+    expect(t.formatEventDayRange(day, Date.UTC(2026, 8, 9))).toBe("8–9 Sep 2026");
+    expect(t.formatEventCloseDateLabel(day, "Europe/London")).toBe("Tue 8 Sep");
+    expect(t.threeLetterMonths("Sept 8 · Septuagint")).toBe("Sep 8 · Septuagint");
+  });
+});

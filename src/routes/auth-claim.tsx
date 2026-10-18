@@ -65,7 +65,7 @@ claimRoutes.get("/claim/:token", async (c) => {
 
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
-  return c.html(<ClaimPage csrfToken={csrfToken} />);
+  return c.html(<ClaimPage csrfToken={csrfToken} purpose={record.purpose} />);
 });
 
 claimRoutes.post("/claim/:token", csrfForm, async (c) => {

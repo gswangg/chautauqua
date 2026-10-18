@@ -241,7 +241,9 @@ export function formatDateTimeInZone(value: number | string, timeZone: string): 
   }).formatToParts(new Date(value));
   const get = (type: Intl.DateTimeFormatPartTypes): string =>
     parts.find((part) => part.type === type)?.value ?? '';
-  return `${get('day')} ${get('month')} ${get('year')}, ${get('hour')}:${get('minute')}`;
+  // en-GB's short September is "Sept"; the design writes three letters
+  const month = get('month') === 'Sept' ? 'Sep' : get('month');
+  return `${get('day')} ${month} ${get('year')}, ${get('hour')}:${get('minute')}`;
 }
 
 /**

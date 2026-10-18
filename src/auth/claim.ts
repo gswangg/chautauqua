@@ -20,6 +20,9 @@ export const SUPERSEDED_GRACE_SECONDS = 48 * 60 * 60;
 export interface ClaimRecord {
   contactId: string;
   eventId: string;
+  // multi-portal: set when the claim follows an accepted invitation to
+  // speak, so the password page speaks to an invitee, not a CFP submitter
+  purpose?: "invitation";
 }
 
 /** DEC-014 amendment (wave 10): KV holds arbitrary external bytes -- a
@@ -37,7 +40,9 @@ export function parseClaimRecord(raw: string): ClaimRecord | null {
   const record = parsed as Record<string, unknown>;
   if (typeof record.contactId !== "string" || !record.contactId) return null;
   if (typeof record.eventId !== "string" || !record.eventId) return null;
-  return { contactId: record.contactId, eventId: record.eventId };
+  return record.purpose === "invitation"
+    ? { contactId: record.contactId, eventId: record.eventId, purpose: "invitation" }
+    : { contactId: record.contactId, eventId: record.eventId };
 }
 
 /** Structural subset of Cloudflare's KVNamespace — small enough to fake. */

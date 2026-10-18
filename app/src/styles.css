@@ -2983,4 +2983,16 @@ select:focus-visible,
     padding: 13px;
     margin: -13px;
   }
+
+  /* multi-portal: a toast's action or Dismiss is a real tap target at
+     phone. The render sweep never sees a toast (it appears only after a
+     write); the browser probe of the decision flows found it. */
+  .chq-toast button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 4px;
+  }
 }

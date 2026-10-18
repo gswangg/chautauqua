@@ -41,8 +41,7 @@ function zoned(ms: number, timeZone: string): { day: string; month: string; year
   // formatDateTimeInZone: "14 Apr 2026, 09:14"
   const [date = '', time = ''] = formatDateTimeInZone(ms, timeZone).split(', ');
   const [day = '', month = '', year = ''] = date.split(' ');
-  // en-GB spells September "Sept"; the app's date grammar is three letters
-  return { day, month: month.slice(0, 3), year, time };
+  return { day, month, year, time };
 }
 
 /** "14 Apr", with the year only when it isn't this year, in the event's
