@@ -94,3 +94,32 @@ describe("chunkRowsForInsert (DEC-528)", () => {
     expect(chunks[0]).toEqual(rows);
   });
 });
+
+// A row that omits a defaulted column still binds it: drizzle emits every
+// table column in a multi-row INSERT. The 110-submission bulk accept 500ed
+// on D1 when task_assignment rows sized their chunks from their own keys
+// after migration 0046 added scope_key/source/origin defaults.
+describe("chunkRowsForInsert boundColumns", () => {
+  it("sizes chunks by the larger of the row's keys and the table's column count", () => {
+    const rows = Array.from({ length: 110 }, (_, i) => ({ id: `r${i}`, a: i, b: i }));
+    const byKeys = chunkRowsForInsert(rows);
+    expect(byKeys[0]!.length).toBe(30);
+    const byTable = chunkRowsForInsert(rows, { boundColumns: 12 });
+    expect(byTable[0]!.length).toBe(7);
+    for (const chunk of byTable) expect(chunk.length * 12).toBeLessThanOrEqual(MAX_D1_BOUND_PARAMS);
+    expect(byTable.flat()).toEqual(rows);
+  });
+
+  it("never sizes below the row's own keys", () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ id: `r${i}`, a: i, b: i }));
+    expect(chunkRowsForInsert(rows, { boundColumns: 1 })[0]!.length).toBe(30);
+  });
+
+  it("insertColumnCount counts every column a drizzle INSERT binds", async () => {
+    const { insertColumnCount } = await import("../src/db/insert-columns");
+    const schema = await import("../src/db/schema");
+    const { getTableConfig } = await import("drizzle-orm/sqlite-core");
+    expect(insertColumnCount(schema.taskAssignment)).toBe(getTableConfig(schema.taskAssignment).columns.length);
+    expect(insertColumnCount(schema.taskAssignment)).toBeGreaterThan(5);
+  });
+});

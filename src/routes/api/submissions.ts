@@ -571,8 +571,9 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   ]);
 
   const detail = await getSubmissionDetail(c.var.db, id);
-  // multi-portal: a format or track change can move a session between portals
-  scheduleReconcile(c, [ownership.eventId]);
+  // multi-portal: a format or track change can move a session between
+  // portals; no portal rule reads the other fields this route edits
+  if (format !== undefined || trackIds !== undefined) scheduleReconcile(c, [ownership.eventId]);
   return c.json(detail);
 });
 

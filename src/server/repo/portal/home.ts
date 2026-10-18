@@ -36,23 +36,25 @@ export async function getPortalHome(
     for (const eventId of joined) await reconcileEventPortals(db, eventId, new Date(now), { notify: "auto" });
   }
   const eventIds = await listParticipationEventIds(db, contactId, orgId);
-  const views: PersonView[] = [];
-  for (const eventId of eventIds) {
-    let view = await buildPersonView(db, { eventId, contactId, now });
-    if (opts.heal && view.needsReconcile) {
-      await reconcileEventPortals(db, eventId, new Date(now), { notify: "auto" });
-      view = await buildPersonView(db, { eventId, contactId, now });
-    }
-    if (view.participations.length > 0) views.push(view);
-  }
+  // each event's view is independent: build them side by side
+  const built = await Promise.all(
+    eventIds.map(async (eventId) => {
+      let view = await buildPersonView(db, { eventId, contactId, now });
+      if (opts.heal && view.needsReconcile) {
+        await reconcileEventPortals(db, eventId, new Date(now), { notify: "auto" });
+        view = await buildPersonView(db, { eventId, contactId, now });
+      }
+      return view;
+    }),
+  );
+  const views: PersonView[] = built.filter((view) => view.participations.length > 0);
   const placements = new Map<string, string | null>();
   if (opts.heal) {
-    for (const v of views) {
-      for (const s of v.sections) {
-        const sid = s.participation.session?.submissionId;
-        if (sid && !placements.has(sid)) placements.set(sid, await sessionPlacementLine(db, sid));
-      }
-    }
+    const submissionIds = [
+      ...new Set(views.flatMap((v) => v.sections.map((s) => s.participation.session?.submissionId).filter((sid): sid is string => !!sid))),
+    ];
+    const lines = await Promise.all(submissionIds.map((sid) => sessionPlacementLine(db, sid)));
+    submissionIds.forEach((sid, i) => placements.set(sid, lines[i] ?? null));
   }
   return { views, placements };
 }

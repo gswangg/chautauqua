@@ -430,7 +430,9 @@ async function main(): Promise<void> {
   await check("portal dashboard shows tasks with deadlines/required markers", async () => {
     const dashboard = await speaker1.getText("/portal");
     assert(dashboard.body.includes("Hotel stay requirement form"), "portal dashboard missing onboarding task");
-    assert(dashboard.body.includes("(required)"), "portal dashboard is missing a required-task marker");
+    // multi-portal home (docs/design/multi-portal/, flow 6): a required
+    // item with a deadline says so in its line ("Due 31 Oct · required")
+    assert(dashboard.body.includes('class="chq-home-required"'), "portal dashboard is missing a required-task marker");
   });
 
   await check("same accepted submission appears as my session", async () => {

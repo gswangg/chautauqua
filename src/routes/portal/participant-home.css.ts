@@ -227,6 +227,8 @@ export const HOME_PHONE_CSS = `
       display: inline-flex;
       align-items: center;
       min-height: 44px;
+      /* a one-word title ("Bio") is narrower than the floor */
+      min-width: 44px;
     }
     .chq-home-actions { flex-direction: column; }
     .chq-home-actions .chq-btn { width: 100%; min-height: 44px; }

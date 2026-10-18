@@ -95,6 +95,8 @@
 
   .chq-library-side .chq-btn {
     min-height: 44px;
+    /* the tertiary "Edit" is a 38px word */
+    min-width: 44px;
   }
 
   .chq-library-visibility {

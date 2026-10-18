@@ -51,6 +51,7 @@ import { getFieldOptionsByRole } from "../form-roles";
 import { loadParticipations } from "./participations";
 import { findPortal, loadEventLibraryTasks, loadEventPortals, type LibraryTask, type PortalItemRecord, type PortalRecord } from "./store";
 import { computeDesiredAssignments, computeMemberships, scopeKeyFor } from "./reconcile";
+import { insertColumnCount } from "../../../db/insert-columns";
 
 
 // ---------------------------------------------------------------------------
@@ -668,7 +669,7 @@ async function writeItems(db: Db, portalId: string, items: PortalItemInput[], no
     createdAt: now,
     updatedAt: now,
   }));
-  for (const chunk of chunkRowsForInsert(rows)) {
+  for (const chunk of chunkRowsForInsert(rows, { boundColumns: insertColumnCount(schema.portalItem) })) {
     await db.insert(schema.portalItem).values(chunk);
   }
 }

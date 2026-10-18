@@ -17,10 +17,13 @@ export function chunkIds(ids: string[]): string[][] {
 // budget for `.values(rows)`. This helper derives columns-per-row from the
 // rows themselves (never a hand-declared count, which drifts silently when a
 // column is added) and slices so every emitted chunk stays under the D1
-// bound-parameter ceiling.
+// bound-parameter ceiling. A row that leaves out a column with a default
+// still binds that default, so a caller inserting into such a table passes
+// `boundColumns` (the table's own column count, src/db/insert-columns.ts) and
+// the larger of the two sizes the chunk.
 export const MAX_D1_BOUND_PARAMS = 100;
 
-export function chunkRowsForInsert<T extends Record<string, unknown>>(rows: T[]): T[][] {
+export function chunkRowsForInsert<T extends Record<string, unknown>>(rows: T[], opts: { boundColumns?: number } = {}): T[][] {
   if (rows.length === 0) return [];
   const first = rows[0];
   if (!first) throw new Error("chunkRowsForInsert: unreachable — non-empty array with undefined first row");
@@ -33,7 +36,7 @@ export function chunkRowsForInsert<T extends Record<string, unknown>>(rows: T[])
       );
     }
   }
-  const rowsPerChunk = Math.max(1, Math.floor((MAX_D1_BOUND_PARAMS - 10) / columnsPerRow));
+  const rowsPerChunk = Math.max(1, Math.floor((MAX_D1_BOUND_PARAMS - 10) / Math.max(columnsPerRow, opts.boundColumns ?? 0)));
   const out: T[][] = [];
   for (let i = 0; i < rows.length; i += rowsPerChunk) {
     out.push(rows.slice(i, i + rowsPerChunk));

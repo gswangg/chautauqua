@@ -1369,6 +1369,22 @@ ${EMPTY_PHONE_CSS}
     min-height: 44px;
     padding: 0 12px;
   }
+
+  /* multi-portal: the brand line plus a longer participant name ("Priya
+     Raman", the DevFlow demo's three-role person) overran 358px, and the
+     sign-out form, the only shrinkable box, collapsed below its 44px floor.
+     The event name and the person's name truncate instead; the sign-out
+     never shrinks. Short headers lay out exactly as before. */
+  .chq-portal-brandline,
+  .chq-portal-header-id { min-width: 0; }
+  .chq-portal-shell .chq-eventmark,
+  .chq-portal-header-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chq-portal-header-signout { flex-shrink: 0; }
 }
 ${HOME_PHONE_CSS}
 ${ERROR_STATES_PHONE_CSS}`;

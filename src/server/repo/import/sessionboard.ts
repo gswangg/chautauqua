@@ -21,6 +21,7 @@ import {
 } from "../../../domain/participant-roles";
 import { ApiError } from "../../http";
 import { isUniqueViolation } from "../constraints";
+import { insertColumnCount } from "../../../db/insert-columns";
 
 void DEC_604; // wave-15 amendment: MAX_PARTICIPANTS_PER_SUBMISSION binds all four participant writer doors, and this one refuses in its OWN established grammar -- row-wise, so an over-cap participant row is SKIPPED into the existing `skipped: {row, reason}[]` channel rather than failing the whole import.
 void DEC_717; // submission.status is written ONLY through updateSubmissionStatuses -- never a raw insert/update column -- so the J6 acceptance auto-creation always fires.
@@ -1010,7 +1011,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         throw err;
       }
     }
-    for (const chunk of chunkRowsForInsert(submissionCreateRows)) {
+    for (const chunk of chunkRowsForInsert(submissionCreateRows, { boundColumns: insertColumnCount(schema.submission) })) {
       if (chunk.length === 0) continue;
       try {
         await db.insert(schema.submission).values(chunk);

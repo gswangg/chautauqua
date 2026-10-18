@@ -24,6 +24,7 @@ import { ApiError } from "../../http";
 import { MAX_TASK_ASSIGNMENT_WRITES, maxUnitsForTaskAssignmentWrites } from "../tasks/crud";
 import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556, DEC_746, DEC_932 } from "../../../decisions";
 import { DEFAULT_TASK_AUDIENCE } from "../../../domain/task-kinds";
+import { insertColumnCount } from "../../../db/insert-columns";
 
 void DEC_746; // wave-77 amendment: the back-fill below filters to audience = DEFAULT_TASK_AUDIENCE.
 
@@ -297,7 +298,7 @@ async function planAndPersistOnboardingTasks(
   // DEC-556: (task_id, contact_id) is a real UNIQUE index — ON CONFLICT DO
   // NOTHING alongside the existence pre-read above (kept for DEC-521's
   // write-burst cap).
-  for (const chunk of chunkRowsForInsert(assignmentRows)) {
+  for (const chunk of chunkRowsForInsert(assignmentRows, { boundColumns: insertColumnCount(schema.taskAssignment) })) {
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
@@ -393,7 +394,7 @@ async function planAndPersistOnboardingTasks(
     );
   }
 
-  for (const chunk of chunkRowsForInsert(missingRows)) {
+  for (const chunk of chunkRowsForInsert(missingRows, { boundColumns: insertColumnCount(schema.taskAssignment) })) {
     await db
       .insert(schema.taskAssignment)
       .values(chunk)

@@ -7,7 +7,7 @@
 // every portal gets detached_at set (the answer stays on the record, the
 // item leaves the participant's home) and is re-attached if it comes back.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -17,6 +17,7 @@ import { isActiveParticipation, isMatchableParticipation, type Participation } f
 import { loadParticipations } from "./participations";
 import { portalItemDueDay } from "../../../domain/portals/items";
 import { loadEventLibraryTasks, loadEventPortals, loadEventTimezone, type LibraryTask, type PortalRecord } from "./store";
+import { insertColumnCount } from "../../../db/insert-columns";
 
 // Library kinds that become task_assignment rows. Built-in items
 // (acceptance, sponsor sessions) and resources are derived on read.
@@ -122,9 +123,22 @@ export async function reconcileEventPortals(
   now: Date,
   opts: { notify: NotifyMode } = { notify: "auto" },
 ): Promise<ReconcileResult> {
-  const [participations, portals, tasks, timeZone] = await Promise.all([
+  const portals = await loadEventPortals(db, eventId);
+  // an event with no portals and no memberships left to end has nothing to
+  // reconcile: skip loading every participation (the expensive read)
+  if (portals.length === 0) {
+    const anyMembership = await db
+      .select({ id: schema.portalMembership.id })
+      .from(schema.portalMembership)
+      .where(eq(schema.portalMembership.eventId, eventId))
+      .orderBy(asc(schema.portalMembership.id))
+      .limit(1);
+    if (!anyMembership[0]) {
+      return { joined: [], left: [], assignmentsCreated: 0, assignmentsDetached: 0, assignmentsReattached: 0, notifiedContactIds: [] };
+    }
+  }
+  const [participations, tasks, timeZone] = await Promise.all([
     loadParticipations(db, { eventId }),
-    loadEventPortals(db, eventId),
     loadEventLibraryTasks(db, eventId),
     loadEventTimezone(db, eventId),
   ]);
@@ -170,7 +184,7 @@ export async function reconcileEventPortals(
       activations.push({ id: row.id, activatedAt: null });
     }
   }
-  for (const chunk of chunkRowsForInsert(toInsert)) {
+  for (const chunk of chunkRowsForInsert(toInsert, { boundColumns: insertColumnCount(schema.portalMembership) })) {
     await db
       .insert(schema.portalMembership)
       .values(chunk)
@@ -265,7 +279,7 @@ export async function reconcileEventPortals(
     .filter((a) => a.source === "portal" && a.detachedAt === null && !desiredAssignments.has(assignmentKey(a.taskId, a.contactId, a.scopeKey)))
     .map((a) => a.id);
 
-  for (const chunk of chunkRowsForInsert(newAssignments)) {
+  for (const chunk of chunkRowsForInsert(newAssignments, { boundColumns: insertColumnCount(schema.taskAssignment) })) {
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
@@ -313,7 +327,7 @@ export async function reconcileEventPortals(
       sentAt: null,
     });
   }
-  for (const chunk of chunkRowsForInsert(notifications)) {
+  for (const chunk of chunkRowsForInsert(notifications, { boundColumns: insertColumnCount(schema.portalNotification) })) {
     await db.insert(schema.portalNotification).values(chunk);
   }
 

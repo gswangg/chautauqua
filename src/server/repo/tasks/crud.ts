@@ -14,6 +14,7 @@ import { DEC_528, DEC_556, DEC_746, DEC_801 } from "../../../decisions";
 import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 import type { FileKind } from "../../../domain/files";
 import { DEFAULT_TASK_AUDIENCE, type TaskAudience } from "../../../domain/task-kinds";
+import { insertColumnCount } from "../../../db/insert-columns";
 
 void DEC_746; // wave-77 amendment: task.audience is stamped here, per input.contactIds.
 
@@ -333,7 +334,7 @@ export async function createTaskAssignments(
     createdAt: now,
     updatedAt: now,
   }));
-  for (const chunk of chunkRowsForInsert(rows)) {
+  for (const chunk of chunkRowsForInsert(rows, { boundColumns: insertColumnCount(schema.taskAssignment) })) {
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
