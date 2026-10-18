@@ -59,7 +59,12 @@ const ROW_CAP = 5;
  * database offers it, else side by side; results come back in query order.
  * Each D1 query costs a round trip whatever its size, so batching is what
  * makes a many-section read cheap. The overview tests' fake databases have
- * no batch and take the Promise.all path, in the same order. */
+ * no batch and take the Promise.all path, in the same order.
+ *
+ * A D1 batch returns each row as an object keyed by column name, so every
+ * query passed here must select distinctly named columns (alias a joined
+ * table's same-named column); test/overview-d1-batch.test.ts runs the
+ * overview through a batch with D1's row shape to keep it so. */
 async function readTogether<T extends readonly unknown[]>(db: Db, queries: T): Promise<{ -readonly [K in keyof T]: Awaited<T[K]> }> {
   const batch = (db as unknown as { batch?: (queries: readonly unknown[]) => Promise<unknown[]> }).batch;
   if (typeof batch === "function") return (await batch.call(db, queries)) as never;
@@ -199,9 +204,13 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
         company: schema.contact.company,
-        taskId: schema.task.id,
+        // aliased: task.id and task.due_date share their names with
+        // task_assignment's own id and due_date, and a D1 batch returns rows
+        // as objects keyed by column name -- a duplicate name would collapse
+        // and shift every value after it
+        taskId: sql<string>`${schema.task.id}`.as("task_id"),
         taskTitle: schema.task.title,
-        dueDate: schema.task.dueDate,
+        dueDate: sql<Date | null>`${schema.task.dueDate}`.mapWith(schema.task.dueDate).as("task_due_date"),
         assignedAt: schema.taskAssignment.createdAt,
         source: schema.taskAssignment.source,
         assignmentDueDate: schema.taskAssignment.dueDate,
