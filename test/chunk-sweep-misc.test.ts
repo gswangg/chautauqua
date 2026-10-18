@@ -47,15 +47,16 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     const src = readSrc("grid.ts");
     // DEC-340: getOnboardingGrid's page-cells query is bounded by the page's
     // *contact* ids (never an unbounded event-wide id list), chunked via
-    // chunkIds. The taskIds list is bounded by "tasks in one event" (never
-    // unboundedly grown per request) so it's ANDed in unchunked alongside the
-    // chunked contactId batch.
+    // chunkIds. Multi-portal: the event's task ids are no longer bound beside
+    // that batch (a portal library's 17 tasks plus 90 contacts passed D1's
+    // ~100-variable limit); the query joins task and filters on its event.
     // DEC-370 (wave-62): the former `for (const batch of chunkIds(...))`
     // loop is now one concurrent Promise.all wave built from the SAME
     // chunkIds batches — `contactBatches.map((batch) => ...)`. What DEC-340
     // requires is unchanged and still asserted: the contactId bind is a
     // chunkIds batch, never the raw page list.
-    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
+    expect(src).not.toContain("inArray(schema.taskAssignment.taskId, taskIds)");
+    expect(src).toMatch(/contactBatches\.map\(\(batch\) =>[\s\S]*?eq\(schema\.task\.eventId, eventId\)/);
     expect(src).not.toContain("inArray(schema.taskAssignment.contactId, contactIdsInOrder)");
     expect(src).toMatch(/const contactBatches = [\s\S]*?chunkIds\(contactIdsInOrder\)/);
     expect(src).toMatch(/contactBatches\.map\(\(batch\) =>[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
