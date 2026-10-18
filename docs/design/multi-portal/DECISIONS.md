@@ -77,6 +77,11 @@ Every place the build corrects the mock, fills a gap it left open, or makes a ca
 | 54 | Preview bar | The fixed ink bar sits above the portal's own header (the shell starts below it) with an outlined "Exit preview" button back to the person record. | The frame's bar; covering the header hid whose portal it was. |
 | 55 | Settings sub-pages | The section rail on a sub-page is the same set of buttons Settings draws, and goes through the app's leave guard. | One rail, and the editor's unsaved-edits guard applies to it. |
 | 56 | Status words | The participant home and the person record use one set of item status words from the domain module. | Both screens describe the same item. |
+
+## Found in CI and the browser checks
+
+| # | Area | Decision | Why |
+| --- | --- | --- | --- |
 | 57 | Portal header at phone | With a longer name, the brand line and the person's name overran 390. The event name and the person's name now truncate, and the sign-out never shrinks. Headers that fit lay out as before. | The multi-person demo exposed it: the sign-out collapsed to 22px, below the tap floor. |
 | 58 | Statement size | Inserts into tables with defaulted columns size their chunks by the table's column count, because the database binds every column. The onboarding grid reads an event's assignments by event rather than by every task id, and reminders that name both tasks and people halve each list. | D1 allows about 100 variables. The 110-session bulk accept passed it once 0046 added defaulted columns, and so did the grid once a portal library put 17 tasks on an event. |
 | 59 | When to recount | Editing a session's title or description no longer recounts portals; format, track, status, invitation, sponsor and role changes still do. An event with no portals and no memberships returns at once. | Rules read none of those fields, and a recount on every keystroke-save doubled the write's time. |
