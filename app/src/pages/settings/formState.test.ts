@@ -3,7 +3,6 @@ import {
   buildEventPatch,
   buildPortalSettingsPayload,
   isValidHexColorOrEmpty,
-  validatePortalSettingsForm,
   validateResourceForm,
   validateRoomForm,
   validateTrackForm,
@@ -72,41 +71,22 @@ describe('isValidHexColorOrEmpty', () => {
   });
 });
 
-describe('validatePortalSettingsForm', () => {
-  it('has no errors for a valid form', () => {
-    expect(
-      validatePortalSettingsForm({ logoUrl: '', accentColor: '#336699', welcomeMessage: '', showResources: true }),
-    ).toEqual({});
-  });
-
-  it('flags an invalid accent color', () => {
-    expect(
-      validatePortalSettingsForm({ logoUrl: '', accentColor: 'nope', welcomeMessage: '', showResources: true }),
-    ).toEqual({ accentColor: 'Must be a hex color like #336699' });
-  });
-});
-
 describe('buildPortalSettingsPayload', () => {
-  it('trims blank strings to null (full-replace upsert semantics)', () => {
-    expect(buildPortalSettingsPayload({ logoUrl: '  ', accentColor: '', welcomeMessage: '', showResources: true })).toEqual(
-      { logoUrl: null, accentColor: null, welcomeMessage: null, showResources: true },
-    );
+  // multi-portal decision 72: the form no longer carries the portal's logo
+  // or accent, so the PUT never sends them and the server keeps what is
+  // stored
+  it('trims a blank welcome note to null (full-replace upsert semantics)', () => {
+    expect(buildPortalSettingsPayload({ welcomeMessage: '  ', showResources: true })).toEqual({
+      welcomeMessage: null,
+      showResources: true,
+    });
   });
 
-  it('passes non-blank values through unchanged', () => {
-    expect(
-      buildPortalSettingsPayload({
-        logoUrl: 'https://example.com/l.png',
-        accentColor: '#336699',
-        welcomeMessage: 'Hi!',
-        showResources: false,
-      }),
-    ).toEqual({
-      logoUrl: 'https://example.com/l.png',
-      accentColor: '#336699',
-      welcomeMessage: 'Hi!',
-      showResources: false,
-    });
+  it('passes non-blank values through unchanged, and never sends a logo or accent', () => {
+    const payload = buildPortalSettingsPayload({ welcomeMessage: 'Hi!', showResources: false });
+    expect(payload).toEqual({ welcomeMessage: 'Hi!', showResources: false });
+    expect(payload).not.toHaveProperty('logoUrl');
+    expect(payload).not.toHaveProperty('accentColor');
   });
 });
 

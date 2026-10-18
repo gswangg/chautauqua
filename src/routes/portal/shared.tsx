@@ -9,7 +9,6 @@ import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
 import { DEC_374, DEC_884, DEC_371, DEC_945, DEC_576, DEC_154 } from "../../decisions";
-import { normalizeHexColor } from "../../domain/color";
 import { matchesPortalRoute } from "../../lib/portal-routes";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
@@ -26,14 +25,10 @@ void DEC_945;
 void DEC_576;
 void DEC_154;
 
-// DEC-374: strict hex guard on the per-event accent before it ever reaches a
-// rendered attribute — falls back to the brand olive on anything that isn't
-// a valid hex colour, per the ONE grammar in src/domain/color.ts (DEC-371
-// amendment, wave 43).
-function safeAccent(accentColor: string | null): string {
-  return normalizeHexColor(accentColor) ?? "#4E5C31";
-}
-
+// Multi-portal decision 72: the portal has no branding of its own for now.
+// accentColor and logoUrl are still stored and still carried here (dropping
+// them would only churn every fixture that builds this chrome), but the
+// layout draws neither: every portal is the house look.
 export interface PortalBrandingChrome {
   eventName: string;
   welcomeMessage: string | null;
@@ -169,7 +164,6 @@ export function PortalLayout(props: {
   headerSignOut?: boolean;
 }) {
   const headerSignOut = props.headerSignOut ?? true;
-  const accent = safeAccent(props.branding.accentColor);
   return (
     <html lang="en">
       <head>
@@ -179,7 +173,7 @@ export function PortalLayout(props: {
         <ThemeStyles />
         <style dangerouslySetInnerHTML={{ __html: PORTAL_CSS }} />
       </head>
-      <body style={`--chq-brandable-accent: ${accent}`}>
+      <body>
         <div class="chq-portal-shell">
           {/* G13 (frames 10--04/23/24, MAJOR): the portal header sets the
               'chautauqua' wordmark first, with the event name beside it as a
@@ -191,10 +185,7 @@ export function PortalLayout(props: {
           <header class="chq-header">
             <span class="chq-portal-brandline">
               <span class="chq-wordmark">chautauqua</span>
-              <span class="chq-eventmark">
-                {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
-                {props.branding.eventName}
-              </span>
+              <span class="chq-eventmark">{props.branding.eventName}</span>
             </span>
             {/* Gated on speakerName: /portal/preview (no signed-in speaker)
                 keeps its own identity slot and stays at exactly one <form>

@@ -28,8 +28,10 @@
 // portals", a link to the Portals sub-page. What speakers may edit, the
 // onboarding items and the welcome note moved into the portals themselves
 // (field permissions, items, Profile basics' note). The edit drill keeps
-// the portal's branding, the welcome note (the same stored note Profile
-// basics edits) and resource files, reached from the Branding row.
+// the welcome note (the same stored note Profile basics edits) and resource
+// files, reached from the Welcome note row. Multi-portal decision 72
+// removed the portal's branding (logo and accent) for now: the portal
+// draws neither, so the form no longer offers them.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -43,11 +45,10 @@ import type { LibraryEntry, LibraryListing, PortalOverview } from '../portals/ty
 import { DEFAULT_PORTAL_SETTINGS } from '../../lib/portal-defaults';
 import {
   buildPortalSettingsPayload,
-  validatePortalSettingsForm,
   type PortalSettingsForm,
   type PortalSettingsFormErrors,
 } from './formState';
-import { MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
 import { DEC_896, DEC_919 } from '../../../../src/decisions';
 import './settings-drill-rows.css';
 
@@ -64,22 +65,16 @@ const SECTION_KEY = 'portal';
 
 interface PortalSettingsRecord {
   welcomeMessage: string | null;
-  logoUrl: string | null;
-  accentColor: string | null;
   showResources: boolean;
 }
 
 const EMPTY_FORM: PortalSettingsForm = {
-  logoUrl: DEFAULT_PORTAL_SETTINGS.logoUrl ?? '',
-  accentColor: DEFAULT_PORTAL_SETTINGS.accentColor ?? '',
   welcomeMessage: DEFAULT_PORTAL_SETTINGS.welcomeMessage ?? '',
   showResources: DEFAULT_PORTAL_SETTINGS.showResources,
 };
 
 function formFromRecord(record: PortalSettingsRecord): PortalSettingsForm {
   return {
-    logoUrl: record.logoUrl ?? '',
-    accentColor: record.accentColor ?? '',
     welcomeMessage: record.welcomeMessage ?? '',
     showResources: record.showResources,
   };
@@ -108,16 +103,6 @@ function paragraphCount(text: string | null): number {
   return trimmed.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
 }
 
-// multi-portal decision 71: branding is the event's, so the line says it
-// covers every portal (it read as the speaker portal's own setting)
-function brandingLine(form: PortalSettingsForm): string {
-  const logo = form.logoUrl.trim() !== '';
-  const accent = form.accentColor.trim();
-  if (logo && accent) return `Logo · ${accent} accent · all portals ·`;
-  if (logo) return 'Logo · default accent · all portals ·';
-  if (accent) return `No logo · ${accent} accent · all portals ·`;
-  return 'No logo · default accent · all portals ·';
-}
 
 // docs/design/Chautauqua Settings.dc.html:518 (phone drill): the Welcome
 // note row draws a boxed readout of the STORED text, verbatim (DEC-919
@@ -202,9 +187,7 @@ export function PortalSettingsPanel() {
   }
 
   async function handleSave() {
-    const errors = validatePortalSettingsForm(form);
-    setFormErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    setFormErrors({});
     if (!eventId) return;
     setSaving(true);
     setSaveError(undefined);
@@ -275,30 +258,24 @@ export function PortalSettingsPanel() {
           <WelcomeNoteReadout text={welcomeMessage} />
         </>
       ),
-      rowClassName: 'chq-settings-drill-field-row',
-    },
-    {
-      label: 'Branding',
-      value: (
+      // the edit drill holds the welcome note and resource files; the
+      // preview shows both as every participant sees them
+      hint: (
         <>
-          <span>{brandingLine(form)}</span>{' '}
           <a
             className="chq-settings-portal-preview-link"
             href={eventId ? `/portal/preview?eventId=${eventId}` : '/portal/preview'}
             target="_blank"
             rel="noopener noreferrer"
           >
-            {/* the branding is the event's, shared by every portal; this
-                opens how the portal looks with nobody signed in */}
             Preview the portal
-          </a>
+          </a>{' '}
+          <button type="button" className="chq-link-button" onClick={openEdit}>
+            Change
+          </button>
         </>
       ),
-      hint: (
-        <button type="button" className="chq-link-button" onClick={openEdit}>
-          Change
-        </button>
-      ),
+      rowClassName: 'chq-settings-drill-field-row',
     },
   ];
 
@@ -352,36 +329,6 @@ export function PortalSettingsPanel() {
               value={form.welcomeMessage}
               onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
               maxLength={MAX_LONG_TEXT_LENGTH}
-            />
-          </SettingsField>
-          <SettingsField
-            label="Logo URL"
-            htmlFor="chq-portal-logo-url"
-            width="full"
-            hint={formErrors.logoUrl ? <span role="alert">{formErrors.logoUrl}</span> : undefined}
-          >
-            <input
-              id="chq-portal-logo-url"
-              className="chq-input"
-              type="text"
-              value={form.logoUrl}
-              onChange={(e) => setForm((current) => ({ ...current, logoUrl: e.target.value }))}
-              maxLength={MAX_TEXT_LENGTH}
-            />
-          </SettingsField>
-          <SettingsField
-            label="Accent colour"
-            htmlFor="chq-portal-accent-color"
-            width="name"
-            hint={formErrors.accentColor ? <span role="alert">{formErrors.accentColor}</span> : undefined}
-          >
-            <input
-              id="chq-portal-accent-color"
-              className="chq-input"
-              type="text"
-              placeholder="#336699"
-              value={form.accentColor}
-              onChange={(e) => setForm((current) => ({ ...current, accentColor: e.target.value }))}
             />
           </SettingsField>
           <SettingsField label="Show resources" htmlFor="chq-portal-show-resources" width="name">

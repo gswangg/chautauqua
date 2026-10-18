@@ -44,9 +44,10 @@ export function buildEventPatch(
   return patch;
 }
 
+// Multi-portal decision 72: the portal's logo and accent are no longer
+// offered (the portal draws neither), so the form carries only the welcome
+// note and the resources switch; the server keeps whatever is stored.
 export interface PortalSettingsForm {
-  logoUrl: string;
-  accentColor: string;
   welcomeMessage: string;
   showResources: boolean;
 }
@@ -70,19 +71,9 @@ export interface PortalSettingsFormErrors {
   [key: string]: string | undefined;
 }
 
-export function validatePortalSettingsForm(form: PortalSettingsForm): PortalSettingsFormErrors {
-  const errors: PortalSettingsFormErrors = {};
-  if (!isValidHexColorOrEmpty(form.accentColor)) {
-    errors.accentColor = "Must be a hex color like #336699";
-  }
-  return errors;
-}
-
 /** Builds the PUT /api/v1/events/:id/portal-settings body (full upsert, not a diff — the endpoint is idempotent). */
 export function buildPortalSettingsPayload(form: PortalSettingsForm): Record<string, unknown> {
   return {
-    logoUrl: form.logoUrl.trim().length > 0 ? form.logoUrl : null,
-    accentColor: form.accentColor.trim().length > 0 ? form.accentColor : null,
     welcomeMessage: form.welcomeMessage.trim().length > 0 ? form.welcomeMessage : null,
     showResources: form.showResources,
   };

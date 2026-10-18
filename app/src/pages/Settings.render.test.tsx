@@ -133,7 +133,7 @@ describe('SettingsPage render smoke', () => {
 
     // Portals section (formerly Speaker portal) — read-only summary
     // (DEC-815); resources are counted in the Libraries row, and their
-    // add/delete surface stays behind the Branding row's 'Change'.
+    // add/delete surface stays behind the Welcome note row's 'Change'.
     const portalSection = screen.getByRole('region', { name: 'Portals' });
     expect(within(portalSection).getByRole('heading', { name: 'Portals' })).toBeInTheDocument();
     await waitFor(() => {

@@ -1,10 +1,11 @@
 // w3-c/DEC-747 render smoke test, updated w6-e/DEC-815 and for multi-portal:
 // PortalSettingsPanel is the Settings "Portals" section -- a read-only
 // summary of the event's portals, coverage, item library, access and
-// branding (with 'Preview the portal'), whose head action links to the
-// Portals sub-page. The Branding row's 'Change' drills into
-// (?section=portal&edit=1) the branding/welcome form above ResourcesPanel
-// (unchanged endpoints/CRUD).
+// welcome note (with 'Preview the portal'), whose head action links to the
+// Portals sub-page. The Welcome note row's 'Change' drills into
+// (?section=portal&edit=1) the welcome form above ResourcesPanel
+// (unchanged endpoints/CRUD). Multi-portal decision 72 removed the
+// Branding row: the portal has no logo or accent for now.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -86,11 +87,12 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       within(section).getByText('Participants claim their portal from a link in their acceptance or invitation email'),
     ).toBeInTheDocument();
 
-    // the branding is the event's, shared by every portal (multi-portal
-    // decision 71), so the link no longer says "as a speaker"
+    // the preview covers every portal (multi-portal decision 71); it sits on
+    // the Welcome note row now that the Branding row is gone (decision 72)
     const previewLink = within(section).getByRole('link', { name: 'Preview the portal' });
     expect(previewLink).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
-    expect(within(section).getByText('No logo · default accent · all portals ·')).toBeInTheDocument();
+    expect(within(section).queryByText('Branding')).not.toBeInTheDocument();
+    expect(within(section).queryByText(/accent/)).not.toBeInTheDocument();
 
     // the welcome note (Profile basics' note, the same stored value)
     expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();
@@ -169,7 +171,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
 
   // DEC-988: the edit form above ResourcesPanel -- the round trip this
   // panel was missing before this task.
-  it('renders the branding/welcome edit controls prefilled from the GET, above the Resources sub-panel', async () => {
+  it('renders the welcome edit controls prefilled from the GET, above the Resources sub-panel', async () => {
     mockPortal();
     render(
       <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
@@ -179,8 +181,6 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
 
     const welcome = await screen.findByLabelText('Welcome note');
     expect(welcome).toHaveValue('Welcome, speakers!\n\nWe cannot wait to see you.');
-    expect(screen.getByLabelText('Logo URL')).toHaveValue('');
-    expect(screen.getByLabelText('Accent colour')).toHaveValue('');
     expect(screen.getByRole('checkbox', { name: 'Show resources' })).toBeChecked();
 
     await waitFor(() => {
@@ -216,8 +216,6 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       const body = JSON.parse((init as RequestInit).body as string);
       expect(body).toEqual(
         buildPortalSettingsPayload({
-          logoUrl: '',
-          accentColor: '',
           welcomeMessage: 'Hello there',
           showResources: true,
         }),
@@ -225,25 +223,17 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     });
   });
 
-  it('blocks the PUT and shows an inline error for an invalid accent colour', async () => {
-    const fetchMock = mockPortal();
+  it('offers no logo or accent field (multi-portal decision 72: the portal has no branding for now)', async () => {
+    mockPortal();
     render(
       <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
         <PortalSettingsPanel />
       </MemoryRouter>,
     );
 
-    const accent = await screen.findByLabelText('Accent colour');
-    fireEvent.change(accent, { target: { value: 'nope' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Must be a hex color like #336699');
-
-    const putCalls = fetchMock.mock.calls.filter(
-      ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
-    );
-    expect(putCalls.length).toBe(0);
+    await screen.findByLabelText('Welcome note');
+    expect(screen.queryByLabelText('Logo URL')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Accent colour')).not.toBeInTheDocument();
   });
 
   // DEC-958: the server's fields map merges into formErrors (the SAME
@@ -255,7 +245,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       [`PUT /api/v1/events/${EVENT_ID}/portal-settings`]: {
         status: 400,
         body: errorEnvelope('validation_error', 'Invalid portal settings', {
-          accentColor: 'Must be a hex color like #336699',
+          showResources: 'Must be a boolean',
           welcomeMessage: 'Max 20000 characters',
         }),
       },
@@ -277,7 +267,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       expect(putCalls.length).toBe(1);
     });
 
-    expect(await screen.findByText('Must be a hex color like #336699')).toBeInTheDocument();
+    expect(await screen.findByText('Must be a boolean')).toBeInTheDocument();
     expect(screen.getByText('Max 20000 characters')).toBeInTheDocument();
     // The generic banner never fires alongside a fields-map refusal --
     // there is no third "Invalid portal settings" sentence rendered.
