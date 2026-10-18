@@ -56,6 +56,10 @@ export const HOME_CSS = `
     border-bottom: 1px solid var(--chq-hairline);
   }
   .chq-home-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  /* a row's action (the team's Remove or Withdraw) keeps its word whole
+     beside a state tag at 390 */
+  .chq-home-row > form { flex-shrink: 0; }
+  .chq-home-row > form .chq-btn { white-space: nowrap; }
   .chq-home-row-title {
     font-size: 14px;
     font-weight: 600;

@@ -50,7 +50,7 @@ import { INVITE_STATUSES } from "../../../domain/invite-status";
 import { getFieldOptionsByRole } from "../form-roles";
 import { loadParticipations } from "./participations";
 import { findPortal, loadEventLibraryTasks, loadEventPortals, type LibraryTask, type PortalItemRecord, type PortalRecord } from "./store";
-import { computeDesiredAssignments, computeMemberships, scopeKeyFor } from "./reconcile";
+import { assignmentKey, computeDesiredAssignments, computeMemberships, scopeKeyFor } from "./reconcile";
 import { insertColumnCount } from "../../../db/insert-columns";
 
 
@@ -535,9 +535,20 @@ export async function previewPortalChange(db: Db, eventId: string, portalId: str
   const tz = "UTC";
   const desiredBefore = computeDesiredAssignments(computeMemberships(portals, participations), tasks, activation, tz);
   const desiredAfter = computeDesiredAssignments(computeMemberships([...others, edited], participations), tasks, activation, tz);
+  // an item someone already has (assigned directly, or kept from before)
+  // is not new to them: the reconcile creates no row and emails no one, so
+  // the preview doesn't count them either
+  const existing = new Set<string>();
+  for (const chunk of chunkIds([...tasks.keys()])) {
+    const rows = await db
+      .select({ taskId: schema.taskAssignment.taskId, contactId: schema.taskAssignment.contactId, scopeKey: schema.taskAssignment.scopeKey })
+      .from(schema.taskAssignment)
+      .where(inArray(schema.taskAssignment.taskId, chunk));
+    for (const r of rows) existing.add(assignmentKey(r.taskId, r.contactId, r.scopeKey));
+  }
   const newByContact = new Map<string, Set<string>>();
   for (const [k, d] of desiredAfter) {
-    if (desiredBefore.has(k)) continue;
+    if (desiredBefore.has(k) || existing.has(k)) continue;
     const set = newByContact.get(d.contactId) ?? new Set<string>();
     set.add(d.taskId);
     newByContact.set(d.contactId, set);
@@ -570,8 +581,8 @@ export async function previewPortalChange(db: Db, eventId: string, portalId: str
       if (item.taskId) {
         const task = tasks.get(item.taskId);
         if (!task) continue;
-        const k = `${task.id}\u0000${p.contactId}\u0000${scopeKeyFor(task, p.key)}`;
-        if (!desiredBefore.has(k)) people += 1;
+        const k = assignmentKey(task.id, p.contactId, scopeKeyFor(task, p.key));
+        if (!desiredBefore.has(k) && !existing.has(k)) people += 1;
       } else people += 1;
     }
     return { title: titleOf(item), people };

@@ -198,5 +198,7 @@ claimRoutes.post("/claim/:token", csrfForm, async (c) => {
   const sessionToken = await issueSessionRevokingAll(db, userId, now);
 
   c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
-  return c.redirect("/portal", 302);
+  // multi-portal flow 8: an invitee who just accepted lands on "You're
+  // confirmed", the same as one who already had an account
+  return c.redirect(record.purpose === "invitation" ? "/portal?confirmed=1" : "/portal", 302);
 });

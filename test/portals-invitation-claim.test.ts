@@ -65,6 +65,15 @@ describe("invited-speaker acceptance · no account yet", () => {
     const html = await page.text();
     expect(html).toContain("You&#39;ve accepted. Create a password to open your speaker portal");
     expect(html).not.toContain("track your submission");
+
+    // setting the password lands on "You're confirmed"
+    const set = await app.request(location, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie: "chq_csrf=ic-csrf" },
+      body: "chq_csrf=ic-csrf&password=Invited%21Speaker2027",
+    });
+    expect(set.status).toBe(302);
+    expect(set.headers.get("location")).toBe("/portal?confirmed=1");
   });
 
   it("a claim record keeps only the invitation purpose; anything else reads as a plain claim", () => {
