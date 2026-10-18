@@ -96,7 +96,7 @@ describe('Settings · Speaker portal 390 drill: Welcome note row (w15-tf, DEC-78
     verbatimLine(507, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Speaker portal</span>");
     const note = 'Glad you could make it.\n\nSee you at the podium.';
     renderPortalDrill(note);
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     // getByText normalizes whitespace by default, so match by class and
     // assert the RAW textContent (including the blank line) verbatim --
     // the readout box does not collapse the note's paragraph breaks.
@@ -115,7 +115,7 @@ describe('Settings · Speaker portal 390 drill: Welcome note row (w15-tf, DEC-78
 
   it('keeps the paragraph-count summary mounted unchanged for desktop/index (CSS decides visibility, DEC-919 wave-99)', async () => {
     renderPortalDrill('One paragraph.\n\nTwo paragraph.');
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     await waitFor(() =>
       expect(within(section).getByText(/Shown above the task list · 2 paragraphs/)).toBeInTheDocument(),
     );
@@ -123,7 +123,7 @@ describe('Settings · Speaker portal 390 drill: Welcome note row (w15-tf, DEC-78
 
   it('empty welcome note keeps the panel\'s existing empty treatment in the readout, not a fabricated summary', async () => {
     renderPortalDrill(null);
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     await waitFor(() => expect(within(section).getByText('No welcome note set.')).toBeInTheDocument());
     const readout = within(section).getByText('No welcome note set.');
     expect(readout).toHaveClass('chq-settings-portal-welcome-readout');

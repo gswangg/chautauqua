@@ -150,7 +150,7 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       );
       mockAllSections();
       renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Speaker portal' });
+      const section = await screen.findByRole('region', { name: 'Portals' });
       const textarea = await within(section).findByLabelText('Welcome note');
       expect(textarea.tagName).toBe('TEXTAREA');
       // The frame's boxed 96px static readout, drawn ABOVE the actual
@@ -167,12 +167,16 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
       expect(readout!.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('MATCHES: "What speakers may edit" pills and the Resources · N heading render in the edit form, in that order', async () => {
+    // Multi-portal: the frame's "What speakers may edit" pills are gone --
+    // what participants may edit is set per portal now, and the edit form
+    // says so where the pills stood, above the Resources · N heading.
+    it('MATCHES: the per-portal permissions line and the Resources · N heading render in the edit form, in that order', async () => {
       mockAllSections();
       renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Speaker portal' });
+      const section = await screen.findByRole('region', { name: 'Portals' });
       await within(section).findByLabelText('Welcome note');
-      const pillsHead = within(section).getByText('What speakers may edit');
+      const pillsHead = section.querySelector('.chq-settings-edit-consequence') as HTMLElement;
+      expect(pillsHead).toHaveTextContent('is set per portal in Manage portals');
       const resourcesHead = within(section).getByText('Resources · 1');
       // docs/design/Chautauqua Settings.dc.html:906 --
       // `<span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>`
@@ -186,7 +190,7 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
     it('MATCHES: the edit form footer is Cancel then Save changes', async () => {
       mockAllSections();
       renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Speaker portal' });
+      const section = await screen.findByRole('region', { name: 'Portals' });
       await within(section).findByLabelText('Welcome note');
       // docs/design/Chautauqua Settings.dc.html:938 --
       // `<span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>`

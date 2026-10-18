@@ -205,3 +205,13 @@ and to `DESKTOP_FLOOR_DIVERGENCE_CEILING` /
    frames is a single settled divergence (the same disposition
    `frame-eyebrow-label-390-v12.md`'s own `SETTLED_EXCLUSIONS` table
    already gives its two rows) or 103 independent ones.
+
+## Multi-portal (docs/design/multi-portal/)
+
+Re-measured on the integrated tree: one new divergence,
+`Chautauqua Settings.dc.html:912` "What speakers may edit" -- the Speaker
+portal edit view's fixed permissions heading, superseded by each portal's own
+field permissions (docs/design/multi-portal/DECISIONS.md #32). The edit view
+now says where those are set instead.
+
+`DESKTOP_EYEBROW_DIVERGENCE_CEILING` moves 103 -> 104.

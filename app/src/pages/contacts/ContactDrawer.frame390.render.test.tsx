@@ -47,6 +47,7 @@ import { mockApi } from '../../test-utils/mockApi';
 import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import { stripCssComments } from '../../../../test/helpers/strip-css-comments';
 import type { ContactDetail } from './types';
+import { MemoryRouter } from 'react-router-dom';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -155,7 +156,7 @@ describe('v12 frame render verdict "Contact · 390" (task w31-b, DEC-976 wave-31
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -230,7 +231,7 @@ describe('v12 frame render verdict "Contact · 390" (task w31-b, DEC-976 wave-31
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {

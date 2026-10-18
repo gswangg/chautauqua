@@ -14,6 +14,7 @@ import '@testing-library/jest-dom/vitest';
 import { ContactDrawer } from './ContactDrawer';
 import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
 import type { ContactDetail } from './types';
+import { MemoryRouter } from 'react-router-dom';
 
 const CONTACT: ContactDetail = {
   id: 'ct1',
@@ -38,7 +39,7 @@ afterEach(() => {
 });
 
 async function openDrawer() {
-  render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+  render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
   const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
   await waitFor(() => expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument());
   return dialog;

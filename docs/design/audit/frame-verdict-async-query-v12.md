@@ -782,3 +782,8 @@ Total offenders: measured 731 at this sha (FRAME_VERDICT_ASYNC_QUERY_CEILING = 7
 - app/src/pages/submissions/Submissions.frame390.render.test.tsx:444
 - app/src/pages/submissions/Submissions.frame390.render.test.tsx:472
 - app/src/pages/submissions/Submissions.frame390.render.test.tsx:473
+
+## Multi-portal (docs/design/multi-portal/)
+
+Re-measured on the integrated tree: one fewer offender.
+`FRAME_VERDICT_ASYNC_QUERY_CEILING` moves 731 -> 730.

@@ -707,3 +707,16 @@ None. Draining this ceiling turned up no `FALSE-PREMISE` row from the
 TRUE grounding claim, not a defect the instrument had been silently
 missing. The remaining 19 UNVERIFIABLE-PREMISE rows are entirely
 `other`/`modifier` family rows this task did not touch.
+
+## Multi-portal (docs/design/multi-portal/)
+
+Two new receipts on the multi-portal organizer screens are roster rows this
+instrument cannot settle, because each is a phrase inside running prose with
+no floored twin on its surface to name:
+`app/src/pages/portals/library.css` (`.chq-library-portal`, the portal names
+in an item's "Used by" sentence) and `app/src/pages/portals/portal-editor.css`
+(`.chq-portal-inline-link`, "Open the form builder" inside the new-item
+dialog's note). Neither is a 44px defect: a box around either phrase would
+break the line it sits in.
+
+`TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING` moves 19 -> 21.

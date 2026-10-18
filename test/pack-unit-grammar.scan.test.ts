@@ -570,8 +570,10 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
     // shorthand font-size and gap declarations across the product corpus.
     // Multi-portal adds five var(--chq-type-*) font-size declarations in
     // src/routes/portal/participant-home.css.ts (section label, state word,
-    // pill, lock word, preview-bar label).
-    expect(RESULT.otherTotal).toBe(65);
+    // pill, lock word, preview-bar label); the organizer screens'
+    // stylesheets add five more (var() font-sizes and two-value gaps in
+    // sponsorships.css and person-record.css): 65 -> 70.
+    expect(RESULT.otherTotal).toBe(70);
   });
 
   it('names the off-grid rem font-size sites so a regression is traceable (DEC-937 wave-35: all 7 repaired, none remain)', () => {

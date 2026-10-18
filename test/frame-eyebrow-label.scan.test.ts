@@ -824,6 +824,12 @@ const SETTLED_EXCLUSIONS: SettledExclusion[] = [
       'is recorded on the DEC and excluded by the ledger\'s own SETTLED table, never as a DEVIATIONS bullet: ' +
       'that would move a ledger population another lane owns."',
   },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 521,
+    text: 'Speakers can edit',
+    reason: "docs/design/multi-portal/DECISIONS.md #32 (multi-portal): Settings' Speaker portal section is now Portals. Its fixed 'Speakers can edit' list became each portal's own field permissions (Permissions · fields in the portal editor, app/src/pages/portals/PermissionsSection.tsx), so the Settings section no longer draws a fixed list; the edit drill says where it went ('What participants may edit ... is set per portal in Manage portals', PortalSettingsPanel.tsx).",
+  },
 ];
 
 function isSettled(e: Eyebrow): boolean {

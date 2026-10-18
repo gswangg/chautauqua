@@ -76,8 +76,18 @@ function mockEverySettingsRoute(overrides: Record<string, unknown> = {}) {
       accentColor: null,
       showResources: true,
     },
-    [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [] },
     [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    // multi-portal: the Portals and Sponsorships summaries
+    [`GET /api/v1/events/${EVENT_ID}/portals`]: {
+      portals: [{ id: 'p1', name: 'Profile basics', template: 'profile_basics', who: 'Accepted sessions', participations: 4, items: 2, matchesNobody: false, createdAt: 0 }],
+      covered: 4,
+      total: 5,
+      notInAny: 1,
+      overlap: 0,
+      templates: [],
+    },
+    [`GET /api/v1/events/${EVENT_ID}/library`]: { entries: [], counts: { task: 0, form: 0, file_request: 0, share_kit: 0, resource: 0 } },
+    [`GET /api/v1/events/${EVENT_ID}/sponsorships`]: { tiers: [], sponsors: [], waiting: 0, formats: [] },
     'GET /api/v1/tokens': listEnvelope([]),
     'GET /api/v1/users': listEnvelope([{ id: 'u1', email: 'a@example.com', role: 'organizer' }]),
     'GET /api/v1/me': { userId: 'u1', email: 'a@example.com', name: null, role: 'organizer', orgId: 'org1' },
@@ -113,11 +123,14 @@ describe('Settings summary sweep (DEC-815 ENUMERATION)', () => {
       expect(within(region).queryAllByRole('combobox')).toHaveLength(0);
       expect(region.querySelectorAll('input, textarea, select')).toHaveLength(0);
 
-      // Exactly one tertiary drill action on the section's own rule.
-      const actionButtons = within(region).getAllByRole('button');
-      expect(actionButtons.length).toBeGreaterThanOrEqual(1);
+      // Exactly one tertiary drill action on the section's own rule (a link
+      // for the sections that manage on a page of their own).
+      const actions = [...within(region).queryAllByRole('button'), ...within(region).queryAllByRole('link')];
+      expect(actions.length).toBeGreaterThanOrEqual(1);
     });
 
+    // Sponsorships has no edit drill: it is managed on /settings/sponsorships.
+    if (section.key === 'sponsorships') return;
     it(`${section.key}: drilling via ?section=${section.key}&edit=1 reveals the section's form`, async () => {
       mockEverySettingsRoute();
       const Panel = section.Panel;
@@ -258,7 +271,9 @@ describe('DEC-781: every one of the seven sections carries its action on the eye
       const head = region.querySelector('.chq-settings-section-head');
       expect(head).not.toBeNull();
       expect(head!.querySelector('h2')).not.toBeNull();
-      expect(head!.querySelector('button')).not.toBeNull();
+      // a button that opens the drill, or (Portals, Sponsorships) a link
+      // to the section's own page
+      expect(head!.querySelector('button, a')).not.toBeNull();
     });
   });
 
@@ -295,7 +310,7 @@ describe('DEC-781: every one of the seven sections carries its action on the eye
 // SettingsEditForm, so both are skipped here -- covered instead by each
 // panel's own render test.
 describe('DEC-896/B10 scan: no settings edit view renders a full-width primary', () => {
-  const SHELL_SECTIONS = SECTIONS.filter((s) => s.key !== 'public-pages' && s.key !== 'your-data');
+  const SHELL_SECTIONS = SECTIONS.filter((s) => s.key !== 'public-pages' && s.key !== 'your-data' && s.key !== 'sponsorships');
 
   SHELL_SECTIONS.forEach((section) => {
     it(`${section.key}: the edit footer's buttons carry only the shared .chq-btn-* classes, never full-width`, async () => {

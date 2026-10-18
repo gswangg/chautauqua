@@ -33,6 +33,14 @@ const pageLoaders = {
   submissionsDelete: () =>
     import('./pages/submissions/DeleteSubmissionsPage').then((m) => ({ default: m.DeleteSubmissionsPage })),
   notFound: () => import('./pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
+  portalsOverview: () => import('./pages/portals/PortalsOverviewPage').then((m) => ({ default: m.PortalsOverviewPage })),
+  portalLibrary: () => import('./pages/portals/LibraryPage').then((m) => ({ default: m.LibraryPage })),
+  portalEditor: () => import('./pages/portals/PortalEditorPage').then((m) => ({ default: m.PortalEditorPage })),
+  sponsorships: () => import('./pages/portals/SponsorshipsPage').then((m) => ({ default: m.SponsorshipsPage })),
+  sponsorSessions: () => import('./pages/portals/SponsorSessionsPage').then((m) => ({ default: m.SponsorSessionsPage })),
+  sponsorSessionReview: () =>
+    import('./pages/portals/SponsorSessionReviewPage').then((m) => ({ default: m.SponsorSessionReviewPage })),
+  personRecord: () => import('./pages/portals/PersonRecordPage').then((m) => ({ default: m.PersonRecordPage })),
 } as const;
 
 const OverviewPage = lazy(pageLoaders.overview);
@@ -51,6 +59,13 @@ const SpeakerDetailPage = lazy(pageLoaders.speakerDetail);
 const TaskViewPage = lazy(pageLoaders.taskView);
 const DeleteSubmissionsPage = lazy(pageLoaders.submissionsDelete);
 const NotFoundPage = lazy(pageLoaders.notFound);
+const PortalsOverviewPage = lazy(pageLoaders.portalsOverview);
+const PortalLibraryPage = lazy(pageLoaders.portalLibrary);
+const PortalEditorPage = lazy(pageLoaders.portalEditor);
+const SponsorshipsPage = lazy(pageLoaders.sponsorships);
+const SponsorSessionsPage = lazy(pageLoaders.sponsorSessions);
+const SponsorSessionReviewPage = lazy(pageLoaders.sponsorSessionReview);
+const PersonRecordPage = lazy(pageLoaders.personRecord);
 
 // DEC-831: exported so App.render.test.tsx can enumerate every section
 // (rather than hand-listing paths, which desyncs the moment a section is
@@ -115,6 +130,13 @@ const ELEMENT_BY_PATTERN: Record<(typeof ADMIN_ROUTE_PATTERNS)[number], ReactNod
   // deliverable detail in place of the worklist -- same component as the
   // /content route above, reused rather than split into a separate page.
   '/content/:submissionId': <ContentPage />,
+  '/settings/portals': <PortalsOverviewPage />,
+  '/settings/portals/library': <PortalLibraryPage />,
+  '/settings/portals/:portalId': <PortalEditorPage />,
+  '/settings/sponsorships': <SponsorshipsPage />,
+  '/speakers/sponsor-sessions': <SponsorSessionsPage />,
+  '/speakers/sponsor-sessions/:sessionId': <SponsorSessionReviewPage />,
+  '/contacts/:contactId': <PersonRecordPage />,
 };
 
 // Module-level map of path -> import thunk, used to prefetch a page's chunk

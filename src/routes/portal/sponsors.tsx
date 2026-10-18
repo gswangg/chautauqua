@@ -132,7 +132,7 @@ function SponsorShell(props: { ctx: SponsorPageContext; back: string; children: 
   return (
     <PortalLayout branding={ctx.branding} csrfToken={ctx.csrfToken} speakerName={ctx.contactName}>
       <PortalBackLink to={props.back} />
-      <div class={props.panel === false ? "" : "chq-sponsor-grid"}>
+      <div class={props.panel === false ? "chq-sponsor-single" : "chq-sponsor-grid"}>
         <div class="chq-sponsor-main">{props.children as any}</div>
         {props.panel === false ? null : <PackagePanel ctx={ctx} currentSessionId={props.currentSessionId ?? null} />}
       </div>

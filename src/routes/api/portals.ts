@@ -41,6 +41,10 @@ import { inviteToSpeak, sessionPlacementLine } from "../../server/repo/portals/i
 import { sendInvitationToSpeak } from "../../server/repo/portals/mail";
 import { parsePortalRule } from "../../domain/portals/rules";
 import { scheduleReconcile } from "../../server/portal-sync";
+import { getPortalSettingsForEvent, upsertPortalSettings } from "../../server/repo/portal-config";
+import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
+import { overCapFieldMessage } from "../../domain/cap-copy";
+import { PROFILE_BASICS_TEMPLATE } from "../../domain/portals/templates";
 
 export const portalsRoutes = new Hono<AppEnv>();
 
@@ -74,6 +78,23 @@ async function portalInEvent(c: Context<AppEnv>, eventId: string, portalId: stri
   const portal = await findPortal(c.var.db, portalId);
   if (!portal || portal.eventId !== eventId) throw new ApiError("not_found", "Portal not found");
   return portal;
+}
+
+// Profile basics' note is the event's welcome note (the Speaker portal
+// section's, migrated): it is edited here and still shown where it always
+// was, at the top of every participant's home -- so it is stored on the
+// portal settings row, not as a second copy on the portal. Takes the note
+// out of the body before the portal fields are parsed, with the welcome
+// note's own length cap.
+function takeWelcomeNote(body: Record<string, unknown>): { body: Record<string, unknown>; welcome: string | null } {
+  const note = body.note;
+  if (note !== undefined && note !== null && typeof note !== "string") {
+    throw new ApiError("invalid", "The note must be text.", { note: "Must be a string" });
+  }
+  if (typeof note === "string" && note.length > MAX_LONG_TEXT_LENGTH) {
+    throw new ApiError("invalid", overCapFieldMessage(note.length, MAX_LONG_TEXT_LENGTH), { note: overCapFieldMessage(note.length, MAX_LONG_TEXT_LENGTH) });
+  }
+  return { body: { ...body, note: null }, welcome: typeof note === "string" && note.trim() !== "" ? note : null };
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +179,9 @@ portalsRoutes.get("/events/:eventId/portals/:portalId", requireOrganizer, async 
   await requireOwnedEvent(c, eventId);
   const data = await getPortalEditorData(c.var.db, eventId, c.req.param("portalId"));
   if (!data) throw new ApiError("not_found", "Portal not found");
-  return c.json(data);
+  const noteIsWelcome = data.portal.template === PROFILE_BASICS_TEMPLATE;
+  if (noteIsWelcome) data.portal.note = (await getPortalSettingsForEvent(c.var.db, eventId))?.welcomeMessage ?? null;
+  return c.json({ ...data, noteIsWelcome });
 });
 
 // Live matches for the rule as edited (the panel pinned beside the rule).
@@ -182,8 +205,10 @@ portalsRoutes.post("/events/:eventId/portals/:portalId/preview", requireOrganize
   const eventId = c.req.param("eventId");
   await requireOwnedEvent(c, eventId);
   const portalId = c.req.param("portalId");
-  await portalInEvent(c, eventId, portalId);
-  const input = parsePortalInput(await readJsonBody(c));
+  const portal = await portalInEvent(c, eventId, portalId);
+  let body = await readJsonBody(c);
+  if (portal.template === PROFILE_BASICS_TEMPLATE) body = takeWelcomeNote(body).body;
+  const input = parsePortalInput(body);
   return c.json(await previewPortalChange(c.var.db, eventId, portalId, input));
 });
 
@@ -191,11 +216,15 @@ portalsRoutes.put("/events/:eventId/portals/:portalId", requireOrganizer, csrfJs
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
   const portalId = c.req.param("portalId");
-  const body = await readJsonBody(c);
+  const portal = await portalInEvent(c, eventId, portalId);
+  let body = await readJsonBody(c);
+  let welcome: string | null | undefined;
+  if (portal.template === PROFILE_BASICS_TEMPLATE) ({ body, welcome } = takeWelcomeNote(body));
   const input = parsePortalInput(body);
   const notify = parseNotify(body.notify);
   const now = new Date();
   const before = await updatePortal(c.var.db, eventId, portalId, input, now);
+  if (welcome !== undefined) await upsertPortalSettings(c.var.db, eventId, { welcomeMessage: welcome });
   const result = await reconcileEventPortals(c.var.db, eventId, now, { notify });
   const prior = portalToInput(before);
   await writeAuditEvent(
@@ -341,7 +370,14 @@ portalsRoutes.get("/events/:eventId/people/:contactId/portal", requireOrganizer,
   const eventId = c.req.param("eventId");
   const event = await requireOwnedEvent(c, eventId);
   const contact = await contactForOrgOr404(c, event.orgId, c.req.param("contactId"));
-  const view = await buildPersonView(c.var.db, { eventId, contactId: contact.id, now: Date.now(), includeDetached: true });
+  let view = await buildPersonView(c.var.db, { eventId, contactId: contact.id, now: Date.now(), includeDetached: true });
+  // a portal brings an item with no row yet (the background reconcile
+  // hasn't run since the change): materialize it now, the way the home
+  // heals itself, so the record's items can be reopened
+  if (view.needsReconcile) {
+    await reconcileEventPortals(c.var.db, eventId, new Date(), { notify: "auto" });
+    view = await buildPersonView(c.var.db, { eventId, contactId: contact.id, now: Date.now(), includeDetached: true });
+  }
   const roles = await listEventRoles(c.var.db, eventId, contact.id);
   return c.json({ contact, view, eventRoles: roles });
 });

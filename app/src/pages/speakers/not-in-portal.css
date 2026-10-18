@@ -1,0 +1,115 @@
+/* Speakers · Not in any portal (Portals frame, flow 1, /speakers?portal=none):
+   a four-column list -- person, participation, why, a link to the record --
+   and the Speakers head's link to the sponsor-session queue. */
+
+.chq-not-in-portal {
+  margin-top: 24px;
+}
+
+/* "5 not in any portal" beside the H1, in the page summary's register */
+.chq-not-in-portal-count {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* the search and portal filter, on the Speakers toolbar's rules */
+.chq-not-in-portal-toolbar {
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  padding: 13px 0;
+}
+
+.chq-not-in-portal-head,
+.chq-not-in-portal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 3fr) 120px;
+  gap: 16px;
+  align-items: center;
+}
+
+.chq-not-in-portal-head {
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--chq-ink);
+  font-size: var(--chq-type-micro-size);
+  font-weight: var(--chq-type-micro-weight);
+  letter-spacing: var(--chq-type-micro-tracking);
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
+.chq-not-in-portal-row {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 13px;
+}
+
+.chq-not-in-portal-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-not-in-portal-participation {
+  color: var(--chq-ink-2);
+}
+
+.chq-not-in-portal-why {
+  color: var(--chq-ink);
+}
+
+.chq-not-in-portal-action-head {
+  text-align: right;
+}
+
+.chq-not-in-portal-action {
+  text-align: right;
+}
+
+.chq-not-in-portal-record-link {
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+/* The Speakers head's link to the sponsor-session queue (multi-portal),
+   shown beside the summary when sessions are waiting. */
+.chq-speakers-queue-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .chq-speakers-queue-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+  }
+
+  .chq-not-in-portal-toolbar .chq-input,
+  .chq-not-in-portal-toolbar .chq-select {
+    width: 100%;
+  }
+
+  .chq-not-in-portal-head {
+    display: none;
+  }
+
+  .chq-not-in-portal-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .chq-not-in-portal-action {
+    text-align: left;
+  }
+
+  .chq-not-in-portal-record-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+  }
+}

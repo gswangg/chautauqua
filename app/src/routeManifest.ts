@@ -168,6 +168,30 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // Speakers links into the importer with ?import=1, the toolbar's
   // "Import CSV" button shares this same opener/URL-state path).
   { path: "/admin/contacts?import=1", role: "organizer" },
+  // Multi-portal (docs/design/multi-portal/): the person record for the
+  // speaker persona (Priya Raman: a CFP talk, an invited panel and a Gold
+  // sponsor contact role), the Portals and Sponsorships sub-pages, and the
+  // sponsor-session queue -- the demo ids scripts/portal-demo-lib.ts seeds.
+  {
+    path: "/admin/contacts/seed_contact_0001",
+    role: "organizer",
+    params: { contactId: "seed_contact_0001" },
+  },
+  { path: "/admin/speakers?portal=none", role: "organizer" },
+  { path: "/admin/settings/portals", role: "organizer" },
+  { path: "/admin/settings/portals/library", role: "organizer" },
+  {
+    path: "/admin/settings/portals/demo_mp_portal_invited",
+    role: "organizer",
+    params: { portalId: "demo_mp_portal_invited" },
+  },
+  { path: "/admin/settings/sponsorships", role: "organizer" },
+  { path: "/admin/speakers/sponsor-sessions", role: "organizer" },
+  {
+    path: "/admin/speakers/sponsor-sessions/demo_mp_ss_lattice_workshop",
+    role: "organizer",
+    params: { sessionId: "demo_mp_ss_lattice_workshop" },
+  },
   { path: "/admin/settings", role: "organizer" },
   // DEC-144 (wave-154 amendment): Settings.tsx's `SECTIONS` panel keys --
   // the mandate counts NINE Settings width:390 frames (Chautauqua
@@ -190,6 +214,7 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // routeManifest.test.ts.
   { path: "/admin/settings?section=public-pages&view=embeds", role: "organizer" },
   { path: "/admin/settings?section=portal", role: "organizer" },
+  { path: "/admin/settings?section=sponsorships", role: "organizer" },
   { path: "/admin/settings?section=your-data", role: "organizer" },
   { path: "/admin/settings?section=people", role: "organizer" },
   // DEC-144 (wave-28 amendment): the `edit=1` drill of each Settings section

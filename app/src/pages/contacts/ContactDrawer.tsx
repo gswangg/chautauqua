@@ -614,6 +614,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 <p className="chq-meta chq-contacts-record-group-caption">
                   These facts belong to this event only — everything above is this person's org-wide record.
                 </p>
+                {/* Multi-portal: what this person gets at the event, and
+                    why, lives on the person record page. */}
+                <p className="chq-meta chq-contacts-record-group-caption">
+                  Participations, portals and items are on the record.{' '}
+                  <Link className="chq-link-button" to={`/contacts/${contactId}`}>
+                    Open record
+                  </Link>
+                </p>
                 {labelsNode}
                 {/* DEC-292 amendment (findings wave 5): the "This event"
                     group records three reserved fields, each in its own

@@ -494,7 +494,11 @@ const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 // computed expression. See docs/design/audit/desktop-eyebrow-label-v12.md
 // for the full per-row breakdown, per-file table and the two individually
 // verified UNRESOLVED rows.
-export const DESKTOP_EYEBROW_DIVERGENCE_CEILING = 103;
+// Multi-portal (merge-train, re-measured on the integrated tree): +1 for
+// Chautauqua Settings.dc.html:912 "What speakers may edit", the Speaker
+// portal edit view's fixed permissions heading, superseded by each portal's
+// own field permissions (docs/design/multi-portal/DECISIONS.md #32).
+export const DESKTOP_EYEBROW_DIVERGENCE_CEILING = 104;
 export const DESKTOP_EYEBROW_UNRESOLVED_CEILING = 1;
 
 describe('desktop drawn-eyebrow ledger (DEC-986 wave-41, v12 mobile campaign)', () => {

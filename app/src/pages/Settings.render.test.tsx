@@ -131,16 +131,17 @@ describe('SettingsPage render smoke', () => {
     expect(within(publicPagesSection).getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
     expect(within(publicPagesSection).getAllByRole('link', { name: 'View' }).length).toBeGreaterThan(0);
 
-    // Speaker portal section — read-only summary (DEC-815); the Resources
-    // row LISTS the real resources at rest (DEC-815 amendment, wave 4) --
-    // only the add/delete surface stays behind the section's 'Change'.
-    const portalSection = screen.getByRole('region', { name: 'Speaker portal' });
-    expect(within(portalSection).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
+    // Portals section (formerly Speaker portal) — read-only summary
+    // (DEC-815); resources are counted in the Libraries row, and their
+    // add/delete surface stays behind the Branding row's 'Change'.
+    const portalSection = screen.getByRole('region', { name: 'Portals' });
+    expect(within(portalSection).getByRole('heading', { name: 'Portals' })).toBeInTheDocument();
     await waitFor(() => {
       expect(within(portalSection).getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
     });
-    expect(await within(portalSection).findByText('Travel info')).toBeInTheDocument();
+    expect(within(portalSection).getByRole('button', { name: 'Manage portals' })).toBeInTheDocument();
     expect(within(portalSection).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sponsorships' })).toBeInTheDocument();
 
     // People and roles panel — read-only summary (DEC-815) whose rows are
     // now the real per-person rows (w1-f, DEC-785: name + role), not a
@@ -298,7 +299,10 @@ describe('SettingsPage render smoke', () => {
       'Call for papers',
       'Tracks and rooms',
       'Public pages',
-      'Speaker portal',
+      // multi-portal (docs/design/multi-portal/, flow 1): Speaker portal is
+      // Portals, followed by Sponsorships
+      'Portals',
+      'Sponsorships',
       // G13 fix: frames 09--10..16 draw Your data BEFORE People and roles.
       'Your data',
       'People and roles',
@@ -500,7 +504,7 @@ describe('SettingsPage render smoke', () => {
     expect(screen.queryByRole('region', { name: 'Event' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Tracks and rooms' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Public pages' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Speaker portal' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Portals' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'People and roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your data' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
@@ -583,7 +587,7 @@ describe('SettingsPage render smoke', () => {
     expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Tracks and rooms' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Public pages' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Speaker portal' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Portals' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'People and roles' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Your data' })).toBeInTheDocument();
 
@@ -646,7 +650,7 @@ describe('SettingsPage render smoke', () => {
     expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Tracks and rooms' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Public pages' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Speaker portal' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Portals' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'People and roles' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Your data' })).toBeInTheDocument();
 

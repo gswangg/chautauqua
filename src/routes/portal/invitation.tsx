@@ -104,6 +104,7 @@ function InvitationPage(props: {
   if (inv.inviteStatus === "declined") {
     return (
       <PortalLayout branding={data.branding} csrfToken={props.csrfToken} speakerName={name} headerSignOut={false}>
+        <div class="chq-invite-page">
         <h1 class="chq-portal-hero">Thanks for letting us know</h1>
         <p class="chq-portal-sub">We've let the organizers know.</p>
         {props.sent ? (
@@ -123,12 +124,14 @@ function InvitationPage(props: {
             </div>
           </form>
         )}
+        </div>
       </PortalLayout>
     );
   }
   const meta = [data.placement, inv.invitedByName ? `from ${inv.invitedByName}` : null].filter((x): x is string => !!x).join(" · ");
   return (
     <PortalLayout branding={data.branding} csrfToken={props.csrfToken} speakerName={name} headerSignOut={false}>
+      <div class="chq-invite-page">
       <div class="chq-home-label">{roleHeading(inv, data.format)}</div>
       <h1 class="chq-portal-hero chq-portal-hero-drill">{inv.sessionTitle}</h1>
       {meta ? <p class="chq-portal-sub">{meta}</p> : null}
@@ -139,8 +142,10 @@ function InvitationPage(props: {
           <div class="chq-home-rows">
             {data.deferred.map((d) => (
               <div class="chq-home-row">
-                <span class="chq-home-row-title">{d.name}</span>
-                <span class="chq-home-row-line">{deferredLine(d)}</span>
+                <div class="chq-home-row-main">
+                  <span class="chq-home-row-title">{d.name}</span>
+                  {deferredLine(d) ? <span class="chq-home-row-line">{deferredLine(d)}</span> : null}
+                </div>
               </div>
             ))}
           </div>
@@ -156,6 +161,7 @@ function InvitationPage(props: {
           <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
           <button type="submit" class="chq-btn chq-btn-secondary">Decline</button>
         </form>
+      </div>
       </div>
     </PortalLayout>
   );

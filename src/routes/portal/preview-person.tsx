@@ -92,11 +92,10 @@ portalPersonPreviewRoutes.get("/preview/people/:eventId/:contactId", async (c) =
       <div class="chq-preview-bar" role="note">
         <span class="chq-preview-bar-label">Preview</span>
         <span class="chq-preview-bar-text">Viewing {name}’s portal. Personal data — this view is logged.</span>
-        <a class="chq-preview-bar-exit" href={`/admin/speakers/${contactId}`}>
+        <a class="chq-preview-bar-exit" href={`/admin/contacts/${contactId}`}>
           Exit preview
         </a>
       </div>
-      <div class="chq-preview-bar-spacer" aria-hidden="true" />
       <HomeBody firstName={contact.firstName || name} data={{ views: [view], placements }} csrfToken={csrfToken} preview={true} />
     </PortalLayout>,
   );

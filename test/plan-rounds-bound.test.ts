@@ -178,6 +178,16 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
+    file: "app/src/pages/portals/EntitlementRows.tsx",
+    expr: "MAX_ENTITLEMENT_COUNT",
+    reason: "the entitlement count select offers 1..MAX_ENTITLEMENT_COUNT, the server's own cap on a tier row's count (src/domain/sponsors.ts) -- a constant, not a client-derived count.",
+  },
+  {
+    file: "app/src/pages/portals/NewLibraryItemModal.tsx",
+    expr: "MAX_FILE_REQUEST_FILES",
+    reason: "the files-count select offers 1..MAX_FILE_REQUEST_FILES, the server's own cap on a file request (src/domain/portals/file-types.ts) -- a constant, not a client-derived count.",
+  },
+  {
     file: "app/src/pages/agenda/DayGrid.tsx",
     expr: "rows",
     reason:

@@ -198,6 +198,18 @@ const MOUNT_CONFIG: Record<string, MountConfig> = {
   // from a grid column head.
   'pages/speakers/TaskView.tsx': { path: '/speakers/tasks/task-1', routePath: '/speakers/tasks/:taskId' },
   'pages/submissions/DeleteSubmissionsPage.tsx': { path: '/submissions/delete?ids=sub-1' },
+  // Multi-portal: the Portals and Sponsorships Settings sub-pages, the
+  // sponsor-session queue and review page, and the person record.
+  'pages/portals/PortalsOverviewPage.tsx': { path: '/settings/portals' },
+  'pages/portals/LibraryPage.tsx': { path: '/settings/portals/library' },
+  'pages/portals/PortalEditorPage.tsx': { path: '/settings/portals/p-1', routePath: '/settings/portals/:portalId' },
+  'pages/portals/SponsorshipsPage.tsx': { path: '/settings/sponsorships' },
+  'pages/portals/SponsorSessionsPage.tsx': { path: '/speakers/sponsor-sessions' },
+  'pages/portals/SponsorSessionReviewPage.tsx': {
+    path: '/speakers/sponsor-sessions/ss-1',
+    routePath: '/speakers/sponsor-sessions/:sessionId',
+  },
+  'pages/portals/PersonRecordPage.tsx': { path: '/contacts/ct-1', routePath: '/contacts/:contactId' },
 };
 
 const EVENT_ID = 'evt-first-paint';

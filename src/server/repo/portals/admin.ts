@@ -41,7 +41,7 @@ import {
   type DeadlineKind,
   type SystemItemKind,
 } from "../../../domain/portals/items";
-import { PORTAL_TEMPLATES, findPortalTemplate, type PortalTemplate } from "../../../domain/portals/templates";
+import { PORTAL_TEMPLATES, PROFILE_BASICS_TEMPLATE, findPortalTemplate, type PortalTemplate } from "../../../domain/portals/templates";
 import { SUBMISSION_STATUSES } from "../../../domain/status";
 import { MAX_PORTALS_PER_EVENT, MAX_PORTAL_ITEMS, MAX_PORTAL_NAME, MAX_PORTAL_NOTE } from "../../../domain/portals/limits";
 import { isIsoDate } from "../../../domain/iso-date";
@@ -737,7 +737,8 @@ export async function duplicatePortal(db: Db, eventId: string, portalId: string,
   const current = await findPortal(db, portalId);
   if (!current || current.eventId !== eventId) throw new ApiError("not_found", "Portal not found");
   const input = portalToInput(current);
-  return createPortal(db, eventId, { ...input, name: `${current.name} (copy)`.slice(0, MAX_PORTAL_NAME), rule: { groups: [] } }, now, current.template);
+  // a copy is a portal of its own, not the starter it may have come from
+  return createPortal(db, eventId, { ...input, name: `${current.name} (copy)`.slice(0, MAX_PORTAL_NAME), rule: { groups: [] } }, now, null);
 }
 
 /** Deletes a portal. Its memberships go; reconciliation then detaches the
@@ -841,8 +842,8 @@ export async function createPortalFromTemplate(db: Db, eventId: string, key: str
 export async function ensureProfileBasicsPortal(db: Db, eventId: string, now: Date): Promise<void> {
   const existing = await db.select({ id: schema.portal.id }).from(schema.portal).where(eq(schema.portal.eventId, eventId)).orderBy(asc(schema.portal.id)).limit(1);
   if (existing[0]) return;
-  const template = findPortalTemplate("profile_basics")!;
-  await createPortal(db, eventId, { ...templateToInput(template, []), items: [] }, now, "profile_basics");
+  const template = findPortalTemplate(PROFILE_BASICS_TEMPLATE)!;
+  await createPortal(db, eventId, { ...templateToInput(template, []), items: [] }, now, PROFILE_BASICS_TEMPLATE);
 }
 
 export interface CopyResult {

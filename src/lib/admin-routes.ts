@@ -35,6 +35,18 @@ export const ADMIN_ROUTE_PATTERNS = [
   // matcher and in React Router alike.
   "/speakers/tasks/:taskId",
   "/content/:submissionId",
+  // Multi-portal (docs/design/multi-portal/): the Portals and Sponsorships
+  // Settings sub-pages, the sponsor-session approval queue under Speakers,
+  // and the person record under Contacts. Literal segments ("library",
+  // "sponsor-sessions", "merge") outrank the param beside them in React
+  // Router; this matcher only asks whether some pattern matches.
+  "/settings/portals",
+  "/settings/portals/library",
+  "/settings/portals/:portalId",
+  "/settings/sponsorships",
+  "/speakers/sponsor-sessions",
+  "/speakers/sponsor-sessions/:sessionId",
+  "/contacts/:contactId",
 ] as const;
 
 /** Splits a path into non-empty segments, treating "/" (and "") as zero

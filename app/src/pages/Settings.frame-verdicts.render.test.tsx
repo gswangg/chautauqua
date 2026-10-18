@@ -133,7 +133,10 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
       'Call for papers',
       'Tracks and rooms',
       'Public pages',
-      'Speaker portal',
+      // multi-portal (docs/design/multi-portal/, flow 1): Speaker portal is
+      // Portals, followed by Sponsorships
+      'Portals',
+      'Sponsorships',
       'Your data',
       'People and roles',
     ]);
@@ -270,7 +273,7 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   it('frame :510 Speaker portal -- MATCHES: Welcome note renders the stored text verbatim in the drawn readout box (DEC-919 wave-157)', async () => {
     verbatimLine(507, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Speaker portal</span>");
     renderDrilled('portal');
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     // Frame :518 draws a full boxed readout of the actual welcome text --
     // the fixture's stored value ('Welcome, speakers!') now renders
     // verbatim inside it (CSS gates the box itself to phone; desktop's

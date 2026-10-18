@@ -321,3 +321,7 @@ re-measured this ceiling against the tree it is registering it into (forced
 to `-1`, roster read back fresh, never carried on faith from this
 document), the same discipline every other newly-measured population in
 this campaign was registered under.
+
+Re-measured again with the multi-portal organizer screens in the tree: the
+new Portals, Sponsorships, approval-queue and person-record lists close nine
+more GAP rows, so `FRAME_REPEATED_ROW_GAP_CEILING = 80`.

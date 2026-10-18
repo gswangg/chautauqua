@@ -44,6 +44,7 @@ import { ContactDrawer } from './ContactDrawer';
 import { mockApi } from '../../test-utils/mockApi';
 import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import type { ContactDetail } from './types';
+import { MemoryRouter } from 'react-router-dom';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..', '..', '..');
@@ -200,7 +201,7 @@ describe('ContactDrawer head band gets a back link (DEC-663 wave-159)', () => {
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
     const onClose = vi.fn();
-    render(<ContactDrawer contactId="ct1" onClose={onClose} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={onClose} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -252,7 +253,7 @@ describe('Redundant phone Close stands down once a back link is present (DEC-663
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
     const onClose = vi.fn();
-    render(<ContactDrawer contactId="ct1" onClose={onClose} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={onClose} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {

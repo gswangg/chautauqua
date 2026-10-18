@@ -1,0 +1,70 @@
+/* Multi-portal organizer screens: the shell every Settings sub-page shares
+   (SettingsSubPage.tsx). The Portals frame draws these pages wider than a
+   settings section (tables of portals, items and sponsors), so the content
+   column takes the table measure; the H1 row carries the page's one
+   primary action on its right ("New portal", "New tier"). Each screen's
+   own rules live beside it (portal-editor.css, sponsorships.css,
+   person-record.css). */
+
+/* The frame draws the sub-page's content column at the wide measure
+   beside the rail (rail, 34px, 1180px), where a settings section keeps its
+   820px reading column. */
+.chq-settings-subpage .chq-settings-layout {
+  grid-template-columns: minmax(196px, 1fr) minmax(0, var(--chq-measure-wide)) minmax(0, 1fr);
+}
+
+.chq-settings-subpage .chq-settings-content {
+  max-width: var(--chq-measure-table);
+  width: 100%;
+  min-width: 0;
+}
+
+.chq-subpage-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chq-subpage-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chq-subpage-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-subpage-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .chq-settings-subpage .chq-settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chq-subpage-head {
+    flex-direction: column;
+  }
+
+  .chq-subpage-actions {
+    width: 100%;
+  }
+
+  .chq-subpage-actions .chq-btn,
+  .chq-subpage-actions a {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+  }
+}

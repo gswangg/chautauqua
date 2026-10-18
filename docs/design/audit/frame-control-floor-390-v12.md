@@ -433,3 +433,10 @@ Stated here in that grammar so document and tree agree: the live value in
 `FRAME_FLOOR_DIVERGENCE_CEILING = 0`, with zero offenders measured. No
 constant moves, no row is re-adjudicated, and the 106-row itemisation above
 stands unchanged.
+
+## Multi-portal (docs/design/multi-portal/)
+
+Re-measured on the integrated tree: the Settings Speaker portal section's
+fixed "Speakers can edit" pills are gone (each portal's own field
+permissions replace them, docs/design/multi-portal/DECISIONS.md #32), one
+fewer unresolved drawn control. `UNRESOLVED_COUNT_TRIPWIRE` moves 90 -> 89.

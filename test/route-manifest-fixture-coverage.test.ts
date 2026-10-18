@@ -102,8 +102,13 @@ describe("route manifest fixture coverage (DEC-663)", () => {
     // test green over a pool too small to mean anything.
     expect(sessionAndTaskBearingContactIds.size).toBeGreaterThanOrEqual(2);
 
+    // /admin/speakers/sponsor-sessions is a literal route (the sponsor-session
+    // queue), not a contact id in the speaker-detail slot.
     const speakerDetailRows = ROUTE_MANIFEST.filter(
-      (entry) => /^\/admin\/speakers\/[^/]+$/.test(entry.path) && entry.role === "organizer",
+      (entry) =>
+        /^\/admin\/speakers\/[^/]+$/.test(entry.path) &&
+        entry.path !== "/admin/speakers/sponsor-sessions" &&
+        entry.role === "organizer",
     );
     // Non-vacuity guard on the manifest side: the check must actually cover
     // at least one row, or a manifest refactor that renamed/removed the

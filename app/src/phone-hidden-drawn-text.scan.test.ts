@@ -233,8 +233,15 @@ const TWIN_RESOLVED_ROWS = GRADED_RULES.filter((g) => g.grade === 'TWIN-RESOLVED
 // single, uncorroborated generic verbs ("Cancel", "Edit") no longer alone
 // condemn a rule. UNVERIFIABLE rose as those same rows fell through to their
 // own composed finding, exactly as wave-35 recorded for cluster scoping.
-export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 20;
-export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 49;
+// Multi-portal: one row RECLASSIFIED, none added. The person record's
+// "‹ Contacts" back link (app/src/pages/portals/PersonRecordPage.tsx) makes
+// "Contacts" a corpus-derived generic word (static own-text in
+// GENERIC_VERB_MIN_COMPONENTS+ files), so contacts.css's existing
+// `.chq-contacts-title-row .chq-summary` rule -- unchanged markup, unchanged
+// CSS -- can no longer be condemned on that word alone and moves from
+// PREMISE-FALSE to UNVERIFIABLE (20 -> 19, 49 -> 50).
+export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 19;
+export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 50;
 
 // ---------------------------------------------------------------------------
 // DEC-967 wave-42 amendment: a two-sided completeness ratchet over every

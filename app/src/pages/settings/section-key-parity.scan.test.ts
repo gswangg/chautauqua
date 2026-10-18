@@ -29,6 +29,7 @@ const RAIL_PANEL_FILES = [
   'CallForPapersPanel.tsx',
   'TracksRoomsPanel.tsx',
   'PortalSettingsPanel.tsx',
+  'SponsorshipsSummaryPanel.tsx',
   'PeopleRolesPanel.tsx',
   'YourDataPanel.tsx',
 ];

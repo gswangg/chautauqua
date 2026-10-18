@@ -19,6 +19,7 @@ import { matchesRule } from "../../../domain/portals/rules";
 import {
   canActOnItem,
   graceEndDay,
+  openUntilDay,
   itemState,
   mergeItemSettings,
   portalItemDueDay,
@@ -359,8 +360,7 @@ export async function buildPersonView(db: Db, input: BuildViewInput): Promise<Pe
       if (state === "closed") state = "overdue_open";
     }
     const reopenedUntil = a?.reopenedUntil?.getTime() ?? null;
-    const openUntil =
-      state === "overdue_open" && dueDay !== null ? (graceDays > 0 ? graceEndDay(dueDay, graceDays) : reopenedUntil) : null;
+    const openUntil = state === "overdue_open" && dueDay !== null ? openUntilDay(dueDay, graceDays, reopenedUntil) : null;
     const allowEdit = merged?.allowEditAfterSubmit ?? true;
     const viewOnly = merged?.viewOnlyWhenDone ?? false;
     return {

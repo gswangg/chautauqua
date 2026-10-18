@@ -159,6 +159,27 @@ credential for that page only, metered per IP like the account-claim link. `/por
 is the organizer-only "Preview as participant" view, the 404-for-everyone-else shape of
 `/portal/preview`, and each open writes an `audit_event` row.
 
+## J7b — Portals and sponsorships, organizer side (`/admin/settings/portals`, `/admin/settings/portals/:portalId`, `/admin/settings/portals/library`, `/admin/settings/sponsorships`, `/admin/speakers/sponsor-sessions`, `/admin/speakers/sponsor-sessions/:sessionId`, `/admin/contacts/:contactId`)
+
+Multi-portal (`docs/design/multi-portal/DECISIONS.md`). Settings' Portals section (formerly
+Speaker portal) and its Sponsorships section (`/admin/settings?section=sponsorships`, tiers and
+sponsors at a glance) summarise the event's portals, coverage and item library and open
+`/admin/settings/portals`: every portal with who it covers, how many participations it matches
+and its items, the participations no portal covers (`/admin/speakers?portal=none`), starter
+templates, and copying portals and sponsor tiers from another event. `/admin/settings/portals/:portalId`
+is one portal's editor on one page: its rule (OR of AND groups, including "is not" and "is none of")
+with live matches beside it, its items with per-portal settings, field permissions with help text,
+actions, and its note; saving a change that moves people or items opens a preview of who gains and
+loses what, with the choice of who is emailed. `/admin/settings/portals/library` is the item library.
+`/admin/settings/sponsorships` holds sponsor tiers and what each entitles a sponsor to (with the
+sponsors a lowered allowance would put over it), and the sponsors with their per-sponsor extras and
+contacts. `/admin/speakers/sponsor-sessions` is the approval queue for sessions sponsors design, and
+`/admin/speakers/sponsor-sessions/:sessionId` one session's review: approve (it becomes an accepted
+session in Submissions with the sponsor's speakers on it), request changes, or decline with a reason.
+`/admin/contacts/:contactId` is the person record: each participation and the portals it matched, every
+item and the portal that brought it, reopen a closed item, event roles, invite to speak, and preview the
+person's portal (logged to `audit_event`).
+
 ## J8 — Collect/review/approve content (`/admin/content`, `/admin/content/:submissionId`)
 
 Per-session file uploads (typed: slides, headshot, bio, etc.), organizer approve/reject,

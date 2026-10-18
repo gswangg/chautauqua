@@ -1,0 +1,103 @@
+/* Settings · Portals › Libraries (LibraryPage.tsx): the item library by
+   type, one hairline-divided row per item -- name, what it is about, its
+   instructions and limits, the portals that list it -- with the row's
+   one control (Edit, or a resource's visibility) on the right. */
+
+.chq-library {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-library-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-library-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-library-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chq-library-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--chq-ink);
+}
+
+.chq-library-tag {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--chq-muted);
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-pill);
+  padding: 2px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.chq-library-meta,
+.chq-library-used {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-library-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-ink-2);
+}
+
+/* tap-floor-exempt: an inline link inside the "Used by" sentence, not a row action */
+.chq-library-portal {
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+.chq-library-side {
+  display: flex;
+  align-items: center;
+}
+
+.chq-library-visibility {
+  width: 320px;
+}
+
+@media (max-width: 700px) {
+  .chq-library-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .chq-library-side .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-library-visibility {
+    width: 100%;
+  }
+}

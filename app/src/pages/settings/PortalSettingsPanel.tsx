@@ -21,8 +21,17 @@
 // rather than list it. It now renders ResourcesPanel itself in its new
 // `readOnly` mode -- the same component the edit branch already uses,
 // never a second list renderer, with no add/delete control at rest.
+//
+// Multi-portal (docs/design/multi-portal/, flow 1): the section is now
+// "Portals". Its read rows summarise the event's portals, their coverage,
+// the item library and how participants get in; the head action is "Manage
+// portals", a link to the Portals sub-page. What speakers may edit, the
+// onboarding items and the welcome note moved into the portals themselves
+// (field permissions, items, Profile basics' note). The edit drill keeps
+// the portal's branding, the welcome note (the same stored note Profile
+// basics edits) and resource files, reached from the Branding row.
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -30,6 +39,7 @@ import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsSaveButton } from './SettingsEditForm';
 import { countOf } from '../../lib/plural';
+import type { LibraryEntry, LibraryListing, PortalOverview } from '../portals/types';
 import { DEFAULT_PORTAL_SETTINGS } from '../../lib/portal-defaults';
 import {
   buildPortalSettingsPayload,
@@ -75,38 +85,21 @@ function formFromRecord(record: PortalSettingsRecord): PortalSettingsForm {
   };
 }
 
-interface OnboardingSummary {
-  tasks: { id: string }[];
-}
-
-// DEC-747 pack: Bio/Headshot/Links are always speaker-editable (the
-// portal profile form, src/routes/portal/profile.tsx); Session
-// title/Abstract follow the submission edit-lock gate (canEditSubmission,
-// src/domain/edit-lock.ts) instead of being unconditionally open -- a real
-// architectural split, not fixture data.
-const SPEAKER_EDIT_FIELDS: { label: string; editable: boolean }[] = [
-  { label: 'Bio', editable: true },
-  { label: 'Headshot', editable: true },
-  { label: 'Links', editable: true },
-  { label: 'Session title', editable: false },
-  { label: 'Abstract', editable: false },
+// "14 tasks · 6 forms · 4 file requests · 7 resources": the item library
+// by kind (built-in items aren't the organizer's to count).
+const LIBRARY_KINDS: { type: LibraryEntry['type']; noun: string }[] = [
+  { type: 'task', noun: 'task' },
+  { type: 'form', noun: 'form' },
+  { type: 'file_request', noun: 'file request' },
+  { type: 'share_kit', noun: 'share kit' },
+  { type: 'resource', noun: 'resource' },
 ];
 
-// w4-b: the SAME array renders in both the read row and the edit form's
-// 'What speakers may edit' section -- never a second list.
-function SpeakerEditPills() {
-  return (
-    <div className="chq-settings-portal-pills">
-      {SPEAKER_EDIT_FIELDS.map((field) => (
-        <span
-          key={field.label}
-          className={field.editable ? 'chq-pill chq-pill-static is-active' : 'chq-pill chq-pill-static'}
-        >
-          {field.label}
-        </span>
-      ))}
-    </div>
-  );
+function libraryLine(entries: LibraryEntry[]): string {
+  const parts = LIBRARY_KINDS.map(({ type, noun }) => ({ n: entries.filter((e) => e.type === type).length, noun }))
+    .filter(({ n }) => n > 0)
+    .map(({ n, noun }) => countOf(n, noun));
+  return parts.length > 0 ? parts.join(' · ') : 'No library items yet';
 }
 
 function paragraphCount(text: string | null): number {
@@ -115,27 +108,22 @@ function paragraphCount(text: string | null): number {
   return trimmed.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
 }
 
-// docs/design/Chautauqua Settings.dc.html:518 ('Settings · Speaker portal',
-// phone drill): the Welcome note row draws a boxed ~88px readout of the
-// actual welcome text -- padding:12px, line-height:1.55, the frame's own
-// overflow treatment (the box clips, it does not paginate or truncate the
-// string itself). DEC-919 wave-157 clause (a): render the STORED value
-// verbatim here, never a computed count -- an empty value renders the
-// frame's empty state instead of a fabricated summary.
-//
-// Desktop is frozen (a different, wider frame the row's existing computed
-// "Shown above the task list · N paragraph(s)" line already serves): both
-// representations render unconditionally in the DOM (DEC-919 wave-99
-// precedent -- the capability renders twice, once on screen) and CSS
-// (settings-drill-rows.css's terminal max-width block) is the only thing
-// that decides which one is visible at which width.
-//
-// DEC-919 wave-9 amendment: the SAME component also mounts in the edit
-// form (below), above the `#chq-portal-welcome` textarea, carrying an
-// `-edit` modifier class (settings-drill-rows.css) that gives it the
-// frame's 96px desktop measure -- docs/design/Chautauqua
-// Settings.dc.html:905's boxed static readout of the STORED welcome text,
-// sitting beside the field holding the in-progress edit.
+function brandingLine(form: PortalSettingsForm): string {
+  const logo = form.logoUrl.trim() !== '';
+  const accent = form.accentColor.trim();
+  if (logo && accent) return `Logo · ${accent} accent ·`;
+  if (logo) return 'Logo · default accent ·';
+  if (accent) return `No logo · ${accent} accent ·`;
+  return 'No logo · default accent ·';
+}
+
+// docs/design/Chautauqua Settings.dc.html:518 (phone drill): the Welcome
+// note row draws a boxed readout of the STORED text, verbatim (DEC-919
+// wave-157 clause (a)); desktop keeps its computed "Shown above the task
+// list · N paragraphs" line, and CSS (settings-drill-rows.css) decides
+// which shows at which width. The edit drill mounts the same readout above
+// its field (DEC-919 wave-9 amendment, :905). Multi-portal: the note is
+// Profile basics' note too -- the same stored value, edited from either.
 function WelcomeNoteReadout({ text, className }: { text: string | null; className?: string }) {
   const trimmed = (text ?? '').trim();
   const content = trimmed.length === 0 ? 'No welcome note set.' : text;
@@ -149,7 +137,8 @@ export function PortalSettingsPanel() {
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [welcomeLoaded, setWelcomeLoaded] = useState(false);
-  const [taskCount, setTaskCount] = useState<number | null>(null);
+  const [overview, setOverview] = useState<PortalOverview | null>(null);
+  const [library, setLibrary] = useState<LibraryEntry[] | null>(null);
   const [resourceCount, setResourceCount] = useState<number | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -181,9 +170,12 @@ export function PortalSettingsPanel() {
     setError(undefined);
     loadPortalSettings();
     if (!eventId) return;
-    apiGet<OnboardingSummary>(`/events/${eventId}/onboarding?page=1&perPage=1`)
-      .then((res) => setTaskCount(res.tasks.length))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding tasks'));
+    apiGet<PortalOverview>(`/events/${eventId}/portals`)
+      .then(setOverview)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load portals'));
+    apiGet<LibraryListing>(`/events/${eventId}/library`)
+      .then((res) => setLibrary(res.entries))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the item library'));
     apiList<{ id: string }>(`/events/${eventId}/resources`)
       .then((res) => setResourceCount(res.total))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load resources'));
@@ -194,6 +186,15 @@ export function PortalSettingsPanel() {
       const params = new URLSearchParams(prev);
       params.delete('section');
       params.delete('edit');
+      return params;
+    });
+  }
+
+  function openEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', SECTION_KEY);
+      params.set('edit', '1');
       return params;
     });
   }
@@ -226,30 +227,48 @@ export function PortalSettingsPanel() {
     }
   }
 
-  const paragraphs = paragraphCount(welcomeMessage);
-
-  const resourcesCap = (
-    <>
-      <div className="chq-settings-section-head">
-        <h3 className="chq-section-label">Resources</h3>
-      </div>
-      <ResourcesPanel readOnly />
-    </>
-  );
-
   const rows = [
+    {
+      label: 'Portals',
+      value:
+        overview === null ? (
+          <DelayedLoading />
+        ) : overview.portals.length === 0 ? (
+          'No portals yet'
+        ) : (
+          `${overview.portals.length} · ${overview.portals.map((p) => p.name).join(', ')}`
+        ),
+    },
+    {
+      label: 'Coverage',
+      value:
+        overview === null ? (
+          <DelayedLoading />
+        ) : overview.total === 0 ? (
+          'No participations yet'
+        ) : (
+          `${overview.covered} of ${countOf(overview.total, 'participation')} covered`
+        ),
+      hint:
+        overview !== null && overview.notInAny > 0 ? (
+          <Link className="chq-settings-row-link" to="/speakers?portal=none">
+            {`${overview.notInAny} not in any portal`}
+          </Link>
+        ) : undefined,
+    },
+    {
+      label: 'Libraries',
+      value: library === null ? <DelayedLoading /> : libraryLine(library),
+    },
+    { label: 'Access', value: 'Participants claim their portal from a link in their acceptance or invitation email' },
     {
       label: 'Welcome note',
       value: !welcomeLoaded ? (
         <DelayedLoading />
       ) : (
         <>
-          {/* Desktop's existing computed line (a different, wider frame's
-              register) -- CSS-hidden at phone (DEC-919 wave-157 clause (a)
-              forbids a fabricated summary standing in for the 390 frame's
-              boxed verbatim readout). */}
           <span className="chq-settings-portal-welcome-summary">
-            {`Shown above the task list · ${countOf(paragraphs, 'paragraph')}`}
+            {`Shown above the task list · ${countOf(paragraphCount(welcomeMessage), 'paragraph')}`}
           </span>
           <WelcomeNoteReadout text={welcomeMessage} />
         </>
@@ -257,33 +276,10 @@ export function PortalSettingsPanel() {
       rowClassName: 'chq-settings-drill-field-row',
     },
     {
-      label: 'Speakers can edit',
-      value: <SpeakerEditPills />,
-    },
-    {
-      label: 'Onboarding tasks',
-      value:
-        taskCount === null ? (
-          <DelayedLoading />
-        ) : (
-          `${countOf(taskCount, 'task')} · created when a submission is accepted`
-        ),
-    },
-    // docs/design/Chautauqua Settings.dc.html:510-549 ('Settings · Speaker
-    // portal', phone drill): Resources draws as its own 2px-ruled cap over
-    // the list, not a label:value row -- a full-width row
-    // (chq-settings-row-full) with the label collapsed carries the same
-    // ResourcesPanel readOnly list this row already rendered.
-    {
-      label: '',
-      value: resourcesCap,
-      rowClassName: 'chq-settings-row-full',
-    },
-    { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email.' },
-    {
-      label: 'Open the portal',
+      label: 'Branding',
       value: (
         <>
+          <span>{brandingLine(form)}</span>{' '}
           <a
             className="chq-settings-portal-preview-link"
             href={eventId ? `/portal/preview?eventId=${eventId}` : '/portal/preview'}
@@ -291,9 +287,13 @@ export function PortalSettingsPanel() {
             rel="noopener noreferrer"
           >
             Open as a speaker
-          </a>{' '}
-          <span className="chq-meta">read-only preview · not a speaker's account</span>
+          </a>
         </>
+      ),
+      hint: (
+        <button type="button" className="chq-link-button" onClick={openEdit}>
+          Change
+        </button>
       ),
     },
   ];
@@ -302,7 +302,14 @@ export function PortalSettingsPanel() {
     <>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-      <SummarySection sectionKey={SECTION_KEY} label="Speaker portal" rows={rows} actionLabel="Change" editing={editing}>
+      <SummarySection
+        sectionKey={SECTION_KEY}
+        label="Portals"
+        rows={rows}
+        actionLabel="Manage portals"
+        actionTo="/settings/portals"
+        editing={editing}
+      >
         <SettingsEditForm
           onSubmit={(e) => {
             e.preventDefault();
@@ -385,13 +392,12 @@ export function PortalSettingsPanel() {
           </SettingsField>
           {saveError ? <span role="alert">{saveError}</span> : null}
 
-          <div className="chq-settings-section-head">
-            <h3 className="chq-section-label">What speakers may edit</h3>
-          </div>
-          <SpeakerEditPills />
           <p className="chq-settings-edit-consequence">
-            Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the
-            committee accepted.
+            What participants may edit, and what they're asked for, is set per portal in{' '}
+            <Link className="chq-settings-row-link" to="/settings/portals">
+              Manage portals
+            </Link>
+            .
           </p>
 
           <div className="chq-settings-section-head">

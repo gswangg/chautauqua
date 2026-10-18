@@ -1578,7 +1578,10 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // unseen unchanged at 90). See docs/design/audit/
 // frame-control-floor-390-v12.md's "WAVE 53" section for the full
 // sixteen-row table.
-export const UNRESOLVED_COUNT_TRIPWIRE = 90;
+// 90 -> 89 (multi-portal): the Settings Speaker portal section's fixed
+// "Speakers can edit" pills are gone (each portal's field permissions
+// replace them, docs/design/multi-portal/DECISIONS.md #32).
+export const UNRESOLVED_COUNT_TRIPWIRE = 89;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

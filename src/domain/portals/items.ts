@@ -6,6 +6,11 @@ import { dayLabelEndInstant, dayLabelOfInstant } from "../../lib/timezone";
 export const ITEM_SCOPES = ["person", "participation"] as const;
 export type ItemScope = (typeof ITEM_SCOPES)[number];
 
+/** What an organizer can put in the item library (the built-in items --
+ * acceptance, sponsor sessions, bio, headshot -- are always there). */
+export const LIBRARY_TYPES = ["task", "form", "file_request", "share_kit", "resource"] as const;
+export type LibraryType = (typeof LIBRARY_TYPES)[number];
+
 export const ITEM_SCOPE_LABELS: Record<ItemScope, string> = {
   person: "The person",
   participation: "The session or company",
@@ -133,6 +138,17 @@ export function mergeItemSettings(
 export const ITEM_STATES = ["done", "todo", "overdue_open", "closed", "optional", "waiting"] as const;
 export type ItemState = (typeof ITEM_STATES)[number];
 
+/** The word a state reads as, on the participant's home and the organizer's
+ * person record alike (a built-in item's own status word overrides it). */
+export const ITEM_STATE_WORDS: Record<ItemState, string> = {
+  done: "Done",
+  todo: "To do",
+  overdue_open: "Overdue",
+  closed: "Closed",
+  optional: "Optional",
+  waiting: "Waiting",
+};
+
 /** What the participant sees for an item: done; to do; overdue but still
  * open inside its grace period; closed (past grace, "ask the organizers");
  * optional (not required, not done). */
@@ -162,6 +178,14 @@ export function itemState(input: {
 /** The day label a graced item stays open until. */
 export function graceEndDay(dueDay: number, graceDays: number): number {
   return dueDay + graceDays * DAY_MS;
+}
+
+/** The day an overdue-but-open item stays open until: the later of its
+ * grace end and an organizer's reopen (a reopen after grace ran out is
+ * what keeps it open, so it is the day to show). */
+export function openUntilDay(dueDay: number, graceDays: number, reopenedUntil: number | null): number | null {
+  const candidates = [graceDays > 0 ? graceEndDay(dueDay, graceDays) : null, reopenedUntil].filter((d): d is number => d !== null);
+  return candidates.length > 0 ? Math.max(...candidates) : null;
 }
 
 /** Whether the participant can still act on an item. */

@@ -446,6 +446,10 @@ const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
   { prefix: "/submit/", reason: "public submission form, a separate audience-facing surface" },
   { prefix: "/api/v1/", reason: "raw API export links (CSV/JSON download), hit the Worker's API directly" },
   { prefix: "/docs/api", reason: "external API documentation page" },
+  {
+    prefix: "/portal/preview/people/",
+    reason: "preview-as-participant: the participant's own server-rendered home under a logged preview bar, a full page load out of the SPA",
+  },
   { prefix: "/account/password", reason: "account/password change page, outside admin SPA routing" },
 ];
 

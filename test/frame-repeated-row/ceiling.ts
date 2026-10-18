@@ -36,4 +36,7 @@
 // Re-measured (multi-portal): 89 -- the participant home's per-item rows
 // (src/routes/portal/home.tsx ItemRow) now draw one more repeated row the
 // v12 Public and Portal frame shows.
-export const FRAME_REPEATED_ROW_GAP_CEILING = 89;
+// Re-measured (multi-portal organizer screens): 80 -- the new Portals,
+// Sponsorships, queue and person-record lists draw repeated rows the v12
+// frames show.
+export const FRAME_REPEATED_ROW_GAP_CEILING = 80;

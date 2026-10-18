@@ -33,6 +33,7 @@ import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
 import { PublicPagesPanel } from './settings/PublicPagesPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
+import { SponsorshipsSummaryPanel } from './settings/SponsorshipsSummaryPanel';
 import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { YourDataPanel } from './settings/YourDataPanel';
 import { DEC_728 } from '../../../src/decisions';
@@ -115,13 +116,23 @@ export const SECTIONS: SettingsSection[] = [
     // No editTitle: the pack drops an edit view for this section
     // (DEVIATIONS §6 defers the :1046 saved-embed drill).
   },
+  // Multi-portal (docs/design/multi-portal/, flow 1): 'Speaker portal' is
+  // now 'Portals' (same key, so every ?section=portal link still lands),
+  // followed by Sponsorships. Both manage on sub-pages of their own
+  // (/settings/portals, /settings/sponsorships); Portals' edit drill keeps
+  // the portal's branding, welcome note and resource files.
   {
     key: 'portal',
-    label: 'Speaker portal',
-    detail: 'What speakers see once they sign in',
+    label: 'Portals',
+    detail: 'Who gets which portal, and what each one asks for',
     Panel: PortalSettingsPanel,
-    // Chautauqua Settings.dc.html:895 `Edit the speaker portal`.
-    editTitle: 'Edit the speaker portal',
+    editTitle: 'Edit portal branding',
+  },
+  {
+    key: 'sponsorships',
+    label: 'Sponsorships',
+    detail: 'Sponsor tiers, sponsors, and the sessions they design',
+    Panel: SponsorshipsSummaryPanel,
   },
   // G13 fidelity: frames 09--10..16 draw the rail as ... Speaker portal,
   // Your data, People and roles -- Your data comes BEFORE People and roles.

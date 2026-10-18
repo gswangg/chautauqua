@@ -160,15 +160,13 @@ describe('Speaker portal phone drill (Chautauqua Settings.dc.html:523)', () => {
     expect(frameLine(CITED_LINE)).toBe(VERBATIM);
   });
 
-  it('renders the same SpeakerEditPills list the frame draws (Bio/Headshot/Links active, Title/Abstract outlined)', () => {
-    expect(PORTAL_SOURCE).toMatch(/label: 'Bio', editable: true/);
-    expect(PORTAL_SOURCE).toMatch(/label: 'Headshot', editable: true/);
-    expect(PORTAL_SOURCE).toMatch(/label: 'Links', editable: true/);
-    expect(PORTAL_SOURCE).toMatch(/label: 'Session title', editable: false/);
-    expect(PORTAL_SOURCE).toMatch(/label: 'Abstract', editable: false/);
-    expect(PORTAL_SOURCE).toMatch(
-      /className=\{field\.editable \? 'chq-pill chq-pill-static is-active' : 'chq-pill chq-pill-static'\}/,
-    );
+  // Multi-portal (docs/design/multi-portal/, flow 1): these pills were a
+  // fixed list; what participants may edit is now set per portal (each
+  // portal's Permissions · fields), so the Settings section no longer
+  // draws them.
+  it('no longer renders a fixed SpeakerEditPills list -- field permissions are per portal', () => {
+    expect(PORTAL_SOURCE).not.toMatch(/label: 'Bio', editable: true/);
+    expect(PORTAL_SOURCE).not.toMatch(/SpeakerEditPills/);
   });
 
   it('reaches the drawn 44px pill floor via the shared .chq-pill phone rule (styles.css, not re-declared here)', () => {

@@ -90,6 +90,7 @@ portalShareKitRoutes.get("/tasks/:assignmentId/share", async (c) => {
   return c.html(
     <PortalLayout branding={data.branding} csrfToken={csrfToken} speakerName={data.contactName}>
       <PortalBackLink to="/portal" />
+      <div class="chq-share-page">
       <h1 class="chq-portal-hero chq-portal-hero-drill">{task.title}</h1>
       <p class="chq-portal-sub">Copy this, or share it straight from here.</p>
       <div class="chq-portal-field">
@@ -117,6 +118,7 @@ portalShareKitRoutes.get("/tasks/:assignmentId/share", async (c) => {
           <button type="submit" class="chq-btn chq-btn-primary">Mark as shared</button>
         </form>
       )}
+      </div>
     </PortalLayout>,
   );
 });

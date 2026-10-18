@@ -512,7 +512,8 @@ const UNMATCHED: GradedPackPadding[] = GRADED.filter((g) => !g.matched);
 // two-sided per every ratchet in this campaign regardless of parked status
 // -- may only be RAISED (a merge-train act, never a worker's edit
 // mid-lane) and must never sit below the measured count either.
-export const PACK_PADDING_UNMATCHED_CEILING = 252;
+// 252 -> 219 (multi-portal, re-measured on the integrated tree).
+export const PACK_PADDING_UNMATCHED_CEILING = 219;
 
 describe("pack drawn padding vocabulary (DEC-069 wave-53 amendment, v12 mobile campaign, PARKED)", () => {
   it("vacuous-population tripwire: the raw padding: count, the badge-derived exclusion count, and the reachable-frame count are all non-zero and self-consistent", () => {

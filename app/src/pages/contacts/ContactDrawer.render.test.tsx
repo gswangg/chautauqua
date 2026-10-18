@@ -72,7 +72,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('renders the four titled groups, in order, each with the shared section-head rule', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -90,7 +90,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('renders a blank field as the literal "Nothing recorded", never an em dash or empty cell', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -122,7 +122,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('collapses the four social links into exactly ONE Links row', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -151,7 +151,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('renders one history row per submission/email/event history entry', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     const history = await within(dialog).findByRole('region', { name: 'Across your events' });
@@ -177,7 +177,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     };
     mockApi({ 'GET /api/v1/contacts/ct1': CAPPED_CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     const history = await within(dialog).findByRole('region', { name: 'Across your events' });
@@ -190,7 +190,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('is silent about the emails bound when emailsTotal is at or below emails.length', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     const history = await within(dialog).findByRole('region', { name: 'Across your events' });
@@ -209,7 +209,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     };
     mockApi({ 'GET /api/v1/contacts/ct1': CAPPED_CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     const history = await within(dialog).findByRole('region', { name: 'Across your events' });
@@ -222,7 +222,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('is silent about the events bound when eventsTotal is at or below events.length', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     const history = await within(dialog).findByRole('region', { name: 'Across your events' });
@@ -237,7 +237,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('exposes Save / Email / Add to event / Cancel as real buttons in one action bar', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -267,7 +267,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('places Delete far left, ahead of Cancel and Save, and never adjacent to Save', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -335,7 +335,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('keeps the save-scope note off its own line above the action bar, not inside the button group', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -372,7 +372,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
       },
     });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -408,7 +408,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('states how the drawer saves in one caption in the record head', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -432,7 +432,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('keeps Save in a sticky actions footer, a sibling of the record body', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -463,7 +463,7 @@ describe('ContactDrawer event-scoped group (DEC-941)', () => {
   it('falls back to "On this event" with a caption naming the split, when no current event resolves', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -489,7 +489,7 @@ describe('ContactDrawer event-scoped group (DEC-941)', () => {
       'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevCon 2026' }], total: 1, page: 1, perPage: 50 },
     });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {

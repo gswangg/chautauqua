@@ -66,13 +66,15 @@ function read(relPath: string): string {
 describe('desktop frame claims: Settings cluster, editing/summary half (v12m-w5-a)', () => {
   // docs/design/Chautauqua Settings.dc.html:28
   // `Event, form, publishing, data · 1600`
-  it('renders the seven-section summary rail (Settings.tsx) with SummarySection as the shared drill primitive', () => {
+  it('renders the eight-section summary rail (Settings.tsx) with SummarySection as the shared drill primitive', () => {
     expect(frameLine(28)).toContain('Event, form, publishing, data · 1600');
     const settings = read('pages/Settings.tsx');
     // The rail's own comment cites the same frame and pins the section
     // order/count to it (lines 61-233 in the pack's numbering).
     expect(settings).toContain("docs/design/Chautauqua Settings.dc.html lines 61-233");
-    const order = ['Event', 'Call for papers', 'Tracks and rooms', 'Public pages', 'Speaker portal', 'Your data', 'People and roles'];
+    // multi-portal (docs/design/multi-portal/, flow 1): Speaker portal is
+    // Portals, with Sponsorships after it
+    const order = ['Event', 'Call for papers', 'Tracks and rooms', 'Public pages', 'Portals', 'Sponsorships', 'Your data', 'People and roles'];
     for (const label of order) {
       expect(settings).toContain(`label: '${label}'`);
     }
@@ -111,12 +113,13 @@ describe('desktop frame claims: Settings cluster, editing/summary half (v12m-w5-
 
   // docs/design/Chautauqua Settings.dc.html:869
   // `Settings · editing the speaker portal`
-  it('renders the Speaker portal edit view (Welcome note / edit pills / Resources) in PortalSettingsPanel.tsx', () => {
+  // Multi-portal: the frame's "What speakers may edit" pills became each
+  // portal's field permissions; the edit view says so in their place.
+  it('renders the Speaker portal edit view (Welcome note / per-portal permissions line / Resources) in PortalSettingsPanel.tsx', () => {
     expect(frameLine(869)).toContain('Settings · editing the speaker portal');
     const src = read('pages/settings/PortalSettingsPanel.tsx');
     expect(src).toContain("label=\"Welcome note\"");
-    expect(src).toContain('What speakers may edit');
-    expect(src).toContain('organiser-only');
+    expect(src).toContain('is set per portal in');
     expect(src).toContain('Resources');
     const resources = read('pages/settings/ResourcesPanel.tsx');
     expect(resources).toContain('Add a resource');

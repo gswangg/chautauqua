@@ -12,6 +12,23 @@ import type { Exclusion } from './types';
  * other four classes share. Each entry's `reason` names the superseding
  * ruling and the pin that would break if the frame's words were built. */
 export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
+  // Multi-portal (docs/design/multi-portal/DECISIONS.md #32): the v12
+  // Speaker portal section is now Settings' Portals section, whose copy
+  // describes portals rather than one fixed speaker portal.
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 542,
+    text: 'Speakers claim their portal from a link in their acceptance email.',
+    reason:
+      "superseded by multi-portal: invited speakers and sponsor contacts claim a portal too, so the Portals section's Access row reads 'Participants claim their portal from a link in their acceptance or invitation email' (app/src/pages/settings/PortalSettingsPanel.tsx), pinned by PortalSettingsPanel.render.test.tsx and settings-drill-phone-frames.test.ts. The frame's sentence would be false for every participant who isn't a speaker.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 919,
+    text: 'Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the committee accepted',
+    reason:
+      "superseded by multi-portal: whether participants may edit the session title and abstract is now each portal's own field permission (app/src/pages/portals/PermissionsSection.tsx), not a fixed rule, so the edit drill's consequence line names where it is set ('What participants may edit, and what they're asked for, is set per portal in Manage portals', PortalSettingsPanel.tsx). The frame's fixed claim would be false once a portal opens those fields.",
+  },
   // v12m-w4-aj (wave-148, DEC-660): the pre-emptive unresolvable-merge-field
   // band (task w4-aj), placed on the compose/TEMPLATE step from state the
   // wizard already holds (ComposeWizard.tsx's `usedSlotDependentFields`/

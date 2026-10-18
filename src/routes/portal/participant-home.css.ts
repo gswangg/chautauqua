@@ -108,9 +108,25 @@ export const HOME_CSS = `
   .chq-input[readonly], .chq-textarea[readonly] { background: var(--chq-surface-sunk); color: var(--chq-ink-2); }
 
   /* sponsor pages: the session editor beside the package panel */
-  .chq-sponsor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 34px; align-items: start; }
+  .chq-sponsor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 34px; align-items: start; margin-top: 14px; }
   .chq-sponsor-main { min-width: 0; }
-  .chq-sponsor-panel { border-top: 2px solid var(--chq-ink); padding-top: 10px; }
+  /* a sponsor page with no package panel (the team) keeps the portal
+     measure, filled even when its lines are short */
+  .chq-sponsor-single { margin-top: 14px; }
+  .chq-portal-shell > .chq-measure:has(.chq-sponsor-single) { width: 100%; box-sizing: border-box; }
+  /* the package panel is a card beside the editor (frame: "Your Gold
+     package"), rows under a hairline rather than the page's 2px rule */
+  .chq-sponsor-panel {
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-card);
+    background: var(--chq-surface);
+    padding: 16px 16px 4px;
+  }
+  .chq-sponsor-panel .chq-home-rows { border-top: 1px solid var(--chq-hairline); margin-top: 10px; }
+  .chq-sponsor-panel .chq-home-row:last-child { border-bottom: 0; }
+  /* a long state word wraps under itself, the way the frame draws it,
+     instead of squeezing the slot name */
+  .chq-sponsor-panel .chq-home-state { max-width: 110px; }
   .chq-sponsor-slots { border: 0; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .chq-sponsor-slot {
     display: flex;
@@ -125,7 +141,12 @@ export const HOME_CSS = `
   /* tap-floor-exempt: composition -- this class only ever appears inside its label.chq-sponsor-slot, the floored tap surface (min-height: 44px at phone); the label's own semantics make the whole row the target */
   .chq-sponsor-slot-input { flex-shrink: 0; margin: 0; accent-color: var(--chq-ink); }
   .chq-sponsor-add { margin-top: 16px; }
-  /* invitation page */
+  /* invitation page: no back link above it, so it takes its own top room,
+     and it holds the portal measure even when its lines are short */
+  .chq-invite-page { padding-top: 24px; }
+  .chq-portal-shell > .chq-measure:has(.chq-invite-page),
+  .chq-portal-shell > .chq-measure:has(.chq-share-page) { width: 100%; box-sizing: border-box; }
+  .chq-share-page { min-width: 0; }
   .chq-invite-quote { font-size: 14px; color: var(--chq-ink-2); margin: 10px 0 16px; line-height: 1.5; }
   .chq-invite-note { margin-top: 16px; }
   /* preview as participant: fixed ink bar that can't be scrolled away */
@@ -150,14 +171,29 @@ export const HOME_CSS = `
     text-transform: uppercase;
   }
   .chq-preview-bar-text { flex: 1; min-width: 0; }
-  .chq-preview-bar-exit { color: var(--chq-on-ink); font-weight: 700; }
-  .chq-preview-bar-spacer { height: 44px; }
+  .chq-preview-bar-exit {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--chq-on-ink);
+    border-radius: var(--chq-r-ctl);
+    padding: 6px 12px;
+    color: var(--chq-on-ink);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  /* the shell starts below the fixed bar, so the portal's own header (event,
+     the person's name) stays visible under it */
+  .chq-portal-shell:has(.chq-preview-bar) { padding-top: 52px; }
 
   /* desktop: one participation sits at the reading measure; three or more
      blocks (the profile counts) flow into two columns, column-major, the
      way the frame stacks Profile + Talk left and Panel + Sponsor right.
      HOME_PHONE_CSS returns the grid to a single column. */
   .chq-home-wide .chq-home-grid { column-count: 2; column-gap: 34px; }
+  /* ...and a two-column home takes the wide measure the frame draws it at
+     (1180px), where a one-column portal keeps the portal measure. */
+  .chq-portal-shell > .chq-measure:has(.chq-home-wide),
+  .chq-portal-shell > .chq-measure:has(.chq-sponsor-grid) { max-width: var(--chq-measure-wide); width: 100%; box-sizing: border-box; }
 `;
 
 // The home's phone rules: their own @media (max-width: 700px) block, which
@@ -170,8 +206,8 @@ export const HOME_PHONE_CSS = `
     .chq-sponsor-grid { grid-template-columns: minmax(0, 1fr); }
     .chq-sponsor-slot { min-height: 44px; }
     .chq-preview-bar { flex-wrap: wrap; }
-    .chq-preview-bar-exit { display: inline-flex; align-items: center; min-height: 44px; }
-    .chq-preview-bar-spacer { height: 88px; }
+    .chq-preview-bar-exit { min-height: 44px; }
+    .chq-portal-shell:has(.chq-preview-bar) { padding-top: 68px; }
     .chq-home-required { display: none; }
     /* done items collapse behind a "2 done" line (frame, 390) */
     .chq-home-done-summary {

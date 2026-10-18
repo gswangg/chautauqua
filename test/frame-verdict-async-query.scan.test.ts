@@ -188,7 +188,8 @@ export function findOffenders(files: string[]): Offender[] {
 // new post-await bare query landed in the tree since then) -- raised, not
 // lowered, because the measured count sits ABOVE the stale constant, not
 // below it.
-export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 731;
+// 731 -> 730 (multi-portal): one fewer offender, re-measured on the integrated tree.
+export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 730;
 
 describe('frame-verdict async-query determinism (DEC-976 wave-43, w43-b)', () => {
   const population = findPopulation();

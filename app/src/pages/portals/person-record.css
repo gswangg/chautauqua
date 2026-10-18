@@ -1,0 +1,384 @@
+/* Person record (/contacts/:contactId, Portals frame 05): the head, the
+   Participations and Every item tables, and Event roles. Tables are row
+   grids (role=table) so each row can stack at phone width. */
+
+.chq-person-record-page {
+  gap: 30px;
+}
+
+.chq-person-record-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.chq-person-record-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.chq-person-record-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-person-record-meta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+  overflow-wrap: anywhere;
+}
+
+.chq-person-record-tools {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.chq-person-record-tools > .chq-btn {
+  min-height: 44px;
+}
+
+.chq-person-record-caption {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+/* ---- tables ---------------------------------------------------------- */
+
+.chq-person-record-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-person-record-cols,
+.chq-person-record-row {
+  display: grid;
+  gap: 18px;
+}
+
+.chq-person-record-cols-participations,
+.chq-person-record-row-participation {
+  grid-template-columns: 1.5fr 1fr 1.3fr;
+}
+
+.chq-person-record-cols-items,
+.chq-person-record-row-item {
+  grid-template-columns: 1.3fr 1.6fr 140px 120px;
+}
+
+.chq-person-record-cols {
+  align-items: end;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-person-record-row {
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-person-record-row > *,
+.chq-person-record-cols > * {
+  min-width: 0;
+}
+
+.chq-person-record-group {
+  padding: 20px 0 9px;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-person-record-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.chq-person-record-cell-title {
+  gap: 2px;
+}
+
+.chq-person-record-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
+.chq-person-record-row-participation[data-declined='true'] .chq-person-record-title {
+  color: var(--chq-muted);
+}
+
+.chq-person-record-quiet {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-person-record-sub {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-person-record-unmatched {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-person-record-coverage,
+.chq-person-record-reopen {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---- portal tags ------------------------------------------------------ */
+
+.chq-person-record-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chq-person-record-tag {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.chq-person-record-tag-face {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--chq-muted);
+  border: 1px solid var(--chq-rule);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.chq-person-record-tag:hover .chq-person-record-tag-face {
+  color: var(--chq-ink);
+  border-color: var(--chq-ink);
+}
+
+/* one item from several portals: one outlined tag naming them all */
+.chq-person-record-merged {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--chq-ink);
+  border: 1px solid var(--chq-ink);
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+
+.chq-person-record-merged-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chq-person-record-merged-plus {
+  padding: 0 4px;
+}
+
+.chq-person-record-merged-link:hover {
+  text-decoration: underline;
+}
+
+.chq-person-record-tag:focus-visible,
+.chq-person-record-merged-link:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+  border-radius: 99px;
+}
+
+.chq-person-record-lock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chq-person-record-lock-word {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+/* ---- status words ----------------------------------------------------- */
+
+.chq-person-record-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.chq-person-record-status-strong {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--chq-ink);
+}
+
+.chq-person-record-status-quiet {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--chq-muted);
+}
+
+.chq-person-record-status-pill {
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--chq-on-ink);
+  background: var(--chq-ink);
+  border-radius: 3px;
+  padding: 3px 8px;
+}
+
+/* ---- event roles ------------------------------------------------------ */
+
+.chq-person-record-roles {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.chq-person-record-role {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-person-record-role-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.chq-person-record-role-add > .chq-select {
+  width: 240px;
+}
+
+.chq-person-record-role-add > .chq-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 700px) {
+  .chq-person-record-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .chq-person-record-tools {
+    flex-direction: column;
+  }
+
+  .chq-person-record-tools > .chq-btn {
+    justify-content: center;
+  }
+
+  /* tables become stacked rows: no column heads, each row its own card of
+     lines in reading order */
+  .chq-person-record-cols {
+    display: none;
+  }
+
+  .chq-person-record-row-participation {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .chq-person-record-row-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title status'
+      'by by'
+      'due due';
+    gap: 6px 12px;
+    align-items: start;
+  }
+
+  .chq-person-record-cell-title {
+    grid-area: title;
+  }
+
+  .chq-person-record-cell-by {
+    grid-area: by;
+  }
+
+  .chq-person-record-cell-due {
+    grid-area: due;
+  }
+
+  .chq-person-record-cell-status {
+    grid-area: status;
+    align-items: flex-end;
+  }
+
+  .chq-person-record-tag,
+  .chq-person-record-merged-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 2px;
+  }
+
+  /* these also carry .chq-link-button, whose -6px inline margin cancels
+     this padding (the house's cancelled-padding idiom) */
+  .chq-person-record-coverage,
+  .chq-person-record-reopen {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 6px;
+  }
+
+  /* the 44px hit box overhangs the outlined tag instead of stretching it */
+  .chq-person-record-merged-link {
+    margin-block: -12px;
+  }
+
+  .chq-person-record-role-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-person-record-role-add > .chq-select {
+    width: 100%;
+  }
+}

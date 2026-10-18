@@ -158,7 +158,10 @@ describe('v12 Settings DESKTOP (1600) frames: per-frame render verdict receipts 
           'Call for papers',
           'Tracks and rooms',
           'Public pages',
-          'Speaker portal',
+          // multi-portal (docs/design/multi-portal/, flow 1): Speaker portal is
+          // Portals, followed by Sponsorships
+          'Portals',
+          'Sponsorships',
           'Your data',
           'People and roles',
         ]),

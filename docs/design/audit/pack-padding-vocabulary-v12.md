@@ -375,3 +375,8 @@ per DEC-069 wave-53 clause (b)), promotion into `CAMPAIGN_CONSTANT_NAMES` +
 above is individually adjudicated against its own render site — the same
 disposition already given to `PACK_GRID_TRACK_UNMATCHED_CEILING` and
 `PACK_PROSE_MEASURE_DIVERGENCE_CEILING`.
+
+## Multi-portal (docs/design/multi-portal/)
+
+Re-measured on the integrated tree: 219 unmatched drawn padding
+declarations. `PACK_PADDING_UNMATCHED_CEILING` moves 252 -> 219.

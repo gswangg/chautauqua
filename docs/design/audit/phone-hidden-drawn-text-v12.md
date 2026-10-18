@@ -931,3 +931,15 @@ each rule's own standing comment). None of these eight verdicts is a REAL
 DEFECT, so no CSS byte moved and no row left the population.
 `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` (`app/src/phone-hidden-
 drawn-text.scan.test.ts`) stays at `20`, re-measured, unchanged.
+
+## Multi-portal (docs/design/multi-portal/)
+
+One row reclassified, none added. The person record's "‹ Contacts" back link
+(`app/src/pages/portals/PersonRecordPage.tsx`) makes "Contacts" a
+corpus-derived generic word (static own-text in `GENERIC_VERB_MIN_COMPONENTS`
+or more files), so `contacts.css`'s `.chq-contacts-title-row .chq-summary` --
+its markup and CSS unchanged -- can no longer be condemned on that word alone
+and grades UNVERIFIABLE instead of PREMISE-FALSE.
+
+`PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` moves 20 -> 19.
+`PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING` moves 49 -> 50.

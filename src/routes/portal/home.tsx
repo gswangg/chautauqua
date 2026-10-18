@@ -18,6 +18,7 @@ import { formatNoun } from "../../domain/sponsors";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
 import { HOME_DONE_FOLD_JS } from "./participant-home.css";
 import { PublicEmptyState } from "../public/empty-state";
+import { ITEM_STATE_WORDS } from "../../domain/portals/items";
 
 export type HomeData = PortalHome;
 
@@ -86,17 +87,8 @@ export function itemLine(item: ViewItem, tz: string): string {
   }
 }
 
-const STATE_WORDS: Record<string, string> = {
-  done: "Done",
-  todo: "To do",
-  overdue_open: "Overdue",
-  closed: "Closed",
-  optional: "Optional",
-  waiting: "Waiting",
-};
-
 function stateWord(item: ViewItem): string {
-  return item.statusWord ?? STATE_WORDS[item.state] ?? "";
+  return item.statusWord ?? ITEM_STATE_WORDS[item.state];
 }
 
 /** Where an item's title leads, or null when there's nothing to open. */
@@ -158,7 +150,7 @@ function ItemList(props: { items: ViewItem[]; section: ViewSection | null; view:
         // Done items collapse behind a "2 done" line on phone (frame, 390);
         // at desktop the summary is hidden and they read inline.
         <details class="chq-home-done" open>
-          <summary class="chq-home-done-summary">{`${spellCount(done.length)} done`}</summary>
+          <summary class="chq-home-done-summary">{`${done.length} done`}</summary>
           {done.map((item) => (
             <ItemRow item={item} section={props.section} view={props.view} preview={props.preview} />
           ))}

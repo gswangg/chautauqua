@@ -145,6 +145,7 @@ const LEDGER: LedgerEntry[] = [
     verdict: "unpaged",
     reason: "DEC-905 (wave-59 amendment): RecentSends renders no aggregate of its own -- the subtitle is Comms.tsx's own envelope-derived `rhythm` figure, formatted (never re-derived) via the shared formatSendRhythm; the `batches` prop backs only the rendered row list.",
   },
+  { file: "app/src/pages/portals/PersonRecordModals.tsx", verdict: "unpaged", reason: "the apiList of accepted submissions (perPage=200) only fills the invite-to-speak modal's session select; no count is rendered from it" },
   { file: "app/src/pages/contacts/AddToEventModal.tsx", verdict: "unpaged", reason: "the only rendered whole-set count (submissionsOnSelectedEvent.length) comes from apiGet<ContactDetail>'s embedded history.submissions array -- one contact's full submission history, returned whole, not apiList-paginated. The apiList('/events') call here renders no count." },
   { file: "app/src/pages/contacts/BulkEmailModal.tsx", verdict: "unpaged", reason: "apiList<EmailTemplate> (DEC-465 listPerPage, 200-row render-everything cap) is only used for `.length > 0`/`.filter(...)` existence checks, never a whole-set count claim; the recipient counts rendered are the caller-supplied contactIds selection, not apiList output." },
   { file: "app/src/pages/contacts/ContactsApp.tsx", verdict: "envelope", reason: "setTotal(res.total) from the /contacts apiList call backs the directory's pagination summary; the duplicates rail and segments chip are DEC-465/deliberately-capped previews, never claimed as totals." },

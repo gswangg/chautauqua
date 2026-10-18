@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError, peekCachedRead } from '../../lib/api';
 import { useCachedGet } from '../../lib/useCachedRead';
@@ -401,9 +401,14 @@ function alreadyInvited(contact: { participations: readonly { inviteStatus: Invi
 // with this event preselected instead of making the organizer re-pick it.
 interface OnboardingGridProps {
   onAddSpeaker: () => void;
+  // multi-portal: the toolbar's portal filter opens the "Not in any portal"
+  // list (Speakers.tsx owns the ?portal= URL state)
+  onShowNotInPortal?: () => void;
+  // multi-portal: a line beside the summary (the sponsor-session queue link)
+  headExtra?: ReactNode;
 }
 
-export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
+export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
   const [error, setError] = useState<string | null>(null);
@@ -1130,6 +1135,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
               {counts?.overdue ?? 0} overdue
             </strong>
           </span>
+          {headExtra}
         </div>
         <div className="chq-speakers-head-actions">
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onAddSpeaker}>
@@ -1204,7 +1210,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       )}
 
       <div className={phoneFiltersOpen ? 'chq-speakers-toolbar is-phone-open' : 'chq-speakers-toolbar'}>
-        <GridFilters tasks={toolbarTasks} filters={filters} onChange={handleFiltersChange} />
+        <GridFilters tasks={toolbarTasks} filters={filters} onChange={handleFiltersChange} onShowNotInPortal={onShowNotInPortal} />
         {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
             planManualReminders, which drops any assignment whose
             lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of now --

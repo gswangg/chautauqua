@@ -40,9 +40,13 @@ const ACCEPTED_OR_ACTIVE_SPONSOR: PortalRule = {
   ],
 };
 
+// Every event's first portal (migration 0046, new events): its note is the
+// event's welcome note.
+export const PROFILE_BASICS_TEMPLATE = "profile_basics";
+
 export const PORTAL_TEMPLATES: readonly PortalTemplate[] = [
   {
-    key: "profile_basics",
+    key: PROFILE_BASICS_TEMPLATE,
     name: "Profile basics",
     blurb: "Profile and headshot for speakers and sponsor contacts",
     note: null,

@@ -272,6 +272,24 @@
   padding: 0;
   cursor: pointer;
   color: var(--chq-brand, inherit);
+  text-decoration: none;
+}
+
+/* Multi-portal: a row's right-hand link into the page that holds the detail
+   ("5 not in any portal", "2 sessions waiting"), the section action's type. */
+.chq-settings-row-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+/* one line per sponsor tier ("Gold — One 30-minute talk · one 120-minute
+   workshop") */
+.chq-settings-tier-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* task-w1-e/DEC-781: ONE definition-grid row -- label | value | right-
@@ -1117,19 +1135,9 @@
   color: var(--chq-ink-2);
 }
 
-/* task-w3-c/DEC-747: Speaker portal read view (mock lines 142-182).
-   User-filed (release night): `gap` is inert without a flex/grid context --
-   the pills rendered touching. */
-.chq-settings-portal-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.chq-pill-static {
-  cursor: default;
-}
+/* Multi-portal: the Speaker portal read view's fixed "Speakers can edit"
+   pills are gone -- what participants may edit is set per portal -- and
+   their two rules with them (app/src/css-contract.scan.test.ts, DEC-970). */
 
 /* task-w4-b moved Resources out of a .chq-settings-row wrapper and into its
    own section head inside the edit form, so the former wrapper class
@@ -2210,14 +2218,6 @@
     flex-shrink: 0;
   }
 
-  /* Speaker portal chip set (:517-524, the 'Speakers can edit' pills) --
-     44px pills, filled olive for on (the existing .chq-pill.is-active
-     fill), bordered/muted for off. */
-  .chq-settings-portal-pills .chq-pill {
-    min-height: 44px;
-    padding: 0 14px;
-  }
-
   /* Public pages (:481-507) and Saved embeds (:578-607) rows already
      reflow to a single column above (the pre-existing 700px block); each
      row's own actions become full-width 44px bordered targets -- one
@@ -2950,5 +2950,15 @@
     min-height: 44px;
     padding: 0 12px;
     margin: 0 -12px;
+  }
+
+  /* Multi-portal: the row links into a section's own page ("5 not in any
+     portal", "2 sessions waiting for approval", "Manage portals") get the
+     44px floor, flex-centred, the same triple as the embed back link. */
+  .chq-settings-row-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
   }
 }

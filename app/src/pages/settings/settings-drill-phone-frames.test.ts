@@ -138,24 +138,26 @@ describe('Speaker portal drill (docs/design/Chautauqua Settings.dc.html:510 \'Se
     );
   });
 
-  it('Speakers can edit (:517-524) renders as 44px pills, filled for on / bordered for off', () => {
-    expect(PORTAL_TSX).toContain('chq-settings-portal-pills');
-    expect(PORTAL_TSX).toContain('chq-pill-static');
-    const body = ruleBody(trailingBlock(), '.chq-settings-portal-pills .chq-pill');
-    expect(body).toMatch(/min-height:\s*44px/);
+  // Multi-portal (docs/design/multi-portal/, flow 1) supersedes this
+  // frame's fixed "Speakers can edit" pills (:517-524) and its read-view
+  // Resources list (:530-540): what participants may edit is set per
+  // portal, and the item library (resources included) is counted in the
+  // section's Libraries row, with resource files managed in the edit drill.
+  it('Speakers can edit (:517-524) is superseded by per-portal field permissions -- the pills are gone, the edit drill says where they went', () => {
+    expect(PORTAL_TSX).not.toContain('chq-settings-portal-pills');
+    expect(PORTAL_TSX).toContain('is set per portal in');
   });
 
-  it('Resources (:530-540) draws as a 2px-ruled cap over the readOnly resource list, not a label:value row', () => {
-    expect(PORTAL_TSX).toMatch(/resourcesCap/);
-    expect(PORTAL_TSX).toMatch(/rowClassName:\s*'chq-settings-row-full'/);
-    expect(PORTAL_TSX).toContain('<ResourcesPanel readOnly />');
+  it('Resources (:530-540) are counted in the Libraries row and managed in the edit drill', () => {
+    expect(PORTAL_TSX).toContain("label: 'Libraries'");
+    expect(PORTAL_TSX).toContain('<ResourcesPanel />');
   });
 
-  it('the closing muted line (:542 "Speakers claim their portal...") is copy, not a row -- unchanged by this task', () => {
+  it('the closing muted line (:542 "Speakers claim their portal...") is copy, not a row -- now naming invitations too', () => {
     expect(frameLine(542)).toBe(
       '<div style="padding:15px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Speakers claim their portal from a link in their acceptance email.</div></div>',
     );
-    expect(PORTAL_TSX).toContain('Speakers claim their portal from a link in their acceptance email.');
+    expect(PORTAL_TSX).toContain('Participants claim their portal from a link in their acceptance or invitation email');
   });
 });
 

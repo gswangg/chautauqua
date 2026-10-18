@@ -193,6 +193,11 @@ const EXEMPTIONS: Exemption[] = [
     reason: 'search/filter query, never persisted -- no capping route reaches this field',
   },
   {
+    file: 'pages/speakers/NotInPortalView.tsx',
+    control: 'Search people',
+    reason: 'search/filter query, never persisted -- filters the loaded list in the browser',
+  },
+  {
     file: 'pages/submissions/FilterBar.tsx',
     control: 'Search submissions',
     reason: 'search/filter query, never persisted -- no capping route reaches this field',

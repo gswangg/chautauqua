@@ -340,6 +340,9 @@ const reachable = walkReachable(ENTRY_POINTS);
 // ---------------------------------------------------------------------------
 
 const ENTRY_OR_ALLOWED: Record<string, string> = {
+  "app/src/pages/portals/types.ts":
+    "Type-only module -- the multi-portal organizer screens' mirror of the organizer API's JSON shapes; " +
+    "every consumer imports it exclusively via `import type`, which erases at build time and confers no reachability.",
   "app/src/phone-hidden-drawn-text/text-findings.ts":
     "Scan-mechanics module for a custodian-split scan suite (contention decomposition of the former " +
     "916-line app/src/phone-hidden-drawn-text.scan.test.ts) -- its only importer is " +

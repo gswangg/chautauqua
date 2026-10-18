@@ -29,7 +29,7 @@
 // `aria-label={label}` stays on the <section> below so the accessible name
 // the <h2> used to supply for the panel survives its removal.
 import type { ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DEC_919 } from '../../../../src/decisions';
 
 // w17-d/DEC-919 (wave 17): the `data-chq-section` attribute below is the
@@ -77,6 +77,10 @@ export interface SummarySectionProps {
   // there is only ever one render site live at a time). Optional: not
   // every section has a frame-drawn footer primary.
   readFooterPrimary?: ReactNode;
+  // Multi-portal: a section whose management lives on a page of its own
+  // (Portals, Sponsorships) makes its head action open that page ("Manage
+  // portals") instead of the in-place edit drill.
+  actionTo?: string;
 }
 
 export function SummarySection({
@@ -87,8 +91,10 @@ export function SummarySection({
   editing,
   children,
   readFooterPrimary,
+  actionTo,
 }: SummarySectionProps) {
   const [, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   function openEdit() {
     setSearchParams((prev) => {
@@ -108,7 +114,11 @@ export function SummarySection({
       {editing ? null : (
         <div className="chq-settings-section-head">
           <h2>{label}</h2>
-          <button type="button" className="chq-settings-section-action" onClick={openEdit}>
+          <button
+            type="button"
+            className="chq-settings-section-action"
+            onClick={actionTo ? () => navigate(actionTo) : openEdit}
+          >
             {actionLabel}
           </button>
         </div>

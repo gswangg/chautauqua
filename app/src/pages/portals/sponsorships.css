@@ -1,0 +1,895 @@
+/* Multi-portal sponsor screens (Portals frame, flow 5): Settings ·
+   Sponsorships (SponsorshipsPage.tsx and its EditTierModal /
+   SponsorModals dialogs), the sponsor-session queue under Speakers
+   (SponsorSessionsPage.tsx) and its review page
+   (SponsorSessionReviewPage.tsx), plus the decision dialogs
+   (SponsorDecisionModals.tsx). The frame draws its tables as row grids
+   under a section label's 2px ink rule, a 1px rule under the column
+   heads and hairlines between rows; these rules follow it. */
+
+/* ---------------------------------------------------------------------- */
+/* Settings · Sponsorships                                                 */
+/* ---------------------------------------------------------------------- */
+
+.chq-sponsorships {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-sponsorships-waiting {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+}
+
+.chq-sponsorships-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-sponsorships-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-sponsorships-head,
+.chq-sponsorships-row {
+  display: grid;
+  gap: 18px;
+}
+
+.chq-sponsorships-tiers .chq-sponsorships-head,
+.chq-sponsorships-tiers .chq-sponsorships-row {
+  grid-template-columns: 160px 1fr 120px 120px;
+}
+
+.chq-sponsorships-sponsors .chq-sponsorships-head,
+.chq-sponsorships-sponsors .chq-sponsorships-row {
+  grid-template-columns: 1.2fr 120px 1.6fr 120px;
+}
+
+.chq-sponsorships-head {
+  align-items: end;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-sponsorships-row {
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-sponsorships-row > * {
+  min-width: 0;
+}
+
+.chq-sponsorships-tier-name {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
+.chq-sponsorships-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-sponsorships-meta,
+.chq-sponsorships-count {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+/* The phone rows carry their own "Sponsors 2" / "Contacts 3" label once
+   the column heads are gone; at desktop the head names the column. */
+.chq-sponsorships-phone-label {
+  display: none;
+}
+
+.chq-sponsorships-edit,
+.chq-sponsorships-row-waiting,
+.chq-sponsorships-add {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-sponsorships-row-waiting {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--chq-brand);
+}
+
+.chq-sponsorships-company {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chq-sponsorships-company-open {
+  font-family: var(--chq-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Entitlement rows (Edit tier, a sponsor's extras)                        */
+/* ---------------------------------------------------------------------- */
+
+.chq-tier-rows-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-tier-rows-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-tier-rows-empty,
+.chq-tier-help {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-entitlement-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-entitlement-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 130px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-entitlement-row .chq-select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* A format that states its length sets it: shown as the value it is,
+   not as a control with one choice. */
+.chq-entitlement-length {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 12px;
+  border: 1px solid var(--chq-hairline);
+  border-radius: var(--chq-r-ctl);
+  font-size: 14px;
+  color: var(--chq-ink-2);
+}
+
+.chq-entitlement-remove {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-muted);
+}
+
+.chq-entitlement-add {
+  align-self: flex-start;
+  margin-top: 10px;
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-tier-delete {
+  margin-left: auto;
+}
+
+.chq-tier-cfp-link {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Over the (new) allowance: the sponsors and sessions a tier change would
+   leave holding more than they're entitled to. */
+.chq-tier-over {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
+  padding: 12px 16px;
+}
+
+.chq-tier-over-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+.chq-tier-over-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-tier-over-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+/* ---------------------------------------------------------------------- */
+/* One sponsor (SponsorModal)                                              */
+/* ---------------------------------------------------------------------- */
+
+.chq-sponsor-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-sponsor-block-empty,
+.chq-sponsor-block-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-sponsor-slots,
+.chq-sponsor-contacts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-sponsor-slot,
+.chq-sponsor-contact {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-sponsor-slot-main,
+.chq-sponsor-contact-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chq-sponsor-slot-name,
+.chq-sponsor-contact-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-sponsor-slot-extra {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--chq-muted);
+}
+
+.chq-sponsor-slot-sub,
+.chq-sponsor-contact-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+  overflow-wrap: anywhere;
+}
+
+.chq-sponsor-slot-mark {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-sponsor-slot-mark-held {
+  color: var(--chq-ink);
+}
+
+.chq-sponsor-contact-remove {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-muted);
+}
+
+.chq-sponsor-add-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 8px;
+}
+
+/* tap-floor-exempt: renders only <button> controls (chq-btn), no anchor */
+.chq-sponsor-add-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* The decision dialogs                                                    */
+/* ---------------------------------------------------------------------- */
+
+.chq-decision-lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-decision-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-decision-line-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chq-decision-line-main {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-decision-line-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-decision-line-action {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------- */
+/* The queue and the review page                                           */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-page {
+  gap: 22px;
+}
+
+.chq-queue-head {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-queue-back {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-queue-titles {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.chq-queue-h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.chq-queue-count {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-queue-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-queue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-queue-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 300px;
+  gap: 18px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-queue-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-queue-strong,
+.chq-queue-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
+.chq-queue-title {
+  align-self: flex-start;
+}
+
+.chq-queue-meta {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+/* tap-floor-exempt: renders only <button> controls (chq-btn), no anchor */
+.chq-queue-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chq-queue-actions .chq-btn-primary,
+.chq-queue-actions .chq-btn-secondary {
+  min-height: 44px;
+}
+
+.chq-queue-decline {
+  color: var(--chq-muted);
+}
+
+.chq-queue-state {
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+/* Review: an 820px reading column (the submission, then its history)
+   beside the 300px package panel. At phone the panel, with the decisions,
+   comes straight after the submission, before the history. */
+.chq-review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 820px) 300px;
+  grid-template-areas:
+    'main panel'
+    'history panel';
+  gap: 24px 60px;
+  align-items: start;
+}
+
+.chq-review-layout > .chq-review-main {
+  grid-area: main;
+}
+
+.chq-review-layout > .chq-review-history-col {
+  grid-area: history;
+}
+
+.chq-review-layout > .chq-review-panel {
+  grid-area: panel;
+}
+
+.chq-review-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* "You asked · 14 Apr": the last note, pinned so the reviewer can check
+   the resubmission answered it. */
+.chq-review-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
+  padding: 15px 18px;
+}
+
+.chq-review-pinned-label,
+.chq-review-panel-label,
+.chq-review-decided-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.chq-review-pinned-label {
+  color: var(--chq-ink);
+}
+
+.chq-review-pinned-note {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.chq-review-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-review-fields {
+  margin: 0;
+}
+
+.chq-review-field {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 20px;
+  align-items: baseline;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-field dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-field dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.chq-review-aside {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-review-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-review-history-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-history-what {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-review-history-when,
+.chq-review-history-note,
+.chq-review-history-empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-review-history-note {
+  overflow-wrap: anywhere;
+}
+
+.chq-review-history-empty {
+  padding: 13px 0;
+}
+
+.chq-review-panel {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  padding: 18px;
+}
+
+.chq-review-panel-label {
+  color: var(--chq-muted);
+}
+
+.chq-review-slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-review-slot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-slot-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chq-review-slot-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-review-slot-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-review-slot-mark {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-review-slot-mark-mine {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--chq-ink);
+}
+
+/* tap-floor-exempt: renders only <button> controls (chq-btn), no anchor */
+.chq-review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.chq-review-actions .chq-btn-primary,
+.chq-review-actions .chq-btn-secondary {
+  justify-content: flex-start;
+  min-height: 44px;
+}
+
+.chq-review-actions .chq-queue-decline {
+  align-self: flex-start;
+}
+
+.chq-review-decided {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.chq-review-decided-label {
+  color: var(--chq-ink);
+}
+
+.chq-review-decided-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.chq-review-decided-link {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  /* Settings · Sponsorships: the four-column grids become stacked rows,
+     the column heads go and each count carries its own label. */
+  /* phone-hidden: the column heads' words move into each row (the
+     .chq-sponsorships-phone-label twins), so nothing they name is lost. */
+  .chq-sponsorships-head {
+    display: none;
+  }
+
+  .chq-sponsorships-sponsors .chq-sponsorships-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  /* A tier: its name with Edit beside it, then what it gives and its
+     sponsor count. */
+  .chq-sponsorships-tiers .chq-sponsorships-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name edit'
+      'text text'
+      'count count';
+    gap: 4px 12px;
+  }
+
+  .chq-sponsorships-tiers .chq-sponsorships-tier-name {
+    grid-area: name;
+  }
+
+  .chq-sponsorships-tiers .chq-sponsorships-edit-cell {
+    grid-area: edit;
+  }
+
+  .chq-sponsorships-tiers .chq-sponsorships-text {
+    grid-area: text;
+  }
+
+  .chq-sponsorships-tiers .chq-sponsorships-count {
+    grid-area: count;
+  }
+
+  .chq-sponsorships-phone-label {
+    display: inline;
+  }
+
+  .chq-sponsorships-edit,
+  .chq-sponsorships-row-waiting,
+  .chq-sponsorships-company-open,
+  .chq-sponsorships-waiting,
+  .chq-sponsorships-add,
+  .chq-tier-cfp-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
+
+  /* Entitlement rows: count and type share a line, length and Remove the
+     next. */
+  .chq-entitlement-row {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .chq-entitlement-row .chq-entitlement-remove {
+    justify-self: end;
+  }
+
+  .chq-entitlement-row .chq-select,
+  .chq-entitlement-length {
+    min-height: 44px;
+  }
+
+  .chq-entitlement-remove,
+  .chq-entitlement-add,
+  .chq-sponsor-contact-remove,
+  .chq-decision-line-action,
+  .chq-review-decided-link,
+  .chq-queue-back,
+  .chq-queue-title {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
+
+  .chq-tier-delete {
+    margin-left: 0;
+  }
+
+  .chq-sponsor-add-contact .chq-checkbox-label {
+    min-height: 44px;
+  }
+
+  .chq-sponsor-add-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  /* The queue: identity, session and actions stack; the actions keep one
+     line, Approve widest. */
+  .chq-queue-h1 {
+    font-size: var(--chq-type-page-title-phone-drill);
+  }
+
+  .chq-queue-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .chq-queue-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .chq-queue-actions .chq-btn-primary {
+    flex: 1;
+  }
+
+  .chq-queue-decline {
+    min-height: 44px;
+  }
+
+  .chq-queue-state {
+    text-align: left;
+  }
+
+  /* Review: the package panel follows the reading column. */
+  .chq-review-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'main'
+      'panel'
+      'history';
+    gap: 24px;
+  }
+
+  .chq-review-panel {
+    position: static;
+  }
+
+  .chq-review-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}

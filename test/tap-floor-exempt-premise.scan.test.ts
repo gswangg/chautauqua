@@ -262,7 +262,11 @@ const ROSTER = RECEIPTS.map((r) => judgeReceipt(r, ALL_CHUNKS, ALL_TEXT));
 // drained was a true grounding claim, not a defect this wave discovered.
 // docs/design/audit/tap-floor-exempt-premise-v12.md records the flipped
 // rows in its Wave 56 section.
-export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 19;
+// Multi-portal: +2 roster rows, both links inside running sentences with no
+// floored twin on their surface to name -- app/src/pages/portals/library.css's "Used by" portal links and
+// portal-editor.css's "Open the form builder" link in the new-item dialog's
+// note. Recorded in the audit doc's multi-portal section.
+export const TAP_FLOOR_EXEMPT_UNVERIFIABLE_PREMISE_CEILING = 21;
 export const TAP_FLOOR_EXEMPT_FALSE_PREMISE_CEILING = 0;
 
 describe("tap-floor-exempt receipt premises are executable (DEC-393 wave-30 amendment)", () => {

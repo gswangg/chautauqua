@@ -99,6 +99,60 @@ type LedgerEntry =
 // fix (TracksRoomsPanel) this wave, not full coverage in one pass.
 // ---------------------------------------------------------------------------
 const LEDGER: Record<string, LedgerEntry> = {
+  // Multi-portal organizer screens: each cited render test sets up a server
+  // refusal and asserts its message reaches the screen.
+  'pages/portals/PortalEditorPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PortalEditorPage.render.test.tsx',
+  },
+  'pages/portals/NewLibraryItemModal.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PortalEditorPage.render.test.tsx',
+  },
+  'pages/portals/PortalsOverviewPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PortalsOverviewPage.render.test.tsx',
+  },
+  'pages/portals/CopyFromEventModal.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PortalsOverviewPage.render.test.tsx',
+  },
+  'pages/portals/LibraryPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/LibraryPage.render.test.tsx',
+  },
+  'pages/portals/EditLibraryItemModal.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/LibraryPage.render.test.tsx',
+  },
+  'pages/portals/EditTierModal.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/SponsorshipsPage.render.test.tsx',
+  },
+  'pages/portals/SponsorModals.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/SponsorshipsPage.render.test.tsx',
+  },
+  'pages/portals/SponsorDecisionModals.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/SponsorSessionReviewPage.render.test.tsx',
+  },
+  'pages/portals/SponsorSessionReviewPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/SponsorSessionReviewPage.render.test.tsx',
+  },
+  'pages/portals/SponsorSessionsPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/SponsorSessionsPage.render.test.tsx',
+  },
+  'pages/portals/PersonRecordEventRoles.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PersonRecord-refusal-shapes.render.test.tsx',
+  },
+  'pages/portals/PersonRecordModals.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/PersonRecord-refusal-shapes.render.test.tsx',
+  },
   'pages/settings/EmbedsPanel.tsx': {
     verdict: 'proven',
     test: 'pages/settings/EmbedsPanel-refusal-shapes.render.test.tsx',

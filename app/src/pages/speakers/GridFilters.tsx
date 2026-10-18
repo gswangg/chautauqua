@@ -6,16 +6,19 @@ import {
   type InviteStatus,
   type OnboardingTask,
 } from './types';
+import { PortalFilterSelect } from './PortalFilterSelect';
 
 interface GridFiltersProps {
   tasks: OnboardingTask[];
   filters: GridFilterState;
   onChange: (next: GridFilterState) => void;
+  // multi-portal: switches the page to the "Not in any portal" list
+  onShowNotInPortal?: () => void;
 }
 
 const STATUS_OPTIONS: AssignmentStatus[] = ['pending', 'complete'];
 
-export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
+export function GridFilters({ tasks, filters, onChange, onShowNotInPortal }: GridFiltersProps) {
   return (
     <div className="chq-speakers-filters">
       <input
@@ -79,6 +82,10 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
           </option>
         ))}
       </select>
+
+      {onShowNotInPortal ? (
+        <PortalFilterSelect value="any" onChange={(v) => (v === 'none' ? onShowNotInPortal() : undefined)} />
+      ) : null}
 
       <button
         type="button"

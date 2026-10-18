@@ -9,13 +9,12 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { ApiError } from "../../http";
 import { isUniqueViolation } from "../constraints";
-import { ITEM_SCOPES, SYSTEM_ITEM_HINTS, SYSTEM_ITEM_KINDS, SYSTEM_ITEM_LABELS, SYSTEM_ITEM_SCOPES, type ItemScope } from "../../../domain/portals/items";
+import { ITEM_SCOPES, LIBRARY_TYPES, SYSTEM_ITEM_HINTS, SYSTEM_ITEM_KINDS, SYSTEM_ITEM_LABELS, SYSTEM_ITEM_SCOPES, type ItemScope, type LibraryType } from "../../../domain/portals/items";
 import { MAX_FILE_REQUEST_FILES, MAX_FILE_REQUEST_SIZE_MB, parseAcceptedTypes, type FileTypeGroup } from "../../../domain/portals/file-types";
 import { loadEventLibraryTasks, loadEventPortals } from "./store";
 import { MAX_LIBRARY_INSTRUCTIONS, MAX_LIBRARY_PAGE, MAX_LIBRARY_TITLE } from "../../../domain/portals/limits";
 
-export const LIBRARY_TYPES = ["task", "form", "file_request", "share_kit", "resource"] as const;
-export type LibraryType = (typeof LIBRARY_TYPES)[number];
+export { LIBRARY_TYPES, type LibraryType } from "../../../domain/portals/items";
 
 
 export interface LibraryEntry {
@@ -29,9 +28,12 @@ export interface LibraryEntry {
   maxSizeMb: number | null;
   maxFiles: number | null;
   usedBy: { id: string; name: string }[];
-  // assigned to speakers directly (predates portals, or the Speakers page)
+  // assigned to speakers directly (predates portals, or the Speakers page);
+  // for a resource, shown to everyone with a portal
   direct: boolean;
   hint: string;
+  // resources only: everyone with a portal, or only portals that list it
+  visibility?: "everyone" | "portal";
 }
 
 function typeOfTask(kind: string): LibraryType {
@@ -98,6 +100,7 @@ export async function listLibrary(db: Db, eventId: string): Promise<{ entries: L
       maxFiles: null,
       usedBy,
       direct: r.visibility === "everyone",
+      visibility: r.visibility === "everyone" ? "everyone" : "portal",
       hint: r.visibility === "everyone" ? "Everyone's resources" : usedBy.length > 0 ? `Only in ${usedBy.map((u) => u.name).join(", ")}` : "Not shown to anyone yet",
     });
   }

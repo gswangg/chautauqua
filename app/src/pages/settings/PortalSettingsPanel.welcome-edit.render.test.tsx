@@ -98,7 +98,7 @@ describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC
     );
     const stored = 'Glad you could make it.\n\nSee you at the podium.';
     renderPortalEdit(stored);
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     await waitFor(() =>
       expect(section.querySelector('.chq-settings-portal-welcome-readout-edit')).toBeInTheDocument(),
     );
@@ -116,7 +116,7 @@ describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC
 
   it('empty stored note renders the readout\'s existing empty treatment, never a blank box', async () => {
     renderPortalEdit(null);
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     await waitFor(() => expect(within(section).getByText('No welcome note set.')).toBeInTheDocument());
     const readout = within(section).getByText('No welcome note set.');
     expect(readout).toHaveClass('chq-settings-portal-welcome-readout');
@@ -125,7 +125,7 @@ describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC
 
   it("the frame's :906 caption renders exactly once, below the readout, no longer doubled as the textarea's hint", async () => {
     renderPortalEdit('Thanks for speaking.');
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     await waitFor(() =>
       expect(section.querySelector('.chq-settings-portal-welcome-readout-edit')).toBeInTheDocument(),
     );
@@ -142,7 +142,7 @@ describe('Settings · Speaker portal EDIT form: welcome-note readout (w9-ri, DEC
   it('typing in the textarea updates the in-progress value while the readout keeps showing the STORED value', async () => {
     const stored = 'Original stored note.';
     renderPortalEdit(stored);
-    const section = screen.getByRole('region', { name: 'Speaker portal' });
+    const section = screen.getByRole('region', { name: 'Portals' });
     const textarea = await within(section).findByLabelText('Welcome note');
     await waitFor(() =>
       expect(section.querySelector('.chq-settings-portal-welcome-readout-edit')).toHaveTextContent(stored),

@@ -1,8 +1,9 @@
-// w3-c/DEC-747 render smoke test, updated w6-e/DEC-815: PortalSettingsPanel
-// is now a read-only summary (SummarySection) -- Welcome note, Speakers
-// can edit (pills), Onboarding tasks, Resources, Access, and an 'Open as
-// a speaker' row-level link -- until the 'Change' action drills into
-// (?section=portal&edit=1) the one real edit surface, ResourcesPanel
+// w3-c/DEC-747 render smoke test, updated w6-e/DEC-815 and for multi-portal:
+// PortalSettingsPanel is the Settings "Portals" section -- a read-only
+// summary of the event's portals, coverage, item library, access and
+// branding (with 'Open as a speaker'), whose head action links to the
+// Portals sub-page. The Branding row's 'Change' drills into
+// (?section=portal&edit=1) the branding/welcome form above ResourcesPanel
 // (unchanged endpoints/CRUD).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
@@ -37,14 +38,24 @@ function mockPortal(overrides: Record<string, unknown> = {}) {
       welcomeMessage: 'Welcome, speakers!\n\nWe cannot wait to see you.',
       showResources: true,
     },
-    [`GET /api/v1/events/${EVENT_ID}/onboarding`]: {
-      tasks: [{ id: 't1' }, { id: 't2' }, { id: 't3' }],
-      rows: [],
-      total: 0,
-      page: 1,
-      perPage: 1,
-      counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+    [`GET /api/v1/events/${EVENT_ID}/portals`]: {
+      portals: [
+        { id: 'p1', name: 'Profile basics', template: 'profile_basics', who: '', participations: 91, items: 2, matchesNobody: false, createdAt: 0 },
+        { id: 'p2', name: 'CFP speakers', template: null, who: '', participations: 31, items: 5, matchesNobody: false, createdAt: 0 },
+      ],
+      covered: 91,
+      total: 96,
+      notInAny: 5,
+      overlap: 38,
+      templates: [],
     },
+    [`GET /api/v1/events/${EVENT_ID}/library`]: { counts: { task: 2, form: 0, file_request: 1, share_kit: 0, resource: 1 }, entries: [
+      { ref: { taskId: 't1' }, type: 'task', title: 'AV needs', scope: 'participation', instructions: null, formId: null, acceptedTypes: null, maxSizeMb: null, maxFiles: null, usedBy: [], direct: false, hint: '' },
+      { ref: { taskId: 't2' }, type: 'task', title: 'Speaker release', scope: 'participation', instructions: null, formId: null, acceptedTypes: null, maxSizeMb: null, maxFiles: null, usedBy: [], direct: false, hint: '' },
+      { ref: { taskId: 't3' }, type: 'file_request', title: 'Final slides', scope: 'participation', instructions: null, formId: null, acceptedTypes: ['pdf'], maxSizeMb: 200, maxFiles: 1, usedBy: [], direct: false, hint: '' },
+      { ref: { resourceId: 'res1' }, type: 'resource', title: 'Travel info', scope: 'person', instructions: null, formId: null, acceptedTypes: null, maxSizeMb: null, maxFiles: null, usedBy: [], direct: false, hint: '' },
+      { ref: { systemKind: 'bio' }, type: 'built_in', title: 'Bio', scope: 'person', instructions: null, formId: null, acceptedTypes: null, maxSizeMb: null, maxFiles: null, usedBy: [], direct: false, hint: '' },
+    ] },
     [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([
       { id: 'res1', kind: 'wiki', title: 'Travel info', content: 'Fly into AUS. Rideshare is easiest.', fileId: null, position: 0 },
       { id: 'res2', kind: 'file', title: 'Slide template', content: null, fileId: 'file1', position: 1 },
@@ -54,10 +65,7 @@ function mockPortal(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PortalSettingsPanel (Speaker portal read view)', () => {
-  // DEC-815 amendment (wave 4): the Resources row LISTS the real resources
-  // at rest instead of describing the set in a sentence; only add/delete
-  // controls stay behind Change.
-  it('renders every row of the read view from real data, listing the real resources, with Open as a speaker as a row-level link and no resource add/delete control before edit', async () => {
+  it('summarises the portals, coverage, library, access and branding, and links to the Portals sub-page', async () => {
     mockPortal();
     render(
       <MemoryRouter>
@@ -65,37 +73,28 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       </MemoryRouter>,
     );
 
-    const section = await screen.findByRole('region', { name: 'Speaker portal' });
-    expect(within(section).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
-    const openAsSpeaker = within(section).getByRole('link', { name: 'Open as a speaker' });
-    expect(openAsSpeaker).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
-    expect(within(section).getByText("read-only preview · not a speaker's account")).toBeInTheDocument();
+    const section = await screen.findByRole('region', { name: 'Portals' });
+    expect(within(section).getByRole('heading', { name: 'Portals' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Manage portals' })).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();
-    });
-    expect(within(section).getByText('3 tasks · created when a submission is accepted')).toBeInTheDocument();
+    expect(await within(section).findByText('2 · Profile basics, CFP speakers')).toBeInTheDocument();
+    expect(within(section).getByText('91 of 96 participations covered')).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: '5 not in any portal' })).toHaveAttribute('href', '/speakers?portal=none');
+    // built-in items (Bio) aren't counted as the organizer's library
+    expect(within(section).getByText('2 tasks · 1 file request · 1 resource')).toBeInTheDocument();
     expect(
-      within(section).getByText('Speakers claim their portal from a link in their acceptance email.'),
+      within(section).getByText('Participants claim their portal from a link in their acceptance or invitation email'),
     ).toBeInTheDocument();
 
-    // Speakers-can-edit pills: filled for the always-editable profile
-    // fields, outline for the gated session fields.
-    expect(within(section).getByText('Bio')).toHaveClass('is-active');
-    expect(within(section).getByText('Headshot')).toHaveClass('is-active');
-    expect(within(section).getByText('Links')).toHaveClass('is-active');
-    expect(within(section).getByText('Session title')).not.toHaveClass('is-active');
-    expect(within(section).getByText('Abstract')).not.toHaveClass('is-active');
+    const openAsSpeaker = within(section).getByRole('link', { name: 'Open as a speaker' });
+    expect(openAsSpeaker).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
+    expect(within(section).getByText('No logo · default accent ·')).toBeInTheDocument();
 
-    // Resources row: the real rows list at rest (title + kind), but no
-    // add/delete control until Change is clicked.
-    expect(await within(section).findByText('Travel info')).toBeInTheDocument();
-    expect(within(section).getByText('Wiki page')).toBeInTheDocument();
-    expect(within(section).getByText('Slide template')).toBeInTheDocument();
-    expect(within(section).getByText(/^File/)).toBeInTheDocument();
-    expect(within(section).getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/files/file1');
+    // the welcome note (Profile basics' note, the same stored value)
+    expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();
+    // what speakers may edit and the onboarding items live in the portals
+    expect(within(section).queryByText('Speakers can edit')).not.toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
-    expect(within(section).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
@@ -120,7 +119,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       </MemoryRouter>,
     );
 
-    const section = await screen.findByRole('region', { name: 'Speaker portal' });
+    const section = await screen.findByRole('region', { name: 'Portals' });
     fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
 
     await waitFor(() => {
@@ -294,21 +293,12 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       );
 
       await screen.findByLabelText('Welcome note');
-      expect(
-        screen.getByText(
-          'Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the committee accepted.',
-        ),
-      ).toBeInTheDocument();
-
-      // w4-b: the edit form's own 'What speakers may edit' section renders
-      // the SAME pill array as the read row -- Bio/Headshot/Links active,
-      // Session title/Abstract inactive.
-      expect(screen.getByText('What speakers may edit')).toBeInTheDocument();
-      expect(screen.getByText('Bio')).toHaveClass('is-active');
-      expect(screen.getByText('Headshot')).toHaveClass('is-active');
-      expect(screen.getByText('Links')).toHaveClass('is-active');
-      expect(screen.getByText('Session title')).not.toHaveClass('is-active');
-      expect(screen.getByText('Abstract')).not.toHaveClass('is-active');
+      // multi-portal: what participants may edit is set per portal now; the
+      // consequence line says where
+      const consequence = document.querySelector('.chq-settings-edit-consequence') as HTMLElement;
+      expect(consequence).toHaveTextContent("What participants may edit, and what they're asked for, is set per portal in Manage portals.");
+      expect(within(consequence).getByRole('link', { name: 'Manage portals' })).toHaveAttribute('href', '/settings/portals');
+      expect(screen.queryByText('What speakers may edit')).not.toBeInTheDocument();
 
       const footer = document.querySelector('.chq-settings-edit-footer') as HTMLElement;
       expect(footer).not.toBeNull();

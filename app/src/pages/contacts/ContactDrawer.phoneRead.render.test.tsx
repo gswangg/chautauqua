@@ -14,6 +14,7 @@ import { ContactDrawer } from './ContactDrawer';
 import { mockApi } from '../../test-utils/mockApi';
 import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import type { ContactDetail } from './types';
+import { MemoryRouter } from 'react-router-dom';
 
 const CONTACT: ContactDetail = {
   id: 'ct1',
@@ -61,7 +62,7 @@ describe('ContactDrawer phone read mode (DEC-959)', () => {
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -88,7 +89,7 @@ describe('ContactDrawer phone read mode (DEC-959)', () => {
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -112,7 +113,7 @@ describe('ContactDrawer phone read mode (DEC-959)', () => {
     stubPhoneMatchMedia();
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
@@ -127,7 +128,7 @@ describe('ContactDrawer phone read mode (DEC-959)', () => {
   it('desktop (no matchMedia stub): the actions bar renders, the dock is absent, values are buttons', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+    render(<MemoryRouter><ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} /></MemoryRouter>);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {

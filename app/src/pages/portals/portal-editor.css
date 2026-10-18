@@ -1,0 +1,1411 @@
+/* Portals overview, portal editor and their dialogs (Portals frame, flows 1
+   and 2: frames 01, 03, 04, e2-x6/x7/x8). The frame draws these from the
+   house vocabulary: section heads closing on a 2px ink rule, 11px micro
+   labels, hairline-divided rows, the olive tertiary link register. Only
+   what those shared classes don't already say lives here. */
+
+.chq-portal-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.chq-portal-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chq-portal-field-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-field-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+/* -- Overview ---------------------------------------------------------- */
+
+.chq-portal-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-portal-overview-note {
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+/* frame 01: three label-value cells between two rules */
+.chq-portal-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-portal-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+.chq-portal-stat:first-child {
+  padding-left: 0;
+}
+
+.chq-portal-stat + .chq-portal-stat {
+  border-left: 1px solid var(--chq-rule);
+}
+
+.chq-portal-stat-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-stat-value {
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--chq-ink);
+}
+
+.chq-portal-stat-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-portal-stat-link {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+.chq-portal-head-links {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+
+/* a section head's olive actions: "Libraries", "Copy from another event",
+   "Add from the library" (the frame's 13px/700 link register) */
+.chq-portal-head-link {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+/* the frame's five-column list, as the shared table on a fixed layout */
+.chq-portal-table {
+  table-layout: fixed;
+}
+
+.chq-portal-table th,
+.chq-portal-table td {
+  padding: 13px 18px 13px 0;
+  vertical-align: middle;
+}
+
+.chq-portal-table th {
+  padding: 12px 18px 8px 0;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.chq-portal-table th:first-child,
+.chq-portal-table td:first-child {
+  padding-left: 0;
+}
+
+.chq-portal-table th:last-child,
+.chq-portal-table td:last-child {
+  padding-right: 0;
+}
+
+.chq-portal-col-name {
+  width: 26%;
+}
+
+.chq-portal-col-count {
+  width: 138px;
+}
+
+.chq-portal-col-items {
+  width: 98px;
+}
+
+.chq-portal-col-edit {
+  width: 120px;
+}
+
+.chq-portal-table-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-portal-table-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--chq-ink);
+}
+
+.chq-portal-table-sub {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-portal-table-who {
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-portal-table-count {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chq-portal-table-label {
+  display: none;
+}
+
+.chq-portal-edit-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
+}
+
+.chq-portal-templates {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 0;
+  padding: 16px 0 0;
+  list-style: none;
+}
+
+.chq-portal-template {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  padding: 16px;
+  min-width: 0;
+}
+
+.chq-portal-template-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.chq-portal-template-blurb {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-portal-template-use {
+  font-family: inherit;
+  align-self: flex-start;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* -- Editor ------------------------------------------------------------ */
+
+/* the leave guard's click-capture wrapper is layout-neutral */
+.chq-portal-guard {
+  display: contents;
+}
+
+.chq-portal-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-portal-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 560px;
+}
+
+.chq-portal-name[data-invalid='true'] .chq-input {
+  border-color: var(--chq-ink);
+}
+
+/* frame 03: the rule column and the matches rail, 820 + 60 + 300 */
+.chq-portal-editor-top {
+  display: grid;
+  grid-template-columns: minmax(0, 820px) 300px;
+  gap: 60px;
+  align-items: start;
+}
+
+.chq-portal-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.chq-portal-rule-empty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-portal-rule-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-portal-rule-word {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chq-portal-rule-select {
+  font-family: inherit;
+  font-size: 14px;
+  max-width: 100%;
+}
+
+.chq-portal-rule-text {
+  font-family: inherit;
+  font-size: 14px;
+  width: 260px;
+  max-width: 100%;
+}
+
+.chq-portal-rule-row[data-invalid='true'] .chq-select,
+.chq-portal-rule-row[data-invalid='true'] .chq-input {
+  border-color: var(--chq-ink);
+}
+
+/* Remove sits 8px off the value control; the cancelled padding of the
+   link register needs the extra 6px */
+.chq-portal-rule-remove {
+  font-family: inherit;
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-muted);
+}
+
+.chq-portal-rule-error {
+  flex-basis: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-portal-rule-adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding-top: 4px;
+}
+
+.chq-portal-rule-add {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-portal-rule-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+
+.chq-portal-rule-or-line {
+  flex: 1;
+  border-top: 1px dashed var(--chq-border);
+}
+
+/* "is any of" / "is none of": a select-shaped trigger over a checkbox list */
+.chq-portal-values {
+  position: relative;
+  max-width: 100%;
+}
+
+.chq-portal-values-btn {
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  max-width: 360px;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.chq-portal-values-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  background: var(--chq-surface);
+}
+
+.chq-portal-values-option {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* the matches rail, pinned beside the rule as it changes */
+.chq-portal-matches {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  padding: 18px;
+  min-width: 0;
+}
+
+.chq-portal-matches[aria-busy='true'] .chq-portal-matches-count {
+  color: var(--chq-muted);
+}
+
+/* frame 04: a rule that matches nobody is flagged, not refused */
+.chq-portal-matches-nobody {
+  gap: 10px;
+  border-color: var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  background: var(--chq-surface-sunk);
+}
+
+.chq-portal-matches-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.chq-portal-matches-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-matches-nobody .chq-portal-matches-label {
+  color: var(--chq-ink);
+}
+
+.chq-portal-matches-count {
+  font-family: var(--chq-font-display);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.chq-portal-matches-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-portal-matches-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-portal-matches-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-portal-matches-list[data-expanded='true'] {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.chq-portal-matches-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-matches-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--chq-ink);
+  text-decoration: none;
+}
+
+.chq-portal-matches-sub {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-portal-matches-all {
+  font-family: inherit;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-portal-matches-diff {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--chq-hairline);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-portal-matches-diff strong {
+  color: var(--chq-ink);
+}
+
+/* Items: frame 03's five tracks plus an Options disclosure */
+.chq-portal-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-portal-items-row {
+  display: grid;
+  grid-template-columns: 1.4fr 150px 1.1fr 110px 120px 72px;
+  gap: 18px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-items-head,
+.chq-portal-fields-head {
+  align-items: end;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-items-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-portal-items-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-portal-items-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.chq-portal-items-sub {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-portal-items-about,
+.chq-portal-items-deadline,
+.chq-portal-items-required,
+.chq-portal-items-grace {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.chq-portal-scope {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--chq-muted);
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-pill);
+  padding: 2px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.chq-portal-items-cell-label {
+  display: none;
+}
+
+.chq-portal-items-deadline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chq-portal-items-select {
+  font-family: inherit;
+  font-size: 14px;
+  max-width: 100%;
+}
+
+.chq-portal-items-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chq-portal-items-inline[data-invalid='true'] .chq-input {
+  border-color: var(--chq-ink);
+}
+
+.chq-portal-items-date {
+  font-family: inherit;
+  width: 140px;
+  font-size: 14px;
+}
+
+.chq-portal-items-days {
+  font-family: inherit;
+  width: 72px;
+  font-size: 14px;
+}
+
+.chq-portal-items-unit {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-portal-items-more {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chq-portal-items-toggle {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-portal-items-options {
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-items-options-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
+}
+
+.chq-portal-items-rename {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-portal-items-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 20px;
+}
+
+.chq-portal-items-remove {
+  align-self: center;
+}
+
+/* Permissions: fields beside actions */
+.chq-portal-perms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.chq-portal-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-portal-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 210px;
+  gap: 18px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-fields-head {
+  padding: 12px 0 8px;
+}
+
+.chq-portal-fields-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-portal-fields-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-portal-fields-label {
+  font-size: 14px;
+}
+
+.chq-portal-fields-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chq-muted);
+}
+
+.chq-portal-fields-help-toggle {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chq-portal-fields-help-row {
+  padding: 0 0 13px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-fields-help-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-portal-section > .chq-portal-field-help {
+  margin: 10px 0 0;
+}
+
+/* a joined segmented control; the chosen segment fills ink */
+.chq-portal-seg {
+  display: flex;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  overflow: hidden;
+}
+
+.chq-portal-seg-btn {
+  flex: 1;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  font-family: var(--chq-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+  cursor: pointer;
+}
+
+.chq-portal-seg-btn + .chq-portal-seg-btn {
+  border-left: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-seg-btn[aria-pressed='true'] {
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+}
+
+@media (hover: hover) {
+  .chq-portal-seg-btn:hover:not([aria-pressed='true']) {
+    background: var(--chq-surface-sunk);
+    color: var(--chq-ink-2);
+  }
+}
+
+.chq-portal-seg-btn:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
+}
+
+.chq-portal-seg-wide .chq-portal-seg-btn {
+  font-family: inherit;
+  min-height: 44px;
+  padding: 11px 10px;
+  font-size: 13px;
+}
+
+.chq-portal-caps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-portal-caps-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 52px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-caps-label {
+  font-size: 14px;
+}
+
+.chq-portal-caps-na {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* the on/off switch the frame draws: 40x24 track, 18px knob */
+.chq-portal-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--chq-r-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.chq-portal-switch:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
+
+.chq-portal-switch-track {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 40px;
+  height: 24px;
+  padding: 0 3px;
+  border-radius: var(--chq-r-pill);
+  background: var(--chq-rule);
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state);
+}
+
+.chq-portal-switch[aria-checked='true'] .chq-portal-switch-track {
+  justify-content: flex-end;
+  background: var(--chq-brand);
+}
+
+.chq-portal-switch-knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--chq-surface);
+}
+
+/* Note to participants, beside how it appears */
+.chq-portal-note {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding-top: 16px;
+}
+
+.chq-portal-note-edit,
+.chq-portal-note-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chq-portal-note-card {
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  padding: 16px;
+}
+
+.chq-portal-note-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--chq-ink);
+}
+
+.chq-portal-note-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-portal-note-title {
+  font-family: var(--chq-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+/* the frame sets the note in italic; the house muted register replaces it */
+.chq-portal-note-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--chq-muted);
+  white-space: pre-line;
+}
+
+.chq-portal-notify {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.chq-portal-section > .chq-portal-notify + .chq-portal-field-help {
+  margin-top: 4px;
+}
+
+.chq-portal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--chq-rule);
+}
+
+.chq-portal-footer-side {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.chq-portal-footer-main {
+  display: flex;
+  gap: 10px;
+}
+
+.chq-portal-footer-main .chq-btn {
+  font-family: inherit;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+/* -- Dialogs ----------------------------------------------------------- */
+
+.chq-portal-modal-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+/* tap-floor-exempt: an inline link inside a sentence of the dialog's note, not a row action */
+.chq-portal-inline-link {
+  font-weight: 700;
+  color: var(--chq-brand);
+}
+
+.chq-portal-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-portal-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-portal-preview-stats {
+  grid-template-columns: 1fr 1fr;
+}
+
+.chq-portal-preview-stats .chq-portal-stat-value {
+  font-size: 28px;
+}
+
+.chq-portal-preview-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-portal-preview-lines {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-portal-preview-line {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-preview-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chq-portal-preview-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+.chq-portal-preview-people {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-portal-preview-toggle {
+  font-family: inherit;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-portal-preview-notify {
+  font-size: 14px;
+}
+
+.chq-portal-library-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-portal-library-search {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* e2-x7: text tabs over a hairline, the chosen one underlined olive */
+.chq-portal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 18px;
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-portal-tab {
+  padding: 0 0 9px;
+  border: none;
+  background: none;
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  cursor: pointer;
+}
+
+.chq-portal-tab[aria-selected='true'] {
+  color: var(--chq-ink);
+  box-shadow: inset 0 -2px 0 var(--chq-brand);
+}
+
+.chq-portal-tab:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
+
+.chq-portal-library-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-portal-library-row {
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-library-option {
+  gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+
+.chq-portal-library-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-portal-library-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-portal-library-sub {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-portal-library-new {
+  font-family: inherit;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-portal-chips {
+  flex-wrap: wrap;
+}
+
+/* -- Phone ------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .chq-portal-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-portal-stat {
+    padding: 14px 0;
+  }
+
+  .chq-portal-stat + .chq-portal-stat {
+    border-left: none;
+    border-top: 1px solid var(--chq-hairline);
+  }
+
+  /* the change preview keeps gain and lose side by side */
+  .chq-portal-preview-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chq-portal-preview-stats .chq-portal-stat + .chq-portal-stat {
+    padding-left: 12px;
+    border-top: none;
+    border-left: 1px solid var(--chq-rule);
+  }
+
+  .chq-portal-stat-link,
+  .chq-portal-edit-link,
+  .chq-portal-matches-name {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 4px;
+  }
+
+  .chq-portal-head-wrap {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .chq-portal-head-links {
+    flex-basis: 100%;
+    gap: 24px;
+  }
+
+  .chq-portal-head-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 4px;
+  }
+
+  /* the portals table becomes one card per portal */
+  .chq-portal-table thead {
+    display: none;
+  }
+
+  .chq-portal-table,
+  .chq-portal-table tbody,
+  .chq-portal-table tr,
+  .chq-portal-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-portal-table tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-portal-table td,
+  .chq-portal-table td:first-child,
+  .chq-portal-table td:last-child {
+    padding: 2px 0;
+    border-bottom: none;
+  }
+
+  .chq-portal-table td.chq-portal-table-count,
+  .chq-portal-table td.chq-portal-table-items {
+    display: inline-block;
+    width: auto;
+    margin-right: 16px;
+    font-family: var(--chq-font-ui);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chq-portal-table-label {
+    display: inline;
+    font-weight: 400;
+    color: var(--chq-muted);
+  }
+
+  .chq-portal-templates {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-portal-template-use {
+    min-height: 44px;
+  }
+
+  .chq-portal-editor-top {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .chq-portal-matches {
+    position: static;
+  }
+
+  .chq-portal-rule-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chq-portal-rule-row .chq-portal-values,
+  .chq-portal-rule-row .chq-portal-rule-text,
+  .chq-portal-rule-row .chq-portal-rule-select:nth-of-type(3) {
+    grid-column: 1 / -1;
+  }
+
+  .chq-portal-values-btn {
+    width: 100%;
+    max-width: none;
+  }
+
+  .chq-portal-values-option {
+    min-height: 44px;
+  }
+
+  .chq-portal-rule-remove,
+  .chq-portal-rule-add,
+  .chq-portal-matches-all,
+  .chq-portal-items-toggle,
+  .chq-portal-fields-help-toggle,
+  .chq-portal-preview-toggle,
+  .chq-portal-library-new {
+    min-height: 44px;
+  }
+
+  .chq-portal-rule-remove {
+    margin-left: 0;
+    justify-self: start;
+  }
+
+  .chq-portal-items-head {
+    display: none;
+  }
+
+  /* one card per item: the controls get their column labels back */
+  .chq-portal-items-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 10px;
+    column-gap: 12px;
+  }
+
+  .chq-portal-items-title {
+    grid-column: 1;
+  }
+
+  .chq-portal-items-about {
+    justify-content: flex-end;
+  }
+
+  .chq-portal-items-deadline {
+    grid-column: 1 / -1;
+  }
+
+  .chq-portal-items-deadline,
+  .chq-portal-items-required,
+  .chq-portal-items-grace {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .chq-portal-items-cell-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  .chq-portal-items-select {
+    width: 100%;
+  }
+
+  .chq-portal-items-more {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .chq-portal-items-options-body {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .chq-portal-items-checks {
+    padding-top: 0;
+  }
+
+  .chq-portal-items-checks .chq-checkbox-label {
+    min-height: 44px;
+  }
+
+  .chq-portal-items-remove {
+    align-self: flex-start;
+    min-height: 44px;
+  }
+
+  .chq-portal-perms {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .chq-portal-fields-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .chq-portal-fields-head {
+    display: none;
+  }
+
+  .chq-portal-seg-btn {
+    min-height: 44px;
+  }
+
+  .chq-portal-switch {
+    min-width: 52px;
+    min-height: 44px;
+  }
+
+  .chq-portal-note {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-portal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .chq-portal-footer-main {
+    flex-direction: column-reverse;
+  }
+
+  .chq-portal-footer-main .chq-btn,
+  .chq-portal-footer-side .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-portal-footer-side {
+    justify-content: space-between;
+  }
+
+  .chq-portal-tab {
+    min-height: 44px;
+  }
+
+  .chq-portal-library-option {
+    min-height: 44px;
+  }
+}
