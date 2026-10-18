@@ -5,5 +5,6 @@ public/admin/
 *.log
 /.seed.sql
 /.perf-seed.sql
+/.portal-demo.sql
 /.seed-assets/
 .dev.vars

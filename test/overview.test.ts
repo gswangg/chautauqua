@@ -22,6 +22,7 @@ import type { Db } from "../src/server/context";
 import { asc, desc } from "drizzle-orm";
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import * as schema from "../src/db/schema";
+import { assignmentDueDateSql } from "../src/server/repo/tasks/crud";
 
 const overviewDialect = new SQLiteSyncDialect();
 function overviewSqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
@@ -1080,7 +1081,9 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     // (DEC-370 wave-56 amendment: unplacedCount/unplacedDetail/slotRows all
     // always fire now), 15=comms (no track/file/participant/lead-speaker/
     // room queries fire on this all-empty fixture).
-    expect(orderByCallsBySelectIndex[8]).toEqual([asc(schema.task.dueDate), asc(schema.taskAssignment.id)]);
+    // multi-portal: ordered by each assignment's own deadline (a portal row's
+    // merged one, else its task's), ties by id -- still a total order
+    expect(orderByCallsBySelectIndex[8]).toEqual([asc(assignmentDueDateSql()), asc(schema.taskAssignment.id)]);
     expect(orderByCallsBySelectIndex[9]).toEqual([asc(schema.submission.createdAt), asc(schema.submission.id)]);
     expect(orderByCallsBySelectIndex[11]).toEqual([desc(schema.submission.updatedAt), asc(schema.submission.id)]);
     expect(orderByCallsBySelectIndex[13]).toEqual([asc(schema.submission.seq)]);

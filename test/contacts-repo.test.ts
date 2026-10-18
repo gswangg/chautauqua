@@ -188,6 +188,14 @@ describe("buildMergeRepointOps (DEC-282 merge repoint plan)", () => {
       { table: "file", from: "merge_1", to: "keep_1" },
       { table: "file_comment", from: "merge_1", to: "keep_1" },
       { table: "pipeline_entry", from: "merge_1", to: "keep_1" },
+      // multi-portal (repointPortalTable)
+      { table: "audit_event", from: "merge_1", to: "keep_1" },
+      { table: "event_role", from: "merge_1", to: "keep_1" },
+      { table: "portal_membership", from: "merge_1", to: "keep_1" },
+      { table: "portal_notification", from: "merge_1", to: "keep_1" },
+      { table: "sponsor_contact", from: "merge_1", to: "keep_1" },
+      { table: "sponsor_session", from: "merge_1", to: "keep_1" },
+      { table: "sponsor_session_speaker", from: "merge_1", to: "keep_1" },
     ]);
   });
 
@@ -290,7 +298,9 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
 
     // 1 contact-fields update (planMerge) + 7 FK repoints (DEC-282) + 1
     // DEC-479 user.email cascade (unconditional, mirroring patchContact) = 9.
-    expect(updates).toHaveLength(9);
+    // +9 multi-portal repoints (audit_event x2, event_role, portal_membership,
+    // portal_notification, sponsor_contact x2, sponsor_session, speaker)
+    expect(updates).toHaveLength(18);
     expect(updates.some((u) => u.table === schema.file && (u.vals as any).uploadedByContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.fileComment && (u.vals as any).authorContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.participant && (u.vals as any).contactId === KEEP_ID)).toBe(true);
@@ -303,9 +313,11 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     // submissions -- just the DEC-770 amendment's dismissal-cascade delete
     // (unconditional, always runs immediately before the contact delete)
     // and the merged contact row itself.
-    expect(deletes).toHaveLength(2);
-    expect(deletes[0]?.table).toBe(schema.contactDuplicateDismissal);
-    expect(deletes[1]?.table).toBe(schema.contact);
+    // +3 multi-portal collision deletes (event_role, sponsor_contact, speaker)
+    expect(deletes).toHaveLength(5);
+    expect(deletes.slice(0, 3).map((d) => d.table)).toEqual([schema.eventRole, schema.sponsorContact, schema.sponsorSessionSpeaker]);
+    expect(deletes[3]?.table).toBe(schema.contactDuplicateDismissal);
+    expect(deletes[4]?.table).toBe(schema.contact);
   });
 
   it("dedupes: deletes mergeId's participant row for a shared submission instead of repointing it, but still repoints its row on a distinct submission", async () => {
@@ -338,10 +350,12 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     // before the DEC-770 amendment's dismissal-cascade delete, which in
     // turn happens immediately before the deletion of the merged contact
     // row itself.
-    expect(deletes).toHaveLength(3);
+    // +3 multi-portal collision deletes (event_role, sponsor_contact, speaker)
+    expect(deletes).toHaveLength(6);
     expect(deletes[0]?.table).toBe(schema.participant);
-    expect(deletes[1]?.table).toBe(schema.contactDuplicateDismissal);
-    expect(deletes[2]?.table).toBe(schema.contact);
+    expect(deletes.slice(1, 4).map((d) => d.table)).toEqual([schema.eventRole, schema.sponsorContact, schema.sponsorSessionSpeaker]);
+    expect(deletes[4]?.table).toBe(schema.contactDuplicateDismissal);
+    expect(deletes[5]?.table).toBe(schema.contact);
 
     // The plain participant-repoint update still runs unconditionally
     // (DEC-101): it's a no-op for the shared row (already deleted) and

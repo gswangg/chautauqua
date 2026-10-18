@@ -10,7 +10,7 @@
 //
 // This is a barrel: tables live in cohesive submodules alongside this file
 // (org.ts, event.ts, submissions.ts, review.ts, scheduling.ts, tasks.ts,
-// content.ts, email.ts, crm.ts, org-admin.ts, embed.ts) — split out of a
+// content.ts, email.ts, crm.ts, org-admin.ts, embed.ts, portals.ts) — split out of a
 // single 843-line schema.ts (a merge-conflict hotspot) with no behavior
 // change. Every call site imports from "src/db/schema" (this barrel);
 // individual submodules are an internal detail.
@@ -26,3 +26,4 @@ export * from "./email";
 export * from "./crm";
 export * from "./org-admin";
 export * from "./embed";
+export * from "./portals";

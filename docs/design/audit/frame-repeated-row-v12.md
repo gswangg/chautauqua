@@ -291,6 +291,10 @@ DEC-099's positive/negative-control requirement, satisfied by the file's
 own `describe('non-vacuity ...')` block over synthetic fixtures — never a
 live row's own identity).
 
+Re-measured with the multi-portal participant home in the tree: one GAP row
+closed (the home's per-item rows now draw a repeated row the frame shows), so
+`FRAME_REPEATED_ROW_GAP_CEILING = 89`.
+
 ## What a GAP row means, and what it doesn't
 
 A GAP grade means this ledger's own two-tier join (literal copy anywhere in

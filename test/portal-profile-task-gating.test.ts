@@ -70,6 +70,7 @@ vi.mock("../src/server/repo/portal", async () => {
   );
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getPortalData: vi.fn(async () => ({
       branding: { eventId: null, eventName: "Speaker Portal", welcomeMessage: null, accentColor: null, logoUrl: null, showResources: true },
       submissions: [],

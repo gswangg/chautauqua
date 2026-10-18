@@ -51,7 +51,7 @@ const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", 
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
-  return {
+  const __m: any = {
     ...actual,
     getPortalData: vi.fn(async () => ({
       branding: {
@@ -145,6 +145,15 @@ vi.mock("../src/server/repo/portal", async () => {
     ),
     getMyResources: vi.fn(async () => []),
   };
+  const { homeFromLegacy } = await import("./helpers/person-view-fixture");
+  __m.getPortalHome = vi.fn(async () =>
+    homeFromLegacy({
+      sessions: await __m.getMySessions(),
+      tasks: await __m.getMyTaskAssignments(),
+      invitations: await __m.getMyInvitations(),
+    }),
+  );
+  return __m;
 });
 
 vi.mock("../src/server/repo/forms", async () => {
@@ -308,7 +317,7 @@ const FRAME_LINE =
   '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">';
 
 describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w14-sd)", () => {
-  it("frame :414 'Speaker portal' (GET /portal) -- DIVERGES: an extra 'Your submissions' section, and a footer Resources link, that the frame does not draw", async () => {
+  it("frame :414 'Speaker portal' (GET /portal) -- SUPERSEDED by the Portals frame's one-home-per-person (docs/design/multi-portal, flow 6): profile first, then one section per participation, then 'Your submissions' and the footer band", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:414 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
     verbatimLine(414, FRAME_LINE);
     const app = await buildApp();
@@ -316,28 +325,23 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // Frame :410-462 draws exactly THREE sections in the scroll body --
-    // "Waiting on you", "Your session", "Done" -- in that order, plus a
-    // footer band naming the speaker and a "Profile" link. The route emits
-    // a FOURTH section, "Your submissions" (DEC-729), between the first and
-    // second, which the frame never draws, and the footer additionally
-    // links to /portal/resources (DEC-988 wave-74 amendment) -- the frame's
-    // footer band draws only the name/company clause and "Profile".
+    // Frame :410-462's three-section anatomy ("Waiting on you" / "Your
+    // session" / "Done") is replaced by the multi-portal home (Portals
+    // frame flow 6, docs/design/multi-portal/DECISIONS.md): the person's own
+    // items under "Your profile" (done ones folded in place, not a separate
+    // Done section), then a section per participation. "Your submissions"
+    // (DEC-729) and the footer band's Resources link (DEC-988) stay.
     expectInOrder(html, [
-      '<section aria-label="Waiting on you" class="chq-section">',
-      '<div class="chq-section-label">Waiting on you</div>',
+      '<section class="chq-home-section" aria-label="Your profile">',
+      '<div class="chq-home-label">Your profile</div>',
       '<section aria-label="Your submissions" class="chq-section">',
-      '<section aria-label="Your session" class="chq-section">',
-      '<section aria-label="Done" class="chq-section">',
       '<div class="chq-portal-footer-band">',
       '<span class="chq-portal-footer-who">Priya Raman</span>',
       '<a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>',
       '<a href="/portal/profile" class="chq-portal-footer-profile">Profile</a>',
     ]);
-    // "Your submissions" is real product content, not a fixture -- the
-    // frame's own three-section anatomy (Waiting on you / Your session /
-    // Done) never mentions a submissions section at all.
     expect(html).toContain('aria-label="Your submissions"');
+    expect(html).not.toContain('aria-label="Waiting on you"');
   });
 
   it("frame :476 'Portal · Your tasks' (GET /portal/tasks) -- DIVERGES: the docked footer renders ONE control (the first incomplete task's own action), never the frame's second bordered secondary", async () => {

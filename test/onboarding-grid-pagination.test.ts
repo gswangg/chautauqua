@@ -289,7 +289,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // contactRows where clause is call index 5 (0=tasks, 1=event, 2=speakers, 3=counts, 4=count, 5=contacts).
     const { sql, params } = sqlTextOf(calls[6]!.where);
     expect(sql).toContain("exists (select 1 from");
-    expect(sql).toMatch(/"task_assignment"\."task_id" = \?.*"task_assignment"\."status" = \?.*"task"\."due_date" is not null/s);
+    // multi-portal: the due date read is the assignment's own (a portal row's
+    // merged deadline, else the task's), and detached portal work is skipped
+    expect(sql).toMatch(/"task_assignment"\."task_id" = \?.*"task_assignment"\."status" = \?.*"task_assignment"\."detached_at" is null.*"task"\."due_date" end\) is not null/s);
     expect(params).toContain("task-1");
     expect(params).toContain("pending");
   });

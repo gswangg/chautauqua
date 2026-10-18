@@ -602,6 +602,20 @@ const CASES: RouteCase[] = [
     requestPath: `/api/v1/events/${EVENT_B}/portal-invites`,
     body: { contactIds: [IDS.contactA] },
   },
+  // multi-portal: giving an org-A contact an event role on org B's event
+  {
+    method: "POST",
+    path: "/api/v1/events/:eventId/event-roles",
+    requestPath: `/api/v1/events/${EVENT_B}/event-roles`,
+    body: { contactId: IDS.contactA, role: "volunteer" },
+  },
+  // multi-portal: inviting onto org A's session from org B's event
+  {
+    method: "POST",
+    path: "/api/v1/events/:eventId/invitations",
+    requestPath: `/api/v1/events/${EVENT_B}/invitations`,
+    body: { submissionId: IDS.submissionA, contactId: IDS.contactB, role: "speaker" },
+  },
   // Joined the population in wave 41 (DEC-027 wave-41 amendment gave the
   // email-log and evaluations export kinds their own surface's filter, so
   // this registration now reads ?contactId=/?planId=). Exercised on the
@@ -666,6 +680,8 @@ const CROSS_ORG_BODY_LEDGER: LedgerEntry[] = [
   { method: "POST", path: "/api/v1/tasks/:id/unassign", expectedStatus: 400 },
   { method: "POST", path: "/api/v1/events/:eventId/tasks", expectedStatus: 400 },
   { method: "POST", path: "/api/v1/events/:eventId/portal-invites", expectedStatus: 400 },
+  { method: "POST", path: "/api/v1/events/:eventId/event-roles", expectedStatus: 404 },
+  { method: "POST", path: "/api/v1/events/:eventId/invitations", expectedStatus: 404 },
   {
     method: "POST",
     path: "/api/v1/events/:eventId/onboarding/remind",

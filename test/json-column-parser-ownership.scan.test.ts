@@ -302,6 +302,48 @@ const LEDGER: LedgerRow[] = [
     refusalSymbol: "parseTaskResponse",
   },
   {
+    key: "portal.rule_json",
+    verdict: "owned",
+    parser: "src/domain/portals/rules.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parsePortalRuleJson",
+  },
+  {
+    key: "portal.field_permissions_json",
+    verdict: "owned",
+    parser: "src/domain/portals/permissions.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parseFieldPermissionsJson",
+  },
+  {
+    key: "portal.capabilities_json",
+    verdict: "owned",
+    parser: "src/domain/portals/permissions.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parseCapabilitiesJson",
+  },
+  {
+    key: "portal_notification.task_ids_json",
+    verdict: "owned",
+    parser: "src/domain/portals/notifications.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parseNotificationTaskIdsJson",
+  },
+  {
+    key: "audit_event.details_json",
+    verdict: "owned",
+    parser: "src/domain/audit.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parseAuditDetailsJson",
+  },
+  {
+    key: "task.accepted_types_json",
+    verdict: "owned",
+    parser: "src/domain/portals/file-types.ts",
+    refusalTest: "test/portals-json-parsers.test.ts",
+    refusalSymbol: "parseAcceptedTypesJson",
+  },
+  {
     key: "submission.additional_track_ids_json",
     verdict: "owed",
     reason:

@@ -73,6 +73,9 @@ function enclosingStatement(src: string, matchIndex: number): string {
  * map must be re-justified, not just re-typed.
  */
 const ALLOWED: Record<string, string[]> = {
+  "server/repo/portals/participations.ts": [
+    "listParticipationEventIds (multi-portal) lists the events the caller's OWN contactId touches, in every invite state -- the same own-scope read as getMySubmissions; the per-event person view (portals/view.ts) then applies the participation rules itself (a declined participation leaves every portal), so this is not an eligibility enumeration.",
+  ],
   "server/repo/portal/submissions.ts": [
     "getMySubmissions reads by the caller's own contactId — a portal user sees their own submissions in every invite state, not an eligibility enumeration.",
   ],

@@ -40,7 +40,7 @@ vi.mock("../src/server/not-found", async () => {
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
-  return {
+  const __m: any = {
     ...actual,
     getPortalData: vi.fn(async () => ({
       branding: {
@@ -93,6 +93,15 @@ vi.mock("../src/server/repo/portal", async () => {
       filename: "f.txt",
     })),
   };
+  const { homeFromLegacy } = await import("./helpers/person-view-fixture");
+  __m.getPortalHome = vi.fn(async () =>
+    homeFromLegacy({
+      sessions: await __m.getMySessions(),
+      tasks: await __m.getMyTaskAssignments(),
+      invitations: await __m.getMyInvitations(),
+    }),
+  );
+  return __m;
 });
 
 const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", contactId: "ct-1" };

@@ -66,6 +66,16 @@ const MERGE_REPOINTED = new Set<string>([
   "file.uploaded_by_contact_id",
   "file_comment.author_contact_id",
   "pipeline_entry.contact_id",
+  // multi-portal (src/server/repo/contacts/merge.ts repointPortalTable)
+  "audit_event.actor_contact_id",
+  "audit_event.subject_contact_id",
+  "event_role.contact_id",
+  "portal_membership.contact_id",
+  "portal_notification.contact_id",
+  "sponsor_contact.contact_id",
+  "sponsor_contact.invited_by_contact_id",
+  "sponsor_session.created_by_contact_id",
+  "sponsor_session_speaker.contact_id",
 ]);
 
 // deleteContact's route (src/routes/api/contacts/crud.ts DELETE /:id) and
@@ -83,6 +93,12 @@ const DELETE_HANDLED: Record<string, "refuses" | "cascades"> = {
   // DEC-770 amendment (wave 48): the fix this file locks in.
   "contact_duplicate_dismissal.contact_id_a": "cascades",
   "contact_duplicate_dismissal.contact_id_b": "cascades",
+  // multi-portal (src/server/repo/contacts/crud.ts deleteContact)
+  "event_role.contact_id": "cascades",
+  "portal_membership.contact_id": "cascades",
+  "portal_notification.contact_id": "cascades",
+  "sponsor_contact.contact_id": "cascades",
+  "sponsor_session_speaker.contact_id": "cascades",
 };
 
 describe("contact-referencing column manifest (DEC-770 amendment, wave 48)", () => {

@@ -4,6 +4,8 @@ import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { eventsRoutes } from "./routes/api/events";
 import { portalConfigRoutes } from "./routes/api/portal-config";
+import { portalsRoutes } from "./routes/api/portals";
+import { sponsorsRoutes } from "./routes/api/sponsors";
 import { emailLogRoutes } from "./routes/api/email-log";
 import { mailStatusRoutes } from "./routes/api/mail-status";
 import { formsRoutes } from "./routes/api/forms";
@@ -21,9 +23,13 @@ import { breaksRoutes } from "./routes/api/breaks";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { portalPreviewRoutes } from "./routes/portal/preview";
+import { portalInvitationRoutes } from "./routes/portal/invitation";
+import { portalPersonPreviewRoutes } from "./routes/portal/preview-person";
 import { publicRoutes } from "./routes/public";
 import { portalTasksRoutes } from "./routes/portal/tasks";
 import { portalEditRoutes } from "./routes/portal/edit";
+import { portalSponsorRoutes } from "./routes/portal/sponsors";
+import { portalShareKitRoutes } from "./routes/portal/share-kit";
 import { devMailboxRoutes } from "./routes/dev/mailbox";
 import { taskRoutes } from "./routes/tasks";
 import { reviewRoutes } from "./routes/review";
@@ -49,6 +55,8 @@ app.route("/", authRoutes);
 app.route("/", accountRoutes);
 app.route("/api/v1", eventsRoutes);
 app.route("/api/v1", portalConfigRoutes);
+app.route("/api/v1", portalsRoutes);
+app.route("/api/v1", sponsorsRoutes);
 app.route("/api/v1", submissionsRoutes);
 app.route("/api/v1", contactsRoutes);
 app.route("/api/v1", importRoutes);
@@ -77,11 +85,18 @@ app.route("/", usersRoutes);
 // matches ahead of speakerGate's gated sub-apps — its own guard is organizer-
 // only (the inverse of speakerGate), never falling through to a redirect.
 app.route("/portal", portalPreviewRoutes);
+// multi-portal: the invitation-to-speak link works signed out (its token is
+// the credential), so it mounts ahead of speakerGate's sub-apps too.
+app.route("/portal", portalInvitationRoutes);
+// multi-portal: preview as participant is organizer-only, like /portal/preview
+app.route("/portal", portalPersonPreviewRoutes);
 app.route("/portal", portalRoutes);
 // w4-a/w4-b (DEC-028): parallel portal sub-apps + the public headshot route.
 app.route("/portal", portalProfileRoutes);
 app.route("/portal", portalTasksRoutes);
 app.route("/portal", portalEditRoutes);
+app.route("/portal", portalSponsorRoutes);
+app.route("/portal", portalShareKitRoutes);
 app.route("/", headshotServeRoutes);
 app.route("/", publicRoutes);
 app.route("/", docsRoutes);

@@ -18,6 +18,7 @@ import { dismissDuplicatePair, mergeContacts } from "../src/server/repo/contacts
 import { deleteContact } from "../src/server/repo/contacts/crud";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { Db } from "../src/server/context";
+import { PORTAL_TABLES_DDL } from "./helpers/portal-ddl";
 
 const DDL = `
 create table contact (
@@ -56,7 +57,12 @@ create table participant (
   visible integer,
   invite_status text not null default 'none',
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table task_assignment (
   id text primary key,
@@ -69,7 +75,13 @@ create table task_assignment (
   file_id text,
   last_reminded_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 create table pipeline_entry (
   id text primary key,
@@ -142,7 +154,7 @@ create table file_comment (
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(DDL);
+  sqlite.exec(DDL + PORTAL_TABLES_DDL);
   const db = drizzle(
     async (sqlText, params, method) => {
       const stmt = sqlite.prepare(sqlText);

@@ -32,8 +32,13 @@ describe("overdueAssignmentConditions (DEC-776)", () => {
     // before `now`'s day label in the event's timezone (the cutoff param);
     // otherwise (grace-window branch) the effective due date is already a
     // real instant compared directly to `now`.
+    // Multi-portal: a portal-sourced row carries its own merged deadline
+    // (task_assignment.due_date, kept by reconcile.ts) and is overdue once
+    // that day passes; a direct row keeps DEC-801's rule unchanged. Detached
+    // portal work (it left the person's home) is never counted.
+    expect(sql).toContain('"task_assignment"."detached_at" is null');
     expect(sql).toContain(
-      '"task"."due_date" is not null and (case when "task"."due_date" >= "task_assignment"."created_at" then "task"."due_date" < ? else "task_assignment"."created_at" + ? < ? end)',
+      '(case when "task_assignment"."source" = \'portal\' then "task_assignment"."due_date" else "task"."due_date" end) is not null and (case when "task_assignment"."source" = \'portal\' then "task_assignment"."due_date" < ? when "task"."due_date" >= "task_assignment"."created_at" then "task"."due_date" < ? else "task_assignment"."created_at" + ? < ? end)',
     );
     // The roster predicate: acceptedSpeakerExistsForContact's correlated
     // EXISTS against schema.contact, so a task_assignment whose contact is

@@ -7,6 +7,7 @@
 // and import these components.
 
 import { PortalLayout, PortalBackLink, type PortalBrandingChrome } from "../shared";
+import { acceptAttribute, limitSentence } from "../../../domain/portals/file-types";
 import { PublicEmptyState } from "../../public/empty-state";
 import type { DeliverableCandidate, PortalTaskAssignment } from "../../../server/repo/portal";
 import type { getMyResources } from "../../../server/repo/portal";
@@ -14,7 +15,7 @@ import type { FormFieldRow } from "../../../server/repo/forms";
 import { makeVisibilityPredicate } from "../../../forms/visibility";
 import type { AnswerMap } from "../../../forms/types";
 import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render";
-import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText } from "../../../domain/files";
+import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText, type FileKind } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime, formatEventDateTimeWithSeconds } from "../../../lib/event-time";
 import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../../domain/task-due";
@@ -61,6 +62,14 @@ export interface FileVersionRow {
 // (one assignment's own version chain), so the timestamp renders through
 // formatEventDateTimeWithSeconds, not formatEventDateTime — two versions
 // uploaded in the same minute must still read as distinguishable rows.
+// multi-portal: a library file request's own types and size narrow the
+// picker and the hint ("Keynote, PDF or PowerPoint, up to 200 MB"); the
+// per-kind rules still apply on top (src/domain/files.ts).
+function fileLimitHint(t: PortalTaskAssignment, uploadKind: FileKind): string {
+  if (!t.acceptedTypes && !t.maxSizeMb) return uploadHintText(uploadKind);
+  return `${limitSentence(t.acceptedTypes ?? null, t.maxSizeMb ?? null)}.`;
+}
+
 export function VersionHistory(props: { assignmentId: string; versions: FileVersionRow[]; timezone: string }) {
   const { assignmentId, versions, timezone } = props;
   return (
@@ -289,13 +298,13 @@ export function TaskRow(props: {
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
               {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
-              <p class="chq-portal-detail">{uploadHintText(uploadKind)}</p>
+              <p class="chq-portal-detail">{fileLimitHint(t, uploadKind)}</p>
               {isValidFileKind(t.deliverableKind) ? <ReuploadReviewNotice /> : null}
               <input
                 type="file"
                 name="file"
                 required
-                accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
+                accept={(t.acceptedTypes && acceptAttribute(t.acceptedTypes)) || allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
                 class={error ? "chq-field-invalid" : undefined}
                 aria-invalid={error ? "true" : undefined}
               />
@@ -338,13 +347,13 @@ export function TaskRow(props: {
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
             {deliverableChoice ? <DeliverableSelect info={deliverableChoice} currentFilename={fileExtras.filename} /> : null}
-            <p class="chq-portal-detail">{uploadHintText(uploadKind)}</p>
+            <p class="chq-portal-detail">{fileLimitHint(t, uploadKind)}</p>
             {isValidFileKind(t.deliverableKind) ? <ReuploadReviewNotice /> : null}
             <input
               type="file"
               name="file"
               required
-              accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
+              accept={(t.acceptedTypes && acceptAttribute(t.acceptedTypes)) || allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
               class={error ? "chq-field-invalid" : undefined}
               aria-invalid={error ? "true" : undefined}
             />

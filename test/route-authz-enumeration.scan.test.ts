@@ -448,6 +448,11 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   { file: "src/routes/auth-reset.tsx", method: "GET", path: "/reset/:token", reason: "DEC-014 (wave 25 amendment): the 'auth' is possession of an unguessable KV reset token, not a session, same model as /claim/:token" },
   { file: "src/routes/auth-reset.tsx", method: "POST", path: "/forgot", reason: "DEC-459 (wave 35 amendment): the auth-establishing recovery endpoint itself -- no session exists yet to check a role against; protected by per-email+per-IP rate limiting (DEC-180), not CSRF middleware" },
   { file: "src/routes/auth-reset.tsx", method: "POST", path: "/reset/:token", reason: "DEC-459 (wave 35 amendment): the 'auth' is possession of the unguessable KV reset token minted for /forgot, not a session; CSRF middleware proves nothing about who holds that token" },
+  // src/routes/portal/invitation.tsx (multi-portal invited-speaker acceptance)
+  { file: "src/routes/portal/invitation.tsx", method: "GET", path: "/invitations/:token", reason: "the 'auth' is possession of the invitation email's unguessable token (stored hashed on the participant), not a session -- the invitee may have no account yet; per-IP consume-then-refund rate limiting, same model as /claim/:token" },
+  { file: "src/routes/portal/invitation.tsx", method: "POST", path: "/invitations/:token/accept", reason: "same token-possession model as GET /invitations/:token, plus per-IP rate limiting and double-submit CSRF" },
+  { file: "src/routes/portal/invitation.tsx", method: "POST", path: "/invitations/:token/decline", reason: "same token-possession model as GET /invitations/:token, plus per-IP rate limiting and double-submit CSRF" },
+  { file: "src/routes/portal/invitation.tsx", method: "POST", path: "/invitations/:token/note", reason: "same token-possession model as GET /invitations/:token, plus per-IP rate limiting and double-submit CSRF; writes only the decline note on the invitation the token names" },
   // src/routes/dev/mailbox.tsx
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox", reason: "DEC-005: routes literally don't exist (404) unless DEV_MODE==='1'; single-tenant local dev tooling, no secrets present in Stage 1" },
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox/:emailId/ics", reason: "same DEV_MODE gate" },

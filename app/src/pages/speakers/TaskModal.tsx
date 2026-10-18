@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   DELIVERABLE_KINDS,
-  TASK_KINDS,
+  DIRECT_TASK_KINDS,
   type DeliverableKind,
   type EventForm,
   type NewTaskInput,
@@ -74,15 +74,17 @@ interface TaskModalProps {
 export function kindLabel(kind: TaskKind): string {
   if (kind === 'file_request') return 'Upload';
   if (kind === 'form') return 'Form';
+  if (kind === 'share_kit') return 'Share kit';
   return 'Acknowledge';
 }
 
 const KIND_ORDER: readonly TaskKind[] = (() => {
   const order: TaskKind[] = ['file_request', 'form', 'general'];
-  // TASK_KINDS is the source enumeration; assert the display order is a
-  // permutation of it so a new kind can't silently go unlisted here.
-  if (order.length !== TASK_KINDS.length || !TASK_KINDS.every((k) => order.includes(k))) {
-    throw new Error('TaskModal: KIND_ORDER is out of sync with TASK_KINDS');
+  // DIRECT_TASK_KINDS is the source enumeration for this modal; assert the
+  // display order is a permutation of it so a new kind can't silently go
+  // unlisted here.
+  if (order.length !== DIRECT_TASK_KINDS.length || !DIRECT_TASK_KINDS.every((k) => order.includes(k))) {
+    throw new Error('TaskModal: KIND_ORDER is out of sync with DIRECT_TASK_KINDS');
   }
   return order;
 })();

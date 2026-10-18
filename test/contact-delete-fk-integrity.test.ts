@@ -29,6 +29,7 @@ import { CONTACT_FK_TABLES } from "../src/server/repo/contacts/query";
 import { deleteContact } from "../src/server/repo/contacts/crud";
 import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
+import { PORTAL_TABLES_DDL } from "./helpers/portal-ddl";
 
 // REFUSED-BEFORE: the DELETE route refuses (409) on these refs before
 // deleteContact is ever reached -- covered by
@@ -38,11 +39,20 @@ const REFUSED_BEFORE = new Set(["user", "participant"]);
 // CASCADE-DELETED: JOIN rows, not documents -- deleteContact deletes these
 // outright (pipeline_entry's pipeline_activity feed cascades with it),
 // covered by test/contacts-delete.test.ts's DEC-979 cascade case.
-const CASCADE_DELETED = new Set(["task_assignment", "pipeline_entry"]);
+const CASCADE_DELETED = new Set([
+  "task_assignment",
+  "pipeline_entry",
+  // multi-portal: only this person's participations
+  "event_role",
+  "portal_membership",
+  "portal_notification",
+  "sponsor_contact",
+  "sponsor_session_speaker",
+]);
 
 // NULLED: durable audit/provenance rows that must survive the contact's
 // deletion -- this is what this file exercises directly.
-const NULLED = new Set(["email_log", "file", "file_comment"]);
+const NULLED = new Set(["email_log", "file", "file_comment", "audit_event", "sponsor_session"]);
 
 describe("CONTACT_FK_TABLES classification tripwire (DEC-979)", () => {
   it("every member of CONTACT_FK_TABLES is accounted for by exactly one class", () => {
@@ -95,7 +105,13 @@ create table task_assignment (
   file_id text,
   last_reminded_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 create table pipeline_entry (
   id text primary key,
@@ -171,7 +187,7 @@ create table file_comment (
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(DDL);
+  sqlite.exec(DDL + PORTAL_TABLES_DDL);
   const db = drizzle(
     async (sqlText, params, method) => {
       const stmt = sqlite.prepare(sqlText);

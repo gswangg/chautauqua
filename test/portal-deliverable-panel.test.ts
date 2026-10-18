@@ -45,6 +45,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getAssignmentScope: vi.fn(),
     // DEC-244 amendment (wave 56): a refused comment reply now re-renders
     // /portal/tasks inline (loadTasksPageData) instead of throwing, so this

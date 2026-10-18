@@ -19,9 +19,13 @@ export const PORTAL_ROUTE_PATTERNS = [
   "/submissions/:id/edit",
   "/submissions/:id/participants",
   "/invitations/:participantId",
+  "/invitations/:token/accept",
+  "/invitations/:token/decline",
+  "/invitations/:token/note",
   "/profile",
   "/tasks",
   "/tasks/:assignmentId/form",
+  "/tasks/:assignmentId/share",
   "/tasks/:assignmentId/complete",
   "/tasks/:assignmentId/upload",
   "/tasks/:assignmentId/comments",
@@ -29,6 +33,19 @@ export const PORTAL_ROUTE_PATTERNS = [
   "/tasks/:assignmentId/file/:fileId",
   "/resources",
   "/resources/:resourceId/download",
+  // multi-portal: preview as participant (organizer-only)
+  "/preview/people/:eventId/:contactId",
+  // multi-portal: sponsor contacts' package, sessions and team
+  "/sponsors/:sponsorshipId",
+  "/sponsors/:sponsorshipId/sessions",
+  "/sponsors/:sponsorshipId/sessions/new",
+  "/sponsors/:sponsorshipId/sessions/:sessionId",
+  "/sponsors/:sponsorshipId/sessions/:sessionId/speakers",
+  "/sponsors/:sponsorshipId/sessions/:sessionId/speakers/:speakerId/remove",
+  "/sponsors/:sponsorshipId/sessions/:sessionId/withdraw",
+  "/sponsors/:sponsorshipId/sessions/:sessionId/discard",
+  "/sponsors/:sponsorshipId/team",
+  "/sponsors/:sponsorshipId/team/:sponsorContactId/remove",
 ] as const;
 
 function segmentsOf(path: string): string[] {

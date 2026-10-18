@@ -138,7 +138,44 @@ export function acceptedSpeakerExistsForContact(eventId: string) {
  * overdueAssignmentConditions already reports via
  * acceptedSpeakerExistsForContact. */
 export function chaseableContactExists(eventId: string) {
-  return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.taskAssignment.contactId} and ${acceptedSpeakerConditions(eventId)})`;
+  // multi-portal: a portal row exists only while a portal covers the person
+  // (reconcile.ts detaches it otherwise), so an attached portal row is
+  // chaseable on its own -- including a sponsor contact with no session.
+  // Kept as one leading EXISTS (over the event row) so it composes exactly
+  // where the speaker-only predicate did.
+  return sql`exists (select 1 from ${schema.event} where ${schema.event.id} = ${eventId} and (${livePortalAssignment()} or (${schema.taskAssignment.source} = 'direct' and exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.taskAssignment.contactId} and ${acceptedSpeakerConditions(eventId)}))))`;
+}
+
+/** multi-portal: a portal-sourced assignment still attached to a portal. */
+export function livePortalAssignment() {
+  return sql`(${schema.taskAssignment.source} = 'portal' and ${schema.taskAssignment.detachedAt} is null)`;
+}
+
+/** multi-portal: every assignment except detached portal work (finished or
+ * not, it has left the participant's home and is no longer chased). */
+export function attachedAssignment() {
+  return sql`${schema.taskAssignment.detachedAt} is null`;
+}
+
+/** multi-portal: an assignment's own deadline (a day label) -- a portal
+ * row's merged deadline (reconcile.ts), else its task's date. */
+export function assignmentDueDateSql() {
+  return sql`(case when ${schema.taskAssignment.source} = 'portal' then ${schema.taskAssignment.dueDate} else ${schema.task.dueDate} end)`;
+}
+
+/** multi-portal: an assignment's own required flag. */
+export function assignmentRequiredSql() {
+  return sql`coalesce(${schema.taskAssignment.required}, ${schema.task.required})`;
+}
+
+/** DEC-801's overdue test, portal-aware: a direct row keeps the
+ * late-assignment grace; a portal row is overdue once its merged deadline's
+ * day has passed (its own per-item grace is shown to the participant, not
+ * hidden from the organizer). */
+export function assignmentOverdueSql(now: number, timeZone: string) {
+  const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  const cutoff = overdueDayCutoff(now, timeZone);
+  return sql`(${assignmentDueDateSql()} is not null and (case when ${schema.taskAssignment.source} = 'portal' then ${schema.taskAssignment.dueDate} < ${cutoff} when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} < ${cutoff} else ${schema.taskAssignment.createdAt} + ${graceMs} < ${now} end))`;
 }
 
 /** DEC-776 amendment (wave 61): the ONE 'still owes something' predicate —
@@ -204,13 +241,11 @@ export function rosterParticipantExistsForContact(eventId: string) {
  * instant (assignment.createdAt + grace), so it's compared to `now`
  * directly, no timezone expansion needed. */
 export function overdueAssignmentConditions(eventId: string, now: number, timeZone: string) {
-  const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-  const cutoff = overdueDayCutoff(now, timeZone);
-  const isOverdue = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} < ${cutoff} else ${schema.taskAssignment.createdAt} + ${graceMs} < ${now} end)`;
   return and(
     eq(schema.task.eventId, eventId),
     sql`${schema.taskAssignment.status} <> 'complete'`,
-    sql`${schema.task.dueDate} is not null and ${isOverdue}`,
+    attachedAssignment(),
+    assignmentOverdueSql(now, timeZone),
     acceptedSpeakerExistsForContact(eventId),
   )!;
 }
@@ -302,7 +337,9 @@ export async function createTaskAssignments(
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
-      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
+      .onConflictDoNothing({
+        target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId, schema.taskAssignment.scopeKey],
+      });
   }
 }
 

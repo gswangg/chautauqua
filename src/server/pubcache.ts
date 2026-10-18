@@ -368,6 +368,25 @@ export const NEVER_PUBLIC: PathPattern[] = [
   // PUBLIC-AFFECTING below) — the create/draft write itself never changes
   // what any accepted/visible/approved row renders.
   "/submit/*",
+  // multi-portal: portals, the item library, the person record, event roles
+  // and sponsorships are organizer and participant configuration -- no
+  // /e/* or /embed/* page renders any of it. An invitation to speak adds an
+  // 'invited' participant, which visibleParticipantConditions() hides until
+  // it is accepted (the accept is /portal/invitations/*, PUBLIC-AFFECTING).
+  "/api/v1/events/:id/portals*",
+  "/api/v1/events/:id/library*",
+  "/api/v1/events/:id/people/*",
+  "/api/v1/events/:id/event-roles*",
+  "/api/v1/events/:id/invitations",
+  "/api/v1/events/:id/sponsor-tiers*",
+  "/api/v1/events/:id/sponsorships*",
+  "/api/v1/events/:id/sponsor-sessions/:sessionId/request-changes",
+  "/api/v1/events/:id/sponsor-sessions/:sessionId/decline",
+  // a sponsor contact's own writes (drafts, speakers, withdraw from review,
+  // the team) never reach a public row: a sponsor session becomes a
+  // submission only when an organizer approves it (approve, PUBLIC-AFFECTING
+  // below).
+  "/portal/sponsors/*",
 ];
 
 /** DEC-627: routes whose write can change what a subsequent GET to /e/*
@@ -378,6 +397,9 @@ export const NEVER_PUBLIC: PathPattern[] = [
  * invite_status IN ('none','accepted') — so this write can flip a
  * speaker's public visibility directly. */
 export const PUBLIC_AFFECTING: PathPattern[] = [
+  // multi-portal: approving a sponsor session creates an accepted session
+  // with its speakers as active participants -- it can appear on /e/*.
+  "/api/v1/events/:id/sponsor-sessions/:sessionId/approve",
   "/api/v1/events",
   "/api/v1/events/:id",
   "/api/v1/events/:id/tracks",

@@ -369,7 +369,9 @@ describe('negative-margin adjacency scan: population sanity (DEC-919 wave-152 am
     // app/src/pages/contacts/contacts-modals.css, `@import`ed from
     // contacts.css at its original position (build/cascade unchanged); the
     // new file is a legitimate additional CSS-bearing source.
-    expect(SOURCES.length).toBe(44);
+    // 44 -> 45 (multi-portal): src/routes/portal/participant-home.css.ts,
+    // the participant home's own SSR CSS module composed into PORTAL_CSS.
+    expect(SOURCES.length).toBe(45);
   });
 
   // Floor, not an equality (DEC-808 wave-18 amendment): this count moved

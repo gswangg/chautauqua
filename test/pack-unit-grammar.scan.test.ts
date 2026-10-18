@@ -568,7 +568,10 @@ describe('pack size-unit grammar (DEC-937 wave-29)', () => {
   it('counts every non-px/rem/em declaration into its own asserted OTHER total (population cannot silently shrink)', () => {
     // Measured on this branch: var(...)/calc(...)/keyword/multi-value
     // shorthand font-size and gap declarations across the product corpus.
-    expect(RESULT.otherTotal).toBe(60);
+    // Multi-portal adds five var(--chq-type-*) font-size declarations in
+    // src/routes/portal/participant-home.css.ts (section label, state word,
+    // pill, lock word, preview-bar label).
+    expect(RESULT.otherTotal).toBe(65);
   });
 
   it('names the off-grid rem font-size sites so a regression is traceable (DEC-937 wave-35: all 7 repaired, none remain)', () => {

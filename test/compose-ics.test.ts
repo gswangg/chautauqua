@@ -69,7 +69,8 @@ describe("loadIcsScheduleData applies the DEC-318 event-range bound", () => {
   const DDL = `
     create table submission (
       id text primary key,
-      ics_sequence integer not null default 0
+      ics_sequence integer not null default 0,
+      origin text NOT NULL DEFAULT 'cfp'
     );
     create table room (
       id text primary key,

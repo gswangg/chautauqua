@@ -77,6 +77,10 @@ export interface ContactProfile {
   bio: string | null;
   headshotUrl: string | null;
   socialLinks: SocialLinks;
+  // multi-portal: shown only when a portal asks for them (optional so
+  // pre-portal fixtures still type)
+  phone?: string | null;
+  email?: string;
 }
 
 /** Loads exactly one speaker's own profile row — the caller must have
@@ -93,6 +97,8 @@ export async function getContactProfile(db: Db, contactId: string): Promise<Cont
       bio: schema.contact.bio,
       headshotUrl: schema.contact.headshotUrl,
       socialLinksJson: schema.contact.socialLinksJson,
+      phone: schema.contact.phone,
+      email: schema.contact.email,
     })
     .from(schema.contact)
     .where(eq(schema.contact.id, contactId))
@@ -108,6 +114,8 @@ export async function getContactProfile(db: Db, contactId: string): Promise<Cont
     bio: row.bio,
     headshotUrl: row.headshotUrl,
     socialLinks: parseSocialLinks(row.socialLinksJson),
+    phone: row.phone,
+    email: row.email,
   };
 }
 
@@ -118,6 +126,8 @@ export interface ProfileUpdateInput {
   company: string | null;
   bio: string | null;
   socialLinks: SocialLinks;
+  // multi-portal: written only when a portal lets the participant edit it
+  phone?: string | null;
 }
 
 /** Updates the speaker's own contact row in place — same row the producer
@@ -138,6 +148,7 @@ export async function updateContactProfile(db: Db, contactId: string, input: Pro
       company: input.company,
       bio: input.bio,
       socialLinksJson: serializeSocialLinks(input.socialLinks),
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
       updatedAt: now,
     })
     .where(eq(schema.contact.id, contactId));

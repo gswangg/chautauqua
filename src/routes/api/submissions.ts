@@ -6,6 +6,7 @@
 // NEVER import a mailer — verified by a source-scan test in
 // test/api-submissions.test.ts.
 
+import { scheduleReconcile } from "../../server/portal-sync";
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
@@ -570,6 +571,8 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   ]);
 
   const detail = await getSubmissionDetail(c.var.db, id);
+  // multi-portal: a format or track change can move a session between portals
+  scheduleReconcile(c, [ownership.eventId]);
   return c.json(detail);
 });
 
@@ -744,6 +747,7 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
   if (submissionStatus === "accepted" && isActiveParticipant(result.inviteStatus)) {
     await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [contactId], new Date());
   }
+  scheduleReconcile(c, [ownership.eventId]);
 
   return c.json(result, 201);
 });
@@ -777,6 +781,7 @@ submissionsRoutes.delete(
       });
     }
     const deleted = await removeParticipantRow(c.var.db, participantId, id);
+    scheduleReconcile(c, [ownership?.eventId]);
     return c.json({ deleted });
   },
 );
@@ -865,6 +870,7 @@ submissionsRoutes.patch(
     if (row && (await getSubmissionStatus(c.var.db, id)) === "accepted" && isActiveParticipant(row.inviteStatus)) {
       await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [row.contactId], new Date());
     }
+    scheduleReconcile(c, [ownership.eventId]);
     return c.json(row);
   },
 );
@@ -889,6 +895,8 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
   }
 
   const result = await updateSubmissionStatuses(c.var.db, eventId, ids, body.status, new Date());
+  // multi-portal: an acceptance (or un-acceptance) moves people between portals
+  scheduleReconcile(c, [eventId]);
   return c.json(result);
 });
 

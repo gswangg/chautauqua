@@ -84,6 +84,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getAssignmentScope: vi.fn(async () => FOREIGN_ASSIGNMENT_SCOPE),
     getParticipantScope: vi.fn(async () => FOREIGN_PARTICIPANT_SCOPE),
     // Both contactId-scoped resolvers below bake the caller's contactId into
@@ -120,6 +121,38 @@ vi.mock("../src/server/repo/portal", async () => {
     })),
     getMyTaskAssignments: vi.fn(async () => []),
     getLatestDeliverable: vi.fn(async () => null),
+  };
+});
+
+// multi-portal: a sponsor contact reaches a sponsorship only through
+// resolveSponsorAccess, which bakes the caller's contactId into its join
+// (src/server/repo/sponsors/access.ts) -- the mock keeps that contract.
+vi.mock("../src/server/repo/sponsors/access", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/sponsors/access")>("../src/server/repo/sponsors/access");
+  return {
+    ...actual,
+    resolveSponsorAccess: vi.fn(async (_db: unknown, input: { contactId: string }) =>
+      input.contactId === OWNER_CONTACT
+        ? { sponsorshipId: "sponsorship-a", sponsorContactId: "sc-a", eventId: "event-a", orgId: PROBE_ORG, companyName: "A", canManageTeam: true }
+        : null,
+    ),
+  };
+});
+
+// The invitation pages take their token as the credential: no caller owns
+// the row, so the probe's "foreign" request is an unknown token, refused
+// with the portal's 404 card after the per-IP meter (stubbed here, the same
+// way the shared eyebrow read is stubbed below).
+vi.mock("../src/server/repo/portals/invitations", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/portals/invitations")>("../src/server/repo/portals/invitations");
+  return { ...actual, findInvitationByToken: vi.fn(async () => null) };
+});
+vi.mock("../src/server/repo/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/rate-limit")>("../src/server/repo/rate-limit");
+  return {
+    ...actual,
+    checkAndIncrementScopedLimit: vi.fn(async () => ({ ok: true })),
+    refundScopedLimit: vi.fn(async () => undefined),
   };
 });
 
@@ -264,6 +297,50 @@ const REFUSAL_LEDGER: LedgerEntry[] = [
     expectedStatus: 404,
     reason:
       "getResourceDownloadScope (src/server/repo/portal/resources.ts) bakes the caller's contactId into the query -- a resource this contact doesn't participate in returns null, rendered as a plain 404 (existence-hiding).",
+  },
+  {
+    method: "GET",
+    path: "/portal/tasks/:assignmentId/share",
+    expectedStatus: 403,
+    reason: "Same getAssignmentScope + assertOwnAssignmentOr403 contract as the GET form route above (src/routes/portal/share-kit.tsx).",
+  },
+  ...[
+    ["GET", "/portal/sponsors/:sponsorshipId"],
+    ["GET", "/portal/sponsors/:sponsorshipId/sessions/new"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions"],
+    ["GET", "/portal/sponsors/:sponsorshipId/sessions/:sessionId"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions/:sessionId"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers/:speakerId/remove"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions/:sessionId/withdraw"],
+    ["POST", "/portal/sponsors/:sponsorshipId/sessions/:sessionId/discard"],
+    ["GET", "/portal/sponsors/:sponsorshipId/team"],
+    ["POST", "/portal/sponsors/:sponsorshipId/team"],
+    ["POST", "/portal/sponsors/:sponsorshipId/team/:sponsorContactId/remove"],
+  ].map(([method, path]): LedgerEntry => ({
+    method: method!,
+    path: path!,
+    expectedStatus: 404,
+    reason:
+      "resolveSponsorAccess (src/server/repo/sponsors/access.ts) joins the sponsorship to the caller's own joined sponsor_contact row -- another sponsor's sponsorship id resolves to null before any session, team or entitlement read, rendered as the portal's 404 card (existence-hiding).",
+  })),
+  ...[
+    ["GET", "/portal/invitations/:token"],
+    ["POST", "/portal/invitations/:token/accept"],
+    ["POST", "/portal/invitations/:token/decline"],
+    ["POST", "/portal/invitations/:token/note"],
+  ].map(([method, path]): LedgerEntry => ({
+    method: method!,
+    path: path!,
+    expectedStatus: 404,
+    reason:
+      "findInvitationByToken (src/server/repo/portals/invitations.ts) matches the token's hash -- an unknown token renders the portal's 404 card, and no answer is written.",
+  })),
+  {
+    method: "GET",
+    path: "/portal/preview/people/:eventId/:contactId",
+    expectedStatus: 404,
+    reason: "Organizer-only (src/routes/portal/preview-person.tsx): every other role gets the 404 card before the event or contact is read, like /portal/preview.",
   },
 ];
 

@@ -48,9 +48,18 @@ export function isParticipantInEvent(myEventIds: readonly string[], resourceEven
   return myEventIds.includes(resourceEventId);
 }
 
-export async function getMyResources(db: Db, contactId: string, orgId: string): Promise<PortalResourceGroup[]> {
+/** `portalResourceIds` (multi-portal): resources the caller's portals list
+ * (PersonView.resourceIds). A resource shown to everyone keeps today's
+ * event-wide rule; one marked 'portal' shows only when a portal lists it,
+ * which also reaches a sponsor contact with no session of their own. */
+export async function getMyResources(
+  db: Db,
+  contactId: string,
+  orgId: string,
+  portalResourceIds: ReadonlySet<string> = new Set(),
+): Promise<PortalResourceGroup[]> {
   const eventIds = await getMyEventIds(db, contactId, orgId);
-  if (eventIds.length === 0) return [];
+  if (eventIds.length === 0 && portalResourceIds.size === 0) return [];
 
   // DEC-432: scope pushed into WHERE via inArray/chunkIds rather than
   // fetching every org resource and filtering in JS.
@@ -66,6 +75,7 @@ export async function getMyResources(db: Db, contactId: string, orgId: string): 
     fileId: string | null;
     position: number;
     eventName: string;
+    visibility: string;
   }[] = [];
   for (const batch of chunkIds(eventIds)) {
     const batchRows = await db
@@ -78,12 +88,35 @@ export async function getMyResources(db: Db, contactId: string, orgId: string): 
         fileId: schema.resource.fileId,
         position: schema.resource.position,
         eventName: schema.event.name,
+        visibility: schema.resource.visibility,
       })
       .from(schema.resource)
       .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
       .where(and(eq(schema.event.orgId, orgId), inArray(schema.resource.eventId, batch)))
       .orderBy(schema.resource.position);
-    rows.push(...batchRows);
+    rows.push(...batchRows.filter((r) => r.visibility !== "portal" || portalResourceIds.has(r.id)));
+  }
+  // portal-listed resources in events the caller has no session in
+  const loaded = new Set(rows.map((r) => r.id));
+  const missing = [...portalResourceIds].filter((id) => !loaded.has(id));
+  for (const batch of chunkIds(missing)) {
+    rows.push(
+      ...(await db
+        .select({
+          id: schema.resource.id,
+          eventId: schema.resource.eventId,
+          kind: schema.resource.kind,
+          title: schema.resource.title,
+          content: schema.resource.content,
+          fileId: schema.resource.fileId,
+          position: schema.resource.position,
+          eventName: schema.event.name,
+          visibility: schema.resource.visibility,
+        })
+        .from(schema.resource)
+        .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
+        .where(and(eq(schema.event.orgId, orgId), inArray(schema.resource.id, batch)))),
+    );
   }
   // Re-sort across chunk boundaries so multi-event/multi-batch speakers see
   // the same global-by-position ordering the pre-DEC-432 single query gave.
@@ -141,13 +174,19 @@ export async function getResourceDownloadScope(
   resourceId: string,
   contactId: string,
   orgId: string,
+  portalResourceIds: ReadonlySet<string> = new Set(),
 ): Promise<PortalResourceDownloadScope | null> {
+  // multi-portal: a resource the caller's portals list is theirs to fetch
+  // (a sponsor contact may have no session in its event); anything else
+  // keeps the participation EXISTS below
+  const listed = portalResourceIds.has(resourceId);
   const rows = await db
     .select({
       kind: schema.resource.kind,
       eventId: schema.resource.eventId,
       eventOrgId: schema.event.orgId,
       fileId: schema.resource.fileId,
+      visibility: schema.resource.visibility,
     })
     .from(schema.resource)
     .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
@@ -155,7 +194,7 @@ export async function getResourceDownloadScope(
       and(
         eq(schema.resource.id, resourceId),
         eq(schema.event.orgId, orgId),
-        contactParticipatesInResourceEvent(contactId, orgId),
+        listed ? undefined : contactParticipatesInResourceEvent(contactId, orgId),
       ),
     )
     .limit(1);
@@ -165,12 +204,16 @@ export async function getResourceDownloadScope(
   // recheck can never fire (a foreign row is never fetched to check). Kept
   // as a fail-loud invariant, same DEC-026 wave-43 pattern as mergeOnePair.
   if (!row || row.eventOrgId !== orgId || row.kind !== "file" || !row.fileId) return null;
+  // a portal-only resource reaches only the people whose portals list it
+  if (row.visibility === "portal" && !listed) return null;
 
-  const eventIds = await getMyEventIds(db, contactId, orgId);
-  // DEC-962 (wave 47 amendment): the WHERE above already proved contactId
-  // participates in row.eventId — this recheck can never fire. Kept as a
-  // fail-loud invariant, same DEC-026 wave-43 pattern as mergeOnePair.
-  if (!isParticipantInEvent(eventIds, row.eventId)) return null;
+  if (!listed) {
+    const eventIds = await getMyEventIds(db, contactId, orgId);
+    // DEC-962 (wave 47 amendment): the WHERE above already proved contactId
+    // participates in row.eventId — this recheck can never fire. Kept as a
+    // fail-loud invariant, same DEC-026 wave-43 pattern as mergeOnePair.
+    if (!isParticipantInEvent(eventIds, row.eventId)) return null;
+  }
 
   const fileRows = await db
     .select({

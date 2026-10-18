@@ -80,3 +80,19 @@ export function accountCreatedReason(eventName: string | null): string {
 export function bulkEmailReason(eventName: string): string {
   return `an organizer sent a bulk email to contacts of ${eventName}.`;
 }
+
+/** src/server/repo/portals/notify.ts -- someone gained items in their portal. */
+export function portalNewItemsReason(eventName: string): string {
+  return `something new was added to your portal for ${eventName}.`;
+}
+
+/** src/server/repo/portals/mail.ts -- an invitation to speak. */
+export function invitationToSpeakReason(eventName: string): string {
+  return `the organizers of ${eventName} invited you to speak.`;
+}
+
+/** src/server/repo/portals/mail.ts -- a sponsor-session decision, a new
+ * sponsor speaker's welcome, or a team invite. */
+export function sponsorReason(eventName: string, companyName: string): string {
+  return `you're a contact for ${companyName} at ${eventName}.`;
+}

@@ -22,7 +22,7 @@ let mockDetail: PortalSubmissionDetail | null = null;
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
-  return {
+  const __m: any = {
     ...actual,
     getPortalData: vi.fn(async () => ({
       branding: {
@@ -47,6 +47,15 @@ vi.mock("../src/server/repo/portal", async () => {
     listDeliverableCandidatesForEvents: vi.fn(async () => new Map()),
     listLatestDeliverables: vi.fn(async () => new Map()),
   };
+  const { homeFromLegacy } = await import("./helpers/person-view-fixture");
+  __m.getPortalHome = vi.fn(async () =>
+    homeFromLegacy({
+      sessions: await __m.getMySessions(),
+      tasks: await __m.getMyTaskAssignments(),
+      invitations: await __m.getMyInvitations(),
+    }),
+  );
+  return __m;
 });
 
 vi.mock("../src/server/repo/portal-edit", async () => {

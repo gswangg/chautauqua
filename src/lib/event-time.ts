@@ -329,3 +329,11 @@ export function formatScheduleSlotLabel(day: string, startMin: number, timeZone:
   for (const part of parts) partMap[part.type] = part.value;
   return `${partMap.weekday} ${partMap.day}, ${partMap.hour}:${partMap.minute}`;
 }
+
+/** A day label (UTC-midnight ms, src/domain/task-due.ts) as "3 Apr", the
+ * portal's due-line register ("Due 3 Apr · open until 10 Apr"). Same
+ * calendar-day contract as formatCalendarDate: UTC fields, never re-zoned. */
+export function formatDueDay(ms: number): string {
+  if (!Number.isFinite(ms)) throw new Error("formatDueDay: ms must be a finite number");
+  return new Date(ms).toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short" });
+}

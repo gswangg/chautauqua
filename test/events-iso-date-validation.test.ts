@@ -81,6 +81,18 @@ vi.mock("../src/server/repo/breaks", async () => {
   };
 });
 
+// POST /events also seeds the event's "Profile basics" portal (multi-portal);
+// this test's db is a stub, so the seeding is stubbed with it.
+vi.mock("../src/server/repo/portals/admin", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/portals/admin")>(
+    "../src/server/repo/portals/admin",
+  );
+  return {
+    ...actual,
+    ensureProfileBasicsPortal: vi.fn(async () => undefined),
+  };
+});
+
 vi.mock("../src/server/repo/forms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/forms")>(
     "../src/server/repo/forms",

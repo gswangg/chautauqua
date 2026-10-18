@@ -30,7 +30,13 @@ create table task_assignment (
   file_id text,
   last_reminded_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 `;
 

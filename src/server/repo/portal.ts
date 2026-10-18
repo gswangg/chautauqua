@@ -28,3 +28,4 @@ export * from "./portal/invitations";
 export * from "./portal/sessions";
 export * from "./portal/resources";
 export * from "./portal/submissions";
+export * from "./portal/home";

@@ -32,6 +32,16 @@ export const task = sqliteTable(
     // task was created for an explicit contactIds subset and must NOT be
     // back-filled onto newly-active contacts at acceptance (DEC-932).
     audience: text("audience").notNull().default("everyone"),
+    // migrations/0046 (multi-portal): 'person' | 'participation' -- whether a
+    // portal item is about the person (shown once) or about each session or
+    // sponsor company it covers. See src/domain/portals/items.ts.
+    scope: text("scope").notNull().default("person"),
+    // migrations/0046: file_request limits, enforced on upload. A string[] of
+    // FILE_TYPE_GROUPS keys (src/domain/portals/file-types.ts); null = the
+    // existing per-kind rules only.
+    acceptedTypesJson: text("accepted_types_json"),
+    maxSizeMb: integer("max_size_mb"),
+    maxFiles: integer("max_files"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -62,6 +72,25 @@ export const taskAssignment = sqliteTable(
     // migrations/0004 (DEC-017): reminder dedupe, ms epoch (DEC-023).
 
     lastRemindedAt: integer("last_reminded_at", { mode: "timestamp_ms" }),
+    // migrations/0046 (multi-portal): '' for items about the person, or the
+    // participation key for items about one session or sponsor company.
+    scopeKey: text("scope_key").notNull().default(""),
+    // 'direct' (assigned by an organizer, or predating portals) | 'portal'
+    // (materialised from a portal item by src/server/repo/portals/reconcile.ts)
+    source: text("source").notNull().default("direct"),
+    // set when a portal-sourced row loses every portal that gave it; the
+    // answer stays, the item leaves the participant's home
+    detachedAt: integer("detached_at", { mode: "timestamp_ms" }),
+    // portal rows only: the merged deadline (a day label, earliest across
+    // the portals that bring it) and required flag, kept current by
+    // reconcile.ts so the Speakers grid and reminders read portal items
+    // without re-deriving every portal. Direct rows leave both null and keep
+    // reading task.due_date / task.required.
+    dueDate: integer("due_date", { mode: "timestamp_ms" }),
+    required: integer("required", { mode: "boolean" }),
+    // an organizer reopened a closed item for this person until this day
+    // label (Portals frame flow 6: "Organizers can reopen it per person")
+    reopenedUntil: integer("reopened_until", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -69,11 +98,11 @@ export const taskAssignment = sqliteTable(
     task_assignment_task_id_idx: index("task_assignment_task_id_idx").on(t.taskId),
     task_assignment_contact_id_idx: index("task_assignment_contact_id_idx").on(t.contactId),
     task_assignment_file_id_idx: index("task_assignment_file_id_idx").on(t.fileId),
-    // DEC-556: one assignment per (task, contact) pair, enforced by the
-    // database — see migrations/0019_join_table_uniqueness.sql.
-    task_assignment_task_id_contact_id_idx: uniqueIndex("task_assignment_task_id_contact_id_idx").on(
-      t.taskId,
-      t.contactId,
-    ),
+    // DEC-556, widened by migrations/0046: one assignment per (task,
+    // contact, scope) -- a portal item about each session a person speaks on
+    // is one row per session.
+    task_assignment_task_id_contact_id_scope_key_idx: uniqueIndex(
+      "task_assignment_task_id_contact_id_scope_key_idx",
+    ).on(t.taskId, t.contactId, t.scopeKey),
   }),
 );

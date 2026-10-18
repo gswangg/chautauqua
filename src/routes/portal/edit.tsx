@@ -27,6 +27,8 @@ import { INVITE_STATUS_LABELS } from "../../domain/invite-status";
 import { formatEventDate } from "../../lib/event-time";
 import { dayLabelEndInstant } from "../../lib/timezone";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
+import { sessionAccessFor } from "./home";
+import { LOCKED_SESSION_FIELDS } from "../../forms/types";
 import { validateAnswers, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
@@ -561,7 +563,9 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
   if (!data) return portalNotFound(c);
 
-  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
+  // multi-portal: a portal can turn editing off for a participation
+  const access = await sessionAccessFor(c.var.db, contactId, auth.orgId, submissionId);
+  const editable = access.editSubmission && canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
@@ -594,7 +598,8 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   // Server-side re-check — never trust the hidden form (DEC-041): a client
   // could POST here after the window closes even if the GET rendered the
   // read-only notice.
-  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
+  const access = await sessionAccessFor(c.var.db, contactId, auth.orgId, submissionId);
+  const editable = access.editSubmission && canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
   if (!editable) {
     throw new ApiError("forbidden", "This submission can no longer be edited");
   }
@@ -602,6 +607,9 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const { answers, repeatedFieldIds } = extractAnswers(data.fields, body, data.answers);
+  // multi-portal: a session field a portal locks keeps its stored value
+  if (access.sessionTitle.level !== "edit") answers[LOCKED_SESSION_FIELDS[0]] = data.answers[LOCKED_SESSION_FIELDS[0]] ?? data.submission.title;
+  if (access.abstract.level !== "edit") answers[LOCKED_SESSION_FIELDS[1]] = data.answers[LOCKED_SESSION_FIELDS[1]] ?? (data.submission.description ?? "");
 
   // DEC-029 (wave-30 amendment): the four co-presenter controls join THIS
   // form via form="chq-portal-edit-form" (verified src/routes/portal/edit.tsx
@@ -707,9 +715,14 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
 
   // Server-side re-check — never trust the hidden form (DEC-041/DEC-604): a
   // client could POST here after the edit window closes.
-  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
+  const access = await sessionAccessFor(c.var.db, contactId, auth.orgId, submissionId);
+  const editable = access.editSubmission && canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
   if (!editable) {
     throw new ApiError("forbidden", "This submission can no longer be edited");
+  }
+  // multi-portal: adding co-presenters is a portal action of its own
+  if (!access.addCoPresenters) {
+    throw new ApiError("forbidden", "Co-presenters for this session are added by the organizers");
   }
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
 

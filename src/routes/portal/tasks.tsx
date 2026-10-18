@@ -32,6 +32,7 @@
 // sub-app still serves the exact same URL space under app.route("/portal",
 // portalTasksRoutes) in src/index.ts.
 
+import { checkFileAgainstLimits } from "../../domain/portals/file-types";
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate } from "./shared";
@@ -327,7 +328,8 @@ portalTasksRoutes.post("/tasks/:assignmentId/complete", csrfForm, async (c) => {
   const scope = await getAssignmentScope(c.var.db, assignmentId);
   if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Task assignment not found");
   assertOwnAssignmentOr403(scope, contactId);
-  if (scope.kind !== "general") throw new ApiError("invalid", "Only 'general' tasks complete this way");
+  // multi-portal: a share kit completes the same way ("Mark as shared")
+  if (scope.kind !== "general" && scope.kind !== "share_kit") throw new ApiError("invalid", "Only 'general' tasks complete this way");
 
   await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date(), contactId);
   return c.redirect("/portal/tasks", 302);
@@ -598,6 +600,16 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     // knows their existing upload was not touched.
     const survivalNote = scope.fileId ? " Your current file is unchanged. Nothing was replaced." : "";
     return reRenderWithError(`${validation.message} ${uploadHintText(kind)}${survivalNote}`);
+  }
+  // multi-portal: the library item's own file types and size, on top of the
+  // per-kind rules above ("Keynote, PDF or PowerPoint, up to 200 MB")
+  const limitRefusal = checkFileAgainstLimits(
+    { filename: file.name, sizeBytes: file.size },
+    { acceptedTypes: scope.acceptedTypes ?? null, maxSizeMb: scope.maxSizeMb ?? null },
+  );
+  if (limitRefusal) {
+    const survivalNote = scope.fileId ? " Your current file is unchanged. Nothing was replaced." : "";
+    return reRenderWithError(`${limitRefusal}${survivalNote}`);
   }
 
   const sanitized = sanitizeFilenameForKey(file.name);

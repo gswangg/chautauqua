@@ -739,6 +739,8 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     status: "pending";
     contentStatus: "pending";
     externalRef: string;
+    // multi-portal: how the session arrived (src/domain/portals/participations.ts)
+    origin: "import";
     createdAt: Date;
     updatedAt: Date;
   };
@@ -894,6 +896,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             status: "pending",
             contentStatus: "pending",
             externalRef: plan.externalRef,
+            origin: "import",
             createdAt: rowTs,
             updatedAt: rowTs,
           });

@@ -120,6 +120,9 @@ export async function createSubmission(
     description: input.description ?? null,
     status: input.status ?? "pending",
     contentStatus: "pending",
+    // multi-portal: an organizer-created session arrived "invited by
+    // organizers" (src/domain/portals/participations.ts)
+    origin: "organizer",
     createdAt: now,
     updatedAt: now,
   });
@@ -215,6 +218,7 @@ export async function cloneSubmission(
     trackId: original.trackId,
     status: "pending",
     contentStatus: "pending",
+    origin: original.origin,
     createdAt: now,
     updatedAt: now,
   });

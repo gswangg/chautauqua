@@ -6,12 +6,12 @@
 // Route files export a named Hono sub-app; only src/index.ts mounts it.
 
 import { Hono } from "hono";
+import { HomeBody, sessionAccessFor, type HomeData } from "./home";
+import { scheduleReconcile } from "../../server/portal-sync";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink, portalNotFound } from "./shared";
 import { PublicEmptyState } from "../public/empty-state";
-import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
-import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../domain/task-due";
-import { countOf, capitalizeFirst, plural, spellCount } from "../../domain/count-copy";
+import { formatCalendarDate, formatDayMedium, formatEventDate } from "../../lib/event-time";
 import { publicRoomLabel } from "../../domain/schedule";
 import { clockHHMM } from "../../domain/clock";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
@@ -21,12 +21,12 @@ import {
   assertSpeakerContactId,
   canTransitionInvite,
   getLatestDeliverable,
-  getMyInvitations,
   getMySessions,
   getMySubmissions,
   getMyTaskAssignments,
   getParticipantScope,
   getPortalData,
+  getPortalHome,
   getPortalSubmissionDetail,
   listDeliverableCandidatesForEvents,
   listLatestDeliverables,
@@ -35,7 +35,6 @@ import {
   type InviteAction,
   type PortalData,
   type PortalDeliverable,
-  type PortalInvitation,
   type PortalSession,
   type PortalSubmissionDetail,
   type PortalSubmissionListItem,
@@ -45,7 +44,6 @@ import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
 import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936, DEC_908, DEC_895, DEC_590, DEC_380 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
-import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_729;
 void DEC_777;
@@ -86,6 +84,8 @@ import {
 } from "../../auth/cookies";
 import { loadEditableSubmission, getPortalParticipants, type PortalParticipant } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
+import { countOf } from "../../domain/count-copy";
 import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
 export const portalRoutes = new Hono<AppEnv>();
@@ -106,106 +106,6 @@ function ensureCsrfCookie(c: {
     token,
     setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
   };
-}
-
-// DEC-590: the worklist is exactly two kinds of row — a pending task
-// assignment and a pending co-presenter invitation. Nothing else may ever
-// contribute to its count or its rendering.
-type WorklistRow =
-  | { kind: "task"; task: PortalTaskAssignment }
-  | { kind: "invitation"; invitation: PortalInvitation };
-
-function rowRequired(row: WorklistRow): boolean {
-  return row.kind === "task" ? row.task.required : false;
-}
-
-function rowDueDate(row: WorklistRow): number | null {
-  return row.kind === "task" ? row.task.dueDate : null;
-}
-
-/** Required rows first, then by due date ascending (no due date sorts
- * last within its required/not-required bucket) — ties keep the original
- * (stable) order. DEC-590: overdue is stated as weight/wording on the row
- * itself, never as a sort-breaking colour channel. */
-function sortWorklist(rows: WorklistRow[]): WorklistRow[] {
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((a, b) => {
-      const requiredDelta = Number(rowRequired(b.row)) - Number(rowRequired(a.row));
-      if (requiredDelta !== 0) return requiredDelta;
-      const dueA = rowDueDate(a.row);
-      const dueB = rowDueDate(b.row);
-      if (dueA === null && dueB === null) return a.index - b.index;
-      if (dueA === null) return 1;
-      if (dueB === null) return -1;
-      if (dueA !== dueB) return dueA - dueB;
-      return a.index - b.index;
-    })
-    .map((entry) => entry.row);
-}
-
-function taskActionHref(t: PortalTaskAssignment): string {
-  return t.kind === "form" ? `/portal/tasks/${t.id}/form` : `/portal/tasks#task-${t.id}`;
-}
-
-function taskActionLabel(t: PortalTaskAssignment): string {
-  if (t.kind === "form") return "Fill out form";
-  if (t.kind === "file_request") return "Upload file";
-  return "Open task";
-}
-
-function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
-  const { task: t, now } = props;
-  // DEC-826: a task cannot be late before it was assigned — the printed
-  // date and the overdue mark both use the effective due date, the same
-  // one the organizer's grid and the reminder email already use.
-  const effectiveDue = effectiveAssignmentDueDayLabel(t.dueDate, t.assignedAt, t.timezone);
-  const overdue = isAssignmentOverdue(t.dueDate, t.assignedAt, now, t.timezone);
-  return (
-    <div class="chq-portal-row">
-      <div class="chq-portal-row-head">
-        <span class="chq-portal-row-title">
-          {t.title}
-          {t.required ? <strong> (required)</strong> : null}
-        </span>
-        {/* DEC-367/DEC-590: overdue is carried by weight + wording, never a
-            red swatch. */}
-        {overdue ? <strong class="chq-flag">Overdue</strong> : null}
-      </div>
-      {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
-      {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
-      <div class="chq-portal-actions">
-        <a href={taskActionHref(t)} class="chq-btn chq-btn-primary">
-          {taskActionLabel(t)}
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken: string }) {
-  const { invitation: inv, csrfToken } = props;
-  return (
-    <div class="chq-portal-row">
-      <div class="chq-portal-row-head">
-        <span class="chq-portal-row-title">
-          Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
-        </span>
-      </div>
-      <div class="chq-portal-actions">
-        <form method="post" action={`/portal/invitations/${inv.participantId}`}>
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-          <input type="hidden" name="action" value="accept" />
-          <button type="submit" class="chq-btn chq-btn-primary">Accept</button>
-        </form>
-        <form method="post" action={`/portal/invitations/${inv.participantId}`}>
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-          <input type="hidden" name="action" value="decline" />
-          <button type="submit" class="chq-btn chq-btn-secondary">Decline</button>
-        </form>
-      </div>
-    </div>
-  );
 }
 
 /** DEC-590/w15-b subline: "<Event name> · you speak <formatPlacement>" when
@@ -258,70 +158,47 @@ function deliverableVersionOrThrow(d: PortalDeliverable): number {
   return d.versionNo;
 }
 
-function SessionCard(props: {
-  session: PortalSession;
-  deliverable: PortalDeliverable | null;
-  showResources: boolean;
-}) {
-  const { session: s, deliverable, showResources } = props;
+
+// The session card's own lines, kept inside each accepted session's section
+// of the home (they were the old "Your session" card): the latest
+// deliverable, and the two ways back to it.
+function SessionExtras(props: { session: PortalSession | null; deliverable: PortalDeliverable | null; showResources: boolean }) {
+  const { deliverable, session: s } = props;
   // DEC-908: format clause FIRST, through the one session-shape vocabulary
-  // (sessionFormatLabel) -- never a second '(N min)' parser. Omitted when
-  // there is no session_format answer, or when the stored label carries no
-  // parseable duration (sessionFormatLabel would hand it back unchanged),
-  // the exact rule portal/edit.tsx:290 already applies -- never a
-  // fabricated default (DEC-895).
-  const formatLabel = s.format !== null && sessionFormatLabel(s.format) !== s.format ? sessionFormatLabel(s.format) : null;
-  const metaParts = [
-    formatLabel,
-    s.trackName,
-    s.acceptedAt !== null ? `accepted ${formatEventDate(s.acceptedAt, s.timezone)}` : null,
-  ].filter((p): p is string => p !== null);
+  // (sessionFormatLabel) -- never a second '(N min)' parser, and omitted
+  // when the stored label carries no parseable duration (DEC-895).
+  const formatLabel = s && s.format !== null && sessionFormatLabel(s.format) !== s.format ? sessionFormatLabel(s.format) : null;
+  const metaParts = s
+    ? [formatLabel, s.trackName, s.acceptedAt !== null ? `accepted ${formatEventDate(s.acceptedAt, s.timezone)}` : null].filter(
+        (p): p is string => p !== null,
+      )
+    : [];
   return (
-    <div class="chq-portal-row">
-      <span class="chq-portal-row-title">{s.title}</span>
+    <>
       {metaParts.length > 0 ? <span class="chq-portal-due">{metaParts.join(" · ")}</span> : null}
       {deliverable ? (
         <span class="chq-portal-detail">
-          {/* DEC-908 (wave-150 amendment): version + review-status clause,
-              docs/design/Chautauqua Public and Portal.dc.html:445 draws
-              `Slides v3 · with the organisers` -- composed here exactly as
-              the ruling states, from the SAME vocabulary the submission
-              detail page's own "v{n} · ... · Shared with the organisers"
-              clause (index.tsx:544) already established, never a second
-              phrase. Fails loudly rather than defaulting when versionNo is
-              null (listLatestDeliverables's own data-corruption rule
-              already guarantees it is set whenever deliverable is
-              non-null here). */}
           {deliverable.filename} v{deliverableVersionOrThrow(deliverable)} · with the organisers
         </span>
       ) : null}
-      {/* DEC-777 (wave 44 amendment): advisory-only inline flag — the
-          speaker sees their own clash. Never a block, never an email,
-          never a status change. Composes the existing quiet .chq-portal-
-          detail muted-text style rather than a new class. */}
-      {s.overlaps.map((o) => (
-        <span class="chq-portal-detail">
-          Overlaps {o.ref} · {formatScheduleSlotLabel(o.day, o.startMin, s.timezone)}
-        </span>
-      ))}
       <div class="chq-portal-actions">
         <a href="/portal/tasks" class="chq-btn chq-btn-secondary">Upload again</a>
-        {showResources ? (
+        {props.showResources ? (
           <a href="/portal/resources" class="chq-btn chq-btn-secondary">Read notes</a>
         ) : null}
       </div>
-    </div>
+    </>
   );
 }
 
-function DoneRow(props: { task: PortalTaskAssignment }) {
-  const { task: t } = props;
-  return (
-    <div class="chq-portal-row chq-portal-done-row">
-      <span class="chq-portal-row-title">{t.title}</span>
-      <span class="chq-portal-done-when">{t.completedAt !== null ? formatEventDate(t.completedAt, t.timezone) : ""}</span>
-    </div>
-  );
+function taskActionHref(t: PortalTaskAssignment): string {
+  return t.kind === "form" ? `/portal/tasks/${t.id}/form` : `/portal/tasks#task-${t.id}`;
+}
+
+function taskActionLabel(t: PortalTaskAssignment): string {
+  if (t.kind === "form") return "Fill out form";
+  if (t.kind === "file_request") return "Upload file";
+  return "Open task";
 }
 
 // DEC-729: one row per submission the speaker owns — REF · format · track
@@ -343,31 +220,27 @@ function SubmissionRow(props: { submission: PortalSubmissionListItem }) {
   );
 }
 
+// Multi-portal (Portals frame, flow 6): the home is the person view --
+// profile first, then one section per participation -- followed by every
+// submission the speaker owns (DEC-729), so a submission still in review
+// stays one click away.
 function PortalPage(props: {
   data: PortalData;
+  home: HomeData;
+  firstName: string;
   sessions: PortalSession[];
-  invitations: PortalInvitation[];
-  taskAssignments: PortalTaskAssignment[];
   deliverables: Map<string, PortalDeliverable | null>;
   submissions: PortalSubmissionListItem[];
   csrfToken: string;
   showAdminBounceNotice: boolean;
   anyEventShowsResources: boolean;
+  confirmed: boolean;
 }) {
   const { branding, contactName, contactCompany } = props.data;
-  const { sessions, invitations, taskAssignments, deliverables, submissions, csrfToken } = props;
-  const now = Date.now();
-
-  // DEC-590: n is EXACTLY the count of rows rendered below — pending task
-  // assignments plus pending co-presenter invitations, nothing else (no
-  // completed task, no accepted session, no submission).
-  const pendingTasks = taskAssignments.filter((t) => t.status !== "complete");
-  const doneTasks = taskAssignments.filter((t) => t.status === "complete");
-  const worklist = sortWorklist([
-    ...pendingTasks.map((task): WorklistRow => ({ kind: "task", task })),
-    ...invitations.map((invitation): WorklistRow => ({ kind: "invitation", invitation })),
-  ]);
-  const n = worklist.length;
+  const { submissions, csrfToken } = props;
+  // a sponsor contact or event role with no submission still sees their
+  // event's name in the header
+  const eventName = branding.eventId ? branding.eventName : (props.home.views[0]?.eventName ?? branding.eventName);
 
   const footerExtra = (
     <div class="chq-portal-footer-band">
@@ -376,9 +249,8 @@ function PortalPage(props: {
         {contactCompany ? ` · ${contactCompany}` : ""}
       </span>
       {/* w15-b: /portal/resources must stay reachable even when the
-          speaker has no accepted session (so no "Read notes" link renders
-          in a Your session card) — the footer is the always-present path
-          WHEN the section is on for at least one of the speaker's events
+          speaker has no accepted session — the footer is the always-present
+          path WHEN the section is on for at least one of the speaker's events
           (DEC-988 wave-74 amendment: PER EVENT, not one global toggle —
           render when ANY event permits, /portal/resources itself filters
           down to only the permitted groups). */}
@@ -390,7 +262,7 @@ function PortalPage(props: {
   );
 
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra}>
+    <PortalLayout branding={{ ...branding, eventName }} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra}>
       {/* DEC-884: welcomeMessage moves out of header chrome into the first
           body block of the portal home page — it's content, not a tagline
           the header carries on every route. */}
@@ -402,78 +274,46 @@ function PortalPage(props: {
           The organizer dashboard isn't part of your speaker portal — this is your home.
         </p>
       ) : null}
-      <h1 class="chq-portal-hero">
-        {capitalizeFirst(spellCount(n))} {plural(n, "thing")} to do
-      </h1>
-      <p class="chq-portal-sub">{scheduledSubline(branding.eventName, sessions)}</p>
-
-      <section aria-label="Waiting on you" class="chq-section">
-        <div class="chq-section-label">Waiting on you</div>
-        {n === 0 ? (
-          <PublicEmptyState variant="fresh" what="Nothing pending right now." />
-        ) : (
-          worklist.map((row) =>
-            row.kind === "task" ? (
-              <WorklistTaskRow task={row.task} now={now} />
-            ) : (
-              <WorklistInvitationRow invitation={row.invitation} csrfToken={csrfToken} />
-            ),
-          )
+      <HomeBody
+        firstName={props.firstName}
+        data={props.home}
+        csrfToken={csrfToken}
+        preview={false}
+        subline={scheduledSubline(eventName, props.sessions)}
+        confirmed={props.confirmed}
+        sessionExtra={(submissionId, eventId) => (
+          <SessionExtras
+            session={props.sessions.find((x) => x.submissionId === submissionId) ?? null}
+            deliverable={props.deliverables.get(submissionId) ?? null}
+            showResources={props.data.showResourcesByEventId[eventId] ?? DEFAULT_PORTAL_SETTINGS.showResources}
+          />
         )}
-        <p>
-          {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content
-              of its own <p>, not a sentence phrase) -- real floor. */}
-          <a class="chq-portal-standalone-link" href="/portal/tasks">View all tasks</a>
-        </p>
-      </section>
+      />
 
       {/* DEC-729: every submission the speaker owns, pending/accepted/
-          declined alike — not just the ones getMySessions restricts to
-          accepted. */}
-      <section aria-label="Your submissions" class="chq-section">
-        <div class="chq-section-label">Your submissions</div>
-        {submissions.length === 0 ? (
-          <PublicEmptyState
-            variant="fresh"
-            what="No submissions yet."
-            reason="Anything you send to a call for papers shows up here."
-          />
-        ) : (
-          submissions.map((s) => <SubmissionRow submission={s} />)
-        )}
-        <p>
-          {/* DEC-393 wave-142 (task w17-e): standalone row link -- real floor. */}
-          <a class="chq-portal-standalone-link" href="/portal/submissions">View all submissions</a>
-        </p>
-      </section>
-
-      <section aria-label="Your session" class="chq-section">
-        <div class="chq-section-label">Your session</div>
-        {sessions.length === 0 ? (
-          <PublicEmptyState
-            variant="fresh"
-            what="No accepted sessions yet."
-            reason="When a session of yours is accepted it appears here with its schedule."
-          />
-        ) : (
-          sessions.map((s) => (
-            <SessionCard
-              session={s}
-              deliverable={deliverables.get(s.submissionId) ?? null}
-              showResources={props.data.showResourcesByEventId[s.eventId] ?? DEFAULT_PORTAL_SETTINGS.showResources}
+          declined alike. A sponsor contact or event role with no
+          submission of their own isn't shown an empty CFP list. */}
+      {submissions.length > 0 || !props.home.views.some((v) => v.participations.some((p) => p.participation.kind !== "session")) ? (
+        <section aria-label="Your submissions" class="chq-section">
+          <div class="chq-section-label">Your submissions</div>
+          {submissions.length === 0 ? (
+            <PublicEmptyState
+              variant="fresh"
+              what="No submissions yet."
+              reason="Anything you send to a call for papers shows up here."
             />
-          ))
-        )}
-      </section>
-
-      <section aria-label="Done" class="chq-section">
-        <div class="chq-section-label">Done</div>
-        {doneTasks.length === 0 ? (
-          <PublicEmptyState variant="fresh" what="Nothing completed yet." />
-        ) : (
-          doneTasks.map((t) => <DoneRow task={t} />)
-        )}
-      </section>
+          ) : (
+            submissions.map((s) => <SubmissionRow submission={s} />)
+          )}
+          <p>
+            {/* DEC-393 wave-142 (task w17-e): standalone row link -- real floor. */}
+            <a class="chq-portal-standalone-link" href="/portal/submissions">View all submissions</a>
+          </p>
+        </section>
+      ) : null}
+      <p>
+        <a class="chq-portal-standalone-link" href="/portal/tasks">View all tasks</a>
+      </p>
     </PortalLayout>
   );
 }
@@ -656,12 +496,11 @@ portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const showAdminBounceNotice = c.req.query("from") === ADMIN_BOUNCE;
-  const [data, sessions, invitations, taskAssignments, submissions] = await Promise.all([
+  const [data, submissions, home, sessions] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
-    getMySessions(c.var.db, contactId, auth.orgId),
-    getMyInvitations(c.var.db, contactId, auth.orgId),
-    getMyTaskAssignments(c.var.db, contactId, auth.orgId),
     getMySubmissions(c.var.db, contactId, auth.orgId),
+    getPortalHome(c.var.db, contactId, auth.orgId, Date.now()),
+    getMySessions(c.var.db, contactId, auth.orgId),
   ]);
   const deliverables = await listLatestDeliverables(
     c.var.db,
@@ -678,14 +517,15 @@ portalRoutes.get("/", async (c) => {
   return c.html(
     <PortalPage
       data={data}
+      home={home}
+      firstName={data.contactFirstName || (data.contactName ?? "").split(" ")[0] || "there"}
       sessions={sessions}
-      invitations={invitations}
-      taskAssignments={taskAssignments}
       deliverables={deliverables}
       submissions={submissions}
       csrfToken={csrfToken}
       showAdminBounceNotice={showAdminBounceNotice}
       anyEventShowsResources={anyEventShowsResources}
+      confirmed={c.req.query("confirmed") === "1"}
     />,
   );
 });
@@ -733,9 +573,13 @@ portalRoutes.get("/submissions/:id", async (c) => {
   }
   // DEC-041: the edit link only shows when the submission is still
   // editable (accepted, or the form window is open).
-  const editable = editData
-    ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
-    : false;
+  // multi-portal: the link shows only when the person's portals allow
+  // editing this session too
+  const access = editData ? await sessionAccessFor(c.var.db, contactId, auth.orgId, id) : null;
+  const editable =
+    editData && access
+      ? access.editSubmission && canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
+      : false;
   // DEC-777: the Slides card only ever links to an upload page that exists
   // — resolve the speaker's own file_request task assignments (any event)
   // and find one whose upload could carry THIS submission, never a button
@@ -815,6 +659,9 @@ portalRoutes.post("/invitations/:participantId", csrfForm, async (c) => {
       await ensureOnboardingTasks(c.var.db, submissionInfo.eventId, submissionInfo.submissionId, [contactId], new Date());
     }
   }
+  // multi-portal: an answered invitation joins (or leaves) its portals
+  const answered = await getSubmissionStatusForParticipant(c.var.db, participantId);
+  scheduleReconcile(c, [answered?.eventId]);
 
   return c.redirect("/portal", 302);
 });

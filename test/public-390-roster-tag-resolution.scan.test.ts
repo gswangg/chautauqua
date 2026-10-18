@@ -246,6 +246,7 @@ async function requestPortalEditGet(): Promise<string> {
     const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
     return {
       ...actual,
+      getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
       getPortalData: vi.fn(async () => ({
         branding: { eventId: "evt-1", eventName: "Arbitrary Con", welcomeMessage: null, accentColor: null, logoUrl: null },
         submissions: [],

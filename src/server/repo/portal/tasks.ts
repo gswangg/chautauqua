@@ -2,7 +2,7 @@
 // deliverable-submission linkage. Every query below filters by the
 // speaker's own contact_id and/or the events they participate in — no IDOR.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import type { SubmissionStatus } from "../../../domain/status";
@@ -10,8 +10,9 @@ import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { formatRef } from "../../../domain/ids";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
-import { chaseableContactExistsForTaskEvent } from "../tasks/crud";
+import { chaseableContactExistsForTaskEvent, livePortalAssignment } from "../tasks/crud";
 import type { TaskKind } from "../../../domain/task-kinds";
+import { parseAcceptedTypesJson, type FileTypeGroup } from "../../../domain/portals/file-types";
 
 // Alias of the shared vocabulary (DEC-613 wave-70 amendment) —
 // src/domain/task-kinds.ts is the ONE declaration.
@@ -44,6 +45,15 @@ export interface PortalTaskAssignment {
   responseJson: string | null;
   timezone: string;
   completedAt: number | null;
+  // multi-portal: '' for an item about the person, else the participation
+  // key (src/domain/portals/participations.ts) of the session or company
+  // it is about; and whether a portal or an organizer assigned it
+  // (optional so pre-portal fixtures still type; the reader always sets them)
+  scopeKey?: string;
+  source?: "direct" | "portal";
+  // multi-portal file-request limits, enforced on upload (null = none)
+  acceptedTypes?: FileTypeGroup[] | null;
+  maxSizeMb?: number | null;
 }
 
 /** Lists every task_assignment belonging to `contactId`, joined through task
@@ -75,6 +85,12 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       deliverableKind: schema.task.deliverableKind,
       eventOrgId: schema.event.orgId,
       timezone: schema.event.timezone,
+      scopeKey: schema.taskAssignment.scopeKey,
+      source: schema.taskAssignment.source,
+      assignmentDueDate: schema.taskAssignment.dueDate,
+      assignmentRequired: schema.taskAssignment.required,
+      acceptedTypesJson: schema.task.acceptedTypesJson,
+      maxSizeMb: schema.task.maxSizeMb,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -83,7 +99,9 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       and(
         eq(schema.taskAssignment.contactId, contactId),
         eq(schema.event.orgId, orgId),
-        chaseableContactExistsForTaskEvent(),
+        // multi-portal: an attached portal row is the person's while a
+        // portal covers them, sponsor contacts with no session included
+        or(chaseableContactExistsForTaskEvent(), livePortalAssignment()),
       ),
     );
 
@@ -95,9 +113,15 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     title: row.title,
     description: row.description,
     instructions: row.instructions,
-    dueDate: row.dueDate ? row.dueDate.getTime() : null,
-    assignedAt: row.assignedAt.getTime(),
-    required: row.required,
+    dueDate:
+      row.source === "portal"
+        ? (row.assignmentDueDate?.getTime() ?? null)
+        : row.dueDate
+          ? row.dueDate.getTime()
+          : null,
+    // a portal row's deadline is already its own: no late-assignment grace
+    assignedAt: row.source === "portal" ? 0 : row.assignedAt.getTime(),
+    required: row.assignmentRequired ?? row.required,
     status: row.status,
     formId: row.formId,
     deliverableKind: row.deliverableKind,
@@ -105,8 +129,13 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     responseJson: row.responseJson,
     timezone: row.timezone,
     completedAt: row.completedAt ? row.completedAt.getTime() : null,
+    scopeKey: row.scopeKey,
+    source: row.source === "portal" ? "portal" : "direct",
+    acceptedTypes: parseAcceptedTypesJson(row.acceptedTypesJson),
+    maxSizeMb: row.maxSizeMb,
   }));
 }
+
 
 export interface PortalAssignmentScope {
   id: string;
@@ -124,6 +153,9 @@ export interface PortalAssignmentScope {
   // current linked file, if any — DEC-240 re-uploads chain previous_file_id
   // to this value and replace it.
   fileId: string | null;
+  // multi-portal file-request limits, enforced on upload (absent = none)
+  acceptedTypes?: FileTypeGroup[] | null;
+  maxSizeMb?: number | null;
 }
 
 /** Ownership + kind lookup for a single task_assignment, used by every
@@ -143,6 +175,8 @@ export async function getAssignmentScope(db: Db, assignmentId: string): Promise<
       deliverableKind: schema.task.deliverableKind,
       fileId: schema.taskAssignment.fileId,
       orgId: schema.event.orgId,
+      acceptedTypesJson: schema.task.acceptedTypesJson,
+      maxSizeMb: schema.task.maxSizeMb,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -162,6 +196,8 @@ export async function getAssignmentScope(db: Db, assignmentId: string): Promise<
     orgId: row.orgId,
     status: row.status,
     fileId: row.fileId,
+    acceptedTypes: parseAcceptedTypesJson(row.acceptedTypesJson),
+    maxSizeMb: row.maxSizeMb,
   };
 }
 

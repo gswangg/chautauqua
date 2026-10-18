@@ -52,6 +52,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import { describe, expect, it, beforeAll } from "vitest";
 import type { AppEnv } from "../src/server/env";
+import { ADMIN_ROUTE_PATTERNS } from "../src/lib/admin-routes";
 
 const REPO_ROOT = join(__dirname, "..");
 const SOURCE_DIR = join(REPO_ROOT, "src");
@@ -184,10 +185,14 @@ beforeAll(async () => {
   app.get("/health", (c) => c.text("ok"));
   app.get("/api/v1", (c) => c.text("ok"));
 
+  // The admin SPA's own routes (src/lib/admin-routes.ts) sit behind the one
+  // `/admin/*` shell mount -- root.tsx answers each with the shell, so an
+  // href into one (e.g. a person record) resolves to that pattern.
   registeredPatterns = [
-    ...new Set(
-      app.routes.filter((r) => r.method === "GET" || r.method === "ALL").map((r) => r.path),
-    ),
+    ...new Set([
+      ...app.routes.filter((r) => r.method === "GET" || r.method === "ALL").map((r) => r.path),
+      ...ADMIN_ROUTE_PATTERNS.filter((p) => p !== "/").map((p) => `/admin${p}`),
+    ]),
   ];
   registeredPostPatterns = [
     ...new Set(

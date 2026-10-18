@@ -41,7 +41,8 @@ create table resource (
   file_id text,
   position integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  visibility text NOT NULL DEFAULT 'everyone'
 );
 create table file (
   id text primary key,

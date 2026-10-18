@@ -230,6 +230,12 @@ interface Exemption {
 
 const EXEMPTIONS: Exemption[] = [
   {
+    file: join(REPO_ROOT, "portals", "reconcile.ts"),
+    fn: "reconcileEventPortals",
+    reason:
+      "Multi-portal reconciliation of one event: every write is keyed by ids it derived itself from that event's own portals and participations (portal_membership rows by their own id, task_assignment rows it selected by the event's own task ids), never by a request parameter. The portal home calls it with the event id of a participation the caller's own contactId holds (src/routes/portal/home.tsx loadHome via listParticipationEventIds), so the scope is the event the caller already belongs to.",
+  },
+  {
     file: join(REPO_ROOT, "portal-config.ts"),
     fn: "deleteFileRow",
     reason:

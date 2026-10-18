@@ -31,7 +31,7 @@ import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
 import { toScheduleBlocks } from "./agenda/payload";
 import { ApiError } from "../http";
-import { overdueAssignmentConditions } from "./tasks/crud";
+import { assignmentDueDateSql, attachedAssignment, overdueAssignmentConditions } from "./tasks/crud";
 import { visibleSessionConditions } from "./public/gates";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { DEC_010, DEC_370, DEC_531, DEC_589, DEC_613, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
@@ -138,11 +138,11 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
     db
       .select({
         outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
-        nextDue: sql<number | null>`min(case when ${schema.taskAssignment.status} <> 'complete' then ${schema.task.dueDate} end)`,
+        nextDue: sql<number | null>`min(case when ${schema.taskAssignment.status} <> 'complete' then ${assignmentDueDateSql()} end)`,
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-      .where(eq(schema.task.eventId, eventId)),
+      .where(and(eq(schema.task.eventId, eventId), attachedAssignment())),
     // DEC-776: the overdue-assignment count is a separate query (rather than
     // folded into speakerAggRows above) because overdueAssignmentConditions
     // composes the roster predicate, which needs a join to `contact` — an
@@ -172,12 +172,14 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         taskTitle: schema.task.title,
         dueDate: schema.task.dueDate,
         assignedAt: schema.taskAssignment.createdAt,
+        source: schema.taskAssignment.source,
+        assignmentDueDate: schema.taskAssignment.dueDate,
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
       .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
       .where(overdueAssignmentConditions(eventId, now, timeZone))
-      .orderBy(asc(schema.task.dueDate), asc(schema.taskAssignment.id))
+      .orderBy(asc(assignmentDueDateSql()), asc(schema.taskAssignment.id))
       .limit(ROW_CAP),
     // --- Triage queue rows (DEC-370 section 02): oldest-first, capped.
     db
@@ -225,8 +227,11 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         company: r.company,
         taskId: r.taskId,
         taskTitle: r.taskTitle,
-        taskDueDate: r.dueDate!.getTime(),
-        assignedAt: r.assignedAt!.getTime(),
+        // multi-portal: a portal row's own merged deadline; passing it as the
+        // assignment time too keeps DEC-801's late-assignment grace (which
+        // only applies to direct rows) out of the computation
+        taskDueDate: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.dueDate!.getTime(),
+        assignedAt: r.source === "portal" ? r.assignmentDueDate!.getTime() : r.assignedAt!.getTime(),
       })),
       now,
       timeZone,

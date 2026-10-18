@@ -67,11 +67,12 @@ describe("GET /portal — dashboard zero-states render PublicEmptyState (DEC-919
     vi.resetModules();
   });
 
-  it("'Waiting on you' and 'Done' both render .chq-pub-empty-block-fresh with no anchor when empty", async () => {
+  it("an empty home renders its zero-states through .chq-pub-empty-block-fresh with no anchor (multi-portal: done items fold in place, so there is no separate Done section)", async () => {
     vi.doMock("../src/server/repo/portal", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
@@ -101,17 +102,15 @@ describe("GET /portal — dashboard zero-states render PublicEmptyState (DEC-919
     const html = await res.text();
 
     expect(html).toContain("Nothing pending right now.");
-    expect(html).toContain("Nothing completed yet.");
     expect(html).toContain("No submissions yet.");
     expect(html).toContain("Anything you send to a call for papers shows up here.");
     expect(html).toContain("No accepted sessions yet.");
     expect(html).toContain("When a session of yours is accepted it appears here with its schedule.");
     noEscape(html);
     const blocks = emptyStateBlocks(html);
-    // Four independent fresh blocks -- "Waiting on you", "Done" (via the
-    // "Nothing completed yet." fixture below), "Your submissions" and
-    // "Your session" -- each its own PublicEmptyState render.
-    expect(blocks.length).toBe(4);
+    // Three independent fresh blocks -- "Waiting on you", "Your sessions"
+    // and "Your submissions" -- each its own PublicEmptyState render.
+    expect(blocks.length).toBe(3);
     for (const block of blocks) {
       expect(block).not.toContain("<button");
       expect(block).not.toContain("<a ");
@@ -130,6 +129,7 @@ describe("GET /portal/submissions — SubmissionsListPage zero-state (DEC-919 wa
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
@@ -248,6 +248,7 @@ describe("GET /portal/tasks — zero-state carries a true, endpoint-backed reaso
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
@@ -297,6 +298,7 @@ describe("GET /portal/tasks — CommentThread zero-state (DEC-919 wave-56 amendm
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
@@ -374,6 +376,7 @@ describe("GET /portal/resources — ResourcesPage zero-state (DEC-919 wave-56 am
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
@@ -420,6 +423,7 @@ describe("GET /portal/submissions/:id/edit — ParticipantsSection zero-state (D
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+        getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,

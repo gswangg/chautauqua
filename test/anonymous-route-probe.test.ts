@@ -179,6 +179,11 @@ const PUBLIC_BY_DESIGN: { pattern: string; reason: string }[] = [
     reason:
       "DEC-949 (wave-7 amendment): password-reset landing page -- 'the GET twin resolves the same KV grant the POST spends its budget guessing against, and additionally renders the target account's email on a resolve' (src/routes/auth-reset.tsx comment above GET /reset/:token). Same shape as /claim/:token above: the token itself is the credential, not a session, so the route is reachable anonymous by design. It touches db.select/db.insert only for the per-IP consume-then-refund rate-limit budget (checkAndIncrementScopedLimit/refundScopedLimit) that gates guessing, before the token is ever resolved -- not to read org data.",
   },
+  {
+    pattern: "/portal/invitations/:token",
+    reason:
+      "multi-portal invited-speaker acceptance (Portals frame, flow 8): the invitation email's token is the credential for that one page, not a session -- the invitee may have no account yet (src/routes/portal/invitation.tsx header comment). Same shape as /claim/:token and /reset/:token above: the per-IP consume-then-refund rate-limit budget is spent before the token is resolved, and an unresolved token renders the portal's 404 card.",
+  },
 ];
 
 function patternMatches(pattern: string, actualPath: string): boolean {

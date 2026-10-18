@@ -90,6 +90,8 @@ export const PORTAL_BACK_LINKS: ReadonlyArray<{
   // G13 (frames 10--09/22/23): the frames name the detail page "Your
   // session", so the back link onto it says the same.
   { test: (to) => /^\/portal\/submissions\/[^/]+$/.test(to), label: "Your session" },
+  // multi-portal: a sponsor's package and sessions
+  { test: (to) => /^\/portal\/sponsors\/[^/]+$/.test(to), label: "Your sessions" },
 ];
 
 function portalBackLinkLabel(to: string): string {

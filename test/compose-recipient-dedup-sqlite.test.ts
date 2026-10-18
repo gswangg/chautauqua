@@ -61,7 +61,8 @@ create table submission (
   ics_sequence integer not null default 0,
   external_ref text,
   created_at integer not null,
-  updated_at integer not null
+  updated_at integer not null,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table participant (
   id text primary key,
@@ -75,7 +76,12 @@ create table participant (
   org_at_time text,
   name_at_time text,
   created_at integer not null,
-  updated_at integer not null
+  updated_at integer not null,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 `;
 

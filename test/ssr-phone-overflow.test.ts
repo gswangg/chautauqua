@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEC_367, DEC_989 } from "../src/decisions";
 import { PORTAL_CSS as PORTAL_CSS_COMPOSED } from "../src/routes/portal/portal.css";
+import { stripCssComments } from "./helpers/strip-css-comments";
 
 void DEC_367;
 void DEC_989;
@@ -20,6 +21,9 @@ const CARDS_CSS = readFileSync(
 const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");
 const CFP_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "cfp.css.ts"), "utf8");
 const PORTAL_CSS = readFileSync(join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"), "utf8");
+const PARTICIPANT_HOME_CSS = stripCssComments(
+  readFileSync(join(__dirname, "..", "src", "routes", "portal", "participant-home.css.ts"), "utf8"),
+);
 const RAIL_CSS = readFileSync(
   join(__dirname, "..", "src", "routes", "public", "css", "rail.css.ts"),
   "utf8",
@@ -334,15 +338,18 @@ describe("cfp.css.ts: .chq-field-counter escapes with ellipsis (DEC-989 wave-111
   });
 });
 
-describe("portal.css.ts: .chq-portal-done-when escapes, .chq-field-counter is exempt", () => {
+describe("portal.css.ts: the home's item lines wrap in place, .chq-field-counter is exempt", () => {
   const body = templateBody(PORTAL_CSS);
   const blocks = extract700Blocks(body);
 
-  it("has an appended phone block with the three-property escape on .chq-portal-done-when", () => {
-    const last = at(blocks, -1);
-    expect(last.body).toMatch(/\.chq-portal-done-when\s*\{[^}]*overflow:\s*hidden\s*;/);
-    expect(last.body).toMatch(/\.chq-portal-done-when\s*\{[^}]*text-overflow:\s*ellipsis\s*;/);
-    expect(last.body).toMatch(/\.chq-portal-done-when\s*\{[^}]*min-width:\s*0\s*;/);
+  // Multi-portal: the old home's one-line nowrap "done when" date
+  // (.chq-portal-done-when, escaped with overflow/ellipsis/min-width at 390)
+  // is gone -- the participant home's item rows carry that line now, as
+  // wrapping text in a shrinkable column, so there is nothing to clip.
+  it("has no .chq-portal-done-when left, and the home row's text column is shrinkable (min-width: 0)", () => {
+    expect(blocks.length).toBeGreaterThan(0);
+    expect(body).not.toMatch(/chq-portal-done-when/);
+    expect(PARTICIPANT_HOME_CSS).toMatch(/\.chq-home-row-main\s*\{[^}]*min-width:\s*0\s*;/);
   });
 
   it("carries the same named overflow-exempt comment for .chq-field-counter", () => {

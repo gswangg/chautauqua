@@ -118,7 +118,18 @@ const IDS = {
   assignmentA: "portal-real-rows-assignment-a",
   fileA: "portal-real-rows-file-a",
   resourceA: "portal-real-rows-resource-a",
+  companyA: "portal-real-rows-company-a",
+  sponsorshipA: "portal-real-rows-sponsorship-a",
+  sponsorContactA: "portal-real-rows-sponsor-contact-a",
+  entitlementA: "portal-real-rows-entitlement-a",
+  sponsorSessionA: "portal-real-rows-sponsor-session-a",
+  sponsorSpeakerA: "portal-real-rows-sponsor-speaker-a",
 };
+
+// The invitation pages take the email's token as their credential: a
+// holder of the real token may answer it by design, so the probe's request
+// carries a token that is not speaker A's (the guess a stranger makes).
+const UNKNOWN_INVITATION_TOKEN = "portal-real-rows-not-a-token";
 
 const SPEAKER_B: AuthInfo = {
   userId: IDS.userB,
@@ -229,6 +240,55 @@ function seedFixture(sqlite: DatabaseSync) {
     now,
     now,
   );
+
+  // multi-portal: speaker A is the joined contact of sponsorship A, with a
+  // draft session and a speaker on it; speaker B belongs to no sponsorship
+  run(`insert into sponsor_company (id, org_id, name, created_at, updated_at) values (?, ?, 'Company A', ?, ?)`, IDS.companyA, ORG_ID, now, now);
+  run(
+    `insert into sponsorship (id, event_id, company_id, status, created_at, updated_at) values (?, ?, ?, 'active', ?, ?)`,
+    IDS.sponsorshipA,
+    EVENT_ID,
+    IDS.companyA,
+    now,
+    now,
+  );
+  run(
+    `insert into sponsor_contact (id, sponsorship_id, event_id, contact_id, status, is_primary, joined_at, created_at, updated_at)
+     values (?, ?, ?, ?, 'joined', 1, ?, ?, ?)`,
+    IDS.sponsorContactA,
+    IDS.sponsorshipA,
+    EVENT_ID,
+    IDS.contactA,
+    now,
+    now,
+    now,
+  );
+  run(
+    `insert into sponsor_entitlement (id, sponsorship_id, count, format, minutes, position, created_at, updated_at)
+     values (?, ?, 1, 'talk', 30, 0, ?, ?)`,
+    IDS.entitlementA,
+    IDS.sponsorshipA,
+    now,
+    now,
+  );
+  run(
+    `insert into sponsor_session (id, sponsorship_id, event_id, entitlement_id, title, status, created_at, updated_at)
+     values (?, ?, ?, ?, 'Session A', 'draft', ?, ?)`,
+    IDS.sponsorSessionA,
+    IDS.sponsorshipA,
+    EVENT_ID,
+    IDS.entitlementA,
+    now,
+    now,
+  );
+  run(
+    `insert into sponsor_session_speaker (id, sponsor_session_id, contact_id, created_at, updated_at) values (?, ?, ?, ?, ?)`,
+    IDS.sponsorSpeakerA,
+    IDS.sponsorSessionA,
+    IDS.contactA,
+    now,
+    now,
+  );
 }
 
 // Table -> id column, for the byte-identical-before/after snapshot. Every
@@ -245,6 +305,13 @@ const SNAPSHOT_TABLES: { table: string; idCol: string }[] = [
   { table: "task_assignment", idCol: "id" },
   { table: "file", idCol: "id" },
   { table: "resource", idCol: "id" },
+  { table: "sponsor_company", idCol: "id" },
+  { table: "sponsorship", idCol: "id" },
+  { table: "sponsor_contact", idCol: "id" },
+  { table: "sponsor_entitlement", idCol: "id" },
+  { table: "sponsor_session", idCol: "id" },
+  { table: "sponsor_session_speaker", idCol: "id" },
+  { table: "audit_event", idCol: "id" },
 ];
 
 function snapshotAll(sqlite: DatabaseSync): string {
@@ -325,6 +392,26 @@ const PARAMS_BY_PATH: Record<string, Record<string, string>> = {
   "/portal/tasks/:assignmentId/file": { assignmentId: IDS.assignmentA },
   "/portal/tasks/:assignmentId/file/:fileId": { assignmentId: IDS.assignmentA, fileId: IDS.fileA },
   "/portal/resources/:resourceId/download": { resourceId: IDS.resourceA },
+  "/portal/tasks/:assignmentId/share": { assignmentId: IDS.assignmentA },
+  "/portal/sponsors/:sponsorshipId": { sponsorshipId: IDS.sponsorshipA },
+  "/portal/sponsors/:sponsorshipId/sessions/new": { sponsorshipId: IDS.sponsorshipA },
+  "/portal/sponsors/:sponsorshipId/sessions": { sponsorshipId: IDS.sponsorshipA },
+  "/portal/sponsors/:sponsorshipId/sessions/:sessionId": { sponsorshipId: IDS.sponsorshipA, sessionId: IDS.sponsorSessionA },
+  "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers": { sponsorshipId: IDS.sponsorshipA, sessionId: IDS.sponsorSessionA },
+  "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers/:speakerId/remove": {
+    sponsorshipId: IDS.sponsorshipA,
+    sessionId: IDS.sponsorSessionA,
+    speakerId: IDS.sponsorSpeakerA,
+  },
+  "/portal/sponsors/:sponsorshipId/sessions/:sessionId/withdraw": { sponsorshipId: IDS.sponsorshipA, sessionId: IDS.sponsorSessionA },
+  "/portal/sponsors/:sponsorshipId/sessions/:sessionId/discard": { sponsorshipId: IDS.sponsorshipA, sessionId: IDS.sponsorSessionA },
+  "/portal/sponsors/:sponsorshipId/team": { sponsorshipId: IDS.sponsorshipA },
+  "/portal/sponsors/:sponsorshipId/team/:sponsorContactId/remove": { sponsorshipId: IDS.sponsorshipA, sponsorContactId: IDS.sponsorContactA },
+  "/portal/invitations/:token": { token: UNKNOWN_INVITATION_TOKEN },
+  "/portal/invitations/:token/accept": { token: UNKNOWN_INVITATION_TOKEN },
+  "/portal/invitations/:token/decline": { token: UNKNOWN_INVITATION_TOKEN },
+  "/portal/invitations/:token/note": { token: UNKNOWN_INVITATION_TOKEN },
+  "/portal/preview/people/:eventId/:contactId": { eventId: EVENT_ID, contactId: IDS.contactA },
 };
 
 function toRequestPath(routePath: string): string {
@@ -375,6 +462,24 @@ const REFUSAL_LEDGER: LedgerEntry[] = [
   { method: "GET", path: "/portal/tasks/:assignmentId/file", expectedStatus: 403 },
   { method: "GET", path: "/portal/tasks/:assignmentId/file/:fileId", expectedStatus: 403 },
   { method: "GET", path: "/portal/resources/:resourceId/download", expectedStatus: 404 },
+  { method: "GET", path: "/portal/tasks/:assignmentId/share", expectedStatus: 403 },
+  { method: "GET", path: "/portal/sponsors/:sponsorshipId", expectedStatus: 404 },
+  { method: "GET", path: "/portal/sponsors/:sponsorshipId/sessions/new", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions", expectedStatus: 404 },
+  { method: "GET", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId/speakers/:speakerId/remove", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId/withdraw", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/sessions/:sessionId/discard", expectedStatus: 404 },
+  { method: "GET", path: "/portal/sponsors/:sponsorshipId/team", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/team", expectedStatus: 404 },
+  { method: "POST", path: "/portal/sponsors/:sponsorshipId/team/:sponsorContactId/remove", expectedStatus: 404 },
+  { method: "GET", path: "/portal/invitations/:token", expectedStatus: 404 },
+  { method: "POST", path: "/portal/invitations/:token/accept", expectedStatus: 404 },
+  { method: "POST", path: "/portal/invitations/:token/decline", expectedStatus: 404 },
+  { method: "POST", path: "/portal/invitations/:token/note", expectedStatus: 404 },
+  { method: "GET", path: "/portal/preview/people/:eventId/:contactId", expectedStatus: 404 },
 ];
 
 function ledgerKey(entry: { method: string; path: string }): string {

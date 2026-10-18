@@ -30,6 +30,9 @@ export const submission = sqliteTable(
     // DEC-612: namespaced "<source>:<their id>" ref for idempotent import
     // re-runs; nullable, SQLite treats NULLs as distinct.
     externalRef: text("external_ref"),
+    // migrations/0046 (multi-portal): how the session arrived -- see
+    // src/domain/portals/participations.ts SESSION_ORIGINS.
+    origin: text("origin").notNull().default("cfp"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -110,6 +113,16 @@ export const participant = sqliteTable(
     // organizer invites), which correctly falls back to the live contact
     // name.
     nameAtTime: text("name_at_time"),
+    // migrations/0046 (multi-portal): an invitation to speak -- the
+    // organizer's message, reply-by day, who sent it, and the invitee's
+    // optional note when declining.
+    invitationMessage: text("invitation_message"),
+    replyBy: integer("reply_by", { mode: "timestamp_ms" }),
+    invitedByUserId: text("invited_by_user_id"),
+    declineNote: text("decline_note"),
+    // sha256 of the token in the invitation email's /portal/invitations
+    // link (src/server/repo/portals/invitations.ts)
+    invitationTokenHash: text("invitation_token_hash"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -122,6 +135,8 @@ export const participant = sqliteTable(
       t.submissionId,
       t.contactId,
     ),
+    participant_invitation_token_hash_idx: index("participant_invitation_token_hash_idx").on(t.invitationTokenHash),
+    participant_invited_by_user_id_idx: index("participant_invited_by_user_id_idx").on(t.invitedByUserId),
   }),
 );
 

@@ -598,6 +598,8 @@ const ROUTES_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes");
  * is exempt — an id, an enum value validated against a closed set, or a
  * payload capped in its own units (bytes, not chars) — never silence. */
 export const UNBOUNDED_STRING_FIELDS: Array<{ file: string; field: string; reason: string }> = [
+  { file: "api/portals.ts", field: "sourceEventId", reason: "an id looked up against the DB (scoped to the caller's org), not free text" },
+  { file: "api/portals.ts", field: "assignmentId", reason: "an id looked up against the DB (scoped to the event and contact), not free text" },
   { file: "content-notes.ts", field: "fileId", reason: "an id looked up against the DB, not free text" },
   { file: "tasks.ts", field: "formId", reason: "an id looked up against the DB, not free text" },
   { file: "api/pipeline.ts", field: "contactId", reason: "an id looked up against the DB, not free text" },

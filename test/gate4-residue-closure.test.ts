@@ -57,6 +57,7 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { Db } from "../src/server/context";
 import { FieldRulesScript, FormFieldsSection } from "../src/views/form-render";
 import type { FormFieldDef } from "../src/forms/types";
+import { PORTAL_TABLES_DDL } from "./helpers/portal-ddl";
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -274,7 +275,8 @@ create table submission (
   content_status text,
   ics_sequence integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table task (
   id text primary key,
@@ -288,7 +290,11 @@ create table task (
   deliverable_kind text,
   instructions text,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope text NOT NULL DEFAULT 'person',
+  accepted_types_json text,
+  max_size_mb integer,
+  max_files integer
 );
 create table task_assignment (
   id text primary key,
@@ -301,7 +307,13 @@ create table task_assignment (
   file_id text,
   last_reminded_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 create table pipeline_entry (
   id text primary key,
@@ -341,7 +353,12 @@ create table participant (
   visible integer,
   invite_status text not null default 'none',
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table user (
   id text primary key,
@@ -404,7 +421,7 @@ create table file_comment (
 
 function makeTestDb6(): { db: Db; sqlite: DatabaseSync } {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(DDL_6);
+  sqlite.exec(DDL_6 + PORTAL_TABLES_DDL);
   const db = drizzle(
     async (sqlText, params, method) => {
       const stmt = sqlite.prepare(sqlText);

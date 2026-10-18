@@ -37,6 +37,9 @@ export const resource = sqliteTable(
     // uploaded file when kind='file'
     fileId: text("file_id"),
     position: integer("position").notNull().default(0),
+    // migrations/0046 (multi-portal): 'everyone' (today's event-wide
+    // visibility) | 'portal' (only participations whose portals include it)
+    visibility: text("visibility").notNull().default("everyone"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

@@ -51,6 +51,22 @@ export function deleteAllStmt(table: string): string {
 // assertDeleteOrderCoversSchema against the live schema before writing any
 // DELETE statement, and test/seed-delete-order.test.ts pins the same check.
 export const TABLES_IN_DELETE_ORDER: readonly string[] = [
+  // multi-portal (migrations/0046): every table here references task,
+  // resource, submission, contact, event or org, so the whole family clears
+  // first, children before parents.
+  "audit_event",
+  "portal_notification",
+  "portal_membership",
+  "portal_item",
+  "portal",
+  "event_role",
+  "sponsor_session_speaker",
+  "sponsor_session",
+  "sponsor_contact",
+  "sponsor_entitlement",
+  "sponsorship",
+  "sponsor_tier",
+  "sponsor_company",
   "email_log",
   "email_template",
   "file_comment",

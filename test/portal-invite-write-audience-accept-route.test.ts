@@ -22,6 +22,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getParticipantScope: vi.fn(async () => ({
       id: "participant-new",
       contactId: "contact-existing",

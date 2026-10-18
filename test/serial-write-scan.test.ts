@@ -248,6 +248,24 @@ function scanForSerialWrites(): SerialWriteHit[] {
 // a stale ledger line.
 const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reason: string }[] = [
   {
+    file: "src/server/repo/sponsors/organizer.ts",
+    functionOrNearestExport: "saveTier",
+    reason:
+      "a tier's entitlement rows are updated in place by id so the sponsor sessions holding them keep their slots -- one write per row, bounded by MAX_ENTITLEMENT_ROWS (src/domain/sponsors.ts), enforced by parseEntitlementInputs.",
+  },
+  {
+    file: "src/server/repo/sponsors/organizer.ts",
+    functionOrNearestExport: "updateSponsorship",
+    reason:
+      "a sponsorship's extra entitlement rows are updated in place by id (sessions hold them by id) -- one write per row, bounded by MAX_ENTITLEMENT_ROWS, enforced by parseEntitlementInputs.",
+  },
+  {
+    file: "src/server/repo/portals/admin.ts",
+    functionOrNearestExport: "copyFromEvent",
+    reason:
+      "multi-portal copy from another event: one write per copied tier, entitlement, library item and portal -- bounded by MAX_TIERS_PER_EVENT, MAX_ENTITLEMENT_ROWS and MAX_PORTALS_PER_EVENT x MAX_PORTAL_ITEMS on the source event; each portal goes through createPortal so its own rule and items are validated.",
+  },
+  {
     file: "src/server/repo/contacts/merge.ts",
     functionOrNearestExport: "mergeOnePair",
     reason:

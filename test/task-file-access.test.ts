@@ -301,7 +301,11 @@ describe("getTaskFileScope precedence: own task_assignment_id beats the reverse 
     );
     create table task (
       id text primary key,
-      event_id text
+      event_id text,
+      scope text NOT NULL DEFAULT 'person',
+      accepted_types_json text,
+      max_size_mb integer,
+      max_files integer
     );
     create table task_assignment (
       id text primary key,
@@ -310,7 +314,13 @@ describe("getTaskFileScope precedence: own task_assignment_id beats the reverse 
       status text,
       file_id text,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      scope_key text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'direct',
+      detached_at integer,
+      due_date integer,
+      required integer,
+      reopened_until integer
     );
     create table file (
       id text primary key,
@@ -441,7 +451,11 @@ describe("getTaskFileScope dangling own-link refusal (DEC-065, real db)", () => 
     );
     create table task (
       id text primary key,
-      event_id text
+      event_id text,
+      scope text NOT NULL DEFAULT 'person',
+      accepted_types_json text,
+      max_size_mb integer,
+      max_files integer
     );
     create table task_assignment (
       id text primary key,
@@ -450,7 +464,13 @@ describe("getTaskFileScope dangling own-link refusal (DEC-065, real db)", () => 
       status text,
       file_id text,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      scope_key text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'direct',
+      detached_at integer,
+      due_date integer,
+      required integer,
+      reopened_until integer
     );
     create table file (
       id text primary key,
@@ -570,7 +590,11 @@ describe("getTaskFileScope fallback fileId-link determinism (DEC-558, real db)",
     );
     create table task (
       id text primary key,
-      event_id text
+      event_id text,
+      scope text NOT NULL DEFAULT 'person',
+      accepted_types_json text,
+      max_size_mb integer,
+      max_files integer
     );
     create table task_assignment (
       id text primary key,
@@ -579,7 +603,13 @@ describe("getTaskFileScope fallback fileId-link determinism (DEC-558, real db)",
       status text,
       file_id text,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      scope_key text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'direct',
+      detached_at integer,
+      due_date integer,
+      required integer,
+      reopened_until integer
     );
     create table file (
       id text primary key,

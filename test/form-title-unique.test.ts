@@ -44,6 +44,10 @@ create table task (
   deliverable_kind text,
   instructions text,
   audience text,
+  scope text not null default 'person',
+  accepted_types_json text,
+  max_size_mb integer,
+  max_files integer,
   created_at integer,
   updated_at integer
 );
@@ -58,17 +62,28 @@ create table task_assignment (
   response_json text,
   file_id text,
   last_reminded_at integer,
+  scope_key text not null default '',
+  source text not null default 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer,
   created_at integer,
   updated_at integer
 );
-create unique index task_assignment_task_id_contact_id_idx on task_assignment (task_id, contact_id);
+create unique index task_assignment_task_id_contact_id_scope_key_idx on task_assignment (task_id, contact_id, scope_key);
 create table participant (
   id text primary key,
   submission_id text,
   contact_id text,
   invite_status text,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table submission (
   id text primary key,
@@ -77,7 +92,8 @@ create table submission (
   form_id text,
   accepted_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table form (
   id text primary key,
@@ -244,7 +260,11 @@ describe("migrations/0033_form_title_unique.sql dedupe (DEC-111 amendment, wave 
       deliverable_kind text,
   instructions text,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      scope text NOT NULL DEFAULT 'person',
+      accepted_types_json text,
+      max_size_mb integer,
+      max_files integer
     );
     create table submission (
       id text primary key,
@@ -253,7 +273,8 @@ describe("migrations/0033_form_title_unique.sql dedupe (DEC-111 amendment, wave 
       form_id text,
       accepted_at integer,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      origin text NOT NULL DEFAULT 'cfp'
     );
   `;
 

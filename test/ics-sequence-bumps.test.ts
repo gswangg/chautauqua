@@ -614,7 +614,8 @@ create table submission (
   ics_sequence integer not null default 0,
   external_ref text,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 `;
 

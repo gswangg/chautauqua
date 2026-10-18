@@ -89,6 +89,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getPortalSubmissionDetail: vi.fn(async (db: unknown, id: string, contactId: string, orgId: string) =>
       tracked(
         trackerOf(db),

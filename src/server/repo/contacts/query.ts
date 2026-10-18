@@ -160,6 +160,14 @@ export const CONTACT_FK_TABLES = [
   "file",
   "file_comment",
   "pipeline_entry",
+  // multi-portal (migrations/0046)
+  "audit_event",
+  "event_role",
+  "portal_membership",
+  "portal_notification",
+  "sponsor_contact",
+  "sponsor_session",
+  "sponsor_session_speaker",
 ] as const;
 export type MergeRepointTable = (typeof CONTACT_FK_TABLES)[number];
 

@@ -66,9 +66,12 @@ describe("DEC-528: every multi-row insert imports chunkRowsForInsert (or is exem
     // track, submission_track-on-update-replace)) + 3 bounded-exempt sites,
     // plus the DEC-810 amendment (wave 59)'s participants.ts
     // insertActiveParticipants chunked set-based attach (pushContactsToEvent's
-    // batch roster import — one submission, K participants). A new multi-row
-    // insert added later must show up here.
-    expect(sites.length).toBe(21);
+    // batch roster import — one submission, K participants). Multi-portal
+    // adds five chunked sites: reconcile.ts's membership, assignment and
+    // notification inserts, admin.ts's portal_item rewrite, and
+    // sponsors/sessions.ts's approved-speaker participant insert. A new
+    // multi-row insert added later must show up here.
+    expect(sites.length).toBe(26);
   });
 
   it("every non-exempt site's file imports chunkRowsForInsert", () => {

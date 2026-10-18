@@ -27,6 +27,7 @@
 import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989, DEC_576, DEC_154, DEC_393, DEC_996 } from "../../decisions";
 import { ERROR_STATES_CSS, ERROR_STATES_PHONE_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS, EMPTY_PHONE_CSS } from "../public/css/empty.css";
+import { HOME_CSS, HOME_PHONE_CSS } from "./participant-home.css";
 
 void DEC_373;
 void DEC_374;
@@ -187,20 +188,6 @@ export const PORTAL_CSS = `
      right (docs/design mock's {{ d.when }}). Composes .chq-portal-row's
      existing rhythm; only the head layout differs (baseline row, not a
      stacked column). */
-  .chq-portal-done-row {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .chq-portal-done-when {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--chq-brand);
-    white-space: nowrap;
-  }
 
   /* Task/session row: title + due date + a .chq-flag state marker, action
      controls below. Every control stays >=44px tall down to 390px
@@ -797,6 +784,7 @@ export const PORTAL_CSS = `
 
 ${EMPTY_CSS}
 ${ERROR_STATES_CSS}
+${HOME_CSS}
 
 /* DEC-747 (frame 10--24 amendment, wave 60): /portal/preview's "Not shown
    here" section — a plain chip list, no interaction, composing
@@ -1139,11 +1127,6 @@ ${EMPTY_PHONE_CSS}
     align-items: center;
     padding: 0 12px;
   }
-  .chq-portal-done-when {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-  }
 
   /* DEC-576/DEC-154 (wave-110 amendments): docs/design/Chautauqua Public
      and Portal.dc.html:492-495 \`<div style="flex-shrink:0; border-top:1px
@@ -1387,4 +1370,5 @@ ${EMPTY_PHONE_CSS}
     padding: 0 12px;
   }
 }
+${HOME_PHONE_CSS}
 ${ERROR_STATES_PHONE_CSS}`;

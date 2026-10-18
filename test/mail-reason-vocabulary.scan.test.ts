@@ -35,7 +35,7 @@ const COMPOSE_CORE_ABS = join(SRC_ROOT, "routes", "comms", "compose-core.ts");
 // reasons.ts) whose text contains a `renderEmailHtml(` call. Any change
 // that adds or removes a call site must update this number in the same
 // commit -- that's the tripwire.
-const EXPECTED_SITE_COUNT = 10;
+const EXPECTED_SITE_COUNT = 12;
 
 function isTestFile(path: string): boolean {
   return /\.(test|spec)\.(ts|tsx)$/.test(path);
@@ -146,6 +146,9 @@ describe("mail reason vocabulary (DEC-441 wave 48)", () => {
       passwordResetReason: ["DevFlow Conf 2027"],
       accountCreatedReason: ["DevFlow Conf 2027"],
       bulkEmailReason: ["DevFlow Conf 2027"],
+      portalNewItemsReason: ["DevFlow Conf 2027"],
+      invitationToSpeakReason: ["DevFlow Conf 2027"],
+      sponsorReason: ["DevFlow Conf 2027", "Latticework Systems"],
     };
     // Every exported function must have a sample entry above -- a builder
     // added to the module with no sample here would silently skip this

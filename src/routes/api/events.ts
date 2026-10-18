@@ -1,6 +1,7 @@
 // Events, tracks, rooms API (w2-b). Organizer-only, per DEC-005/DEC-012/
 // DEC-013. Route file exports a sub-app; only src/index.ts mounts it.
 
+import { ensureProfileBasicsPortal } from "../../server/repo/portals/admin";
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
@@ -308,6 +309,10 @@ eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   // validation). The producer renames it in Settings, and track colors plus
   // track-scoped reviewer assignment work immediately.
   await createTrack(c.var.db, created.id, { name: "General", color: null });
+  // multi-portal: every event starts with the Profile basics portal (no
+  // items; speakers' portals look as they always have until an organizer
+  // adds some)
+  await ensureProfileBasicsPortal(c.var.db, created.id, new Date());
   return c.json(created, 201);
 });
 

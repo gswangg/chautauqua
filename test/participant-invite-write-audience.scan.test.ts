@@ -76,6 +76,9 @@ const ACTIVE_MAP: Record<string, string[]> = {
   "server/repo/participants.ts": [
     "insertActiveParticipants (DEC-810 amendment, wave 59) — organizer-run CSV roster import (routes/api/contacts/import.ts) attaches every imported contact as an ACTIVE participant of the batch's one submission; an admin-initiated bulk import of already-vetted contacts the organizer chose to push onto the event, not a speaker/portal-driven write, and 'none' (not 'invited') is required so DEC-283/DEC-746's onboarding-task expansion picks them up immediately.",
   ],
+  "server/repo/sponsors/sessions.ts": [
+    "approveSponsorSession — the organizer's approval of a sponsor-designed session (an organizer-only route) is the grant: the sponsor contact only proposed the speakers, and nobody becomes an active participant until an organizer approves the session (Portals frame, flow 5).",
+  ],
 };
 
 describe("every participant-insert inviteStatus literal write is enumerated (DEC-317 Amendment, wave 37)", () => {

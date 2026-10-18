@@ -34,7 +34,7 @@ import { plural, spellCount } from "../../../domain/count-copy";
 import { ApiError } from "../../http";
 import { dayLabelEndInstant, zonedMinutesToUtc } from "../../../lib/timezone";
 import { formatCalendarDate } from "../../../lib/event-time";
-import { chaseableContactExists } from "./crud";
+import { assignmentDueDateSql, chaseableContactExists } from "./crud";
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
 import { DEC_238, DEC_441, DEC_941 } from "../../../decisions";
 
@@ -104,6 +104,8 @@ export async function listOutstandingForEvent(
     timezone: string;
     eventEndDate: string;
     assignmentCreatedAt: Date;
+    source: string;
+    assignmentDueDate: Date | null;
   }[] = [];
   outer: for (const taskIdChunk of idChunksOrUndefined(taskIds)) {
     for (const contactIdChunk of idChunksOrUndefined(contactIds)) {
@@ -131,6 +133,8 @@ export async function listOutstandingForEvent(
           timezone: schema.event.timezone,
           eventEndDate: schema.event.endDate,
           assignmentCreatedAt: schema.taskAssignment.createdAt,
+          source: schema.taskAssignment.source,
+          assignmentDueDate: schema.taskAssignment.dueDate,
         })
         .from(schema.taskAssignment)
         .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -158,11 +162,12 @@ export async function listOutstandingForEvent(
   // the raw UTC instant — this is a reader-facing due date, never the
   // private instant form.
   return rows.map((r): OutstandingRow => {
-    const effective = effectiveAssignmentDueDayLabel(
-      r.dueDate ? r.dueDate.getTime() : null,
-      r.assignmentCreatedAt.getTime(),
-      r.timezone,
-    );
+    // multi-portal: a portal row carries its own merged deadline
+    // (reconcile.ts); only a direct row derives one from its task
+    const effective =
+      r.source === "portal"
+        ? (r.assignmentDueDate?.getTime() ?? null)
+        : effectiveAssignmentDueDayLabel(r.dueDate ? r.dueDate.getTime() : null, r.assignmentCreatedAt.getTime(), r.timezone);
     return {
       assignmentId: r.assignmentId,
       taskId: r.taskId,
@@ -1041,7 +1046,8 @@ export async function listDueReminderContactIds(
   opts: { now: number; max: number },
 ): Promise<string[]> {
   const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-  const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
+  // multi-portal: a portal row's own merged deadline, else DEC-801's
+  const effectiveDueDate = sql`(case when ${schema.taskAssignment.source} = 'portal' then ${schema.taskAssignment.dueDate} when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
   // wave-61 amendment (DEC-023): slack on both ends. The authoritative gate
   // (isReminderDue, via planReminders) now expands dueDate through
   // dayLabelEndInstant(dueDate, timeZone) before comparing. Measured against
@@ -1068,7 +1074,7 @@ export async function listDueReminderContactIds(
         eq(schema.task.eventId, eventId),
         eq(schema.taskAssignment.status, "pending"),
         chaseableContactExists(eventId),
-        sql`${schema.task.dueDate} is not null`,
+        sql`${assignmentDueDateSql()} is not null`,
         sql`${effectiveDueDate} >= ${windowStart} and ${effectiveDueDate} <= ${windowEnd}`,
       ),
     )
@@ -1175,6 +1181,7 @@ export async function listEventIdsWithOutstandingAssignments(db: Db, now: Date):
       and(
         eq(schema.taskAssignment.status, "pending"),
         isNull(schema.taskAssignment.completedAt),
+        isNull(schema.taskAssignment.detachedAt),
         gte(schema.event.endDate, cutoff),
       ),
     );

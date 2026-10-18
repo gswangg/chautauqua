@@ -187,6 +187,7 @@ describe("GET /portal/tasks — the dock carries the first incomplete task's own
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+      getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: { "evt-1": true },
@@ -248,6 +249,7 @@ describe("GET /portal/tasks — the dock carries the first incomplete task's own
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+      getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
           showResourcesByEventId: { "evt-1": true },
@@ -290,6 +292,7 @@ describe("GET /portal/submissions/:id — the dock carries the frame's primary +
       const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
       return {
         ...actual,
+      getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
         getPortalSubmissionDetail: vi.fn(async () => ({
           id: "sub-1",
           eventId: "evt-1",

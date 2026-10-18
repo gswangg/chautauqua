@@ -10,6 +10,7 @@
 // This is scripts/ tooling, not src/ pure-core, so node: imports are fine
 // (DEC-002's pure-core rule scopes to src/{auth,domain,forms,mail,lib}).
 
+import { portalDemoStatements, profileBasicsForEveryEvent } from "./portal-demo-lib";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -3296,6 +3297,13 @@ async function main(): Promise<void> {
       }),
     );
   });
+
+  // multi-portal (scripts/portal-demo-lib.ts): every event's Profile basics
+  // portal, then the DevFlow demo -- portals, sponsors, invited speakers --
+  // as additive INSERT OR IGNORE statements (the same SQL production gets
+  // from scripts/portal-demo-seed.ts)
+  statements.push(...portalDemoStatements(SEED_NOW));
+  statements.push(profileBasicsForEveryEvent(SEED_NOW));
 
   const sql = statements.join("\n") + "\n";
   writeFileAtomic(OUTPUT_PATH, sql);

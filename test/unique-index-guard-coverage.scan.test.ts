@@ -65,10 +65,16 @@ const ALLOWLIST: AllowlistEntry[] = [
   { index: "submission_answer_submission_id_form_field_id_idx", file: "src/server/repo/submit.ts", guard: "onConflictDoUpdate" },
   { index: "submission_event_id_external_ref_idx", file: "src/server/repo/import/sessionboard.ts", guard: "isUniqueViolation" },
   { index: "submission_event_id_seq_idx", file: "src/server/repo/submissions/seq.ts", guard: "submissionSeqSubquery" },
-  { index: "task_assignment_task_id_contact_id_idx", file: "src/server/repo/tasks/crud.ts", guard: "onConflictDoNothing" },
+  { index: "task_assignment_task_id_contact_id_scope_key_idx", file: "src/server/repo/tasks/crud.ts", guard: "onConflictDoNothing" },
   { index: "task_event_id_title_idx", file: "src/server/repo/tasks/crud.ts", guard: "isUniqueViolation" },
   { index: "track_event_id_external_ref_idx", file: "src/server/repo/import/sessionboard.ts", guard: "isUniqueViolation" },
   { index: "user_email_idx", file: "src/server/repo/users.ts", guard: "onConflictDoNothing" },
+  // multi-portal (migrations/0046)
+  { index: "portal_membership_portal_id_participation_key_idx", file: "src/server/repo/portals/reconcile.ts", guard: "onConflictDoNothing" },
+  { index: "event_role_event_id_contact_id_role_idx", file: "src/server/repo/portals/event-roles.ts", guard: "onConflictDoNothing" },
+  { index: "sponsorship_event_id_company_id_idx", file: "src/server/repo/sponsors/organizer.ts", guard: "onConflictDoNothing" },
+  { index: "sponsor_contact_sponsorship_id_contact_id_idx", file: "src/server/repo/sponsors/organizer.ts", guard: "onConflictDoNothing" },
+  { index: "sponsor_session_speaker_session_id_contact_id_idx", file: "src/server/repo/sponsors/sessions.ts", guard: "onConflictDoNothing" },
 ];
 
 function listTsFiles(dir: string): string[] {

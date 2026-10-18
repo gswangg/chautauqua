@@ -383,6 +383,21 @@ export async function deleteContact(db: Db, contactId: string): Promise<void> {
     .update(schema.fileComment)
     .set({ authorContactId: null })
     .where(eq(schema.fileComment.authorContactId, contactId));
+  // multi-portal: the contact's event roles, sponsor-team seats, sponsor
+  // session speaker slots and portal memberships go with them (each is
+  // only this person's participation); who invited or created something is
+  // provenance and is nulled, like email_log above.
+  await db.delete(schema.eventRole).where(eq(schema.eventRole.contactId, contactId));
+  await db.delete(schema.portalMembership).where(eq(schema.portalMembership.contactId, contactId));
+  await db.delete(schema.portalNotification).where(eq(schema.portalNotification.contactId, contactId));
+  await db.delete(schema.sponsorSessionSpeaker).where(eq(schema.sponsorSessionSpeaker.contactId, contactId));
+  await db.delete(schema.sponsorContact).where(eq(schema.sponsorContact.contactId, contactId));
+  await db.update(schema.sponsorContact).set({ invitedByContactId: null }).where(eq(schema.sponsorContact.invitedByContactId, contactId));
+  await db.update(schema.sponsorSession).set({ createdByContactId: null }).where(eq(schema.sponsorSession.createdByContactId, contactId));
+  // the audit log keeps its record (actor_label names who acted); only the
+  // dangling contact ids are cleared
+  await db.update(schema.auditEvent).set({ actorContactId: null }).where(eq(schema.auditEvent.actorContactId, contactId));
+  await db.update(schema.auditEvent).set({ subjectContactId: null }).where(eq(schema.auditEvent.subjectContactId, contactId));
   await db.delete(schema.contact).where(eq(schema.contact.id, contactId));
 }
 

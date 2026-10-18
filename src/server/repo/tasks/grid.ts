@@ -9,8 +9,14 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
-import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
-import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
+import {
+  assignmentOverdueSql,
+  assignmentRequiredSql,
+  attachedAssignment,
+  chaseableContactExistsForTaskEvent,
+  overdueAssignmentConditions,
+  rosterParticipantConditions,
+} from "./crud";
 import type { InviteStatus as SharedInviteStatus } from "../../../domain/invite-status"; // DEC-789 wave-73 amendment
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
@@ -55,6 +61,10 @@ export interface GridCell {
   // this and the task's dueDate through effectiveAssignmentDueDate so the
   // badge/cell can't judge a task late before it was assigned.
   assignedAt: number;
+  // multi-portal: present only on portal-sourced cells -- the merged
+  // deadline the portals set for this person (a day label, or null for no
+  // deadline), which replaces the task's own dueDate for this cell.
+  dueDate?: number | null;
 }
 
 export interface GridParticipation {
@@ -139,17 +149,13 @@ function onboardingMatchExists(
   const inner = [sql`${schema.task.eventId} = ${eventId}`];
   if (taskId) inner.push(sql`${schema.taskAssignment.taskId} = ${taskId}`);
   if (status) inner.push(sql`${schema.taskAssignment.status} = ${status}`);
+  inner.push(attachedAssignment());
   if (overdueOnly) {
     // DEC-801 (wave 58 amendment, J6): the same day-label overdue
     // computation as overdueAssignmentConditions in ./crud (this file's
     // counts.overdue), so the overdueOnly row filter and the count it
     // filters against can never disagree.
-    const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-    const cutoff = overdueDayCutoff(now, timeZone);
-    const isOverdue = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} < ${cutoff} else ${schema.taskAssignment.createdAt} + ${graceMs} < ${now} end)`;
-    inner.push(
-      sql`${schema.task.dueDate} is not null and ${schema.taskAssignment.status} <> 'complete' and ${isOverdue}`,
-    );
+    inner.push(sql`${schema.taskAssignment.status} <> 'complete' and ${assignmentOverdueSql(now, timeZone)}`);
   }
   const innerWhere = sql.join(inner, sql` and `);
   return sql`exists (select 1 from ${schema.taskAssignment} inner join ${schema.task} on ${schema.task.id} = ${schema.taskAssignment.taskId} where ${schema.taskAssignment.contactId} = ${schema.contact.id} and ${innerWhere})`;
@@ -205,12 +211,12 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     // outstandingRequired/outstandingContacts join wave 1 too.
     db
       .select({
-        outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
+        outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${assignmentRequiredSql()} = 1 then ${schema.taskAssignment.id} end)`,
         outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-      .where(and(eq(schema.task.eventId, eventId), chaseableContactExistsForTaskEvent())),
+      .where(and(eq(schema.task.eventId, eventId), attachedAssignment(), chaseableContactExistsForTaskEvent())),
     // Design pack v12: one GROUP BY over this event's assignments gives every
     // column head its "N of M done" in a single round trip -- never one query
     // per column, and never derived from `rows` (which is the current
@@ -224,7 +230,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-      .where(eq(schema.task.eventId, eventId))
+      .where(and(eq(schema.task.eventId, eventId), attachedAssignment()))
       .groupBy(schema.taskAssignment.taskId),
   ]);
 
@@ -434,10 +440,18 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
               fileName: schema.file.filename,
               contactId: schema.taskAssignment.contactId,
               createdAt: schema.taskAssignment.createdAt,
+              source: schema.taskAssignment.source,
+              dueDate: schema.taskAssignment.dueDate,
             })
             .from(schema.taskAssignment)
             .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
-            .where(and(inArray(schema.taskAssignment.contactId, batch), inArray(schema.taskAssignment.taskId, taskIds))),
+            .where(
+              and(
+                inArray(schema.taskAssignment.contactId, batch),
+                inArray(schema.taskAssignment.taskId, taskIds),
+                attachedAssignment(),
+              ),
+            ),
         )
       : [];
   // Every query in both arrays above is already issued (db.select executes
@@ -481,6 +495,19 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       if (r.fileId != null && r.fileName == null) {
         throw new Error(`onboarding grid: assignment ${r.assignmentId} has fileId ${r.fileId} that does not resolve to a file row`);
       }
+      // multi-portal: an item about each session (scope 'participation')
+      // is one row per session; the grid's one cell per task reads done only
+      // when every one is, and due on the earliest
+      const dueDate = r.source === "portal" ? (r.dueDate ? r.dueDate.getTime() : null) : undefined;
+      const prior = row.cells.find((c) => c.taskId === r.taskId);
+      if (prior) {
+        if (r.status !== "complete") {
+          prior.status = r.status;
+          prior.completedAt = null;
+        }
+        if (dueDate != null && (prior.dueDate == null || dueDate < prior.dueDate)) prior.dueDate = dueDate;
+        continue;
+      }
       row.cells.push({
         taskId: r.taskId,
         assignmentId: r.assignmentId,
@@ -489,6 +516,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
         fileId: r.fileId,
         fileName: r.fileName,
         assignedAt: r.createdAt.getTime(),
+        ...(dueDate !== undefined ? { dueDate } : {}),
       });
     }
   }

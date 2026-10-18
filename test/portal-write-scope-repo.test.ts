@@ -28,18 +28,30 @@ create table task_assignment (
   file_id text,
   last_reminded_at integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 create table participant (
   id text primary key,
   submission_id text,
   contact_id text,
   invite_status text not null default 'none',
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table submission (
   id text primary key,
-  updated_at integer
+  updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 `;
 

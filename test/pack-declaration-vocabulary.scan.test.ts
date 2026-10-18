@@ -536,9 +536,19 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // diffing `git diff cd254baa7..HEAD` (the wave-29 commit that minted
     // this pin) for added `line-height:` declarations in product CSS, never
     // guessed.
-    expect(weightBare).toBe(578);
-    expect(weightOutOfGrammar).toBe(15);
-    expect(lineHeightBare).toBe(174);
+    // Multi-portal (src/routes/portal/participant-home.css.ts): the
+    // participant home, the profile field notes, the done-fold summary and
+    // the preview bar's label and exit link add in-vocabulary bare
+    // font-weight / line-height declarations (counted by re-running this
+    // scan, never guessed).
+    expect(weightBare).toBe(587);
+    // +1 multi-portal: the home's section label takes its weight from the
+    // theme token (var(--chq-type-section-label-weight)), like the shared
+    // section label it mirrors.
+    expect(weightOutOfGrammar).toBe(16);
+    // +4 multi-portal: the home title, note, field-help and invitation-quote
+    // lines (1.3, 1.5, 1.5, 1.5 -- all in the pack's line-height vocabulary).
+    expect(lineHeightBare).toBe(178);
     expect(lineHeightOutOfGrammar).toBe(2);
   });
 });

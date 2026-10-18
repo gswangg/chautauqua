@@ -227,10 +227,34 @@ const THRESHOLD = 3;
 // an entry matching no hit fails as a stale ledger line.
 const KNOWN_STRAIGHTLINE_WRITES: { file: string; functionOrNearestExport: string; reason: string }[] = [
   {
+    file: "src/server/repo/contacts/merge.ts",
+    functionOrNearestExport: "repointPortalTable",
+    reason:
+      "multi-portal merge repoints: one branch runs per call (a fixed table name), each issuing at most four set-based statements keyed by the merged contact id -- bounded by the table's own fixed column count, never by row count.",
+  },
+  {
+    file: "src/server/repo/portals/library.ts",
+    functionOrNearestExport: "createLibraryItem",
+    reason:
+      "multi-portal library create: mutually exclusive branches (a resource row; or an optional empty form, the task row, and the form's rollback on a title collision) -- at most three statements on one path, each a single-row write.",
+  },
+  {
+    file: "src/server/repo/sponsors/sessions.ts",
+    functionOrNearestExport: "approveSponsorSession",
+    reason:
+      "sponsor-session approval pipeline: one statement per step (claim the transition, insert the submission, its format answer, link the session) plus the per-speaker participant loop already bounded by MAX_SPONSOR_SESSION_SPEAKERS -- a fixed step count, not a row count.",
+  },
+  {
+    file: "src/server/repo/portals/admin.ts",
+    functionOrNearestExport: "deletePortal",
+    reason:
+      "multi-portal delete: one statement per table the portal owns (portal_item, portal_membership, portal) -- bounded by that fixed table count, each a single set-based delete keyed by the portal id.",
+  },
+  {
     file: "src/server/repo/contacts/crud.ts",
     functionOrNearestExport: "deleteContact",
     reason:
-      "DEC-979/DEC-770 contact-delete pipeline: each statement names a DIFFERENT target table (pipeline_entry, task_assignment, dismissal-cascade call, email_log, file, file_comment, contact) -- bounded by the contact schema's own fixed FK-owner count, not by any table's row count.",
+      "DEC-979/DEC-770 contact-delete pipeline: each statement names a DIFFERENT target table (pipeline_entry, task_assignment, dismissal-cascade call, email_log, file, file_comment, the multi-portal event_role/portal_membership/portal_notification/sponsor_session_speaker/sponsor_contact/sponsor_session/audit_event, contact) -- bounded by the contact schema's own fixed FK-owner count, not by any table's row count.",
   },
   {
     file: "src/server/repo/contacts/merge.ts",

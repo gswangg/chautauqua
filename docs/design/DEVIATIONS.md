@@ -244,10 +244,12 @@ survives contact with state:
       primary; `:493` docks 'Mark the release signed' as the tasks dock's
       primary. The app never types either literal. The session dock and
       the row action beside the slides deliverable both render
-      src/routes/portal/index.tsx`taskActionLabel(t)`, one function with
+      src/routes/portal/index.tsx`taskActionLabel(fileRequestTask)`, one function with
       three outcomes — 'Fill out form' for a form task, 'Upload file' for
-      a file-request task, 'Open task' otherwise — used at three call
-      sites in that file. 'Upload slides' is right only for the one
+      a file-request task, 'Open task' otherwise — used at both call
+      sites in that file (the home's worklist row that once made a third
+      moved into the multi-portal home, src/routes/portal/home.tsx, whose
+      items link by kind the same way). 'Upload slides' is right only for the one
       file-request task that happens to be slides; every other
       file-request task (a bio photo, a signed release scan, a W-9) would
       carry the wrong verb if the frame's instance copy were built

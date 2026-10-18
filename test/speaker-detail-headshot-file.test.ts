@@ -42,13 +42,19 @@ create table event (
 );
 create table submission (
   id text primary key, event_id text, seq integer, title text, status text,
-  content_status text, created_at integer, updated_at integer
+  content_status text, created_at integer, updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table participant (
   id text primary key, submission_id text, contact_id text, role text,
   "order" integer, visible integer, invite_status text not null default 'none',
   title_at_time text, org_at_time text, name_at_time text,
-  created_at integer, updated_at integer
+  created_at integer, updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table schedule_slot (
   id text primary key, event_id text, submission_id text, room_id text,
@@ -61,12 +67,22 @@ create table room (
 create table task (
   id text primary key, event_id text, title text, description text, kind text,
   required integer, due_date integer, form_id text, is_default integer,
-  created_at integer, updated_at integer
+  created_at integer, updated_at integer,
+  scope text NOT NULL DEFAULT 'person',
+  accepted_types_json text,
+  max_size_mb integer,
+  max_files integer
 );
 create table task_assignment (
   id text primary key, task_id text, contact_id text, status text,
   completed_at integer, file_id text, response_json text, last_reminded_at integer,
-  created_at integer, updated_at integer
+  created_at integer, updated_at integer,
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer
 );
 create table file (
   id text primary key, submission_id text, kind text, filename text, r2_key text,

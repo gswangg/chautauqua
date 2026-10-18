@@ -28,6 +28,26 @@ const SCAN_ROOTS = ["src"];
 // reason for a name covers every call site using that same bounded value.
 const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason: string]> = [
   [
+    "src/server/repo/portals/admin.ts",
+    "taskIds",
+    "the library task ids one portal's items reference -- bounded by MAX_PORTAL_ITEMS (src/domain/portals/limits.ts), enforced by parsePortalInput before this check runs.",
+  ],
+  [
+    "src/server/repo/portals/admin.ts",
+    "resourceIds",
+    "the resource ids one portal's items reference -- bounded by MAX_PORTAL_ITEMS, enforced by parsePortalInput before this check runs.",
+  ],
+  [
+    "src/server/repo/sponsors/organizer.ts",
+    "ids",
+    "one event's sponsor tier ids -- bounded by MAX_TIERS_PER_EVENT (src/domain/portals/limits.ts), enforced by saveTier.",
+  ],
+  [
+    "src/server/repo/sponsors/sessions.ts",
+    "detail",
+    "detail.speakers is one sponsor session's speakers -- bounded by MAX_SPONSOR_SESSION_SPEAKERS (src/domain/sponsors.ts), enforced by addSponsorSpeaker.",
+  ],
+  [
     "src/server/repo/public/home.ts",
     "eventIds",
     "eventIds is derived from listHubEvents' own LIMIT HUB_CANDIDATE_LIMIT " +

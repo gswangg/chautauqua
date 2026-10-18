@@ -32,4 +32,8 @@
 // back from the thrown error's own roster -- 90 GAP rows out of 201. See
 // docs/design/audit/frame-repeated-row-v12.md for the full per-row roster
 // this figure is drawn from.
-export const FRAME_REPEATED_ROW_GAP_CEILING = 90;
+//
+// Re-measured (multi-portal): 89 -- the participant home's per-item rows
+// (src/routes/portal/home.tsx ItemRow) now draw one more repeated row the
+// v12 Public and Portal frame shows.
+export const FRAME_REPEATED_ROW_GAP_CEILING = 89;

@@ -85,6 +85,7 @@ vi.mock("../src/server/repo/portal", async () => {
   };
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getPortalData: vi.fn(async () => ({
       branding: { orgName: "Org", primaryColor: "#000", logoUrl: null },
       submissions: [],

@@ -34,6 +34,10 @@ const MOBILE_SWEEP_EXCLUDED: Readonly<Record<string, string>> = {
   // module, already swept at 390x844 via that /e/ row.
   [`/embed/${EVENT_SLUG}/speakers/seed_contact_0001`]:
     `covered by /e/${MOBILE_EVENT_SLUG}/speakers/seed_contact_0001`,
+  // The invited-speaker acceptance page: its 390 frame is the multi-portal
+  // pack's (docs/design/multi-portal/), not the v12 pack this measured
+  // roster grades against.
+  "/portal/invitations/demo-invitation-ruth-adeyemi-2027": "390 frame in docs/design/multi-portal/, outside the v12 roster",
 };
 
 describe("render-sweep manifest parity across SURFACES (DEC-503)", () => {

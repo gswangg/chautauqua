@@ -421,6 +421,8 @@ const UNAUTHENTICATED_DOORS: Record<string, string> = {
     "account-claim: the 'auth' is possession of an unguessable KV claim token, not a session -- there is no c.var.auth yet for requireCookieSession to inspect",
   "src/routes/auth-reset.tsx":
     "password-reset: the 'auth' is possession of an unguessable KV reset token, not a session -- same no-session model as auth-claim.tsx",
+  "src/routes/portal/invitation.tsx":
+    "invited-speaker acceptance: the 'auth' is possession of the invitation email's unguessable token, not a session -- accepting with no account yet mints that invitee's own claim token (createClaimToken), the same no-session model as auth-claim.tsx",
   "src/routes/public/submit-post.tsx":
     "the public CFP submit door: runs with no c.var.auth at all -- it mints the submitter's own claim token on their own just-created submission (createClaimToken at :512), the same no-session model as auth-claim.tsx/auth-reset.tsx, not an already-authenticated principal rotating a credential",
 };
@@ -482,12 +484,13 @@ describe("credential-route-cookie-session.scan (DEC-027 wave-70 amendment: whole
     ).toEqual([]);
   });
 
-  it("UNAUTHENTICATED_DOORS is exactly the four declared no-session credential-mint routes, each with a written reason", () => {
+  it("UNAUTHENTICATED_DOORS is exactly the five declared no-session credential-mint routes, each with a written reason", () => {
     expect(Object.keys(UNAUTHENTICATED_DOORS).sort()).toEqual(
       [
         "src/routes/auth-claim.tsx",
         "src/routes/auth-login.tsx",
         "src/routes/auth-reset.tsx",
+        "src/routes/portal/invitation.tsx",
         "src/routes/public/submit-post.tsx",
       ].sort(),
     );

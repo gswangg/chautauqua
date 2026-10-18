@@ -543,10 +543,13 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
   it("portal.css.ts (task w18-f, DEC-385 wave-143 amendment): fully conformant on composed output -- EMPTY_CSS's phone rule (formerly mid-file at ~line 703, the pre-existing gap task w16-bb's own pin used to document) is now its own export, EMPTY_PHONE_CSS, composed immediately ahead of this sheet's own terminal block, so all THREE phone blocks (EMPTY_PHONE_CSS, portal's own terminal block, ERROR_STATES_PHONE_CSS) are contiguous with nothing trailing", () => {
     const portal = RESULTS.find((r) => r.relPath === "src/routes/portal/portal.css.ts");
     expect(portal).toBeDefined();
-    expect(portal!.phoneBlocks.length).toBe(3); // EMPTY_PHONE_CSS's + portal's own terminal + ERROR_STATES_PHONE_CSS's, now contiguous
-    const [emptyPhone, own, phoneCss] = portal!.phoneBlocks;
+    // multi-portal adds a fourth: HOME_PHONE_CSS (participant-home.css.ts),
+    // composed between the sheet's own block and ERROR_STATES_PHONE_CSS
+    expect(portal!.phoneBlocks.length).toBe(4); // EMPTY_PHONE_CSS's + portal's own terminal + HOME_PHONE_CSS's + ERROR_STATES_PHONE_CSS's, contiguous
+    const [emptyPhone, own, homePhone, phoneCss] = portal!.phoneBlocks;
     expect(emptyPhone).toBeDefined();
     expect(own).toBeDefined();
+    expect(homePhone).toBeDefined();
     expect(phoneCss).toBeDefined();
     expect(portal!.trailingText).toBeNull(); // no non-phone construct sits between/after the three blocks any more
   });

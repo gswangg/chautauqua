@@ -52,6 +52,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getAssignmentScope: vi.fn(),
     listDeliverableCandidates: vi.fn(),
     saveTaskFileCompletion: vi.fn(async () => {}),
@@ -331,7 +332,11 @@ describe("getTaskFileScope resolves every chain version once each carries its ow
     );
     create table task (
       id text primary key,
-      event_id text
+      event_id text,
+      scope text NOT NULL DEFAULT 'person',
+      accepted_types_json text,
+      max_size_mb integer,
+      max_files integer
     );
     create table task_assignment (
       id text primary key,
@@ -340,7 +345,13 @@ describe("getTaskFileScope resolves every chain version once each carries its ow
       status text,
       file_id text,
       created_at integer,
-      updated_at integer
+      updated_at integer,
+      scope_key text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'direct',
+      detached_at integer,
+      due_date integer,
+      required integer,
+      reopened_until integer
     );
     create table file (
       id text primary key,

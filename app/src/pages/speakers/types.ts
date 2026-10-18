@@ -13,7 +13,7 @@ import { FILE_KINDS, type FileKind } from '../../../../src/domain/files';
 // and speakerDetail.ts, same relative-import idiom as FILE_KINDS above.
 import type { TaskKind } from '../../../../src/domain/task-kinds';
 export type { TaskKind };
-export { TASK_KINDS } from '../../../../src/domain/task-kinds';
+export { TASK_KINDS, DIRECT_TASK_KINDS } from '../../../../src/domain/task-kinds';
 
 // DEC-023: assignment status literals are exactly 'pending'/'complete' — the
 // admin-facing accept/decline queue states never apply here.
@@ -67,6 +67,10 @@ export interface OnboardingCell {
   // effectiveAssignmentDueDate (../../../../src/domain/task-due.ts) so a
   // task cannot be judged late before it was actually assigned.
   assignedAt: number;
+  // multi-portal: present only on portal-sourced cells -- the merged
+  // deadline the person's portals set (a day label; null for none), which
+  // replaces the task's own dueDate for this cell.
+  dueDate?: number | null;
 }
 
 // DEC-789 wave-73 amendment: re-exported from the pure core

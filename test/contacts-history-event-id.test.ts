@@ -46,7 +46,8 @@ create table submission (
   content_status text,
   ics_sequence integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table participant (
   id text primary key,
@@ -56,7 +57,12 @@ create table participant (
   "order" integer,
   visible integer,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create table email_log (
   id text primary key,

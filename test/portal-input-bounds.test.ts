@@ -155,6 +155,7 @@ vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
     ...actual,
+    getPortalHome: vi.fn(async () => ({ views: [], placements: new Map() })),
     getPortalData: vi.fn(async () => ({
       branding: { orgName: "Org", primaryColor: "#000", logoUrl: null },
       submissions: [],

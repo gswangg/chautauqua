@@ -9,9 +9,15 @@ import { DEC_613 } from '../decisions';
 
 void DEC_613; // wave-70 amendment: one shared task-kind vocabulary, not five copies
 
-export const TASK_KINDS = ['general', 'file_request', 'form'] as const;
+// 'share_kit' (multi-portal): promotion copy and links a speaker or sponsor
+// shares, then marks as shared.
+export const TASK_KINDS = ['general', 'file_request', 'form', 'share_kit'] as const;
 
 export type TaskKind = (typeof TASK_KINDS)[number];
+
+// The kinds an organizer creates directly on Speakers (New task). A share
+// kit is a portal library item (Settings · Portals › Libraries).
+export const DIRECT_TASK_KINDS = ['general', 'file_request', 'form'] as const satisfies readonly TaskKind[];
 
 // DEC-422 (wave-77 amendment): the largest assignee set one task write may
 // name -- not a page size that happens to match. Both doors onto the
@@ -27,7 +33,9 @@ export const MAX_TASK_ASSIGNEES = 200;
 // its driving select to audience = DEFAULT_TASK_AUDIENCE so a task an
 // organizer deliberately targeted at a subset never silently becomes
 // universal at the next acceptance.
-export const TASK_AUDIENCES = ['everyone', 'targeted'] as const;
+// 'portal' (multi-portal): a library item created for portals -- it reaches
+// people only through the portals that list it, never by back-fill.
+export const TASK_AUDIENCES = ['everyone', 'targeted', 'portal'] as const;
 
 export type TaskAudience = (typeof TASK_AUDIENCES)[number];
 

@@ -4,6 +4,7 @@
 
 import type { Bindings } from "./env";
 import { runDueReminders } from "../routes/tasks";
+import { runPortalUpkeep } from "./repo/portals/cron";
 import { runAirtableSync } from "../sync/airtable";
 import { makeDb } from "./context";
 import { plural } from "../domain/count-copy";
@@ -25,6 +26,14 @@ export async function handleScheduled(
   } catch (err) {
     console.error("scheduled job failed: runDueReminders", err);
     failures.push("runDueReminders");
+  }
+
+  // Multi-portal: reconcile live events and send queued new-item emails.
+  try {
+    await runPortalUpkeep(env);
+  } catch (err) {
+    console.error("scheduled job failed: runPortalUpkeep", err);
+    failures.push("runPortalUpkeep");
   }
 
   // One-way Airtable push (no-op unless AIRTABLE_* secrets are configured).

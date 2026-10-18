@@ -285,6 +285,45 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     role: "speaker",
     params: { assignmentId: TASK_ASSIGNMENT_ID },
   },
+  // multi-portal (scripts/portal-demo-lib.ts): the speaker persona, Priya
+  // Raman, is also Latticework Systems' Gold sponsor contact, and has a
+  // share kit on her CFP talk; the invitation is Ruth Adeyemi's, opened
+  // signed out the way an invitee meets it.
+  {
+    path: "/portal/tasks/demo_mp_ta_priya_share/share",
+    role: "speaker",
+    params: { assignmentId: "demo_mp_ta_priya_share" },
+  },
+  {
+    path: "/portal/sponsors/demo_mp_sponsorship_lattice",
+    role: "speaker",
+    params: { sponsorshipId: "demo_mp_sponsorship_lattice" },
+  },
+  {
+    path: "/portal/sponsors/demo_mp_sponsorship_lattice/sessions/new",
+    role: "speaker",
+    params: { sponsorshipId: "demo_mp_sponsorship_lattice" },
+  },
+  {
+    path: "/portal/sponsors/demo_mp_sponsorship_lattice/sessions/demo_mp_ss_lattice_workshop",
+    role: "speaker",
+    params: { sponsorshipId: "demo_mp_sponsorship_lattice", sessionId: "demo_mp_ss_lattice_workshop" },
+  },
+  {
+    path: "/portal/sponsors/demo_mp_sponsorship_lattice/team",
+    role: "speaker",
+    params: { sponsorshipId: "demo_mp_sponsorship_lattice" },
+  },
+  {
+    path: "/portal/invitations/demo-invitation-ruth-adeyemi-2027",
+    role: "public",
+    params: { token: "demo-invitation-ruth-adeyemi-2027" },
+  },
+  {
+    path: "/portal/preview/people/seed_event_0001/seed_contact_0001",
+    role: "organizer",
+    params: { eventId: "seed_event_0001", contactId: "seed_contact_0001" },
+  },
 
   // --- Public surfaces (src/routes/public.tsx SURFACES loop) ---
   { path: `/e/${EVENT_SLUG}/sessions`, role: "public", params: { eventSlug: EVENT_SLUG } },

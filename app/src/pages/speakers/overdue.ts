@@ -1,4 +1,5 @@
 import { isAssignmentOverdue } from '../../../../src/domain/task-due';
+import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 import type { OnboardingCell, OnboardingTask } from './types';
 
 /**
@@ -18,5 +19,7 @@ export function isCellOverdue(
 ): boolean {
   if (!task) return false;
   if (cell.status === 'complete') return false;
+  // multi-portal: a portal cell is late once its own merged deadline passes
+  if (cell.dueDate !== undefined) return cell.dueDate !== null && now > dayLabelEndInstant(cell.dueDate, timezone);
   return isAssignmentOverdue(task.dueDate, cell.assignedAt, now, timezone);
 }

@@ -14,6 +14,20 @@ import { requireAuth, ensureCsrfCookie } from "./shared";
 import { portalNotFound } from "../shared";
 import { ResourcesPage } from "./views";
 import { DEFAULT_PORTAL_SETTINGS } from "../../../domain/portal-settings";
+import { loadHome } from "../home";
+import type { Db } from "../../../server/context";
+
+/** The resources this person's portals list, and their events. */
+async function portalResourceIdsFor(db: Db, contactId: string, orgId: string): Promise<{ ids: Set<string>; eventIds: Set<string> }> {
+  const home = await loadHome(db, contactId, orgId, Date.now(), { heal: false });
+  const ids = new Set<string>();
+  const eventIds = new Set<string>();
+  for (const view of home.views) {
+    for (const id of view.resourceIds) ids.add(id);
+    if (view.resourceIds.length > 0) eventIds.add(view.eventId);
+  }
+  return { ids, eventIds };
+}
 
 export const portalResourcesRoutes = new Hono<AppEnv>();
 
@@ -30,15 +44,21 @@ portalResourcesRoutes.get("/resources", async (c) => {
   // empty state (200) — only a speaker with NO permitted event at all is
   // refused, so nobody is locked out of Event B's resources because Event
   // A's toggle happens to be off.
+  const listed = await portalResourceIdsFor(c.var.db, contactId, auth.orgId);
   const [data, allGroups] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
-    getMyResources(c.var.db, contactId, auth.orgId),
+    getMyResources(c.var.db, contactId, auth.orgId, listed.ids),
   ]);
   const permittedEventIds = new Set(
     Object.entries(data.showResourcesByEventId)
       .filter(([, allowed]) => allowed)
       .map(([eventId]) => eventId),
   );
+  // multi-portal: an event whose portals list resources for this person is
+  // permitted unless its producer turned the section off
+  for (const eventId of listed.eventIds) {
+    if (data.showResourcesByEventId[eventId] ?? DEFAULT_PORTAL_SETTINGS.showResources) permittedEventIds.add(eventId);
+  }
   if (permittedEventIds.size === 0) return portalNotFound(c);
   const groups = allGroups.filter((g) => permittedEventIds.has(g.eventId));
 
@@ -55,7 +75,8 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
   const resourceId = c.req.param("resourceId");
 
-  const scope = await getResourceDownloadScope(c.var.db, resourceId, contactId, auth.orgId);
+  const listed = await portalResourceIdsFor(c.var.db, contactId, auth.orgId);
+  const scope = await getResourceDownloadScope(c.var.db, resourceId, contactId, auth.orgId, listed.ids);
   if (!scope) throw new ApiError("not_found", "Resource not found");
 
   // DEC-988 (wave-74 amendment): gate on the RESOURCE's OWN event, not the

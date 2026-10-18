@@ -631,8 +631,10 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
         .update(schema.fileComment)
         .set({ authorContactId: op.to })
         .where(eq(schema.fileComment.authorContactId, op.from));
-    } else {
+    } else if (op.table === "pipeline_entry") {
       await db.update(schema.pipelineEntry).set({ contactId: op.to }).where(eq(schema.pipelineEntry.contactId, op.from));
+    } else {
+      await repointPortalTable(db, op.table, op.from, op.to);
     }
   }
 
@@ -865,4 +867,57 @@ export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]):
   }
   if (!survivor) throw new Error("merge: no survivor produced");
   return survivor;
+}
+
+/** Multi-portal merge repoints. Three tables are unique per contact within
+ * a scope (one event role of each kind, one seat per sponsor team, one
+ * speaker slot per sponsor session): when both contacts already hold the
+ * same one, the merged contact's duplicate goes before the repoint, the way
+ * mergeOnePair's (c) dedupes participants. The audit log's contact ids follow
+ * the surviving contact like every other reference -- the person is the
+ * same, the record of what happened is not edited. */
+async function repointPortalTable(db: Db, table: string, from: string, to: string): Promise<void> {
+  if (table === "audit_event") {
+    await db.update(schema.auditEvent).set({ actorContactId: to }).where(eq(schema.auditEvent.actorContactId, from));
+    await db.update(schema.auditEvent).set({ subjectContactId: to }).where(eq(schema.auditEvent.subjectContactId, from));
+  } else if (table === "event_role") {
+    await db
+      .delete(schema.eventRole)
+      .where(
+        and(
+          eq(schema.eventRole.contactId, from),
+          sql`exists (select 1 from ${schema.eventRole} as keep where keep.contact_id = ${to} and keep.event_id = ${schema.eventRole.eventId} and keep.role = ${schema.eventRole.role})`,
+        ),
+      );
+    await db.update(schema.eventRole).set({ contactId: to }).where(eq(schema.eventRole.contactId, from));
+  } else if (table === "portal_membership") {
+    await db.update(schema.portalMembership).set({ contactId: to }).where(eq(schema.portalMembership.contactId, from));
+  } else if (table === "portal_notification") {
+    await db.update(schema.portalNotification).set({ contactId: to }).where(eq(schema.portalNotification.contactId, from));
+  } else if (table === "sponsor_contact") {
+    await db
+      .delete(schema.sponsorContact)
+      .where(
+        and(
+          eq(schema.sponsorContact.contactId, from),
+          sql`exists (select 1 from ${schema.sponsorContact} as keep where keep.contact_id = ${to} and keep.sponsorship_id = ${schema.sponsorContact.sponsorshipId})`,
+        ),
+      );
+    await db.update(schema.sponsorContact).set({ contactId: to }).where(eq(schema.sponsorContact.contactId, from));
+    await db.update(schema.sponsorContact).set({ invitedByContactId: to }).where(eq(schema.sponsorContact.invitedByContactId, from));
+  } else if (table === "sponsor_session") {
+    await db.update(schema.sponsorSession).set({ createdByContactId: to }).where(eq(schema.sponsorSession.createdByContactId, from));
+  } else if (table === "sponsor_session_speaker") {
+    await db
+      .delete(schema.sponsorSessionSpeaker)
+      .where(
+        and(
+          eq(schema.sponsorSessionSpeaker.contactId, from),
+          sql`exists (select 1 from ${schema.sponsorSessionSpeaker} as keep where keep.contact_id = ${to} and keep.sponsor_session_id = ${schema.sponsorSessionSpeaker.sponsorSessionId})`,
+        ),
+      );
+    await db.update(schema.sponsorSessionSpeaker).set({ contactId: to }).where(eq(schema.sponsorSessionSpeaker.contactId, from));
+  } else {
+    throw new Error(`merge: no repoint for table ${table}`);
+  }
 }

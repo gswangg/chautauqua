@@ -31,7 +31,8 @@ create table submission (
   status text,
   external_ref text,
   created_at integer,
-  updated_at integer not null
+  updated_at integer not null,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table contact (
   id text primary key,
@@ -57,7 +58,12 @@ create table participant (
   org_at_time text,
   name_at_time text,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 `;
 

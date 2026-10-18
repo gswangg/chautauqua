@@ -5,6 +5,8 @@
 // export a named Hono sub-app; only src/index.ts mounts it.
 
 import { Hono } from "hono";
+import { loadHome, mergeProfileFields } from "./home";
+import { lockLine, type ProfileField, type ResolvedField } from "../../domain/portals/permissions";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -140,6 +142,25 @@ function ensureCsrfCookie(c: {
   };
 }
 
+// Multi-portal field permissions (Portals frame, flow 2 "Permissions ·
+// fields"): a field a portal hides isn't shown; a view-only field shows the
+// stored value read-only with its lock line ("Locked for your invited
+// panel"); help text sits under the label. Email is never edited here (it is
+// the login), so "edit" reads as view for it.
+function FieldNote(props: { field: ResolvedField }) {
+  const { field } = props;
+  return (
+    <>
+      {field.help ? <p class="chq-portal-field-help">{field.help}</p> : null}
+      {field.level === "view" && field.lockedBy ? (
+        <p class="chq-portal-field-lock">
+          <span class="chq-home-lock-word">Locked</span> {lockLine(field.lockedBy)}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function ProfilePage(props: {
   branding: { eventName: string; welcomeMessage: string | null; accentColor: string | null; logoUrl: string | null };
   profile: ContactProfile;
@@ -148,8 +169,12 @@ function ProfilePage(props: {
   saved?: boolean;
   headshotSavedMessage?: string;
   speakerName: string;
+  fields?: Record<ProfileField, ResolvedField>;
 }) {
   const { profile } = props;
+  const fields = props.fields ?? mergeProfileFields([]);
+  const ro = (f: ProfileField) => fields[f].level !== "edit";
+  const shown = (f: ProfileField) => fields[f].level !== "hidden";
   // DEC-576 (wave-110/wave-119) + DEC-154 wave-125: the 390 frame's pinned
   // action band (docs/design/Chautauqua Public and Portal.dc.html:550-552
   // `<div style="flex-shrink:0; border-top:1px solid #1B1D17;
@@ -187,6 +212,7 @@ function ProfilePage(props: {
       <form method="post" action="/portal/profile" id="chq-portal-profile-form" enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
 
+        {shown("headshot") ? (
         <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
           {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
               status, distinct from the details form's 'Profile saved.' */}
@@ -227,61 +253,103 @@ function ProfilePage(props: {
                 precedent this control follows. Clause (c): the redundant
                 `No headshot uploaded yet.` paragraph the frame does not draw is
                 deleted; the label's own text now carries that state. */}
-            <label class="chq-portal-headshot-pick">
-              {profile.headshotUrl ? "Replace" : "Add a headshot"}
-              <input
-                class="chq-portal-headshot-pick-input"
-                type="file"
-                name="headshot"
-                accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(",")}
-              />
-            </label>
-            <p class="chq-portal-detail">{headshotHintText()}</p>
+            {ro("headshot") ? null : (
+              <label class="chq-portal-headshot-pick">
+                {profile.headshotUrl ? "Replace" : "Add a headshot"}
+                <input
+                  class="chq-portal-headshot-pick-input"
+                  type="file"
+                  name="headshot"
+                  accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                />
+              </label>
+            )}
+            {ro("headshot") ? null : <p class="chq-portal-detail">{headshotHintText()}</p>}
             <p class="chq-portal-sub">{HEADSHOT_HELP_TEXT}</p>
+            <FieldNote field={fields.headshot} />
           </div>
         </section>
+        ) : null}
 
         <section aria-label="Profile details" class="chq-section">
           <div class="chq-section-label">Details</div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="firstName">First name</label>
-            <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_NAME_LENGTH} required />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="lastName">Last name</label>
-            <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_NAME_LENGTH} required />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="title">Title</label>
-            <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_NAME_LENGTH} />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="company">Company</label>
-            <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_NAME_LENGTH} />
-          </div>
+          {shown("firstName") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="firstName">First name</label>
+              <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_NAME_LENGTH} readOnly={ro("firstName")} required />
+              <FieldNote field={fields.firstName} />
+            </div>
+          ) : null}
+          {shown("lastName") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="lastName">Last name</label>
+              <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_NAME_LENGTH} readOnly={ro("lastName")} required />
+              <FieldNote field={fields.lastName} />
+            </div>
+          ) : null}
+          {shown("title") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="title">Title</label>
+              <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("title")} />
+              <FieldNote field={fields.title} />
+            </div>
+          ) : null}
+          {shown("company") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="company">Company</label>
+              <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("company")} />
+              <FieldNote field={fields.company} />
+            </div>
+          ) : null}
+          {shown("bio") ? (
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="bio">Bio</label>
             {/* G13 (frame 10--07, MAJOR): rows=5 -- the default 2-row box
                 clipped the speaker's own stored bio on first paint (the
                 frame draws the box four lines tall). */}
-            <textarea class="chq-textarea" id="bio" name="bio" rows={5} maxLength={MAX_LONG_TEXT_LENGTH}>{profile.bio ?? ""}</textarea>
+            <textarea class="chq-textarea" id="bio" name="bio" rows={5} maxLength={MAX_LONG_TEXT_LENGTH} readOnly={ro("bio")}>{profile.bio ?? ""}</textarea>
+            <FieldNote field={fields.bio} />
           </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="twitter">Twitter</label>
-            <input class="chq-input" type="text" id="twitter" name="twitter" value={profile.socialLinks.twitter} maxLength={MAX_TEXT_LENGTH} />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="linkedin">LinkedIn</label>
-            <input class="chq-input" type="text" id="linkedin" name="linkedin" value={profile.socialLinks.linkedin} maxLength={MAX_TEXT_LENGTH} />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="github">GitHub</label>
-            <input class="chq-input" type="text" id="github" name="github" value={profile.socialLinks.github} maxLength={MAX_TEXT_LENGTH} />
-          </div>
-          <div class="chq-portal-field">
-            <label class="chq-portal-field-label" for="website">Website</label>
-            <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} maxLength={MAX_TEXT_LENGTH} />
-          </div>
+          ) : null}
+          {shown("phone") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="phone">Phone number</label>
+              <input class="chq-input" type="tel" id="phone" name="phone" value={profile.phone ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("phone")} />
+              <FieldNote field={fields.phone} />
+            </div>
+          ) : null}
+          {shown("email") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="email">Email</label>
+              <input class="chq-input" type="email" id="email" value={profile.email ?? ""} maxLength={MAX_TEXT_LENGTH} readOnly />
+              <FieldNote field={fields.email} />
+            </div>
+          ) : null}
+          {shown("social") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="twitter">Twitter</label>
+              <input class="chq-input" type="text" id="twitter" name="twitter" value={profile.socialLinks.twitter} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+            </div>
+          ) : null}
+          {shown("social") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="linkedin">LinkedIn</label>
+              <input class="chq-input" type="text" id="linkedin" name="linkedin" value={profile.socialLinks.linkedin} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+            </div>
+          ) : null}
+          {shown("social") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="github">GitHub</label>
+              <input class="chq-input" type="text" id="github" name="github" value={profile.socialLinks.github} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+            </div>
+          ) : null}
+          {shown("social") ? (
+            <div class="chq-portal-field">
+              <label class="chq-portal-field-label" for="website">Website</label>
+              <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+              <FieldNote field={fields.social} />
+            </div>
+          ) : null}
           {/* Wrapped in the generic .chq-portal-actions-footer (edit.tsx's
               same selector, portal.css.ts:608/900) so the terminal phone
               block's existing `display:none` rule stands this copy down at
@@ -312,11 +380,12 @@ async function loadProfile(c: { var: { db: any; auth?: AuthInfo } }) {
     // guarantees auth.contactId is set for a speaker session.
     throw new Error(`No contact row for speaker contactId '${contactId}'`);
   }
-  return { branding: data.branding, profile, contactName: data.contactName };
+  const home = await loadHome(c.var.db, contactId, auth.orgId, Date.now(), { heal: false });
+  return { branding: data.branding, profile, contactName: data.contactName, fields: mergeProfileFields(home.views) };
 }
 
 portalProfileRoutes.get("/profile", async (c) => {
-  const { branding, profile, contactName } = await loadProfile(c);
+  const { branding, profile, contactName, fields } = await loadProfile(c);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   const saved = c.req.query("saved") === "1";
@@ -329,6 +398,7 @@ portalProfileRoutes.get("/profile", async (c) => {
       saved={saved}
       headshotSavedMessage={headshotSavedMessage}
       speakerName={contactName}
+      fields={fields}
     />,
   );
 });
@@ -345,23 +415,34 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   const contactId = assertSpeakerContactId(auth);
   const body = await c.req.parseBody();
 
-  const firstName = String(body.firstName ?? "").trim();
-  const lastName = String(body.lastName ?? "").trim();
-  const socialLinks: SocialLinks = {
+  let firstName = String(body.firstName ?? "").trim();
+  let lastName = String(body.lastName ?? "").trim();
+  let socialLinks: SocialLinks = {
     twitter: String(body.twitter ?? ""),
     linkedin: String(body.linkedin ?? ""),
     github: String(body.github ?? ""),
     website: String(body.website ?? ""),
   };
-  const title = String(body.title ?? "").trim();
-  const company = String(body.company ?? "").trim();
-  const bio = String(body.bio ?? "").trim();
+  let title = String(body.title ?? "").trim();
+  let company = String(body.company ?? "").trim();
+  let bio = String(body.bio ?? "").trim();
+  const phoneInput = String(body.phone ?? "").trim();
 
   // Re-render on any validation failure with what the speaker just typed,
   // not the previously stored row — losing typed-but-unsaved edits on a
   // rejected submit would be its own data-loss path.
-  const { branding, profile: storedProfile, contactName } = await loadProfile(c);
+  const { branding, profile: storedProfile, contactName, fields } = await loadProfile(c);
   const { token: csrfToken } = ensureCsrfCookie(c);
+  // multi-portal: a field the participant can't edit keeps its stored value,
+  // whatever the form sent
+  const editable = (f: ProfileField) => fields[f].level === "edit";
+  if (!editable("firstName")) firstName = storedProfile.firstName;
+  if (!editable("lastName")) lastName = storedProfile.lastName;
+  if (!editable("title")) title = storedProfile.title ?? "";
+  if (!editable("company")) company = storedProfile.company ?? "";
+  if (!editable("bio")) bio = storedProfile.bio ?? "";
+  if (!editable("social")) socialLinks = storedProfile.socialLinks;
+  const phone = editable("phone") ? phoneInput || null : undefined;
   const submittedProfile: ContactProfile = {
     ...storedProfile,
     firstName,
@@ -379,6 +460,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
         csrfToken={csrfToken}
         error={error}
         speakerName={contactName}
+        fields={fields}
       />,
       400,
     );
@@ -400,6 +482,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     ["GitHub", socialLinks.github, MAX_TEXT_LENGTH],
     ["Website", socialLinks.website, MAX_TEXT_LENGTH],
     ["Bio", bio, MAX_LONG_TEXT_LENGTH],
+    ["Phone number", phoneInput, MAX_NAME_LENGTH],
   ];
   for (const [label, value, max] of capped) {
     if (value.length > max) {
@@ -413,7 +496,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   // is a deliberate upload attempt and runs the same gates the old
   // POST /portal/profile/headshot route ran.
   const headshotPart = body["headshot"];
-  const hasHeadshot = headshotPart instanceof File && headshotPart.name !== "";
+  const hasHeadshot = editable("headshot") && headshotPart instanceof File && headshotPart.name !== "";
   let uploadedHeadshot = false;
 
   if (hasHeadshot) {
@@ -469,6 +552,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     company: company || null,
     bio: bio || null,
     socialLinks,
+    ...(phone !== undefined ? { phone } : {}),
   });
 
   // DEC-009 amendment (wave 59): the "Finalize bio + headshot" onboarding

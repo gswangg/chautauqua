@@ -6,10 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const runDueReminders = vi.fn();
 const runAirtableSync = vi.fn();
+const runPortalUpkeep = vi.fn(async (_arg: unknown) => undefined);
 const makeDb = vi.fn((_arg: unknown) => ({}) as unknown);
 
 vi.mock('../src/routes/tasks', () => ({
   runDueReminders: (arg: unknown) => runDueReminders(arg),
+}));
+vi.mock('../src/server/repo/portals/cron', () => ({
+  runPortalUpkeep: (arg: unknown) => runPortalUpkeep(arg),
 }));
 vi.mock('../src/sync/airtable', () => ({
   runAirtableSync: (arg1: unknown, arg2: unknown) => runAirtableSync(arg1, arg2),
@@ -28,6 +32,8 @@ describe('handleScheduled job isolation (DEC-812)', () => {
   afterEach(() => {
     runDueReminders.mockReset();
     runAirtableSync.mockReset();
+    runPortalUpkeep.mockReset();
+    runPortalUpkeep.mockImplementation(async () => undefined);
     makeDb.mockReset();
     makeDb.mockImplementation(() => ({}) as unknown);
   });
@@ -70,5 +76,16 @@ describe('handleScheduled job isolation (DEC-812)', () => {
     runAirtableSync.mockResolvedValueOnce(undefined);
 
     await expect(handleScheduled(fakeController, fakeEnv, fakeCtx)).resolves.toBeUndefined();
+  });
+
+  it('multi-portal: a portal upkeep failure still lets reminders and sync run, then rethrows naming it', async () => {
+    runDueReminders.mockResolvedValueOnce(undefined);
+    runAirtableSync.mockResolvedValueOnce(undefined);
+    runPortalUpkeep.mockRejectedValueOnce(new Error('portals boom'));
+
+    await expect(handleScheduled(fakeController, fakeEnv, fakeCtx)).rejects.toThrow(/runPortalUpkeep/);
+
+    expect(runDueReminders).toHaveBeenCalledTimes(1);
+    expect(runAirtableSync).toHaveBeenCalledTimes(1);
   });
 });

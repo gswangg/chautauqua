@@ -6,6 +6,7 @@
 // test in test/api-submissions.test.ts.
 
 import { and, eq, inArray } from "drizzle-orm";
+import type { TaskKind } from "../../../domain/task-kinds";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -151,7 +152,7 @@ async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, n
 async function getOrCreateTask(
   db: Db,
   eventId: string,
-  template: { title: string; kind: "general" | "file_request" | "form"; required: boolean },
+  template: { title: string; kind: TaskKind; required: boolean },
   now: Date,
   dueDate: number,
 ): Promise<string> {
@@ -300,7 +301,9 @@ async function planAndPersistOnboardingTasks(
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
-      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
+      .onConflictDoNothing({
+        target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId, schema.taskAssignment.scopeKey],
+      });
   }
 
   // DEC-932: activation BACK-FILLS, it never snapshots. planAcceptance above
@@ -394,7 +397,9 @@ async function planAndPersistOnboardingTasks(
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
-      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
+      .onConflictDoNothing({
+        target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId, schema.taskAssignment.scopeKey],
+      });
   }
 }
 

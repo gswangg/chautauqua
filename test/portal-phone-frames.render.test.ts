@@ -67,7 +67,7 @@ const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", 
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
-  return {
+  const __m: any = {
     ...actual,
     getPortalData: vi.fn(async () => ({
       branding: {
@@ -140,6 +140,15 @@ vi.mock("../src/server/repo/portal", async () => {
     getPortalSubmissionDetail: vi.fn(async () => null),
     getMyResources: vi.fn(async () => []),
   };
+  const { homeFromLegacy } = await import("./helpers/person-view-fixture");
+  __m.getPortalHome = vi.fn(async () =>
+    homeFromLegacy({
+      sessions: await __m.getMySessions(),
+      tasks: await __m.getMyTaskAssignments(),
+      invitations: await __m.getMyInvitations(),
+    }),
+  );
+  return __m;
 });
 
 vi.mock("../src/server/repo/forms", async () => {
@@ -216,13 +225,13 @@ function countTags(html: string, tag: string): number {
 }
 
 function h1Text(html: string): string {
-  const m = /<h1[^>]*>([^<]*)<\/h1>/.exec(html);
+  const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html);
   if (!m) throw new Error("no <h1> found");
-  return m[1]!;
+  return m[1]!.replace(/<[^>]+>/g, "");
 }
 
 describe('v12 phone frame "Speaker portal" (:414-472, GET /portal)', () => {
-  it("exactly one <h1>-equivalent hero, CONFORMS on the literal (frame spells the count, the route now spells it too, DEC-380 wave-22 amendment)", async () => {
+  it("exactly one <h1>-equivalent hero carrying the count (multi-portal: the Portals frame's 'Hi Priya — 2 things to do' greeting supersedes this frame's bare 'Two things to do')", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:420
     // `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Two things to do</span>`
     expect(designLine(420)).toBe(
@@ -233,15 +242,11 @@ describe('v12 phone frame "Speaker portal" (:414-472, GET /portal)', () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(countTags(html, "h1")).toBe(1);
-    // Byte-equal match: the frame's own literal spells the count in words
-    // ("Two"); the route now composes the SAME spelling through
-    // src/domain/count-copy.ts's capitalizeFirst(spellCount(n)) +
-    // plural(n, "thing") pair (DEC-380 wave-22 amendment) -- countOf (the
-    // numeral register, DEC-925) stays reserved for data-dense surfaces.
-    // Two things to do (n=2, this fixture's two pending task assignments)
-    // -> the route's actual H1 text is "Two things to do", byte-equal to
-    // the frame's literal.
-    expect(h1Text(html)).toBe("Two things to do");
+    // The Portals frame (docs/design/multi-portal, flow 6) greets by name
+    // and writes the count as a numeral -- "Hi Priya — 2 things to do" --
+    // for this fixture's two open items. One string at every width: this
+    // v12 frame's own 390 hero says "things to do" too.
+    expect(h1Text(html)).toMatch(/^Hi \S+ — 2 things to do$/);
   });
 
   it("draws no dock band -- the frame's footer (:463-465) is a plain name/link band, not a pinned action dock", async () => {
@@ -282,21 +287,26 @@ describe('v12 phone frame "Speaker portal" (:414-472, GET /portal)', () => {
     expect(designLine(426)).toBe(
       `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Waiting on you</span>`,
     );
-    expect(html).toContain(">Waiting on you<");
+    // multi-portal: "Waiting on you" is the person's items under "Your
+    // profile" (Portals frame flow 6); the frame line is kept as the pin.
+    expect(html).toContain(">Your profile<");
 
     // docs/design/Chautauqua Public and Portal.dc.html:440
     // `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Your session</span>`
     expect(designLine(440)).toBe(
       `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Your session</span>`,
     );
-    expect(html).toContain(">Your session<");
+    // multi-portal: a session's section is named by its role and format
+    // ("Your talk"); with no session in this fixture there is none.
+    expect(html).not.toContain(">Your session<");
 
     // docs/design/Chautauqua Public and Portal.dc.html:453
     // `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Done</span>`
     expect(designLine(453)).toBe(
       `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Done</span>`,
     );
-    expect(html).toContain(">Done<");
+    // multi-portal: done items fold inside their own section
+    expect(html).not.toContain(">Done<");
 
     // docs/design/Chautauqua Public and Portal.dc.html:465
     // `<a href="#" style="margin-left:auto; font-size:13px; font-weight:700">Profile</a>`

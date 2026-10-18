@@ -62,6 +62,9 @@ export interface PortalData {
   submissions: PortalSubmissionSummary[];
   tasks: PortalTask[];
   contactName: string;
+  // multi-portal: the home's greeting ("Hi Priya"); optional so fixtures
+  // built before it still type
+  contactFirstName?: string;
   contactCompany: string | null;
   /** DEC-988 (wave-74 amendment): whether the speaker portal's Resources
    * section is on, PER EVENT the contact participates in (union of their
@@ -218,7 +221,15 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
     }
   }
 
-  return { branding, submissions, tasks, contactName, contactCompany, showResourcesByEventId };
+  return {
+    branding,
+    submissions,
+    tasks,
+    contactName,
+    contactFirstName: contactRow?.firstName ?? "",
+    contactCompany,
+    showResourcesByEventId,
+  };
 }
 
 export interface PortalSubmissionAnswer {

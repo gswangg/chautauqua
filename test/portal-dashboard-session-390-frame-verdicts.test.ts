@@ -59,7 +59,7 @@ let mockParticipants: PortalParticipant[] = [];
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
-  return {
+  const __m: any = {
     ...actual,
     getPortalData: vi.fn(async () => ({
       branding: {
@@ -84,6 +84,15 @@ vi.mock("../src/server/repo/portal", async () => {
     getPortalSubmissionDetail: vi.fn(async () => mockDetail),
     listDeliverableCandidatesForEvents: vi.fn(async () => new Map()),
   };
+  const { homeFromLegacy } = await import("./helpers/person-view-fixture");
+  __m.getPortalHome = vi.fn(async () =>
+    homeFromLegacy({
+      sessions: await __m.getMySessions(),
+      tasks: await __m.getMyTaskAssignments(),
+      invitations: await __m.getMyInvitations(),
+    }),
+  );
+  return __m;
 });
 
 vi.mock("../src/server/repo/portal-edit", async () => {
@@ -134,7 +143,7 @@ const SESSION_FRAME_LINE =
   '    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">';
 
 describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", () => {
-  it("frame :414 'Speaker portal' (GET /portal) -- header wordmark/name, DEC-590 headline count, one-session scheduledSubline, session card copy, per-kind task control label, 'Upload again', footer band", async () => {
+  it("frame :414 'Speaker portal' (GET /portal) -- header wordmark/name, headline count, one-session scheduledSubline, the session card's copy inside its participation section, 'Upload again', footer band (anatomy superseded by the Portals frame, flow 6)", async () => {
     // docs/design/Chautauqua Public and Portal.dc.html:414 `    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
     expect(readFileSync(DESIGN_FILE, "utf-8").split("\n")[413]).toBe(DASHBOARD_FRAME_LINE);
 
@@ -193,12 +202,12 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(html).toContain('<span class="chq-portal-header-name">Priya Raman</span>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:420 `        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Two things to do</span>`
-    // -- DEC-590 (wave-22 amendment): the headline count is n =
-    // worklist.length, exactly the one pending row rendered below (one
-    // file_request task, zero invitations), spelled via
-    // capitalizeFirst(spellCount(n)) to match the frame's literal.
-    expect(html).toContain('<h1 class="chq-portal-hero">');
-    expect(html).toContain(`${capitalizeFirst(spellCount(1))} ${plural(1, "thing")} to do`);
+    // -- multi-portal: the Portals frame's greeting ("Hi Priya — 5 things to
+    // do") carries the same count, exactly the one open item rendered below.
+    expect(html).toContain('<h1 class="chq-portal-hero chq-home-hero">');
+    expect(html).toContain(`1 ${plural(1, "thing")} to do`);
+    void capitalizeFirst;
+    void spellCount;
 
     // docs/design/Chautauqua Public and Portal.dc.html:421 `        <span style="font-size:13px; color:#565A4B; line-height:1.5">DevFlow Conf 2027 · you speak Tue 12 May, 10:00, Room 2A</span>`
     // -- scheduledSubline's ONE-session form: "<event> · you speak <placement>".
@@ -206,16 +215,17 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(html).toContain(`<p class="chq-portal-sub">DevFlow Conf 2027 · you speak ${expectedPlacement}</p>`);
 
     // docs/design/Chautauqua Public and Portal.dc.html:426 `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Waiting on you</span>`
-    expect(html).toContain('<div class="chq-section-label">Waiting on you</div>');
-
-    // per-kind control label: src/routes/portal/index.tsx:136 `if (t.kind === "file_request") return "Upload file";`
-    expect(html).toContain("Upload file");
+    // multi-portal: "Waiting on you" became the person's own items under
+    // "Your profile"; the open item links to its task.
+    expect(html).toContain('<div class="chq-home-label">Your profile</div>');
+    expect(html).toContain('href="/portal/tasks#task-assign-file"');
 
     // docs/design/Chautauqua Public and Portal.dc.html:440 `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Your session</span>`
-    expect(html).toContain('<div class="chq-section-label">Your session</div>');
+    // -- the session's own participation section, named by its format
+    expect(html).toContain('<div class="chq-home-label">Your talk</div>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:443 `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</span>`
-    expect(html).toContain('<span class="chq-portal-row-title">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</span>');
+    expect(html).toContain("Taming 40-Minute CI: Incremental Builds at Monorepo Scale</a>");
 
     // docs/design/Chautauqua Public and Portal.dc.html:444 `          <span style="font-size:13px; color:#565A4B">Talk, 30 min · Platform &amp; Infra · accepted 14 Mar</span>`
     // -- SessionCard's metaParts: sessionFormatLabel(format) · trackName · accepted <date>, shape matches (fixture format/track chosen freely -- SHAPE only, per the task brief).
@@ -229,7 +239,8 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
     expect(html).toContain('<a href="/portal/tasks" class="chq-btn chq-btn-secondary">Upload again</a>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:453 `          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Done</span>`
-    expect(html).toContain('<div class="chq-section-label">Done</div>');
+    // -- multi-portal: done items fold inside their own section instead
+    expect(html).not.toContain('<div class="chq-section-label">Done</div>');
 
     // docs/design/Chautauqua Public and Portal.dc.html:464 `        <span style="font-size:13px; color:#565A4B">Priya Raman · Latticework Systems</span>`
     expect(html).toContain('<span class="chq-portal-footer-who">Priya Raman · Latticework Systems</span>');
@@ -244,19 +255,17 @@ describe("Portal SSR 390 frame verdicts -- dashboard + your-session (w30-c)", ()
       '<button type="submit" class="chq-btn chq-btn-tertiary chq-portal-header-signout-btn">Sign out</button>',
     );
 
-    // Order sanity: the frame draws wordmark -> headline -> subline ->
-    // Waiting on you -> Your session -> Done -> footer, in that order.
+    // Order sanity: wordmark -> headline -> subline -> profile -> the
+    // session's section -> footer.
     const wordmarkIdx = html.indexOf('<span class="chq-wordmark">chautauqua</span>');
-    const heroIdx = html.indexOf('<h1 class="chq-portal-hero">');
-    const waitingIdx = html.indexOf('<div class="chq-section-label">Waiting on you</div>');
-    const sessionIdx = html.indexOf('<div class="chq-section-label">Your session</div>');
-    const doneIdx = html.indexOf('<div class="chq-section-label">Done</div>');
+    const heroIdx = html.indexOf('<h1 class="chq-portal-hero chq-home-hero">');
+    const profileIdx = html.indexOf('<div class="chq-home-label">Your profile</div>');
+    const sessionIdx = html.indexOf('<div class="chq-home-label">Your talk</div>');
     const footerIdx = html.indexOf('<span class="chq-portal-footer-who">Priya Raman · Latticework Systems</span>');
     expect(wordmarkIdx).toBeLessThan(heroIdx);
-    expect(heroIdx).toBeLessThan(waitingIdx);
-    expect(waitingIdx).toBeLessThan(sessionIdx);
-    expect(sessionIdx).toBeLessThan(doneIdx);
-    expect(doneIdx).toBeLessThan(footerIdx);
+    expect(heroIdx).toBeLessThan(profileIdx);
+    expect(profileIdx).toBeLessThan(sessionIdx);
+    expect(sessionIdx).toBeLessThan(footerIdx);
   });
 
   it("scheduledSubline's TWO-session enumeration form (GET /portal, two placed sessions) -- DEC-936: EVERY placed session is named, never the first one alone", async () => {

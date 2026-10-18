@@ -73,7 +73,8 @@ create table submission (
   ics_sequence integer not null default 0,
   external_ref text,
   created_at integer,
-  updated_at integer not null
+  updated_at integer not null,
+  origin text NOT NULL DEFAULT 'cfp'
 );
 create table participant (
   id text primary key,
@@ -87,7 +88,12 @@ create table participant (
   org_at_time text,
   name_at_time text,
   created_at integer,
-  updated_at integer
+  updated_at integer,
+  invitation_message text,
+  reply_by integer,
+  invited_by_user_id text,
+  decline_note text,
+  invitation_token_hash text
 );
 create unique index participant_submission_id_contact_id_idx on participant (submission_id, contact_id);
 create table form (
@@ -133,6 +139,10 @@ create table task (
   audience text not null default 'everyone',
   created_at integer,
   updated_at integer,
+  scope text NOT NULL DEFAULT 'person',
+  accepted_types_json text,
+  max_size_mb integer,
+  max_files integer,
   unique (event_id, title)
 );
 create table task_assignment (
@@ -147,7 +157,13 @@ create table task_assignment (
   last_reminded_at integer,
   created_at integer,
   updated_at integer,
-  unique (task_id, contact_id)
+  scope_key text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'direct',
+  detached_at integer,
+  due_date integer,
+  required integer,
+  reopened_until integer,
+  unique (task_id, contact_id, scope_key)
 );
 `;
 

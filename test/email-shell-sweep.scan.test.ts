@@ -42,6 +42,10 @@ const SWEPT_SITES: { file: string; expectedRenderEmailHtmlCalls: number }[] = [
   { file: join(SRC_DIR, "server", "repo", "tasks", "reminders.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "auth-reset.tsx"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "public", "submit-post.tsx"), expectedRenderEmailHtmlCalls: 1 },
+  // multi-portal: the queued "new in your portal" email, and the invitation,
+  // sponsor-decision, sponsor-speaker and teammate emails
+  { file: join(SRC_DIR, "server", "repo", "portals", "notify.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "server", "repo", "portals", "mail.ts"), expectedRenderEmailHtmlCalls: 2 },
 ];
 
 describe("every outbound HTML body renders through the B9 shell (DEC-037 amendment)", () => {

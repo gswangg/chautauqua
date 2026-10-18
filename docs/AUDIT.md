@@ -147,6 +147,18 @@ other session (anonymous, reviewer, speaker) gets a 404, never a redirect, so th
 invisible to the roles it is not for. Without an `?eventId=` belonging to the caller's org it
 renders that same 404.
 
+Multi-portal (`docs/design/multi-portal/DECISIONS.md`) adds participant pages to the same
+portal. `/portal/sponsors/:sponsorshipId` (the sponsor package),
+`/portal/sponsors/:sponsorshipId/sessions/new`, `/portal/sponsors/:sponsorshipId/sessions/:sessionId`
+and `/portal/sponsors/:sponsorshipId/team` (`src/routes/portal/sponsors.tsx`) are reachable only
+by a joined contact of that sponsorship (`resolveSponsorAccess`), so a contact never sees another
+sponsor's sessions, team or entitlements. `/portal/tasks/:assignmentId/share` is the share-kit
+item, own-assignment only like the other task pages.
+`/portal/invitations/:token` is the invited-speaker acceptance page: the email's token is the
+credential for that page only, metered per IP like the account-claim link. `/portal/preview/people/:eventId/:contactId`
+is the organizer-only "Preview as participant" view, the 404-for-everyone-else shape of
+`/portal/preview`, and each open writes an `audit_event` row.
+
 ## J8 — Collect/review/approve content (`/admin/content`, `/admin/content/:submissionId`)
 
 Per-session file uploads (typed: slides, headshot, bio, etc.), organizer approve/reject,
