@@ -712,18 +712,6 @@ const LEDGER: LedgerEntry[] = [
     reason:
       "DEC-902 explicitly rules this field OUT as the library's VERSION column value ('never versionCount, a chain-length marker') and names versionNo as the one that IS the identity shown -- no design mock or decision asks for a separate 'N versions in this chain' count display, so there is no documented UI obligation this task can wire a reader against without inventing new copy, which is a product decision outside this task's narrow scope.",
   },
-  {
-    key: 'app/src/pages/forms/types.ts#CfpForm.isDefault',
-    verdict: 'exempt',
-    reason:
-      "DEC-851 wave-12 finding, uncovered only once the interface-body mask closed a false-positive match on a documentation comment (app/src/pages/speakers/TaskModal.tsx's '{id, title, isDefault}' prose, never real code). DEC-398's own text names the field's one obligation: listFormsForEvent (src/server/repo/forms.ts:107-121) returns the event's forms 'default first then title' -- a SORT KEY the server already spends so every array-order consumer gets it for free, never a boolean a screen was asked to render as a '(Default)' badge or use to preselect a control. No decision or design mock documents that second, distinct UI obligation.",
-  },
-  {
-    key: 'app/src/pages/speakers/types.ts#EventForm.isDefault',
-    verdict: 'exempt',
-    reason:
-      "same DEC-398 'default first then title is a server-spent sort key, not a client-rendered fact' rationale as CfpForm.isDefault above -- EventForm is the sibling wire shape {id, title, isDefault} DEC-398's own header names for exactly this list (GET .../forms's additive `forms` key), consumed by TaskModal.tsx's form-task picker in array order; no decision or design mock asks that select to badge or preselect the default entry.",
-  },
 ];
 
 describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response field with no reader is a lie', () => {

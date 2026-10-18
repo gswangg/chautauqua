@@ -16,7 +16,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { limitSentence } from '../../../../src/domain/portals/file-types';
 import { LIBRARY_TABS } from './AddFromLibraryModal';
 import { EditLibraryItemModal } from './EditLibraryItemModal';
-import { NewLibraryItemModal } from './NewLibraryItemModal';
+import { formBuilderPath, NewLibraryItemModal } from './NewLibraryItemModal';
 import { SettingsSubPage } from './SettingsSubPage';
 import { libraryEntryKey } from './portalDraft';
 import type { LibraryEntry, LibraryListing } from './types';
@@ -185,6 +185,11 @@ export function LibraryPage() {
                         <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setEditing(entry)} aria-label={`Edit ${entry.title}`}>
                           Edit
                         </button>
+                      ) : null}
+                      {entry.type === 'form' && entry.formId ? (
+                        <Link className="chq-btn chq-btn-tertiary" to={formBuilderPath(entry.formId)} aria-label={`Edit the questions in ${entry.title}`}>
+                          Questions
+                        </Link>
                       ) : null}
                       {isResource(entry) ? (
                         <span className="chq-portal-seg chq-library-visibility" role="group" aria-label={`Who sees ${entry.title}`}>

@@ -67,6 +67,12 @@ function textRow(type: LibraryType): { label: string; help: string; max: number 
 
 /** A file request's limits: accepted types (Any file clears the rest),
  * largest size and how many files. Enforced on upload. */
+/** The form builder opened on one library form ("Form saved", the library's
+ * Questions link); the CFP form when the id is missing. */
+export function formBuilderPath(formId: string | null): string {
+  return formId ? `/submissions/forms?form=${encodeURIComponent(formId)}` : '/submissions/forms';
+}
+
 export function FileLimitFields({
   types,
   onTypes,
@@ -149,7 +155,7 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // a form is saved, then built in the form builder
-  const [formMade, setFormMade] = useState<string | null>(null);
+  const [formMade, setFormMade] = useState<{ title: string; formId: string | null } | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -173,7 +179,7 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
     try {
       const created = await apiPost<{ taskId: string | null; resourceId: string | null; formId: string | null }>(`/events/${eventId}/library`, body);
       onCreated({ type, title: body.title, scope: body.scope, ...created });
-      if (type === 'form') setFormMade(body.title);
+      if (type === 'form') setFormMade({ title: body.title, formId: created.formId });
       else onClose();
     } catch (err) {
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
@@ -191,7 +197,7 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
     return (
       <ModalFrame
         title="Form saved"
-        subtitle={mode === 'portal' ? `${formMade} is in the library and added to ${portalName ?? 'this portal'}` : `${formMade} is in the library`}
+        subtitle={mode === 'portal' ? `${formMade.title} is in the library and added to ${portalName ?? 'this portal'}` : `${formMade.title} is in the library`}
         onClose={onClose}
         modalClassName="chq-portal-modal"
         actions={
@@ -202,7 +208,7 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
       >
         <p className="chq-portal-modal-note">
           Its questions are built in the form builder.{' '}
-          <Link to="/submissions/forms" target="_blank" rel="noreferrer" className="chq-portal-inline-link">
+          <Link to={formBuilderPath(formMade.formId)} target="_blank" rel="noreferrer" className="chq-portal-inline-link">
             Open the form builder
           </Link>
           {mode === 'portal' ? ' (it opens in a new tab, so this portal keeps your edits).' : '.'}

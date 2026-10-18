@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { msToDateInput, dateInputToMs, formatDateOnlyNoYear } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
@@ -44,6 +44,10 @@ type ReceivedState = { total: number } | 'loading' | 'error';
  * api.ts. */
 export function FormsPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  // multi-portal: ?form=<id> opens one of the event's other forms (a portal
+  // library form item) to build its questions; without it, the CFP form
+  const [searchParams] = useSearchParams();
+  const formParam = searchParams.get('form');
 
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [form, setForm] = useState<CfpForm | null>(null);
@@ -79,7 +83,9 @@ export function FormsPage() {
     setError(null);
     Promise.all([
       apiGet<EventSummary>(`/events/${eventId}`),
-      apiGet<CfpForm>(`/events/${eventId}/forms`),
+      formParam
+        ? apiGet<CfpForm>(`/events/${eventId}/forms?form=${encodeURIComponent(formParam)}`)
+        : apiGet<CfpForm>(`/events/${eventId}/forms`),
       apiList<EventTrack>(`/events/${eventId}/tracks`),
     ])
       .then(([ev, formResult, tracksResult]) => {
@@ -92,7 +98,7 @@ export function FormsPage() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the form'))
       .finally(() => setLoading(false));
-  }, [eventId]);
+  }, [eventId, formParam]);
 
   useEffect(() => {
     load();
@@ -271,6 +277,9 @@ export function FormsPage() {
     );
   }
 
+  // a portal form item: its questions only -- the submission window, the
+  // received count and the public link belong to the CFP form
+  const isCfp = !formParam || form.isDefault;
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
   // Phone drill head (docs/design/Chautauqua Submissions.dc.html:468
   // `<div style="width:390px; height:844px; ...">`, the 390 CFP-form frame's
@@ -288,7 +297,7 @@ export function FormsPage() {
   const phoneMetaText = `Closes ${closesText} · ${receivedCountText} received`;
   // Shared with FieldModal's header line (DEC-650(d)/wave-66 amendment):
   // the same real count, never a second fetch or a fabricated number.
-  const answeredCount = received === 'loading' || received === 'error' ? null : received.total;
+  const answeredCount = !isCfp || received === 'loading' || received === 'error' ? null : received.total;
   // Amendment (wave 72): Save is disabled until the strip differs from the
   // loaded form, so it never claims work it has none of.
   const windowDirty =
@@ -328,68 +337,80 @@ export function FormsPage() {
           becomes the frame's "Closes … · N received" line only below 700px. */}
       <header className="chq-forms-header chq-phone-head chq-phone-head-drill">
         <div className="chq-forms-header-titles">
-          <Link to="/submissions" className="chq-forms-back chq-phone-back">
-            &lsaquo; Submissions
-          </Link>
-          <h1 className="chq-page-title">CFP form</h1>
-          <span className="chq-forms-phone-meta">{phoneMetaText}</span>
+          {isCfp ? (
+            <Link to="/submissions" className="chq-forms-back chq-phone-back">
+              &lsaquo; Submissions
+            </Link>
+          ) : (
+            <Link to="/settings/portals/library" className="chq-forms-back chq-phone-back">
+              &lsaquo; Library
+            </Link>
+          )}
+          {isCfp ? <h1 className="chq-page-title">CFP form</h1> : <h1 className="chq-page-title">{form.title}</h1>}
+          {isCfp ? <span className="chq-forms-phone-meta">{phoneMetaText}</span> : null}
         </div>
-        <div className="chq-forms-header-actions">
-          <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
-            Preview
-          </a>
-          <button
-            type="button"
-            className="chq-btn chq-btn-primary"
-            disabled={!windowDirty || windowSaving}
-            onClick={() => void handleSaveWindow()}
-          >
-            {windowSaving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+        {isCfp ? (
+          <div className="chq-forms-header-actions">
+            <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
+              Preview
+            </a>
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={!windowDirty || windowSaving}
+              onClick={() => void handleSaveWindow()}
+            >
+              {windowSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        ) : null}
       </header>
 
       <div className="chq-forms-content">
-        <div className="chq-forms-strip">
-          <div className="chq-forms-strip-cell">
-            <label className="chq-forms-strip-label" htmlFor="chq-forms-open-date">
-              Opens
-            </label>
-            <DateField
-              id="chq-forms-open-date"
-              className="chq-forms-strip-datefield"
-              value={openInput}
-              onChange={(next) => {
-                setOpenInput(next);
-                setWindowFieldErrors((prev) => ({ ...prev, openDate: '' }));
-              }}
-            />
-            {windowFieldErrors.openDate ? (
-              <span className="chq-field-error">{windowFieldErrors.openDate}</span>
-            ) : null}
+        {isCfp ? (
+          <div className="chq-forms-strip">
+            <div className="chq-forms-strip-cell">
+              <label className="chq-forms-strip-label" htmlFor="chq-forms-open-date">
+                Opens
+              </label>
+              <DateField
+                id="chq-forms-open-date"
+                className="chq-forms-strip-datefield"
+                value={openInput}
+                onChange={(next) => {
+                  setOpenInput(next);
+                  setWindowFieldErrors((prev) => ({ ...prev, openDate: '' }));
+                }}
+              />
+              {windowFieldErrors.openDate ? (
+                <span className="chq-field-error">{windowFieldErrors.openDate}</span>
+              ) : null}
+            </div>
+            <div className="chq-forms-strip-cell">
+              <label className="chq-forms-strip-label" htmlFor="chq-forms-close-date">
+                Closes
+              </label>
+              <DateField
+                id="chq-forms-close-date"
+                className="chq-forms-strip-datefield"
+                value={closeInput}
+                onChange={(next) => {
+                  setCloseInput(next);
+                  setWindowFieldErrors((prev) => ({ ...prev, closeDate: '' }));
+                }}
+              />
+              {windowFieldErrors.closeDate ? (
+                <span className="chq-field-error">{windowFieldErrors.closeDate}</span>
+              ) : null}
+            </div>
+            <div className="chq-forms-strip-cell">
+              <span className="chq-forms-strip-label">Received</span>
+              <span className="chq-forms-strip-value">{receivedText}</span>
+            </div>
           </div>
-          <div className="chq-forms-strip-cell">
-            <label className="chq-forms-strip-label" htmlFor="chq-forms-close-date">
-              Closes
-            </label>
-            <DateField
-              id="chq-forms-close-date"
-              className="chq-forms-strip-datefield"
-              value={closeInput}
-              onChange={(next) => {
-                setCloseInput(next);
-                setWindowFieldErrors((prev) => ({ ...prev, closeDate: '' }));
-              }}
-            />
-            {windowFieldErrors.closeDate ? (
-              <span className="chq-field-error">{windowFieldErrors.closeDate}</span>
-            ) : null}
-          </div>
-          <div className="chq-forms-strip-cell">
-            <span className="chq-forms-strip-label">Received</span>
-            <span className="chq-forms-strip-value">{receivedText}</span>
-          </div>
-        </div>
+        ) : (
+          <p className="chq-meta">A portal form item. Participants answer these questions from their portal.</p>
+        )}
 
         <section className="chq-forms-section">
           <div className="chq-forms-field-list-header chq-forms-section-title">
@@ -433,20 +454,24 @@ export function FormsPage() {
               Add a question
             </button>
 
-            <div className="chq-forms-fields-footer">
-              <span className="chq-forms-fields-footer-label">Public link</span>
-              <span className="chq-forms-fields-footer-value">{publicLinkDisplay}</span>
-              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void handleCopyPublicLink()}>
-                {linkCopyResult?.ok ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <div role="status" aria-live="polite" className="chq-copy-status">
-              {linkCopyResult
-                ? linkCopyResult.ok
-                  ? 'Copied'
-                  : 'Copy failed — select the text and copy it manually'
-                : null}
-            </div>
+            {isCfp ? (
+              <>
+                <div className="chq-forms-fields-footer">
+                  <span className="chq-forms-fields-footer-label">Public link</span>
+                  <span className="chq-forms-fields-footer-value">{publicLinkDisplay}</span>
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void handleCopyPublicLink()}>
+                    {linkCopyResult?.ok ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div role="status" aria-live="polite" className="chq-copy-status">
+                  {linkCopyResult
+                    ? linkCopyResult.ok
+                      ? 'Copied'
+                      : 'Copy failed — select the text and copy it manually'
+                    : null}
+                </div>
+              </>
+            ) : null}
             {/* G13 lane-D fix (02-submissions--04): the undrawn
                 'Settings › Call for papers' link below the public-link
                 footer row is removed -- the frame ends the section at that
@@ -473,19 +498,21 @@ export function FormsPage() {
           Preview's un-flexed (bordered, natural) width. This is second
           markup, not a text swap over the desktop header actions (DEC-390
           precedent). */}
-      <div className="chq-forms-phone-footer chq-phone-dock">
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary chq-forms-phone-save"
-          disabled={!windowDirty || windowSaving}
-          onClick={() => void handleSaveWindow()}
-        >
-          {windowSaving ? 'Saving…' : 'Save the form'}
-        </button>
-        <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
-          Preview
-        </a>
-      </div>
+      {isCfp ? (
+        <div className="chq-forms-phone-footer chq-phone-dock">
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary chq-forms-phone-save"
+            disabled={!windowDirty || windowSaving}
+            onClick={() => void handleSaveWindow()}
+          >
+            {windowSaving ? 'Saving…' : 'Save the form'}
+          </button>
+          <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
+            Preview
+          </a>
+        </div>
+      ) : null}
 
       {modal?.mode === 'create' && (
         <FieldModal allFields={form.fields} onCancel={() => setModal(null)} onSubmit={handleCreateField} />

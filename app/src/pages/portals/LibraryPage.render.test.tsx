@@ -104,6 +104,23 @@ describe('LibraryPage', () => {
     expect(within(accept).getByText('Built in · invited participations')).toBeInTheDocument();
   });
 
+  it('a form item links to its own questions in the form builder', async () => {
+    const withForm = listing();
+    withForm.entries.push(entry({ ref: { taskId: 't-travel' }, type: 'form', title: 'Travel form', formId: 'f-travel' }));
+    withForm.counts.form = 1;
+    mockApi({ [`GET ${LIB}`]: withForm });
+    renderPage();
+    expect(await screen.findByText('Forms · 1')).toBeInTheDocument();
+    const travel = screen.getByText('Travel form').closest('li')!;
+    expect(within(travel).getByRole('link', { name: 'Edit the questions in Travel form' })).toHaveAttribute(
+      'href',
+      '/submissions/forms?form=f-travel',
+    );
+    // other kinds have no questions to build
+    const av = screen.getByText('AV needs').closest('li')!;
+    expect(within(av).queryByRole('link', { name: /Edit the questions/ })).not.toBeInTheDocument();
+  });
+
   it('EditLibraryItemModal: edits a file request’s name, instructions and limits', async () => {
     const fetchMock = mockApi({ [`GET ${LIB}`]: listing(), [`PATCH ${LIB}/tasks/t-slides`]: { ok: true } });
     renderPage();
@@ -191,7 +208,7 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Venue map added to the library')).toBeInTheDocument();
   });
 
-  it('NewLibraryItemModal: a new form points to the form builder', async () => {
+  it('NewLibraryItemModal: a new form opens its own questions in the form builder', async () => {
     mockApi({
       [`GET ${LIB}`]: listing(),
       [`POST ${LIB}`]: { status: 201, body: { taskId: 't-form', resourceId: null, formId: 'f-new' } },
@@ -203,7 +220,7 @@ describe('LibraryPage', () => {
     fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Dietary needs' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
     const saved = await screen.findByRole('dialog', { name: 'Form saved' });
-    expect(within(saved).getByRole('link', { name: 'Open the form builder' })).toHaveAttribute('href', '/submissions/forms');
+    expect(within(saved).getByRole('link', { name: 'Open the form builder' })).toHaveAttribute('href', '/submissions/forms?form=f-new');
     fireEvent.click(within(saved).getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });

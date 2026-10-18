@@ -77,6 +77,19 @@ formsRoutes.get("/api/v1/events/:eventId/forms", requireOrganizer, async (c) => 
   const event = await repo.findEventForOrg(c.var.db, eventId, auth.orgId);
   if (!event) throw new ApiError("not_found", "Event not found");
 
+  // multi-portal: ?form= opens one of the event's other forms (a portal
+  // library form item) in the same builder; it must belong to this event
+  const formParam = c.req.query("form");
+  if (formParam) {
+    const other = await repo.findFormForOrg(c.var.db, formParam, auth.orgId);
+    if (!other || other.eventId !== eventId) throw new ApiError("not_found", "Form not found");
+    const [otherFields, otherForms] = await Promise.all([
+      repo.listFields(c.var.db, other.id),
+      repo.listFormsForEvent(c.var.db, eventId),
+    ]);
+    return c.json(serializeForm(other, otherFields, otherForms));
+  }
+
   const { form, fields } = await repo.getOrCreateForm(c.var.db, eventId);
   const forms = await repo.listFormsForEvent(c.var.db, eventId);
   return c.json(serializeForm(form, fields, forms));
