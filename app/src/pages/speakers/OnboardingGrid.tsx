@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError, peekCachedRead } from '../../lib/api';
 import { useCachedGet } from '../../lib/useCachedRead';
@@ -1279,7 +1279,13 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
       {!gridRead.loading && grid && visibleRows.length > 0 && (
         <>
           <div className="chq-speakers-grid-wrap">
-            <table className="chq-table chq-speakers-grid">
+            {/* the column count sets the table's minimum width (speakers.css):
+                portal library items can put 15+ task columns here, and an
+                even split of the page width left each too narrow to read */}
+            <table
+              className="chq-table chq-speakers-grid"
+              style={{ '--chq-task-columns': visibleTasks.length } as CSSProperties}
+            >
               <thead>
                 <tr>
                   {/* Design pack v12 finishes the collapse Ruling A12
@@ -1306,7 +1312,7 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
                             no controls and answers a question it previously
                             could not. */}
                         <div className="chq-speakers-task-head">
-                          <Link className="chq-speakers-task-title" to={`/speakers/tasks/${task.id}`}>
+                          <Link className="chq-speakers-task-title" to={`/speakers/tasks/${task.id}`} title={task.title}>
                             {task.title}
                           </Link>
                           <span className="chq-speakers-task-due">{taskDueLabel(task, now)}</span>
@@ -1349,13 +1355,13 @@ export function OnboardingGrid({ onAddSpeaker, onShowNotInPortal, headExtra }: O
                           </>
                         )}
                       </div>
-                      {/* Frame stacks this identity block 4 lines deep: name,
-                          "company · has account", the participation pills
-                          with its Send-portal-invite sibling on one line, then
-                          Remind alone on its own line beneath -- so the
-                          participation menus and the invite control
-                          share a row wrapper instead of flowing inline with
-                          Remind. */}
+                      {/* The identity block stacks: name, "company · has
+                          account", one line per participation, the
+                          Send-portal-invite line, then Remind beneath. The
+                          menus and the invite share this wrapper (it is a
+                          column, speakers.css) instead of flowing inline with
+                          Remind, so every row has the same shape whatever
+                          the pills' widths. */}
                       <div className="chq-speakers-row-participation">
                         {row.contact.participations.map((participation) => (
                           <ParticipationMenu

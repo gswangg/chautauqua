@@ -542,8 +542,9 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // font-weight / line-height declarations (counted by re-running this
     // scan, never guessed). The multi-portal organizer screens'
     // stylesheets (app/src/pages/portals/*.css, speakers/not-in-portal.css)
-    // add 81 more, all in vocabulary: 587 -> 668.
-    expect(weightBare).toBe(668);
+    // add 81 more, all in vocabulary: 587 -> 668. +1 decision 71: the
+    // portal editor's per-match Preview link (700): 669.
+    expect(weightBare).toBe(669);
     // +1 multi-portal: the home's section label takes its weight from the
     // theme token (var(--chq-type-section-label-weight)), like the shared
     // section label it mirrors; +1 the not-in-portal column heads' micro

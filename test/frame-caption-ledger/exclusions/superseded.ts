@@ -29,6 +29,23 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     reason:
       "superseded by multi-portal: whether participants may edit the session title and abstract is now each portal's own field permission (app/src/pages/portals/PermissionsSection.tsx), not a fixed rule, so the edit drill's consequence line names where it is set ('What participants may edit, and what they're asked for, is set per portal in Manage portals', PortalSettingsPanel.tsx). The frame's fixed claim would be false once a portal opens those fields.",
   },
+  // Multi-portal decision 71: /portal/preview speaks for every portal, and
+  // preview-as-participant exists, so both of the frame's speaker-only
+  // sentences about the preview would be false.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1488,
+    text: 'This is the portal your speakers see. It has no speaker attached, so there are no submissions, tasks or files here — only what you have written for everyone.',
+    reason:
+      "superseded by multi-portal decision 71: the preview shows what every portal shares, for speakers, sponsors and anyone else a portal covers, so the banner reads 'This is how the portal looks to everyone who has one: speakers, sponsors and anyone else a portal covers. Nobody is signed in here, so there are no sessions, items or files' (src/routes/portal/preview.tsx), pinned by test/portal-preview.test.ts.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1523,
+    text: "To see a real speaker's portal you would have to be them — this preview deliberately cannot.",
+    reason:
+      "superseded by multi-portal decision 71: preview-as-participant (src/routes/portal/preview-person.tsx, the Portals frame's flow 4) shows one person's portal, so the preview points to it: 'To see one person's portal, open their record and choose Preview, or open a portal and preview it as someone it matches' (src/routes/portal/preview.tsx), pinned by test/portal-preview.test.ts, which also pins the frame's sentence absent.",
+  },
   // v12m-w4-aj (wave-148, DEC-660): the pre-emptive unresolvable-merge-field
   // band (task w4-aj), placed on the compose/TEMPLATE step from state the
   // wizard already holds (ComposeWizard.tsx's `usedSlotDependentFields`/

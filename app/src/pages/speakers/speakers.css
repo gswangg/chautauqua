@@ -364,6 +364,15 @@
      so it sits at the table measure and scrolls horizontally below its own
      minimum rather than gaining width forever. */
   min-width: 1060px;
+  /* multi-portal: portal library items can put 15+ task columns here, and
+     an even split of the page left each too narrow for its own name or an
+     OVERDUE pill. Each task column keeps 128px; past the page width the
+     grid scrolls sideways under a pinned speaker column. With the five or
+     six tasks an event used to have, this stays under 1060px and nothing
+     changes. */
+  /* the grid sets --chq-task-columns inline (OnboardingGrid.tsx) */
+  --chq-task-columns: 6;
+  min-width: max(1060px, calc(230px + var(--chq-task-columns) * 128px));
   /* DEC-730 wave-19 amendment: frame :76 fixes the speaker/participation
      column at 230px with the task columns splitting the remainder evenly
      (grid-template-columns:230px repeat(6, 1fr)). This is a real <table>,
@@ -376,6 +385,34 @@
 .chq-speakers-grid th:first-child,
 .chq-speakers-grid td:first-child {
   width: 230px;
+}
+
+/* the speaker column stays in view while the task columns scroll */
+.chq-speakers-grid th:first-child,
+.chq-speakers-grid td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--chq-paper);
+}
+
+/* a hairline edge, so task columns read as passing under it. A pseudo-
+   element, because the collapsed table's own borders stay put while the
+   cell sticks, and Chrome paints no box-shadow on a collapsed-border cell. */
+.chq-speakers-grid th:first-child::after,
+.chq-speakers-grid td:first-child::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--chq-hairline);
+}
+
+/* the pinned cell is opaque, so it repaints the shared row hover itself */
+.chq-speakers-grid tbody tr:hover td:first-child {
+  background: var(--chq-surface-sunk);
 }
 
 /* User-filed (gate-12 era, offset re-tuned post-merge): a task cell with a
@@ -414,6 +451,13 @@
   letter-spacing: normal;
   text-transform: none;
   color: var(--chq-ink);
+  /* a long name keeps to three lines (the full name is its title) and a
+     long word breaks rather than running under the next column */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 a.chq-speakers-task-title:hover {
@@ -1048,31 +1092,41 @@ button.chq-speakers-status-overdue:hover {
   font-weight: 700;
 }
 
-/* Frame: the participation pill(s) and the Send-portal-invite control
-   share one row; Remind sits on its own line below (see the block comment at
-   the JSX call site). */
-/* User-filed regression (v12 review, speaker with two sessions): the dense
-   status chip took the cancelled-padding idiom in 0abe77cf -- 6px inline
-   padding, -6px inline margin -- and DEC-936 renders one captioned menu per
-   participation as siblings in this row. Two chips each pulling 6px off
-   both sides ate 12px of a 4px gap, so the two triggers' boxes OVERLAPPED
-   by 8px: their rings and hover boxes intersected and the pair read as one
-   jumbled line instead of two separately labelled talks.
+/* The participation pill(s) and the Send-portal-invite control share one
+   wrapper; Remind sits on its own line below (see the block comment at the
+   JSX call site).
 
-   The gap absorbs both cancellations (4 + 2x6 = 16) rather than the chip
-   giving up its ring breathing room. That restores the pre-idiom 4px
-   between the two chips' BOXES exactly, and the SES-008 / SES-009 captions
-   above them separate by the same 16px, which is what makes the two menus
-   legible as two -- the thing DEC-936's caption exists to do. This is the
-   general invariant that rides with the idiom (styles.css,
-   .chq-link-button): wherever a cancelled-padding family renders as
-   adjacent siblings, the rule owning their separation widens it by 2x the
-   cancelled padding. */
+   History: this row used to be a wrapping flex line with a 16px gap. The
+   dense chip's cancelled padding (6px padding, -6px margin) made two chips
+   side by side overlap at a 4px gap, so the gap absorbed both cancellations
+   (4 + 2x6) -- the invariant in styles.css, .chq-link-button.
+
+   multi-portal (user-filed: "inconsistent layouts", "poor alignment here"):
+   with the line wrapping, two short pills sat side by side on one speaker's
+   row and two longer ones stacked on the next, and a "Send portal invite"
+   that wrapped kept its 20px left margin and sat indented under the pill.
+   The row now always stacks: one line per participation, then the invite
+   on its own line, every glyph on the identity column. Nothing in it is
+   horizontally adjacent, so the 2x-cancellation gap is no longer needed. */
 .chq-speakers-row-participation {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* In the grid a participation's ref sits beside its pill, not above it, so
+   a two-session speaker is two lines instead of four. 8px clears the
+   caption; a bare state's ring cancellation reaches 6px back into it only
+   as the invisible focus/hover box. */
+.chq-speakers-row-participation .chq-participation-menu {
+  display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chq-speakers-row-participation .chq-participation-menu-ref {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Per-speaker reminder action: scoped to the one contact in its row
@@ -1094,16 +1148,12 @@ button.chq-speakers-status-overdue:hover {
 }
 
 /* Per-speaker portal invitation: same quiet family, conditional on the row
-   not already having an account (DEC-805). */
-/* Sits beside .chq-speakers-remind-one, so it carries the same cancellation
-   AND the adjacent-siblings invariant: 4px of separation plus both
-   cancelled paddings (4 + 8 + 8) keeps the two controls' boxes exactly 4px
-   apart, as they were before either cancelled. */
+   not already having an account (DEC-805). It is the participation row's
+   last line now (the row's gap spaces it), so it takes Remind's plain
+   cancellation and its label starts on the identity column. */
 .chq-speakers-invite-one {
   font-family: inherit;
-  margin-top: 4px;
-  margin-left: 20px;
-  margin-right: -8px;
+  margin-inline: -8px;
   padding: 2px 8px;
   font-size: 11px;
 }

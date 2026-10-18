@@ -130,7 +130,8 @@ describe('desktop frame claims: Public/Portal remainder (v12m-w5-c)', () => {
     expect(src).toContain('<h1 class="chq-portal-hero">Welcome</h1>');
     expect(src).toContain('aria-label="Resources"');
     expect(src).toContain('aria-label="Not shown here"');
-    expect(src).toContain('Their tasks');
+    // multi-portal decision 71: the chips name what any participant has
+    expect(src).toContain('Their portal items');
   });
 
   // docs/design/Chautauqua Public and Portal.dc.html:1532

@@ -2,7 +2,8 @@
 // flow 2, frames 03 and 04): who the rule as edited matches now, the first
 // few of them, and how that differs from the saved rule. A rule that
 // matches nobody gets the flagged panel instead -- allowed, and it starts
-// working once someone matches.
+// working once someone matches. Each match carries a Preview link: the
+// way to see this portal as someone it covers (multi-portal decision 71).
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { MatchRow } from './types';
@@ -10,6 +11,7 @@ import type { MatchRow } from './types';
 const FIRST_ROWS = 5;
 
 export interface MatchesPanelProps {
+  eventId: string;
   count: number;
   rows: MatchRow[];
   // the saved rule's live count, and the edit's difference from it
@@ -23,7 +25,7 @@ export interface MatchesPanelProps {
   nobodyLine: string;
 }
 
-export function MatchesPanel({ count, rows, savedCount, gained, lost, ruleChanged, pending, error, incomplete, nobodyLine }: MatchesPanelProps) {
+export function MatchesPanel({ eventId, count, rows, savedCount, gained, lost, ruleChanged, pending, error, incomplete, nobodyLine }: MatchesPanelProps) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? rows : rows.slice(0, FIRST_ROWS);
 
@@ -62,6 +64,15 @@ export function MatchesPanel({ count, rows, savedCount, gained, lost, ruleChange
               {row.name}
             </Link>
             <span className="chq-portal-matches-sub">{row.participation}</span>
+            {/* the server-rendered preview-as-participant page, not an SPA
+                route, so a plain link */}
+            <a
+              className="chq-portal-matches-preview"
+              href={`/portal/preview/people/${eventId}/${row.contactId}`}
+              aria-label={`Preview the portal as ${row.name}`}
+            >
+              Preview
+            </a>
           </li>
         ))}
       </ul>
@@ -72,6 +83,7 @@ export function MatchesPanel({ count, rows, savedCount, gained, lost, ruleChange
       ) : null}
       {showAll && rows.length < count ? <p className="chq-portal-matches-note">Showing the first {rows.length}.</p> : null}
       {incomplete ? <p className="chq-portal-matches-note">Unfinished conditions aren't counted yet.</p> : null}
+      {ruleChanged ? <p className="chq-portal-matches-note">Preview shows the saved portal until you save.</p> : null}
       <p className="chq-portal-matches-diff">
         {ruleChanged ? (
           <strong>

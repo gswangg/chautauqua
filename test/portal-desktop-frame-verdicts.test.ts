@@ -547,7 +547,8 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     // section; :1511-1521 "Not shown here" chips + :1523 the trailing
     // sentence -- the frame's own top-to-bottom order.
     expectInOrder(html, [
-      'Preview · no speaker',
+      // multi-portal decision 71: every portal's preview, not the speakers'
+      'Preview · nobody signed in',
       'class="chq-portal-preview-banner" role="note"',
       'Preview · read-only.',
       'class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal"',
@@ -562,10 +563,13 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
       'class="chq-section-label">Resources</div>',
       '<span class="chq-portal-row-title">Speaker guide</span>',
       'aria-label="Not shown here" class="chq-section"',
-      'chq-portal-not-shown-chip">Their submissions</li>',
-      'chq-portal-not-shown-chip">Their tasks</li>',
+      'chq-portal-not-shown-chip">Their sessions</li>',
+      'chq-portal-not-shown-chip">Their portal items</li>',
       'chq-portal-not-shown-chip">Their uploaded files</li>',
-      'To see a real speaker&#39;s portal you would have to be them',
+      // multi-portal decision 71: the frame's "you would have to be them"
+      // predates preview-as-participant; the trailing sentence now says
+      // where one person's portal can be seen
+      "To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as",
     ]);
     // Exactly one back-to-settings link on the page -- the frame draws no
     // second copy, so the prior standalone bottom-of-page paragraph is gone.

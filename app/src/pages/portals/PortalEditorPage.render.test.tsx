@@ -187,6 +187,11 @@ describe('PortalEditorPage', () => {
     expect(within(matches).getByText('Matches now')).toBeInTheDocument();
     expect(within(matches).getByText('2')).toBeInTheDocument();
     expect(within(matches).getByRole('link', { name: 'Priya Raman' })).toHaveAttribute('href', '/contacts/ct-1');
+    // multi-portal decision 71: each match previews the portal as that person
+    expect(within(matches).getByRole('link', { name: 'Preview the portal as Priya Raman' })).toHaveAttribute(
+      'href',
+      `/portal/preview/people/${EVENT_ID}/ct-1`,
+    );
     expect(within(matches).getByText('Same as the saved rule')).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: 'Speaker, Moderator' })).toBeInTheDocument();
@@ -239,6 +244,7 @@ describe('PortalEditorPage', () => {
       ],
     });
     expect(await screen.findByText('2 saved · +4 · −1')).toBeInTheDocument();
+    expect(screen.getByText('Preview shows the saved portal until you save.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ruth Adeyemi' })).toBeInTheDocument();
 
     // "is none of" keeps the chosen values; "is empty" hides the value control

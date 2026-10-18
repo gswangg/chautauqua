@@ -112,7 +112,7 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain(
-      "Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no submissions, tasks or files here — only what you have written for everyone.",
+      "Preview · read-only. This is how the portal looks to everyone who has one: speakers, sponsors and anyone else a portal covers. Nobody is signed in here, so there are no sessions, items or files — only what you have written for everyone.",
     );
     expect(body).toContain("Welcome, speakers!");
     expect(body).toContain("Travel info");
@@ -140,15 +140,17 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     expect(body).not.toMatch(/<a [^>]*>\s*(Upload|Edit submission|Accept|Decline)/);
   });
 
-  it("organizer: renders the 'Not shown here' section, the honest impersonation-truth sentence, and a plain link back to settings", async () => {
+  it("organizer: renders the 'Not shown here' section, the sentence saying where one person's portal can be seen, and a plain link back to settings", async () => {
     const app = buildApp(ORGANIZER);
     const res = await app.request(`/portal/preview?eventId=${EVENT_ID}`);
     const body = await res.text();
     expect(body).toContain("Not shown here");
-    expect(body).toContain("Their submissions");
-    expect(body).toContain("Their tasks");
+    expect(body).toContain("Their sessions");
+    expect(body).toContain("Their portal items");
     expect(body).toContain("Their uploaded files");
-    expect(body).toContain("you would have to be them");
+    // multi-portal decision 71: preview-as-participant exists now
+    expect(body).toContain("To see one person&#39;s portal, open their record and choose Preview");
+    expect(body).not.toContain("you would have to be them");
     // A plain link, never a form or button, per the route's no-mutation
     // invariant.
     // Gate-11 fleet: the settings SPA lives under /admin — a bare /settings

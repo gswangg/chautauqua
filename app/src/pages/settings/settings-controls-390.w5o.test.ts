@@ -194,7 +194,7 @@ describe('Fix 2 (DEC-383 wave-109 amendment): every negative-margin-inline rule 
     '.chq-settings-exports-download',
     '.chq-settings-api-docs-link',
     // DEC-180 amendment (w10-na, SPA classless-control widening):
-    // PortalSettingsPanel's "Open as a speaker" preview link
+    // PortalSettingsPanel's "Preview the portal" link
     // (app/src/pages/settings/PortalSettingsPanel.tsx:246) -- a plain <a>
     // with no border and no background of its own, given a class only so
     // it could carry a tap floor at all. Same category as the two links

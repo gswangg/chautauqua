@@ -297,7 +297,7 @@ describe("DEC-988: GET /portal/preview shows what the speaker sees", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toContain("Travel info");
-    expect(body).toContain("Hidden from speakers by the Speaker portal");
+    expect(body).toContain("Hidden from participants by the Portals");
   });
 });
 

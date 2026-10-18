@@ -419,6 +419,7 @@ export function PortalEditorPage() {
               <RuleEditor rule={draft.rule} options={data.ruleOptions} invalid={invalid} onChange={(rule) => update({ rule })} />
             </section>
             <MatchesPanel
+              eventId={eventId}
               count={count}
               rows={rows}
               savedCount={data.matches.count}

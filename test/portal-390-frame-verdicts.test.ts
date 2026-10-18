@@ -568,13 +568,14 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
       1523,
       `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
     );
-    // MATCHES (DEC-902 wave-20, task w20-g): the frame places this sentence
-    // at the very END of the page, trailing the "Not shown here" chips.
-    // The route now renders the same sentence (verbatim) as the last child
-    // of that same section, after its chips -- no longer immediately after
-    // the banner.
-    expect(html).toContain("To see a real speaker&#39;s portal you would have to be them — this preview deliberately cannot.");
-    const metaIdx = html.indexOf("To see a real speaker&#39;s portal you would have to be them");
+    // DIVERGES (multi-portal decision 71): the frame's sentence predates
+    // preview-as-participant and is no longer true -- one person's portal
+    // CAN be seen now, from their record or a portal's own page. The route
+    // keeps the frame's placement (last child of the "Not shown here"
+    // section, after its chips) with the sentence that says where to look.
+    expect(html).not.toContain("you would have to be them");
+    expect(html).toContain("To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as");
+    const metaIdx = html.indexOf("To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as");
     const chipsIdx = html.indexOf('chq-portal-not-shown-chip">Their uploaded files</li>');
     expect(metaIdx).toBeGreaterThan(chipsIdx);
 
@@ -596,14 +597,14 @@ describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html
       `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their notes</span>`,
     );
     // DIVERGES: the frame's "Not shown here" chip row reads FOUR chips --
-    // Their tasks / Their session / Their files / Their notes. The route's
-    // own header comment (preview.tsx:60-63) says this list is drawn from
-    // what the route declines to load (submissions/tasks/files) and ships
-    // THREE chips with different labels -- Their submissions / Their tasks /
-    // Their uploaded files. Neither "Their session" nor "Their notes" render
-    // at all; "Their files" ships as "Their uploaded files" instead.
-    expect(html).toContain('chq-portal-not-shown-chip">Their submissions</li>');
-    expect(html).toContain('chq-portal-not-shown-chip">Their tasks</li>');
+    // Their tasks / Their session / Their files / Their notes. The route
+    // ships THREE, named from what it declines to load: Their sessions /
+    // Their portal items / Their uploaded files (multi-portal decision 71:
+    // a participant's to-dos are portal items now, and a person may hold
+    // several sessions). "Their notes" does not render; "Their files" ships
+    // as "Their uploaded files".
+    expect(html).toContain('chq-portal-not-shown-chip">Their sessions</li>');
+    expect(html).toContain('chq-portal-not-shown-chip">Their portal items</li>');
     expect(html).toContain('chq-portal-not-shown-chip">Their uploaded files</li>');
     expect(html).not.toContain(">Their session<");
     expect(html).not.toContain(">Their notes<");

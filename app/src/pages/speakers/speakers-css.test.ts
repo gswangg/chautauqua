@@ -597,28 +597,28 @@ describe('speakers.css ring geometry and hover convention (user-filed, v12 revie
     );
   });
 
-  it('the participation row widens its gap by both cancelled paddings', () => {
-    // DEC-936 renders one captioned menu per participation as siblings here.
-    // Each dense trigger pulls 6px off both sides, so a 4px gap left the two
-    // triggers' boxes OVERLAPPING by 8px and the pair read as one line.
-    // 4 + 2x6 = 16 restores the 4px between their boxes exactly.
-    expect(topLevelRuleBody(css, '.chq-speakers-row-participation')).toMatch(/gap:\s*16px/);
+  it('the participation row always stacks, so every speaker row has the same shape', () => {
+    // multi-portal: a wrapping row put two short pills side by side on one
+    // speaker and stacked two longer ones on the next. A column never
+    // depends on how wide the pills happen to be.
+    const row = topLevelRuleBody(css, '.chq-speakers-row-participation');
+    expect(row).toMatch(/flex-direction:\s*column/);
+    expect(row).toMatch(/align-items:\s*flex-start/);
+    expect(row).not.toMatch(/flex-wrap:\s*wrap/);
   });
 
   it('the quiet per-row actions cancel their padding so their labels stay in the identity column', () => {
     // These sit under the name/company/ref/chip stack, all of which start at
     // the cell's left edge; an uncancelled 8px padding pushed their LABEL
     // 8px in and read as an odd indent.
-    for (const selector of ['.chq-speakers-remind-one', '.chq-speakers-not-chased-marker']) {
+    // The invite is the participation row's last line now, not a sibling
+    // beside a pill, so it takes the same plain cancellation (a wrapped
+    // 20px left margin was the indent the user filed).
+    for (const selector of ['.chq-speakers-remind-one', '.chq-speakers-not-chased-marker', '.chq-speakers-invite-one']) {
       const body = topLevelRuleBody(css, selector);
       expect(body, `${selector} keeps its ring padding`).toMatch(/padding:\s*2px 8px/);
       expect(body, `${selector} does not cancel its padding`).toMatch(/margin-inline:\s*-8px/);
     }
-    // Sits beside Remind, so it carries the adjacent-siblings invariant
-    // instead of a plain margin-inline: 4 + 8 + 8 keeps the two boxes 4px
-    // apart, as they were before either cancelled.
-    const invite = topLevelRuleBody(css, '.chq-speakers-invite-one');
-    expect(invite).toMatch(/margin-left:\s*20px/);
-    expect(invite).toMatch(/margin-right:\s*-8px/);
+    expect(topLevelRuleBody(css, '.chq-speakers-invite-one')).not.toMatch(/margin-left:\s*20px/);
   });
 });

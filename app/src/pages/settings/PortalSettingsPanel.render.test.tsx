@@ -1,7 +1,7 @@
 // w3-c/DEC-747 render smoke test, updated w6-e/DEC-815 and for multi-portal:
 // PortalSettingsPanel is the Settings "Portals" section -- a read-only
 // summary of the event's portals, coverage, item library, access and
-// branding (with 'Open as a speaker'), whose head action links to the
+// branding (with 'Preview the portal'), whose head action links to the
 // Portals sub-page. The Branding row's 'Change' drills into
 // (?section=portal&edit=1) the branding/welcome form above ResourcesPanel
 // (unchanged endpoints/CRUD).
@@ -86,9 +86,11 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       within(section).getByText('Participants claim their portal from a link in their acceptance or invitation email'),
     ).toBeInTheDocument();
 
-    const openAsSpeaker = within(section).getByRole('link', { name: 'Open as a speaker' });
-    expect(openAsSpeaker).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
-    expect(within(section).getByText('No logo · default accent ·')).toBeInTheDocument();
+    // the branding is the event's, shared by every portal (multi-portal
+    // decision 71), so the link no longer says "as a speaker"
+    const previewLink = within(section).getByRole('link', { name: 'Preview the portal' });
+    expect(previewLink).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
+    expect(within(section).getByText('No logo · default accent · all portals ·')).toBeInTheDocument();
 
     // the welcome note (Profile basics' note, the same stored value)
     expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();

@@ -2,7 +2,7 @@
 // DEC-747; SummarySection adoption w6-e, DEC-815): the 'Speaker portal'
 // read view (docs/design/Chautauqua Settings.dc.html:142-182) -- Welcome
 // note, Speakers can edit (pills), Onboarding tasks, Resources and Access
-// -- with 'Open as a speaker' kept as a row-level link (it is a live
+// -- with 'Preview the portal' (once 'Open as a speaker') kept as a row-level link (it is a live
 // navigation, not an edit) and the section's ONE rule action now the
 // SummarySection 'Change' drill (?section=portal&edit=1, DEC-728/DEC-710),
 // which reveals the panel's edit surfaces: the branding/welcome form
@@ -108,13 +108,15 @@ function paragraphCount(text: string | null): number {
   return trimmed.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
 }
 
+// multi-portal decision 71: branding is the event's, so the line says it
+// covers every portal (it read as the speaker portal's own setting)
 function brandingLine(form: PortalSettingsForm): string {
   const logo = form.logoUrl.trim() !== '';
   const accent = form.accentColor.trim();
-  if (logo && accent) return `Logo · ${accent} accent ·`;
-  if (logo) return 'Logo · default accent ·';
-  if (accent) return `No logo · ${accent} accent ·`;
-  return 'No logo · default accent ·';
+  if (logo && accent) return `Logo · ${accent} accent · all portals ·`;
+  if (logo) return 'Logo · default accent · all portals ·';
+  if (accent) return `No logo · ${accent} accent · all portals ·`;
+  return 'No logo · default accent · all portals ·';
 }
 
 // docs/design/Chautauqua Settings.dc.html:518 (phone drill): the Welcome
@@ -286,7 +288,9 @@ export function PortalSettingsPanel() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open as a speaker
+            {/* the branding is the event's, shared by every portal; this
+                opens how the portal looks with nobody signed in */}
+            Preview the portal
           </a>
         </>
       ),

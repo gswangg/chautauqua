@@ -69,9 +69,9 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
             impersonation sentence this same page renders below and the
             control's own name on the settings frame ("Open as a speaker").
             The tooltip now states the real, narrower reason the control is
-            inert: this preview has no speaker session to download as,
-            because it never impersonates one. */}
-        <button type="button" class="chq-portal-preview-download" disabled aria-disabled="true" title="Preview only — no speaker session to download as">
+            inert: nobody is signed in to download as, because this preview
+            never impersonates anyone. */}
+        <button type="button" class="chq-portal-preview-download" disabled aria-disabled="true" title="Preview only — nobody is signed in to download as">
           Download
         </button>
       </div>
@@ -95,10 +95,12 @@ function PreviewPage(props: {
   // ORGANIZER'S own name; DEC-747's amendment doesn't say, so this states
   // the truth the banner already states.)
   return (
-    // G13 (frame 10--24): the identity slot reads 'PREVIEW · NO SPEAKER'
+    // G13 (frame 10--24): the identity slot reads 'PREVIEW · NO SPEAKER' in
+    // the frame; multi-portal decision 71 makes it 'Preview · nobody signed
+    // in', since the preview covers every portal, not only the speakers'
     // (the header cluster is the 11px caps register); headerSignOut off --
     // the preview page keeps exactly one form (the shared footer sign-out).
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName="Preview · no speaker" headerSignOut={false}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName="Preview · nobody signed in" headerSignOut={false}>
       {/* Below this point: no form, no button, no link that mutates
           anything, and nothing scoped to a contact. PortalLayout's own
           footer sign-out control is standard /portal/* chrome (DEC-154,
@@ -123,8 +125,9 @@ function PreviewPage(props: {
           only adds the desktop right-alignment. */}
       <div class="chq-portal-preview-banner" role="note">
         <span class="chq-portal-preview-banner-text">
-          Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no
-          submissions, tasks or files here — only what you have written for everyone.
+          Preview · read-only. This is how the portal looks to everyone who has one: speakers, sponsors and anyone
+          else a portal covers. Nobody is signed in here, so there are no sessions, items or files — only what you
+          have written for everyone.
         </span>
         <a
           class="chq-portal-standalone-link chq-portal-preview-banner-link"
@@ -158,7 +161,7 @@ function PreviewPage(props: {
           // reaches this section at all, so the preview replaces its body
           // with a single organizer-facing explanation rather than the
           // resource list.
-          <p class="chq-meta">Hidden from speakers by the Speaker portal "Show resources" setting.</p>
+          <p class="chq-meta">Hidden from participants by the Portals "Show resources" setting.</p>
         ) : props.resources.length === 0 ? (
           // DEC-919: an SSR zero-collection branch renders PublicEmptyState,
           // never a bare <p> -- 'fresh' because a preview has no filter to
@@ -174,11 +177,11 @@ function PreviewPage(props: {
       <section aria-label="Not shown here" class="chq-section">
         <div class="chq-section-label">Not shown here</div>
         <p class="chq-meta">
-          This preview does not include what a real speaker sees on their own portal:
+          This preview does not include what one person sees on their own portal:
         </p>
         <ul class="chq-portal-not-shown-list">
-          <li class="chq-portal-not-shown-chip">Their submissions</li>
-          <li class="chq-portal-not-shown-chip">Their tasks</li>
+          <li class="chq-portal-not-shown-chip">Their sessions</li>
+          <li class="chq-portal-not-shown-chip">Their portal items</li>
           <li class="chq-portal-not-shown-chip">Their uploaded files</li>
         </ul>
         {/* Frame 10--24, clause 2 (DEC-902 wave-20 amendment, task w20-g,
@@ -190,7 +193,8 @@ function PreviewPage(props: {
             have already named those things than it does before them, and
             adopting costs nothing the prior order supplied. */}
         <p class="chq-meta">
-          To see a real speaker's portal you would have to be them — this preview deliberately cannot.
+          To see one person's portal, open their record and choose Preview, or open a portal and preview it as
+          someone it matches.
         </p>
       </section>
     </PortalLayout>

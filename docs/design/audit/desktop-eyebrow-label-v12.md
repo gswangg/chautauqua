@@ -215,3 +215,9 @@ field permissions (docs/design/multi-portal/DECISIONS.md #32). The edit view
 now says where those are set instead.
 
 `DESKTOP_EYEBROW_DIVERGENCE_CEILING` moves 103 -> 104.
+
+Decision 71 (re-measured): one more, `Chautauqua Public and Portal.dc.html:1481`
+"Preview · no speaker" -- the settings preview covers every portal, so its
+identity slot reads "Preview · nobody signed in" (DECISIONS.md #71).
+
+`DESKTOP_EYEBROW_DIVERGENCE_CEILING` moves 104 -> 105.

@@ -493,11 +493,28 @@
 }
 
 .chq-portal-matches-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
   padding: 8px 0;
   border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-portal-matches-name,
+.chq-portal-matches-sub {
+  grid-column: 1;
+}
+
+/* the way to see this portal as one of the people it covers */
+.chq-portal-matches-preview {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: none;
 }
 
 .chq-portal-matches-name {
@@ -1172,7 +1189,8 @@
 
   .chq-portal-stat-link,
   .chq-portal-edit-link,
-  .chq-portal-matches-name {
+  .chq-portal-matches-name,
+  .chq-portal-matches-preview {
     display: flex;
     align-items: center;
     min-height: 44px;

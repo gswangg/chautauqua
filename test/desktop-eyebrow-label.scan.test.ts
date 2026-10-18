@@ -498,7 +498,10 @@ const SETTLED = CLASSIFIED.filter((c) => c.verdict === 'SETTLED');
 // Chautauqua Settings.dc.html:912 "What speakers may edit", the Speaker
 // portal edit view's fixed permissions heading, superseded by each portal's
 // own field permissions (docs/design/multi-portal/DECISIONS.md #32).
-export const DESKTOP_EYEBROW_DIVERGENCE_CEILING = 104;
+// +1 for Chautauqua Public and Portal.dc.html:1481 "Preview · no speaker":
+// the settings preview covers every portal, so its identity slot reads
+// "Preview · nobody signed in" (DECISIONS.md #71).
+export const DESKTOP_EYEBROW_DIVERGENCE_CEILING = 105;
 export const DESKTOP_EYEBROW_UNRESOLVED_CEILING = 1;
 
 describe('desktop drawn-eyebrow ledger (DEC-986 wave-41, v12 mobile campaign)', () => {

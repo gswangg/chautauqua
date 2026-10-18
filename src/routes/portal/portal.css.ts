@@ -775,6 +775,14 @@ export const PORTAL_CSS = `
     color: var(--chq-disabled);
     cursor: default;
   }
+  /* the theme's button:disabled rule (element + pseudo-class) outranks one
+     class and painted its grey box behind this unpadded label */
+  button.chq-portal-preview-download:disabled,
+  button.chq-portal-preview-download:disabled:hover,
+  button.chq-portal-preview-download:disabled:active {
+    background: none;
+    border-color: transparent;
+  }
 
   /* Frame 10--26 (MAJOR): a resource's own title (16px .chq-portal-row-title)
      was set smaller than the h2/h3 sub-heads of its own markdown body --

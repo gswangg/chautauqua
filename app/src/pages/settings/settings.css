@@ -2826,7 +2826,7 @@
      (1) EventSettingsPanel's "View agenda" `<Link>` had no `className` of
      its own, keyed on its enclosing `.chq-event-unscheduled-notice`
      token;
-     (2) PortalSettingsPanel's "Open as a speaker" `<a>` had no `className`
+     (2) PortalSettingsPanel's "Preview the portal" `<a>` had no `className`
      AND no enclosing chq- token anywhere in the file (ungradeable by
      construction) -- given its own `chq-settings-portal-preview-link`
      class directly on the tag so it can carry a floor at all. */
