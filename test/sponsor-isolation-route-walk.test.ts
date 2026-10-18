@@ -337,6 +337,22 @@ describe("sponsor isolation: a sponsor contact never reaches another sponsor's s
     f.sqlite.close();
   }, 30000);
 
+  it("an invitation not yet taken up can be withdrawn from the team page (and only Birch's own)", async () => {
+    const f = makePortalsFixture();
+    seed(f);
+    addContact(f, "iso-contact-birch-typo", ORG, "Birch Typo");
+    addSponsorContact(f, "iso-sc-birch-typo", BIRCH.sponsorship, EVENT, "iso-contact-birch-typo", { status: "invited" });
+    const app = await buildApp(f);
+    const page = await send(app, "GET", `/portal/sponsors/${BIRCH.sponsorship}/team`);
+    expect(page.status).toBe(200);
+    expect(page.text).toContain(`/portal/sponsors/${BIRCH.sponsorship}/team/iso-sc-birch-typo/remove`);
+    expect(page.text).toContain(">Withdraw</button>");
+    const withdrawn = await send(app, "POST", `/portal/sponsors/${BIRCH.sponsorship}/team/iso-sc-birch-typo/remove`);
+    expect(withdrawn.status).toBe(302);
+    expect(f.all(`select id from sponsor_contact where id = 'iso-sc-birch-typo'`)).toEqual([]);
+    f.sqlite.close();
+  });
+
   it("Birch's own pages render, and carry nothing of Acme's (non-vacuity control)", async () => {
     const f = makePortalsFixture();
     seed(f);

@@ -588,12 +588,14 @@ async function renderTeam(c: Context<AppEnv>, ctx: SponsorPageContext, error?: s
                     : `${m.email} · joined ${day(m.joinedAt)}`}
               </span>
             </div>
-            {m.status === "invited" ? (
-              <span class="chq-home-state">Invited</span>
-            ) : ctx.canAddTeammates && !m.isPrimary && m.contactId !== ctx.access.contactId ? (
+            {m.status === "invited" ? <span class="chq-home-state">Invited</span> : null}
+            {/* an invitation not yet taken up can be withdrawn (a mistyped
+                address would otherwise sit on the team for good); a joined
+                teammate is removed. Same route either way. */}
+            {ctx.canAddTeammates && !m.isPrimary && m.contactId !== ctx.access.contactId ? (
               <form method="post" action={`/portal/sponsors/${ctx.access.sponsorshipId}/team/${m.id}/remove`}>
                 <input type="hidden" name={CSRF_COOKIE_NAME} value={ctx.csrfToken} />
-                <button type="submit" class="chq-btn chq-btn-tertiary">Remove</button>
+                <button type="submit" class="chq-btn chq-btn-tertiary">{m.status === "invited" ? "Withdraw" : "Remove"}</button>
               </form>
             ) : null}
           </div>
