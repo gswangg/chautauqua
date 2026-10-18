@@ -276,28 +276,28 @@ function ProfilePage(props: {
           {shown("firstName") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="firstName">First name</label>
-              <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_NAME_LENGTH} readOnly={ro("firstName")} required />
+              <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_NAME_LENGTH} readonly={ro("firstName")} required />
               <FieldNote field={fields.firstName} />
             </div>
           ) : null}
           {shown("lastName") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="lastName">Last name</label>
-              <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_NAME_LENGTH} readOnly={ro("lastName")} required />
+              <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_NAME_LENGTH} readonly={ro("lastName")} required />
               <FieldNote field={fields.lastName} />
             </div>
           ) : null}
           {shown("title") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="title">Title</label>
-              <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("title")} />
+              <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_NAME_LENGTH} readonly={ro("title")} />
               <FieldNote field={fields.title} />
             </div>
           ) : null}
           {shown("company") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="company">Company</label>
-              <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("company")} />
+              <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_NAME_LENGTH} readonly={ro("company")} />
               <FieldNote field={fields.company} />
             </div>
           ) : null}
@@ -307,14 +307,14 @@ function ProfilePage(props: {
             {/* G13 (frame 10--07, MAJOR): rows=5 -- the default 2-row box
                 clipped the speaker's own stored bio on first paint (the
                 frame draws the box four lines tall). */}
-            <textarea class="chq-textarea" id="bio" name="bio" rows={5} maxLength={MAX_LONG_TEXT_LENGTH} readOnly={ro("bio")}>{profile.bio ?? ""}</textarea>
+            <textarea class="chq-textarea" id="bio" name="bio" rows={5} maxLength={MAX_LONG_TEXT_LENGTH} readonly={ro("bio")}>{profile.bio ?? ""}</textarea>
             <FieldNote field={fields.bio} />
           </div>
           ) : null}
           {shown("phone") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="phone">Phone number</label>
-              <input class="chq-input" type="tel" id="phone" name="phone" value={profile.phone ?? ""} maxLength={MAX_NAME_LENGTH} readOnly={ro("phone")} />
+              <input class="chq-input" type="tel" id="phone" name="phone" value={profile.phone ?? ""} maxLength={MAX_NAME_LENGTH} readonly={ro("phone")} />
               <FieldNote field={fields.phone} />
             </div>
           ) : null}
@@ -328,25 +328,25 @@ function ProfilePage(props: {
           {shown("social") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="twitter">Twitter</label>
-              <input class="chq-input" type="text" id="twitter" name="twitter" value={profile.socialLinks.twitter} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+              <input class="chq-input" type="text" id="twitter" name="twitter" value={profile.socialLinks.twitter} maxLength={MAX_TEXT_LENGTH} readonly={ro("social")} />
             </div>
           ) : null}
           {shown("social") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="linkedin">LinkedIn</label>
-              <input class="chq-input" type="text" id="linkedin" name="linkedin" value={profile.socialLinks.linkedin} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+              <input class="chq-input" type="text" id="linkedin" name="linkedin" value={profile.socialLinks.linkedin} maxLength={MAX_TEXT_LENGTH} readonly={ro("social")} />
             </div>
           ) : null}
           {shown("social") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="github">GitHub</label>
-              <input class="chq-input" type="text" id="github" name="github" value={profile.socialLinks.github} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+              <input class="chq-input" type="text" id="github" name="github" value={profile.socialLinks.github} maxLength={MAX_TEXT_LENGTH} readonly={ro("social")} />
             </div>
           ) : null}
           {shown("social") ? (
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="website">Website</label>
-              <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} maxLength={MAX_TEXT_LENGTH} readOnly={ro("social")} />
+              <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} maxLength={MAX_TEXT_LENGTH} readonly={ro("social")} />
               <FieldNote field={fields.social} />
             </div>
           ) : null}

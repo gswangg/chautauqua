@@ -379,11 +379,11 @@ function SessionPage(props: { ctx: SponsorPageContext; s: SponsorSessionDetail; 
             </div>
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="title">Title</label>
-              <input class="chq-input" type="text" id="title" name="title" value={s.title} maxLength={MAX_SPONSOR_SESSION_TITLE} readOnly={!editable} />
+              <input class="chq-input" type="text" id="title" name="title" value={s.title} maxLength={MAX_SPONSOR_SESSION_TITLE} readonly={!editable} />
             </div>
             <div class="chq-portal-field">
               <label class="chq-portal-field-label" for="abstract">Abstract</label>
-              <textarea class="chq-textarea" id="abstract" name="abstract" rows={5} maxLength={MAX_SPONSOR_SESSION_ABSTRACT} readOnly={!editable}>
+              <textarea class="chq-textarea" id="abstract" name="abstract" rows={5} maxLength={MAX_SPONSOR_SESSION_ABSTRACT} readonly={!editable}>
                 {s.abstract ?? ""}
               </textarea>
             </div>
