@@ -7,6 +7,13 @@
 // organizer preview replacing the Resources section body rather than
 // silently rendering the real list. It also carries a schema-derived scan
 // so a future boolean column on portal_settings can't ship the same way.
+//
+// Multi-portal decision 74: the switch itself is gone (each portal lists
+// its own resources) and the portal data loader no longer reads it, so
+// every event a person takes part in reads true. The route gating below
+// still holds: the per-event map is how a resource route knows the person
+// takes part in that event at all. The organizer preview section went with
+// the general /portal/preview page.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -189,127 +196,18 @@ describe("DEC-988: showResources server-side reader", () => {
 });
 
 // ---------------------------------------------------------------------------
-// organizer preview
-// ---------------------------------------------------------------------------
-
-describe("DEC-988: GET /portal/preview shows what the speaker sees", () => {
-  const EVENT_ID = "evt-1";
-  const ORG_ID = "org-1";
-  const ORGANIZER: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_ID };
-
-  function fakeDb(showResources: boolean) {
-    return {
-      select: () => ({
-        from: (table: unknown) => {
-          if (table === schema.event) {
-            return {
-              where: () => ({
-                limit: async () => [
-                  {
-                    id: EVENT_ID,
-                    orgId: ORG_ID,
-                    name: "Test Conf",
-                    slug: "test-conf",
-                    startDate: "2026-01-01",
-                    endDate: "2026-01-02",
-                    location: null,
-                    timezone: "America/Chicago",
-                    recordPrefix: "TC",
-                    brandingJson: null,
-                    createdAt: new Date(0),
-                    updatedAt: new Date(0),
-                  },
-                ],
-              }),
-            };
-          }
-          if (table === schema.portalSettings) {
-            return {
-              where: () => ({
-                limit: async () => [
-                  {
-                    id: "ps-1",
-                    eventId: EVENT_ID,
-                    logoUrl: null,
-                    accentColor: null,
-                    welcomeMessage: "Welcome, speakers!",
-                    showResources,
-                    createdAt: new Date(0),
-                    updatedAt: new Date(0),
-                  },
-                ],
-              }),
-            };
-          }
-          if (table === schema.resource) {
-            return {
-              where: () => ({
-                orderBy: async () => [
-                  {
-                    id: "res-1",
-                    eventId: EVENT_ID,
-                    kind: "wiki",
-                    title: "Travel info",
-                    content: "Fly into AUS.",
-                    fileId: null,
-                    position: 0,
-                    createdAt: new Date(0),
-                    updatedAt: new Date(0),
-                  },
-                ],
-              }),
-            };
-          }
-          if (table === schema.org) {
-            return { orderBy: () => ({ limit: async () => [] }) };
-          }
-          return { where: () => ({ limit: async () => [] }) };
-        },
-      }),
-    } as never;
-  }
-
-  async function buildPreviewApp(showResources: boolean) {
-    const { portalPreviewRoutes } = await import("../src/routes/portal/preview");
-    const app = new Hono<AppEnv>();
-    app.use("*", async (c, next) => {
-      c.set("db", fakeDb(showResources));
-      c.set("auth", ORGANIZER);
-      await next();
-    });
-    registerErrorHandler(app);
-    app.route("/portal", portalPreviewRoutes);
-    registerNotFoundHandler(app);
-    return app;
-  }
-
-  it("showResources=true: renders the real resource list", async () => {
-    const app = await buildPreviewApp(true);
-    const res = await app.request(`/portal/preview?eventId=${EVENT_ID}`);
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain("Travel info");
-  });
-
-  it("showResources=false: replaces the section body with one organizer-facing line, never the real list", async () => {
-    const app = await buildPreviewApp(false);
-    const res = await app.request(`/portal/preview?eventId=${EVENT_ID}`);
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).not.toContain("Travel info");
-    expect(body).toContain("Hidden from participants by the Portals");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // (b) schema-derived population scan: every boolean column on
 // portal_settings must be named under src/routes/portal/, or carry a
 // written exemption below.
 // ---------------------------------------------------------------------------
 
 describe("DEC-988: portal_settings boolean-column population scan", () => {
-  // Structural exemptions only (never a branch note) — none today.
-  const EXEMPT_COLUMNS: ReadonlySet<string> = new Set();
+  // Structural exemptions only (never a branch note). show_resources is
+  // retired, not forgotten: multi-portal decision 74 removed the event-wide
+  // switch (each portal lists the resources its people see), so the column
+  // stays stored and unread -- test/portal-resources-retired-switch.test.ts
+  // pins that a stored "off" no longer hides anything.
+  const EXEMPT_COLUMNS: ReadonlySet<string> = new Set(["showResources"]);
 
   it("every boolean column on portal_settings is named somewhere under src/routes/portal/, or exempt", () => {
     const columns = getTableColumns(schema.portalSettings);
@@ -322,7 +220,6 @@ describe("DEC-988: portal_settings boolean-column population scan", () => {
     const portalDir = path.join(__dirname, "..", "src", "routes", "portal");
     const filesToScan = [
       "index.tsx",
-      "preview.tsx",
       "tasks/resources.tsx",
       "tasks/shared.ts",
       "shared.tsx",

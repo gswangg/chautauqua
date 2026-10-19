@@ -236,9 +236,11 @@ describe('every <ConfirmDialog title= is graded literal-vs-expression (DEC-941 w
     expect(missing, `<ConfirmDialog with no title= prop:\n${rendered}`).toEqual([]);
   });
 
-  it('the Settings resource-delete confirm (Chautauqua Settings.dc.html:1421) names the object in its title', () => {
+  // multi-portal decision 74: the resource-delete confirm moved from
+  // Settings' ResourcesPanel to the library
+  it('the resource-delete confirm (Chautauqua Settings.dc.html:1421) names the object in its title', () => {
     const occurrences = scan(FILES);
-    const resourceDelete = occurrences.find((o) => o.file === 'pages/settings/ResourcesPanel.tsx' && o.titleSource?.includes('pendingDelete.title'));
+    const resourceDelete = occurrences.find((o) => o.file === 'pages/portals/LibraryPage.tsx' && o.titleSource?.includes('deletingResource.title'));
     expect(resourceDelete, `occurrences:\n${occurrences.map((o) => `${o.file}:${o.line}`).join('\n')}`).toBeDefined();
     expect(resourceDelete!.titleIsLiteral).toBe(false);
   });

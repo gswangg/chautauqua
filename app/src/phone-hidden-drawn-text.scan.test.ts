@@ -241,7 +241,7 @@ const TWIN_RESOLVED_ROWS = GRADED_RULES.filter((g) => g.grade === 'TWIN-RESOLVED
 // CSS -- can no longer be condemned on that word alone and moves from
 // PREMISE-FALSE to UNVERIFIABLE (20 -> 19, 49 -> 50).
 export const PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING = 19;
-export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 50;
+export const PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING = 49;
 
 // ---------------------------------------------------------------------------
 // DEC-967 wave-42 amendment: a two-sided completeness ratchet over every

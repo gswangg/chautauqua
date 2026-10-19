@@ -22,7 +22,6 @@ import { agendaRoutes } from "./routes/agenda";
 import { breaksRoutes } from "./routes/api/breaks";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
-import { portalPreviewRoutes } from "./routes/portal/preview";
 import { portalInvitationRoutes } from "./routes/portal/invitation";
 import { portalPersonPreviewRoutes } from "./routes/portal/preview-person";
 import { publicRoutes } from "./routes/public";
@@ -81,14 +80,12 @@ app.route("/", meRoutes);
 app.route("/", tokensRoutes);
 app.route("/", exportsRoutes);
 app.route("/", usersRoutes);
-// w7-a (DEC-747 amendment): mounted BEFORE portalRoutes so /portal/preview
-// matches ahead of speakerGate's gated sub-apps — its own guard is organizer-
-// only (the inverse of speakerGate), never falling through to a redirect.
-app.route("/portal", portalPreviewRoutes);
 // multi-portal: the invitation-to-speak link works signed out (its token is
 // the credential), so it mounts ahead of speakerGate's sub-apps too.
 app.route("/portal", portalInvitationRoutes);
-// multi-portal: preview as participant is organizer-only, like /portal/preview
+// multi-portal: preview as participant is organizer-only, mounted ahead of
+// speakerGate's sub-apps so it never falls through to a redirect (the
+// general /portal/preview it replaced went with decision 74)
 app.route("/portal", portalPersonPreviewRoutes);
 app.route("/portal", portalRoutes);
 // w4-a/w4-b (DEC-028): parallel portal sub-apps + the public headshot route.

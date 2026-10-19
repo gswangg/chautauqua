@@ -308,9 +308,12 @@ describe('DEC-781: every one of the seven sections carries its action on the eye
 // past review. 'public-pages' has no edit view at all (B10 DROP) and
 // 'your-data' hosts its own sub-panels (Exports/API tokens) rather than one
 // SettingsEditForm, so both are skipped here -- covered instead by each
-// panel's own render test.
+// panel's own render test. 'portal' has no edit view either since
+// multi-portal decision 74 (its summary links to the Portals sub-page).
 describe('DEC-896/B10 scan: no settings edit view renders a full-width primary', () => {
-  const SHELL_SECTIONS = SECTIONS.filter((s) => s.key !== 'public-pages' && s.key !== 'your-data' && s.key !== 'sponsorships');
+  const SHELL_SECTIONS = SECTIONS.filter(
+    (s) => s.key !== 'public-pages' && s.key !== 'your-data' && s.key !== 'sponsorships' && s.key !== 'portal',
+  );
 
   SHELL_SECTIONS.forEach((section) => {
     it(`${section.key}: the edit footer's buttons carry only the shared .chq-btn-* classes, never full-width`, async () => {

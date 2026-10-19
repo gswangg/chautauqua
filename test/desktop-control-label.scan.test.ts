@@ -436,6 +436,13 @@ export const FIXTURE_EXCLUSIONS = [
 // expression verbatim, or the blessing citation.
 export const COMPOSED_EXCLUSIONS = [
   {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1469,
+    label: 'Add it',
+    reason:
+      "BLESSED by multi-portal decision 74 (docs/design/multi-portal/DECISIONS.md): the Portal resource · add dialog is superseded -- resources are made in the library's New item (Resource › Write a page / Upload a file, app/src/pages/portals/NewLibraryItemModal.tsx), whose primary is Create.",
+  },
+  {
     fileName: 'Chautauqua Comms.dc.html',
     line: 578,
     label: 'Tell the 23 accepted speakers',

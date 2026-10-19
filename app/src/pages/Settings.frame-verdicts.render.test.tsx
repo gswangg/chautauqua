@@ -270,17 +270,12 @@ describe('v12 Settings 390 READ frames: per-frame render verdict receipts (w10-n
   });
 
   // Frame :510-548 "Settings · Speaker portal".
-  it('frame :510 Speaker portal -- MATCHES: Welcome note renders the stored text verbatim in the drawn readout box (DEC-919 wave-157)', async () => {
-    verbatimLine(507, "      <span style=\"font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600\">Settings · Speaker portal</span>");
-    renderDrilled('portal');
-    const section = screen.getByRole('region', { name: 'Portals' });
-    // Frame :518 draws a full boxed readout of the actual welcome text --
-    // the fixture's stored value ('Welcome, speakers!') now renders
-    // verbatim inside it (CSS gates the box itself to phone; desktop's
-    // pre-existing computed summary line stays mounted alongside it,
-    // frozen, and CSS is the only thing deciding which one is visible).
-    await waitFor(() => expect(within(section).getByText('Welcome, speakers!')).toBeInTheDocument());
-    expect(within(section).getByText(/Shown above the task list/)).toBeInTheDocument();
+  it("SUPERSEDED (multi-portal decision 74): frame :510 Speaker portal's Welcome note row is gone from Settings", () => {
+    // the welcome note is Profile basics' note, edited in its portal editor
+    const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+    expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+    const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+    expect(panel).not.toContain('SettingsEditForm');
   });
 
   // Frame :552-575 "Settings · People and roles".

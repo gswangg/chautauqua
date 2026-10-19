@@ -197,3 +197,9 @@ value rather than to a hoped-for one:
 
 Re-measured on the repaired tree by running the scan: the live value today is
 `DECISIONS_REGISTRY_CITATION_CEILING = 1224`.
+
+## Multi-portal decision 74
+
+Re-measured on this branch: the decision docs' stale citations into the deleted Settings resource panel, Settings › Portals edit form and general portal preview were rewritten or marked as deleted, which also repaired three citations whose cited lines had only moved.
+
+`DECISIONS_REGISTRY_CITATION_CEILING` moves 1224 -> 1221.

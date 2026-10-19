@@ -334,10 +334,12 @@ describe("routeManifest edit-screen sub-state parity (DEC-144 wave-28)", () => {
     },
   ];
 
-  it("source-scan found at least 6 `edit=1` readers and resolved at least 6 section keys (sanity check the regexes aren't silently matching nothing)", () => {
+  // multi-portal decision 74: Settings › Portals lost its edit drill, so the
+  // floor is 5 readers
+  it("source-scan found at least 5 `edit=1` readers and resolved at least 5 section keys (sanity check the regexes aren't silently matching nothing)", () => {
     const files = walkSourceFiles(PAGES_DIR);
     const readers = files.filter((f) => EDIT_READ_RE.test(readFileSync(f, "utf-8")));
-    expect(readers.length, "found zero `searchParams.get('edit')` readers under app/src/pages").toBeGreaterThanOrEqual(6);
+    expect(readers.length, "found zero `searchParams.get('edit')` readers under app/src/pages").toBeGreaterThanOrEqual(5);
 
     const manifestPaths = new Set(ROUTE_MANIFEST.map((e) => e.path));
     const missing: string[] = [];
@@ -377,7 +379,7 @@ describe("routeManifest edit-screen sub-state parity (DEC-144 wave-28)", () => {
       }
     }
 
-    expect(resolvedCount, "resolved zero readers to a section key").toBeGreaterThanOrEqual(6);
+    expect(resolvedCount, "resolved zero readers to a section key").toBeGreaterThanOrEqual(5);
     expect(missing, `edit-screen readers with no ROUTE_MANIFEST row:\n${missing.join("\n")}`).toEqual([]);
   });
 

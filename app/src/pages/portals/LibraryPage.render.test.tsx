@@ -3,6 +3,8 @@
 // "Assigned directly" marker; editing a task (EditLibraryItemModal) and a
 // refused rename; a resource's visibility (and a refused change); and a
 // new item saved from here (NewLibraryItemModal, no add-to-portal step).
+// Multi-portal decision 74: resources are made, edited
+// (EditLibraryResourceModal) and deleted here -- a page or an uploaded file.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -38,9 +40,10 @@ function listing(): LibraryListing {
       entry({ ref: { taskId: 't-announce' }, type: 'task', title: 'Announce participation', direct: true }),
       entry({ ref: { taskId: 't-slides' }, type: 'file_request', title: 'Final slides', scope: 'participation', acceptedTypes: ['pdf', 'keynote', 'powerpoint'], maxSizeMb: 200, maxFiles: 2, usedBy: [{ id: 'p-cfp', name: 'CFP speakers' }, { id: 'p-inv', name: 'Invited speakers' }] }),
       entry({ ref: { taskId: 't-share' }, type: 'share_kit', title: 'Share your talk', scope: 'participation', instructions: "I'm speaking at {event}: {session}. {link}" }),
-      entry({ ref: { resourceId: 'r-hb' }, type: 'resource', title: 'Speaker Handbook', direct: true, hint: 'Everyone’s resources' }),
+      entry({ ref: { resourceId: 'r-hb' }, type: 'resource', title: 'Speaker Handbook', direct: true, hint: 'Everyone’s resources', resource: { kind: 'wiki', content: '# Welcome', fileName: null } }),
+      entry({ ref: { resourceId: 'r-tpl' }, type: 'resource', title: 'Slide template', hint: 'Only in CFP speakers', visibility: 'portal', usedBy: [{ id: 'p-cfp', name: 'CFP speakers' }], resource: { kind: 'file', content: null, fileName: 'template.pptx' } }),
     ],
-    counts: { task: 2, form: 0, file_request: 1, share_kit: 1, resource: 1 },
+    counts: { task: 2, form: 0, file_request: 1, share_kit: 1, resource: 2 },
   };
 }
 
@@ -83,7 +86,7 @@ describe('LibraryPage', () => {
     expect(await screen.findByText('Tasks · 2')).toBeInTheDocument();
     expect(screen.getByText('File requests · 1')).toBeInTheDocument();
     expect(screen.getByText('Share kits · 1')).toBeInTheDocument();
-    expect(screen.getByText('Resources · 1')).toBeInTheDocument();
+    expect(screen.getByText('Resources · 2')).toBeInTheDocument();
     expect(screen.getByText('Built in · 1')).toBeInTheDocument();
     // a type with nothing in it has no group
     expect(screen.queryByText(/^Forms · /)).not.toBeInTheDocument();
@@ -223,6 +226,82 @@ describe('LibraryPage', () => {
     expect(within(saved).getByRole('link', { name: 'Open the form builder' })).toHaveAttribute('href', '/submissions/forms?form=f-new');
     fireEvent.click(within(saved).getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  describe('resources (multi-portal decision 74)', () => {
+    it('says whether each resource is a page or a file', async () => {
+      mockApi({ [`GET ${LIB}`]: listing() });
+      renderPage();
+      expect(await screen.findByText('A page participants read')).toBeInTheDocument();
+      expect(screen.getByText('A file participants download · template.pptx')).toBeInTheDocument();
+    });
+
+    it('NewLibraryItemModal: uploads a file resource, shown only through the portals that list it', async () => {
+      const fetchMock = mockApi({
+        [`GET ${LIB}`]: listing(),
+        [`POST /api/v1/events/${EVENT_ID}/resources`]: { status: 201, body: { id: 'r-new' } },
+      });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'New item' }));
+      const dialog = screen.getByRole('dialog', { name: 'New item' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Resource' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Upload a file' }));
+      fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Venue map' } });
+      // a file is required
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
+      expect(await within(dialog).findByText('Choose the file participants download.')).toBeInTheDocument();
+      const file = new File(['map'], 'venue.pdf', { type: 'application/pdf' });
+      fireEvent.change(within(dialog).getByLabelText('File'), { target: { files: [file] } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      const upload = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith(`/events/${EVENT_ID}/resources`) && init?.method === 'POST');
+      const form = upload![1]!.body as FormData;
+      expect(form.get('title')).toBe('Venue map');
+      expect((form.get('file') as File).name).toBe('venue.pdf');
+      expect(form.get('visibility')).toBe('portal');
+      expect(screen.getByText('Venue map added to the library')).toBeInTheDocument();
+    });
+
+    it('EditLibraryResourceModal: edits a page, and shows a refusal from the server', async () => {
+      const fetchMock = mockApi({
+        [`GET ${LIB}`]: listing(),
+        [`PATCH /api/v1/resources/r-hb`]: { status: 400, body: errorEnvelope('invalid', 'The page is too long.', { content: 'The page is too long.' }) },
+      });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Speaker Handbook' }));
+      const dialog = screen.getByRole('dialog', { name: 'Edit Speaker Handbook' });
+      expect(within(dialog).getByLabelText('Page')).toHaveValue('# Welcome');
+      fireEvent.change(within(dialog).getByLabelText('Page'), { target: { value: '# Welcome to DevFlow' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save resource' }));
+      expect(await within(dialog).findByText('The page is too long.')).toBeInTheDocument();
+      expect(bodiesOf(fetchMock.mock.calls, 'PATCH', '/api/v1/resources/r-hb')[0]).toEqual({ title: 'Speaker Handbook', content: '# Welcome to DevFlow' });
+    });
+
+    it('EditLibraryResourceModal: a file resource renames only, and keeps its file', async () => {
+      const fetchMock = mockApi({ [`GET ${LIB}`]: listing(), [`PATCH /api/v1/resources/r-tpl`]: { ok: true } });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Slide template' }));
+      const dialog = screen.getByRole('dialog', { name: 'Edit Slide template' });
+      expect(within(dialog).queryByLabelText('Page')).not.toBeInTheDocument();
+      expect(within(dialog).getByText(/The file is template\.pptx/)).toBeInTheDocument();
+      fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Slide template 2027' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save resource' }));
+      await waitFor(() => expect(bodiesOf(fetchMock.mock.calls, 'PATCH', '/api/v1/resources/r-tpl')[0]).toEqual({ title: 'Slide template 2027' }));
+    });
+
+    it('deletes a resource after typing its name, saying which portals it leaves', async () => {
+      const fetchMock = mockApi({ [`GET ${LIB}`]: listing(), [`DELETE /api/v1/resources/r-tpl`]: { ok: true } });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete Slide template' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Delete "Slide template"?' });
+      expect(within(dialog).getByText(/It leaves CFP speakers too/)).toBeInTheDocument();
+      const confirm = within(dialog).getByRole('button', { name: 'Delete resource' });
+      expect(confirm).toBeDisabled();
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Slide template' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete resource' }));
+      await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/resources/r-tpl') && init?.method === 'DELETE')).toBe(true));
+      expect(await screen.findByText('Slide template deleted')).toBeInTheDocument();
+    });
   });
 
   it('shows a load failure', async () => {

@@ -771,7 +771,7 @@ hides has no counterpart in the 390 body band. Instead, the frame draws a
 dashed, centred, `min-height:44px` pill reading "Add a track" (line 365)
 directly below the Tracks list, and a second one reading "Add a room" (line
 389) below the Rooms list. The rule's own standing comment
-(app/src/pages/settings/settings-drill-rows.css:225-245, DEC-919 wave-99)
+(app/src/pages/settings/settings-drill-rows.css:159-179, DEC-919 wave-99)
 already names this: `TracksRoomsPanel.tsx`
 renders BOTH the head link (hidden here) and the dashed sibling
 (`.chq-settings-drillrow-add`, turned on by the adjacent `display:flex`
@@ -943,3 +943,9 @@ and grades UNVERIFIABLE instead of PREMISE-FALSE.
 
 `PHONE_HIDDEN_DRAWN_TEXT_PREMISE_FALSE_CEILING` moves 20 -> 19.
 `PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING` moves 49 -> 50.
+
+## Multi-portal decision 74
+
+Re-measured on this branch: one UNVERIFIABLE row belonged to the deleted Settings › Portals edit drill.
+
+`PHONE_HIDDEN_DRAWN_TEXT_UNVERIFIABLE_CEILING` moves 50 -> 49.

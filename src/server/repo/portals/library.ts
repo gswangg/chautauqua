@@ -34,6 +34,9 @@ export interface LibraryEntry {
   hint: string;
   // resources only: everyone with a portal, or only portals that list it
   visibility?: "everyone" | "portal";
+  // resources only (decision 74): a page participants read or a file they
+  // download -- the library is where both are made, edited and deleted
+  resource?: { kind: "wiki" | "file"; content: string | null; fileName: string | null };
 }
 
 function typeOfTask(kind: string): LibraryType {
@@ -46,7 +49,19 @@ export async function listLibrary(db: Db, eventId: string): Promise<{ entries: L
   const [tasks, portals, resources] = await Promise.all([
     loadEventLibraryTasks(db, eventId),
     loadEventPortals(db, eventId),
-    db.select().from(schema.resource).where(eq(schema.resource.eventId, eventId)).orderBy(asc(schema.resource.position), asc(schema.resource.title)),
+    db
+      .select({
+        id: schema.resource.id,
+        kind: schema.resource.kind,
+        title: schema.resource.title,
+        content: schema.resource.content,
+        visibility: schema.resource.visibility,
+        fileName: schema.file.filename,
+      })
+      .from(schema.resource)
+      .leftJoin(schema.file, eq(schema.file.id, schema.resource.fileId))
+      .where(eq(schema.resource.eventId, eventId))
+      .orderBy(asc(schema.resource.position), asc(schema.resource.title)),
   ]);
   const usage = (pred: (i: { taskId: string | null; resourceId: string | null; systemKind: string | null }) => boolean) =>
     portals.filter((p) => p.items.some(pred)).map((p) => ({ id: p.id, name: p.name }));
@@ -102,6 +117,7 @@ export async function listLibrary(db: Db, eventId: string): Promise<{ entries: L
       direct: r.visibility === "everyone",
       visibility: r.visibility === "everyone" ? "everyone" : "portal",
       hint: r.visibility === "everyone" ? "Everyone's resources" : usedBy.length > 0 ? `Only in ${usedBy.map((u) => u.name).join(", ")}` : "Not shown to anyone yet",
+      resource: r.kind === "file" ? { kind: "file", content: null, fileName: r.fileName } : { kind: "wiki", content: r.content, fileName: null },
     });
   }
   const counts = {

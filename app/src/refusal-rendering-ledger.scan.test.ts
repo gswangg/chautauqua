@@ -125,6 +125,11 @@ const LEDGER: Record<string, LedgerEntry> = {
     verdict: 'proven',
     test: 'pages/portals/LibraryPage.render.test.tsx',
   },
+  // multi-portal decision 74: resources are edited in the library
+  'pages/portals/EditLibraryResourceModal.tsx': {
+    verdict: 'proven',
+    test: 'pages/portals/LibraryPage.render.test.tsx',
+  },
   'pages/portals/EditTierModal.tsx': {
     verdict: 'proven',
     test: 'pages/portals/SponsorshipsPage.render.test.tsx',
@@ -238,8 +243,6 @@ const LEDGER: Record<string, LedgerEntry> = {
   'pages/settings/CallForPapersPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/settings/EventSettingsPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/settings/PeopleRolesPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/settings/PortalSettingsPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/settings/ResourcesPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/settings/SessionboardImportPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/speakers/OnboardingGrid.tsx': {
     verdict: 'proven',
@@ -525,8 +528,6 @@ const KNOWN_OWED: string[] = [
   'pages/settings/CallForPapersPanel.tsx',
   'pages/settings/EventSettingsPanel.tsx',
   'pages/settings/PeopleRolesPanel.tsx',
-  'pages/settings/PortalSettingsPanel.tsx',
-  'pages/settings/ResourcesPanel.tsx',
   'pages/settings/SessionboardImportPanel.tsx',
 ].sort();
 

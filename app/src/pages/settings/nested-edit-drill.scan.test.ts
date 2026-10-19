@@ -43,9 +43,11 @@ function readOnlyPropPanelFiles(dir: string): string[] {
 }
 
 describe('DEC-785 amendment (wave 66): no nested edit-toggle drill behind a readOnly-prop panel', () => {
-  it('derives the readOnly-prop population from source and finds exactly ApiTokensPanel + ResourcesPanel', () => {
+  // multi-portal decision 74 deleted ResourcesPanel (resources are edited in
+  // the library), leaving ApiTokensPanel the one readOnly-prop panel
+  it('derives the readOnly-prop population from source and finds exactly ApiTokensPanel', () => {
     const files = readOnlyPropPanelFiles(HERE);
-    expect(files.sort()).toEqual(['ApiTokensPanel.tsx', 'ResourcesPanel.tsx']);
+    expect(files.sort()).toEqual(['ApiTokensPanel.tsx']);
   });
 
   it('no readOnly-prop panel also declares a local edit-toggle state', () => {

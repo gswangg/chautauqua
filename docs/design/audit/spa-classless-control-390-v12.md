@@ -49,7 +49,7 @@ never a number copied from the task text.
 | 2 | app/src/pages/NotFound.tsx`<Link to="/overview">Overview &rsaquo;</Link>` | `chq-notfound-links` | **Floored** — new terminal `@media (max-width:700px)` block added to `not-found.css` (none existed before), `.chq-notfound-links a` |
 | 3 | app/src/pages/NotFound.tsx`<Link to="/submissions">Submissions &rsaquo;</Link>` | `chq-notfound-links` | **Floored** — same rule as #2 |
 | 4 | app/src/pages/settings/EventSettingsPanel.tsx`<Link to="/agenda">View agenda</Link>` | `chq-event-unscheduled-notice` | **Floored** — `settings.css` terminal block, `.chq-event-unscheduled-notice a` |
-| 5 | app/src/pages/settings/PortalSettingsPanel.tsx`className="chq-settings-portal-preview-link"` | *(no enclosing chq- token — ungradeable by construction)* | **Floored** — given its own `className="chq-settings-portal-preview-link"` directly on the tag (the only way to make a token-with-no-ancestor site gradeable at all), then floored in `settings.css`'s terminal block |
+| 5 | the former PortalSettingsPanel code (removed by multi-portal decision 74) `className="chq-settings-portal-preview-link"` | *(no enclosing chq- token — ungradeable by construction)* | **Floored** — given its own `className="chq-settings-portal-preview-link"` directly on the tag (the only way to make a token-with-no-ancestor site gradeable at all), then floored in `settings.css`'s terminal block |
 | 6 | app/src/pages/speakers/RosterPanel.tsx`<p className="chq-speakers-roster-duplicate-hint" role="status">` | `chq-speakers-roster-duplicate-hint` | **Floored** — `speakers.css` terminal block, `.chq-speakers-roster-duplicate-hint a` |
 | 7 | app/src/pages/speakers/SpeakerDetailPage.tsx`<p className="chq-speaker-detail-portal-bio-links">` | `chq-speaker-detail-portal-bio-links` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-portal-bio-links a` |
 | 8 | app/src/pages/speakers/SpeakerDetailPage.tsx`<div className="chq-speaker-detail-sessions-row" role="row"` | `chq-speaker-detail-sessions-row` | **Floored** — `speakers.css` terminal block, `.chq-speaker-detail-sessions-row a` |
@@ -78,7 +78,7 @@ horizontal padding) was appended to `styles.css`'s terminal `@media
 
 ## Notes
 
-- `PortalSettingsPanel.tsx:245`'s anchor is the one truly ungradeable site
+- `PortalSettingsPanel.tsx:92`'s anchor is the one truly ungradeable site
   in the raw 15 — no ancestor in the file carries any `chq-` token at all
   (`(no enclosing chq- token)`), so no CSS selector could ever reach it.
   It was given its own class directly on the tag rather than left

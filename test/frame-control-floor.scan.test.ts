@@ -1581,7 +1581,16 @@ export const FRAME_FLOOR_DIVERGENCE_CEILING = 0;
 // 90 -> 89 (multi-portal): the Settings Speaker portal section's fixed
 // "Speakers can edit" pills are gone (each portal's field permissions
 // replace them, docs/design/multi-portal/DECISIONS.md #32).
-export const UNRESOLVED_COUNT_TRIPWIRE = 89;
+// 89 -> 93 (multi-portal decision 74, re-measured by diffing the
+// unresolved roster against the previous commit): Settings.dc.html:539
+// "Replace" and :565 "Change" belong to the Speaker portal phone drill,
+// which no longer exists (Settings › Portals is a summary; resources are
+// made in the library). Public and Portal.dc.html:541 and :585 "Replace"
+// (the profile's headshot control, profile.tsx's composed
+// `Replace`/`Add a headshot` label) only ever resolved through the deleted
+// ResourcesPanel's own Replace button -- a cross-surface coincidence; with
+// it gone they grade honestly as no-token.
+export const UNRESOLVED_COUNT_TRIPWIRE = 93;
 
 describe('phone drawn-floor ledger (DEC-393 wave-147 amendment, v12 mobile campaign)', () => {
   it('non-vacuity: enumerates a large, multi-file population of drawn phone controls', () => {

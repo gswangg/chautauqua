@@ -275,13 +275,10 @@ const LEDGER: LedgerEntry[] = [
   },
   {
     key: "portal-preview-open-as-a-speaker",
-    status: "honored",
-    reason: "GET /portal/preview renders the portal chrome with no speaker attached, per DEC-747.",
-    honored: {
-      file: "src/routes/portal/preview.tsx",
-      literal: "export const portalPreviewRoutes",
-      testFile: "test/portal-preview.test.ts",
-    },
+    status: "absent-by-design",
+    reason:
+      "Multi-portal decision 74 (docs/design/multi-portal/DECISIONS.md) superseded the general GET /portal/preview (a portal with nobody signed in, DEC-747): preview as a person (src/routes/portal/preview-person.tsx, from a person's record or a portal's Matches list) shows what someone actually gets, and the general page is no longer mounted.",
+    absent: { term: "portalPreviewRoutes" },
   },
   {
     key: "cfp-form-editing-a-question",

@@ -543,8 +543,10 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // scan, never guessed). The multi-portal organizer screens'
     // stylesheets (app/src/pages/portals/*.css, speakers/not-in-portal.css)
     // add 81 more, all in vocabulary: 587 -> 668. +1 decision 71: the
-    // portal editor's per-match Preview link (700): 669.
-    expect(weightBare).toBe(669);
+    // portal editor's per-match Preview link (700): 669. -5 decision 74: the
+    // Settings resource rows, the general preview's banner and Download, and
+    // the welcome readout went with their components: 664.
+    expect(weightBare).toBe(664);
     // +1 multi-portal: the home's section label takes its weight from the
     // theme token (var(--chq-type-section-label-weight)), like the shared
     // section label it mirrors; +1 the not-in-portal column heads' micro
@@ -553,7 +555,9 @@ describe('pack declaration vocabulary (DEC-937)', () => {
     // +4 multi-portal: the home title, note, field-help and invitation-quote
     // lines (1.3, 1.5, 1.5, 1.5 -- all in the pack's line-height vocabulary);
     // +52 the organizer screens' stylesheets, all in vocabulary: 178 -> 230.
-    expect(lineHeightBare).toBe(230);
+    // -4 decision 74: the welcome readouts and the general preview's banner
+    // went with their components: 226.
+    expect(lineHeightBare).toBe(226);
     expect(lineHeightOutOfGrammar).toBe(2);
   });
 });

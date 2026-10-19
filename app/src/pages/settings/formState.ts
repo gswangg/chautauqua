@@ -44,63 +44,9 @@ export function buildEventPatch(
   return patch;
 }
 
-// Multi-portal decision 72: the portal's logo and accent are no longer
-// offered (the portal draws neither), so the form carries only the welcome
-// note and the resources switch; the server keeps whatever is stored.
-export interface PortalSettingsForm {
-  welcomeMessage: string;
-  showResources: boolean;
-}
-
 /** Client-side use of the server's grammar (src/domain/color.ts) — empty is allowed (clears the field). */
 export function isValidHexColorOrEmpty(value: string): boolean {
   return value.trim().length === 0 || isValidHexColor(value);
-}
-
-// DEC-958: the client validator only ever produces accentColor, but the
-// server's fields map (src/routes/api/portal-config.ts:97-127) can name any
-// of its wire keys -- logoUrl and welcomeMessage included -- so the type
-// carries all four the panel's own hint slots render, plus an index
-// signature so a fields map merge (`{...current, ...err.fields}`) type-checks
-// without narrowing away a key the caller didn't render yet.
-export interface PortalSettingsFormErrors {
-  logoUrl?: string;
-  accentColor?: string;
-  welcomeMessage?: string;
-  showResources?: string;
-  [key: string]: string | undefined;
-}
-
-/** Builds the PUT /api/v1/events/:id/portal-settings body (full upsert, not a diff — the endpoint is idempotent). */
-export function buildPortalSettingsPayload(form: PortalSettingsForm): Record<string, unknown> {
-  return {
-    welcomeMessage: form.welcomeMessage.trim().length > 0 ? form.welcomeMessage : null,
-    showResources: form.showResources,
-  };
-}
-
-export interface ResourceForm {
-  title: string;
-  content: string;
-}
-
-export interface ResourceFormErrors {
-  title?: string;
-  content?: string;
-}
-
-export function validateResourceForm(form: ResourceForm): ResourceFormErrors {
-  const errors: ResourceFormErrors = {};
-  if (form.title.trim().length === 0) errors.title = "Required";
-  if (form.content.trim().length === 0) errors.content = "Required";
-  return errors;
-}
-
-/** Title-only validation for the file-resource Rename form (DEC-029 amendment): no content field to check. */
-export function validateResourceTitleForm(form: Pick<ResourceForm, "title">): Pick<ResourceFormErrors, "title"> {
-  const errors: Pick<ResourceFormErrors, "title"> = {};
-  if (form.title.trim().length === 0) errors.title = "Required";
-  return errors;
 }
 
 export interface TrackForm {

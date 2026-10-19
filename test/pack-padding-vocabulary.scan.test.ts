@@ -513,7 +513,12 @@ const UNMATCHED: GradedPackPadding[] = GRADED.filter((g) => !g.matched);
 // -- may only be RAISED (a merge-train act, never a worker's edit
 // mid-lane) and must never sit below the measured count either.
 // 252 -> 219 (multi-portal, re-measured on the integrated tree).
-export const PACK_PADDING_UNMATCHED_CEILING = 219;
+// 219 -> 222 (multi-portal decision 74, re-measured by diffing the
+// unmatched roster against the previous commit): three drawn `9px 14px`
+// paddings -- Public and Portal.dc.html:81 and Settings.dc.html:205/:256 --
+// had only ever matched a declaration in the deleted general-preview /
+// Settings resource rules; no shipped rule carries that value now.
+export const PACK_PADDING_UNMATCHED_CEILING = 222;
 
 describe("pack drawn padding vocabulary (DEC-069 wave-53 amendment, v12 mobile campaign, PARKED)", () => {
   it("vacuous-population tripwire: the raw padding: count, the badge-derived exclusion count, and the reachable-frame count are all non-zero and self-consistent", () => {

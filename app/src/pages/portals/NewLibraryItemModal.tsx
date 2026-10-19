@@ -4,11 +4,13 @@
 // from Settings · Portals › Libraries it is only saved. The fields follow
 // the type: a file request carries its accepted types, size and count; a
 // share kit's text takes {name} {event} {session} {link}; a resource is a
-// page. A new form opens the form builder after this step.
+// page participants read or a file they download (decision 74: the library
+// is where resources are made). A new form opens the form builder after
+// this step.
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { FormRow, FormRowPair, ModalFrame } from '../../components/ModalFrame';
-import { apiPost, ApiError } from '../../lib/api';
+import { apiPost, apiUpload, ApiError } from '../../lib/api';
 import {
   MAX_FILE_REQUEST_FILES,
   MAX_FILE_REQUEST_SIZE_MB,
@@ -16,9 +18,11 @@ import {
   MAX_LIBRARY_PAGE,
   MAX_LIBRARY_TITLE,
 } from '../../lib/domain-caps';
+import { MARKDOWN_SYNTAX_HINT } from '../../lib/markdown-hint';
 import { countOf } from '../../lib/plural';
 import { FILE_TYPE_GROUPS, FILE_TYPE_GROUP_LABELS, limitSentence } from '../../../../src/domain/portals/file-types';
 import { ITEM_SCOPE_LABELS } from '../../../../src/domain/portals/items';
+import { allowedUploadExtensions, uploadHintText, validateUpload } from '../../../../src/domain/files';
 import type { FileTypeGroup, ItemScope, LibraryItemCreate, LibraryType } from './types';
 
 export const LIBRARY_TYPE_LABELS: Record<LibraryType, string> = {
@@ -54,7 +58,7 @@ interface NewLibraryItemModalProps {
 
 // the instructions box changes its job with the type
 function textRow(type: LibraryType): { label: string; help: string; max: number } {
-  if (type === 'resource') return { label: 'Page', help: 'What participants read. Markdown works.', max: MAX_LIBRARY_PAGE };
+  if (type === 'resource') return { label: 'Page', help: `What participants read. ${MARKDOWN_SYNTAX_HINT}`, max: MAX_LIBRARY_PAGE };
   if (type === 'share_kit') {
     return {
       label: 'Share text',
@@ -151,6 +155,9 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
   const [types, setTypes] = useState<FileTypeGroup[]>(['pdf']);
   const [maxSize, setMaxSize] = useState<number | null>(50);
   const [maxFiles, setMaxFiles] = useState<number>(1);
+  // a resource is written here, or is a file uploaded here
+  const [resourceKind, setResourceKind] = useState<'wiki' | 'file'>('wiki');
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -163,9 +170,42 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
       setFieldErrors({ title: 'Give the item a name.' });
       return;
     }
+    const uploading = type === 'resource' && resourceKind === 'file';
+    if (uploading && file === null) {
+      setFieldErrors({ file: 'Choose the file participants download.' });
+      return;
+    }
+    if (uploading && file !== null) {
+      // DEC-020: the client check is the server's, so a refused file says so
+      // before any bytes go up
+      const check = validateUpload({ filename: file.name, sizeBytes: file.size, kind: 'handout' });
+      if (!check.ok) {
+        setFieldErrors({ file: `${check.message} ${uploadHintText('handout')}` });
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     setFieldErrors({});
+    if (uploading && file !== null) {
+      // the resource upload route; shown only through the portals that list
+      // it, like a page made here
+      const form = new FormData();
+      form.set('title', title.trim());
+      form.set('file', file);
+      form.set('visibility', 'portal');
+      try {
+        const created = await apiUpload<{ id: string }>(`/events/${eventId}/resources`, form);
+        onCreated({ type, title: title.trim(), scope: 'person', taskId: null, resourceId: created.id, formId: null });
+        onClose();
+      } catch (err) {
+        if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) setFieldErrors(err.fields);
+        setError(err instanceof ApiError ? err.message : 'The file could not be uploaded.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const body: LibraryItemCreate = {
       type,
       title: title.trim(),
@@ -262,9 +302,41 @@ export function NewLibraryItemModal({ eventId, mode, portalName, onCreated, onCl
           </div>
         </FormRow>
       ) : null}
-      <FormRow label={row.label} htmlFor="library-item-text" help={row.help} error={fieldErrors.instructions ?? fieldErrors.content} optional={type !== 'resource'}>
-        <textarea id="library-item-text" className="chq-textarea" value={text} maxLength={row.max} onChange={(e) => setText(e.target.value)} />
-      </FormRow>
+      {type === 'resource' ? (
+        <FormRow label="Content">
+          <div className="chq-portal-seg chq-portal-seg-wide" role="group" aria-label="Content">
+            <button type="button" className="chq-portal-seg-btn" aria-pressed={resourceKind === 'wiki'} onClick={() => setResourceKind('wiki')}>
+              Write a page
+            </button>
+            <button type="button" className="chq-portal-seg-btn" aria-pressed={resourceKind === 'file'} onClick={() => setResourceKind('file')}>
+              Upload a file
+            </button>
+          </div>
+        </FormRow>
+      ) : null}
+      {type === 'resource' && resourceKind === 'file' ? (
+        <FormRow
+          label="File"
+          htmlFor="library-item-file"
+          help={<span className="chq-upload-caps">{`What participants download, such as a slide template or venue map. ${uploadHintText('handout')}`}</span>}
+          error={fieldErrors.file}
+        >
+          {/* DEC-020: the same accepted types and size cap the server's
+              validateUpload({kind: 'handout'}) enforces, from the one
+              vocabulary in src/domain/files */}
+          <input
+            id="library-item-file"
+            className="chq-file"
+            type="file"
+            accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </FormRow>
+      ) : (
+        <FormRow label={row.label} htmlFor="library-item-text" help={row.help} error={fieldErrors.instructions ?? fieldErrors.content} optional={type !== 'resource'}>
+          <textarea id="library-item-text" className="chq-textarea" value={text} maxLength={row.max} onChange={(e) => setText(e.target.value)} />
+        </FormRow>
+      )}
       {type === 'file_request' ? (
         <FileLimitFields
           types={types}

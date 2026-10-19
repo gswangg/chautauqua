@@ -8,11 +8,16 @@
 // result. A task-only speaker (no submission at all) is covered too, since
 // getPortalData's showResourcesByEventId population is the UNION of
 // submission and task-assignment events, not submissions alone.
+//
+// Multi-portal decision 74 retired the event-wide "Show resources" switch:
+// the stored flag is no longer read, so both events show. What stays per
+// event is the population itself -- an event the person takes part in shows
+// its resources, and a resource of an event they don't take part in is
+// still refused.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { eq } from "drizzle-orm";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
@@ -256,7 +261,8 @@ describe("DEC-988 (wave-74): portal resource visibility is per event", () => {
 
   it("getPortalData resolves showResourcesByEventId per event", async () => {
     const data = await getPortalData(db, contactId, orgId);
-    expect(data.showResourcesByEventId).toEqual({ [eventAId]: true, [eventBId]: false });
+    // B's stored flag is off, and no longer hides anything (decision 74)
+    expect(data.showResourcesByEventId).toEqual({ [eventAId]: true, [eventBId]: true });
     // Branding (chrome) carries no showResources field at all.
     expect(data.branding).not.toHaveProperty("showResources");
   });
@@ -293,8 +299,8 @@ describe("DEC-988 (wave-74): portal resource visibility is per event", () => {
 
     const data = await getPortalData(db, taskOnlyContactId, orgId);
     // Event A never appears (no submission, no task) -- only B, via the
-    // task-assignment side of the union, with B's real flag (false).
-    expect(data.showResourcesByEventId).toEqual({ [eventBId]: false });
+    // task-assignment side of the union.
+    expect(data.showResourcesByEventId).toEqual({ [eventBId]: true });
   });
 
   const speakerAuth = (): AuthInfo => ({ userId: "u-1", role: "speaker", orgId, contactId });
@@ -313,46 +319,48 @@ describe("DEC-988 (wave-74): portal resource visibility is per event", () => {
     return app;
   }
 
-  it("A on / B off: list shows only A's group, A's download succeeds, B's 404s", async () => {
-    const app = buildApp(new Map([["r2/a.pdf", "hello-a"]]));
+  it("a stored 'off' no longer hides an event's resources: both groups list and both downloads succeed (decision 74)", async () => {
+    const app = buildApp(new Map([["r2/a.pdf", "hello-a"], ["r2/b.pdf", "hello-b"]]));
 
     const list = await app.request("/portal/resources");
     expect(list.status).toBe(200);
     const listBody = await list.text();
     expect(listBody).toContain("A resource");
-    expect(listBody).not.toContain("B resource");
-
-    const okDownload = await app.request(`/portal/resources/${resourceAId}/download`);
-    expect(okDownload.status).toBe(200);
-
-    const refusedDownload = await app.request(`/portal/resources/${resourceBId}/download`);
-    expect(refusedDownload.status).toBe(404);
-  });
-
-  it("mirror: flip A off / B on -> list shows only B, B's download succeeds, A's 404s", async () => {
-    await db.update(schema.portalSettings).set({ showResources: false }).where(eq(schema.portalSettings.eventId, eventAId));
-    await db.update(schema.portalSettings).set({ showResources: true }).where(eq(schema.portalSettings.eventId, eventBId));
-
-    const app = buildApp(new Map([["r2/b.pdf", "hello-b"]]));
-
-    const list = await app.request("/portal/resources");
-    expect(list.status).toBe(200);
-    const listBody = await list.text();
     expect(listBody).toContain("B resource");
-    expect(listBody).not.toContain("A resource");
 
-    const okDownload = await app.request(`/portal/resources/${resourceBId}/download`);
-    expect(okDownload.status).toBe(200);
-
-    const refusedDownload = await app.request(`/portal/resources/${resourceAId}/download`);
-    expect(refusedDownload.status).toBe(404);
+    expect((await app.request(`/portal/resources/${resourceAId}/download`)).status).toBe(200);
+    expect((await app.request(`/portal/resources/${resourceBId}/download`)).status).toBe(200);
   });
 
-  it("both events off: the resources list itself 404s (no permitted group remains)", async () => {
-    await db.update(schema.portalSettings).set({ showResources: false }).where(eq(schema.portalSettings.eventId, eventAId));
+  it("a resource of an event the person takes no part in is still refused", async () => {
+    // the task-only speaker below takes part in B only
+    const outsiderId = newId();
+    await db.insert(schema.contact).values({
+      id: outsiderId,
+      orgId,
+      firstName: "Marcus",
+      lastName: "Okafor",
+      email: "marcus.outsider@example.com",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const taskId = newId();
+    await db.insert(schema.task).values({ id: taskId, eventId: eventBId, kind: "general", title: "Onboarding", required: false, createdAt: now, updatedAt: now });
+    await db.insert(schema.taskAssignment).values({ id: newId(), taskId, contactId: outsiderId, status: "pending", createdAt: now, updatedAt: now });
 
-    const app = buildApp(new Map());
-    const list = await app.request("/portal/resources");
-    expect(list.status).toBe(404);
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", { userId: "u-2", role: "speaker", orgId, contactId: outsiderId });
+      c.set("db", db);
+      c.env = { FILES: fakeFilesBucket(new Map([["r2/a.pdf", "hello-a"], ["r2/b.pdf", "hello-b"]])) } as never;
+      await next();
+    });
+    app.route("/portal", portalResourcesRoutes);
+    registerNotFoundHandler(app);
+
+    const listBody = await (await app.request("/portal/resources")).text();
+    expect(listBody).not.toContain("A resource");
+    expect((await app.request(`/portal/resources/${resourceAId}/download`)).status).toBe(404);
   });
 });

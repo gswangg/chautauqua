@@ -18,7 +18,7 @@
 // route list, so its fixtures reach them unchanged.
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerErrorHandler } from "../src/server/http";
@@ -206,8 +206,9 @@ vi.mock("../src/server/repo/profile", async () => {
 });
 
 // DEC-613 wave-9 amendment: extending this SAME mock set (never a second
-// makeChain-style fake-db stack) is how the harness reaches
-// /portal/preview -- portalPreviewRoutes' GET /preview handler reads
+// makeChain-style fake-db stack) is how the harness reached the general
+// /portal/preview (removed by multi-portal decision 74; the resources page
+// below still reads these) -- its GET /preview handler read
 // getEventForOrg (repo/events) and getPortalSettingsForEvent/
 // listResourcesForEvent (repo/portal-config) directly against c.var.db, none
 // of which the four mocks above touch. `c.set("db", {} as never)` stays
@@ -263,7 +264,6 @@ vi.mock("../src/server/repo/portal-config", async () => {
   };
 });
 
-const organizerAuth: AuthInfo = { userId: "u-org", role: "organizer", orgId: "org-1" };
 
 async function buildApp(): Promise<Hono<AppEnv>> {
   const { portalRoutes } = await import("../src/routes/portal/index");
@@ -284,22 +284,6 @@ async function buildApp(): Promise<Hono<AppEnv>> {
   return app;
 }
 
-/** Frame :1473 is organizer-only (portalPreviewRoutes' own guard) --
- * a distinct app-builder carrying organizerAuth rather than buildApp()'s
- * speakerAuth, same shape as buildApp() above (DEC-613: vary path/auth
- * fixtures, never the mock-target vocabulary). */
-async function buildPreviewApp(): Promise<Hono<AppEnv>> {
-  const { portalPreviewRoutes } = await import("../src/routes/portal/preview");
-  const app = new Hono<AppEnv>();
-  registerErrorHandler(app);
-  app.use("*", async (c, next) => {
-    c.set("auth", organizerAuth);
-    c.set("db", {} as never);
-    await next();
-  });
-  app.route("/portal", portalPreviewRoutes);
-  return app;
-}
 
 /** Order-preserving check: every needle in `needles` appears in `html`, each
  * strictly after the one before it -- proves both PRESENCE and ORDER
@@ -492,124 +476,17 @@ describe("Portal SSR 390 frame verdicts (Chautauqua Public and Portal.dc.html, w
   });
 });
 
-// DEC-613 wave-9 amendment: docs/design/audit/portal-desktop-v12.md:156's
-// UNREACHED verdict for this DESKTOP (1600) frame named the missing
-// capability -- the mock-set extension above IS that capability, so this
-// describe block reaches it off a REAL GET /portal/preview request (organizer
-// auth) through the SAME harness, never a second fake-db stack.
+// Multi-portal decision 74: the frame's general preview (:1473, a portal
+// with nobody signed in) is superseded by preview as a person
+// (src/routes/portal/preview-person.tsx, the Portals frame's flow 4) --
+// /portal/preview is no longer mounted, so there is no page to grade.
 describe("Portal SSR desktop frame verdict (Chautauqua Public and Portal.dc.html:1473, w9-re)", () => {
-  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- DIVERGES: the 'Not shown here' chip set differs from the frame (disposition (b) BLESSED, DEC-902 wave-14m); the Welcome lede's second sentence, back-link placement, and meta-sentence order all MATCH (DEC-902 wave-19 clause (b); wave-20, task w20-g)", async () => {
-    // docs/design/Chautauqua Public and Portal.dc.html:1473
-    verbatimLine(
-      1473,
-      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`,
-    );
-    const app = await buildPreviewApp();
-    const res = await app.request("/portal/preview?eventId=evt-1");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-
-    // Structural anatomy MATCHES: read-only banner (now carrying its own
-    // back link, DEC-902 wave-20), Welcome hero + lede, Resources section
-    // (naming the fixture's one resource), Not-shown-here section, in that
-    // top-to-bottom order.
-    expectInOrder(html, [
-      'class="chq-portal-preview-banner" role="note"',
-      'Preview · read-only.',
-      'class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal"',
-      '‹ Back to settings',
-      '<h1 class="chq-portal-hero">Welcome</h1>',
-      '<p class="chq-portal-lede">Thanks for speaking at Arbitrary Con.</p>',
-      'aria-label="Resources" class="chq-section"',
-      '<span class="chq-portal-row-title">Speaker guide</span>',
-      'aria-label="Not shown here" class="chq-section"',
-    ]);
-
-    // docs/design/Chautauqua Public and Portal.dc.html:1490
-    verbatimLine(
-      1490,
-      `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
-    );
-    // MATCHES (DEC-902 wave-20, task w20-g): the frame draws '‹ Back to
-    // settings' INSIDE the read-only banner card (margin-left:auto, same
-    // row as the two banner sentences, frame :1476-1490); the route now
-    // renders it inside the same `.chq-portal-preview-banner` element via
-    // `.chq-portal-preview-banner-link`, and there is no second, standalone
-    // copy anywhere else on the page.
-    const bannerOpen = html.indexOf('class="chq-portal-preview-banner"');
-    const bannerClose = html.indexOf("</div>", bannerOpen);
-    expect(html.slice(bannerOpen, bannerClose)).toContain("Back to settings");
-    // Checked as an actual rendered <a class="..."> use, never a bare
-    // substring -- the class token also appears inertly inside the page's
-    // inlined <style> block and a nearby source comment (DEC-976's "a CSS
-    // selector definition can't be mistaken for a rendered element" rule).
-    const backLinkAnchor =
-      '<a class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal">';
-    expect(html).toContain(backLinkAnchor + "‹ Back to settings</a>");
-    const backLinkIdx = html.indexOf(backLinkAnchor);
-    const notShownIdx = html.indexOf('aria-label="Not shown here"');
-    expect(backLinkIdx).toBeLessThan(notShownIdx);
-    expect((html.match(/Back to settings/g) ?? []).length).toBe(1);
-
-    // docs/design/Chautauqua Public and Portal.dc.html:1495
-    verbatimLine(
-      1495,
-      `          <span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`,
-    );
-    // MATCHES (DEC-902 wave-19 clause (b)): the frame's fixed second
-    // sentence `Everything we need from you is on this page, in order.` is
-    // APP-OWNED CHROME, appended after the organiser's stored welcome
-    // message as its own node -- src/routes/portal/preview.tsx now renders
-    // it unconditionally, even when the stored `welcomeMessage` is null.
-    expect(html).toContain("Everything we need from you is on this page, in order.");
-
-    // docs/design/Chautauqua Public and Portal.dc.html:1523
-    verbatimLine(
-      1523,
-      `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
-    );
-    // DIVERGES (multi-portal decision 71): the frame's sentence predates
-    // preview-as-participant and is no longer true -- one person's portal
-    // CAN be seen now, from their record or a portal's own page. The route
-    // keeps the frame's placement (last child of the "Not shown here"
-    // section, after its chips) with the sentence that says where to look.
-    expect(html).not.toContain("you would have to be them");
-    expect(html).toContain("To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as");
-    const metaIdx = html.indexOf("To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as");
-    const chipsIdx = html.indexOf('chq-portal-not-shown-chip">Their uploaded files</li>');
-    expect(metaIdx).toBeGreaterThan(chipsIdx);
-
-    // docs/design/Chautauqua Public and Portal.dc.html:1518-1521
-    verbatimLine(
-      1518,
-      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their tasks</span>`,
-    );
-    verbatimLine(
-      1519,
-      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their session</span>`,
-    );
-    verbatimLine(
-      1520,
-      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their files</span>`,
-    );
-    verbatimLine(
-      1521,
-      `            <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#565A4B">Their notes</span>`,
-    );
-    // DIVERGES: the frame's "Not shown here" chip row reads FOUR chips --
-    // Their tasks / Their session / Their files / Their notes. The route
-    // ships THREE, named from what it declines to load: Their sessions /
-    // Their portal items / Their uploaded files (multi-portal decision 71:
-    // a participant's to-dos are portal items now, and a person may hold
-    // several sessions). "Their notes" does not render; "Their files" ships
-    // as "Their uploaded files".
-    expect(html).toContain('chq-portal-not-shown-chip">Their sessions</li>');
-    expect(html).toContain('chq-portal-not-shown-chip">Their portal items</li>');
-    expect(html).toContain('chq-portal-not-shown-chip">Their uploaded files</li>');
-    expect(html).not.toContain(">Their session<");
-    expect(html).not.toContain(">Their notes<");
-    expect(html).not.toContain('chq-portal-not-shown-chip">Their files</li>');
-    expect((html.match(/<li class="chq-portal-not-shown-chip">/g) ?? []).length).toBe(3);
+  it("frame :1473 'Portal preview · /portal/preview' -- SUPERSEDED by preview as a person (multi-portal decision 74)", () => {
+    const frame = readFileSync(join(process.cwd(), "docs/design/Chautauqua Public and Portal.dc.html"), "utf8").split("\n");
+    expect(frame[1473 - 1]).toContain("Portal preview · /portal/preview");
+    expect(existsSync(join(process.cwd(), "src/routes/portal/preview.tsx"))).toBe(false);
+    expect(readFileSync(join(process.cwd(), "src/index.ts"), "utf8")).not.toContain("routes/portal/preview\"");
+    expect(readFileSync(join(process.cwd(), "docs/design/multi-portal/DECISIONS.md"), "utf8")).toMatch(/\| 74 \|/);
   });
 });
 

@@ -123,15 +123,9 @@ describe('desktop frame claims: Public/Portal remainder (v12m-w5-c)', () => {
 
   // docs/design/Chautauqua Public and Portal.dc.html:1473
   // `Portal preview · /portal/preview`
-  it('renders the read-only organizer preview (Welcome, Resources, Not shown here) in portal/preview.tsx', () => {
+  it('SUPERSEDED (multi-portal decision 74): the general organizer preview is gone; preview as a person shows what someone gets', () => {
     expect(frameLine(1473)).toContain('Portal preview · /portal/preview');
-    const src = read('portal/preview.tsx');
-    expect(src).toContain('Preview · read-only');
-    expect(src).toContain('<h1 class="chq-portal-hero">Welcome</h1>');
-    expect(src).toContain('aria-label="Resources"');
-    expect(src).toContain('aria-label="Not shown here"');
-    // multi-portal decision 71: the chips name what any participant has
-    expect(src).toContain('Their portal items');
+    expect(read('portal/preview-person.tsx')).toContain('Exit preview');
   });
 
   // docs/design/Chautauqua Public and Portal.dc.html:1532

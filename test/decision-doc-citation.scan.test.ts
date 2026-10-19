@@ -830,7 +830,7 @@ describe("widened citation scan: campaign authority documents (DEC-967 wave-107 
 // spans de-adjacented into a plain list per the DEC-008 wave-10 precedent
 // (adjacent `path:line` spans read as each other's receipt quote).
 // Re-measured 1224 by re-running this scan on the repaired tree.
-export const DECISIONS_REGISTRY_CITATION_CEILING = 1224;
+export const DECISIONS_REGISTRY_CITATION_CEILING = 1221;
 
 describe("decisions/ registry citation scan (DEC-518 wave-155, task ph)", () => {
   it("vacuous-population tripwire: finds decisions/DEC-*.md files, including the known member DEC-001.md", () => {

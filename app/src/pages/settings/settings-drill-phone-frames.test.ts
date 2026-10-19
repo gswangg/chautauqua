@@ -143,14 +143,16 @@ describe('Speaker portal drill (docs/design/Chautauqua Settings.dc.html:510 \'Se
   // Resources list (:530-540): what participants may edit is set per
   // portal, and the item library (resources included) is counted in the
   // section's Libraries row, with resource files managed in the edit drill.
-  it('Speakers can edit (:517-524) is superseded by per-portal field permissions -- the pills are gone, the edit drill says where they went', () => {
+  it('Speakers can edit (:517-524) is superseded by per-portal field permissions -- the pills are gone, and so is the edit drill (multi-portal decision 74)', () => {
     expect(PORTAL_TSX).not.toContain('chq-settings-portal-pills');
-    expect(PORTAL_TSX).toContain('is set per portal in');
+    // what participants may edit is each portal's own field permissions
+    expect(PORTAL_TSX).not.toContain('SettingsEditForm');
   });
 
-  it('Resources (:530-540) are counted in the Libraries row and managed in the edit drill', () => {
+  it('Resources (:530-540) are counted in the Libraries row and made in the library (multi-portal decision 74)', () => {
     expect(PORTAL_TSX).toContain("label: 'Libraries'");
-    expect(PORTAL_TSX).toContain('<ResourcesPanel />');
+    expect(PORTAL_TSX).not.toContain('ResourcesPanel');
+    expect(readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'portals', 'NewLibraryItemModal.tsx'), 'utf-8')).toContain('Upload a file');
   });
 
   it('the closing muted line (:542 "Speakers claim their portal...") is copy, not a row -- now naming invitations too', () => {

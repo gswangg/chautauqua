@@ -1036,7 +1036,6 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
     "app/src/pages/review/PlanEditor.tsx identifier: body",
     "app/src/pages/review/ProgressPanel.tsx ternary: scope === 'not_started' ? { scope } : undefined",
     "app/src/pages/settings/EventSettingsPanel.tsx identifier: patch",
-    "app/src/pages/settings/PortalSettingsPanel.tsx call: buildPortalSettingsPayload(form)",
     "app/src/pages/speakers/OnboardingGrid.tsx identifier: input",
   ];
 

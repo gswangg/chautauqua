@@ -26,7 +26,6 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
 
 const DECLARING_MODULE = join(REPO_ROOT, "src", "domain", "portal-settings.ts");
-const CROSSING_MODULE = join(REPO_ROOT, "app", "src", "lib", "portal-defaults.ts");
 
 /** Every .ts/.tsx file under `root`, excluding test files. */
 function allNonTestFiles(root: string): string[] {
@@ -59,10 +58,12 @@ describe("The absent portal_settings row has one author (DEC-988 wave-77 amendme
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it("no file outside the declaring module and its one SPA crossing restates the default", () => {
+  // multi-portal decision 74: the SPA's crossing (app/src/lib/
+  // portal-defaults.ts) went with the Settings form that read it
+  it("no file outside the declaring module restates the default", () => {
     const offenders: string[] = [];
     for (const path of files) {
-      if (path === DECLARING_MODULE || path === CROSSING_MODULE) continue;
+      if (path === DECLARING_MODULE) continue;
       const src = readFileSync(path, "utf-8");
       const found = findViolations(src);
       if (found.length > 0) offenders.push(`${relative(REPO_ROOT, path)}: ${found.join(", ")}`);

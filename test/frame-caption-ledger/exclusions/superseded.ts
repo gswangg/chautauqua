@@ -29,6 +29,38 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     reason:
       "superseded by multi-portal: whether participants may edit the session title and abstract is now each portal's own field permission (app/src/pages/portals/PermissionsSection.tsx), not a fixed rule, so the edit drill's consequence line names where it is set ('What participants may edit, and what they're asked for, is set per portal in Manage portals', PortalSettingsPanel.tsx). The frame's fixed claim would be false once a portal opens those fields.",
   },
+  // Multi-portal decision 74: Settings › Portals has no edit form (the
+  // welcome note is Profile basics' note) and resources are made in the
+  // library, so the Speaker portal edit view's and the "Portal resource ·
+  // add" dialog's own copy has no screen to appear on.
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 906,
+    text: 'Takes the full measure · appears above the task list',
+    reason:
+      "superseded by multi-portal decision 74: Settings › Portals is a read-only summary with no edit form; the welcome note is Profile basics' note, edited in that portal's editor (app/src/pages/portals/PortalEditorPage.tsx). PortalSettingsPanel.render.test.tsx pins that no Welcome note field renders in Settings.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1448,
+    text: 'Shown to every speaker in their portal',
+    reason:
+      "superseded by multi-portal decision 74: resources are made in the library, and each one is shown to everyone with a portal or only through the portals that list it (the library's own visibility control, app/src/pages/portals/LibraryPage.tsx) -- never 'every speaker' by default. LibraryPage.render.test.tsx pins the upload.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1456,
+    text: 'What speakers see in the list',
+    reason:
+      "superseded by multi-portal decision 74: the Add a resource dialog is gone; the library's New item names the resource with its own Name field for every item type (app/src/pages/portals/NewLibraryItemModal.tsx).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1466,
+    text: 'Drop a file here, or choose one',
+    reason:
+      "superseded by multi-portal decision 74: a file resource is uploaded from the library's New item › Resource › Upload a file, whose File field is a plain picker (app/src/pages/portals/NewLibraryItemModal.tsx); LibraryPage.render.test.tsx pins it.",
+  },
   // Multi-portal decision 71: /portal/preview speaks for every portal, and
   // preview-as-participant exists, so both of the frame's speaker-only
   // sentences about the preview would be false.

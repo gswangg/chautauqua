@@ -1031,6 +1031,24 @@ function frameContentExclusionFor(control: DrawnControl): string | null {
 // ruling's own DEC_NNN constant is imported and referenced (never a bare
 // "DEC-746" string) so the dependency is compile-checked.
 const RULING_SETTLED_EXCLUSIONS: { fileName: string; line: number; ruling: string; reason: string }[] = [
+  // Multi-portal decision 74 (docs/design/multi-portal/DECISIONS.md -- the
+  // multi-portal log has no DEC_NNN registry constant): the "Portal
+  // resource · add" dialog is superseded. Resources are made in the
+  // library's New item (Resource › Write a page / Upload a file), so the
+  // dialog's File kind toggle and its Add it primary have no control to
+  // grade.
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1461,
+    ruling: 'multi-portal decision 74',
+    reason: 'the Portal resource · add dialog is superseded by the library: New item › Resource offers Write a page / Upload a file (app/src/pages/portals/NewLibraryItemModal.tsx)',
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1469,
+    ruling: 'multi-portal decision 74',
+    reason: "the Portal resource · add dialog's primary is superseded by the library's New item, whose primary is Create",
+  },
   {
     fileName: 'Chautauqua Speakers.dc.html',
     line: 201,
@@ -2672,7 +2690,7 @@ describe('desktop drawn-floor ledger (DEC-393 wave-151 amendment, v12 mobile cam
   });
 
   it('non-vacuity: WAVE 33 (DEC-651) DEC-746 ruling-settled exclusion -- fabricated positive (the real coordinate grades excluded/ruling-settled) vs negative (an unrelated coordinate is untouched by this table)', () => {
-    const rulingEntry = RULING_SETTLED_EXCLUSIONS[0]!;
+    const rulingEntry = RULING_SETTLED_EXCLUSIONS.find((e) => e.ruling === 'DEC-746')!;
     const fabricatedRulingControl: DrawnControl = {
       fileName: rulingEntry.fileName,
       line: rulingEntry.line,

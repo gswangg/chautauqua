@@ -442,8 +442,8 @@ export const LEDGER: LedgerEntry[] = [
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
     status: "honored",
     reason:
-      "DEC-380 wave-130 amendment, reconfirmed wave-140: this product's second resource kind is a wiki page with stored markdown, not a link, so there is no link-kind referent to build. Re-tested against the narrowed rule at wave-140: the content schema's kind column (src/db/schema/content.ts) still admits only 'file'/'wiki' -- THE PRODUCT HAS NO SUCH OBJECT. The chips stay File / Wiki page.",
-    honored: { kind: "present", file: "app/src/pages/settings/ResourcesPanel.tsx", literal: "resource.kind === 'file' ? 'File' : 'Wiki page'", testFile: "app/src/pages/settings/ResourcesPanel.render.test.tsx" },
+      "DEC-380 wave-130 amendment, reconfirmed wave-140: this product's second resource kind is a wiki page with stored markdown, not a link, so there is no link-kind referent to build. Re-tested against the narrowed rule at wave-140: the content schema's kind column (src/db/schema/content.ts) still admits only 'file'/'wiki' -- THE PRODUCT HAS NO SUCH OBJECT. The chips stay File / Wiki page. Multi-portal decision 74 moved resource creation into the portal library, where the same two kinds read Write a page / Upload a file -- still no link kind.",
+    honored: { kind: "present", file: "app/src/pages/portals/NewLibraryItemModal.tsx", literal: "Upload a file", testFile: "app/src/pages/portals/LibraryPage.render.test.tsx" },
   },
   {
     key: "cfp-not-yet-open-pages-link-now-points-at-the-prior-edition",

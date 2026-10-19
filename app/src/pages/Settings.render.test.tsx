@@ -132,13 +132,15 @@ describe('SettingsPage render smoke', () => {
     expect(within(publicPagesSection).getAllByRole('link', { name: 'View' }).length).toBeGreaterThan(0);
 
     // Portals section (formerly Speaker portal) — read-only summary
-    // (DEC-815); resources are counted in the Libraries row, and their
-    // add/delete surface stays behind the Welcome note row's 'Change'.
+    // (DEC-815); resources are counted in the Libraries row and made in the
+    // library, and the welcome note is Profile basics' note (multi-portal
+    // decision 74: the section has no edit form).
     const portalSection = screen.getByRole('region', { name: 'Portals' });
     expect(within(portalSection).getByRole('heading', { name: 'Portals' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(within(portalSection).getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
+      expect(within(portalSection).getByText('Access')).toBeInTheDocument();
     });
+    expect(within(portalSection).queryByText(/Shown above the task list/)).not.toBeInTheDocument();
     expect(within(portalSection).getByRole('button', { name: 'Manage portals' })).toBeInTheDocument();
     expect(within(portalSection).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Sponsorships' })).toBeInTheDocument();

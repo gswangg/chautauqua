@@ -26,7 +26,7 @@
 // Full prose lives in docs/design/audit/portal-desktop-v12.md.
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { publicRoutes } from "../src/routes/public";
@@ -597,23 +597,9 @@ describe("DESKTOP SSR frame verdicts -- Submit/CFP window states + Portal SSR (t
     expect(html).toContain(">Cancel<");
   });
 
-  it("frame :1473 'Portal preview · /portal/preview' -- UNREACHED via the mandated portal-390 harness (DEC-613): the route reads src/server/repo/events.ts getEventForOrg + src/server/repo/portal-config.ts getPortalSettingsForEvent/listResourcesForEvent directly, none of which portal-390-frame-verdicts.test.ts's four vi.mock blocks (repo/portal, repo/forms, repo/portal-edit, repo/profile) cover -- reaching it would require a fifth mock stack this task's own instruction forbids", () => {
+  it("frame :1473 'Portal preview · /portal/preview' -- SUPERSEDED by preview as a person (multi-portal decision 74): the general preview page is not mounted", () => {
     // docs/design/Chautauqua Public and Portal.dc.html:1473 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`
     verbatimLine(1473, '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>');
-    // preview.tsx's GET /preview handler reads db directly, no repo mock.
-    const previewSrc = readFileSync(join(REPO_ROOT, "src", "routes", "portal", "preview.tsx"), "utf-8");
-    expect(previewSrc).toContain('from "../../server/repo/events"');
-    expect(previewSrc).toContain('from "../../server/repo/portal-config"');
-    const mockedTargets = ["../src/server/repo/portal\"", "../src/server/repo/forms\"", "../src/server/repo/portal-edit\"", "../src/server/repo/profile\""];
-    for (const target of mockedTargets) {
-      expect(previewSrc).not.toContain(target);
-    }
-    // MISSING CAPABILITY: a fake `db` chain (the public-390 harness's
-    // makeChain idiom) that answers getEventForOrg's event-row select and
-    // getPortalSettingsForEvent's/listResourcesForEvent's own selects --
-    // the portal-390 harness supplies none of that (its buildApp() sets
-    // `c.set("db", {} as never)` because every route it exercises reaches
-    // the db only through a mocked repo function). Building one here would
-    // be the fifth mock stack DEC-613 forbids; recorded UNREACHED instead.
+    expect(existsSync(join(REPO_ROOT, "src", "routes", "portal", "preview.tsx"))).toBe(false);
   });
 });

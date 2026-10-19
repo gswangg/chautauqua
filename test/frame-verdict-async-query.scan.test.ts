@@ -189,7 +189,10 @@ export function findOffenders(files: string[]): Offender[] {
 // lowered, because the measured count sits ABOVE the stale constant, not
 // below it.
 // 731 -> 730 (multi-portal): one fewer offender, re-measured on the integrated tree.
-export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 730;
+// 730 -> 709 (multi-portal decision 74): the Settings Speaker portal edit
+// view, resource dialog and general portal preview verdicts are
+// superseded, and their render cases went with them.
+export const FRAME_VERDICT_ASYNC_QUERY_CEILING = 709;
 
 describe('frame-verdict async-query determinism (DEC-976 wave-43, w43-b)', () => {
   const population = findPopulation();

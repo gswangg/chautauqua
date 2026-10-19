@@ -281,6 +281,9 @@ export async function deleteResource(db: Db, resourceId: string, eventId: string
   const existing = await getResourceForEvent(db, resourceId, eventId);
   if (!existing) throw new ApiError("not_found", "Resource not found");
 
+  // decision 74: a deleted resource leaves every portal that listed it
+  // too, never a portal item pointing at nothing
+  await db.delete(schema.portalItem).where(eq(schema.portalItem.resourceId, resourceId));
   await db.delete(schema.resource).where(eq(schema.resource.id, resourceId));
   return { fileId: existing.fileId };
 }
@@ -322,7 +325,7 @@ export async function insertResourceFile(db: Db, input: InsertResourceFileInput)
 export async function createFileResource(
   db: Db,
   eventId: string,
-  input: { title: string; fileId: string; position?: number },
+  input: { title: string; fileId: string; position?: number; visibility?: "everyone" | "portal" },
 ): Promise<ResourceRecord> {
   const now = new Date();
   const id = newId();
@@ -334,6 +337,9 @@ export async function createFileResource(
     content: null,
     fileId: input.fileId,
     position: input.position ?? 0,
+    // a library upload is shown only through the portals that list it,
+    // like a library page (decision 74); omitted keeps the column default
+    ...(input.visibility ? { visibility: input.visibility } : {}),
     createdAt: now,
     updatedAt: now,
   });

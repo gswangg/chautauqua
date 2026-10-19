@@ -143,61 +143,31 @@ describe('v12 Settings DESKTOP (1600) edit-view + refusal frames: per-frame rend
   // Frame :869 "Settings · editing the speaker portal"
   // ---------------------------------------------------------------------
   describe('frame :869 "Settings · editing the speaker portal"', () => {
-    it('RESOLVED (wave 9, DEC-919 amendment): the frame draws a boxed static readout of the welcome text ABOVE the editable field; the tree now builds it', async () => {
-      verbatimLine(
-        869,
-        '      <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:19px; font-weight:600">Settings · editing the speaker portal</span>',
-      );
-      mockAllSections();
-      renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Portals' });
-      const textarea = await within(section).findByLabelText('Welcome note');
-      expect(textarea.tagName).toBe('TEXTAREA');
-      // The frame's boxed 96px static readout, drawn ABOVE the actual
-      // editable field, now renders via a `-edit` modifier class carrying
-      // the frame's desktop measure, fed by the STORED welcome text.
-      // docs/design/Chautauqua Settings.dc.html:905 --
-      // `<div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>`
-      verbatimLine(905, '              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>');
-      const readout = section.querySelector('.chq-settings-portal-welcome-readout-edit');
-      expect(readout).not.toBeNull();
-      expect(readout).toHaveTextContent(
-        'Thanks for speaking at DevCon. Everything we need from you is on this page, in order.',
-      );
-      expect(readout!.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    it("SUPERSEDED (multi-portal decision 74): the Speaker portal edit view's boxed welcome readout is gone with the edit form", () => {
+      // the welcome note is Profile basics' note, edited in its portal editor
+      const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+      expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+      const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+      expect(panel).not.toContain('SettingsEditForm');
     });
 
     // Multi-portal: the frame's "What speakers may edit" pills are gone --
     // what participants may edit is set per portal now, and the edit form
     // says so where the pills stood, above the Resources · N heading.
-    it('MATCHES: the per-portal permissions line and the Resources · N heading render in the edit form, in that order', async () => {
-      mockAllSections();
-      renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Portals' });
-      await within(section).findByLabelText('Welcome note');
-      const pillsHead = section.querySelector('.chq-settings-edit-consequence') as HTMLElement;
-      expect(pillsHead).toHaveTextContent('is set per portal in Manage portals');
-      const resourcesHead = within(section).getByText('Resources · 1');
-      // docs/design/Chautauqua Settings.dc.html:906 --
-      // `<span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>`
-      verbatimLine(906, '              <span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>');
-      // DEC-919 wave-9 amendment: the caption now renders exactly once,
-      // below the readout, no longer doubled as the textarea's field hint.
-      expect(within(section).getAllByText('Takes the full measure · appears above the task list')).toHaveLength(1);
-      expect(pillsHead.compareDocumentPosition(resourcesHead) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    it("SUPERSEDED (multi-portal decision 74): the Speaker portal edit view's permissions line and Resources heading are gone with the edit form", () => {
+      // field permissions are each portal's; resources are made in the library
+      const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+      expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+      const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+      expect(panel).not.toContain('SettingsEditForm');
     });
 
-    it('MATCHES: the edit form footer is Cancel then Save changes', async () => {
-      mockAllSections();
-      renderAt('/settings?section=portal&edit=1');
-      const section = await screen.findByRole('region', { name: 'Portals' });
-      await within(section).findByLabelText('Welcome note');
-      // docs/design/Chautauqua Settings.dc.html:938 --
-      // `<span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>`
-      verbatimLine(938, '              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>');
-      const cancelBtn = within(section).getByRole('button', { name: 'Cancel' });
-      const saveBtn = within(section).getByRole('button', { name: 'Save changes' });
-      expect(cancelBtn.compareDocumentPosition(saveBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    it("SUPERSEDED (multi-portal decision 74): the Speaker portal edit view's Cancel / Save footer is gone with the edit form", () => {
+      // Settings › Portals is a read-only summary whose action is Manage portals
+      const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+      expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+      const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+      expect(panel).not.toContain('SettingsEditForm');
     });
   });
 

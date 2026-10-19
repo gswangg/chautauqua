@@ -147,75 +147,9 @@
   text-decoration: none;
 }
 
-/* docs/design/Chautauqua Settings.dc.html:518 ('Settings · Speaker
-   portal', phone drill) `border:1px solid #BAB6A6; border-radius:6px;
-   background:#FAF8F2; padding:12px; min-height:88px; font-size:14px;
-   line-height:1.55; color:#3F4237` -- the Welcome note row's boxed
-   readout of the actual stored text (DEC-919 wave-157 clause (a)), a
-   taller multi-line register than the single-line `.chq-settings-readout`
-   box the CFP Public-link/Closes rows use (settings.css), so it gets its
-   own class rather than reusing that one at the wrong height. Unclassed
-   outside the media query below, so desktop (PortalSettingsPanel's summary
-   row) is unaffected (DEC-385). */
-.chq-settings-portal-welcome-readout {
-  display: none;
-}
-
-/* DEC-919 wave-9 amendment: docs/design/Chautauqua Settings.dc.html:905
-   ('Settings · Speaker portal', edit form) `border:1px solid #BAB6A6;
-   border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px;
-   font-size:15px; line-height:1.65; color:#3F4237` -- the edit form's own
-   boxed static readout of the STORED welcome text, above the editable
-   field. Unscoped (no media query) so it wins over the base rule's
-   `display:none` at desktop; the phone media block below still wins on
-   every shared property at <=700px (later in source, equal specificity),
-   so the edit-form instance folds into the SAME 88px phone treatment the
-   read drill already carries -- never a second phone register. */
-.chq-settings-portal-welcome-readout-edit {
-  display: block;
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-ctl);
-  background: var(--chq-surface);
-  padding: 13px;
-  min-height: 96px;
-  font-size: 15px;
-  line-height: 1.65;
-  color: var(--chq-ink-2);
-  overflow-y: auto;
-  white-space: pre-wrap;
-  box-sizing: border-box;
-  width: 100%;
-  margin-bottom: 8px;
-}
-
 @media (max-width: 700px) {
   .chq-settings-drillrow-add {
     display: flex;
-  }
-
-  /* desktop's computed "Shown above the task list · N paragraph(s)" line
-     (unclassed, so visible by default outside this block) steps aside for
-     the boxed verbatim readout below, at phone only. */
-  .chq-settings-portal-welcome-summary {
-    display: none;
-  }
-
-  .chq-settings-portal-welcome-readout {
-    display: block;
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-ctl-phone);
-    background: var(--chq-surface);
-    padding: 12px;
-    min-height: 88px;
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--chq-ink-2);
-    /* the frame's own overflow treatment: the box clips a very long note
-       rather than growing without bound or truncating the string. */
-    overflow-y: auto;
-    white-space: pre-wrap;
-    box-sizing: border-box;
-    width: 100%;
   }
 
   .chq-settings-drillrow-exports-phone {

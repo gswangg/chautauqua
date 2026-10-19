@@ -440,3 +440,9 @@ Re-measured on the integrated tree: the Settings Speaker portal section's
 fixed "Speakers can edit" pills are gone (each portal's own field
 permissions replace them, docs/design/multi-portal/DECISIONS.md #32), one
 fewer unresolved drawn control. `UNRESOLVED_COUNT_TRIPWIRE` moves 90 -> 89.
+
+## Multi-portal decision 74
+
+Re-measured on this branch: the Speaker portal phone drill's Settings.dc.html:539 Replace and :565 Change no longer have a screen, and the profile's headshot Replace (Public and Portal.dc.html:541, :585) only ever resolved through the deleted ResourcesPanel's own Replace button.
+
+`UNRESOLVED_COUNT_TRIPWIRE` moves 89 -> 93.

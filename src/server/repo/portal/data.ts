@@ -12,9 +12,7 @@ import { answerFieldRoleCondition, roleAnswerLabel } from "../form-roles";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { safeImageSrc } from "../../../domain/brand-url";
-import { chunkIds } from "../../../lib/chunk";
 import { DEC_322, DEC_988 } from "../../../decisions";
-import { DEFAULT_PORTAL_SETTINGS } from "../../../domain/portal-settings";
 import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 void DEC_988;
@@ -66,12 +64,12 @@ export interface PortalData {
   // built before it still type
   contactFirstName?: string;
   contactCompany: string | null;
-  /** DEC-988 (wave-74 amendment): whether the speaker portal's Resources
-   * section is on, PER EVENT the contact participates in (union of their
-   * submission and task-assignment events) — an event with no portal_settings
-   * row reads true, matching the schema default. Never collapse this to one
-   * global boolean: a speaker across two events must see Event A's resources
-   * while Event B's stay hidden, in either direction. */
+  /** DEC-988 (wave-74 amendment): keyed PER EVENT the contact participates
+   * in (union of their submission and task-assignment events) -- the keys
+   * are what lets /portal/resources show an event's resources at all.
+   * Multi-portal decision 74 removed the event-wide "Show resources"
+   * switch (each portal lists its own resources), so every value is true;
+   * the stored portal_settings.show_resources is no longer read. */
   showResourcesByEventId: Record<string, boolean>;
 }
 
@@ -198,28 +196,16 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       : { ...DEFAULT_BRANDING, eventId: mostRecentEventId, eventName };
   }
 
-  // DEC-988 (wave-74 amendment): showResources resolved PER EVENT the
-  // contact participates in — the union of their submission and
-  // task-assignment events, never the single "most recent submission" event
-  // branding above resolves. One batched select over portal_settings keyed
-  // by that event-id set; an event with no row reads DEFAULT_PORTAL_SETTINGS
-  // (src/domain/portal-settings.ts), which agrees with the schema default at
-  // src/db/schema/content.ts.
+  // DEC-988 (wave-74 amendment): resolved PER EVENT the contact
+  // participates in -- the union of their submission and task-assignment
+  // events, never the single "most recent submission" event branding above
+  // resolves. Decision 74: resources show wherever a portal lists them, so
+  // each event reads true (no event-wide switch any more).
   const participantEventIds = new Set<string>();
   for (const row of submissionRows) participantEventIds.add(row.eventId);
   for (const row of taskRows) participantEventIds.add(row.eventId);
   const showResourcesByEventId: Record<string, boolean> = {};
-  for (const eventId of participantEventIds) showResourcesByEventId[eventId] = DEFAULT_PORTAL_SETTINGS.showResources;
-  const eventIdList = [...participantEventIds];
-  if (eventIdList.length > 0) {
-    for (const batch of chunkIds(eventIdList)) {
-      const rows = await db
-        .select({ eventId: schema.portalSettings.eventId, showResources: schema.portalSettings.showResources })
-        .from(schema.portalSettings)
-        .where(inArray(schema.portalSettings.eventId, batch));
-      for (const row of rows) showResourcesByEventId[row.eventId] = row.showResources;
-    }
-  }
+  for (const eventId of participantEventIds) showResourcesByEventId[eventId] = true;
 
   return {
     branding,

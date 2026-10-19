@@ -459,15 +459,15 @@ Total offenders: measured 731 at this sha (FRAME_VERDICT_ASYNC_QUERY_CEILING = 7
 - app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:371
 - app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:374
 - app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:375
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:404
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:405
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:406
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:412
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:413
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:415
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:416
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:420
-- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:421
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:355
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:356
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:357
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:363
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:364
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:366
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:367
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:371
+- app/src/pages/Settings-dialogs.desktop-frame-verdicts.render.test.tsx:372
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:175
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:176
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:194
@@ -488,8 +488,8 @@ Total offenders: measured 731 at this sha (FRAME_VERDICT_ASYNC_QUERY_CEILING = 7
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:303
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:337
 - app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:348
-- app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:369
-- app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:379
+- app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:339
+- app/src/pages/Settings-panels.desktop-frame-verdicts.render.test.tsx:349
 - app/src/pages/Settings.desktop-frame-verdicts.render.test.tsx:137
 - app/src/pages/Settings.desktop-frame-verdicts.render.test.tsx:171
 - app/src/pages/Settings.desktop-frame-verdicts.render.test.tsx:194
@@ -787,3 +787,9 @@ Total offenders: measured 731 at this sha (FRAME_VERDICT_ASYNC_QUERY_CEILING = 7
 
 Re-measured on the integrated tree: one fewer offender.
 `FRAME_VERDICT_ASYNC_QUERY_CEILING` moves 731 -> 730.
+
+## Multi-portal decision 74
+
+Re-measured on this branch: the superseded Settings Speaker portal edit view, resource dialog and general portal preview verdicts took their render cases with them.
+
+`FRAME_VERDICT_ASYNC_QUERY_CEILING` moves 730 -> 709.

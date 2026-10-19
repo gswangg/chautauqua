@@ -223,50 +223,7 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
     line-height: 1.5;
   }
-  /* DEC-747 (findings wave 7 amendment): the read-only banner on
-     /portal/preview. Reads as a standing notice, not a transient alert --
-     a tinted rule-bordered strip above the previewed content, so an
-     organizer can never mistake the preview for a speaker's own portal.
-     DEC-902 wave-20 amendment (task w20-g): the frame (Chautauqua Public
-     and Portal.dc.html:1490) draws its settings-return link INSIDE this
-     card, right-aligned beside its two sentences -- a flex row, not a bare
-     paragraph. The card is now the flex container; .chq-portal-preview-
-     banner-text carries the two-sentence copy and .chq-portal-preview-
-     banner-link right-aligns the link within it, both built from this
-     sheet's own tokens (DEC-996: never the frame's inline literals). */
-  .chq-portal-preview-banner {
-    margin: 0 0 16px;
-    padding: 12px 14px;
-    border: 1px solid var(--chq-border);
-    border-left: 3px solid var(--chq-accent, var(--chq-ink));
-    border-radius: 6px;
-    background: var(--chq-surface-2, transparent);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  /* Chautauqua Public and Portal.dc.html:1486 draws this banner's sentence
-     at max-width:52ch (DEC-896 wave-52 pack-prose-measure repair). Own
-     class -- no other element shares it. */
-  .chq-portal-preview-banner-text {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--chq-muted);
-    max-width: 52ch;
-  }
-  /* tap-floor-exempt: composition -- this class only ever appears beside
-     the floored .chq-portal-standalone-link base (src/routes/portal/
-     preview.tsx renders \`class="chq-portal-standalone-link
-     chq-portal-preview-banner-link"\` on the one <a> that carries it) and
-     adds desktop right-alignment only; the phone 44px floor is
-     .chq-portal-standalone-link's, declared at the tail of this module. */
-  .chq-portal-preview-banner-link {
-    margin-left: auto;
-    font-size: 13px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
+
   /* CNT-01: a task's instructions is a real brief, not a muted footnote --
      plain body ink (var(--chq-ink), the surface's default text colour),
      never behind a disclosure. */
@@ -762,28 +719,6 @@ export const PORTAL_CSS = `
     margin: 4px 0 2px;
   }
 
-  /* Frame 10--24 (MAJOR): the preview page's H1 lede, and the read-only
-     Download per DEVIATIONS §2's disabled link-shaped register -- muted
-     text, no box, no underline, no hover response. */
-  .chq-portal-lede { font-size: 16px; line-height: 1.6; color: var(--chq-ink-2); margin: 4px 0 10px; }
-  .chq-portal-preview-download {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--chq-disabled);
-    cursor: default;
-  }
-  /* the theme's button:disabled rule (element + pseudo-class) outranks one
-     class and painted its grey box behind this unpadded label */
-  button.chq-portal-preview-download:disabled,
-  button.chq-portal-preview-download:disabled:hover,
-  button.chq-portal-preview-download:disabled:active {
-    background: none;
-    border-color: transparent;
-  }
-
   /* Frame 10--26 (MAJOR): a resource's own title (16px .chq-portal-row-title)
      was set smaller than the h2/h3 sub-heads of its own markdown body --
      the title must stay the largest element in its row. */
@@ -793,27 +728,6 @@ export const PORTAL_CSS = `
 ${EMPTY_CSS}
 ${ERROR_STATES_CSS}
 ${HOME_CSS}
-
-/* DEC-747 (frame 10--24 amendment, wave 60): /portal/preview's "Not shown
-   here" section — a plain chip list, no interaction, composing
-   THEME_CSS's .chq-chipstrip visual language without importing app/src's
-   client-only classes (this is an SSR surface). Tail growth per task
-   w60-h; expect a tail overlap with w60-g's own portal.css.ts growth. */
-.chq-portal-not-shown-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-}
-.chq-portal-not-shown-chip {
-  border: 1px solid var(--chq-border);
-  border-radius: 99px;
-  padding: 4px 12px;
-  font-size: 13px;
-  color: var(--chq-muted);
-}
 
 /* G13: EMPTY_CSS (composed above) raises the FRESH zero-state headline to
    the page-title register for full-page public empty states (frame 10--20).
@@ -1180,16 +1094,7 @@ ${EMPTY_PHONE_CSS}
     justify-content: center;
     padding: 0 12px;
   }
-  /* Still floored though DEVIATIONS/DESIGN-RULINGS render it disabled on
-     /portal/preview ("Resource rows render with Download disabled") -- a
-     disabled control's box is still on the screen (DEC-393). */
-  .chq-portal-preview-download {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px;
-  }
+
   .chq-portal-copresenter-email-flagged {
     min-height: 44px;
     display: flex;
@@ -1350,17 +1255,6 @@ ${EMPTY_PHONE_CSS}
      this is the ONE declaration of this token in this sheet -- do not
      re-append a second copy of this receipt. */
   .chq-portal-file-link {}
-
-  /* DEC-367 wave-24 amendment: .chq-portal-preview-banner's row is
-     display:flex; flex-wrap:wrap (base scope above), so at 390 the text
-     span and this link can already drop to their own line -- but the
-     link's own base-scope white-space:nowrap (added for the desktop
-     right-aligned single line) would still force IT to stay one line and
-     push the row wide if its text ever ran long. DEC-385 single-direction
-     override: let it wrap here, same as the row already does. */
-  .chq-portal-preview-banner-link {
-    white-space: normal;
-  }
 
   /* v12m-w40-e (DEC-393): tasks/views.tsx renders two bare
      <input type="file"> pickers (the task-upload form and the

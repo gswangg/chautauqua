@@ -199,6 +199,7 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
   const title = body["title"];
   const file = body["file"];
   const positionRaw = body["position"];
+  const visibilityRaw = body["visibility"];
 
   const fields: Record<string, string> = {};
   if (typeof title !== "string" || title.trim().length === 0) {
@@ -208,6 +209,9 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
   }
   if (!(file instanceof File)) {
     fields.file = "Required";
+  }
+  if (visibilityRaw !== undefined && visibilityRaw !== "everyone" && visibilityRaw !== "portal") {
+    fields.visibility = "Must be 'everyone' or 'portal'";
   }
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid resource", fields);
@@ -241,6 +245,7 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
     title: (title as string).trim(),
     fileId,
     position,
+    ...(visibilityRaw === "everyone" || visibilityRaw === "portal" ? { visibility: visibilityRaw } : {}),
   });
   return c.json(created, 201);
 }

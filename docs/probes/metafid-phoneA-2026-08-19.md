@@ -74,7 +74,7 @@
   settings.css's terminal phone block --
   app/src/pages/settings/settings.css`.chq-settings-tracks-rooms-grid {`
   (`grid-template-columns: 1fr; gap: 20px 0;`) and
-  app/src/pages/settings/settings.css`.chq-settings-portal-resource-row {`
+  the former settings code (removed by multi-portal decision 74) `.chq-settings-portal-resource-row {`
   (`flex-direction: column; align-items: stretch;`), both inside the same
   `@media (max-width: 700px)` block as the other Settings phone fixes.
 
@@ -177,7 +177,7 @@
   | `:393` Settings · Your data | `YourDataPanel.tsx` (`ApiTokensPanel` readOnly) via `SummarySection` | CLOSED-with-receipt (wave-156, was OPEN-2026-08-21) — the per-row Download/Revoke actions AND the filled "New token" primary (`:426`) all render in the read drill now — app/src/pages/settings/ApiTokensPanel.tsx`New token` renders in the `readOnly` branch too, opening the edit drill with `intent=new`; receipted in app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :393 Your data -- MATCHES: per-row Download/Revoke actions and the New-token primary render in the read drill`, app/src/pages/settings/ApiTokensPanel.render.test.tsx`ApiTokensPanel read-drill "New token" primary (DEC-919 wave-155 amendment)` and app/src/pages/settings/settings-phone-390.frames.test.ts`46px filled full-width "New token" action in the read drill too, opening the edit drill with intent=new` |
   | `:444` Settings · Call for papers | `CallForPapersPanel.tsx` via `SummarySection` | CLOSED-with-receipt (wave-157, was OPEN-2026-08-21) — the per-question list renders with a boxed Edit per row, each carrying that question's id into the form builder; app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :444 Call for papers -- MATCHES: per-question list with a boxed Edit link per row, carrying the question id (DEC-919 wave-157)` |
   | `:481` Settings · Public pages | `PublicPagesPanel.tsx` (no head-first gate, DEC-896 B10) | CLOSED-with-receipt — app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :481 Public pages -- MATCHES: row order (name, path, state, actions) with only the DEVIATIONS-blessed toggle omitted` |
-  | `:510` Settings · Speaker portal | `PortalSettingsPanel.tsx` via `SummarySection` | CLOSED-with-receipt (wave-157, was OPEN-2026-08-21) — the Welcome note renders the stored text verbatim in the drawn readout box; app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :510 Speaker portal -- MATCHES: Welcome note renders the stored text verbatim in the drawn readout box (DEC-919 wave-157)` |
+  | `:510` Settings · Speaker portal | `PortalSettingsPanel.tsx` via `SummarySection` | CLOSED-with-receipt (wave-157, was OPEN-2026-08-21) — the Welcome note renders the stored text verbatim in the drawn readout box; the former Settings.frame-verdicts.render code (removed by multi-portal decision 74) `frame :510 Speaker portal -- MATCHES: Welcome note renders the stored text verbatim in the drawn readout box (DEC-919 wave-157)` |
   | `:552` Settings · People and roles | `PeopleRolesPanel.tsx` via `SummarySection` | CLOSED-with-receipt (wave-22, was OPEN-2026-08-21) — no per-row boxed Change action in read mode is DEVIATIONS §6-blessed (users are org-scoped) and not re-litigated, per this row's own record in docs/design/audit/settings-v12/w10-frame-verdicts.md`DEVIATIONS.md §6 blesses this omission (users are org-scoped), not re-litigated.`; the frame's OTHER phone-only primary drawn here, the filled "Invite someone" button (`:568`), is CLOSED-with-receipt — app/src/pages/settings/PeopleRolesPanel.tsx`Invite someone` renders on the read path too. DEC-919 wave-156 superseded wave-155's `intent=invite` round trip into the edit drill: the invite dialog is hoisted out of the edit-gated children, so the read drill opens it in place. Receipted end to end in app/src/pages/settings/PeopleRolesPanel.summary.render.test.tsx`PeopleRolesPanel read-drill "Invite someone" primary (DEC-919 wave-156)` and app/src/pages/settings/settings-phone-390.frames.test.ts`46px filled full-width "Invite someone" action in the READ drill, opening the existing invite dialog directly (DEC-919 wave-156)` |
   | `:578` Settings · Saved embeds | `SavedEmbedsPanel` nested inside `PublicPagesPanel.tsx` | CLOSED-with-receipt (wave-156, was OPEN-2026-08-21) — it renders as its own 390 screen at `?section=public-pages&view=embeds` with an own back-link, own H1 and the on-off summary under it (DEC-728); app/src/pages/Settings.frame-verdicts.render.test.tsx`frame :578 Saved embeds -- MATCHES (nested): its own screen carries an own back-link, own H1, and the on-off summary under it` |
 - Submissions head: three filter strips (VIEW 753px + status 759px both
@@ -230,7 +230,7 @@ app/src/styles.css`.chq-check-hit is the label wrapper added around every table-
 `.chq-color-swatch` (portal/tracks colour-cycle usage) --
 app/src/pages/settings/settings.css`Tracks & rooms colour-cycle swatch (probe: 22px` ·
 `.chq-settings-portal-add-resource` --
-app/src/pages/settings/settings.css`Portal 'Add resource' (probe: 34px` ·
+the former settings code (removed by multi-portal decision 74) `Portal 'Add resource' (probe: 34px` ·
 the CFP strip datefield --
 app/src/pages/forms/forms.css`.chq-forms-strip-datefield {` (`min-height: 44px;`) ·
 and contacts/content name-and-file links, both rendered on the shared

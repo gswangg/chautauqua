@@ -181,7 +181,7 @@ carries information (a static reassurance) the organiser's own stored
 welcome message cannot supply, so clause (b) settled it as APP-OWNED CHROME
 — a separate node appended after the organiser's lede, never concatenated
 into it, rendering even when `welcomeMessage` is null — and
-src/routes/portal/preview.tsx`Everything we need from you is on this page, in order.`
+the former general /portal/preview page (deleted by multi-portal decision 74) `Everything we need from you is on this page, in order.`
  **Back-link placement** and
 **meta-sentence order** are GEOMETRY/ORDER residuals. DEC-902's wave-20
 amendment retires the reading that a geometry/order residual keeps a
@@ -225,7 +225,7 @@ shown here" chip wording/count, disposition (b) BLESSED) is not a gap:
   copy) and stays data-driven; the frame's second sentence is APP-OWNED
   CHROME, appended as its own node after the organiser's lede — never
   concatenated into it, never replacing it — and rendered unconditionally,
-  even when `welcomeMessage` is null. src/routes/portal/preview.tsx`Everything we need from you is on this page, in order.`
+  even when `welcomeMessage` is null. the former general /portal/preview page (deleted by multi-portal decision 74) `Everything we need from you is on this page, in order.`
  , asserted off a real `GET /portal/preview`
   request in `test/portal-desktop-frame-verdicts.test.ts`.
 - **"To see a real speaker's portal..." sentence order** — RESOLVED task
@@ -374,7 +374,7 @@ a second citation of the same ruling, not a new finding.
 
 ## 2. `:1473` "Portal preview · /portal/preview" — MATCHES
 
-`GET /portal/preview` (`src/routes/portal/preview.tsx`'s `PreviewPage`,
+`GET /portal/preview` (`src/routes/portal/preview.tsx` (since deleted by multi-portal decision 74)'s `PreviewPage`,
 organizer-only). The identity slot ("Preview · no speaker"), the "Preview ·
 read-only" banner (with the frame's own explanatory sentence verbatim), the
 Welcome hero + configured welcome message, the Resources section, the "Not

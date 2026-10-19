@@ -33,7 +33,7 @@
 // a surface neither existing file's fixtures exercise.
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerErrorHandler } from "../src/server/http";
@@ -43,7 +43,6 @@ import { MAX_TEXT_LENGTH } from "../src/forms/validate";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 import type { R2Bucket } from "@cloudflare/workers-types";
-import { getPortalSettingsForEvent } from "../src/server/repo/portal-config";
 import { DEC_029, DEC_902, DEC_919 } from "../src/decisions";
 
 // DEC-029 (wave-108 amendment, src/decisions-data/DEC-029.md): the edit
@@ -180,7 +179,6 @@ async function buildEditApp(): Promise<Hono<AppEnv>> {
 // portalPreviewRoutes, GET /portal/preview.
 // ---------------------------------------------------------------------------
 
-const organizerAuth: AuthInfo = { userId: "u-org", role: "organizer", orgId: "org-1" };
 
 vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
@@ -232,18 +230,6 @@ vi.mock("../src/server/repo/portal-config", async () => {
   };
 });
 
-async function buildPreviewApp(): Promise<Hono<AppEnv>> {
-  const { portalPreviewRoutes } = await import("../src/routes/portal/preview");
-  const app = new Hono<AppEnv>();
-  registerErrorHandler(app);
-  app.use("*", async (c, next) => {
-    c.set("auth", organizerAuth);
-    c.set("db", {} as never);
-    await next();
-  });
-  app.route("/portal", portalPreviewRoutes);
-  return app;
-}
 
 // ---------------------------------------------------------------------------
 // :1167 "Public sessions · nothing published" -- publicRoutes,
@@ -516,95 +502,12 @@ describe("Portal + public-empty SSR desktop frame verdicts (Chautauqua Public an
     );
   });
 
-  it("frame :1473 'Portal preview · /portal/preview' (GET /portal/preview) -- MATCHES: 'Preview · read-only' banner carrying its own back-to-settings link, Welcome hero + welcome message, Resources section, 'Not shown here' chips + trailing sentence", async () => {
-    // docs/design/Chautauqua Public and Portal.dc.html:1473 `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`
-    verbatimLine(
-      1473,
-      `      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal preview · /portal/preview</span>`,
-    );
-    // DEC-902 wave-20 amendment (task w20-g): the frame draws the back link
-    // INSIDE the read-only banner card, right-aligned beside its two
-    // sentences -- this test now asserts that placement, not the prior
-    // standalone-bottom-of-page one.
-    // docs/design/Chautauqua Public and Portal.dc.html:1490 `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`
-    verbatimLine(
-      1490,
-      `          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap">‹ Back to settings</a>`,
-    );
-    // docs/design/Chautauqua Public and Portal.dc.html:1523 `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`
-    verbatimLine(
-      1523,
-      `          <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.55">To see a real speaker's portal you would have to be them — this preview deliberately cannot.</span>`,
-    );
-    const app = await buildPreviewApp();
-    const res = await app.request("/portal/preview?eventId=evt-1");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-
-    // :1481-1483 organiser identity slot; :1487-1490 the read-only banner,
-    // now carrying the back link as its own right-aligned last child;
-    // :1495-1496 Welcome + welcome-message lede; :1499-1509 Resources
-    // section; :1511-1521 "Not shown here" chips + :1523 the trailing
-    // sentence -- the frame's own top-to-bottom order.
-    expectInOrder(html, [
-      // multi-portal decision 71: every portal's preview, not the speakers'
-      'Preview · nobody signed in',
-      'class="chq-portal-preview-banner" role="note"',
-      'Preview · read-only.',
-      'class="chq-portal-standalone-link chq-portal-preview-banner-link" href="/admin/settings?section=portal"',
-      '‹ Back to settings',
-      '<h1 class="chq-portal-hero">Welcome</h1>',
-      '<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>',
-      // DEC-902 wave-19 clause (b): the frame's fixed second Welcome
-      // sentence, a separate node appended after the organiser's own
-      // stored lede -- src/routes/portal/preview.tsx:139.
-      '<p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>',
-      'aria-label="Resources" class="chq-section"',
-      'class="chq-section-label">Resources</div>',
-      '<span class="chq-portal-row-title">Speaker guide</span>',
-      'aria-label="Not shown here" class="chq-section"',
-      'chq-portal-not-shown-chip">Their sessions</li>',
-      'chq-portal-not-shown-chip">Their portal items</li>',
-      'chq-portal-not-shown-chip">Their uploaded files</li>',
-      // multi-portal decision 71: the frame's "you would have to be them"
-      // predates preview-as-participant; the trailing sentence now says
-      // where one person's portal can be seen
-      "To see one person&#39;s portal, open their record and choose Preview, or open a portal and preview it as",
-    ]);
-    // Exactly one back-to-settings link on the page -- the frame draws no
-    // second copy, so the prior standalone bottom-of-page paragraph is gone.
-    expect((html.match(/Back to settings/g) ?? []).length).toBe(1);
-    // No mutating control anywhere on the page -- the one Download control
-    // is the frame's sanctioned disabled exception (DEC-747), and the only
-    // <form> is PortalLayout's own shared footer sign-out (never content of
-    // this task's frame).
-    expect(html).toContain('<button type="button" class="chq-portal-preview-download" disabled="" aria-disabled="true"');
-    expect((html.match(/<form/g) ?? []).length).toBe(1);
-  });
-
-  it("frame :1473 Welcome lede, DEC-902 wave-19 clause (b): the fixed second sentence renders as its own node even when the organiser has no stored welcome message", async () => {
-    vi.mocked(getPortalSettingsForEvent).mockResolvedValueOnce({
-      id: "ps-1",
-      eventId: "evt-1",
-      welcomeMessage: null,
-      accentColor: null,
-      logoUrl: null,
-      showResources: true,
-      createdAt: 0,
-      updatedAt: 0,
-    });
-    const app = await buildPreviewApp();
-    const res = await app.request("/portal/preview?eventId=evt-1");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-
-    // No organiser lede paragraph at all (welcomeMessage is null, so that
-    // conditional node does not render), but the frame's fixed second
-    // sentence -- app-owned chrome per DEC-902 wave-19 clause (b) -- still
-    // does: it needs no stored data to be true.
-    // docs/design/Chautauqua Public and Portal.dc.html:1495 `<span style="font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</span>`
-    expect(html).not.toContain('<p class="chq-portal-lede">Thanks for speaking at DevFlow.</p>');
-    expect(html).toContain('<p class="chq-portal-lede">Everything we need from you is on this page, in order.</p>');
+  // Multi-portal decision 74: the frame's general preview (a portal with
+  // nobody signed in) is superseded by preview as a person
+  // (src/routes/portal/preview-person.tsx); /portal/preview is not mounted.
+  it("frame :1473 'Portal preview · /portal/preview' -- SUPERSEDED by preview as a person (multi-portal decision 74)", () => {
+    expect(readFileSync(DESIGN_FILE, "utf-8").split("\n")[1473 - 1]).toContain("Portal preview · /portal/preview");
+    expect(existsSync(join(REPO_ROOT, "src", "routes", "portal", "preview.tsx"))).toBe(false);
   });
 
   it("frame :1167 'Public sessions · nothing published' (GET /e/devflow/sessions) -- MATCHES: filter chrome hidden, 'The programme is not out yet' headline, 'Last year' aside naming the prior event + a Sessions › escape", async () => {

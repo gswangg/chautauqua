@@ -27,7 +27,7 @@ measured **14** unmatched captions — one fewer than the inherited **15**
 ceiling, because that task disposed Chautauqua Settings.dc.html:1422
 ("Downloaded 18 times by 12 speakers") into the new UNBACKED exclusion table
 (`exclusions.ts`, DEC-032; see `DEVIATIONS.md` §6 and
-`app/src/pages/settings/ResourcesPanel.tsx`'s header comment), and recorded
+`app/src/pages/settings/ResourcesPanel.tsx`'s header comment -- that panel since deleted by multi-portal decision 74), and recorded
 the other 14 rows as "the same class of genuine, out-of-scope gap." That
 claim is now FALSE (DEC-069 wave-19 clause (a)): all 14 table rows below —
 the 3 already CLOSED at merge time plus the 11 this wave re-verdicts CLOSED
@@ -84,7 +84,7 @@ resolve verbatim anywhere in the cited file, never a `path:line` pin.
   the repo (`grep -rn download.count`/`downloadCount` outside this doc:
   zero non-test hits) — a declared knob with no reader
   (DEC-851/DEC-988). Recorded as a deliberate non-build in
-  `DEVIATIONS.md` §6 and `app/src/pages/settings/ResourcesPanel.tsx`'s
+  `DEVIATIONS.md` §6 and `app/src/pages/settings/ResourcesPanel.tsx`'s (since deleted by multi-portal decision 74)
   header comment above the delete-confirm dialog (DEC-032, task w4-aq).
 
 `FRAME_CAPTION_UNMATCHED_CEILING` re-seeded from the inherited **15** to

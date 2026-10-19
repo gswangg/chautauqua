@@ -98,8 +98,6 @@ const LEGAL_USES: Record<string, string> = {
   '.chq-submissions-clone:disabled': 'inert control — Clone with nothing clonable',
   ".chq-contacts-filter-add-chip:disabled, .chq-contacts-filter-add-chip[aria-disabled='true']":
     "inert control — the 390 rule strip's terminal + Rule chip at MAX_SEGMENT_RULES, the ruling's own Remove-at-its-lower-bound shape (DEC-937 wave-129)",
-  '.chq-portal-preview-download':
-    'inert control — the preview page\'s Download carries `disabled aria-disabled="true"` (src/routes/portal/preview.tsx)',
   "input[type='checkbox']:disabled, input[type='radio']:disabled":
     'inert control — a checkbox/radio that cannot be toggled (B8); the SPA styles.css spelling with quoted attribute values (DEC-745 wave-100 amendment)',
   'input[type=checkbox]:disabled, input[type=radio]:disabled':

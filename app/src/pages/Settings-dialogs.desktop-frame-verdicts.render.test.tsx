@@ -309,49 +309,12 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // ?section=portal.
   // ---------------------------------------------------------------------
   describe('frame :1414 "Confirm · irreversible"', () => {
-    it('MATCHES (DEC-941 wave-9 amendment): the confirm\'s TITLE names the resource, same object-naming form as the frame; the DEVIATIONS §6 deferred download-count subtitle and the frame\'s "Delete it" primary stay unbuilt/unadopted', async () => {
-      renderSection('portal');
-      await waitFor(() => expect(screen.getByText('Speaker handbook 2027.pdf')).toBeInTheDocument());
-
-      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-      const dialog = screen.getByRole('dialog');
-
-      // docs/design/Chautauqua Settings.dc.html:1421 -- title `Delete "Speaker handbook 2027.pdf"?`. Wave-9: ResourcesPanel.tsx now
-      // builds this exact object-naming form (DEC-941 wave-9 amendment) instead of a fixed generic title.
-      verbatimLine(1421, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Delete “Speaker handbook 2027.pdf”?</span>');
-      expect(within(dialog).getByText('Delete "Speaker handbook 2027.pdf"?')).toBeInTheDocument();
-      expect(within(dialog).queryByText('Delete this resource?')).not.toBeInTheDocument();
-      // The body no longer repeats the quoted filename (DEC-613: one copy of the name, now in the title) --
-      // it keeps only the consequence sentence.
-      expect(
-        within(dialog).getByText('Speakers lose the download from their portal. This cannot be recovered.'),
-      ).toBeInTheDocument();
-
-      // docs/design/Chautauqua Settings.dc.html:1422 -- subtitle `Downloaded 18 times by 12 speakers`, DEVIATIONS §6 deferred: no download-count column/endpoint exists. Verdict DIVERGES-by-deferral, build nothing.
-      verbatimLine(1422, '          <span style="font-size:13px; color:#565A4B">Downloaded 18 times by 12 speakers</span>');
-      expect(within(dialog).queryByText(/Downloaded \d+ times by \d+ speakers/)).not.toBeInTheDocument();
-
-      // docs/design/Chautauqua Settings.dc.html:1429 -- `Type the file name to confirm` MATCHES verbatim
-      // (DEC-613 wave-32 amendment; built twice, by tasks w32-f and w33-d -- the megabatch keeps w32-f's
-      // `confirmNoun` prop name and w33-d's strictly stronger assertions): the label is now the frame's
-      // generic instruction; the object's own name lives ONLY in the input's placeholder (the muted
-      // content inside the frame's value box), never composed into the label.
-      verbatimLine(1429, '          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Type the file name to confirm</span>');
-      expect(within(dialog).getByText('Type the file name to confirm')).toBeInTheDocument();
-      expect(within(dialog).queryByText(/Type "Speaker handbook 2027.pdf" to confirm/)).not.toBeInTheDocument();
-      expect(within(dialog).getByPlaceholderText('Speaker handbook 2027.pdf')).toBeInTheDocument();
-
-      // docs/design/Chautauqua Settings.dc.html:1432 -- frame primary `Delete it`; the tree's `Delete resource` is a
-      // ruled, DELIBERATE non-adoption (DEC-941 wave-9 amendment): app/src/confirm-primary-object.scan.test.ts
-      // requires a destructive primary to name its object, and DEC-967 rules frame sample prose is not product
-      // copy -- so this is a settled ruling, not an open gap.
-      verbatimLine(
-        1432,
-        '        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Delete it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>',
-      );
-      expect(within(dialog).queryByRole('button', { name: 'Delete it' })).not.toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: 'Delete resource' })).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    it("SUPERSEDED (multi-portal decision 74): the resource-delete confirm moved from Settings to the library", () => {
+      // LibraryPage.render.test.tsx pins its object-naming title (Delete "<name>"?) and typed confirmation
+      const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+      expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+      const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+      expect(panel).not.toContain('SettingsEditForm');
     });
   });
 
@@ -359,24 +322,12 @@ describe('v12 Settings DESKTOP Modal frames: per-frame render verdict receipts (
   // Frame :1440 "Portal resource · add"
   // ---------------------------------------------------------------------
   describe('frame :1440 "Portal resource · add"', () => {
-    it('MATCHES: opened from "Add a resource" at ?section=portal, header title+subtitle verbatim, primary "Add it" precedes Cancel', async () => {
-      renderSection('portal');
-      await waitFor(() => expect(screen.getByText('Speaker handbook 2027.pdf')).toBeInTheDocument());
-
-      fireEvent.click(screen.getByRole('button', { name: 'Add a resource' }));
-      const dialog = screen.getByRole('dialog');
-
-      // docs/design/Chautauqua Settings.dc.html:1447 -- title `Add a resource`, MATCHES verbatim.
-      verbatimLine(1447, '          <span style="font-family:\'Familjen Grotesk\', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Add a resource</span>');
-      expect(within(dialog).getByText('Add a resource')).toBeInTheDocument();
-      // docs/design/Chautauqua Settings.dc.html:1448 -- subtitle `Shown to every speaker in their portal`, MATCHES verbatim.
-      verbatimLine(1448, '          <span style="font-size:13px; color:#565A4B">Shown to every speaker in their portal</span>');
-      expect(within(dialog).getByText('Shown to every speaker in their portal')).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
-
-      // docs/design/Chautauqua Settings.dc.html:1469 -- primary `Add it` then `Cancel`, MATCHING order and label.
-      verbatimLine(1469, '        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Add it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>');
-      expect(within(dialog).getAllByRole('button', { name: /Add it|Cancel/ }).map((b) => b.textContent)).toEqual(['Add it', 'Cancel']);
+    it("SUPERSEDED (multi-portal decision 74): resources are added from the library's New item, not Settings' Add a resource", () => {
+      // New item › Resource › Write a page or Upload a file (NewLibraryItemModal.tsx)
+      const decisions = readFileSync(join(REPO_ROOT, 'docs', 'design', 'multi-portal', 'DECISIONS.md'), 'utf-8');
+      expect(decisions).toMatch(/\| 74 \| Resources live in the library; Settings › Portals is a summary \|/);
+      const panel = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'settings', 'PortalSettingsPanel.tsx'), 'utf-8');
+      expect(panel).not.toContain('SettingsEditForm');
     });
   });
 

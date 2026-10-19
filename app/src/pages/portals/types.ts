@@ -206,6 +206,9 @@ export interface LibraryEntry {
   // resources only: shown to everyone with a portal, or only through
   // portals that list it
   visibility?: 'everyone' | 'portal';
+  // resources only (decision 74): a page participants read or a file they
+  // download
+  resource?: { kind: 'wiki' | 'file'; content: string | null; fileName: string | null };
 }
 
 // GET /events/:id/library

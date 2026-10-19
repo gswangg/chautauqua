@@ -44,6 +44,13 @@ create table resource (
   updated_at integer,
   visibility text NOT NULL DEFAULT 'everyone'
 );
+create table portal_item (
+  id text primary key,
+  portal_id text,
+  task_id text,
+  resource_id text,
+  system_kind text
+);
 create table file (
   id text primary key,
   submission_id text,

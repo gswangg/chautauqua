@@ -380,3 +380,9 @@ disposition already given to `PACK_GRID_TRACK_UNMATCHED_CEILING` and
 
 Re-measured on the integrated tree: 219 unmatched drawn padding
 declarations. `PACK_PADDING_UNMATCHED_CEILING` moves 252 -> 219.
+
+## Multi-portal decision 74
+
+Re-measured on this branch: three drawn 9px 14px paddings (Public and Portal.dc.html:81, Settings.dc.html:205 and :256) had only matched a declaration in the deleted general-preview and Settings resource rules.
+
+`PACK_PADDING_UNMATCHED_CEILING` moves 219 -> 222.

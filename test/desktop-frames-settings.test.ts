@@ -115,14 +115,14 @@ describe('desktop frame claims: Settings cluster, editing/summary half (v12m-w5-
   // `Settings · editing the speaker portal`
   // Multi-portal: the frame's "What speakers may edit" pills became each
   // portal's field permissions; the edit view says so in their place.
-  it('renders the Speaker portal edit view (Welcome note / per-portal permissions line / Resources) in PortalSettingsPanel.tsx', () => {
+  it("SUPERSEDED (multi-portal decision 74): the Speaker portal edit view is gone -- Settings › Portals is a read-only summary", () => {
     expect(frameLine(869)).toContain('Settings · editing the speaker portal');
     const src = read('pages/settings/PortalSettingsPanel.tsx');
-    expect(src).toContain("label=\"Welcome note\"");
-    expect(src).toContain('is set per portal in');
-    expect(src).toContain('Resources');
-    const resources = read('pages/settings/ResourcesPanel.tsx');
-    expect(resources).toContain('Add a resource');
+    // the welcome note is Profile basics' note; field permissions are each
+    // portal's; resources are made in the library
+    expect(src).not.toContain('SettingsEditForm');
+    expect(src).toContain('actionLabel="Manage portals"');
+    expect(read('pages/portals/NewLibraryItemModal.tsx')).toContain('Upload a file');
   });
 
   // docs/design/Chautauqua Settings.dc.html:950

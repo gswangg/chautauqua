@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEventPatch,
-  buildPortalSettingsPayload,
   isValidHexColorOrEmpty,
-  validateResourceForm,
   validateRoomForm,
   validateTrackForm,
   type EventSettingsForm,
@@ -71,38 +69,7 @@ describe('isValidHexColorOrEmpty', () => {
   });
 });
 
-describe('buildPortalSettingsPayload', () => {
-  // multi-portal decision 72: the form no longer carries the portal's logo
-  // or accent, so the PUT never sends them and the server keeps what is
-  // stored
-  it('trims a blank welcome note to null (full-replace upsert semantics)', () => {
-    expect(buildPortalSettingsPayload({ welcomeMessage: '  ', showResources: true })).toEqual({
-      welcomeMessage: null,
-      showResources: true,
-    });
-  });
 
-  it('passes non-blank values through unchanged, and never sends a logo or accent', () => {
-    const payload = buildPortalSettingsPayload({ welcomeMessage: 'Hi!', showResources: false });
-    expect(payload).toEqual({ welcomeMessage: 'Hi!', showResources: false });
-    expect(payload).not.toHaveProperty('logoUrl');
-    expect(payload).not.toHaveProperty('accentColor');
-  });
-});
-
-describe('validateResourceForm', () => {
-  it('requires both title and content', () => {
-    expect(validateResourceForm({ title: '', content: '' })).toEqual({ title: 'Required', content: 'Required' });
-  });
-
-  it('trims whitespace-only values as missing', () => {
-    expect(validateResourceForm({ title: '   ', content: 'ok' })).toEqual({ title: 'Required' });
-  });
-
-  it('has no errors for a valid form', () => {
-    expect(validateResourceForm({ title: 'Code of Conduct', content: 'Be excellent to each other.' })).toEqual({});
-  });
-});
 
 describe('validateTrackForm', () => {
   it('requires a name and validates the color when present', () => {

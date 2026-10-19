@@ -4,18 +4,22 @@
 // directly on Speakers. Tasks, forms, file requests and share kits are
 // edited here (the change reaches every portal that lists them); a
 // resource is shown to everyone, or only through the portals that list it.
-// Deadlines, required and grace are a portal's, set in its editor.
+// Resources -- pages and uploaded files -- are made, edited and deleted
+// here too (decision 74). Deadlines, required and grace are a portal's, set
+// in its editor.
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { PageSkeleton } from '../../components/PageSkeleton';
-import { apiPatch, ApiError } from '../../lib/api';
+import { apiDelete, apiPatch, ApiError } from '../../lib/api';
 import { countOf } from '../../lib/plural';
 import { useCachedGet } from '../../lib/useCachedRead';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { limitSentence } from '../../../../src/domain/portals/file-types';
 import { LIBRARY_TABS } from './AddFromLibraryModal';
 import { EditLibraryItemModal } from './EditLibraryItemModal';
+import { EditLibraryResourceModal } from './EditLibraryResourceModal';
 import { formBuilderPath, NewLibraryItemModal } from './NewLibraryItemModal';
 import { SettingsSubPage } from './SettingsSubPage';
 import { libraryEntryKey } from './portalDraft';
@@ -52,6 +56,10 @@ export function LibraryPage() {
   const { data, loading, error } = useCachedGet<LibraryListing>(libraryPath, 'The library could not be loaded.');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<(LibraryEntry & { ref: { taskId: string } }) | null>(null);
+  const [editingResource, setEditingResource] = useState<(LibraryEntry & { ref: { resourceId: string } }) | null>(null);
+  const [deletingResource, setDeletingResource] = useState<(LibraryEntry & { ref: { resourceId: string } }) | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pendingVisibility, setPendingVisibility] = useState<Record<string, Visibility>>({});
   const [rowError, setRowError] = useState<{ key: string; message: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -80,6 +88,21 @@ export function LibraryPage() {
         return next;
       });
       setRowError({ key, message: err instanceof ApiError ? err.message : 'The change could not be saved.' });
+    }
+  }
+
+  async function confirmDeleteResource() {
+    if (!deletingResource) return;
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      await apiDelete(`/resources/${deletingResource.ref.resourceId}`);
+      setToast(`${deletingResource.title} deleted`);
+      setDeletingResource(null);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : 'The resource could not be deleted.');
+    } finally {
+      setDeletePending(false);
     }
   }
 
@@ -150,7 +173,9 @@ export function LibraryPage() {
                         {entry.type === 'built_in'
                           ? entry.hint
                           : entry.type === 'resource'
-                            ? 'A page participants read'
+                            ? entry.resource?.kind === 'file'
+                              ? `A file participants download${entry.resource.fileName ? ` · ${entry.resource.fileName}` : ''}`
+                              : 'A page participants read'
                             : entry.scope === 'participation'
                               ? 'About the session or company'
                               : 'About the person'}
@@ -192,6 +217,24 @@ export function LibraryPage() {
                         </Link>
                       ) : null}
                       {isResource(entry) ? (
+                        <>
+                          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setEditingResource(entry)} aria-label={`Edit ${entry.title}`}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary"
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingResource(entry);
+                            }}
+                            aria-label={`Delete ${entry.title}`}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : null}
+                      {isResource(entry) ? (
                         <span className="chq-portal-seg chq-library-visibility" role="group" aria-label={`Who sees ${entry.title}`}>
                           <button type="button" className="chq-portal-seg-btn" aria-pressed={vis === 'everyone'} onClick={() => void setVisibility(entry, 'everyone')}>
                             Everyone
@@ -228,6 +271,42 @@ export function LibraryPage() {
             setToast(`${title} saved`);
           }}
           onClose={() => setEditing(null)}
+        />
+      ) : null}
+
+      {editingResource ? (
+        <EditLibraryResourceModal
+          entry={editingResource}
+          onSaved={(title) => {
+            setEditingResource(null);
+            setToast(`${title} saved`);
+          }}
+          onClose={() => setEditingResource(null)}
+        />
+      ) : null}
+
+      {deletingResource ? (
+        <ConfirmDialog
+          title={`Delete "${deletingResource.title}"?`}
+          body={
+            <>
+              {deletingResource.usedBy.length > 0
+                ? `It leaves ${deletingResource.usedBy.map((p) => p.name).join(', ')} too, and participants lose it from their portal. This cannot be recovered.`
+                : 'Participants lose it from their portal. This cannot be recovered.'}
+              {deleteError ? (
+                <span className="chq-error" role="alert">
+                  {deleteError}
+                </span>
+              ) : null}
+            </>
+          }
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase={deletingResource.title}
+          confirmNoun="resource name"
+          pending={deletePending}
+          onConfirm={() => void confirmDeleteResource()}
+          onCancel={() => setDeletingResource(null)}
         />
       ) : null}
 
