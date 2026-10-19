@@ -617,3 +617,36 @@ describe('PersonRecordPage: Give an item', () => {
     expect(screen.queryByRole('button', { name: 'Give an item' })).not.toBeInTheDocument();
   });
 });
+
+// The Contacts drawer holds a person's contact details; this page is their
+// event record. Each names itself and leads to the other.
+describe('PersonRecordPage: event record and contact details', () => {
+  const DETAIL = {
+    id: CONTACT_ID,
+    firstName: 'Priya',
+    lastName: 'Raman',
+    email: 'priya@example.com',
+    company: 'Latticework Systems',
+    title: 'Principal Engineer',
+    labels: [],
+    phone: null,
+    notes: null,
+    bio: null,
+    headshotUrl: null,
+    socialLinks: { twitter: '', linkedin: '', github: '', website: '' },
+    customFields: {},
+    history: { submissions: [], submissionsTotal: 0, emails: [], emailsTotal: 0, events: [], eventsTotal: 0 },
+  };
+
+  it('names the page as the event record and opens the contact details over it, which lead back here', async () => {
+    mockApi({ [`GET ${RECORD_PATH}`]: baseRecord(), [`GET /api/v1/contacts/${CONTACT_ID}`]: DETAIL });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
+    expect(screen.getByText('Event record · DevFlow Conf 2027')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit contact details' }));
+    const drawer = await screen.findByRole('dialog', { name: 'Contact detail' });
+    expect(await within(drawer).findByRole('link', { name: 'Open event record ›' })).toHaveAttribute('href', `/contacts/${CONTACT_ID}`);
+    expect(within(drawer).getByText(/What they’re part of at .*, and everything they’re asked for/)).toBeInTheDocument();
+  });
+});

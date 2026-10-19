@@ -19,6 +19,7 @@ import type { PersonRecord, ViewItemJson } from './types';
 import { ItemsTable, ParticipationsTable, dayLabel, itemCount, itemGroups } from './PersonRecordTables';
 import { EventRolesSection } from './PersonRecordEventRoles';
 import { GiveItemModal, InviteToSpeakModal, ReopenModal } from './PersonRecordModals';
+import { ContactDrawer } from '../contacts/ContactDrawer';
 import './person-record.css';
 
 // Role and invitation changes re-match portals in the background
@@ -44,6 +45,9 @@ export function PersonRecordPage() {
   const [reopening, setReopening] = useState<ViewItemJson | null>(null);
   const [inviting, setInviting] = useState(false);
   const [giving, setGiving] = useState(false);
+  // the person's contact details (name, email, profile, notes) are the
+  // Contacts drawer; this page is their event record
+  const [editingDetails, setEditingDetails] = useState(false);
   const timers = useRef<number[]>([]);
 
   const ready = Boolean(eventId && contactId);
@@ -194,10 +198,14 @@ export function PersonRecordPage() {
       <div className="chq-person-record-head">
         <div className="chq-person-record-titles">
           {back}
+          <span className="chq-section-label">Event record · {view.eventName}</span>
           <h1 className="chq-page-title">{name}</h1>
           {meta ? <p className="chq-person-record-meta">{meta}</p> : null}
         </div>
         <div className="chq-person-record-tools">
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingDetails(true)}>
+            Edit contact details
+          </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setInviting(true)}>
             Invite to speak
           </button>
@@ -280,6 +288,18 @@ export function PersonRecordPage() {
             setToast(`${title} given to ${firstName}.`);
             void fetchRecord(false);
           }}
+        />
+      ) : null}
+
+      {editingDetails ? (
+        <ContactDrawer
+          contactId={contact.id}
+          onClose={() => setEditingDetails(false)}
+          onSaved={() => {
+            setEditingDetails(false);
+            void fetchRecord(false);
+          }}
+          onContactChanged={() => void fetchRecord(false)}
         />
       ) : null}
 

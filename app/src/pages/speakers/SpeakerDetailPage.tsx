@@ -502,10 +502,10 @@ export function SpeakerDetailPage() {
                   {' · '}
                   {detail.contact.hasAccount ? 'has an account' : 'no account'}
                 </p>
-                {/* Multi-portal: every participation, portal and item for
-                    this person, and why they have it. */}
+                {/* Multi-portal: their event record -- every participation,
+                    portal and item, and why they have it. */}
                 <Link className="chq-link-button chq-speaker-detail-back" to={`/contacts/${detail.contact.id}`}>
-                  Portals and items &rsaquo;
+                  Event record &rsaquo;
                 </Link>
                 {/* USER RULING (release night, final form): no participation
                     chip in the header at all -- no master switch, no static

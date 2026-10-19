@@ -577,6 +577,19 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               />
             )}
             <div className="chq-contacts-record">
+              {/* Multi-portal: this drawer holds the person's contact details;
+                  what they're part of at the event, and everything they're
+                  asked for, is their event record -- a page of its own. */}
+              {currentEventId ? (
+                <p className="chq-contacts-record-event-link">
+                  <Link className="chq-link-button" to={`/contacts/${contactId}`}>
+                    Open event record &rsaquo;
+                  </Link>
+                  <span className="chq-meta">
+                    What they&rsquo;re part of at {currentEventName ?? 'this event'}, and everything they&rsquo;re asked for
+                  </span>
+                </p>
+              ) : null}
               {/* DEC-616 amendment (wave 15): the drawer states its own save
                   mechanism in the record head, in plain words, rather than
                   leaving Save's persistent footer (below) to speak for
@@ -613,14 +626,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               <FieldGroup title={currentEventName ?? 'On this event'}>
                 <p className="chq-meta chq-contacts-record-group-caption">
                   These facts belong to this event only — everything above is this person's org-wide record.
-                </p>
-                {/* Multi-portal: what this person gets at the event, and
-                    why, lives on the person record page. */}
-                <p className="chq-meta chq-contacts-record-group-caption">
-                  Participations, portals and items are on the record.{' '}
-                  <Link className="chq-link-button" to={`/contacts/${contactId}`}>
-                    Open record
-                  </Link>
                 </p>
                 {labelsNode}
                 {/* DEC-292 amendment (findings wave 5): the "This event"
