@@ -705,8 +705,14 @@ export function deriveInteractiveOffenders(
  * library's "Used by" inline links add 16 (`.chq-library-portal`'s
  * tap-floor-exempt receipt). The library's real defect, 38px Edit buttons,
  * was fixed before measuring. Ceiling RAISED 103 -> 126 with that run as
- * its receipt. */
-export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 126;
+ * its receipt.
+ *
+ * Decision 78 re-derivation (2026-10-19): CI's render-sweep printed 128, all
+ * EXEMPT, 0 candidate defects. +3 are the library's "Used by" links (the
+ * Hotel and Flight forms now sit in two portals each; the Travel form's one
+ * link went) and -1 is Settings › Portals' retired "Show resources" checkbox
+ * (decision 74). Ceiling RAISED 126 -> 128 with that run as its receipt. */
+export const ADMIN_MOBILE_INTERACTIVE_OFFENDERS_CEILING = 128;
 
 // ---------------------------------------------------------------------------
 // DEC-808 wave-30 amendment: the public/portal 390 tap-floor population has

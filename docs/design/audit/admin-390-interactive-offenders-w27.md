@@ -165,7 +165,7 @@ string N separate times per route, e.g. `/admin/submissions` prints
 
 Anything that matches none of the four: `UNCLASSIFIED — candidate defect`.
 
-## Roster (grouped by matching selector/site — re-measured task v12m-w11-tc, widened by wave-23 task w23-f and multi-portal, 126 rows total)
+## Roster (grouped by matching selector/site — re-measured task v12m-w11-tc, widened by wave-23 task w23-f and multi-portal, 128 rows total)
 
 | # | Route(s) | Selector | Box (w×h) | Count | Classification |
 |---|----------|----------|-----------|-------|-----------------|
@@ -179,15 +179,15 @@ Anything that matches none of the four: `UNCLASSIFIED — candidate defect`.
 | 8 | `/admin/review/plans/seed_evaluation_plan_0001` | `input.chq-check` (same PlanEditor idiom) | 18×18 | 1 | **EXEMPT — idiom 3** |
 | 9 | `/admin/review/plans/seed_evaluation_plan_0001/submissions/seed_submission_0002` | `input.chq-review-choice-input` (Scorecard Choice-criterion radio, `.chq-review-choice-option` label wrap) | 18×18 | 3 | **EXEMPT — idiom 1** (`tap-floor-exempt:` comment in review.css) |
 | 10 | `/admin/review/plans/seed_evaluation_plan_0001/submissions/seed_submission_0002` | `input.chq-check` (same PlanEditor `.chq-review-checkbox-label` idiom, submission-scoped route) | 18×18 | 1 | **EXEMPT — idiom 3** |
-| 11 | `/admin/settings?section=portal&edit=1` | `input.chq-check` (PortalSettingsPanel "Show resources" toggle, `SettingsField`'s `<label>`) | 18×18 | 1 | **EXEMPT — idiom 3, FIXED task v12m-w11-tc** (`settings.css`: `.chq-settings-field label:has(> input.chq-check)` gained `min-height:44px`) |
+| 11 | `/admin/settings?section=portal&edit=1` | `input.chq-check` (PortalSettingsPanel "Show resources" toggle, `SettingsField`'s `<label>`) | 18×18 | 0 | **RETIRED multi-portal decision 74:** Settings › Portals is a read-only summary, so the "Show resources" toggle (and this checkbox) no longer exists. Was 1; **EXEMPT — idiom 3, FIXED task v12m-w11-tc** (`settings.css`: `.chq-settings-field label:has(> input.chq-check)` gained `min-height:44px`) |
 | 12 | `/dev/mailbox`, `/dev/mailbox/seed_email_log_0001` | `a.chq-wordmark` | 113×28 | 2 | **EXEMPT — idiom 1, DEC-382 (this task)** (`theme.ts`: operator-surface `tap-floor-exempt:` comment, `/dev/mailbox`/`/docs/api` chrome) |
 | 13 | `/admin/speakers/tasks/seed_task_0001` | `input.chq-check.chq-taskview-check` (TaskView.tsx select-all + per-row select) | 18×18 | 9 | **EXEMPT — idiom 2, RETIRED wave 21 (DEC-903 amendment).** app/src/pages/speakers/TaskView.tsx`<label className="chq-check-hit">` now wraps both real input sites, receipted by app/src/check-hit-receipt.scan.test.ts`taskViewSites.filter((s) => s.nearestOpenTag === 'label' && s.nearestLabelIsCheckHit)` (w56-i: re-anchored on structural role, count-asserted at 4 total sites, rather than a hand-pinned exact line list that reddened on unrelated edits) — idiom 2 was widened to ARIA-role `columnheader`/`cell` tables by DEC-991 wave-w11-te (comment at app/src/styles.css`DEC-991 wave-w11-te`). The raw `<input>` box is unchanged (still 18×18); this reclassifies the sighting from a candidate defect to EXEMPT, it does not remove it from the printed total. |
 | 14 | `/admin/contacts?import=1` | `input.chq-check` (ContactsTable row-select under the import overlay, same `.chq-check-hit` wrap as row 2) | 18×18 | 25 | **EXEMPT — idiom 2, ADDED wave 23 (task w23-f, `route-substate-390-sweep-v12.md`).** Same DOM population as row 2, reachable at a second URL once `app/src/routeManifest.ts` widened to visit `?import=1` — not a new defect. |
 | 15 | `/admin/submissions/seed_submission_0001?history=0` | `input.chq-check` (same row-select idiom as rows 4-5, history-panel closed sub-state) | 18×18 | 1 | **EXEMPT — idiom 2, ADDED wave 23 (task w23-f, `route-substate-390-sweep-v12.md`).** Same DOM population as rows 4-5, reachable at a third URL once the manifest widened to visit `?history=0` — not a new defect. |
-| 16 | `/admin/settings/portals/library` | `a.chq-library-portal` (the "Used by" sentence's portal links) | ~56-101×14 | 16 | **EXEMPT — idiom 1, ADDED multi-portal** (`tap-floor-exempt:` comment in `app/src/pages/portals/library.css`: inline links inside a sentence, not row actions). |
+| 16 | `/admin/settings/portals/library` | `a.chq-library-portal` (the "Used by" sentence's portal links) | ~56-101×14 | 19 | **EXEMPT — idiom 1, ADDED multi-portal** (`tap-floor-exempt:` comment in `app/src/pages/portals/library.css`: inline links inside a sentence, not row actions). Decision 78 (2026-10-19): +3 -- the Hotel and Flight forms are each used by CFP speakers and Invited speakers (+4 links), and the retired Travel form's one link went. |
 | 17 | `/admin/settings/portals/demo_mp_portal_invited` | `input.chq-check` (portal editor permissions table) | 18×18 | 1 | **EXEMPT — idiom 2, ADDED multi-portal.** |
 
-**Row-count check: 25+36+1+1+1+1+3+1+1+2+9+1+1+25+1+16+1 = 126.** Matches the
+**Row-count check: 25+36+1+1+1+1+3+1+0+2+9+1+1+25+1+19+1 = 128.** Matches the
 printed total exactly (the two `.chq-auth-back` sightings from the
 before-fix run are gone from this table entirely — fixed, not merely
 reclassified, so they are not rows at all any more).
@@ -203,7 +203,7 @@ wave-28 amendment; this file no longer states a second, independently-typed
 two-copies shape DEC-613 forbids, which is how the ceiling and this roster
 drifted to 77 vs 103 in the wave-25/wave-27/wave-23 merge train).**
 
-Current value (row-table sum = ceiling): **126** (multi-portal re-derivation, 2026-10-17: the same gate run printed 126, all EXEMPT; row 3 grew by the DevFlow demo's 6 sessions, rows 16-17 are the new portal pages).
+Current value (row-table sum = ceiling): **128** (decision 78 re-derivation, 2026-10-19: CI's gate run printed 128, all EXEMPT -- row 16 grew by 3 library "Used by" links, row 11 retired with decision 74's read-only Settings › Portals; before that, the multi-portal re-derivation of 2026-10-17 printed 126: row 3 grew by the DevFlow demo's 6 sessions, rows 16-17 were the new portal pages).
 
 Re-derivation receipt, wave 28: ran `npm run db:migrate && npm run seed &&
 npm run gate:render-sweep` to completion against this task's own worktree
