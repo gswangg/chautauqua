@@ -113,9 +113,8 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // docs/design/Chautauqua Speakers.dc.html:193-194 --
       // `<span ...>New task</span>` over `<span ...>Created for all 12 accepted speakers</span>`.
       verbatimLine(194, '          <span style="font-size:13px; color:#565A4B">Created for all 12 accepted speakers</span>');
-      // Multi-portal decision 76: acceptance no longer hands out tasks, so a
-      // new task goes to a portal, and the subtitle names it.
-      expect(within(dialog).getByText('Added to CFP speakers: everyone it covers gets it')).toBeInTheDocument();
+      // decision 76: the organizer names the portal (none pre-chosen unfiltered)
+      expect(within(dialog).getByText('Added to the portal you choose: everyone it covers gets it')).toBeInTheDocument();
 
       const kindGroup = within(dialog).getByRole('group', { name: 'Kind' });
       const kindButtons = within(kindGroup).getAllByRole('button').map((b) => b.textContent);

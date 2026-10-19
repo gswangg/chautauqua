@@ -122,10 +122,13 @@ export function TaskModal({
   // Multi-portal decision 76, CREATE mode only: a task reaches a group
   // through a portal (it becomes the portal's item) or named people. There
   // is no "everyone accepted" any more -- that was a rule engine beside
-  // portals. A portal is offered first when the event has any.
+  // portals. A portal is offered first when the event has any, and the
+  // organizer names it: only the portal the grid is filtered to is
+  // pre-chosen, never simply the first one (Profile basics covers sponsor
+  // contacts too).
   const [audienceMode, setAudienceMode] = useState<'portal' | 'subset'>(portals.length > 0 ? 'portal' : 'subset');
   const [portalId, setPortalId] = useState<string>(
-    defaultPortalId && portals.some((p) => p.id === defaultPortalId) ? defaultPortalId : (portals[0]?.id ?? ''),
+    defaultPortalId && portals.some((p) => p.id === defaultPortalId) ? defaultPortalId : '',
   );
   // the portal list can arrive after the modal opens
   useEffect(() => {
@@ -135,7 +138,7 @@ export function TaskModal({
         ? current
         : defaultPortalId && portals.some((p) => p.id === defaultPortalId)
           ? defaultPortalId
-          : portals[0]!.id,
+          : '',
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portals]);
@@ -224,7 +227,7 @@ export function TaskModal({
           ? undefined
           : audienceMode === 'subset'
             ? `Created for the ${selectedContactIds.size} people you choose`
-            : `Added to ${portals.find((p) => p.id === portalId)?.name ?? 'a portal'}: everyone it covers gets it`
+            : `Added to ${portals.find((p) => p.id === portalId)?.name ?? 'the portal you choose'}: everyone it covers gets it`
       }
       onClose={onCancel}
       closeDisabled={submitting}
@@ -434,6 +437,7 @@ export function TaskModal({
               Portal
             </label>
             <select id="task-portal" className="chq-select" value={portalId} onChange={(e) => setPortalId(e.target.value)}>
+              <option value="">Choose a portal</option>
               {portals.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}

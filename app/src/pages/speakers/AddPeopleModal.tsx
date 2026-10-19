@@ -1,5 +1,7 @@
 // "Add people" on the task view (multi-portal decision 77): hand-pick
 // roster people who don't hold this task yet and give it to them directly.
+// Only people who have confirmed are listed: an invited speaker gets tasks
+// once they accept, as everywhere else on Speakers.
 // Portals give a task to everyone they cover; this is the other way in, one
 // person or a few at a time. The roster is the Speakers grid's own (people
 // on an accepted session), read up to the same MAX_TASK_ASSIGNEES ceiling
@@ -9,9 +11,10 @@ import { ModalFrame } from '../../components/ModalFrame';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
-import { countOf } from '../../lib/plural';
+import { countOf, plural } from '../../lib/plural';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import type { OnboardingGridResponse } from './types';
+import { isActiveParticipant } from '../../../../src/domain/acceptance';
 
 interface Candidate {
   contactId: string;
@@ -19,7 +22,10 @@ interface Candidate {
   company: string | null;
 }
 
-type Roster = { kind: 'loading' } | { kind: 'ready'; candidates: Candidate[]; total: number; listed: number } | { kind: 'error' };
+type Roster =
+  | { kind: 'loading' }
+  | { kind: 'ready'; candidates: Candidate[]; unconfirmed: number; total: number; listed: number }
+  | { kind: 'error' };
 
 export function AddPeopleModal(props: {
   taskId: string;
@@ -42,10 +48,10 @@ export function AddPeopleModal(props: {
     apiGet<OnboardingGridResponse>(`/events/${eventId}/onboarding?page=1&perPage=${MAX_TASK_ASSIGNEES}`)
       .then((res) => {
         if (cancelled) return;
-        const candidates = res.rows
-          .filter((r) => !holderIds.has(r.contact.id))
-          .map((r) => ({ contactId: r.contact.id, name: r.contact.name, company: r.contact.company }));
-        setRoster({ kind: 'ready', candidates, total: res.total, listed: res.rows.length });
+        const open = res.rows.filter((r) => !holderIds.has(r.contact.id));
+        const confirmed = open.filter((r) => r.contact.participations.some((p) => isActiveParticipant(p.inviteStatus)));
+        const candidates = confirmed.map((r) => ({ contactId: r.contact.id, name: r.contact.name, company: r.contact.company }));
+        setRoster({ kind: 'ready', candidates, unconfirmed: open.length - confirmed.length, total: res.total, listed: res.rows.length });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -120,7 +126,7 @@ export function AddPeopleModal(props: {
           {loadError}
         </div>
       ) : null}
-      {roster.kind === 'ready' && roster.candidates.length === 0 ? (
+      {roster.kind === 'ready' && roster.candidates.length === 0 && roster.unconfirmed === 0 ? (
         <p className="chq-meta">Everyone on the roster already has this task.</p>
       ) : null}
       {roster.kind === 'ready' && roster.candidates.length > 0 ? (
@@ -158,6 +164,12 @@ export function AddPeopleModal(props: {
             </p>
           ) : null}
         </div>
+      ) : null}
+      {roster.kind === 'ready' && roster.unconfirmed > 0 ? (
+        <p className="chq-meta">
+          Not listed: {countOf(roster.unconfirmed, 'person', 'people')} who {plural(roster.unconfirmed, 'hasn’t', 'haven’t')}{' '}
+          confirmed yet. They can be added once they do.
+        </p>
       ) : null}
     </ModalFrame>
   );

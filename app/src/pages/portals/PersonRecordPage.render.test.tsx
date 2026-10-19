@@ -599,13 +599,21 @@ describe('PersonRecordPage: Give an item', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('the contact must be a participant on an accepted submission of this event');
   });
 
-  it('is not offered to someone with no accepted session', async () => {
+  it('is not offered to someone with no accepted session, or only an unanswered invitation to one', async () => {
     const r = baseRecord();
     const notOnRoster: PersonRecord = { ...r, view: { ...r.view, participations: r.view.participations.filter((p) => p.participation.session?.status !== 'accepted') } };
     mockApi({ [`GET ${RECORD_PATH}`]: notOnRoster });
     renderPage();
     await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
     expect(screen.getByRole('button', { name: 'Invite to speak' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Give an item' })).not.toBeInTheDocument();
+    cleanup();
+
+    // DFC-040 is an accepted session she's only been invited to
+    const invitedOnly: PersonRecord = { ...r, view: { ...r.view, participations: r.view.participations.filter((p) => p.participation.key === INVITED_TALK.key) } };
+    mockApi({ [`GET ${RECORD_PATH}`]: invitedOnly });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
     expect(screen.queryByRole('button', { name: 'Give an item' })).not.toBeInTheDocument();
   });
 });

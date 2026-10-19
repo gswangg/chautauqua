@@ -68,7 +68,7 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     line: 194,
     text: 'Created for all 12 accepted speakers',
     reason:
-      "superseded by multi-portal decision 76: portals are the one rule engine, so a new task is added to a portal (everyone it covers gets it) or given to the people the organizer chooses. The New task subtitle names which: 'Added to CFP speakers: everyone it covers gets it' or 'Created for the 2 people you choose' (app/src/pages/speakers/TaskModal.tsx), pinned by TaskModal.render.test.tsx and Speakers-states.desktop-frame-verdicts.render.test.tsx. The frame's sentence would be false for every speaker no portal covers.",
+      "superseded by multi-portal decision 76: portals are the one rule engine, so a new task is added to a portal (everyone it covers gets it) or given to the people the organizer chooses. The New task subtitle names which: 'Added to the portal you choose: everyone it covers gets it' (then the portal's name, once chosen) or 'Created for the 2 people you choose' (app/src/pages/speakers/TaskModal.tsx), pinned by TaskModal.render.test.tsx and Speakers-states.desktop-frame-verdicts.render.test.tsx. The frame's sentence would be false for every speaker no portal covers.",
   },
   // Multi-portal decision 71: /portal/preview speaks for every portal, and
   // preview-as-participant exists, so both of the frame's speaker-only

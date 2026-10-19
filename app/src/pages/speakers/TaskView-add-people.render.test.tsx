@@ -41,17 +41,29 @@ function view(rows: TaskViewRow[]): TaskViewResponse {
   };
 }
 
-function rosterRow(id: string, name: string, company: string | null) {
+function rosterRow(id: string, name: string, company: string | null, inviteStatus = 'accepted') {
   return {
-    contact: { id, name, email: `${id}@example.com`, company, hasAccount: true, participations: [] },
+    contact: {
+      id,
+      name,
+      email: `${id}@example.com`,
+      company,
+      hasAccount: true,
+      participations: [{ participantId: `pa-${id}`, submissionId: `sub-${id}`, ref: 'S-001', title: 'Talk', inviteStatus }],
+    },
     cells: [],
   };
 }
 
 const ROSTER = {
   tasks: [],
-  rows: [rosterRow('ct-ada', 'Ada Lovelace', 'Analytical'), rosterRow('ct-bo', 'Bo Diaz', null), rosterRow('ct-cy', 'Cy Young', 'Mound Co')],
-  total: 3,
+  rows: [
+    rosterRow('ct-ada', 'Ada Lovelace', 'Analytical'),
+    rosterRow('ct-bo', 'Bo Diaz', null),
+    rosterRow('ct-cy', 'Cy Young', 'Mound Co'),
+    rosterRow('ct-di', 'Di Okoro', null, 'invited'),
+  ],
+  total: 4,
   page: 1,
   perPage: 200,
   counts: { speakers: 3, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
@@ -90,8 +102,9 @@ describe('TaskView: Add people (decision 77)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add people' });
     const list = await within(dialog).findByRole('group', { name: 'People on the roster' });
-    // Ada already holds it, so only Bo and Cy are offered
+    // Ada already holds it and Di hasn't confirmed, so only Bo and Cy are offered
     expect(within(list).getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(['Bo Diaz', 'Cy Young · Mound Co']);
+    expect(within(dialog).getByText(/Not listed: 1 person who hasn’t confirmed yet/)).toBeInTheDocument();
 
     fireEvent.change(within(dialog).getByLabelText('Find a person'), { target: { value: 'mound' } });
     expect(within(list).getAllByRole('checkbox')).toHaveLength(1);
@@ -107,7 +120,7 @@ describe('TaskView: Add people (decision 77)', () => {
 
   it('blocks an empty choice and says so when everyone already has the task', async () => {
     mockApi({
-      [`GET /api/v1/tasks/${TASK_ID}/roster`]: view([holder('ct-ada', 'Ada Lovelace'), holder('ct-bo', 'Bo Diaz'), holder('ct-cy', 'Cy Young')]),
+      [`GET /api/v1/tasks/${TASK_ID}/roster`]: view([holder('ct-ada', 'Ada Lovelace'), holder('ct-bo', 'Bo Diaz'), holder('ct-cy', 'Cy Young'), holder('ct-di', 'Di Okoro')]),
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: ROSTER,
     });
     renderPage();

@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { dateInputToMs } from '../../lib/dates';
+import { isActiveParticipant } from '../../../../src/domain/acceptance';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import type { PersonRecord, ViewItemJson } from './types';
@@ -101,9 +102,13 @@ export function PersonRecordPage() {
       ),
     [record],
   );
-  // the assign door takes the event's roster: people on an accepted session
+  // the assign door takes the event's roster (people on an accepted
+  // session); like Speakers, an invited person gets tasks once they confirm
   const onRoster = (record?.view.participations ?? []).some(
-    (p) => p.participation.kind === 'session' && p.participation.session?.status === 'accepted',
+    (p) =>
+      p.participation.kind === 'session' &&
+      p.participation.session?.status === 'accepted' &&
+      isActiveParticipant(p.participation.participationStatus),
   );
 
   if (eventLoading || (ready && load.kind === 'loading')) {
