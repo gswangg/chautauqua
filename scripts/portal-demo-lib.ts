@@ -364,23 +364,24 @@ export function portalDemoStatements(nowMs: number): string[] {
   out.push(audit("ws_submit2", "sponsor_session.submit", "Priya Raman", C.priya!, t(0) - 2 * 60 * 60 * 1000, { resubmitted: true, title: "Hands-on: Build Caches from Scratch" }));
 
   // --- the item library (portal-only tasks) ----------------------------------
-  const tasks: { title: string; kind: string; scope: string; instructions: string; types?: string[]; maxMb?: number; deliverable?: string }[] = [
-    { title: "Final slides", kind: "file_request", scope: "participation", instructions: "Upload the deck you'll present, 16:9.", types: ["pdf", "keynote", "powerpoint"], maxMb: 200, deliverable: "presentation" },
-    { title: "AV needs", kind: "general", scope: "participation", instructions: "Mics, adapters, a clicker, a confidence monitor: tell us what you need on stage." },
-    { title: "Speaker release", kind: "general", scope: "participation", instructions: "Agree to the recording and publishing of your session." },
-    { title: "Share your talk", kind: "share_kit", scope: "participation", instructions: "I'm speaking at {event}: {session}. Come say hi! {link}" },
-    { title: "Travel form", kind: "general", scope: "person", instructions: "Your travel dates and where you're flying from." },
-    { title: "Panel prep notes", kind: "general", scope: "participation", instructions: "Three questions you'd like the moderator to ask." },
-    { title: "Logo and booth details", kind: "file_request", scope: "participation", instructions: "Your logo (SVG or PNG) and what you need at the booth.", types: ["image", "pdf"], maxMb: 50 },
-    { title: "Workshop materials", kind: "file_request", scope: "participation", instructions: "Setup instructions attendees need before they arrive.", types: ["pdf"], maxMb: 50 },
-    { title: "Volunteer shift preferences", kind: "general", scope: "person", instructions: "Which days and times you can help." },
+  // `n` keeps each task's id stable (demo_mp_task_<n>); 5 was the Travel
+  // form, retired by decision 78 for the seed's Hotel and Flight forms
+  const tasks: { n: number; title: string; kind: string; scope: string; instructions: string; types?: string[]; maxMb?: number; deliverable?: string }[] = [
+    { n: 1, title: "Final slides", kind: "file_request", scope: "participation", instructions: "Upload the deck you'll present, 16:9.", types: ["pdf", "keynote", "powerpoint"], maxMb: 200, deliverable: "presentation" },
+    { n: 2, title: "AV needs", kind: "general", scope: "participation", instructions: "Mics, adapters, a clicker, a confidence monitor: tell us what you need on stage." },
+    { n: 3, title: "Speaker release", kind: "general", scope: "participation", instructions: "Agree to the recording and publishing of your session." },
+    { n: 4, title: "Share your talk", kind: "share_kit", scope: "participation", instructions: "I'm speaking at {event}: {session}. Come say hi! {link}" },
+    { n: 6, title: "Panel prep notes", kind: "general", scope: "participation", instructions: "Three questions you'd like the moderator to ask." },
+    { n: 7, title: "Logo and booth details", kind: "file_request", scope: "participation", instructions: "Your logo (SVG or PNG) and what you need at the booth.", types: ["image", "pdf"], maxMb: 50 },
+    { n: 8, title: "Workshop materials", kind: "file_request", scope: "participation", instructions: "Setup instructions attendees need before they arrive.", types: ["pdf"], maxMb: 50 },
+    { n: 9, title: "Volunteer shift preferences", kind: "general", scope: "person", instructions: "Which days and times you can help." },
   ];
-  tasks.forEach((tk, i) => {
+  tasks.forEach((tk) => {
     out.push(
       insertSelect(
         "task",
         {
-          id: `demo_mp_task_${i + 1}`,
+          id: `demo_mp_task_${tk.n}`,
           event_id: E,
           kind: tk.kind,
           title: tk.title,
@@ -544,12 +545,17 @@ export function portalDemoStatements(nowMs: number): string[] {
   out.push(item("demo_mp_item_cfp_av", "demo_mp_portal_cfp", { task: "AV needs" }, { deadline: "fixed", due: day(2027, 4, 20), required: true, position: 1 }));
   out.push(item("demo_mp_item_cfp_release", "demo_mp_portal_cfp", { task: "Speaker release" }, { deadline: "fixed", due: dayLabel(t(-5)), required: true, position: 2, viewOnly: true }));
   out.push(item("demo_mp_item_cfp_share", "demo_mp_portal_cfp", { task: "Share your talk" }, { deadline: "none", required: false, position: 3 }));
+  // the client's must-have travel forms (the seed's own Hotel and Flight
+  // tasks), as a new event's CFP speakers template lists them
+  out.push(item("demo_mp_item_cfp_hotel", "demo_mp_portal_cfp", { task: "Hotel stay requirement form" }, { deadline: "relative", days: 14, required: true, position: 4 }));
+  out.push(item("demo_mp_item_cfp_flight", "demo_mp_portal_cfp", { task: "Flight reimbursement form" }, { deadline: "relative", days: 14, required: true, position: 5 }));
   // Invited speakers
   out.push(item("demo_mp_item_inv_accept", "demo_mp_portal_invited", { system: "acceptance" }, { deadline: "fixed", due: day(2027, 3, 15), required: true, position: 0 }));
   out.push(item("demo_mp_item_inv_bio", "demo_mp_portal_invited", { system: "bio" }, { deadline: "fixed", due: day(2027, 4, 3), required: true, grace: 7, position: 1 }));
-  out.push(item("demo_mp_item_inv_travel", "demo_mp_portal_invited", { task: "Travel form" }, { deadline: "relative", days: 14, required: true, position: 2 }));
-  out.push(item("demo_mp_item_inv_prep", "demo_mp_portal_invited", { task: "Panel prep notes" }, { deadline: "fixed", due: day(2027, 5, 1), required: false, position: 3 }));
-  out.push(item("demo_mp_item_inv_slides", "demo_mp_portal_invited", { task: "Final slides" }, { deadline: "fixed", due: day(2027, 5, 1), required: true, grace: 7, position: 4 }));
+  out.push(item("demo_mp_item_inv_hotel", "demo_mp_portal_invited", { task: "Hotel stay requirement form" }, { deadline: "relative", days: 14, required: true, position: 2 }));
+  out.push(item("demo_mp_item_inv_flight", "demo_mp_portal_invited", { task: "Flight reimbursement form" }, { deadline: "relative", days: 14, required: true, position: 3 }));
+  out.push(item("demo_mp_item_inv_prep", "demo_mp_portal_invited", { task: "Panel prep notes" }, { deadline: "fixed", due: day(2027, 5, 1), required: false, position: 4 }));
+  out.push(item("demo_mp_item_inv_slides", "demo_mp_portal_invited", { task: "Final slides" }, { deadline: "fixed", due: day(2027, 5, 1), required: true, grace: 7, position: 5 }));
   // Sponsors
   out.push(item("demo_mp_item_sp_logo", "demo_mp_portal_sponsors", { task: "Logo and booth details" }, { deadline: "fixed", due: dayLabel(t(-3)), required: true, grace: 7, position: 0 }));
   out.push(item("demo_mp_item_sp_sessions", "demo_mp_portal_sponsors", { system: "sponsor_sessions" }, { deadline: "fixed", due: day(2027, 4, 15), required: true, position: 1 }));

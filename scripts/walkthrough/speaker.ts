@@ -602,12 +602,9 @@ async function main(): Promise<void> {
   // wave 56).
   // -------------------------------------------------------------------------
 
-  // DEC-009 amendment (wave 59): the seeded 'Finalize bio + headshot'
-  // default onboarding task changed kind from 'file_request' to 'general'
-  // (src/domain/acceptance.ts PROFILE_TASK_TITLE) — it now completes via a
-  // /portal/profile bio+headshot save, not an upload widget, and no default
-  // onboarding task is 'file_request' kind anymore. This walkthrough
-  // predates that amendment. Exercise the DEC-244 deliverable panel against
+  // No seeded default onboarding task is 'file_request' kind (decision 78
+  // folded the old ones away, and the built-in Bio and Headshot replaced the
+  // former 'Finalize bio + headshot'). Exercise the DEC-244 deliverable panel against
   // an organizer-created ad hoc file_request task instead (same idiom as
   // the ad hoc form-kind task above), which keeps the upload/version/
   // comment-thread flow covered independent of the default task set.

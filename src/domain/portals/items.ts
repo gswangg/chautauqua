@@ -40,12 +40,13 @@ export const SYSTEM_ITEM_SCOPES: Record<SystemItemKind, ItemScope> = {
   headshot: "person",
 };
 
-// Built-in items only make sense for some participations.
+// A built-in has its own page in the product, so the library says where
+// people answer it (in place of the Edit a library task offers).
 export const SYSTEM_ITEM_HINTS: Record<SystemItemKind, string> = {
-  acceptance: "Built in · invited participations",
-  sponsor_sessions: "Built in · sponsor contacts",
-  bio: "Built in · the person's profile",
-  headshot: "Built in · the person's profile",
+  acceptance: "People answer this on their invitation",
+  sponsor_sessions: "Sponsor contacts do this in the session designer",
+  bio: "People fill this in on their profile",
+  headshot: "People add this on their profile",
 };
 
 export const DEADLINE_KINDS = ["none", "fixed", "relative"] as const;

@@ -6,5 +6,6 @@ public/admin/
 /.seed.sql
 /.perf-seed.sql
 /.portal-demo.sql
+/.demo-fold.sql
 /.seed-assets/
 .dev.vars

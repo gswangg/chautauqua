@@ -26,13 +26,6 @@ export interface OnboardingTaskTemplate {
   dueDaysBeforeEventStart: number;
 }
 
-/** DEC-009 amendment (wave 59): the canonical title of the profile-completion
- * onboarding task, shared with src/server/repo/profile.ts (which closes the
- * assignment once a contact has BOTH a bio and a headshot) and
- * src/routes/portal/tasks/views.tsx (which renders it as a link to
- * /portal/profile rather than an upload widget). */
-export const PROFILE_TASK_TITLE = "Finalize bio + headshot";
-
 /** DEC-009's onboarding set, in order. Multi-portal decision 76: the
  * product no longer creates it on acceptance (portals are the one engine);
  * it survives as seed data -- the demo event's pre-portal history
@@ -41,13 +34,9 @@ export const DEFAULT_ONBOARDING_TASKS: readonly OnboardingTaskTemplate[] = [
   { title: "Hotel stay requirement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
   { title: "Flight reimbursement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
   { title: "Finalize talk description", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
-  // DEC-009 amendment (wave 59): was kind 'file_request', which routed
-  // completion through the FILE_KINDS deliverable pipeline (files.ts) — a
-  // mis-typed session file, never the contact's real bio/headshot. 'general'
-  // means the portal renders it as a link to /portal/profile instead of an
-  // upload widget; src/server/repo/profile.ts closes the assignment
-  // set-based once a saved profile carries both fields.
-  { title: PROFILE_TASK_TITLE, kind: "general", required: false, dueDaysBeforeEventStart: 21 },
+  // the pre-portal bio + headshot ask; the built-in Bio and Headshot items
+  // replace it (decision 78 folds it out of the demo event)
+  { title: "Finalize bio + headshot", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
   { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
 ];
 

@@ -35,7 +35,7 @@ function entry(overrides: Partial<LibraryEntry> & Pick<LibraryEntry, 'ref' | 'ty
 function listing(): LibraryListing {
   return {
     entries: [
-      entry({ ref: { systemKind: 'acceptance' }, type: 'built_in', title: 'Accept your invitation', scope: 'participation', hint: 'Built in · invited participations', usedBy: [{ id: 'p-inv', name: 'Invited speakers' }] }),
+      entry({ ref: { systemKind: 'acceptance' }, type: 'built_in', title: 'Accept your invitation', scope: 'participation', hint: 'People answer this on their invitation', usedBy: [{ id: 'p-inv', name: 'Invited speakers' }] }),
       entry({ ref: { taskId: 't-av' }, type: 'task', title: 'AV needs', scope: 'participation', instructions: 'Mics, adapters, a clicker.', usedBy: [{ id: 'p-cfp', name: 'CFP speakers' }] }),
       entry({ ref: { taskId: 't-announce' }, type: 'task', title: 'Announce participation', direct: true }),
       entry({ ref: { taskId: 't-slides' }, type: 'file_request', title: 'Final slides', scope: 'participation', acceptedTypes: ['pdf', 'keynote', 'powerpoint'], maxSizeMb: 200, maxFiles: 2, usedBy: [{ id: 'p-cfp', name: 'CFP speakers' }, { id: 'p-inv', name: 'Invited speakers' }] }),
@@ -104,7 +104,7 @@ describe('LibraryPage', () => {
     // built-ins have no Edit
     const accept = screen.getByText('Accept your invitation').closest('li')!;
     expect(within(accept).queryByRole('button', { name: /Edit/ })).not.toBeInTheDocument();
-    expect(within(accept).getByText('Built in · invited participations')).toBeInTheDocument();
+    expect(within(accept).getByText('People answer this on their invitation')).toBeInTheDocument();
   });
 
   it('a form item links to its own questions in the form builder', async () => {

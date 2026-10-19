@@ -21,7 +21,6 @@ import { formatCalendarDate, formatEventDateTime, formatEventDateTimeWithSeconds
 import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../../domain/task-due";
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
-import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
 import { countOf } from "../../../domain/count-copy";
 import { DEC_576, DEC_967, DEC_393, DEC_996 } from "../../../decisions";
 
@@ -280,15 +279,7 @@ export function TaskRow(props: {
       ) : null}
       {t.status === "complete" ? null : (
         <div class="chq-portal-actions">
-          {/* DEC-009 amendment (wave 59): this task's real completion path is
-              the portal profile save (bio + headshot), never a bare
-              mark-done checkbox or an upload widget — a checkbox here would
-              let a speaker flip the task green with neither field filled
-              in. */}
-          {t.kind === "general" && t.title === PROFILE_TASK_TITLE ? (
-            <a href="/portal/profile" class="chq-btn chq-btn-primary">Update your bio and headshot &rsaquo;</a>
-          ) : null}
-          {t.kind === "general" && t.title !== PROFILE_TASK_TITLE ? (
+          {t.kind === "general" ? (
             <form method="post" action={`/portal/tasks/${t.id}/complete`}>
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
               <button type="submit" class="chq-btn chq-btn-primary">Mark complete</button>
@@ -477,9 +468,6 @@ function tasksPageDockPrimary(
     return (
       <a href={formLinkFor(next) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
     );
-  }
-  if (next.kind === "general" && next.title === PROFILE_TASK_TITLE) {
-    return <a href="/portal/profile" class="chq-btn chq-btn-primary">Update your bio and headshot &rsaquo;</a>;
   }
   if (next.kind === "general") {
     return (

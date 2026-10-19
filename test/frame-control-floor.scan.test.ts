@@ -638,7 +638,7 @@ const HAND_VERIFIED_COMPOSED: { fileName: string; line: number; reason: string }
     fileName: 'Chautauqua Public and Portal.dc.html',
     line: 493,
     reason:
-      'BLESSED SUBSTITUTION (DEC-967 wave-106 amendment, cited verbatim in src/routes/portal/tasks/views.tsx\'s own header comment above `tasksPageDockPrimary`): the frame\'s fixed dock resolves to "the first NOT-complete assignment\'s own existing control -- the same href/label/form the row itself would render, reused rather than duplicated content" (one of "Fill out form" / "Update your bio and headshot ›" / "Mark complete", never the literal frame string "Mark the release signed") -- a RULED, deliberate divergence, not an unadjudicated gap.',
+      'BLESSED SUBSTITUTION (DEC-967 wave-106 amendment, cited verbatim in src/routes/portal/tasks/views.tsx\'s own header comment above `tasksPageDockPrimary`): the frame\'s fixed dock resolves to "the first NOT-complete assignment\'s own existing control -- the same href/label/form the row itself would render, reused rather than duplicated content" (one of "Fill out form" / "Mark complete", never the literal frame string "Mark the release signed") -- a RULED, deliberate divergence, not an unadjudicated gap.',
   },
   {
     fileName: 'Chautauqua Public and Portal.dc.html',

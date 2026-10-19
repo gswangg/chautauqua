@@ -11,6 +11,7 @@
 // (DEC-002's pure-core rule scopes to src/{auth,domain,forms,mail,lib}).
 
 import { portalDemoStatements, profileBasicsForEveryEvent } from "./portal-demo-lib";
+import { demoFoldStatements } from "./demo-fold-lib";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -3308,6 +3309,9 @@ async function main(): Promise<void> {
   // from scripts/portal-demo-seed.ts)
   statements.push(...portalDemoStatements(SEED_NOW));
   statements.push(profileBasicsForEveryEvent(SEED_NOW));
+  // decision 78 (scripts/demo-fold-lib.ts): the pre-portal tasks that repeat
+  // a portal item or a built-in are folded away, as on production
+  statements.push(...demoFoldStatements(SEED_NOW));
 
   const sql = statements.join("\n") + "\n";
   writeFileAtomic(OUTPUT_PATH, sql);

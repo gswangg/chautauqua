@@ -23,7 +23,6 @@ void DEC_154; // DEC-154 (wave 125): profile adopts the ONE SSR dock band — se
 void DEC_576; // DEC-576 (wave-110/119): the dock is PortalLayout's real footer element, one copy at any width.
 void DEC_385; // DEC-385: the phone override lives in portal.css.ts's terminal max-width block only.
 import {
-  completeProfileTaskForContact,
   getContactProfile,
   getHeadshotServeScope,
   setContactHeadshot,
@@ -554,18 +553,6 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     socialLinks,
     ...(phone !== undefined ? { phone } : {}),
   });
-
-  // DEC-009 amendment (wave 59): the "Finalize bio + headshot" onboarding
-  // task closes only once this save leaves BOTH a non-empty bio AND a
-  // headshot in place — a headshot uploaded just now (uploadedHeadshot) or
-  // one already on file from a prior save (storedProfile.headshotUrl,
-  // unchanged by this request when no new file was chosen). completeProfileTaskForContact
-  // only ever touches still-pending rows, so this is safe to call on every
-  // save, not just the one that newly satisfies the condition.
-  const hasHeadshotAfterSave = uploadedHeadshot || storedProfile.headshotUrl !== null;
-  if (bio && hasHeadshotAfterSave) {
-    await completeProfileTaskForContact(c.var.db, contactId, auth.orgId, auth.userId);
-  }
 
   // Redirect (PRG) rather than re-rendering directly: a fresh GET picks up
   // the newly-saved fields and headshot, and ?saved=1 (plus ?headshot=1

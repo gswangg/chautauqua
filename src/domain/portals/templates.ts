@@ -88,7 +88,7 @@ export const PORTAL_TEMPLATES: readonly PortalTemplate[] = [
   {
     key: "invited_speakers",
     name: "Invited speakers",
-    blurb: "Accept the invitation, bio, travel",
+    blurb: "Accept the invitation, bio, hotel and flight forms",
     note: "As an invited speaker, you'll confirm your session and share a bio.",
     rule: {
       groups: [
@@ -105,7 +105,9 @@ export const PORTAL_TEMPLATES: readonly PortalTemplate[] = [
     items: [
       { systemKind: "acceptance", deadlineKind: "none", required: true },
       { systemKind: "bio", deadlineKind: "none", required: true },
-      { task: { title: "Travel form", kind: "general", scope: "person", instructions: "Your travel dates and where you're flying from." }, deadlineKind: "relative", relativeDays: 14, required: true },
+      // the same two travel forms CFP speakers get (decision 78: one travel ask)
+      { task: { title: "Hotel stay requirement form", kind: "form", scope: "person", instructions: "Tell us whether you need a hotel room, and for which nights." }, deadlineKind: "relative", relativeDays: 14, required: true },
+      { task: { title: "Flight reimbursement form", kind: "form", scope: "person", instructions: "Send your flight details so we can reimburse you." }, deadlineKind: "relative", relativeDays: 14, required: true },
     ],
   },
   {
