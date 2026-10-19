@@ -128,12 +128,13 @@ export function PersonRecordPage() {
     );
   }
 
+  // the link itself is the flex item (as the task view's back link is): a
+  // wrapper around it measured 12px short, since a link button's negative
+  // margins cancel its padding, and the label wrapped after the chevron
   const back = (
-    <div className="chq-person-record-back">
-      <Link className="chq-link-button" to="/contacts">
-        &lsaquo; Contacts
-      </Link>
-    </div>
+    <Link className="chq-link-button chq-person-record-back" to="/contacts">
+      &lsaquo; Contacts
+    </Link>
   );
 
   if (load.kind === 'not_found') {

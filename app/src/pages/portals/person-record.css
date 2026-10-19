@@ -24,6 +24,7 @@
 .chq-person-record-back {
   font-size: 13px;
   font-weight: 700;
+  align-self: flex-start;
 }
 
 .chq-person-record-meta {
