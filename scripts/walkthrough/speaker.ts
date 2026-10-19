@@ -444,7 +444,11 @@ async function main(): Promise<void> {
     const resources = await speaker1.getText("/portal/resources");
     assert(resources.status === 200, `GET /portal/resources returned ${resources.status}`);
     assert(resources.body.includes("Speaker Handbook"), "resources page missing the seeded wiki resource");
-    assert(resources.body.includes("Download"), "resources page missing a downloadable file resource");
+    // the file resource itself and its download route -- the page's own
+    // control reads "Open" (v12m-w5-a), and a bare "Download" only ever
+    // matched the inlined portal stylesheet (decision 74 removed that rule)
+    assert(resources.body.includes("Speaker slide template"), "resources page missing the seeded file resource");
+    assert(/\/portal\/resources\/[\w-]+\/download/.test(resources.body), "resources page missing a file resource's download link");
   });
 
   const myAssignmentId = await check("find my own general task's assignment id via /portal/tasks", async () => {
