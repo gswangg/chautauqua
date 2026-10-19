@@ -4,8 +4,8 @@
 // matches nothing. Run the multi-portal demo SQL first so the Hotel and
 // Flight forms are already in their portals.
 //
-//   npx tsx scripts/portal-demo-seed.ts && npx wrangler d1 execute chautauqua --remote --file=.portal-demo.sql
-//   npx tsx scripts/demo-fold.ts && npx wrangler d1 execute chautauqua --remote --file=.demo-fold.sql
+//   npm run seed:portal-demo:remote
+//   npm run seed:demo-fold:remote
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

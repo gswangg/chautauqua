@@ -7,7 +7,7 @@ void DEC_699;
 
 // DEC-180 wave-79 amendment: ONE declaration (the array), the type derived
 // from it via `typeof ARR[number]` -- the idiom already in the tree at
-// src/domain/acceptance.ts:141-150 -- instead of a type union and a value
+// src/domain/acceptance.ts:130-139 -- instead of a type union and a value
 // array separately re-listing the same six literals.
 export const SUBMISSION_STATUSES = [
   "pending",
