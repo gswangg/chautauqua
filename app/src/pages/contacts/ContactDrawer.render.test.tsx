@@ -473,12 +473,12 @@ describe('ContactDrawer event-scoped group (DEC-941)', () => {
     const group = within(dialog).getByText('On this event').closest('.chq-contacts-record-group') as HTMLElement;
     expect(
       within(group).getByText(
-        "These facts belong to this event only — everything above is this person's org-wide record.",
+        "These facts belong to this event only — everything above is this person's contact details, shared across your events.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      within(dialog).getByText("Saves both the org-wide record and this event's facts"),
+      within(dialog).getByText("Saves both the contact details and this event's facts"),
     ).toBeInTheDocument();
   });
 
@@ -508,12 +508,12 @@ describe('ContactDrawer event-scoped group (DEC-941)', () => {
     const group = groupHead!.closest('.chq-contacts-record-group') as HTMLElement;
     expect(
       within(group).getByText(
-        "These facts belong to this event only — everything above is this person's org-wide record.",
+        "These facts belong to this event only — everything above is this person's contact details, shared across your events.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      within(dialog).getByText("Saves both the org-wide record and DevCon 2026's facts"),
+      within(dialog).getByText("Saves both the contact details and DevCon 2026's facts"),
     ).toBeInTheDocument();
   });
 });

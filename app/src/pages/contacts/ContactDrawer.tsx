@@ -625,7 +625,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
               <FieldGroup title={currentEventName ?? 'On this event'}>
                 <p className="chq-meta chq-contacts-record-group-caption">
-                  These facts belong to this event only — everything above is this person's org-wide record.
+                  These facts belong to this event only — everything above is this person's contact details, shared across your events.
                 </p>
                 {labelsNode}
                 {/* DEC-292 amendment (findings wave 5): the "This event"
@@ -697,7 +697,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             {!readMode && (
               <>
                 <p className="chq-meta chq-contacts-save-scope-note">
-                  {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
+                  {`Saves both the contact details and ${currentEventName ?? 'this event'}'s facts`}
                 </p>
                 <div className="chq-contacts-drawer-actions">
                   <button
