@@ -223,7 +223,7 @@ export function LibraryPage() {
                           </button>
                           <button
                             type="button"
-                            className="chq-btn chq-btn-tertiary"
+                            className="chq-btn chq-btn-destructive-tertiary"
                             onClick={() => {
                               setDeleteError(null);
                               setDeletingResource(entry);

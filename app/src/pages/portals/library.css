@@ -80,7 +80,13 @@
 
 .chq-library-side {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
+  /* a resource row carries Edit, Delete and its visibility switch; the
+     tertiary buttons' negative inline margins cancel their own padding, so
+     this gap is the space a reader sees between the words */
+  gap: 16px;
 }
 
 .chq-library-visibility {
@@ -91,6 +97,10 @@
   .chq-library-row {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .chq-library-side {
+    justify-content: flex-start;
   }
 
   .chq-library-side .chq-btn {
