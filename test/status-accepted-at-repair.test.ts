@@ -138,7 +138,9 @@ describe("DEC-009/DEC-079 wave-26: accepted_at repair vs. re-accept vs. first ac
     expect(participantSelectCalls).toEqual([]);
   });
 
-  it("case 2: genuine re-accept plans but does not re-stamp accepted_at", async () => {
+  // multi-portal decision 76: acceptance plans no tasks any more, so no
+  // participant SELECT happens; the stamp rules are unchanged
+  it("case 2: genuine re-accept does not re-stamp accepted_at", async () => {
     const originalAcceptedAt = new Date(1000);
     const { db, submissions, participantSelectCalls } = fakeDb([
       { id: "sub-2", status: "declined", acceptedAt: originalAcceptedAt },
@@ -147,14 +149,13 @@ describe("DEC-009/DEC-079 wave-26: accepted_at repair vs. re-accept vs. first ac
     const result = await updateSubmissionStatuses(db, EVENT_ID, ["sub-2"], "accepted", new Date(9000));
 
     expect(result.updated).toBe(1);
-    // fireAcceptance fires -> participant SELECT happens (the "plans" side).
-    expect(participantSelectCalls).toEqual([["sub-2"]]);
+    expect(participantSelectCalls).toEqual([]);
     // setsAcceptedAt is false (accepted_at was already non-null) -> the
     // original stamp is preserved, not overwritten with `now`.
     expect(submissions.get("sub-2")).toEqual({ id: "sub-2", status: "accepted", acceptedAt: originalAcceptedAt });
   });
 
-  it("case 3: first accept both plans and stamps accepted_at", async () => {
+  it("case 3: first accept stamps accepted_at", async () => {
     const { db, submissions, participantSelectCalls } = fakeDb([
       { id: "sub-3", status: "pending", acceptedAt: null },
     ]);
@@ -162,7 +163,7 @@ describe("DEC-009/DEC-079 wave-26: accepted_at repair vs. re-accept vs. first ac
     const result = await updateSubmissionStatuses(db, EVENT_ID, ["sub-3"], "accepted", new Date(9000));
 
     expect(result.updated).toBe(1);
-    expect(participantSelectCalls).toEqual([["sub-3"]]);
+    expect(participantSelectCalls).toEqual([]);
     expect(submissions.get("sub-3")).toEqual({ id: "sub-3", status: "accepted", acceptedAt: new Date(9000) });
   });
 

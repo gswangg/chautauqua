@@ -2206,6 +2206,9 @@ async function main(): Promise<void> {
         required: tpl.required,
         form_id: taskFormId,
         deliverable_kind: deliverableKind,
+        // multi-portal decision 76: the demo's pre-portal tasks are
+        // hand-picked lists (the retired 'everyone' audience)
+        audience: "targeted",
         created_at: nextTs(),
         updated_at: ts,
       }),
@@ -2241,6 +2244,7 @@ async function main(): Promise<void> {
       required: true,
       form_id: null,
       deliverable_kind: "presentation",
+      audience: "targeted",
       created_at: nextTs(),
       updated_at: ts,
     }),

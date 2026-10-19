@@ -346,30 +346,26 @@ async function main(): Promise<void> {
 
   const speakerParticipant = detailAfter.participants.find((p) => p.email === fixture.identities.speaker.email)!;
 
-  await check("default onboarding task set was created for the speaker", async () => {
-    const { status, body } = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
-    assert(status === 200, `GET onboarding grid returned ${status}`);
-    const row = body.rows.find((r) => r.contact.id === speakerParticipant.contactId);
-    assert(row, "no onboarding grid row for the newly-accepted speaker");
-
-    const titlesForRow = row!.cells
-      .map((cell) => body.tasks.find((t) => t.id === cell.taskId)?.title)
-      .filter((t): t is string => Boolean(t));
-    for (const title of [
-      "Hotel stay requirement form",
-      "Flight reimbursement form",
-      "Finalize talk description",
-      "Finalize bio + headshot",
-      "Announce participation",
-    ]) {
-      assert(titlesForRow.includes(title), `onboarding tasks missing '${title}': ${titlesForRow.join(", ")}`);
+  // multi-portal decision 76: acceptance plans no tasks itself -- the
+  // accepted CFP talk joins the CFP speakers portal, whose items arrive on
+  // the reconcile the status route schedules (ctx.waitUntil), so poll briefly
+  await check("accepting the talk brings the CFP speakers portal's items", async () => {
+    const wanted = ["Final slides", "AV needs", "Speaker release"];
+    let titlesForRow: string[] = [];
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const { status, body } = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
+      assert(status === 200, `GET onboarding grid returned ${status}`);
+      const row = body.rows.find((r) => r.contact.id === speakerParticipant.contactId);
+      assert(row, "no onboarding grid row for the newly-accepted speaker");
+      titlesForRow = row!.cells
+        .map((cell) => body.tasks.find((t) => t.id === cell.taskId)?.title)
+        .filter((t): t is string => Boolean(t));
+      if (wanted.every((title) => titlesForRow.includes(title))) break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-
-    const hotelTask = body.tasks.find((t) => t.title === "Hotel stay requirement form");
-    const flightTask = body.tasks.find((t) => t.title === "Flight reimbursement form");
-    assert(hotelTask?.kind === "form" && hotelTask.required, "Hotel task must be kind 'form' and required");
-    assert(flightTask?.kind === "form" && flightTask.required, "Flight task must be kind 'form' and required");
-    assert("dueDate" in (hotelTask ?? {}), "grid task is missing a dueDate field");
+    for (const title of wanted) {
+      assert(titlesForRow.includes(title), `portal items missing '${title}': ${titlesForRow.join(", ")}`);
+    }
   });
 
   await check("re-accepting is idempotent (no duplicate onboarding tasks)", async () => {
@@ -429,7 +425,7 @@ async function main(): Promise<void> {
 
   await check("portal dashboard shows tasks with deadlines/required markers", async () => {
     const dashboard = await speaker1.getText("/portal");
-    assert(dashboard.body.includes("Hotel stay requirement form"), "portal dashboard missing onboarding task");
+    assert(dashboard.body.includes("Final slides"), "portal dashboard missing the CFP speakers portal's items");
     // multi-portal home (docs/design/multi-portal/, flow 6): a required
     // item with a deadline says so in its line ("Due 31 Oct · required")
     assert(dashboard.body.includes('class="chq-home-required"'), "portal dashboard is missing a required-task marker");
@@ -475,18 +471,11 @@ async function main(): Promise<void> {
   });
 
   // -------------------------------------------------------------------------
-  // DEC-111 (landed on main, task w11-a re-lands the DEC-112 probes per
-  // DEC-113): acceptance-created 'Hotel stay requirement form' and 'Flight
-  // reimbursement form' onboarding tasks (kind 'form', SPEC.md:131-132) get a
-  // real backing form self-healed onto task.formId at task-creation time
-  // (find-or-create by exact title, isDefault=false; getOrCreateTask in
-  // src/server/repo/submissions/status.ts). Hotel is exercised as a
-  // GET-only 'form present at creation' probe below (no POST — it stays
-  // Pending so the ad hoc-task attach flow further down remains untouched
-  // coverage of a *different* path: PATCH/attach-at-creation of an
-  // organizer-authored task, not the self-healed default tasks). Flight is
-  // exercised end to end (GET the self-healed form, fill it, POST, confirm
-  // completion) via completeSelfHealedFormTask below.
+  // Multi-portal decision 76: acceptance no longer creates the Hotel/Flight
+  // form tasks. A new event's CFP speakers portal lists them (from its
+  // template, test/tasks-one-engine.test.ts); the demo event's hand-built
+  // portal doesn't, and its speakers keep theirs as hand-picked tasks. The
+  // ad hoc form task below covers the form flow end to end.
   // -------------------------------------------------------------------------
 
   function escapeRegex(s: string): string {
@@ -512,110 +501,9 @@ async function main(): Promise<void> {
   // the page instead of stopping at the intended row.
   const NEXT_TASK_ROW = escapeRegex('<div class="chq-portal-row" id="');
 
-  async function completeSelfHealedFormTask(taskTitle: string, expectedBodyText?: string): Promise<void> {
-    // Look up the assignment id via the organizer's onboarding grid (DEC-023
-    // owns assignment status semantics; the grid's assignmentId is stable
-    // regardless of the task's current pending/complete status), rather
-    // than scraping /portal/tasks for a 'Fill out form' href — the seed's
-    // isComplete distribution (scripts/seed.ts) may seed some self-healed
-    // form tasks as already-complete for a given contact, in which case the
-    // portal page never renders that href at all.
-    const assignmentId = await check(
-      `find my '${taskTitle}' task's assignment id via the organizer's onboarding grid (DEC-111 self-healed form)`,
-      async () => {
-        const { status, body } = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
-        assert(status === 200, `GET onboarding grid returned ${status}`);
-        const row = body.rows.find((r) => r.contact.id === speakerParticipant.contactId);
-        assert(row, "no onboarding grid row for the speaker");
-        const task = body.tasks.find((t) => t.title === taskTitle);
-        assert(task, `no onboarding task titled '${taskTitle}' found in the grid`);
-        const cell = row!.cells.find((c) => c.taskId === task!.id);
-        assert(cell, `no onboarding grid cell for task '${taskTitle}' on the speaker's row`);
-        return cell!.assignmentId;
-      },
-    );
-
-    const dropdownFieldName = await check(
-      `GET /portal/tasks/:assignmentId/form for '${taskTitle}' returns 200 (DEC-111: real formId, not 400 'not a form task')`,
-      async () => {
-        const res = await speaker1.getText(`/portal/tasks/${assignmentId}/form`);
-        assert(
-          res.status === 200,
-          `GET /portal/tasks/${assignmentId}/form returned ${res.status} (expected 200 once DEC-111 self-heals task.formId): ${res.body.slice(0, 300)}`,
-        );
-        if (expectedBodyText) {
-          assert(
-            res.body.includes(expectedBodyText),
-            `'${taskTitle}' form page is missing the expected field prompt '${expectedBodyText}' (DEC-111 field spec)`,
-          );
-        }
-        const match = res.body.match(/<select[^>]*name="(field__[\w-]+)"/);
-        assert(
-          match,
-          `'${taskTitle}' form page has no dropdown <select> field (expected the required 'Yes'/'No' dropdown per DEC-111)`,
-        );
-        return match![1]!;
-      },
-    );
-
-    await check(`POST valid answers for '${taskTitle}' (required dropdown 'Yes', csrfForm-formatted body) completes the assignment`, async () => {
-      const res = await speaker1.postForm(`/portal/tasks/${assignmentId}/form`, {
-        [dropdownFieldName]: "Yes",
-      });
-      assert(res.status === 302, `POST /portal/tasks/${assignmentId}/form expected 302, got ${res.status}`);
-
-      const tasksPage = await speaker1.getText("/portal/tasks");
-      assert(
-        !tasksPage.body.includes(`/portal/tasks/${assignmentId}/form`),
-        `'${taskTitle}' still shows a 'Fill out form' link after completion`,
-      );
-      // DEC-366: on-screen wording is frozen as "Done"/"To do".
-      // src/routes/portal/tasks/views.tsx:237-238 renders "Done"/"To do"
-      // (never "Completed"/"Pending") behind the chq-flag / chq-portal-
-      // flag-done classes.
-      const rowMatch = tasksPage.body.match(
-        new RegExp(`${escapeRegex(taskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?(Done|To do)`),
-      );
-      assert(rowMatch, `could not find the '${taskTitle}' row on /portal/tasks after submission`);
-      assert(
-        rowMatch![1] === "Done",
-        `'${taskTitle}' assignment status is '${rowMatch![1]}', expected 'Done' after submission`,
-      );
-    });
-  }
-
-  const hotelFormAssignmentId = await check(
-    "find my 'Hotel stay requirement form' task's assignment id via /portal/tasks (DEC-111 self-healed form)",
-    async () => {
-      const tasksPage = await speaker1.getText("/portal/tasks");
-      assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
-      const match = tasksPage.body.match(
-        new RegExp(
-          `${escapeRegex("Hotel stay requirement form")}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`,
-        ),
-      );
-      assert(match, "could not find the 'Hotel stay requirement form' task's 'Fill out form' link on /portal/tasks");
-      return match![1]!;
-    },
-  );
-
-  await check(
-    "GET /portal/tasks/:assignmentId/form for 'Hotel stay requirement form' returns 200 (DEC-111: real formId self-healed at task creation, not a 400 'not a form task') — GET only, task is left Pending",
-    async () => {
-      const res = await speaker1.getText(`/portal/tasks/${hotelFormAssignmentId}/form`);
-      assert(
-        res.status === 200,
-        `GET /portal/tasks/${hotelFormAssignmentId}/form returned ${res.status} (expected 200 once DEC-111 self-heals task.formId): ${res.body.slice(0, 300)}`,
-      );
-    },
-  );
-
-  await completeSelfHealedFormTask("Flight reimbursement form", "Do you need flight reimbursement?");
-
   // -------------------------------------------------------------------------
   // form-kind task assignment (task w10-a addition, retargeted at an ad hoc
-  // task by task w10-e so it doesn't collide with the DEC-111 Hotel/Flight
-  // probes above, which now own those two task titles end to end): an
+  // task by task w10-e): an
   // organizer-created custom kind='form' task starts with formId set at
   // creation time (no self-heal needed — this exercises the general
   // attach-a-form-then-complete flow with the seeded CFP form's real field
@@ -1454,17 +1342,17 @@ async function main(): Promise<void> {
   });
 
   await check("DEC-175 speaker2 GET speaker1's task-assignment form -> 403", async () => {
-    const res = await speaker2.getText(`/portal/tasks/${hotelFormAssignmentId}/form`);
+    const res = await speaker2.getText(`/portal/tasks/${adHocAssignmentId}/form`);
     assert(res.status === 403, `expected 403, got ${res.status}`);
   });
 
   await check("DEC-175 speaker2 POST speaker1's task-assignment form -> 403", async () => {
-    const res = await speaker2.postForm(`/portal/tasks/${hotelFormAssignmentId}/form`, {});
+    const res = await speaker2.postForm(`/portal/tasks/${adHocAssignmentId}/form`, {});
     assert(res.status === 403, `expected 403, got ${res.status}`);
   });
 
   await check("DEC-175 speaker2 POST-complete speaker1's task assignment -> 403", async () => {
-    const res = await speaker2.postForm(`/portal/tasks/${hotelFormAssignmentId}/complete`, {});
+    const res = await speaker2.postForm(`/portal/tasks/${adHocAssignmentId}/complete`, {});
     assert(res.status === 403, `expected 403, got ${res.status}`);
   });
 

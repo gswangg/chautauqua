@@ -13,7 +13,7 @@ import { isUniqueViolation } from "../constraints";
 import { DEC_528, DEC_556, DEC_746, DEC_801 } from "../../../decisions";
 import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 import type { FileKind } from "../../../domain/files";
-import { DEFAULT_TASK_AUDIENCE, type TaskAudience } from "../../../domain/task-kinds";
+import type { TaskAudience } from "../../../domain/task-kinds";
 import { insertColumnCount } from "../../../db/insert-columns";
 
 void DEC_746; // wave-77 amendment: task.audience is stamped here, per input.contactIds.
@@ -40,18 +40,13 @@ export interface CreateTaskInput {
   // CNT-01 (migrations/0036): a free-text brief for the assignee, distinct
   // from `description`. null clears/omits it.
   instructions?: string | null;
-  // DEC-746 (wave 59 amendment, REVERSES the original "creation always
-  // expands" clause): when present, the caller has already validated this
-  // is a non-empty array of ids that all pass filterRosterContactIds for
-  // this event -- createTask assigns exactly this set instead of expanding.
-  // Absent means every accepted speaker, byte-for-byte the original
-  // behavior.
+  // Multi-portal decision 76: the people this task is assigned to by name,
+  // already validated by the caller against the event roster. Absent means
+  // nobody yet -- a task never silently expands to "every accepted
+  // speaker" any more; groups get tasks through portals.
   contactIds?: string[];
-  // DEC-746 (wave-77 amendment): the caller (routes/tasks.ts) stamps
-  // 'targeted' when contactIds is present, DEFAULT_TASK_AUDIENCE otherwise.
-  // Omitted means DEFAULT_TASK_AUDIENCE ('everyone'), matching the schema
-  // column's own default -- callers that don't care about audience (tests,
-  // getOrCreateTask's default-onboarding-template path) need not thread it.
+  // decision 76: 'targeted' (picked by name, the default) or 'portal' (a
+  // portal item); 'everyone' is retired (migrations/0047).
   audience?: TaskAudience;
 }
 
@@ -367,7 +362,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
       formId: input.formId ?? null,
       deliverableKind: input.deliverableKind ?? null,
       instructions: input.instructions ?? null,
-      audience: input.audience ?? DEFAULT_TASK_AUDIENCE,
+      audience: input.audience ?? "targeted",
       createdAt: now,
       updatedAt: now,
     });
@@ -378,14 +373,8 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
     throw err;
   }
 
-  // DEC-746 (wave 59 amendment, REVERSES the original always-expand
-  // clause): input.contactIds, when present, is an explicit non-empty
-  // roster subset the caller (routes/tasks.ts) has already validated via
-  // filterRosterContactIds -- use it as-is. Absent still expands to every
-  // accepted speaker (with an active invite, per DEC-283/DEC-278),
-  // byte-for-byte the original behavior.
-  const contactIds = input.contactIds ?? (await listAcceptedContactIds(db, eventId));
-  await createTaskAssignments(db, id, contactIds, now);
+  // decision 76: exactly the people named, or nobody
+  if (input.contactIds && input.contactIds.length > 0) await createTaskAssignments(db, id, input.contactIds, now);
 
   const rows = await db.select().from(schema.task).where(eq(schema.task.id, id)).limit(1);
   const row = rows[0];

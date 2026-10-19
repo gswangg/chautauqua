@@ -476,13 +476,6 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
   },
   {
     fileName: 'Chautauqua Speakers.dc.html',
-    line: 194,
-    text: 'Created for all 12 accepted speakers',
-    reason:
-      "app/src/pages/speakers/TaskModal.tsx composes `Created for all ${acceptedCount} accepted speakers` as the New-task modal's subtitle, from the event's own live accepted-speaker count.",
-  },
-  {
-    fileName: 'Chautauqua Speakers.dc.html',
     line: 264,
     text: '12 accepted · 2 not claimed',
     reason:

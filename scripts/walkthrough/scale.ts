@@ -32,7 +32,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Scripts are tooling, not src/ pure-core, so importing src is fine.
-import { DEFAULT_ONBOARDING_TASKS } from "../../src/domain/acceptance";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -313,22 +312,6 @@ function sampleAssignmentCounts(grid: OnboardingGrid, contactIds: string[]): Map
 // an extra task. So the check is DERIVED (every default title has a cell)
 // rather than a positional/strict count, resolving titles through the
 // grid payload's own `tasks[]` (taskId -> title), never a hardcoded count.
-function sampleAssignedTitles(grid: OnboardingGrid, contactIds: string[]): Map<string, Set<string>> {
-  const titleByTaskId = new Map(grid.tasks.map((t) => [t.id, t.title]));
-  const byContact = new Map(grid.rows.map((r) => [r.contact.id, r.cells]));
-  const titles = new Map<string, Set<string>>();
-  for (const contactId of contactIds) {
-    const cells = byContact.get(contactId) ?? [];
-    const cellTitles = new Set<string>();
-    for (const cell of cells) {
-      const title = titleByTaskId.get(cell.taskId);
-      if (title) cellTitles.add(title);
-    }
-    titles.set(contactId, cellTitles);
-  }
-  return titles;
-}
-
 async function checkOnboardingAssignments(
   organizerJar: CookieJar,
   eventId: string,
@@ -342,18 +325,18 @@ async function checkOnboardingAssignments(
   assertStatus("step3: GET onboarding grid", gridRes.res, 200, gridRes.text);
   const grid = gridRes.json as OnboardingGrid;
   const counts = sampleAssignmentCounts(grid, sampleContactIds);
-  const assignedTitles = sampleAssignedTitles(grid, sampleContactIds);
-  const defaultTitles = DEFAULT_ONBOARDING_TASKS.map((t) => t.title);
+  // multi-portal decision 76: acceptance plans no default task set any
+  // more -- portals bring items -- so step3 checks that every sampled fresh
+  // contact is on the accepted roster, not that it holds a fixed set of
+  // titles (the bulk re-accept below still checks nothing doubles)
   for (const contactId of sampleContactIds) {
-    const titles = assignedTitles.get(contactId) ?? new Set<string>();
-    const missing = defaultTitles.filter((title) => !titles.has(title));
     assertTrue(
-      `step3: sampled contact ${contactId} has a cell for every default onboarding task`,
-      missing.length === 0,
-      `missing task_assignment cells for: ${JSON.stringify(missing)} (has: ${JSON.stringify([...titles])})`,
+      `step3: sampled contact ${contactId} is on the onboarding grid after acceptance`,
+      grid.rows.some((r) => r.contact.id === contactId),
+      `contact ${contactId} is missing from the grid`,
     );
   }
-  pass(`step3 (onboarding task_assignments exist for ${sampleContactIds.length} sampled fresh contacts)`);
+  pass(`step3 (${sampleContactIds.length} sampled fresh contacts are on the accepted roster)`);
   return counts;
 }
 

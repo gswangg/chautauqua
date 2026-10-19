@@ -6,7 +6,8 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { contactInPortal, participantInPortal, taskInPortal } from "./portal-scope";
+import { contactAssignedDirectly, contactInPortal, participantInPortal, taskAssignedDirectly, taskInPortal } from "./portal-scope";
+import { withBuiltInColumns } from "./builtin-columns";
 import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
@@ -111,6 +112,11 @@ export interface OnboardingGridParams {
   // and every count over just those. The route checks the portal belongs to
   // the event. Optional/undefined == the whole event.
   portalId?: string | null;
+  // decision 75: the "Assigned directly" view -- people holding a task an
+  // organizer picked them for, and those tasks. Never set with portalId.
+  direct?: boolean;
+  // decision 75: add the profile's built-in items as columns
+  builtInColumns?: boolean;
   now: number;
 }
 
@@ -152,10 +158,13 @@ function onboardingMatchExists(
   now: number,
   timeZone: string,
   portalId: string | null,
+  direct = false,
 ) {
   const inner = [sql`${schema.task.eventId} = ${eventId}`];
-  // a portal view matches cells in its own columns only
+  // a portal view matches cells in its own columns only, and the direct
+  // view matches direct assignments only
   if (portalId) inner.push(taskInPortal(portalId));
+  if (direct) inner.push(sql`${schema.taskAssignment.source} = 'direct'`);
   if (taskId) inner.push(sql`${schema.taskAssignment.taskId} = ${taskId}`);
   if (status) inner.push(sql`${schema.taskAssignment.status} = ${status}`);
   inner.push(attachedAssignment());
@@ -178,11 +187,19 @@ function onboardingMatchExists(
  * renders); (iv) one event-wide filter-independent aggregate for `counts`. */
 export async function getOnboardingGrid(db: Db, eventId: string, params: OnboardingGridParams): Promise<OnboardingGrid> {
   const portalId = params.portalId ?? null;
-  // multi-portal decision 73: undefined (dropped by and()) for the whole
-  // event, so every query below is unchanged without a portal
-  const portalTasks = portalId ? taskInPortal(portalId) : undefined;
-  const portalParticipants = portalId ? participantInPortal(portalId) : undefined;
-  const portalAssignees = portalId ? contactInPortal(portalId, schema.taskAssignment.contactId) : undefined;
+  const direct = !portalId && params.direct === true;
+  // multi-portal decisions 73 and 75: undefined (dropped by and()) for the
+  // whole event, so every query below is unchanged without a scope. A
+  // portal scopes its rows by the sessions it covers (and each person's
+  // sessions to those); the direct view scopes rows by the person.
+  const portalTasks = portalId ? taskInPortal(portalId) : direct ? taskAssignedDirectly() : undefined;
+  const portalParticipants = portalId ? participantInPortal(portalId) : direct ? contactAssignedDirectly(eventId) : undefined;
+  const portalSessions = portalId ? participantInPortal(portalId) : undefined;
+  const portalAssignees = portalId
+    ? contactInPortal(portalId, schema.taskAssignment.contactId)
+    : direct
+      ? sql`${schema.taskAssignment.source} = 'direct'`
+      : undefined;
   // DEC-370 (wave-62 amendment): WAVE 1 — the four reads below share no
   // dependency on each other (none needs whereExpr/timezone), so they issue
   // concurrently rather than as four sequential round trips. Array order is
@@ -300,7 +317,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const conditions = [rosterParticipantConditions(eventId)];
   if (portalParticipants) conditions.push(portalParticipants);
   if (filterActive) {
-    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone, portalId));
+    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone, portalId, direct));
   }
   // DEC-789/DEC-829: the invite-status filter is a SEPARATE predicate from
   // the base rosterParticipantConditions condition above (which now
@@ -441,7 +458,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       .from(schema.participant)
       .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
       // a portal view lists only the sessions that portal covers
-      .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId), portalParticipants))
+      .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId), portalSessions))
       .orderBy(sql`${schema.submission.seq} asc`, sql`${schema.participant.id} asc`),
   );
   const cellPromises =
@@ -566,5 +583,9 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       }
     : { ...emptyCounts, speakers: speakersCount, overdue: overdueCount };
 
-  return { tasks, rows, total, page: params.page, perPage: params.perPage, counts, timezone };
+  const grid: OnboardingGrid = { tasks, rows, total, page: params.page, perPage: params.perPage, counts, timezone };
+  // decision 75: the profile's built-in items (Bio, Headshot) as read-only
+  // columns, after the grid's own queries -- the Speakers routes ask for
+  // them; direct callers of this function get the task columns alone
+  return params.builtInColumns ? withBuiltInColumns(db, eventId, grid, { portalId, direct }) : grid;
 }

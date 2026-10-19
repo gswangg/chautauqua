@@ -9,8 +9,6 @@ import {
   SORT_ORDERS,
 } from "../src/server/repo/submissions";
 import { likeContains } from "../src/server/repo/like";
-import { changeStatus } from "../src/domain/status";
-import { planAcceptance } from "../src/domain/acceptance";
 import { submissionsRoutes } from "../src/routes/api/submissions";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -89,51 +87,6 @@ describe("isValidStatusLiteral (DEC-003 literals, write-path validation)", () =>
     expect(isValidStatusLiteral(123)).toBe(false);
     expect(isValidStatusLiteral(undefined)).toBe(false);
     expect(isValidStatusLiteral(null)).toBe(false);
-  });
-});
-
-describe("DEC-009 acceptance idempotence guard (pure logic, exercised via the domain cores this module composes)", () => {
-  it("stamps accepted_at exactly once, but re-fires planning on every re-entry into 'accepted' (DEC-278 wave-58 amendment)", () => {
-    const now = 1000;
-    const first = changeStatus({ status: "pending", acceptedAt: null }, "accepted", now);
-    expect(first.fireAcceptance).toBe(true);
-    expect(first.setsAcceptedAt).toBe(true);
-    expect(first.acceptedAt).toBe(now);
-
-    // Re-running while ALREADY 'accepted' (same status, no transition): no
-    // re-fire, and acceptedAt stays put.
-    const second = changeStatus({ status: "accepted", acceptedAt: first.acceptedAt }, "accepted", now + 500);
-    expect(second.fireAcceptance).toBe(false);
-    expect(second.setsAcceptedAt).toBe(false);
-    expect(second.acceptedAt).toBe(now); // unchanged, never re-stamped
-
-    // Un-accept then re-accept: accepted_at is still never cleared/re-stamped
-    // (setsAcceptedAt stays false), but fireAcceptance fires again so a
-    // co-speaker added while un-accepted still gets planned (the planner is
-    // idempotent on (contact, task-title), so this is safe).
-    const declined = changeStatus({ status: "accepted", acceptedAt: first.acceptedAt }, "declined", now + 1000);
-    expect(declined.acceptedAt).toBe(now);
-    const reaccepted = changeStatus({ status: "declined", acceptedAt: declined.acceptedAt }, "accepted", now + 2000);
-    expect(reaccepted.fireAcceptance).toBe(true);
-    expect(reaccepted.setsAcceptedAt).toBe(false);
-    expect(reaccepted.acceptedAt).toBe(now);
-  });
-
-  it("planAcceptance is idempotent when re-run with previously-planned titles folded in", () => {
-    const input = {
-      submissionId: "s1",
-      eventId: "e1",
-      participantContactIds: ["c1"],
-      existingTaskTitlesByContact: {},
-    };
-    const first = planAcceptance(input);
-    expect(first.taskAssignments.length).toBeGreaterThan(0);
-
-    const existingTaskTitlesByContact: Record<string, string[]> = {
-      c1: first.taskAssignments.map((a) => a.taskTitle),
-    };
-    const second = planAcceptance({ ...input, existingTaskTitlesByContact });
-    expect(second.taskAssignments).toEqual([]);
   });
 });
 

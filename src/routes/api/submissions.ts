@@ -22,12 +22,10 @@ import {
 import {
   cloneSubmission,
   createSubmission,
-  ensureOnboardingTasks,
   getEventOrgId,
   getSubmissionContent,
   getSubmissionDetail,
   getSubmissionOwnership,
-  getSubmissionStatus,
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
@@ -36,7 +34,6 @@ import {
 } from "../../server/repo/submissions";
 import { CONTENT_STATUSES, isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { settleInDeclarationOrder } from "../../lib/settle";
-import { isActiveParticipant } from "../../domain/acceptance";
 import { INVITE_STATUSES } from "../../domain/invite-status"; // DEC-789 wave-73 amendment
 import { plural } from "../../domain/count-copy";
 import { overCapCountMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
@@ -738,16 +735,7 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
     });
   }
 
-  // DEC-278: a participant added to an already-'accepted' submission never
-  // goes through updateSubmissionStatuses' fireAcceptance branch (that only
-  // fires once, at the original accept transition), so the who-owes-me-what
-  // dashboard would otherwise never see them. inviteParticipant currently
-  // always writes inviteStatus='invited' (not active), so this is a no-op
-  // today — kept anyway as the correct guard for any future default change.
-  const submissionStatus = await getSubmissionStatus(c.var.db, id);
-  if (submissionStatus === "accepted" && isActiveParticipant(result.inviteStatus)) {
-    await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [contactId], new Date());
-  }
+  // decision 76: the portals the new participant joins bring their items
   scheduleReconcile(c, [ownership.eventId]);
 
   return c.json(result, 201);
@@ -862,15 +850,8 @@ submissionsRoutes.patch(
       await setParticipantRole(c.var.db, participantId, body.role, scope.submissionId);
     }
     const row = await getParticipantRow(c.var.db, participantId);
-    // DEC-278/DEC-813: the Speakers grid's toggleInviteStatus control (this
-    // route) can flip a participant to an active invite status on a
-    // submission that is already 'accepted' -- the same acceptance-firing
-    // gap as the invite-a-new-participant path above, so it gets the same
-    // ensureOnboardingTasks guard rather than leaving the new speaker
-    // visible with zero onboarding tasks.
-    if (row && (await getSubmissionStatus(c.var.db, id)) === "accepted" && isActiveParticipant(row.inviteStatus)) {
-      await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [row.contactId], new Date());
-    }
+    // decision 76: an invite-status change re-runs the portals (an active
+    // participation joins them and gets their items)
     scheduleReconcile(c, [ownership.eventId]);
     return c.json(row);
   },

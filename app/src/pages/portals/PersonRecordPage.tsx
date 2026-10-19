@@ -5,7 +5,8 @@
 // preview-as-participant render (src/server/repo/portals/view.ts), with
 // finished work from portals they've left kept on the record. From here an
 // organizer reopens a closed item for this person, gives them an event role
-// (Press, Volunteer), invites them to speak, or previews their portal.
+// (Press, Volunteer), invites them to speak, gives them a library task
+// directly, or previews their portal.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
@@ -16,7 +17,7 @@ import { EmptyState } from '../../components/EmptyState';
 import type { PersonRecord, ViewItemJson } from './types';
 import { ItemsTable, ParticipationsTable, dayLabel, itemCount, itemGroups } from './PersonRecordTables';
 import { EventRolesSection } from './PersonRecordEventRoles';
-import { InviteToSpeakModal, ReopenModal } from './PersonRecordModals';
+import { GiveItemModal, InviteToSpeakModal, ReopenModal } from './PersonRecordModals';
 import './person-record.css';
 
 // Role and invitation changes re-match portals in the background
@@ -41,6 +42,7 @@ export function PersonRecordPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [reopening, setReopening] = useState<ViewItemJson | null>(null);
   const [inviting, setInviting] = useState(false);
+  const [giving, setGiving] = useState(false);
   const timers = useRef<number[]>([]);
 
   const ready = Boolean(eventId && contactId);
@@ -88,6 +90,20 @@ export function PersonRecordPage() {
           .filter((id): id is string => typeof id === 'string'),
       ),
     [record],
+  );
+  // the tasks this person already holds, from any portal or given directly
+  const heldTaskIds = useMemo(
+    () =>
+      new Set(
+        [...(record?.view.profileItems ?? []), ...(record?.view.sections ?? []).flatMap((s) => s.items)]
+          .filter((i) => i.assignmentId !== null && i.taskId !== null)
+          .map((i) => i.taskId as string),
+      ),
+    [record],
+  );
+  // the assign door takes the event's roster: people on an accepted session
+  const onRoster = (record?.view.participations ?? []).some(
+    (p) => p.participation.kind === 'session' && p.participation.session?.status === 'accepted',
   );
 
   if (eventLoading || (ready && load.kind === 'loading')) {
@@ -179,6 +195,11 @@ export function PersonRecordPage() {
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setInviting(true)}>
             Invite to speak
           </button>
+          {onRoster ? (
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setGiving(true)}>
+              Give an item
+            </button>
+          ) : null}
           {/* a full page load: the preview is a logged, server-rendered page */}
           <a className="chq-btn chq-btn-secondary" href={`/portal/preview/people/${eventId}/${contact.id}`}>
             Preview as {firstName}
@@ -236,6 +257,21 @@ export function PersonRecordPage() {
             const day = dateInputToMs(until);
             setToast(`${reopening.title} is open for ${firstName} until ${day !== null ? dayLabel(day) : until}.`);
             setReopening(null);
+            void fetchRecord(false);
+          }}
+        />
+      ) : null}
+
+      {giving ? (
+        <GiveItemModal
+          eventId={eventId}
+          contactId={contact.id}
+          firstName={firstName}
+          heldTaskIds={heldTaskIds}
+          onClose={() => setGiving(false)}
+          onGiven={(title) => {
+            setGiving(false);
+            setToast(`${title} given to ${firstName}.`);
             void fetchRecord(false);
           }}
         />

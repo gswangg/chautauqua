@@ -86,7 +86,7 @@ import { loadEditableSubmission, getPortalParticipants, type PortalParticipant }
 import { canEditSubmission } from "../../domain/edit-lock";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 import { countOf } from "../../domain/count-copy";
-import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
+import { getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
 export const portalRoutes = new Hono<AppEnv>();
 
@@ -653,18 +653,8 @@ portalRoutes.post("/invitations/:participantId", csrfForm, async (c) => {
   const nextStatus = nextInviteStatus(action as InviteAction);
   await setInviteStatus(c.var.db, participantId, contactId, nextStatus, scope.submissionId);
 
-  // DEC-278: accepting an invitation on a submission that is ALREADY
-  // 'accepted' never re-fires updateSubmissionStatuses' fireAcceptance
-  // branch (that only fires once, at the original accept transition), so
-  // this speaker would otherwise never get onboarding tasks planned. Never
-  // sends email on this path (product principle 4).
-  if (nextStatus === "accepted") {
-    const submissionInfo = await getSubmissionStatusForParticipant(c.var.db, participantId);
-    if (submissionInfo && submissionInfo.status === "accepted") {
-      await ensureOnboardingTasks(c.var.db, submissionInfo.eventId, submissionInfo.submissionId, [contactId], new Date());
-    }
-  }
-  // multi-portal: an answered invitation joins (or leaves) its portals
+  // multi-portal: an answered invitation joins (or leaves) its portals,
+  // which bring its items (decision 76: acceptance plans no tasks itself)
   const answered = await getSubmissionStatusForParticipant(c.var.db, participantId);
   scheduleReconcile(c, [answered?.eventId]);
 

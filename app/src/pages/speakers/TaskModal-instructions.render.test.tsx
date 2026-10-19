@@ -11,6 +11,9 @@ import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../../../src/domain/task-copy';
 
 const FORMS: EventForm[] = [{ id: 'form-default', title: 'Speaker agreement form', isDefault: true }];
 
+// decision 76: a new task goes to a portal (offered first) or named people
+const PORTALS = [{ id: 'pt-1', name: 'CFP speakers' }];
+
 afterEach(() => {
   cleanup();
 });
@@ -30,7 +33,7 @@ const TASK: OnboardingTask = {
 
 describe('TaskModal: CNT-01 instructions field', () => {
   it('renders an Instructions field, lowercase " · optional" suffix, in create mode', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
     const field = screen.getByLabelText(/Instructions/) as HTMLTextAreaElement;
     expect(field).toBeInTheDocument();
     expect(field.value).toBe('');
@@ -39,7 +42,7 @@ describe('TaskModal: CNT-01 instructions field', () => {
   });
 
   it('renders an Instructions field prefilled with the task value in edit mode', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} task={TASK} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} task={TASK} />);
     const field = screen.getByLabelText(/Instructions/) as HTMLTextAreaElement;
     expect(field).toBeInTheDocument();
     expect(field.value).toBe('Sign in blue ink and scan back.');
@@ -47,7 +50,7 @@ describe('TaskModal: CNT-01 instructions field', () => {
 
   it('sends a trimmed instructions value on submit in create mode', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
     fillTitle('Submit your slides');
     fireEvent.change(screen.getByLabelText(/Instructions/), {
       target: { value: '  16:9, under 20 MB, PDF or Keynote  ' },
@@ -60,7 +63,7 @@ describe('TaskModal: CNT-01 instructions field', () => {
 
   it('sends a trimmed, edited instructions value on submit in edit mode', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} task={TASK} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} task={TASK} />);
     fireEvent.change(screen.getByLabelText(/Instructions/), {
       target: { value: '  Updated brief  ' },
     });

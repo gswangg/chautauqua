@@ -200,10 +200,11 @@ export interface NewTaskInput {
   // sent (omitted -- the server treats undefined and "" the same, but the
   // client's own trim keeps the two forms interchangeable at either side).
   instructions?: string;
-  // DEC-746 (wave-59 amendment): CREATE-only. Absent means every accepted
-  // speaker (unchanged default). Present is a non-empty subset of the
-  // event roster, sent only when the modal's subset picker is chosen --
-  // never sent from edit mode (PATCH never touches assignments).
+  // Multi-portal decision 76, CREATE-only: who gets the task. A portal id
+  // makes it that portal's item (everyone the portal covers gets it);
+  // contactIds is a non-empty set of named people from the roster. Never
+  // both, never sent from edit mode (PATCH never touches assignments).
+  portalId?: string;
   contactIds?: string[];
 }
 

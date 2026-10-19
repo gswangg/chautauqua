@@ -357,15 +357,9 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
     expect(state.participant.every((p: any) => p.visible === true)).toBe(true);
     expect(state.participant.every((p: any) => p.inviteStatus === "none")).toBe(true);
 
-    // Every one of the 3 imported contacts gets all 5
-    // DEFAULT_ONBOARDING_TASKS assignments -- 15 total, not just the lead
-    // contact's 5.
-    expect(state.taskAssignment).toHaveLength(15);
-    const contactIds = state.contact.map((c: any) => c.id);
-    for (const contactId of contactIds) {
-      const assignmentsForContact = state.taskAssignment.filter((a: any) => a.contactId === contactId);
-      expect(assignmentsForContact).toHaveLength(5);
-    }
+    // multi-portal decision 76: acceptance creates no tasks itself (portals
+    // bring their items on the reconcile the route schedules)
+    expect(state.taskAssignment).toEqual([]);
   });
 
   it("a mapped bio column is persisted rather than throwing", async () => {

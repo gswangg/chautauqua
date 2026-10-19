@@ -24,6 +24,25 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { Db } from "../src/server/context";
 
 const DDL = `
+create table portal (
+  id text primary key,
+  event_id text
+);
+create table portal_item (
+  id text primary key,
+  portal_id text,
+  task_id text,
+  resource_id text,
+  system_kind text,
+  required integer
+);
+create table portal_membership (
+  id text primary key,
+  portal_id text,
+  event_id text,
+  participation_key text,
+  contact_id text
+);
 create table event (
   id text primary key,
   org_id text,

@@ -61,7 +61,7 @@ export const PORTAL_TEMPLATES: readonly PortalTemplate[] = [
   {
     key: "cfp_speakers",
     name: "CFP speakers",
-    blurb: "Slides, AV needs, speaker release",
+    blurb: "Slides, AV needs, release, hotel and flight forms",
     note: "As a CFP speaker, you'll share final slides and your AV needs.",
     rule: {
       groups: [
@@ -80,6 +80,9 @@ export const PORTAL_TEMPLATES: readonly PortalTemplate[] = [
       { task: { title: "Final slides", kind: "file_request", scope: "participation", instructions: "Upload the deck you'll present. PDF, Keynote or PowerPoint." }, deadlineKind: "none", required: true, graceDays: 7 },
       { task: { title: "AV needs", kind: "general", scope: "participation", instructions: "Tell us what you need on stage: mics, adapters, a clicker." }, deadlineKind: "none", required: true },
       { task: { title: "Speaker release", kind: "general", scope: "participation", instructions: "Agree to the recording and publishing of your session." }, deadlineKind: "none", required: true },
+      // docs/clarifications.md's must-have onboarding tasks (DEC-111 forms)
+      { task: { title: "Hotel stay requirement form", kind: "form", scope: "person", instructions: "Tell us whether you need a hotel room, and for which nights." }, deadlineKind: "relative", relativeDays: 14, required: true },
+      { task: { title: "Flight reimbursement form", kind: "form", scope: "person", instructions: "Send your flight details so we can reimburse you." }, deadlineKind: "relative", relativeDays: 14, required: true },
     ],
   },
   {

@@ -16,7 +16,6 @@ import { Hono } from "hono";
 import { contactsRoutes } from "../src/routes/api/contacts";
 import { registerErrorHandler } from "../src/server/http";
 import * as schema from "../src/db/schema";
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const ORG_A = "org-a";
@@ -205,8 +204,9 @@ describe("POST /api/v1/contacts eventId branch: optional session title (DEC-909 
     expect(submissionInsert.title).toBe("");
     expect(state.submission[0].status).toBe("accepted");
 
-    // Still a real, active roster membership: onboarding tasks fired.
-    expect(state.taskAssignment).toHaveLength(DEFAULT_ONBOARDING_TASKS.length);
+    // multi-portal decision 76: acceptance creates no tasks itself (portals
+    // bring their items on the reconcile the route schedules)
+    expect(state.taskAssignment).toEqual([]);
   });
 
   it("clause (a): succeeds with sessionTitle as a blank string", async () => {

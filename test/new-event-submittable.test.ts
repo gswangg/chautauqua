@@ -67,6 +67,8 @@ vi.mock("../src/server/repo/portals/admin", async () => {
   return {
     ...actual,
     ensureProfileBasicsPortal: vi.fn(async () => undefined),
+    // decision 76: new events also start with the CFP speakers portal
+    createPortalFromTemplate: vi.fn(async () => "portal-cfp"),
   };
 });
 

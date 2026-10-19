@@ -2,7 +2,8 @@
 // onboarding grid for the participations no portal covers, with the reason
 // and a link to each person's record; the toolbar's portal filter moves
 // between the two views, and (multi-portal decision 73) narrows the grid to
-// one portal.
+// one portal, or (decision 75) to the tasks assigned directly. Bio and
+// Headshot columns (decision 75) are read-only.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -189,6 +190,7 @@ describe('Speakers · Not in any portal', () => {
         'Any portal',
         'CFP speakers',
         'Moderators',
+        'Assigned directly',
         'Not in any portal',
       ]);
       fireEvent.change(select, { target: { value: 'pt-mods' } });
@@ -205,6 +207,60 @@ describe('Speakers · Not in any portal', () => {
       expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Show every portal' }));
       await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/speakers$/));
+    });
+
+    it("Assigned directly reads the direct view, says when there is none, and reminds that scope", async () => {
+      const fetchMock = mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS,
+        [`GET /api/v1/events/${EVENT_ID}/onboarding`]: PORTAL_GRID,
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+        [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: { drafts: [], skipped: 0, remaining: 0 },
+      });
+      renderAt('/speakers?portal=direct');
+      expect((await screen.findAllByText('Bo Diaz')).length).toBeGreaterThan(0);
+      const select = screen.getByRole('combobox', { name: 'Filter by portal' });
+      expect(select).toHaveValue('direct');
+      expect(within(select).getByRole('option', { name: 'Assigned directly' })).toBeInTheDocument();
+      const gridCalls = fetchMock.mock.calls.map(([url]) => String(url)).filter((u) => u.includes('/onboarding?'));
+      expect(gridCalls.every((u) => new URL(u, 'http://x').searchParams.get('source') === 'direct')).toBe(true);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Remind all outstanding' })[0]!);
+      await waitFor(() => {
+        const preview = fetchMock.mock.calls.find(([url, init]) => String(url).includes('/onboarding/remind/preview') && init?.method === 'POST');
+        expect(JSON.parse(String(preview![1]!.body))).toEqual({ source: 'direct' });
+      });
+      cleanup();
+      vi.unstubAllGlobals();
+      mockApi({ [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS, [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID });
+      renderAt('/speakers?portal=direct');
+      expect(await screen.findByText('No tasks are assigned directly.')).toBeInTheDocument();
+    });
+
+    it('Bio and Headshot columns are read-only: no task link, no toggle, not in the task filter', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: PORTALS,
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+        [`GET /api/v1/events/${EVENT_ID}/onboarding`]: {
+          ...PORTAL_GRID,
+          tasks: [
+            { id: 'built-in:bio', kind: 'built_in', title: 'Bio', dueDate: null, required: true, instructions: null, assigned: 1, complete: 0 },
+            ...PORTAL_GRID.tasks,
+          ],
+          rows: PORTAL_GRID.rows.map((r) => ({
+            ...r,
+            cells: [{ taskId: 'built-in:bio', assignmentId: '', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 }, ...r.cells],
+          })),
+        },
+      });
+      renderAt('/speakers?portal=pt-mods');
+      const table = await screen.findByRole('table');
+      const bioHead = within(table).getAllByRole('columnheader')[1]!;
+      expect(within(bioHead).getByText('Bio')).toBeInTheDocument();
+      expect(within(bioHead).queryByRole('link')).not.toBeInTheDocument();
+      expect(within(bioHead).getByText('From the profile · Required')).toBeInTheDocument();
+      expect(within(table).queryByRole('button', { name: /Toggle Bio/ })).not.toBeInTheDocument();
+      expect(within(table).getByRole('button', { name: /Toggle Panel prep/ })).toBeInTheDocument();
+      const taskFilter = screen.getByRole('combobox', { name: 'Filter by task' });
+      expect(within(taskFilter).queryByRole('option', { name: 'Bio' })).not.toBeInTheDocument();
     });
 
     it("reads that portal's grid, and reminds that portal's people", async () => {

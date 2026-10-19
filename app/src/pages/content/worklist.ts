@@ -1,6 +1,6 @@
 // DEC-180 wave-79 amendment: ONE declaration (the array), the type derived
 // via `typeof ARR[number]` -- the idiom already in the tree at
-// src/domain/acceptance.ts:162-171 -- instead of a type union and a value
+// src/domain/acceptance.ts:141-150 -- instead of a type union and a value
 // array separately re-listing the same three literals in this same file.
 export const WORKLIST_TABS = ['needs_decision', 'approved', 'all'] as const;
 

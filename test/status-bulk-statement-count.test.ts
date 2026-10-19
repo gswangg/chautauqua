@@ -10,16 +10,9 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
-import { chunkIds, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
+import { chunkIds } from "../src/lib/chunk";
 
-import { insertColumnCount } from "../src/db/insert-columns";
 
-// DEC-528: task_assignment inserts are chunked by bound-parameter budget,
-// not by ID_CHUNK_SIZE. The budget is the table's whole column count: a
-// multi-row INSERT binds every column, including the defaulted ones a row
-// leaves out (multi-portal's scope_key/source/due_date/...).
-const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / insertColumnCount(schema.taskAssignment));
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
 const EVENT_ID = "event-1";
@@ -205,7 +198,7 @@ function fakeDb() {
 }
 
 describe("DEC-355 bulk accept is set-based, not per-submission", () => {
-  it("issues O(ids/90) + O(distinct titles) SELECTs for 200 firing submissions, not O(ids)", async () => {
+  it("issues O(ids/90) SELECTs and UPDATEs for 200 firing submissions, and plans nothing (decision 76)", async () => {
     const { db, selectCalls, insertCalls, updateCalls } = fakeDb();
 
     const result = await updateSubmissionStatuses(db, EVENT_ID, IDS, "accepted", new Date(5000));
@@ -216,75 +209,14 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
     const expectedChunks = chunkIds(IDS).length;
     expect(expectedChunks).toBe(3);
 
-    const distinctTitles = DEFAULT_ONBOARDING_TASKS.length; // 5
-    const formTitles = DEFAULT_ONBOARDING_TASKS.filter((t) => t.kind === "form").length; // 2
-
-    const submissionSelects = selectCalls.filter((c) => c.table === "submission").length;
-    const participantSelects = selectCalls.filter((c) => c.table === "participant").length;
-    const taskAssignmentSelects = selectCalls.filter((c) => c.table === "taskAssignment").length;
-    const taskSelects = selectCalls.filter((c) => c.table === "task").length;
-    const formSelects = selectCalls.filter((c) => c.table === "form").length;
-
-    expect(submissionSelects).toBe(expectedChunks);
-    expect(participantSelects).toBe(expectedChunks);
-    // DEC-932: the back-fill pass's eventTaskRows read (schema.task, no
-    // .limit()) now sees every real task row getOrCreateTask minted (DEC-111
-    // amendment, wave 48: getOrCreateTask is insert-then-select, and this
-    // fake's schema.task branch is stateful) — so eventTaskIds has all 5
-    // distinct titles' ids, and the back-fill's existing-pairs select over
-    // schema.taskAssignment actually runs.
-    //
-    // DEC-528 amendment (wave 10, defect 1 fix): that existing-pairs query
-    // binds inArray(taskId, eventTaskIds) alongside inArray(contactId,
-    // contactChunk) in the SAME statement, so BOTH dimensions are now
-    // chunked at PAIR_ID_CHUNK_SIZE (45, half of ID_CHUNK_SIZE's 90) instead
-    // of only the contact dimension at ID_CHUNK_SIZE — with only 5 event
-    // tasks (well under 45) the task dimension stays a single chunk, but the
-    // contact dimension now chunks at 45 instead of 90, so the back-fill's
-    // own select count is ceil(N / 45), not `expectedChunks` (ceil(N / 90)).
-    const backfillPairChunks = Math.ceil(N / 45);
-    expect(taskAssignmentSelects).toBe(expectedChunks + backfillPairChunks);
-    expect(taskSelects).toBe(distinctTitles + 1);
-    expect(formSelects).toBe(formTitles);
-
-    const totalSelects = selectCalls.length;
-    // submission + participant + taskAssignment(main, expectedChunks) +
-    // taskAssignment(back-fill, backfillPairChunks), + distinctTitles + 1
-    // (task) + formTitles (form) + 1 (event).
-    expect(totalSelects).toBe(
-      expectedChunks * 2 + expectedChunks + backfillPairChunks + distinctTitles + 1 + formTitles + 1,
-    );
-    // The load-bearing assertion: total SELECT count is nowhere near N (200)
-    // — it is bounded by chunk count + distinct-title count, not id count.
-    expect(totalSelects).toBeLessThan(31);
-
-    // DEC-521/DEC-528: task_assignment rows are inserted via chunked
-    // multi-row values(), not one insert statement per (contact, title)
-    // pair — total ROW count is still N * distinctTitles, but the insert
-    // CALL count is ceil(rows / TASK_ASSIGNMENT_ROWS_PER_CHUNK), chunked by
-    // bound-parameter budget rather than ID_CHUNK_SIZE.
-    const taskAssignmentInsertCalls = insertCalls.filter((c) => c.table === "task_assignment");
-    const taskAssignmentRowCount = taskAssignmentInsertCalls.reduce(
-      (sum, c) => sum + (Array.isArray(c.value) ? c.value.length : 1),
-      0,
-    );
-    expect(taskAssignmentRowCount).toBe(N * distinctTitles);
-    expect(taskAssignmentInsertCalls.length).toBe(
-      Math.ceil((N * distinctTitles) / TASK_ASSIGNMENT_ROWS_PER_CHUNK),
-    );
-
-    // task: one insert per distinct title (getOrCreateTask runs once per title).
-    const taskInserts = insertCalls.filter((c) => c.table === "task").length;
-    expect(taskInserts).toBe(distinctTitles);
-
-    // form: one insert per distinct form-kind title.
-    const formInserts = insertCalls.filter((c) => c.table === "form").length;
-    expect(formInserts).toBe(formTitles);
+    // multi-portal decision 76: acceptance creates no tasks of its own, so
+    // the only reads are the chunked submission selects -- no participant,
+    // task, form or task_assignment reads, and no inserts at all
+    expect(selectCalls.filter((c) => c.table === "submission").length).toBe(expectedChunks);
+    expect(selectCalls.length).toBe(expectedChunks);
+    expect(insertCalls).toEqual([]);
 
     // The firing rows get one chunked UPDATE per chunk (status/acceptedAt/updatedAt).
     expect(updateCalls.length).toBe(expectedChunks);
-    for (const call of updateCalls) {
-      expect(call.setValue).toMatchObject({ status: "accepted", acceptedAt: new Date(5000), updatedAt: new Date(5000) });
-    }
   });
 });

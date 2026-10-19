@@ -555,6 +555,7 @@ async function main(): Promise<void> {
         required: false,
         form_id: null,
         deliverable_kind: spec.deliverableKind,
+        audience: "targeted",
         created_at: nextTs(),
         updated_at: ts,
       }),

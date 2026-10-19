@@ -229,7 +229,10 @@ describe("DEC-746 (wave 59 amendment): POST /events/:eventId/tasks contactIds su
     sqlite.close();
   });
 
-  it("(a) absent contactIds still assigns every accepted speaker (byte-for-byte today's behavior)", async () => {
+  // multi-portal decision 76: a task never silently expands to every
+  // accepted speaker; with nobody named it waits for people (a group gets
+  // a task through a portal)
+  it("(a) absent contactIds assigns nobody", async () => {
     insertContact(sqlite, "c-1", "Ada");
     insertContact(sqlite, "c-2", "Grace");
     insertSubmission(sqlite, "sub-1", "accepted");
@@ -239,7 +242,7 @@ describe("DEC-746 (wave 59 amendment): POST /events/:eventId/tasks contactIds su
     const app = await buildApp(db, ORGANIZER);
     const res = await app.request(createTaskRequest(BASE_TASK_BODY));
     expect(res.status).toBe(201);
-    expect(countAssignments(sqlite)).toBe(2);
+    expect(countAssignments(sqlite)).toBe(0);
   });
 
   it("(b) a two-id subset creates exactly two task_assignment rows (not the whole roster)", async () => {

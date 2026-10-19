@@ -16,7 +16,6 @@ import {
   renderTemplate,
   templateUsesMergeField,
 } from "../src/mail/render";
-import { lookupFormTaskFieldSpecs } from "../src/server/repo/submissions/status";
 import { mergedInviteStatus } from "../src/domain/contacts";
 import {
   LOCKED_SESSION_LABELS_FOR_TEST,
@@ -60,18 +59,6 @@ describe("lookup-table own-property family (DEC-020 amendment, wave 39)", () => 
       expect(renderTemplate("{due_date}", { task_due_date: "14 Mar" })).toBe("14 Mar");
       expect(missingMergeFields("{due_date}", {})).toEqual(["due_date"]);
       expect(templateUsesMergeField("{due_date}", "task_due_date")).toBe(true);
-    });
-  });
-
-  describe("site 2: src/server/repo/submissions/status.ts lookupFormTaskFieldSpecs (FORM_TASK_FIELD_SPECS)", () => {
-    it.each(PROTO_KEYS)("returns [] for a form-task title of '%s'", (key) => {
-      expect(lookupFormTaskFieldSpecs(key)).toEqual([]);
-    });
-
-    it("positive control: a real form-task title returns its specs", () => {
-      const specs = lookupFormTaskFieldSpecs("Hotel stay requirement form");
-      expect(specs.length).toBeGreaterThan(0);
-      expect(specs[0]!.section).toBe("speaker");
     });
   });
 

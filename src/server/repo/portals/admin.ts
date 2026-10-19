@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { ApiError } from "../../http";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
+import { findOrCreateTaskForm } from "./task-forms";
 import {
   PARTICIPATION_KINDS,
   PARTICIPATION_KIND_LABELS,
@@ -743,6 +744,37 @@ export function portalToInput(p: PortalRecord): PortalInput {
   };
 }
 
+/** Multi-portal decision 76: a task made on Speakers for a group becomes
+ * that portal's item -- a fixed deadline when the task has a due date, the
+ * task's own required flag -- through the same save every portal edit uses,
+ * so its people get it on the next reconcile (the caller runs it). */
+export async function addLibraryTaskToPortal(
+  db: Db,
+  eventId: string,
+  portalId: string,
+  taskId: string,
+  opts: { dueDate: number | null; required: boolean },
+  now: Date,
+): Promise<void> {
+  const portal = await findPortal(db, portalId);
+  if (!portal || portal.eventId !== eventId) throw new ApiError("not_found", "Portal not found in this event");
+  const input = portalToInput(portal);
+  input.items.push({
+    taskId,
+    resourceId: null,
+    systemKind: null,
+    displayName: null,
+    deadlineKind: opts.dueDate !== null ? "fixed" : "none",
+    dueDate: opts.dueDate,
+    relativeDays: null,
+    required: opts.required,
+    graceDays: 0,
+    allowEditAfterSubmit: false,
+    viewOnlyWhenDone: false,
+  });
+  await updatePortal(db, eventId, portalId, input, now);
+}
+
 /** Copies a portal within its event as "<name> (copy)" with a rule that
  * matches nobody until edited, so a copy never doubles anyone's items. */
 export async function duplicatePortal(db: Db, eventId: string, portalId: string, now: Date): Promise<string> {
@@ -777,12 +809,20 @@ export async function findOrCreateLibraryTask(
   now: Date,
 ): Promise<string> {
   const existing = await db
-    .select({ id: schema.task.id })
+    .select({ id: schema.task.id, formId: schema.task.formId })
     .from(schema.task)
     .where(and(eq(schema.task.eventId, eventId), eq(schema.task.title, t.title)))
     .orderBy(asc(schema.task.id)).limit(1);
-  if (existing[0]) return existing[0].id;
+  if (existing[0]) {
+    // DEC-111 self-heal: a form task without its backing form gets one
+    if (t.kind === "form" && !existing[0].formId) {
+      const formId = await findOrCreateTaskForm(db, eventId, t.title, now);
+      await db.update(schema.task).set({ formId, updatedAt: now }).where(eq(schema.task.id, existing[0].id));
+    }
+    return existing[0].id;
+  }
   const id = newId();
+  const formId = t.kind === "form" ? await findOrCreateTaskForm(db, eventId, t.title, now) : null;
   await db
     .insert(schema.task)
     .values({
@@ -794,6 +834,7 @@ export async function findOrCreateLibraryTask(
       required: false,
       audience: "portal",
       scope: t.scope,
+      formId,
       createdAt: now,
       updatedAt: now,
     })

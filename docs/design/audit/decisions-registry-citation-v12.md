@@ -203,3 +203,9 @@ Re-measured on the repaired tree by running the scan: the live value today is
 Re-measured on this branch: the decision docs' stale citations into the deleted Settings resource panel, Settings › Portals edit form and general portal preview were rewritten or marked as deleted, which also repaired three citations whose cited lines had only moved.
 
 `DECISIONS_REGISTRY_CITATION_CEILING` moves 1224 -> 1221.
+
+## Multi-portal decision 76
+
+Re-measured on this branch: the decision docs' citations into the retired acceptance planner (`submissions/status.ts`, `domain/acceptance.ts`) were marked as removed, and citations whose cited lines had only moved (the Speakers grid, the New task modal, the task routes) were re-pointed, which also repaired five that had drifted before.
+
+`DECISIONS_REGISTRY_CITATION_CEILING` moves 1221 -> 1216.

@@ -19,7 +19,7 @@ void DEC_613; // wave-68 amendment: one shared sort-order vocabulary, not a seco
 
 // DEC-180 wave-79 amendment: ONE declaration (the array), the type derived
 // via `typeof ARR[number]` -- the idiom already in the tree at
-// src/domain/acceptance.ts:162-171 -- instead of a type union and a value
+// src/domain/acceptance.ts:141-150 -- instead of a type union and a value
 // array separately re-listing the same five literals in this same file.
 export const SORT_ORDERS = ['newest', 'oldest', 'title', 'ref', 'worklist'] as const;
 

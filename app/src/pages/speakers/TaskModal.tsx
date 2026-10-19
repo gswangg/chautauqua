@@ -27,9 +27,12 @@ interface TaskModalProps {
   // an id. An empty list (no forms yet, or the fetch failed) disables the
   // select and blocks submit rather than silently posting no formId.
   forms: EventForm[];
-  // DEC-746: createTask always expands to every accepted speaker now -- the
-  // subtitle states the count instead of offering an opt-out checkbox.
+  // the roster's size, for the too-many-to-list note
   acceptedCount: number;
+  // Multi-portal decision 76: the portals a new task can go to, and the one
+  // to offer first (the portal the grid is narrowed to, when it is)
+  portals?: { id: string; name: string }[];
+  defaultPortalId?: string | null;
   // DEC-746 (wave-59 amendment): the roster available to the CREATE-mode
   // subset picker, {contactId, name}. Only ever read in create mode; edit
   // mode never touches assignments (PATCH is title/instructions/due
@@ -108,17 +111,34 @@ export function TaskModal({
   onSubmit,
   forms,
   acceptedCount,
+  portals = [],
+  defaultPortalId = null,
   assignees = [],
   assigneesTruncated = false,
   task = null,
   onRemove,
 }: TaskModalProps) {
   const isEdit = task !== null;
-  // DEC-746 (wave-59 amendment): CREATE mode only. 'everyone' is the
-  // default and matches the pre-amendment behaviour exactly (absent
-  // contactIds); 'subset' reveals the checkbox picker. Never offered when
-  // assigneesTruncated -- the ceiling refusal takes its place.
-  const [audienceMode, setAudienceMode] = useState<'everyone' | 'subset'>('everyone');
+  // Multi-portal decision 76, CREATE mode only: a task reaches a group
+  // through a portal (it becomes the portal's item) or named people. There
+  // is no "everyone accepted" any more -- that was a rule engine beside
+  // portals. A portal is offered first when the event has any.
+  const [audienceMode, setAudienceMode] = useState<'portal' | 'subset'>(portals.length > 0 ? 'portal' : 'subset');
+  const [portalId, setPortalId] = useState<string>(
+    defaultPortalId && portals.some((p) => p.id === defaultPortalId) ? defaultPortalId : (portals[0]?.id ?? ''),
+  );
+  // the portal list can arrive after the modal opens
+  useEffect(() => {
+    if (portals.length === 0) return;
+    setPortalId((current) =>
+      portals.some((p) => p.id === current)
+        ? current
+        : defaultPortalId && portals.some((p) => p.id === defaultPortalId)
+          ? defaultPortalId
+          : portals[0]!.id,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portals]);
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [kind, setKind] = useState<TaskKind>(task?.kind ?? 'file_request');
   const [title, setTitle] = useState(task?.title ?? '');
@@ -164,6 +184,10 @@ export function TaskModal({
       setError('Choose at least one speaker.');
       return;
     }
+    if (!isEdit && audienceMode === 'portal' && portalId === '') {
+      setError('Choose the portal that gets this task.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setFieldErrors({});
@@ -176,6 +200,7 @@ export function TaskModal({
         required,
         formId: !isEdit && kind === 'form' ? formId : undefined,
         deliverableKind: !isEdit && kind === 'file_request' ? deliverableKind : undefined,
+        portalId: !isEdit && audienceMode === 'portal' ? portalId : undefined,
         contactIds: !isEdit && audienceMode === 'subset' ? Array.from(selectedContactIds) : undefined,
       });
     } catch (err) {
@@ -199,7 +224,7 @@ export function TaskModal({
           ? undefined
           : audienceMode === 'subset'
             ? `Created for the ${selectedContactIds.size} people you choose`
-            : `Created for all ${acceptedCount} accepted speakers`
+            : `Added to ${portals.find((p) => p.id === portalId)?.name ?? 'a portal'}: everyone it covers gets it`
       }
       onClose={onCancel}
       closeDisabled={submitting}
@@ -357,42 +382,65 @@ export function TaskModal({
         {!isEdit && (
           <div className="chq-speakers-modal-field">
             <span className="chq-speakers-modal-label" id="task-audience-label">
-              Assign to
+              Who gets it
             </span>
+            <div className="chq-radio-group" role="radiogroup" aria-labelledby="task-audience-label">
+              {portals.length > 0 ? (
+                <label className="chq-check-label">
+                  <input
+                    className="chq-check"
+                    type="radio"
+                    name="task-audience"
+                    checked={audienceMode === 'portal'}
+                    onChange={() => setAudienceMode('portal')}
+                  />
+                  Everyone in a portal
+                </label>
+              ) : null}
+              <label className="chq-check-label">
+                <input
+                  className="chq-check"
+                  type="radio"
+                  name="task-audience"
+                  checked={audienceMode === 'subset'}
+                  onChange={() => setAudienceMode('subset')}
+                  disabled={assigneesTruncated}
+                />
+                Only the people I choose
+              </label>
+            </div>
             {assigneesTruncated ? (
               <p className="chq-meta">
-                This event has too many speakers to choose from individually ({acceptedCount} accepted, more than the{' '}
-                {MAX_TASK_ASSIGNEES} this picker can list) -- the task will be created for everyone accepted.
+                This event has too many speakers to choose from here ({acceptedCount} accepted, more than the{' '}
+                {MAX_TASK_ASSIGNEES} this picker can list) -- give the task to a portal, or add people from the task&rsquo;s page.
               </p>
-            ) : (
-              <div className="chq-radio-group" role="radiogroup" aria-labelledby="task-audience-label">
-                <label className="chq-check-label">
-                  <input
-                    className="chq-check"
-                    type="radio"
-                    name="task-audience"
-                    checked={audienceMode === 'everyone'}
-                    onChange={() => setAudienceMode('everyone')}
-                  />
-                  {`Everyone accepted (${acceptedCount})`}
-                </label>
-                <label className="chq-check-label">
-                  <input
-                    className="chq-check"
-                    type="radio"
-                    name="task-audience"
-                    checked={audienceMode === 'subset'}
-                    onChange={() => setAudienceMode('subset')}
-                  />
-                  Only the people I choose
-                </label>
-              </div>
-            )}
+            ) : null}
+            {fieldErrors.portalId ? (
+              <span role="alert" className="chq-form-row-error">
+                {fieldErrors.portalId}
+              </span>
+            ) : null}
             {fieldErrors.contactIds ? (
               <span role="alert" className="chq-form-row-error">
                 {fieldErrors.contactIds}
               </span>
             ) : null}
+          </div>
+        )}
+
+        {!isEdit && audienceMode === 'portal' && portals.length > 0 && (
+          <div className="chq-speakers-modal-field">
+            <label className="chq-speakers-modal-label" htmlFor="task-portal">
+              Portal
+            </label>
+            <select id="task-portal" className="chq-select" value={portalId} onChange={(e) => setPortalId(e.target.value)}>
+              {portals.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <p className="chq-meta">Saved to the library as this portal&rsquo;s item. People who join the portal later get it too.</p>
           </div>
         )}
 

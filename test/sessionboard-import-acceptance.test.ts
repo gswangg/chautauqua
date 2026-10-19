@@ -8,7 +8,6 @@
 
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import { applySessionboardPlans } from "../src/server/repo/import/sessionboard";
 import { externalRef, SESSIONBOARD_SOURCE } from "../src/domain/sessionboard";
 import type { Db } from "../src/server/context";
@@ -184,11 +183,9 @@ describe("DEC-717: Sessionboard submissions importer routes status through updat
     expect(result).toMatchObject({ created: 0, updated: 1, skipped: [] });
     expect(state.submission[0].status).toBe("accepted");
     expect(state.submission[0].acceptedAt).not.toBeNull();
-    expect(state.task.length).toBe(DEFAULT_ONBOARDING_TASKS.length);
-    expect(state.taskAssignment.length).toBe(DEFAULT_ONBOARDING_TASKS.length);
-    for (const assignment of state.taskAssignment) {
-      expect(assignment.contactId).toBe("contact-a");
-    }
+    // multi-portal decision 76: acceptance creates no tasks itself (portals
+    // bring their items on the reconcile the route schedules)
+    expect(state.taskAssignment).toEqual([]);
   });
 
   it("re-importing the same external_ref is idempotent: no second task set, accepted_at unchanged", async () => {

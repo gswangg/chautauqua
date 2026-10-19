@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
-import { createTask, listAcceptedContactIds } from "../src/server/repo/tasks";
+import { listAcceptedContactIds } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
 
 // --- minimal drizzle SQL condition evaluator ------------------------------
@@ -197,56 +197,7 @@ describe("DEC-283: listAcceptedContactIds excludes invited/declined co-speakers"
     expect(ids).toEqual(["contact-accepted"]);
   });
 
-  it("createTask always inserts task_assignment rows for exactly the active contacts (DEC-746)", async () => {
-    const { db, state } = fakeDb({
-      submission: [acceptedSubmission()],
-      participant: [
-        participantRow("contact-none", "none"),
-        participantRow("contact-accepted", "accepted"),
-        participantRow("contact-invited", "invited"),
-        participantRow("contact-declined", "declined"),
-      ],
-      task: [],
-    });
 
-    const record = await createTask(db, EVENT_ID, {
-      kind: "general",
-      title: "Announce participation",
-      required: false,
-    });
 
-    expect(record.id).toBeTruthy();
-    // createTask re-reads schema.task after insert; the fakeDb `from`
-    // returns whatever is currently in state.task, so seed it via the
-    // insert path itself (already exercised above) — assert on
-    // taskAssignment instead, which is what this gate protects.
-    const assignedContactIds = new Set(state.taskAssignment.map((a: any) => a.contactId));
-    expect(assignedContactIds.has("contact-none")).toBe(true);
-    expect(assignedContactIds.has("contact-accepted")).toBe(true);
-    expect(assignedContactIds.has("contact-invited")).toBe(false);
-    expect(assignedContactIds.has("contact-declined")).toBe(false);
-    expect(state.taskAssignment.length).toBe(2);
-  });
 
-  it("an all-declined roster inserts zero assignments and still returns the created TaskRecord", async () => {
-    const { db, state } = fakeDb({
-      submission: [acceptedSubmission()],
-      participant: [participantRow("contact-declined-1", "declined"), participantRow("contact-invited-1", "invited")],
-      task: [],
-    });
-
-    const record = await createTask(db, EVENT_ID, {
-      kind: "general",
-      title: "Finalize talk description",
-      required: false,
-    });
-
-    expect(record).toMatchObject({
-      eventId: EVENT_ID,
-      kind: "general",
-      title: "Finalize talk description",
-      required: false,
-    });
-    expect(state.taskAssignment.length).toBe(0);
-  });
 });

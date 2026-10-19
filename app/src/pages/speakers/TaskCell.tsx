@@ -134,6 +134,9 @@ interface TaskCellProps {
   // the overdue vocabulary -- weight and fill, never a new colour (DEC-367:
   // there is no red in this system).
   notSaved?: boolean;
+  // decision 75: a read-only status (a built-in profile item such as Bio),
+  // shown like any other status but never muted and never a button
+  readOnly?: boolean;
   // v12: which half of the status token pair this caller wants. The pinned
   // matrix is 'dense' (a 178px column, twelve times over); the phone card
   // list is 'roomy' (a card row is a real target). Required, never
@@ -170,6 +173,7 @@ export function TaskCell({
   onToggle,
   notChased = false,
   interactive = true,
+  readOnly = false,
   notSaved = false,
   density,
 }: TaskCellProps) {
@@ -186,12 +190,14 @@ export function TaskCell({
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(task, cell, now, timezone) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
   const muted = (notChased && cell.status !== 'complete') || !interactive;
+  // decision 75: done means the profile has it -- nothing to toggle
+  const clickable = interactive && !readOnly;
   const baseLabel = cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending';
   const label = notSaved ? `${baseLabel} · not saved` : baseLabel;
 
   return (
     <div className={muted ? 'chq-speakers-cell chq-speakers-cell-muted' : 'chq-speakers-cell'}>
-      {interactive ? (
+      {clickable ? (
         <button
           type="button"
           className={cellClass}

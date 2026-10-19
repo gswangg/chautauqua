@@ -1234,6 +1234,8 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
     // keys are read by POST .../onboarding/remind and .../remind/preview)
     "app/src/pages/speakers/OnboardingGrid.tsx spread: ...(contactIds ? { contactIds } : {})",
     "app/src/pages/speakers/OnboardingGrid.tsx spread: ...(portalId ? { portalId } : {})",
+    // decision 75: the direct view's reminder scope (read by both reminder routes)
+    "app/src/pages/speakers/OnboardingGrid.tsx spread: ...(direct ? { source: 'direct' } : {})",
     "app/src/pages/submissions/SubmissionsTable.tsx spread: ...(input.format ? { format: input.format } : {})",
   ];
 

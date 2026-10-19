@@ -255,21 +255,23 @@ const LEDGER: LedgerEntry[] = [
   {
     key: "acceptance-auto-creates",
     status: "honored",
-    reason: "acceptance auto-creates the speaker record, the session, and the onboarding tasks.",
+    reason:
+      "acceptance auto-creates the speaker record, the session, and the onboarding tasks -- since multi-portal decision 76, the onboarding tasks arrive through the portals the accepted speaker now matches (the status route schedules the reconcile).",
     honored: {
-      file: "src/domain/acceptance.ts",
-      literal: "export function planAcceptance",
-      testFile: "test/domain.test.ts",
+      file: "src/routes/api/submissions.ts",
+      literal: "// multi-portal: an acceptance (or un-acceptance) moves people between portals",
+      testFile: "test/tasks-one-engine.test.ts",
     },
   },
   {
     key: "must-have-onboarding-tasks",
     status: "honored",
-    reason: "hotel stay requirement form + flight reimbursement form are the must-have onboarding tasks.",
+    reason:
+      "hotel stay requirement form + flight reimbursement form are the must-have onboarding tasks -- items of the CFP speakers portal every new event starts with (decision 76), backed by DEC-111's real forms.",
     honored: {
-      file: "src/domain/acceptance.ts",
-      literal: "Hotel stay requirement form",
-      testFile: "test/acceptance-form-tasks.test.ts",
+      file: "src/domain/portals/templates.ts",
+      literal: 'title: "Hotel stay requirement form", kind: "form"',
+      testFile: "test/tasks-one-engine.test.ts",
     },
   },
   {

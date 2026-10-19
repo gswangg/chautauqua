@@ -27,16 +27,15 @@ export const DIRECT_TASK_KINDS = ['general', 'file_request', 'form'] as const sa
 // used.
 export const MAX_TASK_ASSIGNEES = 200;
 
-// DEC-746 (wave-77 amendment): task.audience is a real, defaulted column —
-// 'targeted' when createTask received an explicit contactIds subset,
-// 'everyone' otherwise. DEC-932's acceptance back-fill (status.ts) filters
-// its driving select to audience = DEFAULT_TASK_AUDIENCE so a task an
-// organizer deliberately targeted at a subset never silently becomes
-// universal at the next acceptance.
-// 'portal' (multi-portal): a library item created for portals -- it reaches
-// people only through the portals that list it, never by back-fill.
+// task.audience says how a task reaches people:
+//   'targeted' -- the people an organizer picked by name (DEC-746 wave-77);
+//   'portal'   -- a library item that reaches people only through the
+//                 portals that list it (multi-portal).
+// 'everyone' is retired (multi-portal decision 76): it meant "every accepted
+// speaker, back-filled at each acceptance", a second rule engine beside
+// portals. migrations/0047 turned every such task into a 'targeted' list of
+// the people who already had it, and nothing reads or writes it now; it stays
+// in the union only because the column's SQL default still names it.
 export const TASK_AUDIENCES = ['everyone', 'targeted', 'portal'] as const;
 
 export type TaskAudience = (typeof TASK_AUDIENCES)[number];
-
-export const DEFAULT_TASK_AUDIENCE: TaskAudience = 'everyone';

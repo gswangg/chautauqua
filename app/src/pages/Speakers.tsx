@@ -25,7 +25,9 @@ export function SpeakersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const portalParam = searchParams.get('portal');
   const notInPortal = portalParam === 'none';
-  const portalId = portalParam && portalParam !== 'none' ? portalParam : null;
+  // decision 75: ?portal=direct is the "Assigned directly" view
+  const direct = portalParam === 'direct';
+  const portalId = portalParam && portalParam !== 'none' && portalParam !== 'direct' ? portalParam : null;
   // Multi-portal: sponsor-designed sessions waiting for approval are reached
   // from here (the queue lives under Speakers); the link shows only when
   // some are waiting.
@@ -64,8 +66,9 @@ export function SpeakersPage() {
         // a portal switch remounts the grid: its page and task filter belong
         // to the columns it had
         <OnboardingGrid
-          key={`${refreshKey}:${portalId ?? 'any'}`}
+          key={`${refreshKey}:${direct ? 'direct' : (portalId ?? 'any')}`}
           portalId={portalId}
+          direct={direct}
           onAddSpeaker={() => setRosterMode('add')}
           onPortalChange={setPortalFilter}
           headExtra={queueLink}

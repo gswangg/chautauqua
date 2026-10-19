@@ -85,6 +85,14 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       mockApi({
         [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
         [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+        [`GET /api/v1/events/${EVENT_ID}/portals`]: {
+          portals: [{ id: 'pt-cfp', name: 'CFP speakers', template: null, who: 'Speakers', participations: 12, items: 4, matchesNobody: false, createdAt: 0 }],
+          covered: 12,
+          total: 12,
+          notInAny: 0,
+          overlap: 0,
+          templates: [],
+        },
       });
       const utils = render(
         <MemoryRouter initialEntries={['/speakers']}>
@@ -96,7 +104,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       return utils;
     }
 
-    it('MATCHES: opened from the head "New task" button, title/subtitle/Kind order/Required default/actions', async () => {
+    it('MATCHES: opened from the head "New task" button, title/Kind order/Required default/actions (the subtitle now names the portal, decision 76)', async () => {
       renderGridAndOpenNewTask();
       await screen.findByRole('heading', { name: 'Speakers' });
       fireEvent.click(screen.getByRole('button', { name: 'New task' }));
@@ -105,7 +113,9 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // docs/design/Chautauqua Speakers.dc.html:193-194 --
       // `<span ...>New task</span>` over `<span ...>Created for all 12 accepted speakers</span>`.
       verbatimLine(194, '          <span style="font-size:13px; color:#565A4B">Created for all 12 accepted speakers</span>');
-      expect(within(dialog).getByText('Created for all 12 accepted speakers')).toBeInTheDocument();
+      // Multi-portal decision 76: acceptance no longer hands out tasks, so a
+      // new task goes to a portal, and the subtitle names it.
+      expect(within(dialog).getByText('Added to CFP speakers: everyone it covers gets it')).toBeInTheDocument();
 
       const kindGroup = within(dialog).getByRole('group', { name: 'Kind' });
       const kindButtons = within(kindGroup).getAllByRole('button').map((b) => b.textContent);
@@ -126,7 +136,7 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
 
-    it('DIVERGES (additively): the frame\'s last field before the action row is Required; the tree inserts an "Assign to" audience picker there instead', async () => {
+    it('DIVERGES (additively): the frame\'s last field before the action row is Required; the tree inserts a "Who gets it" audience picker there instead', async () => {
       renderGridAndOpenNewTask();
       await screen.findByRole('heading', { name: 'Speakers' });
       fireEvent.click(screen.getByRole('button', { name: 'New task' }));
@@ -135,9 +145,9 @@ describe('v12 Speakers DESKTOP frames, the six remaining (w24-e, DEC-651)', () =
       // docs/design/Chautauqua Speakers.dc.html:213 -- `<label style="display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; color:#3F4237">`
       // is the Required checkbox's opening tag, the LAST field before the action row -- no audience section.
       verbatimLine(213, '        <label style="display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; color:#3F4237">');
-      // DEC-746 (wave-59 amendment): the picker below is a previously-ruled, already-blessed addition.
-      expect(within(dialog).getByRole('radiogroup', { name: 'Assign to' })).toBeInTheDocument();
-      expect(within(dialog).getByRole('radio', { name: /Everyone accepted \(12\)/ })).toBeChecked();
+      // DEC-746 (wave-59 amendment), as amended by multi-portal decision 76: the picker below is a previously-ruled addition.
+      expect(within(dialog).getByRole('radiogroup', { name: 'Who gets it' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('radio', { name: 'Everyone in a portal' })).toBeChecked();
     });
   });
 

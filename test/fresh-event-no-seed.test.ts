@@ -57,6 +57,8 @@
 // fields -- is entirely self-minting (createDefaultForm, lockedFieldId) and
 // carries no dependency on any seed script or fixture literal.
 
+import { reconcileEventPortals } from "../src/server/repo/portals/reconcile";
+import { createPortalFromTemplate } from "../src/server/repo/portals/admin";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
@@ -366,8 +368,14 @@ describe("fresh-event-no-seed (DEC-008 wave-10 amendment): a runtime-minted even
     expect(acceptedRow.status).toBe("accepted");
     expect(acceptedRow.accepted_at).not.toBeNull();
 
-    // The DEC-009 acceptance planner minted at least one task_assignment row
-    // for this speaker's contact.
+    // Multi-portal decision 76: acceptance plans no tasks itself; the CFP
+    // speakers portal every new event starts with (POST /api/v1/events
+    // creates it; this test builds its event directly, so it does the same)
+    // brings its items once portals reconcile -- the route schedules that,
+    // this test runs it
+    expect(sqlite.prepare(`select id from task_assignment where contact_id = ?`).all(contactId)).toEqual([]);
+    await createPortalFromTemplate(db, eventId, "cfp_speakers", new Date());
+    await reconcileEventPortals(db, eventId, new Date(), { notify: "none" });
     const assignmentRows = sqlite
       .prepare(`select id from task_assignment where contact_id = ?`)
       .all(contactId) as { id: string }[];

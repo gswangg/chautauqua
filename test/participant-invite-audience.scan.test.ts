@@ -48,6 +48,8 @@ const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
     "submission history: joins email_log through every participant row for an audit trail, not an audience read",
   "src/server/repo/submissions/list.ts":
     "admin submissions grid: names every participant on a row (including the name-search subquery), regardless of invite status",
+  "src/server/repo/submissions/status.ts":
+    "getSubmissionStatusForParticipant looks up one participant row by id to find its event for the post-answer portal reconcile -- an ownership lookup, not an eligibility read (multi-portal decision 76 removed the acceptance planner that declared an audience here).",
   "src/server/repo/submissions/touch.ts":
     "write path: touchSubmissionsForContacts resolves participant.contactId -> participant.submissionId to find which submissions to re-stamp after a contact rename -- every participant row denormalizes the SAME contact name into the pushed Speakers cell regardless of invite status, so this is not an eligibility read.",
 };

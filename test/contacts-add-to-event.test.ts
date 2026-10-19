@@ -28,7 +28,6 @@ import { Hono } from "hono";
 import { contactsRoutes } from "../src/routes/api/contacts";
 import { registerErrorHandler } from "../src/server/http";
 import * as schema from "../src/db/schema";
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const ORG_A = "org-a";
@@ -248,19 +247,9 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     // inventing a different default.
     expect(participantInsert.role).toBe("speaker");
 
-    // P1 fix (w1-f): acceptance planning actually fired — the contact got
-    // every DEC-009 default onboarding task assigned (previously zero,
-    // because the direct status:'accepted' insert skipped planning).
-    // (DEC-111 amendment, wave 48: getOrCreateTask is now insert-then-
-    // select-limit(1) keyed by (eventId, title); makeChain's limit()
-    // returns the tail of the live rows array, i.e. whatever was most
-    // recently inserted, which is correct here since every title in this
-    // single-contact scenario is seen exactly once.)
-    expect(state.taskAssignment).toHaveLength(DEFAULT_ONBOARDING_TASKS.length);
-    for (const assignment of state.taskAssignment) {
-      expect(assignment.contactId).toBe("contact-1");
-      expect(assignment.status).toBe("pending");
-    }
+    // multi-portal decision 76: acceptance creates no tasks itself (portals
+    // bring their items on the reconcile the route schedules)
+    expect(state.taskAssignment).toEqual([]);
 
     // Push-to-event never sends email (product principle 4) — no mailer is
     // even importable from this path (see the source-scan test below); no

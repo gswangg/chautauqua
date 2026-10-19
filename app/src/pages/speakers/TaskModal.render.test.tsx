@@ -17,6 +17,9 @@ const FORMS: EventForm[] = [
   { id: 'form-hotel', title: 'Hotel stay requirement form', isDefault: false },
 ];
 
+// decision 76: a new task goes to a portal (offered first) or named people
+const PORTALS = [{ id: 'pt-1', name: 'CFP speakers' }];
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -26,13 +29,13 @@ function fillTitle(value: string) {
   fireEvent.change(screen.getByRole('textbox', { name: 'Task' }), { target: { value } });
 }
 
-// DEC-746: createTask always assigns every accepted speaker now -- the
-// modal states the count instead of offering an assign-all checkbox, and
-// drops the Description textarea.
-describe('TaskModal: DEC-746 always-assign subtitle and dropped fields', () => {
-  it('states the accepted count in the subtitle and offers neither a Description field nor an assign-all checkbox', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
-    expect(screen.getByText('Created for all 12 accepted speakers')).toBeInTheDocument();
+// DEC-746, as amended by multi-portal decision 76: a new task goes to a
+// portal by default, and the subtitle names that portal; the modal offers
+// no assign-all checkbox and no Description textarea.
+describe('TaskModal: DEC-746 audience subtitle and dropped fields', () => {
+  it('names the portal in the subtitle and offers neither a Description field nor an assign-all checkbox', () => {
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
+    expect(screen.getByText('Added to CFP speakers: everyone it covers gets it')).toBeInTheDocument();
     expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
     expect(screen.queryByText('Assign to all accepted speakers')).not.toBeInTheDocument();
   });
@@ -44,18 +47,18 @@ describe('TaskModal: A12 Remove lives inside the editor', () => {
   const TASK = { id: 'task-1', kind: 'general' as const, title: 'Sign speaker agreement', dueDate: null, required: true };
 
   it('renders no Remove control in create mode, or in edit mode without an onRemove handler', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
     expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
     cleanup();
 
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} task={TASK} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} task={TASK} />);
     expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
   });
 
   it('renders exactly one Remove control in edit mode when onRemove is provided, and it fires onRemove', () => {
     const onRemove = vi.fn();
     render(
-      <TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} task={TASK} onRemove={onRemove} />,
+      <TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} task={TASK} onRemove={onRemove} />,
     );
     const removeButtons = screen.getAllByRole('button', { name: 'Remove' });
     expect(removeButtons).toHaveLength(1);
@@ -66,13 +69,13 @@ describe('TaskModal: A12 Remove lives inside the editor', () => {
 
 describe('TaskModal: DEC-398 form picker', () => {
   it('hides the Form field for non-form kinds', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
     expect(screen.queryByLabelText('Form')).not.toBeInTheDocument();
   });
 
   it('lists the fetched form titles and submits the selected id, defaulting to the first form', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Form' }));
 
@@ -95,7 +98,7 @@ describe('TaskModal: DEC-398 form picker', () => {
 
   it('disables the select, explains, and blocks submit when the event has no forms', async () => {
     const onSubmit = vi.fn();
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={[]} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={[]} acceptedCount={12} portals={PORTALS} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Form' }));
 
@@ -116,7 +119,7 @@ describe('TaskModal: DEC-398 form picker', () => {
 // (including 'recording'), in FILE_KINDS order, defaulting to the first.
 describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
   it('offers a Recording option and defaults to Presentation', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
 
     const select = screen.getByLabelText(/Deliverable kind/) as HTMLSelectElement;
     expect(select).toBeInTheDocument();
@@ -132,7 +135,7 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
   // a headshot/photo file request -- the picker offers it with its own
   // label, distinct from a Handout.
   it('offers a Photo / headshot option', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
 
     expect(screen.getByText('Photo / headshot')).toBeInTheDocument();
   });
@@ -143,7 +146,7 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
   // never silently dropped in favour of the default.
   it('includes the selected deliverable kind in the submitted create payload', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
 
     const select = screen.getByLabelText(/Deliverable kind/) as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'recording' } });
@@ -155,12 +158,12 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
   });
 });
 
-// DEC-746 (wave-59 amendment): the New task modal's audience picker --
-// 'Everyone accepted' is the default (no contactIds sent, unchanged 'all N'
-// subtitle); choosing 'Only the people I choose' reveals the roster
-// checkbox list and posts exactly the chosen ids with a subtitle naming the
-// chosen count; zero chosen blocks submit; assigneesTruncated withholds the
-// subset choice entirely and states the ceiling.
+// DEC-746 (wave-59 amendment), as amended by multi-portal decision 76: the
+// New task modal's audience picker -- 'Everyone in a portal' is the default
+// (the chosen portal id is sent, no contactIds); choosing 'Only the people I
+// choose' reveals the roster checkbox list and posts exactly the chosen ids
+// with a subtitle naming the chosen count; zero chosen blocks submit;
+// assigneesTruncated disables the subset choice and states the ceiling.
 describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
   const ASSIGNEES = [
     { contactId: 'contact-1', name: 'Ada Lovelace' },
@@ -168,24 +171,25 @@ describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
     { contactId: 'contact-3', name: 'Radia Perlman' },
   ];
 
-  it('defaults to Everyone accepted, posts no contactIds, and keeps the all-N subtitle', async () => {
+  it('defaults to Everyone in a portal, posts the portal id and no contactIds', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
-      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} assignees={ASSIGNEES} />,
     );
 
-    expect(screen.getByText('Created for all 12 accepted speakers')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Everyone in a portal' })).toBeChecked();
     fillTitle('Sign the agreement');
     fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
 
     await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0].portalId).toBe('pt-1');
     expect(onSubmit.mock.calls[0]![0].contactIds).toBeUndefined();
   });
 
   it('choosing two people posts exactly those two ids and changes the subtitle', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
-      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} assignees={ASSIGNEES} />,
     );
 
     fireEvent.click(screen.getByRole('radio', { name: 'Only the people I choose' }));
@@ -204,7 +208,7 @@ describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
   it('blocks submit when the subset choice is selected but zero people are checked', async () => {
     const onSubmit = vi.fn();
     render(
-      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} portals={PORTALS} assignees={ASSIGNEES} />,
     );
 
     fireEvent.click(screen.getByRole('radio', { name: 'Only the people I choose' }));
@@ -215,20 +219,20 @@ describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
     expect(screen.getByText('Choose at least one speaker.')).toBeInTheDocument();
   });
 
-  it('withholds the subset choice and states the ceiling when assigneesTruncated', () => {
+  it('disables the subset choice and states the ceiling when assigneesTruncated', () => {
     render(
       <TaskModal
         onCancel={() => {}}
         onSubmit={vi.fn()}
         forms={FORMS}
-        acceptedCount={250}
+        acceptedCount={250} portals={PORTALS}
         assignees={[]}
         assigneesTruncated
       />,
     );
 
-    expect(screen.queryByRole('radio', { name: 'Only the people I choose' })).not.toBeInTheDocument();
-    expect(screen.getByText(/too many speakers to choose from individually/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Only the people I choose' })).toBeDisabled();
+    expect(screen.getByText(/too many speakers to choose from here/)).toBeInTheDocument();
   });
 });
 
@@ -239,7 +243,7 @@ describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
 // chq-btn-primary vs chq-btn-secondary class swap).
 describe('TaskModal: DEC-577 segmented Kind control', () => {
   it('renders one real button per kind, keyboard-focusable, with the active state carried by aria-pressed and class, not colour alone', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} portals={PORTALS} />);
 
     const group = screen.getByRole('group', { name: 'Kind' });
     expect(group).toBeInTheDocument();

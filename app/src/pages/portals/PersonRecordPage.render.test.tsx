@@ -527,3 +527,85 @@ describe('PersonRecordPage', () => {
     expect(document.querySelector('[class*="chq-empty"]')).toBeNull();
   });
 });
+
+// Multi-portal decision 77: "Give an item" hands one library task to this
+// person directly (POST /tasks/:id/assign), for people on the event's
+// roster (an accepted session) only.
+describe('PersonRecordPage: Give an item', () => {
+  const LIBRARY_PATH = `/api/v1/events/${EVENT_ID}/library`;
+  function entry(ref: { taskId: string } | { resourceId: string } | { systemKind: string }, title: string) {
+    return { ref, type: 'task', title, scope: 'person', instructions: null, formId: null, acceptedTypes: null, maxSizeMb: null, maxFiles: null, usedBy: [], direct: false, hint: '' };
+  }
+  const LIBRARY = {
+    entries: [
+      entry({ taskId: 'task-slides' }, 'Final slides'),
+      entry({ taskId: 'task-promo' }, 'Promo video'),
+      entry({ resourceId: 'res-1' }, 'Speaker handbook'),
+      entry({ systemKind: 'bio' }, 'Bio'),
+    ],
+    counts: { task: 2, form: 0, file_request: 0, share_kit: 0, resource: 1 },
+  };
+  function heldRecord(): PersonRecord {
+    const r = baseRecord();
+    const [talk, ...rest] = r.view.sections;
+    const items = talk!.items.map((i) => (i.title === 'Final slides' ? { ...i, taskId: 'task-slides' } : i));
+    return { ...r, view: { ...r.view, sections: [{ ...talk!, items }, ...rest] } };
+  }
+
+  it('offers library tasks the person does not hold, gives the chosen one, and re-reads the record', async () => {
+    const fetchMock = mockApi({
+      [`GET ${RECORD_PATH}`]: heldRecord(),
+      [`GET ${LIBRARY_PATH}`]: LIBRARY,
+      'POST /api/v1/tasks/task-promo/assign': { tasks: [], rows: [], total: 0 },
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
+    fireEvent.click(screen.getByRole('button', { name: 'Give an item' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Give an item' });
+    const select = within(dialog).getByLabelText('Item');
+    await waitFor(() => expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Choose an item', 'Promo video']));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Give it' }));
+    expect(await within(dialog).findByText('Choose an item to give.')).toBeInTheDocument();
+    expect(callsTo(fetchMock, 'POST', '/api/v1/tasks/task-promo/assign')).toHaveLength(0);
+
+    fireEvent.change(select, { target: { value: 'task-promo' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Give it' }));
+    expect(await screen.findByText('Promo video given to Priya.')).toBeInTheDocument();
+    const posts = callsTo(fetchMock, 'POST', '/api/v1/tasks/task-promo/assign');
+    expect(posts.map(bodyOf)).toEqual([{ contactIds: [CONTACT_ID] }]);
+    await waitFor(() => expect(callsTo(fetchMock, 'GET', RECORD_PATH).length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("shows the assign door's refusal in the dialog", async () => {
+    mockApi({
+      [`GET ${RECORD_PATH}`]: heldRecord(),
+      [`GET ${LIBRARY_PATH}`]: LIBRARY,
+      'POST /api/v1/tasks/task-promo/assign': {
+        status: 400,
+        body: errorEnvelope('invalid', "One or more contacts are not on this event's roster", {
+          contactIds: 'the contact must be a participant on an accepted submission of this event',
+        }),
+      },
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
+    fireEvent.click(screen.getByRole('button', { name: 'Give an item' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Give an item' });
+    const select = within(dialog).getByLabelText('Item');
+    await waitFor(() => expect(within(select).getAllByRole('option')).toHaveLength(2));
+    fireEvent.change(select, { target: { value: 'task-promo' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Give it' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('the contact must be a participant on an accepted submission of this event');
+  });
+
+  it('is not offered to someone with no accepted session', async () => {
+    const r = baseRecord();
+    const notOnRoster: PersonRecord = { ...r, view: { ...r.view, participations: r.view.participations.filter((p) => p.participation.session?.status !== 'accepted') } };
+    mockApi({ [`GET ${RECORD_PATH}`]: notOnRoster });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: 'Priya Raman' });
+    expect(screen.getByRole('button', { name: 'Invite to speak' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Give an item' })).not.toBeInTheDocument();
+  });
+});

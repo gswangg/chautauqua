@@ -9,10 +9,11 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
 import { reconcileEventPortals } from "../src/server/repo/portals/reconcile";
 import { getOnboardingGrid, type OnboardingGridParams } from "../src/server/repo/tasks/grid";
-import { findEventPortal, portalReminderScope } from "../src/server/repo/tasks/portal-scope";
+import { directReminderScope, findEventPortal, portalReminderScope } from "../src/server/repo/tasks/portal-scope";
 import type { PortalRule } from "../src/domain/portals/rules";
 import { parseIndexMounts } from "./helpers/index-mounts";
 import {
+  ACCEPTED_SESSIONS,
   addContact,
   addEvent,
   addEventRole,
@@ -54,12 +55,19 @@ async function world(): Promise<Fixture> {
   addParticipant(f, "spv-p-bo", "spv-panel", "spv-bo", { role: "moderator" });
   addTask(f, "spv-slides", EVENT, { title: "Final slides" });
   addTask(f, "spv-prep", EVENT, { title: "Panel prep" });
-  addTask(f, "spv-bio", EVENT, { title: "Bio" });
+  addTask(f, "spv-bio", EVENT, { title: "Travel booking" });
   f.run(`update task set audience = 'portal' where id in ('spv-slides', 'spv-prep')`);
   addPortal(f, "spv-speakers", EVENT, role("speaker"), { name: "Speakers" });
   addPortal(f, "spv-mods", EVENT, role("moderator"), { name: "Moderators", position: 2 });
   addPortal(f, "spv-empty", EVENT, role("speaker"), { name: "Nothing to do", position: 3 });
   addPortal(f, "spv-elsewhere", OTHER_EVENT, role("speaker"), { name: "Other event" });
+  // decision 75: a Profile basics-style portal for everyone on a session,
+  // with the built-in Bio and Headshot items
+  addPortal(f, "spv-profile", EVENT, ACCEPTED_SESSIONS, { name: "Profile basics", position: 0 });
+  addPortalItem(f, "spv-i-pbio", "spv-profile", { systemKind: "bio" }, { required: true });
+  addPortalItem(f, "spv-i-phead", "spv-profile", { systemKind: "headshot" }, { required: true });
+  f.run(`update contact set bio = 'Wrote the first program.' where id = 'spv-ada'`);
+  f.run(`update contact set headshot_url = 'https://example.com/elliot.jpg' where id = 'spv-elliot'`);
   addPortalItem(f, "spv-i-slides", "spv-speakers", { taskId: "spv-slides" }, { deadlineKind: "fixed", dueDate: f.now - 5 * DAY, required: true });
   addPortalItem(f, "spv-i-prep", "spv-mods", { taskId: "spv-prep" }, { deadlineKind: "fixed", dueDate: f.now + 30 * DAY });
   // Cy is a speaker by event role, with no session: the speakers portal
@@ -85,7 +93,7 @@ describe("Speakers grid · one portal's view", () => {
   it("without a portal, lists every speaker and every task", async () => {
     const f = await world();
     const grid = await getOnboardingGrid(f.db, EVENT, params(f, null));
-    expect(grid.tasks.map((t) => t.title).sort()).toEqual(["Bio", "Final slides", "Panel prep"]);
+    expect(grid.tasks.map((t) => t.title).sort()).toEqual(["Final slides", "Panel prep", "Travel booking"]);
     // by last name
     expect(grid.rows.map((r) => r.contact.name)).toEqual(["Bo Diaz", "Elliot Ekstrom", "Ada Lovelace"]);
     expect(grid.counts.speakers).toBe(3);
@@ -145,6 +153,47 @@ describe("Speakers grid · one portal's view", () => {
     const empty = (await findEventPortal(f.db, EVENT, "spv-empty"))!;
     expect((await portalReminderScope(f.db, EVENT, empty, undefined, undefined)).taskIds).toEqual([]);
     expect(await findEventPortal(f.db, EVENT, "spv-elsewhere")).toBeNull();
+    f.sqlite.close();
+  });
+});
+
+describe("Speakers grid · built-in profile columns and the direct view (decision 75)", () => {
+  it("adds Bio and Headshot as read-only columns from the profile, first, with whole-roster counts", async () => {
+    const f = await world();
+    const grid = await getOnboardingGrid(f.db, EVENT, { ...params(f, null), builtInColumns: true });
+    expect(grid.tasks.slice(0, 2).map((t) => [t.id, t.kind, t.title, t.assigned, t.complete])).toEqual([
+      ["built-in:bio", "built_in", "Bio", 3, 1],
+      ["built-in:headshot", "built_in", "Headshot", 3, 1],
+    ]);
+    const cell = (contact: string, task: string) =>
+      grid.rows.find((r) => r.contact.id === contact)!.cells.find((c) => c.taskId === task)?.status;
+    expect(cell("spv-ada", "built-in:bio")).toBe("complete");
+    expect(cell("spv-bo", "built-in:bio")).toBe("pending");
+    expect(cell("spv-elliot", "built-in:headshot")).toBe("complete");
+    expect(cell("spv-ada", "built-in:headshot")).toBe("pending");
+    f.sqlite.close();
+  });
+
+  it("shows a portal's built-ins only when that portal lists them", async () => {
+    const f = await world();
+    const mods = await getOnboardingGrid(f.db, EVENT, { ...params(f, "spv-mods"), builtInColumns: true });
+    expect(mods.tasks.map((t) => t.title)).toEqual(["Panel prep"]);
+    const profile = await getOnboardingGrid(f.db, EVENT, { ...params(f, "spv-profile"), builtInColumns: true });
+    expect(profile.tasks.map((t) => t.title)).toEqual(["Bio", "Headshot"]);
+    expect(profile.rows).toHaveLength(3);
+    f.sqlite.close();
+  });
+
+  it("the direct view lists the hand-picked tasks and the people holding them", async () => {
+    const f = await world();
+    const grid = await getOnboardingGrid(f.db, EVENT, { ...params(f, null), direct: true, builtInColumns: true });
+    expect(grid.tasks.map((t) => t.title)).toEqual(["Travel booking"]);
+    expect(grid.tasks[0]).toMatchObject({ assigned: 1, complete: 0 });
+    expect(grid.rows.map((r) => r.contact.name)).toEqual(["Ada Lovelace"]);
+    // every one of Ada's sessions, not one portal's
+    expect(grid.rows[0]!.contact.participations.map((p) => p.title)).toEqual(["Looms"]);
+    expect(grid.counts.speakers).toBe(1);
+    expect(await directReminderScope(f.db, EVENT, undefined, undefined)).toEqual({ taskIds: ["spv-bio"], contactIds: ["spv-ada"] });
     f.sqlite.close();
   });
 });

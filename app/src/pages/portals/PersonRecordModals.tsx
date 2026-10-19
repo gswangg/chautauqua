@@ -1,15 +1,17 @@
-// Person record dialogs: reopen one closed item for this person only, and
+// Person record dialogs: reopen one closed item for this person only,
 // invite them to speak on an accepted session (flow 8, the organizer's
-// side; the email links to /portal/invitations/:token).
+// side; the email links to /portal/invitations/:token), and give them one
+// library task directly.
 import { useEffect, useState, type FormEvent } from 'react';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { DateField } from '../../components/DateField';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { DelayedLoading } from '../../components/DelayedLoading';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { msToDateInput } from '../../lib/dates';
 import { PARTICIPANT_ROLE_OPTIONS, DEFAULT_PARTICIPANT_ROLE } from '../../../../src/domain/participant-roles';
 import { MAX_INVITATION_MESSAGE } from '../../lib/domain-caps';
 import type { SubmissionListItem } from '../submissions/types';
-import type { ViewItemJson } from './types';
+import type { LibraryListing, ViewItemJson } from './types';
 import { dayLabel } from './PersonRecordTables';
 
 // yyyy-mm-dd, n calendar days from today
@@ -241,6 +243,121 @@ export function InviteToSpeakModal(props: {
       </FormRow>
       <FormRow label="Reply by" htmlFor="person-record-invite-reply-by" optional error={fieldErrors.replyBy}>
         <DateField id="person-record-invite-reply-by" value={replyBy} onChange={setReplyBy} />
+      </FormRow>
+    </ModalFrame>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Give an item (multi-portal decision 77): hand one library task to this
+// person directly, beside whatever their portals bring. The assign door
+// takes people on this event's roster (an accepted session) only.
+// ---------------------------------------------------------------------------
+
+export function GiveItemModal(props: {
+  eventId: string;
+  contactId: string;
+  firstName: string;
+  heldTaskIds: ReadonlySet<string>;
+  onClose: () => void;
+  onGiven: (title: string) => void;
+}) {
+  const { eventId, contactId, heldTaskIds } = props;
+  const [tasks, setTasks] = useState<{ id: string; title: string }[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState('');
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<LibraryListing>(`/events/${eventId}/library`)
+      .then((res) => {
+        if (cancelled) return;
+        const open = res.entries.flatMap((e) =>
+          'taskId' in e.ref && !heldTaskIds.has(e.ref.taskId) ? [{ id: e.ref.taskId, title: e.title }] : [],
+        );
+        setTasks(open);
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(errorMessage(err, 'The library could not be loaded.'));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, heldTaskIds]);
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (taskId === '') {
+      setFieldError('Choose an item to give.');
+      return;
+    }
+    setFieldError(null);
+    setError(null);
+    setSaving(true);
+    try {
+      await apiPost(`/tasks/${taskId}/assign`, { contactIds: [contactId] });
+      props.onGiven(tasks?.find((t) => t.id === taskId)?.title ?? 'The item');
+    } catch (err) {
+      if (err instanceof ApiError && err.fields?.contactIds) setError(err.fields.contactIds);
+      else setError(errorMessage(err, 'Giving the item failed'));
+      setSaving(false);
+    }
+  }
+
+  const none = tasks !== null && tasks.length === 0;
+  return (
+    <ModalFrame
+      as="form"
+      onSubmit={submit}
+      title="Give an item"
+      subtitle={`For ${props.firstName} only, beside what their portals bring.`}
+      onClose={props.onClose}
+      closeDisabled={saving}
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={saving || tasks === null || none}>
+            {saving ? 'Giving…' : 'Give it'}
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={props.onClose} disabled={saving}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      {error ? (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="chq-error" role="alert">
+          {loadError}
+        </div>
+      ) : null}
+      {tasks === null && !loadError ? <DelayedLoading label="Loading the library…" /> : null}
+      <FormRow
+        label="Item"
+        htmlFor="person-record-give-item"
+        error={fieldError}
+        help={none ? `${props.firstName} already has every task in the library.` : 'Any task in the library. They get it now, and keep it whichever portals they join or leave.'}
+      >
+        <select
+          id="person-record-give-item"
+          className="chq-select"
+          value={taskId}
+          onChange={(e) => setTaskId(e.target.value)}
+          disabled={tasks === null || none}
+        >
+          <option value="">Choose an item</option>
+          {(tasks ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.title}
+            </option>
+          ))}
+        </select>
       </FormRow>
     </ModalFrame>
   );

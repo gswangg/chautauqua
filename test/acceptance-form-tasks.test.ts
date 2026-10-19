@@ -60,18 +60,3 @@ describe("DEC-111 FORM_TASK_FIELD_SPECS covers every kind='form' onboarding temp
   });
 });
 
-describe("DEC-111 status.ts self-heals and backs kind='form' tasks with real forms (source scan)", () => {
-  it("references FORM_TASK_FIELD_SPECS, sets formId, and self-heals a null formId", async () => {
-    const source = (
-      await import("../src/server/repo/submissions/status.ts?raw")
-    ).default as string;
-    expect(source).toMatch(/FORM_TASK_FIELD_SPECS/);
-    expect(source).toMatch(/formId/);
-    // self-heal: an existing/winning task row with a null formId gets one
-    // filled in (DEC-111 amendment, wave 48: getOrCreateTask's find-or-create
-    // shape is now insert-on-conflict-do-nothing then select, so the row
-    // checked here is named `row`, not `existing[0]`).
-    expect(source).toMatch(/row\.formId/);
-    expect(source).toMatch(/\.update\(schema\.task\)/);
-  });
-});

@@ -16,7 +16,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as schema from "../src/db/schema";
 import { createTask, updateTask } from "../src/server/repo/tasks/crud";
-import { ensureOnboardingTasks } from "../src/server/repo/submissions/status";
 import { ApiError } from "../src/server/http";
 import type { Db } from "../src/server/context";
 
@@ -199,66 +198,6 @@ describe("createTask/updateTask title collision (DEC-111 amendment, wave 48)", (
       expect.unreachable("expected createTask to throw");
     } catch (err) {
       expect(err).toBeInstanceOf(ApiError);
-    }
-  });
-});
-
-describe("getOrCreateTask race (DEC-111 amendment, wave 48): a concurrent writer already won", () => {
-  let db: Db;
-  let sqlite: DatabaseSync;
-  const eventId = "event-1";
-
-  beforeEach(() => {
-    ({ db, sqlite } = makeTestDb());
-    const now = Date.now();
-    sqlite.exec(
-      `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
-       values ('${eventId}', 'org-1', 'Event One', 'event-one', '2030-06-01', '2030-06-03', 'UTC', 'SES', ${now}, ${now})`,
-    );
-  });
-  afterEach(() => {
-    sqlite.close();
-  });
-
-  it("a pre-existing row for the template title (simulating the other side of the race already committing) is reused -- exactly one row, the assignment lands on it", async () => {
-    // Simulate: another concurrent acceptance already inserted this
-    // template's task row between our own read and write.
-    const preExistingId = "task-already-there";
-    const now = Date.now();
-    sqlite.exec(
-      `insert into task (id, event_id, kind, title, required, created_at, updated_at)
-       values ('${preExistingId}', '${eventId}', 'general', 'Finalize talk description', 0, ${now}, ${now})`,
-    );
-
-    const contactId = "contact-1";
-    await ensureOnboardingTasks(db, eventId, "sub-1", [contactId], new Date());
-
-    const taskRows = sqlite
-      .prepare("select id from task where event_id = ? and title = ?")
-      .all(eventId, "Finalize talk description") as { id: string }[];
-    // Exactly one row -- the race did not mint a duplicate.
-    expect(taskRows).toHaveLength(1);
-    // It's the SAME row the "other writer" already committed -- our own
-    // insert conflicted and getOrCreateTask returned the winner's id.
-    expect(taskRows[0]!.id).toBe(preExistingId);
-
-    const assignmentRows = sqlite
-      .prepare("select task_id from task_assignment where contact_id = ? and task_id = ?")
-      .all(contactId, preExistingId) as { task_id: string }[];
-    expect(assignmentRows).toHaveLength(1);
-  });
-
-  it("two sequential ensureOnboardingTasks calls for the same event/contact never mint a second task row per title", async () => {
-    const contactId = "contact-1";
-    await ensureOnboardingTasks(db, eventId, "sub-1", [contactId], new Date());
-    await ensureOnboardingTasks(db, eventId, "sub-1", [contactId], new Date());
-
-    const rows = sqlite.prepare("select title, count(*) as c from task where event_id = ? group by title").all(eventId) as {
-      title: string;
-      c: number;
-    }[];
-    for (const row of rows) {
-      expect(row.c).toBe(1);
     }
   });
 });

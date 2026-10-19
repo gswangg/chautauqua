@@ -2,7 +2,8 @@
 // (addCoPresenter — src/server/repo/portal-edit.ts — lands 'invited') is
 // still able to gain access through the EXISTING accept/decline machinery:
 // POST /portal/invitations/:participantId (src/routes/portal/index.tsx),
-// canTransitionInvite, and the DEC-278 onboarding-task back-fill. Kept in a
+// canTransitionInvite (decision 76 retired the DEC-278 onboarding-task
+// back-fill: the portals an accepted invitation joins bring their items). Kept in a
 // separate file from test/portal-invite-write-audience-behavior.test.ts
 // because vi.mock is file-scoped/hoisted — mocking
 // src/server/repo/submissions here would otherwise shadow the REAL
@@ -16,7 +17,6 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const EVENT_ID = "event-1";
 const setInviteStatusCalls: { participantId: string; status: string }[] = [];
-const ensureOnboardingTasksCalls: { eventId: string; submissionId: string; contactIds: string[] | null }[] = [];
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
@@ -46,11 +46,6 @@ vi.mock("../src/server/repo/submissions", async () => {
       eventId: EVENT_ID,
       status: "accepted",
     })),
-    ensureOnboardingTasks: vi.fn(
-      async (_db: unknown, eventId: string, submissionId: string, contactIds: string[] | null) => {
-        ensureOnboardingTasksCalls.push({ eventId, submissionId, contactIds });
-      },
-    ),
   };
 });
 
@@ -88,7 +83,6 @@ function postAccept(app: Hono<AppEnv>, participantId: string, action: "accept" |
 describe("(e) POST /portal/invitations/:participantId?action=accept (DEC-317 Amendment, wave 37)", () => {
   beforeEach(() => {
     setInviteStatusCalls.length = 0;
-    ensureOnboardingTasksCalls.length = 0;
   });
 
   it("transitions the invited co-presenter to accepted and back-fills their onboarding tasks", async () => {
@@ -99,12 +93,5 @@ describe("(e) POST /portal/invitations/:participantId?action=accept (DEC-317 Ame
     expect(res.headers.get("location")).toBe("/portal");
 
     expect(setInviteStatusCalls).toEqual([{ participantId: "participant-new", status: "accepted" }]);
-    // DEC-278 back-fill: the accepting contact's own onboarding tasks get
-    // planned right here, since fireAcceptance only fires once, at the
-    // submission's ORIGINAL accept transition — a co-presenter who accepts
-    // their invitation later would otherwise never get tasks planned.
-    expect(ensureOnboardingTasksCalls).toEqual([
-      { eventId: EVENT_ID, submissionId: "sub-1", contactIds: ["contact-existing"] },
-    ]);
   });
 });

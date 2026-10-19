@@ -14,6 +14,9 @@ import { ApiError } from '../../lib/api';
 
 const FORMS: EventForm[] = [{ id: 'form-default', title: 'Speaker agreement form', isDefault: true }];
 
+// decision 76: a new task goes to a portal (offered first) or named people
+const PORTALS = [{ id: 'pt-1', name: 'CFP speakers' }];
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -31,7 +34,7 @@ describe('TaskModal: DEC-958 server fields map renders on the named controls', (
         title: 'Max 200 characters',
         dueDate: 'Must be a ms-epoch integer',
       }));
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={5} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={5} portals={PORTALS} />);
 
     fillTitle('A task title');
     fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
@@ -46,7 +49,7 @@ describe('TaskModal: DEC-958 server fields map renders on the named controls', (
 
   it('falls back to the generic sentence when the ApiError carries no fields map', async () => {
     const onSubmit = vi.fn().mockRejectedValue(new ApiError(500, 'internal', 'Failed to create task'));
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={5} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={5} portals={PORTALS} />);
 
     fillTitle('A task title');
     fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));

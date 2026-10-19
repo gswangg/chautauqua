@@ -61,6 +61,15 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     reason:
       "superseded by multi-portal decision 74: a file resource is uploaded from the library's New item › Resource › Upload a file, whose File field is a plain picker (app/src/pages/portals/NewLibraryItemModal.tsx); LibraryPage.render.test.tsx pins it.",
   },
+  // Multi-portal decision 76: acceptance no longer gives every accepted
+  // speaker a new task; a new task goes to a portal or to named people.
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 194,
+    text: 'Created for all 12 accepted speakers',
+    reason:
+      "superseded by multi-portal decision 76: portals are the one rule engine, so a new task is added to a portal (everyone it covers gets it) or given to the people the organizer chooses. The New task subtitle names which: 'Added to CFP speakers: everyone it covers gets it' or 'Created for the 2 people you choose' (app/src/pages/speakers/TaskModal.tsx), pinned by TaskModal.render.test.tsx and Speakers-states.desktop-frame-verdicts.render.test.tsx. The frame's sentence would be false for every speaker no portal covers.",
+  },
   // Multi-portal decision 71: /portal/preview speaks for every portal, and
   // preview-as-participant exists, so both of the frame's speaker-only
   // sentences about the preview would be false.

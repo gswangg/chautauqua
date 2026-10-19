@@ -6,7 +6,6 @@ import {
   SUBMISSION_STATUSES,
   type StatusChangeInput,
 } from "../src/domain/status";
-import { DEFAULT_ONBOARDING_TASKS, planAcceptance } from "../src/domain/acceptance";
 import {
   DEFAULT_PARTICIPANT_ROLE,
   PARTICIPANT_ROLE_OPTIONS,
@@ -142,67 +141,6 @@ describe("status pipeline", () => {
     // has no mail/email field — callers must decide notification separately.
     const result = changeStatus({ status: "pending", acceptedAt: null }, "accepted", 1);
     expect(Object.keys(result).sort()).toEqual(["acceptedAt", "fireAcceptance", "setsAcceptedAt", "status"]);
-  });
-});
-
-describe("acceptance planning", () => {
-  it("DEFAULT_ONBOARDING_TASKS matches DEC-009 exactly", () => {
-    expect(DEFAULT_ONBOARDING_TASKS).toEqual([
-      { title: "Hotel stay requirement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
-      { title: "Flight reimbursement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
-      { title: "Finalize talk description", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
-      { title: "Finalize bio + headshot", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
-      { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
-    ]);
-  });
-
-  it("plans all 5 tasks per participant contact when none exist", () => {
-    const result = planAcceptance({
-      submissionId: "sub1",
-      eventId: "evt1",
-      participantContactIds: ["c1", "c2"],
-      existingTaskTitlesByContact: {},
-    });
-    expect(result.taskAssignments).toHaveLength(10);
-    expect(result.taskAssignments.filter((a) => a.contactId === "c1")).toHaveLength(5);
-    expect(result.taskAssignments.filter((a) => a.contactId === "c2")).toHaveLength(5);
-  });
-
-  it("is idempotent: replanning after applying results yields nothing", () => {
-    const input = {
-      submissionId: "sub1",
-      eventId: "evt1",
-      participantContactIds: ["c1", "c2"],
-      existingTaskTitlesByContact: {} as Record<string, string[]>,
-    };
-    const first = planAcceptance(input);
-    expect(first.taskAssignments.length).toBeGreaterThan(0);
-
-    const existingTaskTitlesByContact: Record<string, string[]> = {};
-    for (const assignment of first.taskAssignments) {
-      const titles = (existingTaskTitlesByContact[assignment.contactId] ??= []);
-      titles.push(assignment.taskTitle);
-    }
-
-    const second = planAcceptance({ ...input, existingTaskTitlesByContact });
-    expect(second.taskAssignments).toEqual([]);
-  });
-
-  it("only plans missing titles, not already-existing ones", () => {
-    const result = planAcceptance({
-      submissionId: "sub1",
-      eventId: "evt1",
-      participantContactIds: ["c1"],
-      existingTaskTitlesByContact: {
-        c1: ["Hotel stay requirement form", "Flight reimbursement form"],
-      },
-    });
-    expect(result.taskAssignments).toHaveLength(3);
-    expect(result.taskAssignments.map((a) => a.taskTitle)).toEqual([
-      "Finalize talk description",
-      "Finalize bio + headshot",
-      "Announce participation",
-    ]);
   });
 });
 

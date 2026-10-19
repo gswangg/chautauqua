@@ -30,8 +30,9 @@ import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { DateField } from '../../components/DateField';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ResponseModal } from './ResponseModal';
+import { AddPeopleModal } from './AddPeopleModal';
 import { formatDueDate, OVERDUE_LABEL, statusCellClass } from './TaskCell';
-import { countOf } from '../../lib/plural';
+import { countOf, plural } from '../../lib/plural';
 import { dateInputToMs, formatDate, formatRelativeDays, msToDateInput } from '../../lib/dates';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import type { AssignmentResponseDetail, AssignmentStatus, ReminderDraft } from './types';
@@ -114,6 +115,9 @@ export function TaskView() {
   // "Not needed" removes a real row, so it is confirmed and names exactly
   // who loses the task.
   const [pendingNotNeeded, setPendingNotNeeded] = useState<readonly string[] | null>(null);
+
+  // multi-portal decision 77: hand-pick people for this task by name
+  const [addingPeople, setAddingPeople] = useState(false);
 
   // The same review-before-send reminder flow the grid and the speaker
   // detail use, scoped here to THIS task via taskIds.
@@ -198,6 +202,7 @@ export function TaskView() {
   const rows = useMemo(() => view?.rows ?? [], [view]);
   const answeredRows = useMemo(() => rows.filter(isAnswered), [rows]);
   const waitingRows = useMemo(() => rows.filter((r) => !isAnswered(r)), [rows]);
+  const holderIds = useMemo(() => new Set(rows.map((r) => r.contactId)), [rows]);
   const tabRows = tab === 'answered' ? answeredRows : waitingRows;
 
   const totalSends = rows.reduce((sum, r) => sum + r.remindCount, 0);
@@ -433,6 +438,9 @@ export function TaskView() {
               Export answers
             </button>
           )}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setAddingPeople(true)}>
+            Add people
+          </button>
           <button
             type="button"
             className="chq-btn chq-btn-secondary"
@@ -711,6 +719,21 @@ export function TaskView() {
               : 'Marking a task not needed removes it for that speaker only · it stays on everyone else'}
           </div>
         </div>
+      )}
+
+      {addingPeople && (
+        <AddPeopleModal
+          taskId={task.id}
+          eventId={task.eventId}
+          taskTitle={task.title}
+          holderIds={holderIds}
+          onClose={() => setAddingPeople(false)}
+          onAdded={(count) => {
+            setAddingPeople(false);
+            setToast(`${countOf(count, 'person', 'people')} now ${plural(count, 'has', 'have')} this task.`);
+            void load();
+          }}
+        />
       )}
 
       {movingDue && (

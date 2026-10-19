@@ -18,7 +18,7 @@ import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { hasSavedTaskResponse } from "../forms/task-response";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
-import { TASK_KINDS, MAX_TASK_ASSIGNEES, DEFAULT_TASK_AUDIENCE } from "../domain/task-kinds"; // DEC-613 wave-70 amendment; DEC-422 + DEC-746 wave-77 amendments
+import { TASK_KINDS, MAX_TASK_ASSIGNEES } from "../domain/task-kinds"; // DEC-613 wave-70 amendment; DEC-422 + DEC-746 wave-77 amendments
 import { INVITE_STATUSES, isInviteStatus, type InviteStatus } from "../domain/invite-status"; // DEC-789 wave-73 amendment
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from "../domain/task-copy";
 import { findFormById } from "../server/repo/forms";
@@ -48,7 +48,9 @@ import {
   type UpdateTaskInput,
 } from "../server/repo/tasks";
 import { findContactsForOrg } from "../server/repo/contacts";
-import { findEventPortal, portalReminderScope } from "../server/repo/tasks/portal-scope";
+import { directReminderScope, findEventPortal, portalReminderScope } from "../server/repo/tasks/portal-scope";
+import { addLibraryTaskToPortal } from "../server/repo/portals/admin";
+import { reconcileEventPortals } from "../server/repo/portals/reconcile";
 import { clampPage, clampPerPage } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
@@ -178,6 +180,13 @@ export function parseOnboardingGridQuery(raw: Record<string, string | undefined>
   // multi-portal decision 73: one portal's view (the route checks the
   // portal belongs to the event)
   const portalId = raw.portalId && raw.portalId.trim().length > 0 ? raw.portalId.trim() : null;
+  // decision 75: source=direct is the "Assigned directly" view
+  let direct = false;
+  if (raw.source !== undefined && raw.source !== "") {
+    if (raw.source === "direct") direct = true;
+    else fields.source = "Must be 'direct'";
+  }
+  if (direct && portalId) fields.source = "Choose a portal or the direct view, not both";
 
   let status: "pending" | "complete" | null = null;
   if (raw.status !== undefined && raw.status !== "") {
@@ -214,7 +223,7 @@ export function parseOnboardingGridQuery(raw: Record<string, string | undefined>
     throw new ApiError("invalid", "Invalid onboarding grid filter", fields);
   }
 
-  return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, portalId, now };
+  return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, portalId, direct, now };
 }
 
 // a portal id is an ordinary bounded id (DEC-417)
@@ -233,6 +242,13 @@ async function eventPortalOrNotFound(db: Db, eventId: string, portalId: string) 
  * leaves nobody or nothing to remind -- the routes answer with an empty
  * result then, because an empty id list means "no filter" to remindNow. */
 async function reminderIdsForBody(db: Db, eventId: string, body: Record<string, unknown>, taskIds: string[] | undefined, contactIds: string[] | undefined) {
+  if (body.source !== undefined) {
+    if (body.source !== "direct" || body.portalId !== undefined) {
+      throw new ApiError("invalid", "Invalid reminder scope", { source: "Must be 'direct', without a portal" });
+    }
+    const scope = await directReminderScope(db, eventId, taskIds, contactIds);
+    return scope.taskIds.length === 0 || scope.contactIds.length === 0 ? null : scope;
+  }
   if (body.portalId === undefined) return { taskIds, contactIds };
   if (typeof body.portalId !== "string" || body.portalId.length === 0 || body.portalId.length > MAX_PORTAL_ID_LENGTH) {
     throw new ApiError("invalid", "Invalid reminder scope", { portalId: "Must be a portal id" });
@@ -250,7 +266,8 @@ taskRoutes.get("/events/:eventId/onboarding", requireOrganizer, async (c) => {
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
   const params = parseOnboardingGridQuery(c.req.query(), Date.now());
   if (params.portalId) await eventPortalOrNotFound(c.var.db, eventId, params.portalId);
-  const grid = await getOnboardingGrid(c.var.db, eventId, params);
+  // decision 75: with the profile's built-in items (Bio, Headshot) as columns
+  const grid = await getOnboardingGrid(c.var.db, eventId, { ...params, builtInColumns: true });
   return c.json(grid);
 });
 
@@ -341,6 +358,22 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
   // every accepted speaker (today's behavior, unchanged); present must be a
   // non-empty array of ids that all belong to this event's roster. Parsed
   // and resolved BEFORE createTask so a refused request writes nothing.
+  // multi-portal decision 76: a task reaches a group through a portal (it
+  // becomes that portal's item) or named people; with neither it is a
+  // hand-picked task with nobody on it yet
+  let portalId: string | null = null;
+  if (body.portalId !== undefined && body.portalId !== null) {
+    if (typeof body.portalId !== "string" || body.portalId.length === 0 || body.portalId.length > MAX_PORTAL_ID_LENGTH) {
+      fields.portalId = "Must be a portal id";
+    } else if (body.contactIds !== undefined) {
+      fields.portalId = "Choose a portal or the people who get it, not both";
+    } else if (!(await findEventPortal(c.var.db, eventId, body.portalId))) {
+      fields.portalId = "Must be a portal of this event";
+    } else {
+      portalId = body.portalId;
+    }
+  }
+
   let resolvedContactIds: string[] | undefined;
   if (fields.contactIds === undefined && body.contactIds !== undefined) {
     if (Array.isArray(body.contactIds) && body.contactIds.length === 0) {
@@ -383,12 +416,14 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     deliverableKind,
     instructions,
     contactIds: resolvedContactIds,
-    // DEC-746 (wave-77 amendment): a task created with an explicit
-    // contactIds subset STAYS targeted -- it must never be back-filled onto
-    // newly-active contacts at the next acceptance (DEC-932).
-    audience: resolvedContactIds ? "targeted" : DEFAULT_TASK_AUDIENCE,
+    audience: portalId ? "portal" : "targeted",
   };
   const created = await createTask(c.var.db, eventId, input);
+  if (portalId) {
+    const now = new Date();
+    await addLibraryTaskToPortal(c.var.db, eventId, portalId, created.id, { dueDate: dueDate ?? null, required: required ?? true }, now);
+    await reconcileEventPortals(c.var.db, eventId, now, { notify: "none" });
+  }
   return c.json(created, 201);
 });
 
@@ -587,7 +622,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   // hand-written literal -- see GET .../onboarding above for the same parse.
   const params = parseOnboardingGridQuery(c.req.query(), Date.now());
   if (params.portalId) await eventPortalOrNotFound(c.var.db, ownership.eventId, params.portalId);
-  const grid = await getOnboardingGrid(c.var.db, ownership.eventId, params);
+  const grid = await getOnboardingGrid(c.var.db, ownership.eventId, { ...params, builtInColumns: true });
   return c.json(grid);
 });
 

@@ -255,14 +255,6 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "`for (const batch of chunkIds(...))` loop.",
   ],
   [
-    "src/server/repo/submissions/status.ts",
-    "taskChunk",
-    "taskChunk iterates chunkBySize(eventTaskIds, PAIR_ID_CHUNK_SIZE) -- a " +
-      "local DEC-078/DEC-528 helper that halves ID_CHUNK_SIZE because both " +
-      "taskChunk and contactChunk are bound in the SAME query (see the " +
-      "adjacent code comment).",
-  ],
-  [
     "src/server/repo/tasks/grid.ts",
     "batch",
     "getOnboardingGrid's participation and cell queries bind `batch` from " +

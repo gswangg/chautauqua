@@ -278,8 +278,8 @@ const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reas
       "DEC-300 declared cascade: clears each dependent sibling field's rule (ruleJson: null) one row at a time -- bounded by the deleted field's own dependent count, a small fan-out off a single form, not a bulk/import path.",
   },
   {
-    file: "src/server/repo/submissions/status.ts",
-    functionOrNearestExport: "getOrCreateFormTaskForm",
+    file: "src/server/repo/portals/task-forms.ts",
+    functionOrNearestExport: "findOrCreateTaskForm",
     reason:
       "DEC-111 form-task self-heal: inserts one form_field row per FORM_TASK_FIELD_SPECS entry on first creation of a task's backing form -- bounded by a fixed template's field count (single digits), not by any table's row count.",
   },

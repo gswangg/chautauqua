@@ -13,6 +13,7 @@ import { TaskModal } from './TaskModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
+import type { PortalOverview } from '../portals/types';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import { RosterDrillIn } from './RosterPanel';
@@ -54,7 +55,15 @@ const PER_PAGE = 50;
 /** Task column header caption, design v4's "Due 10 Apr · Required" shape
  * (rendered upper-case via .chq-speakers-task-due's text-transform) --
  * replaces the old title + bare '*' + plain date pattern. */
-function taskDueLabel(task: { dueDate: number | null; required: boolean }, now: number): string {
+/** Decision 75: Bio and Headshot come from the profile -- read-only columns
+ * with no task page of their own, kept out of the task filter and the Edit
+ * tasks menu. */
+function isBuiltInColumn(task: { id: string }): boolean {
+  return task.id.startsWith('built-in:');
+}
+
+function taskDueLabel(task: { id: string; dueDate: number | null; required: boolean }, now: number): string {
+  if (isBuiltInColumn(task)) return task.required ? 'From the profile · Required' : 'From the profile';
   const suffix = task.required ? ' · Required' : '';
   if (task.dueDate === null) return `No due date${suffix}`;
   const base = `Due ${formatDueDate(task.dueDate, now)}`;
@@ -153,9 +162,10 @@ function EditTasksMenu({
 
 /** Builds the DEC-340 query string from the current filters + page — every
  * active predicate is server-side, so the SPA never filters rows itself. */
-function buildGridQuery(filters: GridFilterState, page: number, portalId: string | null): string {
+function buildGridQuery(filters: GridFilterState, page: number, portalId: string | null, direct = false): string {
   const params = new URLSearchParams();
   if (portalId) params.set('portalId', portalId);
+  if (direct) params.set('source', 'direct');
   params.set('page', String(page));
   params.set('perPage', String(PER_PAGE));
   if (filters.q.trim()) params.set('q', filters.q.trim());
@@ -406,12 +416,14 @@ interface OnboardingGridProps {
   // ?portal= URL state): 'any', 'none' for the "Not in any portal" list, or
   // a portal id. portalId narrows this grid to that portal (decision 73).
   portalId?: string | null;
+  // decision 75: the "Assigned directly" view
+  direct?: boolean;
   onPortalChange?: (value: string) => void;
   // multi-portal: a line beside the summary (the sponsor-session queue link)
   headExtra?: ReactNode;
 }
 
-export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, headExtra }: OnboardingGridProps) {
+export function OnboardingGrid({ onAddSpeaker, portalId = null, direct = false, onPortalChange, headExtra }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
   const [error, setError] = useState<string | null>(null);
@@ -423,10 +435,18 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
   // path is null while there is no event yet -- the hook then holds no data
   // and issues no request.
   const gridPath = useMemo(
-    () => (eventId ? `/events/${eventId}/onboarding?${buildGridQuery(filters, page, portalId)}` : null),
-    [eventId, filters, page, portalId],
+    () => (eventId ? `/events/${eventId}/onboarding?${buildGridQuery(filters, page, portalId, direct)}` : null),
+    [eventId, filters, page, portalId, direct],
   );
   const gridRead = useCachedGet<OnboardingGridResponse>(gridPath, 'Failed to load onboarding grid');
+  // decision 76: New task offers the event's portals (shared cache with the
+  // toolbar's portal filter)
+  const portalsPath = useMemo(() => (eventId ? `/events/${eventId}/portals` : null), [eventId]);
+  const portalsRead = useCachedGet<PortalOverview>(portalsPath, 'Failed to load portals');
+  const portalOptions = useMemo(
+    () => (portalsRead.data?.portals ?? []).map((p) => ({ id: p.id, name: p.name })),
+    [portalsRead.data],
+  );
   // Optimistic overlay for the two in-place cell writes below (toggleCell /
   // setInviteStatus): the cache hook has no setter of its own (DEC_518 --
   // a cached read either replaces wholesale on resolve or is left untouched
@@ -449,7 +469,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
   // mid-click.
   const [toolbarTasks, setToolbarTasks] = useState<OnboardingTask[]>([]);
   useEffect(() => {
-    if (grid) setToolbarTasks(grid.tasks);
+    if (grid) setToolbarTasks(grid.tasks.filter((t) => !isBuiltInColumn(t)));
   }, [grid]);
   const [showNewTask, setShowNewTask] = useState(false);
   // docs/design/Chautauqua Speakers.dc.html:133 `Matrix becomes one card
@@ -910,7 +930,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
   // a portal view reminds that portal's people about its own items only
   // (decision 73); the server resolves both from the portal
   function remindBody(contactIds: string[] | undefined): Record<string, unknown> {
-    return { ...(contactIds ? { contactIds } : {}), ...(portalId ? { portalId } : {}) };
+    return { ...(contactIds ? { contactIds } : {}), ...(portalId ? { portalId } : {}), ...(direct ? { source: 'direct' } : {}) };
   }
 
   async function openRemindReview(contactIds?: string[]) {
@@ -1003,7 +1023,8 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
     if (!eventId) return;
     await apiPost(`/events/${eventId}/tasks`, input);
     setShowNewTask(false);
-    setToast('Task created.');
+    const portalName = input.portalId ? portalOptions.find((p) => p.id === input.portalId)?.name : undefined;
+    setToast(portalName ? `Task added to ${portalName}.` : 'Task created.');
     setOptimisticOverride(null);
     await gridRead.refetch();
   }
@@ -1223,7 +1244,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
           tasks={toolbarTasks}
           filters={filters}
           onChange={handleFiltersChange}
-          portalValue={portalId ?? 'any'}
+          portalValue={direct ? 'direct' : (portalId ?? 'any')}
           onPortalChange={onPortalChange}
         />
         {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
@@ -1268,6 +1289,17 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
         // multi-portal decision 73: a portal whose people aren't on the
         // speaker roster (sponsor contacts, event roles) is a narrowed view,
         // never an empty roster
+        if (direct && !hasActiveNarrowing(filters)) {
+          return (
+            <EmptyState
+              variant="filtered"
+              what="No tasks are assigned directly."
+              reason="Every task here reaches people through a portal. To give a task to particular people, add them on the task's page."
+              action={null}
+              escape={onPortalChange ? { label: 'Show every portal', onClick: () => onPortalChange('any') } : null}
+            />
+          );
+        }
         if (portalId && !hasActiveNarrowing(filters)) {
           return (
             <EmptyState
@@ -1328,7 +1360,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
                   <th>
                     <div className="chq-speakers-task-title-row">
                       <span>Speaker &middot; Participation</span>
-                      <EditTasksMenu tasks={visibleTasks} now={now} onEdit={setEditingTask} />
+                      <EditTasksMenu tasks={visibleTasks.filter((t) => !isBuiltInColumn(t))} now={now} onEdit={setEditingTask} />
                     </div>
                   </th>
                   {visibleTasks.map((task) => {
@@ -1341,9 +1373,15 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
                             no controls and answers a question it previously
                             could not. */}
                         <div className="chq-speakers-task-head">
-                          <Link className="chq-speakers-task-title" to={`/speakers/tasks/${task.id}`} title={task.title}>
-                            {task.title}
-                          </Link>
+                          {isBuiltInColumn(task) ? (
+                            <span className="chq-speakers-task-title" title={task.title}>
+                              {task.title}
+                            </span>
+                          ) : (
+                            <Link className="chq-speakers-task-title" to={`/speakers/tasks/${task.id}`} title={task.title}>
+                              {task.title}
+                            </Link>
+                          )}
                           <span className="chq-speakers-task-due">{taskDueLabel(task, now)}</span>
                           {done && (
                             <span
@@ -1462,6 +1500,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
                           density="dense"
                           notChased={declinedOnly}
                           interactive={notChased === null}
+                          readOnly={isBuiltInColumn(task)}
                           notSaved={
                             pendingFailure?.assignmentId !== null &&
                             row.cells.some((c) => c.taskId === task.id && c.assignmentId === pendingFailure?.assignmentId)
@@ -1537,6 +1576,7 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
                         density="roomy"
                         notChased={declinedOnly}
                         interactive={notChased === null}
+                          readOnly={isBuiltInColumn(task)}
                         notSaved={
                           pendingFailure?.assignmentId !== null &&
                           row.cells.some((c) => c.taskId === task.id && c.assignmentId === pendingFailure?.assignmentId)
@@ -1618,6 +1658,8 @@ export function OnboardingGrid({ onAddSpeaker, portalId = null, onPortalChange, 
           onSubmit={handleCreateTask}
           forms={taskForms}
           acceptedCount={counts?.speakers ?? 0}
+          portals={portalOptions}
+          defaultPortalId={portalId}
           assignees={taskAssignees}
           assigneesTruncated={taskAssigneesTruncated}
         />

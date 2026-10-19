@@ -18,7 +18,6 @@ import { findAccountUserIds } from "../../server/repo/comms";
 import { answerInvitation, findInvitationByToken, saveDeclineNote, sessionPlacementLine, type InvitationRecord } from "../../server/repo/portals/invitations";
 import { buildPersonView } from "../../server/repo/portals/view";
 import { reconcileEventPortals } from "../../server/repo/portals/reconcile";
-import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 import { getEventForOrg } from "../../server/repo/events";
 import { formatDueDay } from "../../lib/event-time";
 import { formatNoun, formatMinutes } from "../../domain/sponsors";
@@ -190,12 +189,7 @@ portalInvitationRoutes.post("/invitations/:token/accept", csrfForm, async (c) =>
   if (resolved.inviteStatus !== "invited") return c.redirect("/portal", 302);
   const now = new Date();
   await answerInvitation(c.var.db, resolved, "accepted", now);
-  // DEC-278: accepting onto an already-accepted session plans this
-  // speaker's onboarding tasks (the session's own acceptance never re-fires)
-  const info = await getSubmissionStatusForParticipant(c.var.db, resolved.participantId);
-  if (info && info.status === "accepted") {
-    await ensureOnboardingTasks(c.var.db, info.eventId, info.submissionId, [resolved.contactId], now);
-  }
+  // decision 76: the portals the accepted invitation joins bring its items
   await reconcileEventPortals(c.var.db, resolved.eventId, now, { notify: "none" });
   const accounts = await findAccountUserIds(c.var.db, [{ contactId: resolved.contactId, email: resolved.email }]);
   if (accounts.get(resolved.contactId)) return c.redirect("/portal?confirmed=1", 302);

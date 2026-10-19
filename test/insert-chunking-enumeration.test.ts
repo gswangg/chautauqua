@@ -69,9 +69,11 @@ describe("DEC-528: every multi-row insert imports chunkRowsForInsert (or is exem
     // batch roster import — one submission, K participants). Multi-portal
     // adds five chunked sites: reconcile.ts's membership, assignment and
     // notification inserts, admin.ts's portal_item rewrite, and
-    // sponsors/sessions.ts's approved-speaker participant insert. A new
-    // multi-row insert added later must show up here.
-    expect(sites.length).toBe(26);
+    // sponsors/sessions.ts's approved-speaker participant insert. Multi-portal
+    // decision 76 removes submissions/status.ts's two (the acceptance plan's
+    // and the back-fill's taskAssignment inserts). A new multi-row insert
+    // added later must show up here.
+    expect(sites.length).toBe(24);
   });
 
   it("every non-exempt site's file imports chunkRowsForInsert", () => {

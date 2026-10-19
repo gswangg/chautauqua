@@ -11,7 +11,6 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
 const EVENT_ID = "event-1";
@@ -149,7 +148,9 @@ function fakeDb(seed: { event: unknown[]; submission: unknown[]; participant: un
 }
 
 describe("DEC-278 wave-58 amendment: re-accept re-fires onboarding without re-stamping accepted_at", () => {
-  it("accept -> un-accept -> add co-speaker -> re-accept plans tasks for the co-speaker and preserves the original accepted_at", async () => {
+  // multi-portal decision 76: acceptance plans no tasks (portals bring
+  // items on reconcile), so the walk now pins the accepted_at half alone
+  it("accept -> un-accept -> add co-speaker -> re-accept preserves the original accepted_at and plans no tasks itself", async () => {
     const { db, state } = fakeDb({
       event: [{ id: EVENT_ID, startDate: "2026-06-01" }],
       submission: [{ id: SUBMISSION_ID, eventId: EVENT_ID, status: "pending", acceptedAt: null }],
@@ -161,8 +162,7 @@ describe("DEC-278 wave-58 amendment: re-accept re-fires onboarding without re-st
     await updateSubmissionStatuses(db, EVENT_ID, [SUBMISSION_ID], "accepted", firstAccept);
     expect(state.submission[0].status).toBe("accepted");
     expect(state.submission[0].acceptedAt).toBe(firstAccept);
-    const contact1TasksAfterFirstAccept = state.taskAssignment.filter((a: any) => a.contactId === "contact-1");
-    expect(contact1TasksAfterFirstAccept.length).toBe(DEFAULT_ONBOARDING_TASKS.length);
+    expect(state.taskAssignment.filter((a: any) => a.contactId === "contact-1")).toEqual([]);
 
     // 2. Set back to pending. accepted_at must NOT be cleared (DEC-009).
     await updateSubmissionStatuses(db, EVENT_ID, [SUBMISSION_ID], "pending", new Date(2000));
@@ -182,10 +182,6 @@ describe("DEC-278 wave-58 amendment: re-accept re-fires onboarding without re-st
     // never overwritten by the re-accept.
     expect(state.submission[0].acceptedAt).toBe(firstAccept);
 
-    // The crux of the bug: the co-speaker added while un-accepted now has
-    // onboarding task_assignment rows.
-    const contact2Tasks = state.taskAssignment.filter((a: any) => a.contactId === "contact-2");
-    expect(contact2Tasks.length).toBeGreaterThan(0);
-    expect(contact2Tasks.length).toBe(DEFAULT_ONBOARDING_TASKS.length);
+    expect(state.taskAssignment.filter((a: any) => a.contactId === "contact-2")).toEqual([]);
   });
 });
